@@ -52,8 +52,8 @@ type Total struct {
 // TotalTime derives the recipe's total time: the stored total if present;
 // else the critical path of the step graph when every step has a duration;
 // else the sum of prep, cook and special times. A recipe with none of these
-// reports TotalUnknown. It returns the graph error when the step graph is
-// invalid and a critical path would be needed.
+// reports TotalUnknown. It returns the graph error whenever the step graph is
+// invalid and no stored total exists.
 func (r Recipe) TotalTime() (Total, error) {
 	if r.Times.Total > 0 {
 		return Total{r.Times.Total, TotalStored}, nil

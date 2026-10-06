@@ -3,6 +3,7 @@ package recipe
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 )
@@ -39,6 +40,11 @@ func TestValidate(t *testing.T) {
 		{"bad unit", rec(Component{Lines: []IngredientLine{badUnit}}), ErrInvalidLine},
 		{"unknown qualifier kind", rec(Component{Lines: []IngredientLine{badKind}}), ErrInvalidQualifier},
 		{"empty qualifier text", rec(Component{Lines: []IngredientLine{emptyText}}), ErrInvalidQualifier},
+		{"negative step duration", rec(Component{Steps: []Step{{ID: "a", Duration: -time.Minute}}}), ErrInvalidDuration},
+		{"negative prep", Recipe{Components: []Component{{}}, Times: Times{Prep: -time.Minute}}, ErrInvalidDuration},
+		{"negative cook", Recipe{Components: []Component{{}}, Times: Times{Cook: -time.Minute}}, ErrInvalidDuration},
+		{"negative total", Recipe{Components: []Component{{}}, Times: Times{Total: -time.Minute}}, ErrInvalidDuration},
+		{"negative special", Recipe{Components: []Component{{}}, Times: Times{Special: []SpecialTime{{LabelRise, -time.Minute}}}}, ErrInvalidDuration},
 		{"cycle surfaces", rec(Component{Steps: []Step{st("a", "a")}}), ErrCycle},
 	}
 	for _, tc := range tests {

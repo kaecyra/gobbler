@@ -19,6 +19,8 @@ var (
 	// ErrInvalidLine is returned for an ingredient line that breaks a
 	// structural rule.
 	ErrInvalidLine = errors.New("invalid ingredient line")
+	// ErrInvalidDuration is returned for a negative step duration or time.
+	ErrInvalidDuration = errors.New("negative duration")
 )
 
 // IngredientID references a canonical ingredient (ADR-00008). The catalog owns
@@ -132,7 +134,7 @@ type Recipe struct {
 }
 
 // Validate checks the structural rules of the model: at least one component,
-// well-formed lines and qualifiers, and a valid step graph (see
+// well-formed lines and qualifiers, non-negative durations, and a valid step graph (see
 // ValidateSteps). It does not judge content such as an empty name.
 func (r Recipe) Validate() error {
 	if len(r.Components) == 0 {
@@ -145,7 +147,33 @@ func (r Recipe) Validate() error {
 			}
 		}
 	}
+	if err := r.validateDurations(); err != nil {
+		return err
+	}
 	return r.ValidateSteps()
+}
+
+func (r Recipe) validateDurations() error {
+	t := r.Times
+	for _, f := range []struct {
+		name string
+		d    time.Duration
+	}{{"prep time", t.Prep}, {"cook time", t.Cook}, {"total time", t.Total}} {
+		if f.d < 0 {
+			return fmt.Errorf("%w: %s %s", ErrInvalidDuration, f.name, f.d)
+		}
+	}
+	for i, s := range t.Special {
+		if s.Duration < 0 {
+			return fmt.Errorf("%w: special time %d (%q) %s", ErrInvalidDuration, i+1, s.Label, s.Duration)
+		}
+	}
+	for _, ref := range r.LinearOrder() {
+		if d := r.Components[ref.ComponentIndex].Steps[ref.Position-1].Duration; d < 0 {
+			return fmt.Errorf("%w: %s %s", ErrInvalidDuration, ref, d)
+		}
+	}
+	return nil
 }
 
 func (l IngredientLine) validate() error {

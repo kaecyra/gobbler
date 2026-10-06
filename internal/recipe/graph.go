@@ -13,7 +13,7 @@ var (
 	ErrCycle = errors.New("step dependency cycle")
 	// ErrUnknownDependency is returned when a step depends on an ID that is
 	// not a step of the same recipe.
-	ErrUnknownDependency = errors.New("dependency on a step outside the recipe")
+	ErrUnknownDependency = errors.New("reference to a step outside the recipe")
 	// ErrBadStepID is returned for an empty or duplicated step ID.
 	ErrBadStepID = errors.New("step ID empty or duplicated")
 )
