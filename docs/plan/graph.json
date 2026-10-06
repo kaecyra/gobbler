@@ -183,7 +183,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 3,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w0-config"
       ],
@@ -1002,6 +1002,14 @@
       "merged": "9cedb950333bd572e5eb7705ad74c6d6d75f7984",
       "adrs": [
         "00005"
+      ]
+    },
+    {
+      "id": "w0-db",
+      "title": "SQLite (modernc) in WAL mode, embedded goose migrations, migrate subcommand, refuse start on failed migration",
+      "merged": "df5c56ec0d6b9713b476a104f7ffb2c4d30539e5",
+      "adrs": [
+        "00002"
       ]
     }
   ],
