@@ -1,4 +1,7 @@
 .memory/
-.odette/*.local.json
+.odette/
 docs/plan/*.draft.json
 .claude/worktrees/
+docs/plan/board.html
+docs/plan/board-state.json
+docs/plan/board-data.js
