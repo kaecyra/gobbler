@@ -24,7 +24,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00000",
+      "last_used": "00001",
       "contiguous": true
     }
   },
@@ -310,7 +310,7 @@
       "wave": 1,
       "track": "domain",
       "issue": 9,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-quantity"
       ],
@@ -1010,6 +1010,15 @@
       "merged": "df5c56ec0d6b9713b476a104f7ffb2c4d30539e5",
       "adrs": [
         "00002"
+      ]
+    },
+    {
+      "id": "w1-recipe-model",
+      "title": "Recipe domain types, components, qualifiers, step-graph validation with cycle naming, total-time derivation",
+      "merged": "b9551f60815f2199765f51d2b00c50714097a246",
+      "adrs": [
+        "00004",
+        "00005"
       ]
     }
   ],
