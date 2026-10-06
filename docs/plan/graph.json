@@ -137,7 +137,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 1,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "go.mod",
@@ -972,7 +972,16 @@
       "mode": "open"
     }
   ],
-  "done": [],
+  "done": [
+    {
+      "id": "w0-scaffold",
+      "title": "Go module, entry point, VERSION, Makefile fmt/lint/test, lefthook, golangci, CI",
+      "merged": "8ff9646b3cbfcaeabc40442eb188cadafe807e01",
+      "adrs": [
+        "00002"
+      ]
+    }
+  ],
   "adr_sequence": {
     "last_used": "00013"
   }
