@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -151,11 +152,11 @@ func (s S3) Configured() bool { return s.Endpoint != "" }
 // Load reads the process environment and validates it. The error names every
 // offending variable.
 func Load() (Config, error) {
-	return LoadFrom(os.LookupEnv)
+	return loadFrom(os.LookupEnv)
 }
 
-// LoadFrom is Load over an arbitrary lookup function, for tests.
-func LoadFrom(lookup func(string) (string, bool)) (Config, error) {
+// loadFrom is Load over an arbitrary lookup function, for tests.
+func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	r := reader{lookup: lookup}
 	var c Config
 
@@ -337,7 +338,7 @@ func (r *reader) float(env string, def, lo, hi float64) float64 {
 		return def
 	}
 	f, err := strconv.ParseFloat(v, 64)
-	if err != nil || f != f { // NaN
+	if err != nil || math.IsNaN(f) {
 		r.fail(env, "invalid number %q", v)
 		return def
 	}

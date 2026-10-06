@@ -31,7 +31,7 @@ func with(kv ...string) map[string]string {
 }
 
 func TestLoadDefaults(t *testing.T) {
-	c, err := LoadFrom(env(base()))
+	c, err := loadFrom(env(base()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadCompleteEnvironment(t *testing.T) {
-	c, err := LoadFrom(env(map[string]string{
+	c, err := loadFrom(env(map[string]string{
 		EnvListenAddr: "0.0.0.0:9000", EnvDataDir: "/var/lib/gobbler", EnvLogLevel: "DEBUG",
 		EnvAccessTeamDomain: "t.example.com", EnvAccessAUD: "aud",
 		EnvConfidenceThreshold: "0.55", EnvFetchTimeout: "20s", EnvUserAgent: "ua",
@@ -91,7 +91,7 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 }
 
 func TestClaudeProviderSelectsAnthropicKey(t *testing.T) {
-	c, err := LoadFrom(env(with(EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v",
+	c, err := loadFrom(env(with(EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v",
 		EnvAnthropicAPIKey, "ak", EnvGeminiAPIKey, "gk")))
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := LoadFrom(env(tt.env))
+			_, err := loadFrom(env(tt.env))
 			if err == nil {
 				t.Fatal("expected error")
 			}
@@ -151,7 +151,7 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 }
 
 func TestAllProblemsReportedTogether(t *testing.T) {
-	_, err := LoadFrom(env(map[string]string{EnvLogLevel: "x", EnvFetchTimeout: "y"}))
+	_, err := loadFrom(env(map[string]string{EnvLogLevel: "x", EnvFetchTimeout: "y"}))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -183,7 +183,7 @@ func TestDevBypass(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.addr, func(t *testing.T) {
 			// Access settings deliberately absent: not required with bypass.
-			c, err := LoadFrom(env(map[string]string{EnvDevAuthBypass: "true", EnvListenAddr: tt.addr}))
+			c, err := loadFrom(env(map[string]string{EnvDevAuthBypass: "true", EnvListenAddr: tt.addr}))
 			if tt.wantErr {
 				if err == nil || !strings.Contains(err.Error(), EnvDevAuthBypass) {
 					t.Fatalf("want error naming %s, got %v", EnvDevAuthBypass, err)
@@ -201,13 +201,13 @@ func TestDevBypass(t *testing.T) {
 }
 
 func TestNonLoopbackAllowedWithoutBypass(t *testing.T) {
-	if _, err := LoadFrom(env(with(EnvListenAddr, "0.0.0.0:8080"))); err != nil {
+	if _, err := loadFrom(env(with(EnvListenAddr, "0.0.0.0:8080"))); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestDevBypassIgnoresAccessSettings(t *testing.T) {
-	c, err := LoadFrom(env(map[string]string{EnvDevAuthBypass: "1", EnvAccessAUD: "a"}))
+	c, err := loadFrom(env(map[string]string{EnvDevAuthBypass: "1", EnvAccessAUD: "a"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ const (
 
 func secretConfig(t *testing.T) Config {
 	t.Helper()
-	c, err := LoadFrom(env(with(
+	c, err := loadFrom(env(with(
 		EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v", EnvAnthropicAPIKey, secretLLM,
 		EnvTodoistToken, secretTodo,
 		EnvS3Endpoint, "e", EnvS3Region, "r", EnvS3Bucket, "b", EnvS3AccessKeyID, secretID, EnvS3SecretAccessKey, secretKey,
@@ -261,7 +261,22 @@ func assertNoSecrets(t *testing.T, how, out string) {
 
 func TestSecretsRedacted(t *testing.T) {
 	c := secretConfig(t)
-	for _, verb := range []string{"%v", "%+v", "%#v", "%s"} {
+	verbs := []string{"%v", "%+v", "%#v", "%s", "%d", "%t", "%x", "%X", "%q", "%T", "%p", "%e", "%08d", "%-20s", "%10v", "% x", "%+q", "%#x", "%.2s"}
+	for _, verb := range verbs {
+		// %T and %p never touch the value; only check what they print.
+		if verb == "%T" || verb == "%p" {
+			continue
+		}
+		for _, v := range []any{c, &c, c.LLM, c.Todoist, c.Backup.S3, c.LLM.APIKey, &c.LLM.APIKey} {
+			out := fmt.Sprintf(verb, v)
+			for _, s := range []string{secretLLM, secretTodo, secretID, secretKey} {
+				if strings.Contains(out, s) {
+					t.Errorf("%s of %T leaks %q: %s", verb, v, s, out)
+				}
+			}
+		}
+	}
+	for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%d", "%t", "%x", "%q"} {
 		assertNoSecrets(t, verb, fmt.Sprintf(verb, c))
 		assertNoSecrets(t, verb+" pointer", fmt.Sprintf(verb, &c))
 	}
@@ -290,7 +305,7 @@ func TestSecretRevealAndEmpty(t *testing.T) {
 }
 
 func TestErrorsDoNotContainSecrets(t *testing.T) {
-	_, err := LoadFrom(env(with(EnvLLMProvider, "bogus", EnvAnthropicAPIKey, secretLLM, EnvTodoistProject, "p")))
+	_, err := loadFrom(env(with(EnvLLMProvider, "bogus", EnvAnthropicAPIKey, secretLLM, EnvTodoistProject, "p")))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -313,7 +328,7 @@ func TestLoadReadsProcessEnvironment(t *testing.T) {
 }
 
 func TestBlankValuesTreatedAsUnset(t *testing.T) {
-	c, err := LoadFrom(env(with(EnvDataDir, "  ", EnvLLMProvider, "")))
+	c, err := loadFrom(env(with(EnvDataDir, "  ", EnvLLMProvider, "")))
 	if err != nil {
 		t.Fatal(err)
 	}
