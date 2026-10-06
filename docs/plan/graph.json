@@ -183,7 +183,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 3,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w0-config"
       ],
