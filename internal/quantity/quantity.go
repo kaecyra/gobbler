@@ -64,24 +64,39 @@ func (q Quantity) Equal(o Quantity) bool {
 	return q.kind == o.kind && q.min.Equal(o.min) && q.max.Equal(o.max)
 }
 
-// Mul multiplies both bounds by r. An absent quantity is returned unchanged.
-func (q Quantity) Mul(r Rat) Quantity {
-	if q.IsAbsent() {
-		return q
-	}
-	return Quantity{kind: q.kind, min: q.min.Mul(r), max: q.max.Mul(r)}
-}
-
-// Div divides both bounds by r, or returns ErrDivideByZero.
-func (q Quantity) Div(r Rat) (Quantity, error) {
-	if r.Sign() == 0 {
-		return Quantity{}, ErrDivideByZero
+// Mul multiplies both bounds by r. A zero or negative r is an error
+// (ErrInvalidScale): it would zero the quantity or invert a range. An absent
+// quantity is returned unchanged.
+func (q Quantity) Mul(r Rat) (Quantity, error) {
+	if r.Sign() <= 0 {
+		return Quantity{}, fmt.Errorf("%w: multiplier %s", ErrInvalidScale, r)
 	}
 	if q.IsAbsent() {
 		return q, nil
 	}
-	lo, _ := q.min.Div(r)
-	hi, _ := q.max.Div(r)
+	return Quantity{kind: q.kind, min: q.min.Mul(r), max: q.max.Mul(r)}, nil
+}
+
+// Div divides both bounds by r. Zero is ErrDivideByZero and a negative r is
+// ErrInvalidScale. An absent quantity is returned unchanged.
+func (q Quantity) Div(r Rat) (Quantity, error) {
+	if r.Sign() == 0 {
+		return Quantity{}, ErrDivideByZero
+	}
+	if r.Sign() < 0 {
+		return Quantity{}, fmt.Errorf("%w: divisor %s", ErrInvalidScale, r)
+	}
+	if q.IsAbsent() {
+		return q, nil
+	}
+	lo, err := q.min.Div(r)
+	if err != nil {
+		return Quantity{}, err
+	}
+	hi, err := q.max.Div(r)
+	if err != nil {
+		return Quantity{}, err
+	}
 	return Quantity{kind: q.kind, min: lo, max: hi}, nil
 }
 
@@ -105,16 +120,24 @@ func (q Quantity) render(f func(Rat) string) string {
 	return ""
 }
 
+// PackageSize is the size of one package: the "14 oz" of "1 (14 oz) can".
+type PackageSize struct {
+	Qty  Quantity
+	Unit Unit
+}
+
 // Amount is a quantity with its unit and, for packaged goods, the size of one
 // package: "1 (14 oz) can" is Qty 1, Unit can, Package 14 oz. Amounts are
-// values; every function returns a new one and never changes its input.
+// plain values with no shared pointers, so every function returns a new one
+// and cannot change its input.
 type Amount struct {
 	Qty  Quantity
 	Unit Unit
-	// Package is the size of one unit, kept so shopping can total it. Nil when
-	// the line has no parenthetical size. It is never scaled or converted:
-	// scaling changes how many packages, not how big each one is.
-	Package *Amount
+	// Package is the size of one unit, kept so shopping can total it; it is
+	// meaningful only when HasPackage is set. It is never scaled or
+	// converted: scaling changes how many packages, not how big each one is.
+	Package    PackageSize
+	HasPackage bool
 }
 
 // String renders the amount as written: "1 1/2 cup", "1 (14 oz) can",
@@ -126,8 +149,8 @@ func (a Amount) String() string {
 	} else {
 		parts = append(parts, a.Qty.String())
 	}
-	if a.Package != nil {
-		parts = append(parts, "("+a.Package.String()+")")
+	if a.HasPackage {
+		parts = append(parts, "("+Amount{Qty: a.Package.Qty, Unit: a.Package.Unit}.String()+")")
 	}
 	parts = append(parts, a.Unit.Name)
 	out := make([]string, 0, len(parts))

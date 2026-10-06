@@ -27,3 +27,16 @@ func rng(t *testing.T, lo, hi int64, unit string) Amount {
 	}
 	return Amount{Qty: q, Unit: MustUnit(unit)}
 }
+
+// canOf builds "n (14 oz) can".
+func canOf(n int64) Amount {
+	return Amount{
+		Qty: Exact(Int(n)), Unit: OtherUnit("can"),
+		Package: PackageSize{Qty: Exact(Int(14)), Unit: MustUnit("oz")}, HasPackage: true,
+	}
+}
+
+// brokenUnit is a volume unit as a bad stored row would build it: no factor.
+func brokenUnit() Unit {
+	return Unit{Name: "scoop", System: SystemUS, Dimension: DimVolume}
+}

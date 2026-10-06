@@ -18,26 +18,35 @@ var fractions = [][2]int64{
 // go to the nearest common fraction (eighths, quarters, thirds); a positive
 // amount never rounds to zero. Metric amounts go to a sensible step of the
 // base unit: 0.5 below 10, 1 below 100, 5 below 1000, 10 from 1000. Ranges
-// round each bound. Exact is returned alongside, unchanged.
-func Round(a Amount) Rounded {
-	if a.Qty.IsAbsent() {
-		return Rounded{Exact: a, Rounded: a}
+// round each bound. Exact is returned alongside, unchanged. The error is
+// non-nil only for an invalid unit (ErrInvalidUnit).
+func Round(a Amount) (Rounded, error) {
+	if err := a.Unit.Validate(); err != nil {
+		return Rounded{}, err
 	}
-	var round func(Rat) Rat
+	if a.Qty.IsAbsent() {
+		return Rounded{Exact: a, Rounded: a}, nil
+	}
+	round := func(r Rat) (Rat, error) { return roundFraction(r), nil }
 	if a.Unit.System == SystemMetric && a.Unit.Converts() {
-		round = func(r Rat) Rat { return roundMetric(r, a.Unit.Factor) }
-	} else {
-		round = roundFraction
+		round = func(r Rat) (Rat, error) { return roundMetric(r, a.Unit.Factor) }
 	}
 	q := a.Qty
-	lo, hi := round(q.Min()), round(q.Max())
+	lo, err := round(q.Min())
+	if err != nil {
+		return Rounded{}, err
+	}
+	hi, err := round(q.Max())
+	if err != nil {
+		return Rounded{}, err
+	}
 	var out Quantity
 	if q.IsRange() {
 		out, _ = NewRange(lo, hi) // rounding is monotonic, so lo <= hi
 	} else {
 		out = Exact(lo)
 	}
-	return Rounded{Exact: a, Rounded: a.withQty(out)}
+	return Rounded{Exact: a, Rounded: a.withQty(out)}, nil
 }
 
 // roundFraction rounds a non-negative r to the nearest common fraction; ties
@@ -69,9 +78,9 @@ func roundFraction(r Rat) Rat {
 
 // roundMetric rounds r units (each worth factor base units) to a step of the
 // base unit chosen by magnitude. A positive r never rounds to zero.
-func roundMetric(r, factor Rat) Rat {
+func roundMetric(r, factor Rat) (Rat, error) {
 	if r.Sign() <= 0 {
-		return r
+		return r, nil
 	}
 	base := r.Mul(factor)
 	var step Rat
@@ -86,12 +95,14 @@ func roundMetric(r, factor Rat) Rat {
 		step = Int(10)
 	}
 	// floor(base/step + 1/2) * step; step is positive.
-	n, _ := base.Div(step)
+	n, err := base.Div(step)
+	if err != nil {
+		return Rat{}, err
+	}
 	n = n.Add(Rat{v: big.NewRat(1, 2)}).Floor()
 	rounded := n.Mul(step)
 	if rounded.Sign() == 0 {
 		rounded = step
 	}
-	out, _ := rounded.Div(factor)
-	return out
+	return rounded.Div(factor)
 }

@@ -18,6 +18,7 @@ func TestScaleLinearIsExact(t *testing.T) {
 		{"16 tbsp becomes cup", amt(t, 4, 1, "tbsp"), Int(4), "1 cup"},
 		{"range", rng(t, 2, 3, "cup"), Int(2), "4-6 cup"},
 		{"1/4 tsp x 3 stays tsp", amt(t, 1, 4, "tsp"), Int(3), "3/4 tsp"},
+		{"3 tsp x 1 stays 3 tsp", amt(t, 3, 1, "tsp"), Int(1), "3 tsp"},
 		{"unitless", Amount{Qty: Exact(Int(2))}, Int(3), "6"},
 		{"other unit", Amount{Qty: Exact(Int(2)), Unit: OtherUnit("clove")}, Int(2), "4 clove"},
 	}
@@ -65,8 +66,7 @@ func TestScaleAbsentLinearStaysAbsent(t *testing.T) {
 }
 
 func TestScaleLeavesPackageSizeAlone(t *testing.T) {
-	size := amt(t, 14, 1, "oz")
-	in := Amount{Qty: Exact(Int(1)), Unit: OtherUnit("can"), Package: &size}
+	in := canOf(1)
 	got, err := Scale(in, RuleLinear, Int(2))
 	if err != nil {
 		t.Fatal(err)
@@ -149,7 +149,11 @@ func TestReadable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Readable(tt.in).String(); got != tt.want {
+			got, err := Readable(tt.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := got.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
@@ -168,5 +172,17 @@ func TestScaleRejectsUnknownRule(t *testing.T) {
 	}
 	if _, err := ParseRule("linaer"); !errors.Is(err, ErrUnknownRule) {
 		t.Errorf("ParseRule err = %v, want ErrUnknownRule", err)
+	}
+}
+
+func TestScaleDoesNotShareStateWithInput(t *testing.T) {
+	in := canOf(1)
+	out, err := Scale(in, RuleLinear, Int(2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out.Package.Qty = Exact(Int(99))
+	if !in.Package.Qty.Equal(Exact(Int(14))) {
+		t.Error("writing to the result's package changed the input")
 	}
 }

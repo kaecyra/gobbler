@@ -43,11 +43,22 @@ func TestNewRangeRejectsReversedBounds(t *testing.T) {
 
 func TestQuantityMulDiv(t *testing.T) {
 	r, _ := NewRange(rat(t, 1, 2), Int(1))
-	if got := r.Mul(Int(2)); got.String() != "1-2" {
-		t.Errorf("range*2 = %s", got)
+	if got, err := r.Mul(Int(2)); err != nil || got.String() != "1-2" {
+		t.Errorf("range*2 = %s, %v", got, err)
 	}
-	if got := Absent().Mul(Int(2)); !got.IsAbsent() {
+	if got, err := Absent().Mul(Int(2)); err != nil || !got.IsAbsent() {
 		t.Error("absent*2 must stay absent")
+	}
+	for _, bad := range []Rat{{}, Int(-1)} {
+		if _, err := r.Mul(bad); !errors.Is(err, ErrInvalidScale) {
+			t.Errorf("Mul(%s) err = %v, want ErrInvalidScale", bad, err)
+		}
+		if _, err := Absent().Mul(bad); !errors.Is(err, ErrInvalidScale) {
+			t.Errorf("absent Mul(%s) err = %v, want ErrInvalidScale", bad, err)
+		}
+	}
+	if _, err := r.Div(Int(-2)); !errors.Is(err, ErrInvalidScale) {
+		t.Errorf("Div by negative err = %v", err)
 	}
 	got, err := Exact(Int(3)).Div(Int(2))
 	if err != nil || got.String() != "1 1/2" {
@@ -65,7 +76,6 @@ func TestQuantityMulDiv(t *testing.T) {
 }
 
 func TestAmountString(t *testing.T) {
-	can := amt(t, 14, 1, "oz")
 	tests := []struct {
 		name string
 		in   Amount
@@ -76,7 +86,7 @@ func TestAmountString(t *testing.T) {
 		{"range", rng(t, 2, 3, "tbsp"), "2-3 tbsp"},
 		{"unitless", Amount{Qty: Exact(Int(2))}, "2"},
 		{"absent with unit", Amount{Unit: OtherUnit("pinch")}, "pinch"},
-		{"package", Amount{Qty: Exact(Int(1)), Unit: OtherUnit("can"), Package: &can}, "1 (14 oz) can"},
+		{"package", canOf(1), "1 (14 oz) can"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,9 +98,8 @@ func TestAmountString(t *testing.T) {
 }
 
 func TestPackageSizeIsRepresentable(t *testing.T) {
-	size := amt(t, 14, 1, "oz")
-	a := Amount{Qty: Exact(Int(2)), Unit: OtherUnit("can"), Package: &size}
-	if a.Package == nil || a.Package.Unit.Name != "oz" || !a.Package.Qty.Min().Equal(Int(14)) {
+	a := canOf(2)
+	if !a.HasPackage || a.Package.Unit.Name != "oz" || !a.Package.Qty.Min().Equal(Int(14)) {
 		t.Errorf("package = %+v", a.Package)
 	}
 }

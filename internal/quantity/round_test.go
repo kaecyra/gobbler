@@ -25,7 +25,11 @@ func TestRoundUSToCommonFractions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Round(tt.in).Rounded.String(); got != tt.want {
+			got, err := Round(tt.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := got.Rounded.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
@@ -49,7 +53,11 @@ func TestRoundMetricToSensibleSteps(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Round(tt.in).Rounded.String(); got != tt.want {
+			got, err := Round(tt.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := got.Rounded.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
@@ -58,7 +66,10 @@ func TestRoundMetricToSensibleSteps(t *testing.T) {
 
 func TestRoundKeepsExactValueAlongside(t *testing.T) {
 	in := amt(t, 34, 100, "cup")
-	r := Round(in)
+	r, err := Round(in)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got := r.Exact.Qty.String(); got != "17/50" {
 		t.Errorf("exact = %s, want 17/50", got)
 	}
@@ -72,7 +83,10 @@ func TestRoundKeepsExactValueAlongside(t *testing.T) {
 
 func TestRoundAbsent(t *testing.T) {
 	a := Amount{Unit: OtherUnit("pinch")}
-	r := Round(a)
+	r, err := Round(a)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !r.Rounded.Qty.IsAbsent() || !r.Exact.Qty.IsAbsent() {
 		t.Errorf("got %+v", r)
 	}

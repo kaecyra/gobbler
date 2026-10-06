@@ -1,6 +1,14 @@
 package quantity
 
-import "math/big"
+import (
+	"errors"
+	"fmt"
+	"math/big"
+)
+
+// ErrInvalidUnit is returned for a mass, volume or count unit whose factor to
+// its base unit is zero or negative.
+var ErrInvalidUnit = errors.New("invalid unit")
 
 // System is the measurement system a unit belongs to.
 type System string
@@ -37,9 +45,25 @@ type Unit struct {
 // IsZero reports whether u is the absent unit.
 func (u Unit) IsZero() bool { return u.Name == "" }
 
-// Converts reports whether the unit has a factor to a base unit.
-func (u Unit) Converts() bool {
+// hasBaseDimension reports whether the dimension is one that converts.
+func (u Unit) hasBaseDimension() bool {
 	return u.Dimension == DimMass || u.Dimension == DimVolume || u.Dimension == DimCount
+}
+
+// Converts reports whether the unit can take part in conversion: it measures
+// mass, volume or count and has a positive factor to its base unit.
+func (u Unit) Converts() bool {
+	return u.hasBaseDimension() && u.Factor.Sign() > 0
+}
+
+// Validate returns ErrInvalidUnit when the unit claims a convertible
+// dimension but has no positive factor, as a unit built from a bad stored row
+// would. Units in DimOther and the zero Unit are valid.
+func (u Unit) Validate() error {
+	if u.hasBaseDimension() && u.Factor.Sign() <= 0 {
+		return fmt.Errorf("%w: %q (%s) has factor %s", ErrInvalidUnit, u.Name, u.Dimension, u.Factor)
+	}
+	return nil
 }
 
 // OtherUnit returns a non-converting unit such as "pinch" or "clove".

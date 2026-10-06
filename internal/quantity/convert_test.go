@@ -86,10 +86,10 @@ func TestConvertAbsentAndPackage(t *testing.T) {
 	if err != nil || !got.Qty.IsAbsent() {
 		t.Errorf("absent convert = %v, %v", got, err)
 	}
-	size := amt(t, 14, 1, "oz")
-	b := Amount{Qty: Exact(Int(2)), Unit: MustUnit("cup"), Package: &size}
+	b := canOf(2)
+	b.Unit = MustUnit("cup")
 	got, _ = Convert(b, MustUnit("tbsp"))
-	if got.Package != &size {
+	if !got.HasPackage || got.Package.Unit.Name != "oz" || !got.Package.Qty.Min().Equal(Int(14)) {
 		t.Error("package should be carried over")
 	}
 }
@@ -97,7 +97,10 @@ func TestConvertAbsentAndPackage(t *testing.T) {
 func TestToMass(t *testing.T) {
 	flour := rat(t, 1, 2) // 0.5 g/ml
 	t.Run("volume with density", func(t *testing.T) {
-		got, ok := ToMass(amt(t, 1, 1, "cup"), flour)
+		got, ok, err := ToMass(amt(t, 1, 1, "cup"), flour)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !ok || got.Unit.Name != "g" {
 			t.Fatalf("got %v, %v", got, ok)
 		}
@@ -107,27 +110,27 @@ func TestToMass(t *testing.T) {
 	})
 	t.Run("no density keeps volume", func(t *testing.T) {
 		in := amt(t, 1, 1, "cup")
-		got, ok := ToMass(in, Rat{})
+		got, ok, _ := ToMass(in, Rat{})
 		if ok || got.String() != in.String() || got.Unit.Dimension != DimVolume {
 			t.Errorf("got %v, %v", got, ok)
 		}
 	})
 	t.Run("negative density treated as unknown", func(t *testing.T) {
-		if _, ok := ToMass(amt(t, 1, 1, "cup"), Int(-1)); ok {
+		if _, ok, _ := ToMass(amt(t, 1, 1, "cup"), Int(-1)); ok {
 			t.Error("want not converted")
 		}
 	})
 	t.Run("mass passes through", func(t *testing.T) {
-		got, ok := ToMass(amt(t, 3, 1, "oz"), Rat{})
+		got, ok, _ := ToMass(amt(t, 3, 1, "oz"), Rat{})
 		if !ok || got.Unit.Name != "oz" {
 			t.Errorf("got %v, %v", got, ok)
 		}
 	})
 	t.Run("count and other stay", func(t *testing.T) {
-		if _, ok := ToMass(amt(t, 3, 1, "each"), flour); ok {
+		if _, ok, _ := ToMass(amt(t, 3, 1, "each"), flour); ok {
 			t.Error("count converted")
 		}
-		if _, ok := ToMass(Amount{Qty: Exact(Int(1)), Unit: OtherUnit("pinch")}, flour); ok {
+		if _, ok, _ := ToMass(Amount{Qty: Exact(Int(1)), Unit: OtherUnit("pinch")}, flour); ok {
 			t.Error("other converted")
 		}
 	})
@@ -159,7 +162,11 @@ func TestDisplayModes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Display(tt.in, tt.mode, tt.density).String(); got != tt.want {
+			got, err := Display(tt.in, tt.mode, tt.density)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := got.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
@@ -170,9 +177,54 @@ func TestDisplayNeverMutatesInput(t *testing.T) {
 	in := amt(t, 1, 1, "cup")
 	before := in.String()
 	for _, m := range []Mode{ModeAsWritten, ModeMetric, ModeWeight} {
-		_ = Display(in, m, rat(t, 1, 2))
+		if _, err := Display(in, m, rat(t, 1, 2)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if in.String() != before || in.Unit.Name != "cup" {
 		t.Errorf("input changed to %s", in)
+	}
+}
+
+func TestInvalidUnitFactorIsAnError(t *testing.T) {
+	bad := Amount{Qty: Exact(Int(2)), Unit: brokenUnit()}
+	good := amt(t, 2, 1, "cup")
+	if brokenUnit().Converts() {
+		t.Error("a unit without a factor must not report Converts")
+	}
+	if _, err := Convert(bad, MustUnit("ml")); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("zero source factor err = %v, want ErrInvalidUnit", err)
+	}
+	if _, err := Convert(good, brokenUnit()); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("zero target factor err = %v, want ErrInvalidUnit", err)
+	}
+	neg := Unit{Name: "x", System: SystemUS, Dimension: DimMass, Factor: Int(-1)}
+	if _, err := Convert(amt(t, 1, 1, "g"), neg); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("negative factor err = %v", err)
+	}
+	if _, _, err := ToMass(bad, Int(1)); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("ToMass err = %v", err)
+	}
+	if _, err := Display(bad, ModeMetric, Rat{}); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("Display err = %v", err)
+	}
+	if _, err := Display(bad, ModeWeight, Int(1)); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("Display weight err = %v", err)
+	}
+	if _, err := Readable(Amount{Qty: Exact(Int(48)), Unit: Unit{Name: "tsp", System: SystemUS, Dimension: DimVolume}}); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("Readable err = %v", err)
+	}
+	if _, err := Round(Amount{Qty: Exact(Int(1)), Unit: Unit{Name: "g", System: SystemMetric, Dimension: DimMass}}); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("Round err = %v", err)
+	}
+	if _, err := Round(bad); !errors.Is(err, ErrInvalidUnit) {
+		t.Errorf("Round US err = %v", err)
+	}
+	// Unit-less and other units remain valid.
+	if err := OtherUnit("pinch").Validate(); err != nil {
+		t.Error(err)
+	}
+	if err := (Unit{}).Validate(); err != nil {
+		t.Error(err)
 	}
 }

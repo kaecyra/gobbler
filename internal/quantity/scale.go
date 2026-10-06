@@ -48,8 +48,9 @@ func ServingsFactor(base, target Rat) (Rat, error) {
 }
 
 // Scale applies rule and multiplier to a. A linear amount is multiplied and
-// then moved to a more readable unit where one exists (48 tsp becomes 1 cup);
-// fixed and to-taste amounts are returned unchanged for any multiplier. The
+// then moved to a more readable unit where one exists (48 tsp becomes 1 cup).
+// A multiplier of 1 changes nothing, so "as written" stays as written. Fixed
+// and to-taste amounts are returned unchanged for any multiplier. The
 // package size is never scaled. A non-positive multiplier is an error, and so
 // is any rule other than the three constants (including the empty string; use
 // ParseRule to read stored text), which wraps ErrUnknownRule.
@@ -62,10 +63,14 @@ func Scale(a Amount, rule Rule, mult Rat) (Amount, error) {
 	if mult.Sign() <= 0 {
 		return Amount{}, fmt.Errorf("%w: multiplier %s", ErrInvalidScale, mult)
 	}
-	if rule != RuleLinear || a.Qty.IsAbsent() {
+	if rule != RuleLinear || a.Qty.IsAbsent() || mult.Equal(Int(1)) {
 		return a, nil
 	}
-	return Readable(a.withQty(a.Qty.Mul(mult))), nil
+	q, err := a.Qty.Mul(mult)
+	if err != nil {
+		return Amount{}, err
+	}
+	return Readable(a.withQty(q))
 }
 
 // rung is one step of a unit ladder. thirds allows a quantity with a
@@ -87,10 +92,14 @@ var ladders = [][]rung{
 // Readable moves a to the largest larger unit in the same system in which
 // every bound is at least 1 and a common fraction (whole, half, quarter,
 // eighth, and thirds for cups). It never moves to a smaller unit and returns a
-// unchanged when no such unit exists.
-func Readable(a Amount) Amount {
+// unchanged when no such unit exists. The error is non-nil only for an
+// invalid unit (ErrInvalidUnit).
+func Readable(a Amount) (Amount, error) {
 	if a.Qty.IsAbsent() {
-		return a
+		return a, nil
+	}
+	if err := a.Unit.Validate(); err != nil {
+		return a, err
 	}
 	for _, ladder := range ladders {
 		at := -1
@@ -104,15 +113,15 @@ func Readable(a Amount) Amount {
 		}
 		for j := len(ladder) - 1; j > at; j-- {
 			cand, err := Convert(a, MustUnit(ladder[j].unit))
-			if err != nil { // unreachable: ladder units share a dimension
-				return a
+			if err != nil {
+				return a, err
 			}
 			if cand.Qty.Min().Cmp(Int(1)) >= 0 && common(cand.Qty.Min(), ladder[j].thirds) && common(cand.Qty.Max(), ladder[j].thirds) {
-				return cand
+				return cand, nil
 			}
 		}
 	}
-	return a
+	return a, nil
 }
 
 // common reports whether r's denominator is 1, 2, 4 or 8 (or 3 when thirds).
