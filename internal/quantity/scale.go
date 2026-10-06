@@ -9,6 +9,10 @@ import (
 // count.
 var ErrInvalidScale = errors.New("scale must be positive")
 
+// ErrUnknownRule is returned for a scaling rule other than linear, fixed or
+// to_taste.
+var ErrUnknownRule = errors.New("unknown scaling rule")
+
 // Rule says how an ingredient line responds to scaling (ADR-00005).
 type Rule string
 
@@ -22,7 +26,8 @@ const (
 	RuleToTaste Rule = "to_taste"
 )
 
-// ParseRule validates a rule name. The empty string means RuleLinear.
+// ParseRule validates a rule name and is the entry point for stored or
+// user-supplied text: only here does the empty string mean RuleLinear.
 func ParseRule(s string) (Rule, error) {
 	switch r := Rule(s); r {
 	case "":
@@ -30,7 +35,7 @@ func ParseRule(s string) (Rule, error) {
 	case RuleLinear, RuleFixed, RuleToTaste:
 		return r, nil
 	}
-	return "", fmt.Errorf("unknown scaling rule %q", s)
+	return "", fmt.Errorf("%w: %q", ErrUnknownRule, s)
 }
 
 // ServingsFactor returns the multiplier that takes a recipe written for base
@@ -44,10 +49,16 @@ func ServingsFactor(base, target Rat) (Rat, error) {
 
 // Scale applies rule and multiplier to a. A linear amount is multiplied and
 // then moved to a more readable unit where one exists (48 tsp becomes 1 cup);
-// fixed and to-taste amounts, and unknown rules, are returned unchanged for
-// any multiplier. The package size is never scaled. A non-positive multiplier
-// is an error.
+// fixed and to-taste amounts are returned unchanged for any multiplier. The
+// package size is never scaled. A non-positive multiplier is an error, and so
+// is any rule other than the three constants (including the empty string; use
+// ParseRule to read stored text), which wraps ErrUnknownRule.
 func Scale(a Amount, rule Rule, mult Rat) (Amount, error) {
+	switch rule {
+	case RuleLinear, RuleFixed, RuleToTaste:
+	default:
+		return Amount{}, fmt.Errorf("%w: %q", ErrUnknownRule, string(rule))
+	}
 	if mult.Sign() <= 0 {
 		return Amount{}, fmt.Errorf("%w: multiplier %s", ErrInvalidScale, mult)
 	}

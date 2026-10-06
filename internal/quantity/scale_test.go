@@ -155,3 +155,18 @@ func TestReadable(t *testing.T) {
 		})
 	}
 }
+
+func TestScaleRejectsUnknownRule(t *testing.T) {
+	for _, rule := range []Rule{"linaer", "", "FIXED"} {
+		got, err := Scale(amt(t, 1, 1, "cup"), rule, Int(2))
+		if !errors.Is(err, ErrUnknownRule) {
+			t.Errorf("rule %q err = %v, want ErrUnknownRule", rule, err)
+		}
+		if got.String() != "" {
+			t.Errorf("rule %q returned %q alongside an error", rule, got)
+		}
+	}
+	if _, err := ParseRule("linaer"); !errors.Is(err, ErrUnknownRule) {
+		t.Errorf("ParseRule err = %v, want ErrUnknownRule", err)
+	}
+}
