@@ -1,0 +1,61 @@
+{
+  "graph_path": "docs/plan/graph.json",
+  "serial_track": "foundation",
+  "vcs": {
+    "remote": "origin",
+    "trunk": "main"
+  },
+
+  "paths": {
+    "handoff_doc": "docs/plan/overseer-handoff.md",
+    "worktree_dir_pattern": ".claude/worktrees/wt-{issue}",
+    "branch_pattern": "feat/{issue}-{slug}",
+    "agent_instructions": "AGENTS.md",
+    "adr_dir": "docs/adr/",
+    "design_doc": ""
+  },
+
+  "always_on_rules": [
+    ".claude/rules/collaboration.md",
+    ".claude/rules/code-style.md",
+    ".claude/rules/error-handling.md",
+    ".claude/rules/git-workflow.md"
+  ],
+
+  "labels": {
+    "ready": "dor:ready",
+    "blocked": "dor:blocked"
+  },
+
+  "skills": {
+    "ticket_creation": "/sdlc-create-ticket",
+    "pr_review": "/sdlc-review-pr"
+  },
+
+  "dispatcher_owned_globs": ["docs/plan/**", "docs/adr/**", ".claude/overseer/**"],
+
+  "worktree_setup_command": "",
+
+  "gates": {
+    "always": ["make check"],
+    "conditional": []
+  },
+
+  "tooling_notes": {
+    "command_bridge": "mcp__exec-daemon__execute_command runs on the host. Use it for every gh call and for git fetch/push/ls-remote, because origin is an ssh remote (git@github.com:kaecyra/gobbler.git) and the container has no ssh transport.",
+    "worktree_setup": "worktree_setup_command is empty until w0-scaffold and w0-e2e-harness land. Then set it to go mod download plus npm ci and a Playwright browser install in e2e/.",
+    "gates_before_w0": "make check does not exist until the foundation track lands. W0 workers report which targets exist rather than claiming gates passed."
+  },
+
+  "concurrency": {
+    "min_workers": 3,
+    "max_workers": 5,
+    "merge_queue_ceiling": 5,
+    "review_retry_cap_rounds": 3
+  },
+
+  "context_budget": {
+    "dispatch_ceiling_tokens": 500000,
+    "handoff_ceiling_tokens": 600000
+  }
+}

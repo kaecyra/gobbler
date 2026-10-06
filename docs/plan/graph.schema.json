@@ -1,0 +1,288 @@
+{
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "generated": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_of_truth": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "gates": {
+      "type": "object",
+      "properties": {
+        "always": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conditional": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "always",
+        "conditional"
+      ],
+      "additionalProperties": false
+    },
+    "migration_sequences": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "last_used": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contiguous": {
+            "type": "boolean"
+          },
+          "scar_tissue": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "last_used",
+          "contiguous"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "tracks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "owns"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "wave": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "track": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issue": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_flight",
+              "in_review",
+              "merged"
+            ]
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "owns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/properties/tracks/additionalProperties/properties/owns/items"
+            }
+          },
+          "needs_migration": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "adrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keystone": {
+            "type": "boolean"
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "blocked": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "wave",
+          "track",
+          "issue",
+          "status",
+          "depends_on",
+          "owns",
+          "needs_migration",
+          "adrs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "shared_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "$ref": "#/properties/tracks/additionalProperties/properties/owns/items"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "open",
+              "single_writer_per_round",
+              "append_only"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "mode"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "done": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "merged": {
+            "type": "string",
+            "minLength": 1
+          },
+          "adrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "merged"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "adr_sequence": {
+      "type": "object",
+      "properties": {
+        "last_used": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "last_used"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "version",
+    "generated",
+    "source_of_truth",
+    "notes",
+    "migration_sequences",
+    "tracks",
+    "nodes",
+    "done"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

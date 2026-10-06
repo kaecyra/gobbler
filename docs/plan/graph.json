@@ -1,0 +1,979 @@
+{
+  "$schema": "./graph.schema.json",
+  "version": 1,
+  "generated": "2026-10-06",
+  "source_of_truth": {
+    "decisions": "docs/adr/",
+    "rationale": "docs/design.md",
+    "rules": ".claude/rules/"
+  },
+  "notes": [
+    "Greenfield: every glob names a path that does not exist yet. Waves follow docs/design.md (W0-W7, Later = wave 8).",
+    "internal/config is written whole by w0-config from the design.md configuration table, so later nodes do not edit it. A node that needs a new setting is a lane widening, not a silent edit.",
+    "Migrations are goose files in internal/db/migrations, numbered from the 'schema' sequence at dispatch. Workers never pick a number.",
+    "VERSION is bumped by every source PR (git-workflow rule): every merge invalidates every open branch's VERSION line. Expect a one-line rebase per merge; do not sequence around it.",
+    "Wave 8 nodes (meal planning, invitations) are deferred by ADR-00011 and need their own ADR before dispatch; they are recorded blocked.",
+    "internal/web is a server/router package plus one subpackage per feature area (internal/web/<area>/**), shared templ layout in internal/web/layout: ADR-00012.",
+    "E2E runs @playwright/test from e2e/, test-only and never shipped: ADR-00013."
+  ],
+  "gates": {
+    "always": [
+      "make check"
+    ],
+    "conditional": {}
+  },
+  "migration_sequences": {
+    "schema": {
+      "last_used": "00000",
+      "contiguous": true
+    }
+  },
+  "tracks": {
+    "foundation": {
+      "name": "Foundation (serial)",
+      "owns": [
+        "go.mod",
+        "go.sum",
+        "VERSION",
+        "Makefile",
+        "lefthook.yml",
+        ".golangci.yml",
+        "README.md",
+        ".github/**",
+        "cmd/gobbler/**",
+        "internal/config/**",
+        "internal/db/*.go",
+        "internal/auth/**",
+        "internal/web/*.go",
+        "internal/web/layout/**",
+        "internal/web/static/htmx*",
+        "internal/web/static/app.css",
+        "e2e/package.json",
+        "e2e/package-lock.json",
+        "e2e/playwright.config.ts",
+        "e2e/fixtures/**",
+        "e2e/health/**",
+        "Dockerfile",
+        ".dockerignore",
+        "compose.yaml",
+        ".env.example"
+      ]
+    },
+    "domain": {
+      "name": "Pure domain: quantities and recipe model",
+      "owns": [
+        "internal/quantity/**",
+        "internal/recipe/**"
+      ]
+    },
+    "persistence": {
+      "name": "Recipe store and catalog",
+      "owns": [
+        "internal/store/**",
+        "internal/catalog/**"
+      ]
+    },
+    "ingestion": {
+      "name": "Parsing, extraction, pipeline, providers",
+      "owns": [
+        "internal/parse/**",
+        "internal/ingest/**",
+        "internal/llm/**"
+      ]
+    },
+    "ui": {
+      "name": "Feature web packages and their e2e suites",
+      "owns": [
+        "internal/web/ingest/**",
+        "internal/web/recipes/**",
+        "internal/web/recipeview/**",
+        "internal/web/editor/**",
+        "internal/web/history/**",
+        "internal/web/journal/**",
+        "internal/web/catalog/**",
+        "internal/web/shopping/**",
+        "internal/web/cook/**",
+        "internal/web/settings/**",
+        "internal/web/static/cook*",
+        "e2e/ingest/**",
+        "e2e/recipes/**",
+        "e2e/recipeview/**",
+        "e2e/editor/**",
+        "e2e/history/**",
+        "e2e/journal/**",
+        "e2e/catalog/**",
+        "e2e/shopping/**",
+        "e2e/cook/**",
+        "e2e/settings/**"
+      ]
+    },
+    "shopping": {
+      "name": "Shopping lists and Todoist",
+      "owns": [
+        "internal/shopping/**",
+        "internal/todoist/**"
+      ]
+    },
+    "ops": {
+      "name": "Backups and operations docs",
+      "owns": [
+        "internal/backup/**",
+        "docs/operations.md"
+      ]
+    },
+    "later": {
+      "name": "Deferred features (ADR-00011)",
+      "owns": [
+        "internal/mealplan/**",
+        "internal/web/mealplan/**",
+        "internal/users/**"
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "id": "w0-scaffold",
+      "title": "Go module, entry point, VERSION, Makefile fmt/lint/test, lefthook, golangci, CI",
+      "wave": 0,
+      "track": "foundation",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "go.mod",
+        "go.sum",
+        "VERSION",
+        "Makefile",
+        "lefthook.yml",
+        ".golangci.yml",
+        "README.md",
+        ".github/**",
+        "cmd/gobbler/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00002"
+      ]
+    },
+    {
+      "id": "w0-config",
+      "title": "Environment configuration package covering the whole design.md table, validated at start-up",
+      "wave": 0,
+      "track": "foundation",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-scaffold"
+      ],
+      "owns": [
+        "internal/config/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00002",
+        "00003",
+        "00006",
+        "00007",
+        "00010"
+      ]
+    },
+    {
+      "id": "w0-db",
+      "title": "SQLite (modernc) in WAL mode, embedded goose migrations, migrate subcommand, refuse start on failed migration",
+      "wave": 0,
+      "track": "foundation",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-config"
+      ],
+      "owns": [
+        "internal/db/*.go"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00002"
+      ]
+    },
+    {
+      "id": "w0-auth",
+      "title": "Cloudflare Access JWT middleware with JWKS cache and loopback-only dev bypass",
+      "wave": 0,
+      "track": "foundation",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-config"
+      ],
+      "owns": [
+        "internal/auth/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00003"
+      ]
+    },
+    {
+      "id": "w0-web-shell",
+      "title": "chi server, router, base templ layout, embedded HTMX and CSS, health check, serve subcommand",
+      "wave": 0,
+      "track": "foundation",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-auth",
+        "w0-db"
+      ],
+      "owns": [
+        "internal/web/*.go",
+        "internal/web/layout/**",
+        "internal/web/static/htmx*",
+        "internal/web/static/app.css"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00002",
+        "00003",
+        "00012"
+      ]
+    },
+    {
+      "id": "w0-e2e-harness",
+      "title": "Playwright harness in e2e/, make e2e and make check targets, version-bump check, health route e2e",
+      "wave": 0,
+      "track": "foundation",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-web-shell"
+      ],
+      "owns": [
+        "e2e/package.json",
+        "e2e/package-lock.json",
+        "e2e/playwright.config.ts",
+        "e2e/fixtures/**",
+        "e2e/health/**",
+        "Makefile",
+        "lefthook.yml",
+        ".github/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00002",
+        "00013"
+      ]
+    },
+    {
+      "id": "w0-container",
+      "title": "Dockerfile with tesseract, Compose with cloudflared, .env.example; compose up applies migrations",
+      "wave": 0,
+      "track": "foundation",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-web-shell"
+      ],
+      "owns": [
+        "Dockerfile",
+        ".dockerignore",
+        "compose.yaml",
+        ".env.example"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00002",
+        "00003",
+        "00006"
+      ]
+    },
+    {
+      "id": "w1-quantity",
+      "title": "Rationals, ranges, units and dimensions, conversion, scaling rules, kitchen rounding (pure)",
+      "wave": 1,
+      "track": "domain",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-scaffold"
+      ],
+      "owns": [
+        "internal/quantity/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00005"
+      ]
+    },
+    {
+      "id": "w1-recipe-model",
+      "title": "Recipe domain types, components, qualifiers, step-graph validation with cycle naming, total-time derivation",
+      "wave": 1,
+      "track": "domain",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-quantity"
+      ],
+      "owns": [
+        "internal/recipe/model*.go",
+        "internal/recipe/graph*.go",
+        "internal/recipe/times*.go",
+        "internal/recipe/doc.go"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00004",
+        "00005"
+      ]
+    },
+    {
+      "id": "w1-catalog",
+      "title": "Catalog schema and store: ingredients, units, equipment, aliases, matching, merge, curated seed by migration",
+      "wave": 1,
+      "track": "persistence",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-db",
+        "w1-quantity"
+      ],
+      "owns": [
+        "internal/catalog/*.go",
+        "internal/catalog/seed/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00008",
+        "00005"
+      ]
+    },
+    {
+      "id": "w1-store",
+      "title": "Recipe schema and store: recipes, components, lines, steps, notes, made-it, revisions, clone, immutable snapshots",
+      "wave": 1,
+      "track": "persistence",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-recipe-model",
+        "w1-catalog"
+      ],
+      "owns": [
+        "internal/store/recipe*.go",
+        "internal/store/revision*.go",
+        "internal/store/snapshot*.go",
+        "internal/store/journal*.go",
+        "internal/store/store*.go",
+        "internal/store/testdata/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00004",
+        "00003"
+      ]
+    },
+    {
+      "id": "w2-line-parser",
+      "title": "Ingredient-line and duration parser with golden-file corpus (pure)",
+      "wave": 2,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-quantity"
+      ],
+      "owns": [
+        "internal/parse/line*.go",
+        "internal/parse/duration*.go",
+        "internal/parse/doc.go",
+        "internal/parse/testdata/lines/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00006",
+        "00005",
+        "00008"
+      ]
+    },
+    {
+      "id": "w2-text-sectioning",
+      "title": "Pasted-text sectioning: title, component headings, ingredient blocks, steps (pure)",
+      "wave": 2,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-quantity"
+      ],
+      "owns": [
+        "internal/parse/section*.go",
+        "internal/parse/testdata/sections/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00006"
+      ]
+    },
+    {
+      "id": "w2-structured-extract",
+      "title": "JSON-LD and microdata Recipe extraction, site-extractor registry, main-text fallback",
+      "wave": 2,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-recipe-model"
+      ],
+      "owns": [
+        "internal/ingest/extract/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00006"
+      ]
+    },
+    {
+      "id": "w2-ingest-pipeline",
+      "title": "Acquire, extract, parse, score, draft; LLM provider interface declared; save with snapshot after review",
+      "wave": 2,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w2-line-parser",
+        "w2-text-sectioning",
+        "w2-structured-extract",
+        "w1-store"
+      ],
+      "owns": [
+        "internal/ingest/*.go",
+        "internal/ingest/testdata/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00006",
+        "00007",
+        "00008"
+      ]
+    },
+    {
+      "id": "w2-review-screen",
+      "title": "Ingest form (URL, text) and review screen with low-confidence highlights and proposed new ingredients",
+      "wave": 2,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w2-ingest-pipeline",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/ingest/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00006",
+        "00008"
+      ]
+    },
+    {
+      "id": "w3-search-list",
+      "title": "FTS5 index and search, tags, recipe list and search page",
+      "wave": 3,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-store",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/store/search*.go",
+        "internal/web/recipes/**",
+        "e2e/recipes/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00002",
+        "00004"
+      ]
+    },
+    {
+      "id": "w3-recipe-view",
+      "title": "Recipe view with scaling, unit display modes, size and time hints",
+      "wave": 3,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-store",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/recipeview/**",
+        "e2e/recipeview/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00005",
+        "00004"
+      ]
+    },
+    {
+      "id": "w3-editor",
+      "title": "Recipe editor: components, lines, qualifiers, equipment, step dependencies; every save writes a revision",
+      "wave": 3,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-store",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/editor/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00004",
+        "00005"
+      ]
+    },
+    {
+      "id": "w3-history",
+      "title": "Revision list, view and restore; clone",
+      "wave": 3,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-store",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/history/**",
+        "e2e/history/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00004"
+      ]
+    },
+    {
+      "id": "w3-journal",
+      "title": "Notes, rating and made-it log on a recipe",
+      "wave": 3,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-store",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/journal/**",
+        "e2e/journal/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00004",
+        "00003"
+      ]
+    },
+    {
+      "id": "w3-catalog-page",
+      "title": "Catalog cleanup page: unreviewed ingredients, edit, merge",
+      "wave": 3,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-catalog",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/catalog/**",
+        "e2e/catalog/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00008"
+      ]
+    },
+    {
+      "id": "w4-shopping-merge",
+      "title": "List generation: scale, drop optional and pantry, merge by ingredient and dimension, aisle grouping, text export (pure)",
+      "wave": 4,
+      "track": "shopping",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-recipe-model",
+        "w1-catalog"
+      ],
+      "owns": [
+        "internal/shopping/merge*.go",
+        "internal/shopping/export*.go",
+        "internal/shopping/doc.go"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00009",
+        "00005"
+      ]
+    },
+    {
+      "id": "w4-shopping-store",
+      "title": "Shopping list, entries, manual items, pantry and check-state persistence; regenerate keeps checks",
+      "wave": 4,
+      "track": "shopping",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w4-shopping-merge",
+        "w1-store"
+      ],
+      "owns": [
+        "internal/shopping/store*.go",
+        "internal/shopping/list*.go",
+        "internal/shopping/pantry*.go"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00009"
+      ]
+    },
+    {
+      "id": "w4-shopping-ui",
+      "title": "Build-a-list page, pantry page, live phone view over SSE, text export",
+      "wave": 4,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w4-shopping-store",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/shopping/**",
+        "e2e/shopping/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00009"
+      ]
+    },
+    {
+      "id": "w5-llm-contract",
+      "title": "Provider contract test suite against recorded responses",
+      "wave": 5,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w2-ingest-pipeline"
+      ],
+      "owns": [
+        "internal/llm/llmtest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00007"
+      ]
+    },
+    {
+      "id": "w5-llm-claude",
+      "title": "Claude provider via official Go SDK with structured output",
+      "wave": 5,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w5-llm-contract"
+      ],
+      "owns": [
+        "internal/llm/claude/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00007"
+      ]
+    },
+    {
+      "id": "w5-llm-gemini",
+      "title": "Gemini provider via official Go Gen AI SDK with structured output",
+      "wave": 5,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w5-llm-contract"
+      ],
+      "owns": [
+        "internal/llm/gemini/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00007"
+      ]
+    },
+    {
+      "id": "w5-llm-fallback",
+      "title": "Below-threshold and manual LLM fallback, provider selection, LLM values marked on review",
+      "wave": 5,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w5-llm-claude",
+        "w5-llm-gemini",
+        "w2-review-screen"
+      ],
+      "owns": [
+        "internal/ingest/fallback*.go",
+        "internal/web/ingest/retry*"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00006",
+        "00007"
+      ]
+    },
+    {
+      "id": "w5-photo-ocr",
+      "title": "Photo upload, tesseract OCR acquire, vision fallback",
+      "wave": 5,
+      "track": "ingestion",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w5-llm-fallback",
+        "w0-container"
+      ],
+      "owns": [
+        "internal/ingest/ocr/**",
+        "internal/web/ingest/photo*"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00006",
+        "00007"
+      ]
+    },
+    {
+      "id": "w5-usda-import",
+      "title": "USDA FoodData Central import command: idempotent, never overwrites curated fields",
+      "wave": 5,
+      "track": "persistence",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w1-catalog"
+      ],
+      "owns": [
+        "internal/catalog/usda/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00008"
+      ]
+    },
+    {
+      "id": "w6-meanwhile",
+      "title": "Meanwhile derivation from the step graph and its display in the recipe view",
+      "wave": 6,
+      "track": "domain",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w3-recipe-view"
+      ],
+      "owns": [
+        "internal/recipe/meanwhile*.go",
+        "internal/web/recipeview/meanwhile*"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00004"
+      ]
+    },
+    {
+      "id": "w6-cook-mode",
+      "title": "Cook mode: one step at a time, step timers, screen wake lock",
+      "wave": 6,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w6-meanwhile"
+      ],
+      "owns": [
+        "internal/web/cook/**",
+        "internal/web/static/cook*",
+        "e2e/cook/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00002",
+        "00011"
+      ]
+    },
+    {
+      "id": "w7-backup",
+      "title": "Nightly VACUUM INTO, S3-compatible upload, local and remote retention, backup subcommand",
+      "wave": 7,
+      "track": "ops",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w0-db"
+      ],
+      "owns": [
+        "internal/backup/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00010"
+      ]
+    },
+    {
+      "id": "w7-settings",
+      "title": "Settings page with backup status and back-up-now; backup time in health detail",
+      "wave": 7,
+      "track": "ui",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w7-backup",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "internal/web/settings/**",
+        "e2e/settings/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00010"
+      ]
+    },
+    {
+      "id": "w7-todoist",
+      "title": "One-way idempotent Todoist push of a shopping list",
+      "wave": 7,
+      "track": "shopping",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w4-shopping-ui"
+      ],
+      "owns": [
+        "internal/todoist/**",
+        "internal/web/shopping/todoist*"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00009"
+      ]
+    },
+    {
+      "id": "w7-ops-doc",
+      "title": "Operations doc: deploy, configuration, restore procedure",
+      "wave": 7,
+      "track": "ops",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w7-backup",
+        "w0-container"
+      ],
+      "owns": [
+        "docs/operations.md"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00010",
+        "00002"
+      ]
+    },
+    {
+      "id": "l-meal-planning",
+      "title": "Meal planning feeding the shopping list (needs an ADR first)",
+      "wave": 8,
+      "track": "later",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w7-todoist",
+        "w7-settings",
+        "w7-ops-doc"
+      ],
+      "owns": [
+        "internal/mealplan/**",
+        "internal/web/mealplan/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00011"
+      ],
+      "blocked": "Deferred by ADR-00011; needs its own ADR before dispatch"
+    },
+    {
+      "id": "l-invitations",
+      "title": "Invitations and multiple users (needs an ADR first)",
+      "wave": 8,
+      "track": "later",
+      "issue": null,
+      "status": "todo",
+      "depends_on": [
+        "w7-todoist",
+        "w7-settings",
+        "w7-ops-doc"
+      ],
+      "owns": [
+        "internal/users/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00011",
+        "00003"
+      ],
+      "blocked": "Deferred by ADR-00011; needs its own ADR before dispatch"
+    }
+  ],
+  "shared_files": [
+    {
+      "path": "go.mod",
+      "mode": "open"
+    },
+    {
+      "path": "go.sum",
+      "mode": "open"
+    },
+    {
+      "path": "VERSION",
+      "mode": "open"
+    },
+    {
+      "path": "cmd/gobbler/**",
+      "mode": "append_only"
+    },
+    {
+      "path": "internal/web/routes.go",
+      "mode": "append_only"
+    },
+    {
+      "path": "internal/db/migrations/**",
+      "mode": "append_only"
+    },
+    {
+      "path": "README.md",
+      "mode": "open"
+    }
+  ],
+  "done": [],
+  "adr_sequence": {
+    "last_used": "00013"
+  }
+}
