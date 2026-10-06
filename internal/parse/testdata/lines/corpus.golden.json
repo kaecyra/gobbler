@@ -1,0 +1,795 @@
+[
+  {
+    "raw": "2 eggs",
+    "quantity": "2",
+    "name": "eggs",
+    "match": "eggs",
+    "confidence": 1
+  },
+  {
+    "raw": "2 large eggs",
+    "quantity": "2",
+    "name": "eggs",
+    "match": "eggs",
+    "qualifiers": [
+      {
+        "kind": "note",
+        "text": "large"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "salt to taste",
+    "to_taste": true,
+    "name": "salt",
+    "match": "salt",
+    "confidence": 1
+  },
+  {
+    "raw": "Kosher salt, to taste",
+    "to_taste": true,
+    "name": "kosher salt",
+    "match": "kosher salt",
+    "confidence": 1
+  },
+  {
+    "raw": "salt and pepper to taste",
+    "to_taste": true,
+    "name": "salt and pepper",
+    "confidence": 0.7,
+    "issues": [
+      "ingredient \"salt and pepper\" not matched"
+    ]
+  },
+  {
+    "raw": "2-3 cloves garlic",
+    "quantity": "2-3",
+    "range": true,
+    "unit": "clove",
+    "name": "garlic",
+    "match": "garlic",
+    "confidence": 1
+  },
+  {
+    "raw": "2 to 3 cloves garlic, minced",
+    "quantity": "2-3",
+    "range": true,
+    "unit": "clove",
+    "name": "garlic",
+    "match": "garlic",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "minced"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 1/2 cups all-purpose flour",
+    "quantity": "1 1/2",
+    "unit": "cup",
+    "name": "all-purpose flour",
+    "match": "all-purpose flour",
+    "confidence": 1
+  },
+  {
+    "raw": "1½ cups all-purpose flour",
+    "quantity": "1 1/2",
+    "unit": "cup",
+    "name": "all-purpose flour",
+    "match": "all-purpose flour",
+    "confidence": 1
+  },
+  {
+    "raw": "1 ½ cups all-purpose flour",
+    "quantity": "1 1/2",
+    "unit": "cup",
+    "name": "all-purpose flour",
+    "match": "all-purpose flour",
+    "confidence": 1
+  },
+  {
+    "raw": "¾ cup sugar",
+    "quantity": "3/4",
+    "unit": "cup",
+    "name": "sugar",
+    "match": "sugar",
+    "confidence": 1
+  },
+  {
+    "raw": "2 ¼ teaspoons baking powder",
+    "quantity": "2 1/4",
+    "unit": "tsp",
+    "name": "baking powder",
+    "match": "baking powder",
+    "confidence": 1
+  },
+  {
+    "raw": "1/2 tsp salt",
+    "quantity": "1/2",
+    "unit": "tsp",
+    "name": "salt",
+    "match": "salt",
+    "confidence": 1
+  },
+  {
+    "raw": "0.5 cup milk",
+    "quantity": "1/2",
+    "unit": "cup",
+    "name": "milk",
+    "match": "milk",
+    "confidence": 1
+  },
+  {
+    "raw": ".25 tsp cinnamon",
+    "quantity": "1/4",
+    "unit": "tsp",
+    "name": "cinnamon",
+    "match": "cinnamon",
+    "confidence": 1
+  },
+  {
+    "raw": "1 (14 oz) can crushed tomatoes",
+    "quantity": "1",
+    "unit": "can",
+    "package": "14 oz",
+    "name": "crushed tomatoes",
+    "match": "crushed tomatoes",
+    "confidence": 1
+  },
+  {
+    "raw": "1 (14.5-ounce) can tomatoes",
+    "quantity": "1",
+    "unit": "can",
+    "package": "14 1/2 oz",
+    "name": "tomatoes",
+    "match": "tomatoes",
+    "confidence": 1
+  },
+  {
+    "raw": "2 (8-ounce) cans tomato sauce",
+    "quantity": "2",
+    "unit": "can",
+    "package": "8 oz",
+    "name": "tomato sauce",
+    "match": "tomato sauce",
+    "confidence": 1
+  },
+  {
+    "raw": "1 can (14 oz) tomatoes",
+    "quantity": "1",
+    "unit": "can",
+    "package": "14 oz",
+    "name": "tomatoes",
+    "match": "tomatoes",
+    "confidence": 1
+  },
+  {
+    "raw": "1 (14 oz) can unsalted butter, melted",
+    "quantity": "1",
+    "unit": "can",
+    "package": "14 oz",
+    "name": "butter",
+    "match": "butter",
+    "qualifiers": [
+      {
+        "kind": "form",
+        "text": "unsalted"
+      },
+      {
+        "kind": "state",
+        "text": "melted"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 stick butter, softened",
+    "quantity": "1",
+    "unit": "stick",
+    "name": "butter",
+    "match": "butter",
+    "qualifiers": [
+      {
+        "kind": "state",
+        "text": "softened"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "butter, melted",
+    "name": "butter",
+    "match": "butter",
+    "qualifiers": [
+      {
+        "kind": "state",
+        "text": "melted"
+      }
+    ],
+    "confidence": 0.9,
+    "issues": [
+      "no quantity"
+    ]
+  },
+  {
+    "raw": "1 cup melted butter",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "butter",
+    "match": "butter",
+    "qualifiers": [
+      {
+        "kind": "state",
+        "text": "melted"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 cup butter, melted and cooled",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "butter",
+    "match": "butter",
+    "qualifiers": [
+      {
+        "kind": "state",
+        "text": "melted"
+      },
+      {
+        "kind": "state",
+        "text": "cooled"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 tablespoon olive oil",
+    "quantity": "1",
+    "unit": "tbsp",
+    "name": "olive oil",
+    "match": "olive oil",
+    "confidence": 1
+  },
+  {
+    "raw": "2 Tbsp. olive oil",
+    "quantity": "2",
+    "unit": "tbsp",
+    "name": "olive oil",
+    "match": "olive oil",
+    "confidence": 1
+  },
+  {
+    "raw": "1 T extra-virgin olive oil",
+    "quantity": "1",
+    "unit": "tbsp",
+    "name": "extra-virgin olive oil",
+    "match": "extra-virgin olive oil",
+    "confidence": 1
+  },
+  {
+    "raw": "1 t vanilla extract",
+    "quantity": "1",
+    "unit": "tsp",
+    "name": "vanilla extract",
+    "match": "vanilla extract",
+    "confidence": 1
+  },
+  {
+    "raw": "1 cup chopped walnuts",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "walnuts",
+    "match": "walnuts",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "chopped"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 cup finely chopped fresh parsley",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "parsley",
+    "match": "parsley",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "finely chopped"
+      },
+      {
+        "kind": "form",
+        "text": "fresh"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 onion, finely chopped",
+    "quantity": "1",
+    "name": "onion",
+    "match": "onion",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "finely chopped"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 yellow onion, diced",
+    "quantity": "1",
+    "name": "yellow onion",
+    "match": "yellow onion",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "diced"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "2 carrots, peeled and sliced",
+    "quantity": "2",
+    "name": "carrots",
+    "match": "carrots",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "peeled"
+      },
+      {
+        "kind": "preparation",
+        "text": "sliced"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 lb ground beef",
+    "quantity": "1",
+    "unit": "lb",
+    "name": "ground beef",
+    "match": "ground beef",
+    "confidence": 1
+  },
+  {
+    "raw": "1 pound ground beef, browned",
+    "quantity": "1",
+    "unit": "lb",
+    "name": "ground beef",
+    "match": "ground beef",
+    "qualifiers": [
+      {
+        "kind": "note",
+        "text": "browned"
+      }
+    ],
+    "confidence": 0.95,
+    "issues": [
+      "unrecognised text \"browned\""
+    ]
+  },
+  {
+    "raw": "500g chicken thighs",
+    "quantity": "500",
+    "unit": "g",
+    "name": "chicken thighs",
+    "match": "chicken thighs",
+    "confidence": 1
+  },
+  {
+    "raw": "250 ml heavy cream",
+    "quantity": "250",
+    "unit": "ml",
+    "name": "heavy cream",
+    "match": "heavy cream",
+    "confidence": 1
+  },
+  {
+    "raw": "1.5 kg rice",
+    "quantity": "1 1/2",
+    "unit": "kg",
+    "name": "rice",
+    "match": "rice",
+    "confidence": 1
+  },
+  {
+    "raw": "200 g butter, at room temperature",
+    "quantity": "200",
+    "unit": "g",
+    "name": "butter",
+    "match": "butter",
+    "qualifiers": [
+      {
+        "kind": "state",
+        "text": "at room temperature"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 cup (240 ml) whole milk",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "whole milk",
+    "match": "whole milk",
+    "qualifiers": [
+      {
+        "kind": "note",
+        "text": "240 ml"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1/4 cup packed brown sugar",
+    "quantity": "1/4",
+    "unit": "cup",
+    "name": "brown sugar",
+    "match": "brown sugar",
+    "qualifiers": [
+      {
+        "kind": "note",
+        "text": "packed"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 cup chocolate chips (optional)",
+    "quantity": "1",
+    "unit": "cup",
+    "optional": true,
+    "name": "chocolate chips",
+    "match": "chocolate chips",
+    "confidence": 1
+  },
+  {
+    "raw": "1 cup walnuts, optional",
+    "quantity": "1",
+    "unit": "cup",
+    "optional": true,
+    "name": "walnuts",
+    "match": "walnuts",
+    "confidence": 1
+  },
+  {
+    "raw": "Optional: 1 tsp red pepper flakes",
+    "quantity": "1",
+    "unit": "tsp",
+    "optional": true,
+    "name": "red pepper flakes",
+    "match": "red pepper flakes",
+    "confidence": 1
+  },
+  {
+    "raw": "1 tsp red pepper flakes (optional, for heat)",
+    "quantity": "1",
+    "unit": "tsp",
+    "optional": true,
+    "name": "red pepper flakes",
+    "match": "red pepper flakes",
+    "qualifiers": [
+      {
+        "kind": "note",
+        "text": "for heat"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "a pinch of salt",
+    "quantity": "1",
+    "unit": "pinch",
+    "name": "salt",
+    "match": "salt",
+    "confidence": 1
+  },
+  {
+    "raw": "pinch of salt",
+    "unit": "pinch",
+    "name": "salt",
+    "match": "salt",
+    "confidence": 1
+  },
+  {
+    "raw": "a dash of hot sauce",
+    "quantity": "1",
+    "unit": "dash",
+    "name": "hot sauce",
+    "match": "hot sauce",
+    "confidence": 1
+  },
+  {
+    "raw": "2 cups of water",
+    "quantity": "2",
+    "unit": "cup",
+    "name": "water",
+    "match": "water",
+    "confidence": 1
+  },
+  {
+    "raw": "about 2 cups water",
+    "quantity": "2",
+    "unit": "cup",
+    "name": "water",
+    "match": "water",
+    "qualifiers": [
+      {
+        "kind": "note",
+        "text": "about"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 bay leaf",
+    "quantity": "1",
+    "name": "bay leaf",
+    "match": "bay leaf",
+    "confidence": 1
+  },
+  {
+    "raw": "2 sprigs fresh basil",
+    "quantity": "2",
+    "unit": "sprig",
+    "name": "basil",
+    "match": "basil",
+    "qualifiers": [
+      {
+        "kind": "form",
+        "text": "fresh"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 bunch cilantro, roughly chopped",
+    "quantity": "1",
+    "unit": "bunch",
+    "name": "cilantro",
+    "match": "cilantro",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "roughly chopped"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "4 scallions, thinly sliced, white and green parts separated",
+    "quantity": "4",
+    "name": "scallions",
+    "match": "scallions",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "thinly sliced"
+      },
+      {
+        "kind": "note",
+        "text": "white and green parts separated"
+      }
+    ],
+    "confidence": 0.95,
+    "issues": [
+      "unrecognised text \"white and green parts separated\""
+    ]
+  },
+  {
+    "raw": "3 tablespoons soy sauce, divided",
+    "quantity": "3",
+    "unit": "tbsp",
+    "name": "soy sauce",
+    "match": "soy sauce",
+    "qualifiers": [
+      {
+        "kind": "note",
+        "text": "divided"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "Juice of 1 lemon",
+    "name": "juice of 1 lemon",
+    "confidence": 0.6,
+    "issues": [
+      "ingredient \"juice of 1 lemon\" not matched",
+      "no quantity"
+    ]
+  },
+  {
+    "raw": "1 lemon, zested and juiced",
+    "quantity": "1",
+    "name": "lemon",
+    "match": "lemon",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "zested"
+      },
+      {
+        "kind": "preparation",
+        "text": "juiced"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "1 cup unsweetened coconut milk, shaken",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "coconut milk",
+    "match": "coconut milk",
+    "qualifiers": [
+      {
+        "kind": "form",
+        "text": "unsweetened"
+      },
+      {
+        "kind": "note",
+        "text": "shaken"
+      }
+    ],
+    "confidence": 0.95,
+    "issues": [
+      "unrecognised text \"shaken\""
+    ]
+  },
+  {
+    "raw": "1 cup celery, cut into 1-inch pieces",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "celery",
+    "match": "celery",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "cut into 1-inch pieces"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "2 cupz sugar",
+    "quantity": "2",
+    "name": "cupz sugar",
+    "confidence": 0.4,
+    "issues": [
+      "ingredient \"cupz sugar\" not matched",
+      "unrecognised unit \"cupz\""
+    ]
+  },
+  {
+    "raw": "3 xyzzy flour",
+    "quantity": "3",
+    "name": "xyzzy flour",
+    "confidence": 0.7,
+    "issues": [
+      "ingredient \"xyzzy flour\" not matched"
+    ]
+  },
+  {
+    "raw": "1 3/4/2 cups flour",
+    "name": "1 3/4/2 cups flour",
+    "confidence": 0.3,
+    "issues": [
+      "unreadable quantity \"1\"",
+      "ingredient \"1 3/4/2 cups flour\" not matched"
+    ]
+  },
+  {
+    "raw": "2 cups mystery spice",
+    "quantity": "2",
+    "unit": "cup",
+    "name": "mystery spice",
+    "confidence": 0.7,
+    "issues": [
+      "ingredient \"mystery spice\" not matched"
+    ]
+  },
+  {
+    "raw": "dragon fruit",
+    "name": "dragon fruit",
+    "confidence": 0.6,
+    "issues": [
+      "ingredient \"dragon fruit\" not matched",
+      "no quantity"
+    ]
+  },
+  {
+    "raw": "Fresh parsley, for garnish",
+    "name": "parsley",
+    "match": "parsley",
+    "qualifiers": [
+      {
+        "kind": "form",
+        "text": "fresh"
+      },
+      {
+        "kind": "note",
+        "text": "for garnish"
+      }
+    ],
+    "confidence": 0.9,
+    "issues": [
+      "no quantity"
+    ]
+  },
+  {
+    "raw": "Cream cheese, softened, plus more for serving",
+    "name": "cream cheese",
+    "match": "cream cheese",
+    "qualifiers": [
+      {
+        "kind": "state",
+        "text": "softened"
+      },
+      {
+        "kind": "note",
+        "text": "plus more for serving"
+      }
+    ],
+    "confidence": 0.9,
+    "issues": [
+      "no quantity"
+    ]
+  },
+  {
+    "raw": "1 cup chicken broth, warm",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "chicken broth",
+    "match": "chicken broth",
+    "qualifiers": [
+      {
+        "kind": "state",
+        "text": "warm"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "2 bell peppers, seeded and cut into strips",
+    "quantity": "2",
+    "name": "bell peppers",
+    "match": "bell peppers",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "seeded"
+      },
+      {
+        "kind": "preparation",
+        "text": "cut into strips"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "- 1 cup sugar",
+    "quantity": "1",
+    "unit": "cup",
+    "name": "sugar",
+    "match": "sugar",
+    "confidence": 1
+  },
+  {
+    "raw": "• 2 eggs",
+    "quantity": "2",
+    "name": "eggs",
+    "match": "eggs",
+    "confidence": 1
+  }
+]
