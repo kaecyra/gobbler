@@ -378,7 +378,7 @@
       "wave": 2,
       "track": "ingestion",
       "issue": 12,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-quantity"
       ],
@@ -1027,6 +1027,16 @@
       "merged": "7883a7b98dce1ce4b9a63dc272b2089a266c6ae6",
       "adrs": [
         "00003"
+      ]
+    },
+    {
+      "id": "w2-line-parser",
+      "title": "Ingredient-line and duration parser with golden-file corpus (pure)",
+      "merged": "ce0de1e6bd778f9be03b694d4c05d3dc028b175e",
+      "adrs": [
+        "00006",
+        "00005",
+        "00008"
       ]
     }
   ],
