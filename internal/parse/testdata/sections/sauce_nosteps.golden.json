@@ -1,0 +1,19 @@
+{
+  "title": "Quick Vinaigrette",
+  "components": [
+    {
+      "name": "",
+      "ingredients": [
+        "3 tbsp olive oil",
+        "1 tbsp red wine vinegar",
+        "1 tsp Dijon mustard"
+      ],
+      "steps": []
+    }
+  ],
+  "notes": [],
+  "confidence": 0.6,
+  "issues": [
+    "no_steps"
+  ]
+}

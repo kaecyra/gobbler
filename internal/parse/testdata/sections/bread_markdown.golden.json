@@ -1,0 +1,30 @@
+{
+  "title": "Rustic No-Knead Bread",
+  "components": [
+    {
+      "name": "Dough",
+      "ingredients": [
+        "3 cups bread flour",
+        "1 1/2 tsp salt",
+        "1/4 tsp instant yeast",
+        "1 1/2 cups water"
+      ],
+      "steps": [
+        "Mix flour, salt and yeast. Add water and stir until shaggy.",
+        "Cover and rest 12 to 18 hours."
+      ]
+    },
+    {
+      "name": "Topping",
+      "ingredients": [
+        "1 tbsp flour for dusting"
+      ],
+      "steps": [
+        "Dust with flour and bake at 450F for 40 minutes."
+      ]
+    }
+  ],
+  "notes": [],
+  "confidence": 1,
+  "issues": []
+}
