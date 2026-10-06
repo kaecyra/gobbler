@@ -161,7 +161,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 2,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w0-scaffold"
       ],
@@ -979,6 +979,18 @@
       "merged": "8ff9646b3cbfcaeabc40442eb188cadafe807e01",
       "adrs": [
         "00002"
+      ]
+    },
+    {
+      "id": "w0-config",
+      "title": "Environment configuration package covering the whole design.md table, validated at start-up",
+      "merged": "1bdb5be14b243a6345f29b7dc1a88dc40b8b3392",
+      "adrs": [
+        "00002",
+        "00003",
+        "00006",
+        "00007",
+        "00010"
       ]
     }
   ],
