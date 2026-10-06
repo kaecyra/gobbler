@@ -956,20 +956,23 @@
       "mode": "open"
     },
     {
+      "path": "README.md",
+      "mode": "open"
+    },
+    {
       "path": "cmd/gobbler/**",
-      "mode": "append_only"
+      "mode": "open",
+      "note": "Append-only by convention: add new files or new lines only, never edit existing ones. The dispatcher enforces this in diff review; mode is open because the ownership check exempts only open shared files."
     },
     {
       "path": "internal/web/routes.go",
-      "mode": "append_only"
+      "mode": "open",
+      "note": "Append-only by convention: add new files or new lines only, never edit existing ones. The dispatcher enforces this in diff review; mode is open because the ownership check exempts only open shared files."
     },
     {
       "path": "internal/db/migrations/**",
-      "mode": "append_only"
-    },
-    {
-      "path": "README.md",
-      "mode": "open"
+      "mode": "open",
+      "note": "Append-only by convention: add new files or new lines only, never edit existing ones. The dispatcher enforces this in diff review; mode is open because the ownership check exempts only open shared files."
     }
   ],
   "done": [
