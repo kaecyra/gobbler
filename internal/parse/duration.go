@@ -34,7 +34,7 @@ type DurationResult struct {
 const durationPartialConfidence = 0.5
 
 const (
-	durNum = `(?:\d+\s+\d+/\d+|\d+/\d+|\d*\.\d+|\d+\s*[½¼¾⅓⅔⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒]|[½¼¾⅓⅔⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒]|\d+)`
+	durNum = `(?:\d+\s+\d+/\d+|\d+/\d+|\d*\.\d+|\d+\s*[` + lineFractionRunes + `]|[` + lineFractionRunes + `]|\d+)`
 	// Words and common abbreviations; usable anywhere.
 	durUnitWord = `(?:days?|hours?|hrs?|minutes?|mins?|seconds?|secs?)`
 	// Single letters are only trusted in a field that is all duration.
@@ -104,7 +104,7 @@ func durScan(text string, re *regexp.Regexp, from int) DurationResult {
 		return DurationResult{}
 	}
 	start := from + loc[0]
-	lo, hi, rng, end, ok := durTerm(re, text, start)
+	lo, hi, rng, end, unit, ok := durTerm(re, text, start)
 	if !ok {
 		// A number we cannot read ("1/0 hours"): skip past it.
 		return durScan(text, re, start+max(loc[1]-loc[0], 1))
@@ -115,11 +115,12 @@ func durScan(text string, re *regexp.Regexp, from int) DurationResult {
 		if next >= len(text) {
 			break
 		}
-		l2, h2, r2, e2, ok2 := durTerm(re, text, next)
-		if !ok2 || r2 {
+		l2, h2, r2, e2, u2, ok2 := durTerm(re, text, next)
+		// Only "1 hour 30 minutes" joins; "10 minutes, 5 minutes more" is two.
+		if !ok2 || r2 || u2 >= unit {
 			break
 		}
-		lo, hi, end = lo+l2, hi+h2, e2
+		lo, hi, end, unit = lo+l2, hi+h2, e2, u2
 	}
 	return DurationResult{
 		Found: true, Min: lo, Max: hi, Range: rng,
@@ -128,10 +129,10 @@ func durScan(text string, re *regexp.Regexp, from int) DurationResult {
 }
 
 // durTerm reads the single term starting at start.
-func durTerm(re *regexp.Regexp, text string, start int) (lo, hi time.Duration, rng bool, end int, ok bool) {
+func durTerm(re *regexp.Regexp, text string, start int) (lo, hi time.Duration, rng bool, end int, unit time.Duration, ok bool) {
 	m := re.FindStringSubmatchIndex(text[start:])
 	if m == nil || m[0] != 0 {
-		return 0, 0, false, 0, false
+		return 0, 0, false, 0, 0, false
 	}
 	get := func(name string) string {
 		i := re.SubexpIndex(name)
@@ -142,27 +143,27 @@ func durTerm(re *regexp.Regexp, text string, start int) (lo, hi time.Duration, r
 	}
 	end = start + m[1]
 	if art := strings.ToLower(get("art")); art != "" {
-		unit := durUnit(get("aunit"))
+		unit = durUnit(get("aunit"))
 		d := unit
 		if art == "half an" {
 			d = unit / 2
 		}
-		return d, d, false, end, true
+		return d, d, false, end, unit, true
 	}
-	unit := durUnit(get("unit"))
+	unit = durUnit(get("unit"))
 	l, err := durNumber(get("lo"))
 	if err != nil {
-		return 0, 0, false, 0, false
+		return 0, 0, false, 0, 0, false
 	}
 	lo, hi = durScale(l, unit), durScale(l, unit)
 	if h := get("hi"); h != "" {
 		hv, err := durNumber(h)
 		if err != nil || hv.Cmp(l) < 0 {
-			return 0, 0, false, 0, false
+			return 0, 0, false, 0, 0, false
 		}
 		hi, rng = durScale(hv, unit), true
 	}
-	return lo, hi, rng, end, true
+	return lo, hi, rng, end, unit, true
 }
 
 func durNumber(s string) (quantity.Rat, error) {

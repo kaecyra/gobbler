@@ -791,5 +791,85 @@
     "name": "eggs",
     "match": "eggs",
     "confidence": 1
+  },
+  {
+    "raw": "¼ cup sugar",
+    "quantity": "1/4",
+    "unit": "cup",
+    "name": "sugar",
+    "match": "sugar",
+    "confidence": 1
+  },
+  {
+    "raw": "¼ tsp salt",
+    "quantity": "1/4",
+    "unit": "tsp",
+    "name": "salt",
+    "match": "salt",
+    "confidence": 1
+  },
+  {
+    "raw": "Éclairs, halved",
+    "name": "éclairs",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "halved"
+      }
+    ],
+    "confidence": 0.6,
+    "issues": [
+      "ingredient \"éclairs\" not matched",
+      "no quantity"
+    ]
+  },
+  {
+    "raw": "2 jalapeños, seeded",
+    "quantity": "2",
+    "name": "jalapeños",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "seeded"
+      }
+    ],
+    "confidence": 0.7,
+    "issues": [
+      "ingredient \"jalapeños\" not matched"
+    ]
+  },
+  {
+    "raw": "1 14-ounce can diced tomatoes",
+    "quantity": "1",
+    "unit": "can",
+    "package": "14 oz",
+    "name": "tomatoes",
+    "match": "tomatoes",
+    "qualifiers": [
+      {
+        "kind": "preparation",
+        "text": "diced"
+      }
+    ],
+    "confidence": 1
+  },
+  {
+    "raw": "2 8-ounce cans tomatoes",
+    "quantity": "2",
+    "unit": "can",
+    "package": "8 oz",
+    "name": "tomatoes",
+    "match": "tomatoes",
+    "confidence": 1
+  },
+  {
+    "raw": "1,000 g flour",
+    "quantity": "1000",
+    "unit": "g",
+    "name": "flour",
+    "confidence": 0.7,
+    "issues": [
+      "ingredient \"flour\" not matched"
+    ]
   }
 ]

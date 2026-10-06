@@ -62,6 +62,10 @@ func TestIngredientLineAmounts(t *testing.T) {
 		{"a pinch of salt", "1", "pinch", "", "salt", false},
 		{"pinch of salt", "", "pinch", "", "salt", false},
 		{"2 Tbsp. butter", "2", "tbsp", "", "butter", false},
+		{"¼ cup sugar", "1/4", "cup", "", "sugar", false},
+		{"1 14-ounce can tomatoes", "1", "can", "14 oz", "tomatoes", false},
+		{"2 14 oz cans tomatoes", "2", "can", "14 oz", "tomatoes", false},
+		{"1,000 g flour", "1000", "g", "", "flour", false},
 		{".25 tsp salt", "1/4", "tsp", "", "salt", false},
 		{"1 T butter", "1", "tbsp", "", "butter", false},
 		{"1 t salt", "1", "tsp", "", "salt", false},
@@ -232,5 +236,17 @@ func TestLookupUnitAliases(t *testing.T) {
 	}
 	if _, ok := lineLookupUnit("flour"); ok {
 		t.Error("flour read as a unit")
+	}
+}
+
+func TestParseLineAccentedNameIsNotANumber(t *testing.T) {
+	got := IngredientLine("Éclairs, halved", nil)
+	if got.Name != "éclairs" || got.Confidence != 0.9 {
+		t.Errorf("name %q confidence %v (%v), want éclairs at 0.9 (no quantity only)", got.Name, got.Confidence, got.Issues)
+	}
+	for _, is := range got.Issues {
+		if strings.Contains(is, "unreadable") {
+			t.Errorf("issue %q: a letter was read as a number", is)
+		}
 	}
 }

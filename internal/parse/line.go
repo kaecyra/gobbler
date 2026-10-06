@@ -70,14 +70,20 @@ const (
 	lineNoNameConfidence = 0.1
 )
 
+// lineFractionRunes is the one set of vulgar-fraction runes the parser
+// recognises; the regexps and lineLooksNumeric are built from it. It matches
+// the set quantity.ParseRat reads.
+const lineFractionRunes = "½¼¾⅓⅔⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒"
+
 var (
-	lineBulletRE   = regexp.MustCompile(`^[\s\-•*·▢☐◦▪–—]+`)
-	lineOptLeadRE  = regexp.MustCompile(`(?i)\(\s*optional\s*[,;]\s*`)
-	lineOptTailRE  = regexp.MustCompile(`(?i)\s*[,;]\s*optional\s*\)`)
-	lineOptBareRE  = regexp.MustCompile(`(?i)[,;]?\s*\boptional\b`)
-	lineTasteRE    = regexp.MustCompile(`(?i)\(\s*to taste\s*\)|[,;]?\s*\bto taste\b\.?`)
-	lineEmptyRE    = regexp.MustCompile(`\(\s*\)|\[\s*\]`)
-	lineAttachedRE = regexp.MustCompile(`^([\d./⁄½¼¾⅓⅔⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒]+)-?([A-Za-z]+\.?)$`)
+	lineBulletRE    = regexp.MustCompile(`^[\s\-•*·▢☐◦▪–—]+`)
+	lineOptLeadRE   = regexp.MustCompile(`(?i)\(\s*optional\s*[,;]\s*`)
+	lineOptTailRE   = regexp.MustCompile(`(?i)\s*[,;]\s*optional\s*\)`)
+	lineOptBareRE   = regexp.MustCompile(`(?i)[,;]?\s*\boptional\b`)
+	lineTasteRE     = regexp.MustCompile(`(?i)\(\s*to taste\s*\)|[,;]?\s*\bto taste\b\.?`)
+	lineEmptyRE     = regexp.MustCompile(`\(\s*\)|\[\s*\]`)
+	lineAttachedRE  = regexp.MustCompile(`^([\d./⁄` + lineFractionRunes + `]+)-?([A-Za-z]+\.?)$`)
+	lineThousandsRE = regexp.MustCompile(`(\d),(\d{3})\b`)
 )
 
 // IngredientLine reads one ingredient line. It never fails: a line it cannot fully
@@ -156,12 +162,21 @@ func (p *lineParser) parseHead(head string) {
 	toks = lineSplitAttached(toks)
 
 	qty, used := lineLeadingQuantity(toks)
-	if used > 0 && used < len(toks) && lineLooksNumeric(toks[used]) {
+	// "1 14-ounce can": a size and a converting unit, then a packaging unit.
+	var barePkg quantity.PackageSize
+	nb := 0
+	if used > 0 {
+		barePkg, nb = lineBarePackage(toks[used:])
+	}
+	if nb == 0 && used > 0 && used < len(toks) && lineLooksNumeric(toks[used]) {
 		// "1 3/4/2 cups": a number follows the quantity we read, so we did
 		// not read all of it. Keep nothing rather than a wrong number.
 		qty, used = quantity.Absent(), 0
 	}
-	toks = toks[used:]
+	toks = toks[used+nb:]
+	if nb > 0 {
+		p.res.Amount.Package, p.res.Amount.HasPackage = barePkg, true
+	}
 	// "a pinch", "an onion": the article is the number one when a unit follows.
 	if used == 0 && len(toks) > 1 {
 		if w := strings.ToLower(toks[0]); w == "a" || w == "an" {
@@ -352,7 +367,7 @@ func lineIsHedge(t string) bool {
 
 func lineLooksNumeric(t string) bool {
 	for _, r := range t {
-		return unicode.IsDigit(r) || (r >= '½' && r <= '⅞') || r == '.' || strings.ContainsRune("⅐⅑⅒", r)
+		return unicode.IsDigit(r) || r == '.' || strings.ContainsRune(lineFractionRunes, r)
 	}
 	return false
 }
@@ -388,7 +403,8 @@ func lineLeadingQuantity(toks []string) (quantity.Quantity, int) {
 		if !lineLooksNumeric(toks[0]) {
 			break
 		}
-		if q, err := quantity.ParseQuantity(strings.Join(toks[:n], " ")); err == nil {
+		text := lineThousandsRE.ReplaceAllString(strings.Join(toks[:n], " "), "$1$2")
+		if q, err := quantity.ParseQuantity(text); err == nil {
 			return q, n
 		}
 	}
@@ -425,4 +441,23 @@ func lineParsePackage(tok string) (quantity.PackageSize, bool) {
 		return quantity.PackageSize{}, false
 	}
 	return quantity.PackageSize{Qty: qty, Unit: u}, true
+}
+
+// lineBarePackage reads an unparenthesised package size at the front of toks:
+// a quantity and a converting unit followed by a non-converting packaging
+// unit ("14 ounce" before "can"). n is the tokens used by the size, zero when
+// toks does not start with one; the packaging unit is left for the caller.
+func lineBarePackage(toks []string) (pkg quantity.PackageSize, n int) {
+	qty, used := lineLeadingQuantity(toks)
+	if used == 0 {
+		return quantity.PackageSize{}, 0
+	}
+	u, un := lineUnitAt(toks[used:])
+	if un == 0 || !u.Converts() {
+		return quantity.PackageSize{}, 0
+	}
+	if outer, on := lineUnitAt(toks[used+un:]); on == 0 || outer.Dimension != quantity.DimOther {
+		return quantity.PackageSize{}, 0
+	}
+	return quantity.PackageSize{Qty: qty, Unit: u}, used + un
 }

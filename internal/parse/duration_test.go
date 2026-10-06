@@ -93,6 +93,13 @@ func TestFindDurations(t *testing.T) {
 	}
 }
 
+func TestFindDurationsSeparateTerms(t *testing.T) {
+	got := FindDurations("Bake 10 minutes, 5 minutes more covered.")
+	if len(got) != 2 || got[0].Min != 10*durTestMin || got[1].Min != 5*durTestMin {
+		t.Errorf("FindDurations = %+v, want separate 10m and 5m", got)
+	}
+}
+
 func TestFindDurationsNone(t *testing.T) {
 	if got := FindDurations("Stir until smooth. Season with 2 tsp salt."); len(got) != 0 {
 		t.Errorf("FindDurations = %+v, want none", got)
