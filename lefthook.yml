@@ -1,0 +1,14 @@
+pre-commit:
+  commands:
+    fmt:
+      glob: "*.go"
+      run: make fmt
+      stage_fixed: true
+
+pre-push:
+  parallel: false
+  commands:
+    lint:
+      run: make lint
+    test:
+      run: make test
