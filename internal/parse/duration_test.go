@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	durTestHour   = time.Hour
-	durTestMinute = time.Minute
+	durTestHourSpan   = time.Hour
+	durTestMinuteSpan = time.Minute
 )
 
 func TestDuration(t *testing.T) {
@@ -17,30 +17,30 @@ func TestDuration(t *testing.T) {
 		rng        bool
 		confidence float64
 	}{
-		{"1 hr 30 min", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"1 hour 30 minutes", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"1 hour and 15 minutes", 75 * durTestMinute, 75 * durTestMinute, false, 1},
-		{"90 minutes", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"90 mins", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"1-2 hours", durTestHour, 2 * durTestHour, true, 1},
-		{"1 to 2 hours", durTestHour, 2 * durTestHour, true, 1},
-		{"25–30 minutes", 25 * durTestMinute, 30 * durTestMinute, true, 1},
-		{"1h30m", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"45m", 45 * durTestMinute, 45 * durTestMinute, false, 1},
-		{"1.5 hours", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"1 1/2 hours", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"1½ hours", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"half an hour", 30 * durTestMinute, 30 * durTestMinute, false, 1},
-		{"an hour", durTestHour, durTestHour, false, 1},
+		{"1 hr 30 min", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"1 hour 30 minutes", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"1 hour and 15 minutes", 75 * durTestMinuteSpan, 75 * durTestMinuteSpan, false, 1},
+		{"90 minutes", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"90 mins", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"1-2 hours", durTestHourSpan, 2 * durTestHourSpan, true, 1},
+		{"1 to 2 hours", durTestHourSpan, 2 * durTestHourSpan, true, 1},
+		{"25–30 minutes", 25 * durTestMinuteSpan, 30 * durTestMinuteSpan, true, 1},
+		{"1h30m", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"45m", 45 * durTestMinuteSpan, 45 * durTestMinuteSpan, false, 1},
+		{"1.5 hours", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"1 1/2 hours", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"1½ hours", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"half an hour", 30 * durTestMinuteSpan, 30 * durTestMinuteSpan, false, 1},
+		{"an hour", durTestHourSpan, durTestHourSpan, false, 1},
 		{"45 seconds", 45 * time.Second, 45 * time.Second, false, 1},
-		{"2 days", 48 * durTestHour, 48 * durTestHour, false, 1},
-		{"  20 MIN  ", 20 * durTestMinute, 20 * durTestMinute, false, 1},
-		{"about 10 minutes", 10 * durTestMinute, 10 * durTestMinute, false, 1},
-		{"PT1H30M", 90 * durTestMinute, 90 * durTestMinute, false, 1},
-		{"PT45M", 45 * durTestMinute, 45 * durTestMinute, false, 1},
-		{"P1DT2H", 26 * durTestHour, 26 * durTestHour, false, 1},
+		{"2 days", 48 * durTestHourSpan, 48 * durTestHourSpan, false, 1},
+		{"  20 MIN  ", 20 * durTestMinuteSpan, 20 * durTestMinuteSpan, false, 1},
+		{"about 10 minutes", 10 * durTestMinuteSpan, 10 * durTestMinuteSpan, false, 1},
+		{"PT1H30M", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false, 1},
+		{"PT45M", 45 * durTestMinuteSpan, 45 * durTestMinuteSpan, false, 1},
+		{"P1DT2H", 26 * durTestHourSpan, 26 * durTestHourSpan, false, 1},
 		{"PT30S", 30 * time.Second, 30 * time.Second, false, 1},
-		{"10 minutes plus chilling", 10 * durTestMinute, 10 * durTestMinute, false, durationPartialConfidence},
+		{"10 minutes plus chilling", 10 * durTestMinuteSpan, 10 * durTestMinuteSpan, false, durationPartialConfidence},
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
@@ -75,9 +75,9 @@ func TestFindDurations(t *testing.T) {
 		lo, hi time.Duration
 		rng    bool
 	}{
-		{"25 to 30 minutes", 25 * durTestMinute, 30 * durTestMinute, true},
-		{"5 min", 5 * durTestMinute, 5 * durTestMinute, false},
-		{"1 hour 30 minutes", 90 * durTestMinute, 90 * durTestMinute, false},
+		{"25 to 30 minutes", 25 * durTestMinuteSpan, 30 * durTestMinuteSpan, true},
+		{"5 min", 5 * durTestMinuteSpan, 5 * durTestMinuteSpan, false},
+		{"1 hour 30 minutes", 90 * durTestMinuteSpan, 90 * durTestMinuteSpan, false},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("FindDurations found %+v, want %d results", got, len(want))
@@ -95,7 +95,7 @@ func TestFindDurations(t *testing.T) {
 
 func TestFindDurationsSeparateTerms(t *testing.T) {
 	got := FindDurations("Bake 10 minutes, 5 minutes more covered.")
-	if len(got) != 2 || got[0].Min != 10*durTestMinute || got[1].Min != 5*durTestMinute {
+	if len(got) != 2 || got[0].Min != 10*durTestMinuteSpan || got[1].Min != 5*durTestMinuteSpan {
 		t.Errorf("FindDurations = %+v, want separate 10m and 5m", got)
 	}
 }
