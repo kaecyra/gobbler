@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -22,41 +23,95 @@ const (
 // keySet caches the team's public keys. It fetches on first use and again when
 // a token names a kid it does not hold, but no more often than minRefresh, so
 // a stream of bogus kids cannot turn into a stream of requests to Cloudflare.
+//
+// Cache hits read an immutable map through an atomic pointer and never wait on
+// the network. Concurrent misses share one in-flight fetch.
 type keySet struct {
 	url        string
 	client     *http.Client
 	now        func() time.Time
 	minRefresh time.Duration
 
-	mu          sync.Mutex
-	keys        map[string]*rsa.PublicKey
+	keys atomic.Pointer[map[string]*rsa.PublicKey]
+
+	mu          sync.Mutex // guards the fields below, never held across a fetch
+	inflight    *flight
 	lastAttempt time.Time
 	attempted   bool
+	lastErr     error // the last failed fetch; nil after a success
 }
+
+// flight is one running fetch that waiters can block on.
+type flight struct{ done chan struct{} }
 
 var errUnknownKey = errors.New("no signing key for kid")
 
-// key returns the public key for kid, refreshing the cache if kid is unknown
-// and the rate limit allows. A failed fetch is returned, never papered over.
-func (s *keySet) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *keySet) lookup(kid string) (*rsa.PublicKey, bool) {
+	m := s.keys.Load()
+	if m == nil {
+		return nil, false
+	}
+	k, ok := (*m)[kid]
+	return k, ok
+}
 
-	if k, ok := s.keys[kid]; ok {
+// key returns the public key for kid, refreshing the cache if kid is unknown
+// and the rate limit allows. When no key is available because the last fetch
+// failed, that failure is returned, never papered over.
+func (s *keySet) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+	if k, ok := s.lookup(kid); ok {
 		return k, nil
+	}
+
+	s.mu.Lock()
+	if k, ok := s.lookup(kid); ok { // a refresh finished while we queued
+		s.mu.Unlock()
+		return k, nil
+	}
+	if f := s.inflight; f != nil {
+		s.mu.Unlock()
+		select {
+		case <-f.done:
+		case <-ctx.Done():
+			return nil, fmt.Errorf("wait for signing keys: %w", ctx.Err())
+		}
+		return s.afterFetch(kid)
 	}
 	if s.attempted && s.now().Sub(s.lastAttempt) < s.minRefresh {
-		return nil, errUnknownKey
+		s.mu.Unlock()
+		return s.afterFetch(kid)
 	}
+	f := &flight{done: make(chan struct{})}
+	s.inflight = f
 	s.attempted = true
 	s.lastAttempt = s.now()
+	s.mu.Unlock()
+
 	keys, err := s.fetch(ctx)
+
+	s.mu.Lock()
 	if err != nil {
-		return nil, fmt.Errorf("refresh signing keys: %w", err)
+		s.lastErr = fmt.Errorf("refresh signing keys: %w", err)
+	} else {
+		s.lastErr = nil
+		s.keys.Store(&keys)
 	}
-	s.keys = keys
-	if k, ok := s.keys[kid]; ok {
+	s.inflight = nil
+	s.mu.Unlock()
+	close(f.done)
+	return s.afterFetch(kid)
+}
+
+// afterFetch answers a lookup that needed no fetch of its own or has just
+// waited for one: the key if present, else the failure that left it missing.
+func (s *keySet) afterFetch(kid string) (*rsa.PublicKey, error) {
+	if k, ok := s.lookup(kid); ok {
 		return k, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.lastErr != nil {
+		return nil, s.lastErr
 	}
 	return nil, errUnknownKey
 }

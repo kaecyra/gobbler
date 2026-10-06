@@ -46,23 +46,21 @@ type Authenticator struct {
 	log    *slog.Logger
 }
 
-// Option adjusts an Authenticator. Production code needs none; they exist so
-// tests can point at an in-process key server and a fixed clock.
+// Option adjusts an Authenticator. Only WithLogger is exported: the certs URL,
+// client, clock and refresh interval are fixed by production code and
+// adjustable only from this package's tests.
 type Option func(*Authenticator, *keySet)
 
-// WithCertsURL replaces the JWKS URL derived from the team domain.
-func WithCertsURL(u string) Option { return func(_ *Authenticator, k *keySet) { k.url = u } }
+// withCertsURL replaces the JWKS URL derived from the team domain.
+func withCertsURL(u string) Option { return func(_ *Authenticator, k *keySet) { k.url = u } }
 
-// WithHTTPClient replaces the client used to fetch the JWKS.
-func WithHTTPClient(c *http.Client) Option { return func(_ *Authenticator, k *keySet) { k.client = c } }
-
-// WithClock replaces the time source.
-func WithClock(now func() time.Time) Option {
+// withClock replaces the time source.
+func withClock(now func() time.Time) Option {
 	return func(a *Authenticator, k *keySet) { a.now, k.now = now, now }
 }
 
-// WithMinRefresh sets the shortest gap between JWKS fetches.
-func WithMinRefresh(d time.Duration) Option {
+// withMinRefresh sets the shortest gap between JWKS fetches.
+func withMinRefresh(d time.Duration) Option {
 	return func(_ *Authenticator, k *keySet) { k.minRefresh = d }
 }
 

@@ -106,12 +106,30 @@ type jwksServer struct {
 	status atomic.Int64
 	mu     sync.Mutex
 	kids   map[string]*rsa.PublicKey
+	// gate, when set, makes each request announce itself on entered and then
+	// block until gate is closed.
+	gate    chan struct{}
+	entered chan struct{}
 }
 
 func (j *jwksServer) setKeys(kids map[string]*rsa.PublicKey) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.kids = kids
+}
+
+// block makes every JWKS request wait until release is called. release is
+// idempotent and also runs at cleanup, so a failing test cannot leave handlers
+// stuck and hang server shutdown.
+func (j *jwksServer) block(t *testing.T) (entered <-chan struct{}, release func()) {
+	gate, ent := make(chan struct{}), make(chan struct{}, 8)
+	j.mu.Lock()
+	j.gate, j.entered = gate, ent
+	j.mu.Unlock()
+	var once sync.Once
+	release = func() { once.Do(func() { close(gate) }) }
+	t.Cleanup(release)
+	return ent, release
 }
 
 func newJWKS(t *testing.T) *jwksServer {
@@ -121,6 +139,13 @@ func newJWKS(t *testing.T) *jwksServer {
 	j.status.Store(http.StatusOK)
 	j.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		j.hits.Add(1)
+		j.mu.Lock()
+		gate, entered := j.gate, j.entered
+		j.mu.Unlock()
+		if gate != nil {
+			entered <- struct{}{}
+			<-gate
+		}
 		if st := int(j.status.Load()); st != http.StatusOK {
 			http.Error(w, "boom", st)
 			return
@@ -167,8 +192,8 @@ func newHarness(t *testing.T, extra ...Option) *harness {
 	h := &harness{jwks: newJWKS(t), logs: &bytes.Buffer{}, now: &atomic.Pointer[time.Time]{}}
 	h.setNow(t0)
 	opts := append([]Option{
-		WithCertsURL(h.jwks.URL),
-		WithClock(func() time.Time { return *h.now.Load() }),
+		withCertsURL(h.jwks.URL),
+		withClock(func() time.Time { return *h.now.Load() }),
 		WithLogger(slog.New(slog.NewJSONHandler(h.logs, nil))),
 	}, extra...)
 	a, err := New(prodConfig(), opts...)
@@ -295,6 +320,20 @@ func TestRejections(t *testing.T) {
 	}
 }
 
+func TestClockLeewayIsBounded(t *testing.T) {
+	for name, mutate := range map[string]func(*tokenSpec){
+		"exp just past leeway": func(s *tokenSpec) { s.claims["exp"] = t0.Add(-31 * time.Second).Unix() },
+		"nbf just past leeway": func(s *tokenSpec) { s.claims["nbf"] = t0.Add(31 * time.Second).Unix() },
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newHarness(t)
+			if code, _ := serve(h, withHeader(goodToken(t, mutate))); code != http.StatusForbidden {
+				t.Fatalf("got %d, want 403", code)
+			}
+		})
+	}
+}
+
 func TestClockLeewayAllowsSmallSkew(t *testing.T) {
 	h := newHarness(t)
 	tok := goodToken(t, func(s *tokenSpec) {
@@ -329,7 +368,7 @@ func TestJWKSCachedAcrossRequests(t *testing.T) {
 }
 
 func TestRefreshOnUnknownKidPicksUpRotation(t *testing.T) {
-	h := newHarness(t, WithMinRefresh(time.Minute))
+	h := newHarness(t, withMinRefresh(time.Minute))
 	a, other := testKeys(t)
 	serve(h, withHeader(goodToken(t, nil))) // warm the cache
 
@@ -342,7 +381,7 @@ func TestRefreshOnUnknownKidPicksUpRotation(t *testing.T) {
 }
 
 func TestRefreshIsRateLimited(t *testing.T) {
-	h := newHarness(t, WithMinRefresh(time.Minute))
+	h := newHarness(t, withMinRefresh(time.Minute))
 	for i := range 50 {
 		tok := goodToken(t, func(s *tokenSpec) { s.kid = "bogus" + string(rune('a'+i%26)) })
 		if code, _ := serve(h, withHeader(tok)); code != http.StatusForbidden {
@@ -380,12 +419,12 @@ func TestJWKSUnreachableFailsClosed(t *testing.T) {
 }
 
 func TestJWKSFailureThenRecovery(t *testing.T) {
-	h := newHarness(t, WithMinRefresh(time.Minute))
+	h := newHarness(t, withMinRefresh(time.Minute))
 	h.jwks.status.Store(http.StatusInternalServerError)
 	serve(h, withHeader(goodToken(t, nil)))
 	h.jwks.status.Store(http.StatusOK)
 	h.setNow(t0.Add(2 * time.Minute))
-	if code, _ := serve(h, withHeader(goodToken(t, func(s *tokenSpec) { s.claims["exp"] = t0.Add(time.Hour).Unix() }))); code != http.StatusOK {
+	if code, _ := serve(h, withHeader(goodToken(t, nil))); code != http.StatusOK {
 		t.Fatalf("no recovery after JWKS came back: %d", code)
 	}
 }
@@ -518,7 +557,7 @@ func TestBadJWKSDocuments(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(body)) }))
 			defer srv.Close()
-			a, err := New(prodConfig(), WithCertsURL(srv.URL), WithLogger(slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))))
+			a, err := New(prodConfig(), withCertsURL(srv.URL), WithLogger(slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -528,5 +567,97 @@ func TestBadJWKSDocuments(t *testing.T) {
 				t.Fatalf("got %d, want 403", rec.Code)
 			}
 		})
+	}
+}
+
+func TestCachedKidServedWhileRefreshBlocked(t *testing.T) {
+	h := newHarness(t, withMinRefresh(time.Minute))
+	if code, _ := serve(h, withHeader(goodToken(t, nil))); code != http.StatusOK {
+		t.Fatalf("warm-up: %d", code)
+	}
+	entered, release := h.jwks.block(t)
+	h.setNow(t0.Add(2 * time.Minute))
+
+	done := make(chan int, 1)
+	go func() {
+		code, _ := serve(h, withHeader(goodToken(t, func(s *tokenSpec) { s.kid = "unknown" })))
+		done <- code
+	}()
+	<-entered // the refresh is now blocked inside the JWKS server
+
+	cached := make(chan int, 1)
+	go func() {
+		code, _ := serve(h, withHeader(goodToken(t, func(s *tokenSpec) { s.claims["exp"] = t0.Add(3 * time.Hour).Unix() })))
+		cached <- code
+	}()
+	select {
+	case code := <-cached:
+		if code != http.StatusOK {
+			t.Fatalf("cached-kid request got %d", code)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("cached-kid request stalled behind a blocked refresh")
+	}
+	release()
+	if code := <-done; code != http.StatusForbidden {
+		t.Fatalf("unknown kid got %d, want 403", code)
+	}
+}
+
+func TestConcurrentMissesShareOneFetch(t *testing.T) {
+	h := newHarness(t)
+	entered, release := h.jwks.block(t)
+
+	const n = 5
+	var wg sync.WaitGroup
+	codes := make(chan int, n)
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			code, _ := serve(h, withHeader(goodToken(t, nil)))
+			codes <- code
+		}()
+	}
+	<-entered
+	time.Sleep(50 * time.Millisecond) // let the others queue behind the flight
+	release()
+	wg.Wait()
+	close(codes)
+	for code := range codes {
+		if code != http.StatusOK {
+			t.Fatalf("got %d, want 200", code)
+		}
+	}
+	if got := h.jwks.hits.Load(); got != 1 {
+		t.Fatalf("JWKS fetched %d times, want once", got)
+	}
+}
+
+func TestOutageReportsFetchErrorNotUnknownKey(t *testing.T) {
+	h := newHarness(t, withMinRefresh(time.Minute))
+	h.jwks.status.Store(http.StatusInternalServerError)
+	serve(h, withHeader(goodToken(t, nil))) // fetch fails
+	h.logs.Reset()
+	serve(h, withHeader(goodToken(t, nil))) // inside the rate-limit window
+	out := h.logs.String()
+	if !strings.Contains(out, "refresh signing keys") || strings.Contains(out, "unknown signing key") {
+		t.Fatalf("outage not reported as a fetch failure: %s", out)
+	}
+	if n := h.jwks.hits.Load(); n != 1 {
+		t.Fatalf("fetched %d times, want once", n)
+	}
+}
+
+func TestFailedRefreshKeepsWarmKeysInService(t *testing.T) {
+	h := newHarness(t, withMinRefresh(time.Minute))
+	if code, _ := serve(h, withHeader(goodToken(t, nil))); code != http.StatusOK {
+		t.Fatalf("warm-up: %d", code)
+	}
+	h.jwks.status.Store(http.StatusInternalServerError)
+	h.setNow(t0.Add(2 * time.Minute))
+	serve(h, withHeader(goodToken(t, func(s *tokenSpec) { s.kid = "unknown" }))) // failed refresh
+	if code, _ := serve(h, withHeader(goodToken(t, nil))); code != http.StatusOK {
+		t.Fatalf("warm key stopped working after a failed refresh: %d", code)
 	}
 }
