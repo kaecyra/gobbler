@@ -1,0 +1,4 @@
+.memory/
+.odette/*.local.json
+docs/plan/*.draft.json
+.claude/worktrees/
