@@ -196,9 +196,37 @@ func TestMigrateEmptyFilesystemIsNoOp(t *testing.T) {
 	}
 }
 
-func TestMigrateEmbeddedWithNoMigrationsYet(t *testing.T) {
+func TestMigrateShippedMigrationsWithNoMigrationsYet(t *testing.T) {
 	d := openTest(t)
-	if err := MigrateEmbedded(context.Background(), d); err != nil {
-		t.Fatalf("MigrateEmbedded: %v", err)
+	if err := Migrate(context.Background(), d, Migrations()); err != nil {
+		t.Fatalf("Migrate shipped: %v", err)
+	}
+}
+
+func TestOpenRefusesDatabaseThatCannotEnterWAL(t *testing.T) {
+	// An in-memory database ignores the WAL request and reports "memory".
+	d, err := connect(context.Background(), "file::memory:?_pragma=journal_mode(wal)", "memory")
+	if err == nil {
+		_ = d.Close()
+		t.Fatal("want error when journal mode is not wal")
+	}
+	if !strings.Contains(err.Error(), `"memory"`) {
+		t.Fatalf("error %q does not name the actual journal mode", err)
+	}
+}
+
+func TestVersionOnFreshDatabaseIsZero(t *testing.T) {
+	d := openTest(t)
+	v, err := Version(context.Background(), d, fixture(map[string]string{"00001_widgets.sql": createWidgets}))
+	if err != nil || v != 0 {
+		t.Fatalf("version = %d, err = %v, want 0", v, err)
+	}
+}
+
+func TestVersionWithNoMigrationsIsZero(t *testing.T) {
+	d := openTest(t)
+	v, err := Version(context.Background(), d, fstest.MapFS{})
+	if err != nil || v != 0 {
+		t.Fatalf("version = %d, err = %v, want 0", v, err)
 	}
 }

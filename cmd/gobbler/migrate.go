@@ -20,12 +20,11 @@ var migrateCommand = command{
 		if err != nil {
 			return err
 		}
-		return migrate(ctx, cfg, nil)
+		return migrate(ctx, cfg, db.Migrations())
 	},
 }
 
-// migrate opens the database and applies migrations from fsys, or the
-// embedded set when fsys is nil.
+// migrate opens the database and applies the migrations in fsys.
 func migrate(ctx context.Context, cfg config.Config, fsys fs.FS) error {
 	d, err := db.Open(ctx, cfg)
 	if err != nil {
@@ -36,12 +35,7 @@ func migrate(ctx context.Context, cfg config.Config, fsys fs.FS) error {
 			slog.WarnContext(ctx, "close database", "error", err.Error())
 		}
 	}()
-	if fsys == nil {
-		err = db.MigrateEmbedded(ctx, d)
-	} else {
-		err = db.Migrate(ctx, d, fsys)
-	}
-	if err != nil {
+	if err := db.Migrate(ctx, d, fsys); err != nil {
 		return fmt.Errorf("migrate database: %w", err)
 	}
 	return nil

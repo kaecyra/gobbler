@@ -45,25 +45,38 @@ func Open(ctx context.Context, cfg config.Config) (*sql.DB, error) {
 	q.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyTimeoutMillis))
 	dsn := (&url.URL{Scheme: "file", Opaque: filepath.ToSlash(path), RawQuery: q.Encode()}).String()
 
+	return connect(ctx, dsn, path)
+}
+
+// connect opens dsn and refuses a database that is not in WAL mode: SQLite
+// silently keeps another journal mode when WAL cannot be enabled.
+func connect(ctx context.Context, dsn, label string) (*sql.DB, error) {
 	d, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("open database %q: %w", path, err)
+		return nil, fmt.Errorf("open database %q: %w", label, err)
 	}
 	if err := d.PingContext(ctx); err != nil {
-		_ = d.Close()
-		return nil, fmt.Errorf("connect to database %q: %w", path, err)
+		return nil, errors.Join(fmt.Errorf("connect to database %q: %w", label, err), d.Close())
+	}
+	var mode string
+	if err := d.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&mode); err != nil {
+		return nil, errors.Join(fmt.Errorf("read journal mode of %q: %w", label, err), d.Close())
+	}
+	if mode != "wal" {
+		return nil, errors.Join(fmt.Errorf("database %q is in journal mode %q, want wal", label, mode), d.Close())
 	}
 	return d, nil
 }
 
-// MigrateEmbedded applies the migrations compiled into the binary. The serve
-// path calls it at start-up and must not proceed if it returns an error.
-func MigrateEmbedded(ctx context.Context, d *sql.DB) error {
+// Migrations returns the migrations compiled into the binary, rooted so the
+// files sit at the top level. Pass it to Migrate at start-up; the serve path
+// must not proceed if that returns an error.
+func Migrations() fs.FS {
 	sub, err := fs.Sub(embedded, "migrations")
 	if err != nil {
-		return fmt.Errorf("open embedded migrations: %w", err)
+		panic(fmt.Sprintf("embedded migrations directory missing: %v", err))
 	}
-	return Migrate(ctx, d, sub)
+	return sub
 }
 
 // Migrate applies every pending goose migration found at the root of fsys.
@@ -95,7 +108,8 @@ func Migrate(ctx context.Context, d *sql.DB, fsys fs.FS) error {
 }
 
 // Version returns the highest applied migration version, or 0 on a fresh
-// database or when fsys holds no migrations.
+// database or when fsys holds no migrations. Reading the version creates the
+// goose_db_version table if it does not exist yet.
 func Version(ctx context.Context, d *sql.DB, fsys fs.FS) (int64, error) {
 	p, err := goose.NewProvider(goose.DialectSQLite3, d, fsys)
 	if errors.Is(err, goose.ErrNoMigrations) {
