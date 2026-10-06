@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	durTestHour  = time.Hour
+	durTestHour   = time.Hour
 	durTestMinute = time.Minute
 )
 
