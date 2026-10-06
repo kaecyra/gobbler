@@ -4,5 +4,7 @@ package main
 // (for example serve.go exporting serveCommand) and is registered by adding
 // one line to the slice below.
 func commands() []command {
-	return []command{}
+	return []command{
+		migrateCommand,
+	}
 }
