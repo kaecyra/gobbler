@@ -332,7 +332,7 @@
       "wave": 1,
       "track": "persistence",
       "issue": 10,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w0-db",
         "w1-quantity"
