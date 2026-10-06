@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -85,9 +87,42 @@ func TestExecuteExitCodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := execute(context.Background(), tt.args, ok, &bytes.Buffer{}); got != tt.want {
+			if got := execute(tt.args, ok, &bytes.Buffer{}); got != tt.want {
 				t.Fatalf("exit = %d, want %d", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestExecuteLogsFailureAsJSON(t *testing.T) {
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	var stderr bytes.Buffer
+	if code := execute([]string{"nope"}, nil, &stderr); code != 1 {
+		t.Fatalf("exit = %d, want 1", code)
+	}
+	var found map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(stderr.String()), "\n") {
+		var rec map[string]any
+		if json.Unmarshal([]byte(line), &rec) == nil && rec["msg"] == "gobbler failed" {
+			found = rec
+		}
+	}
+	if found == nil {
+		t.Fatalf("no JSON log line with msg %q in %q", "gobbler failed", stderr.String())
+	}
+	if found["level"] != "ERROR" || !strings.Contains(found["error"].(string), "nope") {
+		t.Fatalf("log record = %v, want ERROR level naming nope", found)
+	}
+}
+
+func TestCommandsRegistryHasUniqueNames(t *testing.T) {
+	seen := map[string]bool{}
+	for _, c := range commands() {
+		if c.name == "" || c.run == nil || seen[c.name] {
+			t.Fatalf("bad or duplicate command %q", c.name)
+		}
+		seen[c.name] = true
 	}
 }

@@ -19,19 +19,21 @@ type command struct {
 }
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	code := execute(ctx, os.Args[1:], commands(), os.Stderr)
-	stop()
-	os.Exit(code)
+	os.Exit(execute(os.Args[1:], commands(), os.Stderr))
 }
 
-// execute runs the dispatch and maps its outcome to a process exit code,
-// logging any failure as JSON.
-func execute(ctx context.Context, args []string, cmds []command, out io.Writer) int {
-	if err := run(ctx, args, cmds, out); err != nil {
-		slog.Error("gobbler failed", "error", err.Error())
+// execute is main without the process exit: it installs the JSON logger on
+// stderr and a signal-cancelled context, dispatches, and returns the exit
+// code. A failure is logged as one JSON line.
+func execute(args []string, cmds []command, stderr io.Writer) int {
+	logger := slog.New(slog.NewJSONHandler(stderr, nil))
+	slog.SetDefault(logger)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := run(ctx, args, cmds, stderr); err != nil {
+		logger.Error("gobbler failed", "error", err.Error())
 		return 1
 	}
 	return 0
