@@ -292,7 +292,7 @@
       "wave": 1,
       "track": "domain",
       "issue": 8,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w0-scaffold"
       ],
@@ -994,6 +994,14 @@
         "00006",
         "00007",
         "00010"
+      ]
+    },
+    {
+      "id": "w1-quantity",
+      "title": "Rationals, ranges, units and dimensions, conversion, scaling rules, kitchen rounding (pure)",
+      "merged": "9cedb950333bd572e5eb7705ad74c6d6d75f7984",
+      "adrs": [
+        "00005"
       ]
     }
   ],
