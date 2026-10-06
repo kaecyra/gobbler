@@ -136,7 +136,7 @@
       "title": "Go module, entry point, VERSION, Makefile fmt/lint/test, lefthook, golangci, CI",
       "wave": 0,
       "track": "foundation",
-      "issue": null,
+      "issue": 1,
       "status": "todo",
       "depends_on": [],
       "owns": [
@@ -160,7 +160,7 @@
       "title": "Environment configuration package covering the whole design.md table, validated at start-up",
       "wave": 0,
       "track": "foundation",
-      "issue": null,
+      "issue": 2,
       "status": "todo",
       "depends_on": [
         "w0-scaffold"
@@ -182,7 +182,7 @@
       "title": "SQLite (modernc) in WAL mode, embedded goose migrations, migrate subcommand, refuse start on failed migration",
       "wave": 0,
       "track": "foundation",
-      "issue": null,
+      "issue": 3,
       "status": "todo",
       "depends_on": [
         "w0-config"
@@ -200,7 +200,7 @@
       "title": "Cloudflare Access JWT middleware with JWKS cache and loopback-only dev bypass",
       "wave": 0,
       "track": "foundation",
-      "issue": null,
+      "issue": 4,
       "status": "todo",
       "depends_on": [
         "w0-config"
@@ -218,7 +218,7 @@
       "title": "chi server, router, base templ layout, embedded HTMX and CSS, health check, serve subcommand",
       "wave": 0,
       "track": "foundation",
-      "issue": null,
+      "issue": 5,
       "status": "todo",
       "depends_on": [
         "w0-auth",
@@ -242,7 +242,7 @@
       "title": "Playwright harness in e2e/, make e2e and make check targets, version-bump check, health route e2e",
       "wave": 0,
       "track": "foundation",
-      "issue": null,
+      "issue": 6,
       "status": "todo",
       "depends_on": [
         "w0-web-shell"
@@ -268,7 +268,7 @@
       "title": "Dockerfile with tesseract, Compose with cloudflared, .env.example; compose up applies migrations",
       "wave": 0,
       "track": "foundation",
-      "issue": null,
+      "issue": 7,
       "status": "todo",
       "depends_on": [
         "w0-web-shell"
@@ -291,7 +291,7 @@
       "title": "Rationals, ranges, units and dimensions, conversion, scaling rules, kitchen rounding (pure)",
       "wave": 1,
       "track": "domain",
-      "issue": null,
+      "issue": 8,
       "status": "todo",
       "depends_on": [
         "w0-scaffold"
@@ -309,7 +309,7 @@
       "title": "Recipe domain types, components, qualifiers, step-graph validation with cycle naming, total-time derivation",
       "wave": 1,
       "track": "domain",
-      "issue": null,
+      "issue": 9,
       "status": "todo",
       "depends_on": [
         "w1-quantity"
@@ -331,7 +331,7 @@
       "title": "Catalog schema and store: ingredients, units, equipment, aliases, matching, merge, curated seed by migration",
       "wave": 1,
       "track": "persistence",
-      "issue": null,
+      "issue": 10,
       "status": "todo",
       "depends_on": [
         "w0-db",
@@ -352,7 +352,7 @@
       "title": "Recipe schema and store: recipes, components, lines, steps, notes, made-it, revisions, clone, immutable snapshots",
       "wave": 1,
       "track": "persistence",
-      "issue": null,
+      "issue": 11,
       "status": "todo",
       "depends_on": [
         "w1-recipe-model",
@@ -377,7 +377,7 @@
       "title": "Ingredient-line and duration parser with golden-file corpus (pure)",
       "wave": 2,
       "track": "ingestion",
-      "issue": null,
+      "issue": 12,
       "status": "todo",
       "depends_on": [
         "w1-quantity"
@@ -400,7 +400,7 @@
       "title": "Pasted-text sectioning: title, component headings, ingredient blocks, steps (pure)",
       "wave": 2,
       "track": "ingestion",
-      "issue": null,
+      "issue": 13,
       "status": "todo",
       "depends_on": [
         "w1-quantity"
@@ -419,7 +419,7 @@
       "title": "JSON-LD and microdata Recipe extraction, site-extractor registry, main-text fallback",
       "wave": 2,
       "track": "ingestion",
-      "issue": null,
+      "issue": 14,
       "status": "todo",
       "depends_on": [
         "w1-recipe-model"
@@ -437,7 +437,7 @@
       "title": "Acquire, extract, parse, score, draft; LLM provider interface declared; save with snapshot after review",
       "wave": 2,
       "track": "ingestion",
-      "issue": null,
+      "issue": 15,
       "status": "todo",
       "depends_on": [
         "w2-line-parser",
@@ -461,7 +461,7 @@
       "title": "Ingest form (URL, text) and review screen with low-confidence highlights and proposed new ingredients",
       "wave": 2,
       "track": "ui",
-      "issue": null,
+      "issue": 16,
       "status": "todo",
       "depends_on": [
         "w2-ingest-pipeline",
@@ -482,7 +482,7 @@
       "title": "FTS5 index and search, tags, recipe list and search page",
       "wave": 3,
       "track": "ui",
-      "issue": null,
+      "issue": 17,
       "status": "todo",
       "depends_on": [
         "w1-store",
@@ -504,7 +504,7 @@
       "title": "Recipe view with scaling, unit display modes, size and time hints",
       "wave": 3,
       "track": "ui",
-      "issue": null,
+      "issue": 18,
       "status": "todo",
       "depends_on": [
         "w1-store",
@@ -525,7 +525,7 @@
       "title": "Recipe editor: components, lines, qualifiers, equipment, step dependencies; every save writes a revision",
       "wave": 3,
       "track": "ui",
-      "issue": null,
+      "issue": 19,
       "status": "todo",
       "depends_on": [
         "w1-store",
@@ -546,7 +546,7 @@
       "title": "Revision list, view and restore; clone",
       "wave": 3,
       "track": "ui",
-      "issue": null,
+      "issue": 20,
       "status": "todo",
       "depends_on": [
         "w1-store",
@@ -566,7 +566,7 @@
       "title": "Notes, rating and made-it log on a recipe",
       "wave": 3,
       "track": "ui",
-      "issue": null,
+      "issue": 21,
       "status": "todo",
       "depends_on": [
         "w1-store",
@@ -587,7 +587,7 @@
       "title": "Catalog cleanup page: unreviewed ingredients, edit, merge",
       "wave": 3,
       "track": "ui",
-      "issue": null,
+      "issue": 22,
       "status": "todo",
       "depends_on": [
         "w1-catalog",
@@ -607,7 +607,7 @@
       "title": "List generation: scale, drop optional and pantry, merge by ingredient and dimension, aisle grouping, text export (pure)",
       "wave": 4,
       "track": "shopping",
-      "issue": null,
+      "issue": 23,
       "status": "todo",
       "depends_on": [
         "w1-recipe-model",
@@ -629,7 +629,7 @@
       "title": "Shopping list, entries, manual items, pantry and check-state persistence; regenerate keeps checks",
       "wave": 4,
       "track": "shopping",
-      "issue": null,
+      "issue": 24,
       "status": "todo",
       "depends_on": [
         "w4-shopping-merge",
@@ -650,7 +650,7 @@
       "title": "Build-a-list page, pantry page, live phone view over SSE, text export",
       "wave": 4,
       "track": "ui",
-      "issue": null,
+      "issue": 25,
       "status": "todo",
       "depends_on": [
         "w4-shopping-store",
@@ -670,7 +670,7 @@
       "title": "Provider contract test suite against recorded responses",
       "wave": 5,
       "track": "ingestion",
-      "issue": null,
+      "issue": 26,
       "status": "todo",
       "depends_on": [
         "w2-ingest-pipeline"
@@ -688,7 +688,7 @@
       "title": "Claude provider via official Go SDK with structured output",
       "wave": 5,
       "track": "ingestion",
-      "issue": null,
+      "issue": 27,
       "status": "todo",
       "depends_on": [
         "w5-llm-contract"
@@ -706,7 +706,7 @@
       "title": "Gemini provider via official Go Gen AI SDK with structured output",
       "wave": 5,
       "track": "ingestion",
-      "issue": null,
+      "issue": 28,
       "status": "todo",
       "depends_on": [
         "w5-llm-contract"
@@ -724,7 +724,7 @@
       "title": "Below-threshold and manual LLM fallback, provider selection, LLM values marked on review",
       "wave": 5,
       "track": "ingestion",
-      "issue": null,
+      "issue": 29,
       "status": "todo",
       "depends_on": [
         "w5-llm-claude",
@@ -746,7 +746,7 @@
       "title": "Photo upload, tesseract OCR acquire, vision fallback",
       "wave": 5,
       "track": "ingestion",
-      "issue": null,
+      "issue": 30,
       "status": "todo",
       "depends_on": [
         "w5-llm-fallback",
@@ -767,7 +767,7 @@
       "title": "USDA FoodData Central import command: idempotent, never overwrites curated fields",
       "wave": 5,
       "track": "persistence",
-      "issue": null,
+      "issue": 31,
       "status": "todo",
       "depends_on": [
         "w1-catalog"
@@ -785,7 +785,7 @@
       "title": "Meanwhile derivation from the step graph and its display in the recipe view",
       "wave": 6,
       "track": "domain",
-      "issue": null,
+      "issue": 32,
       "status": "todo",
       "depends_on": [
         "w3-recipe-view"
@@ -804,7 +804,7 @@
       "title": "Cook mode: one step at a time, step timers, screen wake lock",
       "wave": 6,
       "track": "ui",
-      "issue": null,
+      "issue": 33,
       "status": "todo",
       "depends_on": [
         "w6-meanwhile"
@@ -825,7 +825,7 @@
       "title": "Nightly VACUUM INTO, S3-compatible upload, local and remote retention, backup subcommand",
       "wave": 7,
       "track": "ops",
-      "issue": null,
+      "issue": 34,
       "status": "todo",
       "depends_on": [
         "w0-db"
@@ -843,7 +843,7 @@
       "title": "Settings page with backup status and back-up-now; backup time in health detail",
       "wave": 7,
       "track": "ui",
-      "issue": null,
+      "issue": 35,
       "status": "todo",
       "depends_on": [
         "w7-backup",
@@ -863,7 +863,7 @@
       "title": "One-way idempotent Todoist push of a shopping list",
       "wave": 7,
       "track": "shopping",
-      "issue": null,
+      "issue": 36,
       "status": "todo",
       "depends_on": [
         "w4-shopping-ui"
@@ -882,7 +882,7 @@
       "title": "Operations doc: deploy, configuration, restore procedure",
       "wave": 7,
       "track": "ops",
-      "issue": null,
+      "issue": 37,
       "status": "todo",
       "depends_on": [
         "w7-backup",
@@ -902,7 +902,7 @@
       "title": "Meal planning feeding the shopping list (needs an ADR first)",
       "wave": 8,
       "track": "later",
-      "issue": null,
+      "issue": 38,
       "status": "todo",
       "depends_on": [
         "w7-todoist",
@@ -924,7 +924,7 @@
       "title": "Invitations and multiple users (needs an ADR first)",
       "wave": 8,
       "track": "later",
-      "issue": null,
+      "issue": 39,
       "status": "todo",
       "depends_on": [
         "w7-todoist",
