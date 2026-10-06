@@ -2,6 +2,7 @@ package parse
 
 import (
 	"errors"
+	"math"
 	"regexp"
 	"strings"
 	"unicode"
@@ -12,24 +13,21 @@ import (
 // is the only error: unclear structure is reported through Sections.Issues.
 var ErrEmptyText = errors.New("text is empty")
 
-// SectionIssue names one reason a sectioning result is less than certain. The
-// review screen (ADR-00006) shows these; they are data, not failures.
-type SectionIssue string
-
-// Issues SplitSections can report.
+// Issues SplitSections can report, as the review screen (ADR-00006) shows
+// them: data about a less certain result, not failures.
 const (
 	// IssueNoTitle: no title line was found.
-	IssueNoTitle SectionIssue = "no_title"
+	IssueNoTitle = "no_title"
 	// IssueNoIngredients: no ingredient lines were found.
-	IssueNoIngredients SectionIssue = "no_ingredients"
+	IssueNoIngredients = "no_ingredients"
 	// IssueNoSteps: no step texts were found.
-	IssueNoSteps SectionIssue = "no_steps"
+	IssueNoSteps = "no_steps"
 	// IssueNoHeadings: the text has no Ingredients or Directions heading, so
 	// the split is a guess from the shape of each line.
-	IssueNoHeadings SectionIssue = "no_headings"
+	IssueNoHeadings = "no_headings"
 	// IssueImplicitBoundary: an ingredient or step section started without a
 	// heading, so one boundary is a guess.
-	IssueImplicitBoundary SectionIssue = "implicit_boundary"
+	IssueImplicitBoundary = "implicit_boundary"
 )
 
 // Confidence penalties applied to a perfect score of 1 by SplitSections.
@@ -60,8 +58,8 @@ type Sections struct {
 	Components []SectionComponent `json:"components"`
 	Notes      []string           `json:"notes"`
 	// Confidence is 0 to 1; Issues says why it is below 1.
-	Confidence float64        `json:"confidence"`
-	Issues     []SectionIssue `json:"issues"`
+	Confidence float64  `json:"confidence"`
+	Issues     []string `json:"issues"`
 }
 
 type sectionMode int
@@ -157,7 +155,7 @@ func SplitSections(text string) (Sections, error) {
 		}
 	}
 
-	res := Sections{Components: []SectionComponent{}, Notes: []string{}, Issues: []SectionIssue{}}
+	res := Sections{Components: []SectionComponent{}, Notes: []string{}, Issues: []string{}}
 	var b sectionBuilder
 	mode := sectionPreamble
 	blank := true
@@ -259,7 +257,7 @@ func sectionScore(res *Sections, hasHeading, implicit bool) {
 		steps += len(c.Steps)
 	}
 	score := 1.0
-	add := func(is SectionIssue, penalty float64) {
+	add := func(is string, penalty float64) {
 		res.Issues = append(res.Issues, is)
 		score -= penalty
 	}
@@ -282,7 +280,7 @@ func sectionScore(res *Sections, hasHeading, implicit bool) {
 		score = 0
 	}
 	// Round away float noise so output is stable in golden files.
-	res.Confidence = float64(int(score*100+0.5)) / 100
+	res.Confidence = math.Round(score*100) / 100
 }
 
 // sectionStripDecor removes markdown heading and emphasis markers.

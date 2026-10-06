@@ -80,7 +80,7 @@ func TestSplitSectionsCases(t *testing.T) {
 		ing    [][]string // per component
 		steps  [][]string
 		names  []string
-		issues []SectionIssue
+		issues []string
 	}{
 		{
 			name:  "headings are case-insensitive and colon-optional",
@@ -145,29 +145,29 @@ func TestSplitSectionsCases(t *testing.T) {
 		{
 			name: "no title is reported", in: "Ingredients\n1 egg\nDirections\nFry.",
 			names: []string{""}, ing: [][]string{{"1 egg"}}, steps: [][]string{{"Fry."}},
-			issues: []SectionIssue{IssueNoTitle},
+			issues: []string{IssueNoTitle},
 		},
 		{
 			name: "missing steps reported", in: "T\nIngredients\n1 egg",
 			title: "T", names: []string{""}, ing: [][]string{{"1 egg"}}, steps: [][]string{{}},
-			issues: []SectionIssue{IssueNoSteps},
+			issues: []string{IssueNoSteps},
 		},
 		{
 			name: "missing ingredients reported", in: "T\nDirections\nFry.",
 			title: "T", names: []string{""}, ing: [][]string{{}}, steps: [][]string{{"Fry."}},
-			issues: []SectionIssue{IssueNoIngredients},
+			issues: []string{IssueNoIngredients},
 		},
 		{
 			name: "headless text is split by line shape", in: "Toast\n2 slices bread\n1 tbsp butter\nToast the bread. Butter it.",
 			title: "Toast", names: []string{""},
 			ing: [][]string{{"2 slices bread", "1 tbsp butter"}}, steps: [][]string{{"Toast the bread. Butter it."}},
-			issues: []SectionIssue{IssueNoHeadings},
+			issues: []string{IssueNoHeadings},
 		},
 		{
 			name: "missing steps heading is an implicit boundary", in: "Toast\nIngredients\n2 slices bread\nToast the bread.",
 			title: "Toast", names: []string{""},
 			ing: [][]string{{"2 slices bread"}}, steps: [][]string{{"Toast the bread."}},
-			issues: []SectionIssue{IssueImplicitBoundary},
+			issues: []string{IssueImplicitBoundary},
 		},
 	}
 	for _, tt := range tests {
@@ -206,9 +206,9 @@ func TestSplitSectionsCases(t *testing.T) {
 	}
 }
 
-func nonNilIssues(i []SectionIssue) []SectionIssue {
+func nonNilIssues(i []string) []string {
 	if i == nil {
-		return []SectionIssue{}
+		return []string{}
 	}
 	return i
 }
