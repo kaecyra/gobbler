@@ -10,7 +10,9 @@ The design is in [docs/design.md](./docs/design.md) and the decisions in
 
 ## Development
 
-Requires Go (the version in `go.mod`) and [golangci-lint](https://golangci-lint.run/) v2.
+Requires Go (the version in `go.mod`) and [golangci-lint](https://golangci-lint.run/) v2.14.0.
+Run `make tools` to install the pinned version (set by `GOLANGCI_LINT_VERSION` in the `Makefile`);
+`make lint` fails if a different version is on `PATH`.
 
 ```sh
 make fmt    # gofmt and goimports, rewrites files

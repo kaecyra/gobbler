@@ -2,21 +2,30 @@
 # its version is pinned there.
 
 COVER_MIN  := 70
+MODULE     := $(shell go list -m)
+# Single source of truth for the linter version: `make tools` installs it,
+# `make lint` refuses to run any other, and CI calls `make tools`.
+GOLANGCI_LINT_VERSION := v2.14.0
 
-.PHONY: fmt fmt-check lint test
+.PHONY: tools fmt fmt-check lint test
+
+## tools: install the pinned golangci-lint
+tools:
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 ## fmt: rewrite Go files with gofmt and goimports
 fmt:
 	gofmt -w .
-	go tool goimports -local github.com/kaecyra/gobbler -w .
+	go tool goimports -local $(MODULE) -w .
 
 ## fmt-check: fail if any Go file is not formatted (CI)
 fmt-check:
-	@out="$$(gofmt -l .; go tool goimports -local github.com/kaecyra/gobbler -l .)"; \
+	@out="$$(gofmt -l .; go tool goimports -local $(MODULE) -l .)"; \
 	if [ -n "$$out" ]; then echo "unformatted files (run make fmt):"; echo "$$out"; exit 1; fi
 
 ## lint: golangci-lint and go vet
 lint:
+	@golangci-lint version 2>&1 | grep -q "version $(GOLANGCI_LINT_VERSION:v%=%) " || { echo "golangci-lint $(GOLANGCI_LINT_VERSION) required; run make tools"; exit 1; }
 	golangci-lint run ./...
 	go vet ./...
 

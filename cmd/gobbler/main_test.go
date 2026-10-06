@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -36,7 +37,7 @@ func TestRunRoutesToRegisteredCommand(t *testing.T) {
 			if err := run(context.Background(), tt.args, cmds, &bytes.Buffer{}); err != nil {
 				t.Fatalf("run: %v", err)
 			}
-			if strings.Join(got, " ") != strings.Join(tt.want, " ") {
+			if !slices.Equal(got, tt.want) {
 				t.Fatalf("routed %v, want %v", got, tt.want)
 			}
 		})
@@ -74,7 +75,16 @@ func TestRunPropagatesCommandError(t *testing.T) {
 	}
 }
 
+// restoreDefaultLogger puts slog's default logger back when the test ends,
+// since execute replaces it.
+func restoreDefaultLogger(t *testing.T) {
+	t.Helper()
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+}
+
 func TestExecuteExitCodes(t *testing.T) {
+	restoreDefaultLogger(t)
 	ok := []command{{name: "ok", run: func(context.Context, []string) error { return nil }}}
 	tests := []struct {
 		name string
@@ -95,8 +105,7 @@ func TestExecuteExitCodes(t *testing.T) {
 }
 
 func TestExecuteLogsFailureAsJSON(t *testing.T) {
-	prev := slog.Default()
-	t.Cleanup(func() { slog.SetDefault(prev) })
+	restoreDefaultLogger(t)
 
 	var stderr bytes.Buffer
 	if code := execute([]string{"nope"}, nil, &stderr); code != 1 {
