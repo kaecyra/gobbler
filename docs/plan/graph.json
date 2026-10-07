@@ -401,7 +401,7 @@
       "wave": 2,
       "track": "ingestion",
       "issue": 13,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-quantity"
       ],
@@ -1037,6 +1037,14 @@
         "00006",
         "00005",
         "00008"
+      ]
+    },
+    {
+      "id": "w2-text-sectioning",
+      "title": "Pasted-text sectioning: title, component headings, ingredient blocks, steps (pure)",
+      "merged": "32204e6e110782e04ce3e6d231acb629cedadfc2",
+      "adrs": [
+        "00006"
       ]
     }
   ],
