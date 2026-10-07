@@ -32,6 +32,7 @@ None. No worktrees on disk; no open worker PRs. Nothing dispatched is unaccounte
 
 ## Things a fresh dispatcher must know
 
+- **`make check` does not exist yet.** The graph's `gates.always` names it, but the Makefile has only `tools fmt fmt-check lint test` until `w0-e2e-harness` (#6) adds `e2e`, `check` and the version-bump check. Until then the gate is `make fmt-check`, `make test` and the lint command below, all green.
 - **`make` is not installed in the container.** Run gates on the host via exec-daemon: `make fmt-check`, `make test`.
 - **Lint gate:** the container's golangci-lint misses revive findings CI catches (e.g. `time-naming` unit suffixes); the host's Homebrew golangci-lint is 2.13.2 and `make lint` refuses it by design. Use on the host, in the worktree: `GOTOOLCHAIN=go1.26.4 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...`.
 - **VERSION churn:** every source PR bumps `VERSION`, so each merge invalidates the other open branches; the worker rebases and re-bumps before the next merge.
