@@ -77,7 +77,7 @@ var (
 	sectionNotesHeadingRe      = regexp.MustCompile(`^(?:notes?|tips?|nutrition(?: facts| information)?|storage|chef'?s notes?)$`)
 	sectionForHeadingRe        = regexp.MustCompile(`^for (?:the )?([^.,;:!?]+?):?$`)
 	sectionBulletRe            = regexp.MustCompile(`^(?:[-*+•▪·–—☐□]|\[[ xX]?\])\s+`)
-	sectionStepMarkerRe        = regexp.MustCompile(`(?i)^(?:step\s+)?\d+\s*(?:[.):]\s*|$)`)
+	sectionStepMarkerRe        = regexp.MustCompile(`(?i)^(?:step\s+)?\d+(?:\s*[.):](?:\s+|$)|\s*$)`)
 	sectionQuantityStartRe     = regexp.MustCompile(`^(?:\d+(?:[./,]\d+)?|\d+-\d+/\d+|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+[½⅓⅔¼¾⅛⅜⅝⅞])(?:\s|$)`)
 )
 
@@ -147,11 +147,14 @@ func SplitSections(text string) (Sections, error) {
 		return Sections{}, ErrEmptyText
 	}
 	lines := strings.Split(text, "\n")
-	explicit := false
+	explicit, stepsHeading := false, false
 	for _, l := range lines {
-		if k := sectionKeyword(l); k == sectionIngredients || k == sectionSteps {
+		k := sectionKeyword(l)
+		if k == sectionIngredients || k == sectionSteps {
 			explicit = true
-			break
+		}
+		if k == sectionSteps {
+			stepsHeading = true
 		}
 	}
 
@@ -223,7 +226,7 @@ func SplitSections(text string) (Sections, error) {
 			}
 		case sectionIngredients:
 			seenIngredient = true
-			if !sectionIngredientLike(line) && ((!explicit && sectionSentence(stripped)) || strings.HasSuffix(stripped, ".")) {
+			if !sectionIngredientLike(line) && ((!explicit && sectionSentence(stripped)) || (!stepsHeading && strings.HasSuffix(stripped, "."))) {
 				mode = sectionSteps
 				b.implicit = true
 				b.addStepLine(line, wasBlank)
@@ -325,13 +328,24 @@ func sectionComponentHeading(stripped, line string, mode sectionMode, blankBefor
 	}
 	low := strings.ToLower(stripped)
 	words := len(strings.Fields(stripped))
-	if m := sectionForHeadingRe.FindStringSubmatch(low); m != nil && words <= 7 {
+	if strings.HasPrefix(line, "#") && mode == sectionSteps && words <= 4 && !strings.ContainsAny(stripped, ".!?;,") {
+		return strings.TrimSpace(strings.TrimSuffix(stripped, ":")), true
+	}
+	// Outside ingredients, "for 20 minutes" or "For best results" are step or
+	// note prose; only a colon or a known component name makes a heading.
+	forOK := mode == sectionIngredients || mode == sectionPreamble || strings.HasSuffix(stripped, ":") ||
+		b.hasComponent(strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(low, "for "), "the "), ":")))
+	if m := sectionForHeadingRe.FindStringSubmatch(low); m != nil && words <= 7 && forOK && !unicode.IsDigit(rune(m[1][0])) {
 		// Keep the original casing of the captured name.
 		name := strings.TrimSpace(strings.TrimSuffix(stripped, ":"))
 		name = strings.TrimSpace(name[len(name)-len(m[1]):])
 		return name, true
 	}
 	name := strings.TrimSpace(strings.TrimSuffix(stripped, ":"))
+	if sectionForHeadingRe.MatchString(low) {
+		// "For 2 servings:" matched the For rule but named no component.
+		return "", false
+	}
 	if name == "" || strings.ContainsAny(name, ".!?;,") || words > 4 {
 		return "", false
 	}

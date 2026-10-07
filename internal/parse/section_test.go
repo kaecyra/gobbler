@@ -48,7 +48,10 @@ func TestSplitSectionsCorpus(t *testing.T) {
 				t.Errorf("output differs from %s\n got: %s\nwant: %s", golden, gotJSON, want)
 			}
 			// Determinism: a second run must be identical.
-			again, _ := SplitSections(string(text))
+			again, err := SplitSections(string(text))
+			if err != nil {
+				t.Fatalf("second SplitSections: %v", err)
+			}
 			if !reflect.DeepEqual(got, again) {
 				t.Error("repeated run gave different output")
 			}
@@ -168,6 +171,54 @@ func TestSplitSectionsCases(t *testing.T) {
 			title: "Toast", names: []string{""},
 			ing: [][]string{{"2 slices bread"}}, steps: [][]string{{"Toast the bread."}},
 			issues: []string{IssueImplicitBoundary},
+		},
+		{
+			name:  "decimal quantity is not a step marker",
+			in:    "T\nIngredients\n1 onion\nDirections\nChop the onion.\n\n2.5 cups of stock go in next.",
+			title: "T", names: []string{""},
+			ing: [][]string{{"1 onion"}}, steps: [][]string{{"Chop the onion.", "2.5 cups of stock go in next."}},
+		},
+		{
+			name: "decimal quantity line is an ingredient when headless", in: "Bread\n1.5 cups flour\n2 eggs\nMix everything together in a large bowl.",
+			title: "Bread", names: []string{""},
+			ing: [][]string{{"1.5 cups flour", "2 eggs"}}, steps: [][]string{{"Mix everything together in a large bowl."}},
+			issues: []string{IssueNoHeadings},
+		},
+		{
+			name:  "period-ended ingredient does not leave ingredients when a steps heading follows",
+			in:    "Soup\nIngredients\n1 onion\nSalt and pepper, to taste.\n2 carrots\nDirections\nChop.",
+			title: "Soup", names: []string{""},
+			ing: [][]string{{"1 onion", "Salt and pepper, to taste.", "2 carrots"}}, steps: [][]string{{"Chop."}},
+		},
+		{
+			name:  "for in step prose is not a component heading",
+			in:    "T\nIngredients\n1 onion\nDirections\nSimmer the soup\nfor 20 minutes\nServe.",
+			title: "T", names: []string{""},
+			ing: [][]string{{"1 onion"}}, steps: [][]string{{"Simmer the soup", "for 20 minutes", "Serve."}},
+		},
+		{
+			name:  "for in notes is not a component heading",
+			in:    "T\nIngredients\n1 onion\nDirections\nChop.\nNotes\nFor best results\nuse fresh onions.",
+			title: "T", names: []string{""},
+			ing: [][]string{{"1 onion"}}, steps: [][]string{{"Chop."}},
+		},
+		{
+			name:  "for followed by a number is not a component",
+			in:    "T\nIngredients\nFor 2 servings:\n1 onion\nDirections\nChop.",
+			title: "T", names: []string{""},
+			ing: [][]string{{"For 2 servings:", "1 onion"}}, steps: [][]string{{"Chop."}},
+		},
+		{
+			name:  "for-heading with a colon is accepted in steps",
+			in:    "T\nIngredients\n1 onion\nDirections\nChop.\nFor the glaze:\nBrush.",
+			title: "T", names: []string{"", "glaze"},
+			ing: [][]string{{"1 onion"}, {}}, steps: [][]string{{"Chop."}, {"Brush."}},
+		},
+		{
+			name:  "markdown heading inside steps is a component",
+			in:    "T\nIngredients\n1 onion\nDirections\n## Assembly\nStack.",
+			title: "T", names: []string{"", "Assembly"},
+			ing: [][]string{{"1 onion"}, {}}, steps: [][]string{{}, {"Stack."}},
 		},
 	}
 	for _, tt := range tests {
