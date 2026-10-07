@@ -1,0 +1,19 @@
+{
+  "title": "",
+  "components": [
+    {
+      "name": "",
+      "ingredients": [],
+      "steps": [
+        "Grandma said to boil the potatoes until soft and then mash them with plenty of butter."
+      ]
+    }
+  ],
+  "notes": [],
+  "confidence": 0.2,
+  "issues": [
+    "no_title",
+    "no_ingredients",
+    "no_headings"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "title": "Classic Beef Lasagna",
+  "components": [
+    {
+      "name": "meat sauce",
+      "ingredients": [
+        "1 tablespoon olive oil",
+        "1 lb ground beef",
+        "1 (28 oz) can crushed tomatoes",
+        "2 cloves garlic, minced",
+        "Salt and pepper, to taste"
+      ],
+      "steps": [
+        "Heat the oil in a large pan over medium heat. Brown the beef, breaking it up, about 8 minutes.",
+        "Add garlic and tomatoes. Simmer 30 minutes. Season."
+      ]
+    },
+    {
+      "name": "cheese filling",
+      "ingredients": [
+        "15 oz ricotta",
+        "1 egg",
+        "1/2 cup grated Parmesan"
+      ],
+      "steps": [
+        "Stir together ricotta, egg and Parmesan."
+      ]
+    },
+    {
+      "name": "Assembly",
+      "ingredients": [
+        "12 lasagna noodles, cooked",
+        "3 cups shredded mozzarella"
+      ],
+      "steps": [
+        "Heat the oven to 375F.",
+        "Layer noodles, sauce, filling and mozzarella. Repeat.",
+        "Bake 45 minutes, until bubbling."
+      ]
+    }
+  ],
+  "notes": [
+    "A Sunday dinner favourite. Serves 8.",
+    "Freezes well for up to 3 months."
+  ],
+  "confidence": 1,
+  "issues": []
+}
