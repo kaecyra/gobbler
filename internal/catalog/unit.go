@@ -168,11 +168,13 @@ func (s *Store) listUnits(ctx context.Context, where string) ([]Unit, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list units: %w", err)
 	}
-	_ = rows.Close() // free the connection before the per-unit alias reads
+	_ = rows.Close() // free the connection before the alias read
+	aliases, err := kindUnit.allAliases(ctx, s.db)
+	if err != nil {
+		return nil, err
+	}
 	for n := range out {
-		if out[n].Aliases, err = kindUnit.aliases(ctx, s.db, out[n].ID); err != nil {
-			return nil, err
-		}
+		out[n].Aliases = aliases[out[n].ID]
 	}
 	return out, nil
 }

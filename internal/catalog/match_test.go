@@ -81,11 +81,8 @@ func TestMatchIngredient(t *testing.T) {
 func TestMatchPrefersExactOverInflected(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	a, _ := s.CreateIngredient(ctx, Ingredient{Name: "zz test oat", Aisle: "baking"})
-	b, err := s.CreateIngredient(ctx, Ingredient{Name: "zz test oats", Aisle: "baking"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	a := mustIngredient(t, s, Ingredient{Name: "zz test oat", Aisle: "baking"})
+	b := mustIngredient(t, s, Ingredient{Name: "zz test oats", Aisle: "baking"})
 	for term, want := range map[string]int64{"zz test oat": a.ID, "zz test oats": b.ID} {
 		got, ok, err := s.MatchIngredient(ctx, term)
 		if err != nil || !ok || got.ID != want {

@@ -38,11 +38,18 @@ func TestIngredientCRUD(t *testing.T) {
 	if err := s.UpdateIngredient(ctx, read); err != nil {
 		t.Fatal(err)
 	}
-	after, _ := s.GetIngredient(ctx, got.ID)
+	after, err := s.GetIngredient(ctx, got.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !after.Reviewed || after.Aisle != "pantry" || after.DensityGPerML != nil || len(after.Aliases) != 2 {
 		t.Errorf("after update = %+v", after)
 	}
-	if unrev, _ := s.ListUnreviewedIngredients(ctx); len(unrev) != 0 {
+	unrev, err = s.ListUnreviewedIngredients(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unrev) != 0 {
 		t.Errorf("reviewed ingredient still listed unreviewed: %+v", unrev)
 	}
 
@@ -76,7 +83,7 @@ func TestIngredientErrors(t *testing.T) {
 		}
 	}
 
-	a, _ := s.CreateIngredient(ctx, Ingredient{Name: "zz test a", Aisle: "produce", Aliases: []string{"zz test alpha"}, USDAID: i64(7)})
+	a := mustIngredient(t, s, Ingredient{Name: "zz test a", Aisle: "produce", Aliases: []string{"zz test alpha"}, USDAID: i64(7)})
 	conflicts := []Ingredient{
 		{Name: "zz test a", Aisle: "produce"},                                     // same name
 		{Name: "zz test alpha", Aisle: "produce"},                                 // name equals an alias
@@ -90,8 +97,8 @@ func TestIngredientErrors(t *testing.T) {
 		}
 	}
 	// A failed create leaves nothing behind, aliases included.
-	if _, ok, _ := s.MatchIngredient(ctx, "zz test c"); ok {
-		t.Error("conflicting create left a row behind")
+	if _, ok, err := s.MatchIngredient(ctx, "zz test c"); err != nil || ok {
+		t.Errorf("conflicting create left a row behind (ok=%v err=%v)", ok, err)
 	}
 	// An ingredient may update to keep its own name and aliases.
 	if err := s.UpdateIngredient(ctx, a); err != nil {
@@ -103,7 +110,10 @@ func TestUnitCRUD(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 
-	third, _ := quantity.NewRat(1, 3)
+	third, err := quantity.NewRat(1, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
 	got, err := s.CreateUnit(ctx, Unit{
 		Unit:    quantity.Unit{Name: "ZZ Test Scoop", System: quantity.SystemUS, Dimension: quantity.DimVolume, Factor: third},
 		Aliases: []string{"zz test scoops"},
@@ -123,7 +133,11 @@ func TestUnitCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if o, _ := s.GetUnit(ctx, other.ID); o.Unit.Converts() || !o.Reviewed {
+	o, err := s.GetUnit(ctx, other.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if o.Unit.Converts() || !o.Reviewed {
 		t.Errorf("other unit = %+v", o)
 	}
 
@@ -136,7 +150,11 @@ func TestUnitCRUD(t *testing.T) {
 	if err := s.UpdateUnit(ctx, read); err != nil {
 		t.Fatal(err)
 	}
-	if u, _ := s.GetUnit(ctx, got.ID); !u.Reviewed || len(u.Aliases) != 2 {
+	u, err := s.GetUnit(ctx, got.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !u.Reviewed || len(u.Aliases) != 2 {
 		t.Errorf("after update = %+v", u)
 	}
 	if all, err := s.ListUnits(ctx); err != nil || len(all) == 0 {
@@ -191,7 +209,11 @@ func TestEquipmentCRUD(t *testing.T) {
 	if err := s.UpdateEquipment(ctx, read); err != nil {
 		t.Fatal(err)
 	}
-	if unrev, _ := s.ListUnreviewedEquipment(ctx); len(unrev) != 0 {
+	unrev, err = s.ListUnreviewedEquipment(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unrev) != 0 {
 		t.Errorf("still unreviewed: %+v", unrev)
 	}
 	if all, err := s.ListEquipment(ctx); err != nil || len(all) == 0 {
@@ -208,5 +230,127 @@ func TestEquipmentCRUD(t *testing.T) {
 	}
 	if _, err := s.CreateEquipment(ctx, Equipment{Name: ""}); !errors.Is(err, ErrInvalid) {
 		t.Errorf("empty: %v", err)
+	}
+}
+
+func TestListsCarryAliases(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	mustIngredient(t, s, Ingredient{Name: "zz test list", Aisle: "a", Aliases: []string{"zz test zebra", "zz test apple"}})
+	ings, err := s.ListUnreviewedIngredients(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ings) != 1 || len(ings[0].Aliases) != 2 || ings[0].Aliases[0] != "zz test apple" {
+		t.Errorf("ListUnreviewedIngredients = %+v, want both aliases, sorted", ings)
+	}
+	units, err := s.ListUnits(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range units {
+		if u.Unit.Name == "tbsp" && len(u.Aliases) < 2 {
+			t.Errorf("tbsp listed with aliases %v", u.Aliases)
+		}
+	}
+	eq, err := s.ListEquipment(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range eq {
+		if e.Name == "skillet" && len(e.Aliases) == 0 {
+			t.Error("skillet listed without aliases")
+		}
+	}
+}
+
+func TestUpdateConflictsWithAnotherEntry(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	t.Run("ingredient", func(t *testing.T) {
+		a := mustIngredient(t, s, Ingredient{Name: "zz test ua", Aisle: "a", Aliases: []string{"zz test ua alias"}})
+		b := mustIngredient(t, s, Ingredient{Name: "zz test ub", Aisle: "a"})
+		for _, bad := range []Ingredient{
+			{ID: b.ID, Name: a.Name, Aisle: "a"},                                        // rename to another's name
+			{ID: b.ID, Name: b.Name, Aisle: "a", Aliases: []string{a.Name}},             // alias equal to another's name
+			{ID: b.ID, Name: b.Name, Aisle: "a", Aliases: []string{"zz test ua alias"}}, // alias equal to another's alias
+			{ID: b.ID, Name: "zz test ua alias", Aisle: "a"},                            // name equal to another's alias
+		} {
+			if err := s.UpdateIngredient(ctx, bad); !errors.Is(err, ErrConflict) {
+				t.Errorf("UpdateIngredient(%+v) = %v, want ErrConflict", bad, err)
+			}
+		}
+		if got, err := s.GetIngredient(ctx, b.ID); err != nil || got.Name != b.Name || len(got.Aliases) != 0 {
+			t.Errorf("failed updates changed the ingredient: %+v err %v", got, err)
+		}
+	})
+
+	t.Run("unit", func(t *testing.T) {
+		a, err := s.CreateUnit(ctx, Unit{Unit: quantity.OtherUnit("zz test ua"), Aliases: []string{"zz test ua alias"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := s.CreateUnit(ctx, Unit{Unit: quantity.OtherUnit("zz test ub")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, bad := range []Unit{
+			{ID: b.ID, Unit: quantity.OtherUnit(a.Unit.Name)},
+			{ID: b.ID, Unit: quantity.OtherUnit(b.Unit.Name), Aliases: []string{a.Unit.Name}},
+			{ID: b.ID, Unit: quantity.OtherUnit(b.Unit.Name), Aliases: []string{"zz test ua alias"}},
+			{ID: b.ID, Unit: quantity.OtherUnit("zz test ua alias")},
+		} {
+			if err := s.UpdateUnit(ctx, bad); !errors.Is(err, ErrConflict) {
+				t.Errorf("UpdateUnit(%+v) = %v, want ErrConflict", bad.Unit, err)
+			}
+		}
+	})
+
+	t.Run("equipment", func(t *testing.T) {
+		a, err := s.CreateEquipment(ctx, Equipment{Name: "zz test ua", Aliases: []string{"zz test ua alias"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := s.CreateEquipment(ctx, Equipment{Name: "zz test ub"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, bad := range []Equipment{
+			{ID: b.ID, Name: a.Name},
+			{ID: b.ID, Name: b.Name, Aliases: []string{a.Name}},
+			{ID: b.ID, Name: b.Name, Aliases: []string{"zz test ua alias"}},
+			{ID: b.ID, Name: "zz test ua alias"},
+		} {
+			if err := s.UpdateEquipment(ctx, bad); !errors.Is(err, ErrConflict) {
+				t.Errorf("UpdateEquipment(%+v) = %v, want ErrConflict", bad, err)
+			}
+		}
+	})
+}
+
+func TestWrapWriteOnlyMapsUniqueViolationsToConflict(t *testing.T) {
+	d := newTestDB(t)
+	mustIngredient(t, New(d), Ingredient{Name: "zz test dup", Aisle: "a"})
+
+	cases := []struct {
+		name         string
+		query        string
+		wantConflict bool
+	}{
+		{"unique name", `INSERT INTO ingredients (name, aisle) VALUES ('zz test dup', 'a')`, true},
+		{"primary key alias", `INSERT INTO ingredient_aliases (alias, ingredient_id) SELECT 'zz test pk', id FROM ingredients WHERE name = 'zz test dup' UNION ALL SELECT 'zz test pk', id FROM ingredients WHERE name = 'zz test dup'`, true},
+		{"check", `INSERT INTO ingredients (name, aisle, density_g_per_ml) VALUES ('zz test chk', 'a', -1)`, false},
+		{"not null", `INSERT INTO ingredients (name, aisle) VALUES ('zz test nn', NULL)`, false},
+		{"foreign key", `INSERT INTO ingredient_aliases (alias, ingredient_id) VALUES ('zz test fk', 999999)`, false},
+	}
+	for _, c := range cases {
+		_, err := d.Exec(c.query)
+		if err == nil {
+			t.Fatalf("%s: statement unexpectedly succeeded", c.name)
+		}
+		if got := errors.Is(wrapWrite("test", err), ErrConflict); got != c.wantConflict {
+			t.Errorf("%s: errors.Is(ErrConflict) = %v, want %v (err: %v)", c.name, got, c.wantConflict, err)
+		}
 	}
 }

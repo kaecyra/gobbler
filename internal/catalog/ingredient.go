@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 )
 
 // Ingredient is a canonical ingredient (ADR-00008). Name is the bare name
@@ -164,13 +163,13 @@ func (s *Store) listIngredients(ctx context.Context, where string) ([]Ingredient
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list ingredients: %w", err)
 	}
-	// Aliases are read after the cursor closes: one connection may be all
-	// the pool has, and a second query would wait on the open cursor.
-	_ = rows.Close()
+	_ = rows.Close() // free the connection before the alias read
+	aliases, err := kindIngredient.allAliases(ctx, s.db)
+	if err != nil {
+		return nil, err
+	}
 	for n := range out {
-		if out[n].Aliases, err = kindIngredient.aliases(ctx, s.db, out[n].ID); err != nil {
-			return nil, err
-		}
+		out[n].Aliases = aliases[out[n].ID]
 	}
 	return out, nil
 }
@@ -190,12 +189,4 @@ func (s *Store) MatchIngredient(ctx context.Context, term string) (Ingredient, b
 		return Ingredient{}, false, err
 	}
 	return i, true, nil
-}
-
-// wrapWrite maps a constraint failure to ErrConflict and wraps anything else.
-func wrapWrite(what string, err error) error {
-	if strings.Contains(err.Error(), "constraint failed") {
-		return fmt.Errorf("%w: %s: %w", ErrConflict, what, err)
-	}
-	return fmt.Errorf("%s: %w", what, err)
 }

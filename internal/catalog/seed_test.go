@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -110,6 +111,32 @@ func TestSeedEquipmentPresent(t *testing.T) {
 				t.Errorf("seed alias %q of equipment %q is not stored (stored: %v)", a, want.Name, got.Aliases)
 			}
 		}
+	}
+}
+
+// The first migration is the seed rendered as SQL. If the JSON or the
+// renderer changes, this fails until the migration (or a new one) is updated.
+func TestMigrationHoldsRenderedSeed(t *testing.T) {
+	raw, err := os.ReadFile("../db/migrations/00001_catalog.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := seed.SQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), rendered) {
+		t.Error("migration 00001 does not contain the output of seed.SQL(); regenerate with go run ./internal/catalog/seed/genseed")
+	}
+}
+
+func TestSeedSQLCanSelectEntries(t *testing.T) {
+	got, err := seed.SQL("kale")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "INSERT INTO ingredients (name, aisle, density_g_per_ml, reviewed) VALUES ('kale'") || strings.Contains(got, "'egg'") {
+		t.Errorf("SQL(kale) = %q", got)
 	}
 }
 

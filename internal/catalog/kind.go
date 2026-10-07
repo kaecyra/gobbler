@@ -119,3 +119,28 @@ func requireAffected(res sql.Result, label string, id int64) error {
 	}
 	return nil
 }
+
+// allAliases returns the aliases of every entry of the kind, keyed by entry
+// id and sorted, in one query.
+func (k kind) allAliases(ctx context.Context, q queryer) (map[int64][]string, error) {
+	rows, err := q.QueryContext(ctx, fmt.Sprintf(`SELECT %s, alias FROM %s ORDER BY alias`, k.fk, k.aliasTable))
+	if err != nil {
+		return nil, fmt.Errorf("read all %s aliases: %w", k.label, err)
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[int64][]string{}
+	for rows.Next() {
+		var (
+			id    int64
+			alias string
+		)
+		if err := rows.Scan(&id, &alias); err != nil {
+			return nil, fmt.Errorf("scan %s alias: %w", k.label, err)
+		}
+		out[id] = append(out[id], alias)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read all %s aliases: %w", k.label, err)
+	}
+	return out, nil
+}

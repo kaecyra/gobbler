@@ -89,8 +89,8 @@ func TestMergeIngredientsRepointsEverything(t *testing.T) {
 func TestMergeKeepsWinnerValues(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
-	w, _ := s.CreateIngredient(ctx, Ingredient{Name: "zz test w", Aisle: "a", DensityGPerML: f64(1.5), USDAID: i64(5)})
-	l, _ := s.CreateIngredient(ctx, Ingredient{Name: "zz test l", Aisle: "b", DensityGPerML: f64(2.5), USDAID: i64(6)})
+	w := mustIngredient(t, s, Ingredient{Name: "zz test w", Aisle: "a", DensityGPerML: f64(1.5), USDAID: i64(5)})
+	l := mustIngredient(t, s, Ingredient{Name: "zz test l", Aisle: "b", DensityGPerML: f64(2.5), USDAID: i64(6)})
 	merged, err := s.MergeIngredients(ctx, w.ID, l.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -104,8 +104,9 @@ func TestMergeFailureMidwayChangesNothing(t *testing.T) {
 	s, d, winner, loser := mergeFixture(t)
 	ctx := context.Background()
 	boom := errors.New("boom")
-	// Registered after the working hooks, so it fails once they and the
-	// catalog changes have already been applied inside the transaction.
+	// Registered after the working hooks, so it fails once they and the alias
+	// moves have been applied inside the transaction. The delete and the
+	// carry-over update come later: TestMergeFailureAfterDeleteChangesNothing.
 	s.OnIngredientMerge(func(context.Context, *sql.Tx, int64, int64) error { return boom })
 
 	if _, err := s.MergeIngredients(ctx, winner.ID, loser.ID); !errors.Is(err, boom) {
@@ -124,9 +125,42 @@ func TestMergeFailureMidwayChangesNothing(t *testing.T) {
 	if len(got.Aliases) != 1 || got.DensityGPerML == nil {
 		t.Errorf("loser changed: %+v", got)
 	}
-	w, _ := s.GetIngredient(ctx, winner.ID)
+	w, err := s.GetIngredient(ctx, winner.ID)
+	if err != nil {
+		t.Fatalf("winner missing after rollback: %v", err)
+	}
 	if len(w.Aliases) != 1 || w.DensityGPerML != nil || w.USDAID != nil {
 		t.Errorf("winner changed by a failed merge: %+v", w)
+	}
+}
+
+func TestMergeFailureAfterDeleteChangesNothing(t *testing.T) {
+	s, d, winner, loser := mergeFixture(t)
+	ctx := context.Background()
+	// The carry-over UPDATE of the winner runs after the loser row has been
+	// deleted; a trigger that aborts every ingredient update makes it fail.
+	if _, err := d.Exec(`CREATE TRIGGER zz_block BEFORE UPDATE ON ingredients BEGIN SELECT RAISE(ABORT, 'blocked'); END`); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.MergeIngredients(ctx, winner.ID, loser.ID); err == nil {
+		t.Fatal("merge succeeded although the winner update was blocked")
+	}
+
+	got, err := s.GetIngredient(ctx, loser.ID)
+	if err != nil {
+		t.Fatalf("loser deleted although the merge failed: %v", err)
+	}
+	if len(got.Aliases) != 1 {
+		t.Errorf("loser aliases = %v, want its one original alias", got.Aliases)
+	}
+	for _, tbl := range []string{"zz_lines", "zz_pantry"} {
+		if n := count(t, d, `SELECT count(*) FROM `+tbl+` WHERE ingredient_id = ?`, loser.ID); n != 2 {
+			t.Errorf("%s has %d rows on the loser after rollback, want 2", tbl, n)
+		}
+	}
+	if m, ok, err := s.MatchIngredient(ctx, "zz test butta"); err != nil || !ok || m.ID != loser.ID {
+		t.Errorf("loser name no longer resolves to the loser: %+v ok=%v err=%v", m, ok, err)
 	}
 }
 
@@ -150,8 +184,8 @@ func TestMergeWithoutHookIsBlockedByReferences(t *testing.T) {
 	d := newTestDB(t)
 	s := New(d)
 	ctx := context.Background()
-	w, _ := s.CreateIngredient(ctx, Ingredient{Name: "zz test w", Aisle: "a"})
-	l, _ := s.CreateIngredient(ctx, Ingredient{Name: "zz test l", Aisle: "a"})
+	w := mustIngredient(t, s, Ingredient{Name: "zz test w", Aisle: "a"})
+	l := mustIngredient(t, s, Ingredient{Name: "zz test l", Aisle: "a"})
 	refTable(t, d, "zz_unhooked")
 	if _, err := d.Exec(`INSERT INTO zz_unhooked (ingredient_id) VALUES (?)`, l.ID); err != nil {
 		t.Fatal(err)

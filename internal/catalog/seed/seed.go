@@ -3,9 +3,10 @@
 // equipment. The data is embedded as JSON and decoded on demand.
 //
 // The seed reaches the database through the first schema migration, which
-// carries it as SQL. Changing a JSON file here does not change an existing
-// database: an addition to the seed ships as a new migration, and the catalog
-// tests assert that every entry in these files is present after migrating.
+// carries it as SQL. SQL (and `go run ./internal/catalog/seed/genseed`) renders
+// it; a test asserts the migration contains exactly that output. Changing a
+// JSON file does not change an existing database: an addition to the seed
+// ships as a new migration whose INSERTs come from `genseed <name>...`.
 //
 // Unit factors, systems and dimensions are not repeated here. Units that
 // convert take them from internal/quantity, the single source of truth

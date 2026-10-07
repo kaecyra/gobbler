@@ -15,6 +15,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"modernc.org/sqlite"
+	sqlitelib "modernc.org/sqlite/lib"
 )
 
 // ErrNotFound is returned when an entry looked up by id does not exist.
@@ -117,4 +120,15 @@ func rollback(tx *sql.Tx) error {
 		return fmt.Errorf("rollback: %w", err)
 	}
 	return nil
+}
+
+// wrapWrite maps a UNIQUE or PRIMARY KEY violation to ErrConflict and wraps
+// anything else, including CHECK, NOT NULL and foreign key failures, as it
+// is. The driver reports the SQLite result code, so no message text is read.
+func wrapWrite(what string, err error) error {
+	var se *sqlite.Error
+	if errors.As(err, &se) && (se.Code() == sqlitelib.SQLITE_CONSTRAINT_UNIQUE || se.Code() == sqlitelib.SQLITE_CONSTRAINT_PRIMARYKEY) {
+		return fmt.Errorf("%w: %s: %w", ErrConflict, what, err)
+	}
+	return fmt.Errorf("%s: %w", what, err)
 }

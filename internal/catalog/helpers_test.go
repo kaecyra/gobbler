@@ -39,5 +39,15 @@ func count(t *testing.T, d *sql.DB, query string, args ...any) int {
 	return n
 }
 
+// mustIngredient creates an ingredient or fails the test.
+func mustIngredient(t *testing.T, s *Store, in Ingredient) Ingredient {
+	t.Helper()
+	got, err := s.CreateIngredient(context.Background(), in)
+	if err != nil {
+		t.Fatalf("CreateIngredient(%q): %v", in.Name, err)
+	}
+	return got
+}
+
 func f64(v float64) *float64 { return &v }
 func i64(v int64) *int64     { return &v }

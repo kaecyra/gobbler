@@ -83,14 +83,18 @@ func (s *Store) UpdateEquipment(ctx context.Context, in Equipment) error {
 
 // GetEquipment returns the equipment with the given id, or ErrNotFound.
 func (s *Store) GetEquipment(ctx context.Context, id int64) (Equipment, error) {
-	e, err := scanEquipment(s.db.QueryRowContext(ctx, `SELECT id, name, reviewed FROM equipment WHERE id = ?`, id))
+	return getEquipment(ctx, s.db, id)
+}
+
+func getEquipment(ctx context.Context, q queryer, id int64) (Equipment, error) {
+	e, err := scanEquipment(q.QueryRowContext(ctx, `SELECT id, name, reviewed FROM equipment WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Equipment{}, fmt.Errorf("%w: equipment %d", ErrNotFound, id)
 	}
 	if err != nil {
 		return Equipment{}, fmt.Errorf("read equipment %d: %w", id, err)
 	}
-	if e.Aliases, err = kindEquipment.aliases(ctx, s.db, id); err != nil {
+	if e.Aliases, err = kindEquipment.aliases(ctx, q, id); err != nil {
 		return Equipment{}, err
 	}
 	return e, nil
@@ -123,11 +127,13 @@ func (s *Store) listEquipment(ctx context.Context, where string) ([]Equipment, e
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list equipment: %w", err)
 	}
-	_ = rows.Close() // free the connection before the per-item alias reads
+	_ = rows.Close() // free the connection before the alias read
+	aliases, err := kindEquipment.allAliases(ctx, s.db)
+	if err != nil {
+		return nil, err
+	}
 	for n := range out {
-		if out[n].Aliases, err = kindEquipment.aliases(ctx, s.db, out[n].ID); err != nil {
-			return nil, err
-		}
+		out[n].Aliases = aliases[out[n].ID]
 	}
 	return out, nil
 }
@@ -139,7 +145,7 @@ func (s *Store) MatchEquipment(ctx context.Context, term string) (Equipment, boo
 	if err != nil || !ok {
 		return Equipment{}, false, err
 	}
-	e, err := s.GetEquipment(ctx, id)
+	e, err := getEquipment(ctx, s.db, id)
 	if err != nil {
 		return Equipment{}, false, err
 	}
