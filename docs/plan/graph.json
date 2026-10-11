@@ -219,7 +219,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 5,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w0-auth",
         "w0-db"
@@ -1062,6 +1062,16 @@
       "merged": "61b2bfe",
       "adrs": [
         "00008"
+      ]
+    },
+    {
+      "id": "w0-web-shell",
+      "title": "chi server, router, base templ layout, embedded HTMX and CSS, health check, serve subcommand",
+      "merged": "aa7d1f3",
+      "adrs": [
+        "00002",
+        "00003",
+        "00012"
       ]
     }
   ],
