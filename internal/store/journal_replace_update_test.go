@@ -126,3 +126,45 @@ func TestGuardsAllowTheStoresOwnUpdates(t *testing.T) {
 		}
 	}
 }
+
+// Revisions are history: a direct DELETE is refused, while deleting the recipe
+// still removes them through the cascade.
+func TestRevisionsCannotBeDeletedDirectly(t *testing.T) {
+	d := guardedFixture(t)
+	before := dumpTables(t, d)
+	for name, stmt := range map[string]string{
+		"all":       `DELETE FROM revisions`,
+		"one":       `DELETE FROM revisions WHERE id = 1`,
+		"by recipe": `DELETE FROM revisions WHERE recipe_id = 1`,
+	} {
+		if _, err := d.Exec(stmt); err == nil {
+			t.Errorf("%s: DELETE succeeded, want it refused", name)
+		}
+	}
+	if after := dumpTables(t, d); after != before {
+		t.Errorf("revisions changed after refused deletes:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+
+	if _, err := d.Exec(`DELETE FROM recipes WHERE id = 1`); err != nil {
+		t.Fatalf("deleting the recipe: %v", err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM revisions WHERE recipe_id = 1`); n != 0 {
+		t.Errorf("recipe delete left %d revisions", n)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM revisions WHERE recipe_id = 2`); n == 0 {
+		t.Error("recipe delete removed another recipe's revisions")
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM revision_ingredients ri WHERE NOT EXISTS (SELECT 1 FROM revisions r WHERE r.id = ri.revision_id)`); n != 0 {
+		t.Errorf("%d orphan revision_ingredients rows", n)
+	}
+}
+
+// Notes and made-it entries stay deletable for the future journal UI.
+func TestNotesAndMadeItStayDeletable(t *testing.T) {
+	d := guardedFixture(t)
+	for _, stmt := range []string{`DELETE FROM notes WHERE id = 1`, `DELETE FROM made_it WHERE id = 1`} {
+		if _, err := d.Exec(stmt); err != nil {
+			t.Errorf("%s: %v", stmt, err)
+		}
+	}
+}

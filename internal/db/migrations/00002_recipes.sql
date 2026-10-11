@@ -228,8 +228,13 @@ END;
 --   * a BEFORE UPDATE OF trigger refuses any change to those key columns
 --     (id; for revisions also recipe_id and version), which closes UPDATE OR
 --     REPLACE and re-keying. Ids never change.
--- Left open on purpose: plain DELETE, and UPDATE of non-key columns (a recipe
--- edit, a note edit, and the merge hook's UPDATE of revisions.document).
+--   * revisions are history, so a BEFORE DELETE trigger refuses deleting one
+--     unless its recipe row is already gone (the cascade from deleting the
+--     recipe), as for snapshots.
+-- Left open on purpose: DELETE of a recipe (Store.Delete), DELETE of notes and
+-- made-it entries (a journal UI will delete them), and UPDATE of non-key
+-- columns (a recipe edit, a note edit, and the merge hook's UPDATE of
+-- revisions.document).
 
 -- +goose StatementBegin
 CREATE TRIGGER recipes_no_replace BEFORE INSERT ON recipes
@@ -260,6 +265,14 @@ CREATE TRIGGER revisions_no_rekey BEFORE UPDATE OF id, recipe_id, version ON rev
 WHEN NEW.id IS NOT OLD.id OR NEW.recipe_id IS NOT OLD.recipe_id OR NEW.version IS NOT OLD.version
 BEGIN
     SELECT RAISE(ABORT, 'revisions keys cannot be changed');
+END;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+CREATE TRIGGER revisions_no_delete BEFORE DELETE ON revisions
+WHEN EXISTS (SELECT 1 FROM recipes WHERE id = OLD.recipe_id)
+BEGIN
+    SELECT RAISE(ABORT, 'revisions are history and cannot be deleted');
 END;
 -- +goose StatementEnd
 
@@ -300,6 +313,7 @@ DROP TRIGGER made_it_no_rekey;
 DROP TRIGGER made_it_no_replace;
 DROP TRIGGER notes_no_rekey;
 DROP TRIGGER notes_no_replace;
+DROP TRIGGER revisions_no_delete;
 DROP TRIGGER revisions_no_rekey;
 DROP TRIGGER revisions_no_replace;
 DROP TRIGGER recipes_no_rekey;
