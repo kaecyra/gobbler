@@ -6,5 +6,6 @@ package main
 func commands() []command {
 	return []command{
 		migrateCommand,
+		importUSDACommand,
 	}
 }
