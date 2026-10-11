@@ -24,7 +24,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00001",
+      "last_used": "00002",
       "contiguous": true
     }
   },
@@ -219,7 +219,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 5,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "w0-auth",
         "w0-db"
@@ -353,7 +353,7 @@
       "wave": 1,
       "track": "persistence",
       "issue": 11,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "w1-recipe-model",
         "w1-catalog"
@@ -420,7 +420,7 @@
       "wave": 2,
       "track": "ingestion",
       "issue": 14,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "w1-recipe-model"
       ],
@@ -608,7 +608,7 @@
       "wave": 4,
       "track": "shopping",
       "issue": 23,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "w1-recipe-model",
         "w1-catalog"
@@ -768,7 +768,7 @@
       "wave": 5,
       "track": "persistence",
       "issue": 31,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "w1-catalog"
       ],
