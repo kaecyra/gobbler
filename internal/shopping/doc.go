@@ -24,3 +24,4 @@
 // shown by Text as "(x2)"; nothing is silently undercounted. Manual free-text
 // items merge by text and keep their amounts. A resolved ingredient that
 // Input.Catalog does not know is an error.
+package shopping
