@@ -420,7 +420,7 @@
       "wave": 2,
       "track": "ingestion",
       "issue": 14,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-recipe-model"
       ],
@@ -1081,6 +1081,14 @@
       "adrs": [
         "00009",
         "00005"
+      ]
+    },
+    {
+      "id": "w2-structured-extract",
+      "title": "JSON-LD and microdata Recipe extraction, site-extractor registry, main-text fallback",
+      "merged": "954c71f",
+      "adrs": [
+        "00006"
       ]
     }
   ],
