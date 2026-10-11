@@ -42,13 +42,13 @@ test:
 ## test-scripts: test the shell and Node helpers behind the gates
 test-scripts:
 	bash .github/scripts/check-version-bump_test.sh
-	@test -d e2e/node_modules/@playwright/test || { echo "e2e dependencies missing; setup: $(E2E_SETUP)"; exit 1; }
-	cd e2e && npm run --silent test:fixtures
+	@command -v node >/dev/null || { echo "node is required; install Node"; exit 1; }
+	node --test e2e/fixtures/*.test.mjs
 
 ## e2e-routes: fail if a route registered in internal/web has no e2e test
 e2e-routes:
 	@command -v node >/dev/null || { echo "node is required for e2e; install Node, then: $(E2E_SETUP)"; exit 1; }
-	node e2e/fixtures/route-coverage.mjs internal/web e2e
+	node e2e/fixtures/route-coverage.mjs
 
 ## e2e: build gobbler and run the Playwright suite (installs nothing)
 e2e: e2e-routes

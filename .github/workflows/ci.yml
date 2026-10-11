@@ -21,7 +21,7 @@ jobs:
           go-version-file: go.mod
       - uses: actions/setup-node@v7.1.0
         with:
-          node-version: 24
+          node-version-file: e2e/.node-version
           cache: npm
           cache-dependency-path: e2e/package-lock.json
       - name: install golangci-lint
@@ -31,3 +31,12 @@ jobs:
         run: npm ci && npx playwright install --with-deps chromium
       - name: check
         run: make check
+      - name: upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          if-no-files-found: ignore

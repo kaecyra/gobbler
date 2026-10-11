@@ -1,41 +1,52 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findRoutes, uncovered } from './route-coverage.mjs';
+import { extractURLs, matchesPattern, uncovered } from './route-coverage.mjs';
 
-const go = (text) => [{ name: 'x.go', text }];
-
-test('findRoutes reads literals and resolves path constants', () => {
-  const routes = findRoutes(go(`const HealthPath = "/healthz"
-r.Get(HealthPath, h)
-r.Get("/", home)
-r.Handle("/static/*", s)
-r.Mount("/recipes", x)`));
-  assert.deepEqual(routes.map((r) => r.path).sort(), ['/', '/healthz', '/recipes', '/static/*']);
+test('a literal pattern matches only the same path', () => {
+  assert.ok(matchesPattern('/healthz', '/healthz'));
+  assert.ok(!matchesPattern('/healthz', '/health'));
+  assert.ok(!matchesPattern('/health', '/healthz'));
+  assert.ok(!matchesPattern('/health', '/healthz/x'));
 });
 
-test('findRoutes ignores commented-out registrations', () => {
-  assert.deepEqual(findRoutes(go('// r.Mount("/recipes", x)\nr.Get("/a", h)')).map((r) => r.path), ['/a']);
+test('the root pattern matches only the root', () => {
+  assert.ok(matchesPattern('/', '/'));
+  assert.ok(!matchesPattern('/', '/healthz'));
 });
 
-test('findRoutes refuses a path it cannot resolve', () => {
-  assert.throws(() => findRoutes(go('r.Get(somePath, h)')), /cannot resolve the route path somePath/);
+test('a trailing slash does not change the path', () => {
+  assert.ok(matchesPattern('/recipes', '/recipes/'));
+  assert.ok(matchesPattern('/recipes/', '/recipes'));
 });
 
-test('uncovered names a route no spec requests', () => {
-  const routes = findRoutes(go('r.Get("/healthz", h)\nr.Get("/other", h)'));
-  const missing = uncovered(routes, [`await request.get('/healthz')`]);
-  assert.deepEqual(missing.map((r) => r.path), ['/other']);
+test('a {param} matches exactly one segment', () => {
+  assert.ok(matchesPattern('/recipes/{id}', '/recipes/42'));
+  assert.ok(matchesPattern('/recipes/{id:[0-9]+}', '/recipes/42'));
+  assert.ok(!matchesPattern('/recipes/{id}', '/recipes'));
+  assert.ok(!matchesPattern('/recipes/{id}', '/recipes/42/edit'));
+  assert.ok(matchesPattern('/recipes/{id}/edit', '/recipes/42/edit'));
 });
 
-test('an exact route needs an exact literal, not a longer path', () => {
-  const routes = findRoutes(go('r.Get("/", h)'));
-  assert.equal(uncovered(routes, [`page.goto('/healthz')`]).length, 1);
-  assert.equal(uncovered(routes, [`page.goto('/')`]).length, 0);
+test('a trailing /* matches the rest of the path', () => {
+  assert.ok(matchesPattern('/static/*', '/static/app.css'));
+  assert.ok(matchesPattern('/static/*', '/static/css/app.css'));
+  assert.ok(!matchesPattern('/static/*', '/staticfile'));
+  assert.ok(!matchesPattern('/static/*', '/other/app.css'));
 });
 
-test('wildcard, param and mount routes match by prefix', () => {
-  const routes = findRoutes(go('r.Handle("/static/*", s)\nr.Get("/recipes/{id}", h)\nr.Mount("/lists", x)'));
-  const specs = [`get('/static/app.css')`, 'goto(`/recipes/1`)', `goto('/lists/3')`];
-  assert.deepEqual(uncovered(routes, specs), []);
-  assert.equal(uncovered(routes, []).length, 3);
+test('extractURLs finds path literals, drops query and hash, and fills template holes', () => {
+  const urls = extractURLs(
+    `get('/a?x=1'); goto("/b#top"); goto(\`/recipes/\${id}/edit\`); const s = 'not a path'; get('//evil')`,
+  );
+  assert.deepEqual(urls.sort(), ['/a', '/b', '/recipes/x/edit']);
+});
+
+test('uncovered lists patterns no URL reaches, once each', () => {
+  const routes = [
+    { method: 'GET', pattern: '/healthz' },
+    { method: 'GET', pattern: '/other' },
+    { method: 'POST', pattern: '/other' },
+    { method: 'GET', pattern: '/static/*' },
+  ];
+  assert.deepEqual(uncovered(routes, ['/healthz', '/static/app.css']), ['/other']);
 });
