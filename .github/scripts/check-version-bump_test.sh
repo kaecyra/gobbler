@@ -60,6 +60,28 @@ expect "main moved past the branch's bump fails" 1
 reset_repo; echo 0.1.1 > "$tmp/VERSION"; git_ commit -qam ver
 expect "VERSION-only change passes" 0
 
+reset_repo; git_ mv internal/a.go docs/moved.go; git_ commit -qm "move source into docs"
+expect "moving source into an exempt path without a bump fails" 1
+
+reset_repo; git_ rm -q internal/a.go; git_ commit -qm "delete source"
+expect "deleting source without a bump fails" 1
+
+reset_repo; echo b >> "$tmp/internal/a.go"; git_ commit -qam src; echo 0.2.0 > "$tmp/VERSION"
+expect "an uncommitted VERSION bump does not count" 1
+
+reset_repo; echo b >> "$tmp/internal/a.go"; echo 0.2 > "$tmp/VERSION"; git_ commit -qam src
+expect "malformed VERSION fails" 1
+
+reset_repo; echo b >> "$tmp/internal/a.go"; echo 0.2.0-rc1 > "$tmp/VERSION"; git_ commit -qam src
+expect "VERSION with an rc suffix fails" 1
+
+reset_repo; echo b >> "$tmp/internal/a.go"; echo 0.10.0 > "$tmp/VERSION"; git_ commit -qam src
+expect "numeric comparison: 0.10.0 is above 0.1.0" 0
+
+reset_repo; echo 0.9.0 > "$tmp/VERSION"; git_ commit -qam ver; git_ update-ref refs/remotes/origin/main HEAD
+echo b >> "$tmp/internal/a.go"; echo 0.10.0 > "$tmp/VERSION"; git_ commit -qam src
+expect "numeric comparison: 0.10.0 is above 0.9.0" 0
+
 reset_repo; echo b >> "$tmp/internal/a.go"; git_ commit -qam src
 got=0; (cd "$tmp" && "$script" origin/nope >/dev/null 2>&1) || got=$?
 if [ "$got" -eq 1 ]; then echo "ok   missing base ref fails loudly"; else echo "FAIL missing base ref: got $got"; fails=$((fails+1)); fi
