@@ -81,7 +81,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	writeHTML(w, status, body)
+	writeHTML(r.Context(), w, status, body)
 }
 
 // Render renders c into a buffer and only then writes status and body, so a
@@ -94,7 +94,7 @@ func Render(w http.ResponseWriter, r *http.Request, status int, c templ.Componen
 		WriteError(w, r, fmt.Errorf("render page: %w", err))
 		return
 	}
-	writeHTML(w, status, body)
+	writeHTML(r.Context(), w, status, body)
 }
 
 func renderToBytes(ctx context.Context, c templ.Component) ([]byte, error) {
@@ -105,12 +105,12 @@ func renderToBytes(ctx context.Context, c templ.Component) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func writeHTML(w http.ResponseWriter, status int, body []byte) {
+func writeHTML(ctx context.Context, w http.ResponseWriter, status int, body []byte) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if _, err := w.Write(body); err != nil {
 		// The client went away after the status line; nothing else to send.
-		slog.Warn("write response body", "error", err.Error())
+		slog.WarnContext(ctx, "write response body", "error", err.Error())
 	}
 }
 
