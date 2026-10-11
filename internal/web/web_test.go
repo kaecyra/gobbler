@@ -257,7 +257,7 @@ func TestPanickingRequestIsAccessLoggedAs500(t *testing.T) {
 
 func TestStaticDirectoriesAreNotListed(t *testing.T) {
 	r := testRouter(t, devConfig(), Deps{})
-	for _, path := range []string{"/static/", "/static/."} {
+	for _, path := range []string{"/static/", "/static/.", "/static/././", "/static/.//./"} {
 		rec := get(r, path)
 		if rec.Code != http.StatusNotFound {
 			t.Errorf("%s = %d, want 404", path, rec.Code)

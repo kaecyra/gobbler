@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -75,8 +76,9 @@ func staticHandler() http.Handler {
 	}
 	files := http.StripPrefix("/static/", http.FileServerFS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// FileServerFS lists directories; only files are served.
-		name := strings.Trim(strings.TrimPrefix(r.URL.Path, "/static/"), "/")
+		// FileServerFS lists directories; only files are served. Clean the
+		// path the way the file server does, or "/static/././" slips past.
+		name := strings.TrimPrefix(path.Clean("/"+strings.TrimPrefix(r.URL.Path, "/static/")), "/")
 		if name == "" {
 			name = "."
 		}
