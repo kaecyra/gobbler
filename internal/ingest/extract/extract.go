@@ -43,9 +43,9 @@ const (
 	IssueNoStructuredData = "no_structured_data"
 	// IssueNoText: the page has no readable text.
 	IssueNoText = "no_text"
-	// IssueUnparsedDuration: a time field was not a single clean duration (not
-	// ISO 8601, a range, or mixed with other text), so its Duration is zero.
-	// The raw string is kept.
+	// IssueUnparsedDuration: a time field was not a single clean duration
+	// that parse.Duration reads (a range, a fraction such as PT0.5H, or mixed
+	// with other text), so its Duration field is zero. The raw string is kept.
 	IssueUnparsedDuration = "unparsed_duration"
 )
 
@@ -56,8 +56,9 @@ type InstructionStep struct {
 	Text    string `json:"text"`
 }
 
-// Raw is a recipe as the page states it. Ingredient lines and time fields are
-// the page's own strings (times are usually ISO 8601); parse them downstream.
+// Raw is a recipe as the page states it. Ingredient lines are the page's own
+// strings, to be parsed downstream. Time fields keep the page's own strings
+// (usually ISO 8601) and are also parsed into the matching Duration fields.
 type Raw struct {
 	Name        string   `json:"name,omitempty"`
 	Author      string   `json:"author,omitempty"`

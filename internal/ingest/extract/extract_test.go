@@ -363,3 +363,33 @@ func TestBadDurationIsIssueNotError(t *testing.T) {
 		t.Errorf("issues = %v", res.Issues)
 	}
 }
+
+func TestInstructionsGivenAsOneHTMLString(t *testing.T) {
+	want := []string{"Mix the flour.", "Bake it.", "Cool & serve."}
+	for name, in := range map[string]string{
+		"list":         `<ol><li>Mix the flour.</li><li>Bake it.</li><li>Cool &amp; serve.</li></ol>`,
+		"paragraphs":   `<p>Mix the flour.</p><p>Bake it.</p><p>Cool &amp; serve.</p>`,
+		"breaks":       `Mix the flour.<br>Bake it.<br/>Cool &amp; serve.`,
+		"escaped list": `&lt;ol&gt;&lt;li&gt;Mix the flour.&lt;/li&gt;&lt;li&gt;Bake it.&lt;/li&gt;&lt;li&gt;Cool &amp;amp; serve.&lt;/li&gt;&lt;/ol&gt;`,
+		"inline kept":  `<ul><li>Mix the <b>flour</b>.</li><li>Bake it.</li><li>Cool &amp; serve.</li></ul>`,
+	} {
+		page := `<script type="application/ld+json">{"@type":"Recipe","name":"R","recipeIngredient":["x"],"recipeInstructions":` + mustJSON(t, in) + `}</script>`
+		r := mustExtract(t, page, "").Recipe
+		var got []string
+		for _, s := range r.Instructions {
+			got = append(got, s.Text)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: steps = %q, want %q", name, got, want)
+		}
+	}
+}
+
+func mustJSON(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}

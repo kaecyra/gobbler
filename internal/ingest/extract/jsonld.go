@@ -148,9 +148,11 @@ func firstOf(s []string) string {
 	return s[0]
 }
 
-// cleanText decodes entities, drops markup and collapses whitespace.
+// cleanText drops markup (block tags become a space, inline tags vanish),
+// decodes entities and collapses whitespace.
 func cleanText(s string) string {
-	return collapse(html.UnescapeString(jsonldTagRE.ReplaceAllString(s, " ")))
+	s = jsonldBlockTagRE.ReplaceAllString(s, " ")
+	return collapse(html.UnescapeString(jsonldTagRE.ReplaceAllString(s, "")))
 }
 
 // jsonString reads a scalar, or the "name"/"url"/"text"/"@value" of an object.
@@ -188,6 +190,29 @@ func jsonStrings(v any) []string {
 	return out
 }
 
+var (
+	jsonldEscapedBlockRE = regexp.MustCompile(`(?i)&lt;/?(?:li|p|br|ol|ul|div)\b`)
+	jsonldBlockTagRE     = regexp.MustCompile(`(?i)</?(?:li|p|br|ol|ul|div)\b[^>]*>`)
+)
+
+// stepsFromText splits one instruction string into steps: at newlines and at
+// block-level markup (li, p, br, div, ol, ul), which some sites embed as a
+// single HTML string, sometimes entity-escaped. Other tags are dropped. A
+// string with no such structure stays one step.
+func stepsFromText(s, section string) []InstructionStep {
+	if jsonldEscapedBlockRE.MatchString(s) {
+		s = html.UnescapeString(s)
+	}
+	s = jsonldBlockTagRE.ReplaceAllString(s, "\n")
+	var out []InstructionStep
+	for _, line := range strings.Split(s, "\n") {
+		if t := cleanText(line); t != "" {
+			out = append(out, InstructionStep{Section: section, Text: t})
+		}
+	}
+	return out
+}
+
 // jsonInstructions flattens recipeInstructions: a plain string (one step per
 // line), an array of strings, HowToStep objects, or HowToSection objects whose
 // steps carry the section name.
@@ -195,11 +220,7 @@ func jsonInstructions(v any, section string) []InstructionStep {
 	var out []InstructionStep
 	switch t := v.(type) {
 	case string:
-		for _, line := range strings.Split(t, "\n") {
-			if s := cleanText(line); s != "" {
-				out = append(out, InstructionStep{Section: section, Text: s})
-			}
-		}
+		out = append(out, stepsFromText(t, section)...)
 	case []any:
 		for _, e := range t {
 			out = append(out, jsonInstructions(e, section)...)
@@ -212,13 +233,11 @@ func jsonInstructions(v any, section string) []InstructionStep {
 			}
 			return jsonInstructions(t["itemListElement"], name)
 		}
-		text := jsonString(t["text"])
-		if text == "" {
-			text = jsonString(t["name"])
+		raw, _ := t["text"].(string)
+		if cleanText(raw) == "" {
+			raw, _ = t["name"].(string)
 		}
-		if text != "" {
-			out = append(out, InstructionStep{Section: section, Text: text})
-		}
+		out = append(out, stepsFromText(raw, section)...)
 	}
 	return out
 }
