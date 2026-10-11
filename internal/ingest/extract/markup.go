@@ -30,7 +30,10 @@ var (
 	markupFractionRE = regexp.MustCompile(`(?is)^<sup[^>]*>\s*(\d+)\s*</sup>\s*(?:/|\x{2044}|&frasl;|&#8260;|&#x2044;)\s*(?:<sub[^>]*>\s*(\d+)\s*</sub>|(\d+))`)
 	// markupSuffixRE matches a superscript that belongs to the word before
 	// it: an ordinal suffix or a degree sign.
-	markupSuffixRE = regexp.MustCompile(`(?is)^<sup[^>]*>\s*(st|nd|rd|th|\x{b0}|\x{ba}|&deg;|&ordm;|&#176;|&#186;)\s*</sup>`)
+	markupSuffixRE = regexp.MustCompile(`(?is)^<sup[^>]*>\s*(st|nd|rd|th|\x{b0}|&deg;|&#176;)\s*</sup>`)
+	// markupDegreeRE matches a superscript letter o or masculine ordinal
+	// indicator, which after a digit is a degree sign ("350<sup>o</sup>F").
+	markupDegreeRE = regexp.MustCompile(`(?is)^<sup[^>]*>\s*(?:o|\x{ba}|&ordm;|&#186;)\s*</sup>`)
 	// markupFootnoteRE matches a superscript that is only digits.
 	markupFootnoteRE = regexp.MustCompile(`(?is)^<sup[^>]*>\s*\d+\s*</sup>`)
 	// markupEscapedBlockRE finds block-level tags that were entity-escaped.
@@ -61,7 +64,9 @@ func blockAlternation() string {
 // otherwise read as a wrong quantity: a sup/sub fraction becomes "N a/b"
 // (U+2044 and &frasl; normalised to "/"); an ordinal or degree sup
 // ("1<sup>st</sup>", "350<sup>°</sup>F") joins with no gap; a sup that is only
-// digits directly after a letter is a footnote marker and is dropped.
+// digits directly after a letter or closing punctuation ("flour,<sup>1</sup>")
+// is a footnote marker and is dropped; a sup of "o" after a digit is a degree
+// sign.
 func renderMarkup(s string) string {
 	var out strings.Builder
 	gap := gapNone
@@ -91,16 +96,23 @@ func renderMarkup(s string) string {
 		}
 	}
 
+	// A tag needs a closing ">", so a "<" after the last ">" is text. Checking
+	// this once keeps the scan linear: each unclosed "<" would otherwise rescan
+	// to the end of the input looking for one.
+	lastGT := strings.LastIndexByte(s, '>')
+	consumed := 0
 	for s != "" {
 		i := strings.IndexByte(s, '<')
-		if i < 0 {
+		if i < 0 || consumed+i > lastGT {
 			text(s, false)
 			break
 		}
 		if i > 0 {
 			text(s[:i], false)
 			s = s[i:]
+			consumed += i
 		}
+		before := len(s)
 		if m := markupFractionRE.FindStringSubmatch(s); m != nil {
 			setGap(gapInline)
 			text(m[1]+"/"+m[2]+m[3], false)
@@ -109,7 +121,10 @@ func renderMarkup(s string) string {
 		} else if m := markupSuffixRE.FindStringSubmatch(s); m != nil {
 			text(m[1], true)
 			s = s[len(m[0]):]
-		} else if m := markupFootnoteRE.FindString(s); m != "" && unicode.IsLetter(last()) {
+		} else if m := markupDegreeRE.FindString(s); m != "" && unicode.IsDigit(last()) {
+			text("\u00b0", true)
+			s = s[len(m):]
+		} else if m := markupFootnoteRE.FindString(s); m != "" && markupAfterWordOrClose(last()) {
 			s = s[len(m):] // dropped: a footnote marker, not content
 		} else if m := markupTagRE.FindStringSubmatch(s); m != nil {
 			if blockElements[strings.ToLower(m[2])] {
@@ -122,6 +137,7 @@ func renderMarkup(s string) string {
 			text("<", false)
 			s = s[1:]
 		}
+		consumed += before - len(s)
 	}
 	return out.String()
 }
@@ -144,3 +160,9 @@ func markupNeedsSpace(before, after rune) bool {
 }
 
 func isWordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+
+// markupAfterWordOrClose reports whether r ends a word or a clause, where a
+// digits-only superscript is a footnote marker rather than content.
+func markupAfterWordOrClose(r rune) bool {
+	return unicode.IsLetter(r) || strings.ContainsRune(".,;:!?)", r)
+}

@@ -419,6 +419,12 @@ func TestCleanTextMarkup(t *testing.T) {
 		{"Heat to 350<sup>&deg;</sup>F", "Heat to 350\u00b0F"},
 		{"flour<sup>1</sup> and sugar<sup>2</sup>", "flour and sugar"},
 		{"serves 4<sup>1</sup>", "serves 4 1"},
+		{"Heat to 350<sup>o</sup>F", "Heat to 350\u00b0F"},
+		{"Heat to 350<sup>\u00ba</sup>F", "Heat to 350\u00b0F"},
+		{"foo<sup>o</sup>", "foo o"},
+		{"flour,<sup>1</sup> sifted", "flour, sifted"},
+		{"Sift the flour.<sup>2</sup> Mix", "Sift the flour. Mix"},
+		{"(flour)<sup>3</sup>", "(flour)"},
 		{"a < b and c > d", "a < b and c > d"},
 	} {
 		if got := cleanText(tc.in); got != tc.want {
@@ -474,5 +480,37 @@ func TestHowToStepNonStringText(t *testing.T) {
 	}
 	if want := []string{"Stir well.", "350"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("steps = %q, want %q", got, want)
+	}
+}
+
+// Unclosed "<" must not make the scan quadratic: each "<" used to rescan to
+// the end of the input.
+func TestRenderMarkupIsLinearOnUnclosedTags(t *testing.T) {
+	for name, in := range map[string]string{
+		"a":        strings.Repeat("<a", 32<<10),
+		"sup":      strings.Repeat("<sup", 16<<10),
+		"spaced":   strings.Repeat("< ", 32<<10) + ">",
+		"sup+gt":   strings.Repeat("<sup", 16<<10) + ">",
+		"mixed":    strings.Repeat("x<b", 32<<10),
+		"fraction": strings.Repeat("<sup>1</sup>/", 8<<10),
+	} {
+		done := make(chan struct{})
+		go func() {
+			renderMarkup(in)
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(500 * time.Millisecond):
+			t.Fatalf("%s: renderMarkup of %d bytes took over 500ms", name, len(in))
+		}
+	}
+}
+
+func BenchmarkRenderMarkupUnclosedTags(b *testing.B) {
+	in := strings.Repeat("<a", 32<<10)
+	b.SetBytes(int64(len(in)))
+	for i := 0; i < b.N; i++ {
+		renderMarkup(in)
 	}
 }
