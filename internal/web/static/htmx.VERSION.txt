@@ -1,0 +1,6 @@
+htmx.min.js is htmx 2.0.11: dist/htmx.min.js from the htmx.org npm package, the
+registry's "latest" dist-tag on 2026-10-11 (its "next" tag is 4.0.0).
+Package tarball sha1, as published by the registry:
+a85363c4c5af94cd634df04c4b83d06dd0e91aa7
+Licence: Zero-Clause BSD. Vendored unmodified; to upgrade, replace the file and
+update this note.
