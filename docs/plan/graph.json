@@ -56,7 +56,8 @@
         "Dockerfile",
         ".dockerignore",
         "compose.yaml",
-        ".env.example"
+        ".env.example",
+        "e2e/.gitignore"
       ]
     },
     "domain": {
@@ -978,7 +979,7 @@
     {
       "path": "internal/web/layout/httperr.go",
       "mode": "open",
-      "note": "APPEND-ONLY by convention: a feature node adds one row to statusTable for each domain sentinel it maps, never edits existing lines; the dispatcher enforces this in diff review. It is the one place a domain error becomes an HTTP status (error-handling rule), so every feature node needs it. mode is open for the same partition_by_lane reason as the other append-only entries."
+      "note": "APPEND-ONLY by convention: a node that introduces a domain sentinel adds its import and one row to statusTable, never edits existing lines; the dispatcher enforces this in diff review. statusTable is first-match, so a sentinel that wraps one already listed must go above it -- the one case where a new row is inserted rather than appended, called out in that node's PR. It is the one place a domain error becomes an HTTP status (error-handling rule). mode is open for the same partition_by_lane reason as the other append-only entries."
     }
   ],
   "done": [
