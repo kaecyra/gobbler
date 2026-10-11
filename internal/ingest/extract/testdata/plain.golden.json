@@ -1,0 +1,8 @@
+{
+  "method": "text",
+  "source_url": "https://www.example.com/recipes/1",
+  "text": "Grandma's Pancakes\nSunday morning favourite.\n\nIngredients\n2 cups flour\n1 egg\n1 1/2 cups milk\n\nDirections\nWhisk everything.\nFry on a hot pan.",
+  "issues": [
+    "no_structured_data"
+  ]
+}

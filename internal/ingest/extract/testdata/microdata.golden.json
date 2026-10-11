@@ -1,0 +1,30 @@
+{
+  "method": "microdata",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Garlic Soup",
+    "author": "Pat",
+    "description": "Warming soup.",
+    "yield": [
+      "4 servings"
+    ],
+    "prep_time": "PT10M",
+    "cook_time": "PT30M",
+    "prep_duration": 600000000000,
+    "cook_duration": 1800000000000,
+    "ingredients": [
+      "2 heads garlic",
+      "1 litre stock"
+    ],
+    "instructions": [
+      {
+        "text": "Roast the garlic."
+      },
+      {
+        "text": "Simmer in stock."
+      }
+    ],
+    "calories": "150 calories",
+    "image_url": "https://example.com/soup.jpg"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Eggs",
+    "ingredients": [
+      "2 eggs"
+    ]
+  }
+}

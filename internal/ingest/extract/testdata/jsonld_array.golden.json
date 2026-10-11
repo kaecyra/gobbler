@@ -1,0 +1,25 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Plain Rice",
+    "yield": [
+      "4"
+    ],
+    "ingredients": [
+      "1 cup rice",
+      "2 cups water"
+    ],
+    "instructions": [
+      {
+        "text": "Rinse the rice."
+      },
+      {
+        "text": "Boil the water."
+      },
+      {
+        "text": "Simmer 15 minutes."
+      }
+    ]
+  }
+}

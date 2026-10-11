@@ -1,0 +1,19 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Toast",
+    "author": "X, Y",
+    "ingredients": [
+      "2 slices bread"
+    ],
+    "instructions": [
+      {
+        "text": "Toast the bread."
+      },
+      {
+        "text": "Butter it."
+      }
+    ]
+  }
+}
