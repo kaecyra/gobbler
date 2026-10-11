@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
+
+	"github.com/kaecyra/gobbler/internal/parse"
 )
 
 // ErrEmptyInput is returned for HTML with no content. It is the only error:
@@ -40,6 +43,10 @@ const (
 	IssueNoStructuredData = "no_structured_data"
 	// IssueNoText: the page has no readable text.
 	IssueNoText = "no_text"
+	// IssueUnparsedDuration: a time field was not a single clean duration (not
+	// ISO 8601, a range, or mixed with other text), so its Duration is zero.
+	// The raw string is kept.
+	IssueUnparsedDuration = "unparsed_duration"
 )
 
 // InstructionStep is one instruction text. Section is the HowToSection name it
@@ -52,17 +59,23 @@ type InstructionStep struct {
 // Raw is a recipe as the page states it. Ingredient lines and time fields are
 // the page's own strings (times are usually ISO 8601); parse them downstream.
 type Raw struct {
-	Name         string            `json:"name,omitempty"`
-	Author       string            `json:"author,omitempty"`
-	Description  string            `json:"description,omitempty"`
-	Yield        []string          `json:"yield,omitempty"`
-	PrepTime     string            `json:"prep_time,omitempty"`
-	CookTime     string            `json:"cook_time,omitempty"`
-	TotalTime    string            `json:"total_time,omitempty"`
-	Ingredients  []string          `json:"ingredients,omitempty"`
-	Instructions []InstructionStep `json:"instructions,omitempty"`
-	Calories     string            `json:"calories,omitempty"`
-	ImageURL     string            `json:"image_url,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	Author      string   `json:"author,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Yield       []string `json:"yield,omitempty"`
+	PrepTime    string   `json:"prep_time,omitempty"`
+	CookTime    string   `json:"cook_time,omitempty"`
+	TotalTime   string   `json:"total_time,omitempty"`
+	// PrepDuration, CookDuration and TotalDuration are the parsed time
+	// fields; zero when the field is absent or was not read (see
+	// IssueUnparsedDuration).
+	PrepDuration  time.Duration     `json:"prep_duration,omitempty"`
+	CookDuration  time.Duration     `json:"cook_duration,omitempty"`
+	TotalDuration time.Duration     `json:"total_duration,omitempty"`
+	Ingredients   []string          `json:"ingredients,omitempty"`
+	Instructions  []InstructionStep `json:"instructions,omitempty"`
+	Calories      string            `json:"calories,omitempty"`
+	ImageURL      string            `json:"image_url,omitempty"`
 }
 
 // usable reports whether r holds enough to be worth reviewing: a name plus
@@ -149,18 +162,15 @@ func (r *Registry) Extract(page []byte, sourceURL string) (Result, error) {
 	raw, issues, ok := extractJSONLD(doc)
 	res.Issues = append(res.Issues, issues...)
 	if ok {
-		res.Method, res.Recipe = MethodJSONLD, &raw
-		return res, nil
+		return res.withRecipe(MethodJSONLD, raw), nil
 	}
 	if raw, ok := extractMicrodata(doc); ok {
-		res.Method, res.Recipe = MethodMicrodata, &raw
-		return res, nil
+		return res.withRecipe(MethodMicrodata, raw), nil
 	}
 	if u, perr := url.Parse(sourceURL); perr == nil && u.Host != "" {
 		if e, found := r.lookup(u.Hostname()); found {
 			if raw, ok := e.Extract(doc, u); ok && raw.usable() {
-				res.Method, res.Recipe = MethodSite, &raw
-				return res, nil
+				return res.withRecipe(MethodSite, raw), nil
 			}
 		}
 	}
@@ -174,4 +184,37 @@ func (r *Registry) Extract(page []byte, sourceURL string) (Result, error) {
 	}
 	res.Method = MethodText
 	return res, nil
+}
+
+// withRecipe sets a structured result, parsing the recipe's time fields.
+func (r Result) withRecipe(m Method, raw Raw) Result {
+	r.Method = m
+	r.Issues = append(r.Issues, raw.parseDurations()...)
+	r.Recipe = &raw
+	return r
+}
+
+// parseDurations fills the Duration fields from the raw time strings with
+// parse.Duration. A field that is not one clean duration is left zero and
+// reported once as IssueUnparsedDuration: low confidence is data, not an error.
+func (r *Raw) parseDurations() []string {
+	bad := false
+	for _, f := range []struct {
+		raw string
+		dst *time.Duration
+	}{{r.PrepTime, &r.PrepDuration}, {r.CookTime, &r.CookDuration}, {r.TotalTime, &r.TotalDuration}} {
+		if strings.TrimSpace(f.raw) == "" {
+			continue
+		}
+		d := parse.Duration(f.raw)
+		if !d.Found || d.Range || d.Confidence < 1 {
+			bad = true
+			continue
+		}
+		*f.dst = d.Min
+	}
+	if bad {
+		return []string{IssueUnparsedDuration}
+	}
+	return nil
 }

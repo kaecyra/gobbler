@@ -41,7 +41,9 @@ type itemProp struct {
 }
 
 // itemProps lists the properties that belong to item, in document order. A
-// property that is itself an item is listed but not descended into.
+// nested item is never descended into: if it has an itemprop it is listed
+// as one property, otherwise it is skipped; either way its own properties
+// belong to it.
 func itemProps(item *html.Node) []itemProp {
 	var out []itemProp
 	var rec func(*html.Node)
@@ -54,9 +56,10 @@ func itemProps(item *html.Node) []itemProp {
 				for _, name := range strings.Fields(p) {
 					out = append(out, itemProp{name, c})
 				}
-				if hasAttr(c, "itemscope") {
-					continue
-				}
+			}
+			// A nested item owns its properties, with or without itemprop.
+			if hasAttr(c, "itemscope") {
+				continue
 			}
 			rec(c)
 		}

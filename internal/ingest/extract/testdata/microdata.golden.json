@@ -10,6 +10,8 @@
     ],
     "prep_time": "PT10M",
     "cook_time": "PT30M",
+    "prep_duration": 600000000000,
+    "cook_duration": 1800000000000,
     "ingredients": [
       "2 heads garlic",
       "1 litre stock"

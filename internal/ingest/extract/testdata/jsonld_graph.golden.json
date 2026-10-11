@@ -12,6 +12,9 @@
     "prep_time": "PT15M",
     "cook_time": "PT35M",
     "total_time": "PT1H",
+    "prep_duration": 900000000000,
+    "cook_duration": 2100000000000,
+    "total_duration": 3600000000000,
     "ingredients": [
       "1 cup butter, softened",
       "2 cups flour",

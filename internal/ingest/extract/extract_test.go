@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -21,6 +22,31 @@ const fixtureURL = "https://www.example.com/recipes/1"
 func mustExtract(t *testing.T, page, src string) Result {
 	t.Helper()
 	res, err := Extract([]byte(page), src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	return res
+}
+
+func fixture(t *testing.T, name string) string {
+	t.Helper()
+	b, err := os.ReadFile("testdata/" + name + ".html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func register(t *testing.T, reg *Registry, e SiteExtractor) {
+	t.Helper()
+	if err := reg.Register(e); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func extractWith(t *testing.T, reg *Registry, page, src string) Result {
+	t.Helper()
+	res, err := reg.Extract([]byte(page), src)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
@@ -61,8 +87,14 @@ func TestGolden(t *testing.T) {
 				t.Errorf("output differs from %s (run with -update and review):\ngot:\n%s", golden, got)
 			}
 			// Deterministic: a second run is byte-identical.
-			res2, _ := Extract(page, fixtureURL)
-			got2, _ := json.MarshalIndent(res2, "", "  ")
+			res2, err := Extract(page, fixtureURL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got2, err := json.MarshalIndent(res2, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
 			if string(got2)+"\n" != string(got) {
 				t.Error("two runs over the same input differ")
 			}
@@ -73,22 +105,18 @@ func TestGolden(t *testing.T) {
 func TestMethods(t *testing.T) {
 	want := map[string]Method{
 		"jsonld_graph": MethodJSONLD, "jsonld_array": MethodJSONLD, "jsonld_object": MethodJSONLD,
+		"real_yoast_graph": MethodJSONLD, "real_wprm_graph": MethodJSONLD, "real_bare_objects": MethodJSONLD,
 		"microdata": MethodMicrodata, "plain": MethodText, "broken": MethodJSONLD,
 	}
 	for name, m := range want {
-		page, err := os.ReadFile("testdata/" + name + ".html")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := mustExtract(t, string(page), fixtureURL).Method; got != m {
+		if got := mustExtract(t, fixture(t, name), fixtureURL).Method; got != m {
 			t.Errorf("%s: method %q, want %q", name, got, m)
 		}
 	}
 }
 
 func TestMalformedBlockDoesNotHideValidBlock(t *testing.T) {
-	page, _ := os.ReadFile("testdata/jsonld_graph.html")
-	res := mustExtract(t, string(page), fixtureURL)
+	res := mustExtract(t, fixture(t, "jsonld_graph"), fixtureURL)
 	if res.Recipe == nil || res.Recipe.Name != "Lemon Bars & Shortbread" {
 		t.Fatalf("recipe = %+v", res.Recipe)
 	}
@@ -137,7 +165,7 @@ func TestSiteExtractorByHost(t *testing.T) {
 		t.Errorf("registered host: %s %+v", res.Method, res.Recipe)
 	}
 
-	res, _ = reg.Extract(page, "https://other.example.org/x")
+	res = extractWith(t, &reg, string(page), "https://other.example.org/x")
 	if res.Method != MethodText {
 		t.Errorf("other host: method %s, want text", res.Method)
 	}
@@ -145,9 +173,9 @@ func TestSiteExtractorByHost(t *testing.T) {
 
 func TestSiteExtractorRunsAfterStructuredData(t *testing.T) {
 	var reg Registry
-	_ = reg.Register(fakeSite{"example.com"})
+	register(t, &reg, fakeSite{"example.com"})
 	page := `<html><head><script type="application/ld+json">{"@type":"Recipe","name":"LD","recipeIngredient":["a"]}</script></head></html>`
-	res, _ := reg.Extract([]byte(page), "https://example.com/x")
+	res := extractWith(t, &reg, page, "https://example.com/x")
 	if res.Method != MethodJSONLD {
 		t.Errorf("method %s, want jsonld", res.Method)
 	}
@@ -160,8 +188,8 @@ func (decliningSite) Extract(*html.Node, *url.URL) (Raw, bool) { return Raw{}, f
 
 func TestSiteExtractorDeclines(t *testing.T) {
 	var reg Registry
-	_ = reg.Register(decliningSite{})
-	res, _ := reg.Extract([]byte("<p>hello</p>"), "https://example.com/x")
+	register(t, &reg, decliningSite{})
+	res := extractWith(t, &reg, "<p>hello</p>", "https://example.com/x")
 	if res.Method != MethodText {
 		t.Errorf("method %s, want text", res.Method)
 	}
@@ -181,8 +209,7 @@ func TestRegisterErrors(t *testing.T) {
 }
 
 func TestTextFallback(t *testing.T) {
-	page, _ := os.ReadFile("testdata/plain.html")
-	res := mustExtract(t, string(page), "not a url")
+	res := mustExtract(t, fixture(t, "plain"), "not a url")
 	if res.Method != MethodText || res.Recipe != nil {
 		t.Fatalf("method %s recipe %v", res.Method, res.Recipe)
 	}
@@ -245,5 +272,94 @@ func TestMicrodataNestedItemDoesNotLeakProperties(t *testing.T) {
 	res := mustExtract(t, page, "")
 	if res.Method != MethodMicrodata || res.Recipe.Name != "Soup" || res.Recipe.Author != "Pat" {
 		t.Errorf("got %s %+v", res.Method, res.Recipe)
+	}
+}
+
+func TestRealPagesYieldFullRecipes(t *testing.T) {
+	for _, name := range []string{"real_yoast_graph", "real_wprm_graph", "real_bare_objects"} {
+		res := mustExtract(t, fixture(t, name), fixtureURL)
+		r := res.Recipe
+		if res.Method != MethodJSONLD || r == nil || r.Name == "" || len(r.Ingredients) < 2 || len(r.Instructions) < 2 {
+			t.Errorf("%s: %s %+v", name, res.Method, r)
+			continue
+		}
+		if r.TotalDuration == 0 && r.PrepDuration == 0 && r.CookDuration == 0 {
+			t.Errorf("%s: no time parsed: %+v", name, r)
+		}
+		if len(res.Issues) != 0 {
+			t.Errorf("%s: issues %v", name, res.Issues)
+		}
+	}
+}
+
+func TestMicrodataNestedItemWithoutItempropIsNotTheRecipe(t *testing.T) {
+	page := `<div itemscope itemtype="https://schema.org/Recipe">
+<div itemscope itemtype="https://schema.org/Review"><span itemprop="author">Bob</span><p itemprop="description">Loved it</p><span itemprop="name">Review title</span></div>
+<h1 itemprop="name">Soup</h1><span itemprop="author">Ann</span><p itemprop="description">Real</p><span itemprop="recipeIngredient">water</span></div>`
+	r := mustExtract(t, page, "").Recipe
+	if r == nil || r.Name != "Soup" || r.Author != "Ann" || r.Description != "Real" {
+		t.Errorf("recipe = %+v", r)
+	}
+}
+
+func TestTextFallbackKeepsH1InsideSkippedHeader(t *testing.T) {
+	res := mustExtract(t, `<body><header><h1>Pancakes</h1></header><div><p>mix and fry</p></div></body>`, "")
+	if !strings.HasPrefix(res.Text, "Pancakes\n") || !strings.Contains(res.Text, "mix and fry") {
+		t.Errorf("text = %q", res.Text)
+	}
+}
+
+func TestJSONLDRecipeUnderMainEntity(t *testing.T) {
+	page := `<script type="application/ld+json">{"@type":"WebPage","mainEntity":{"@type":"Recipe","name":"Deep","recipeIngredient":["x"]}}</script>`
+	r := mustExtract(t, page, "").Recipe
+	if r == nil || r.Name != "Deep" {
+		t.Errorf("recipe = %+v", r)
+	}
+	// Too deep is not chased.
+	deep := `{"@type":"Recipe","name":"Deep","recipeIngredient":["x"]}`
+	for i := 0; i < 8; i++ {
+		deep = `{"a":` + deep + `}`
+	}
+	res := mustExtract(t, `<script type="application/ld+json">`+deep+`</script>`, "")
+	if res.Recipe != nil {
+		t.Errorf("found recipe past the depth bound: %+v", res.Recipe)
+	}
+}
+
+func TestDurations(t *testing.T) {
+	const h, m = time.Hour, time.Minute
+	for _, tc := range []struct {
+		in   string
+		want time.Duration
+		bad  bool
+	}{
+		{"PT1H30M", h + 30*m, false},
+		{"PT90M", 90 * m, false},
+		{"P0DT0H45M", 45 * m, false},
+		{"PT45M", 45 * m, false},
+		{"P1DT2H", 26 * h, false},
+		{"30 minutes", 30 * m, false},
+		{"", 0, false},
+		{"PT0.5H", 0, true}, // fractions are not accepted by the shared duration parser
+		{"1-2 hours", 0, true},
+		{"overnight", 0, true},
+		{"PT", 0, true},
+	} {
+		raw := Raw{CookTime: tc.in}
+		issues := raw.parseDurations()
+		if raw.CookDuration != tc.want || (len(issues) == 1 && issues[0] != IssueUnparsedDuration) || (len(issues) > 0) != tc.bad {
+			t.Errorf("%q: duration %v issues %v, want %v bad=%v", tc.in, raw.CookDuration, issues, tc.want, tc.bad)
+		}
+	}
+}
+
+func TestBadDurationIsIssueNotError(t *testing.T) {
+	page := `<script type="application/ld+json">{"@type":"Recipe","name":"R","recipeIngredient":["x"],"prepTime":"PT10M","cookTime":"soonish"}</script>`
+	res := mustExtract(t, page, "")
+	if res.Recipe == nil || res.Recipe.PrepDuration != 10*time.Minute || res.Recipe.CookDuration != 0 || res.Recipe.CookTime != "soonish" {
+		t.Fatalf("recipe = %+v", res.Recipe)
+	}
+	if !reflect.DeepEqual(res.Issues, []string{IssueUnparsedDuration}) {
+		t.Errorf("issues = %v", res.Issues)
 	}
 }

@@ -30,8 +30,8 @@ var textHeading = map[string]bool{"h1": true, "h2": true, "h3": true, "h4": true
 // mainText returns the readable text of the page for the text-sectioning
 // path: the <main> or <article> element when there is one, else the <body>,
 // minus navigation and other chrome. Each block element starts a new line and
-// headings are set off by a blank line. If the chosen root holds no <h1> and
-// the page has one, it leads the text so the title is not lost.
+// headings are set off by a blank line. If the chosen root renders no <h1> (none, or
+// only one inside skipped chrome such as <header>) and the page has one, it leads the text so the title is not lost.
 func mainText(doc *html.Node) string {
 	root := firstElement(doc, "main")
 	if root == nil {
@@ -44,7 +44,7 @@ func mainText(doc *html.Node) string {
 		root = doc
 	}
 	text := renderText(root)
-	if firstElement(root, "h1") == nil {
+	if visibleH1(root) == nil {
 		if h1 := firstElement(doc, "h1"); h1 != nil {
 			if t := textOf(h1); t != "" {
 				text = strings.TrimSpace(t + "\n\n" + text)
@@ -52,6 +52,22 @@ func mainText(doc *html.Node) string {
 		}
 	}
 	return text
+}
+
+// visibleH1 finds the first h1 under root that renderText would not skip.
+func visibleH1(root *html.Node) *html.Node {
+	var found *html.Node
+	walk(root, func(c *html.Node) bool {
+		if found != nil || (textSkip[c.Data] && c != root) {
+			return false
+		}
+		if c.Data == "h1" {
+			found = c
+			return false
+		}
+		return true
+	})
+	return found
 }
 
 func firstElement(n *html.Node, tag string) *html.Node {

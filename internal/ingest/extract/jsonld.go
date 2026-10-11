@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"html"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -55,10 +56,24 @@ func scriptText(n *nethtml.Node) string {
 // findRecipe searches a decoded JSON-LD value (object, array or @graph) for
 // the first usable Recipe.
 func findRecipe(v any) (Raw, bool) {
+	return findRecipeDepth(v, 0)
+}
+
+// jsonldMaxDepth bounds how far below the top of a block a Recipe is looked
+// for: @graph members and mainEntity sit within a couple of levels.
+const jsonldMaxDepth = 4
+
+// findRecipeDepth looks at v, then at @graph, then at every other object or
+// array valued property in sorted key order (map order is random and the
+// result must be deterministic), so a Recipe under mainEntity is found.
+func findRecipeDepth(v any, depth int) (Raw, bool) {
+	if depth > jsonldMaxDepth {
+		return Raw{}, false
+	}
 	switch t := v.(type) {
 	case []any:
 		for _, e := range t {
-			if r, ok := findRecipe(e); ok {
+			if r, ok := findRecipeDepth(e, depth+1); ok {
 				return r, true
 			}
 		}
@@ -68,8 +83,20 @@ func findRecipe(v any) (Raw, bool) {
 				return r, true
 			}
 		}
-		if g, ok := t["@graph"]; ok {
-			return findRecipe(g)
+		keys := make([]string, 0, len(t))
+		for k := range t {
+			if k != "@graph" {
+				keys = append(keys, k)
+			}
+		}
+		sort.Strings(keys)
+		if _, ok := t["@graph"]; ok {
+			keys = append([]string{"@graph"}, keys...)
+		}
+		for _, k := range keys {
+			if r, ok := findRecipeDepth(t[k], depth+1); ok {
+				return r, true
+			}
 		}
 	}
 	return Raw{}, false

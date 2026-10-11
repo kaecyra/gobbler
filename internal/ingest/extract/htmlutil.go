@@ -64,7 +64,5 @@ func textOf(n *html.Node) string {
 // collapse trims s and folds every run of whitespace (including non-breaking
 // spaces) to one space.
 func collapse(s string) string {
-	return strings.Join(strings.FieldsFunc(s, func(r rune) bool {
-		return r == ' ' || strings.ContainsRune(" \t\n\r\f\v", r)
-	}), " ")
+	return strings.Join(strings.Fields(s), " ")
 }

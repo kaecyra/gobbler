@@ -1,0 +1,40 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Best Guacamole Recipe",
+    "author": "Jeanine Donofrio, Phoebe Moore",
+    "description": "The BEST guacamole recipe! It's easy to make with simple, fresh",
+    "yield": [
+      "4",
+      "4 to 6"
+    ],
+    "prep_time": "PT10M",
+    "total_time": "PT10M",
+    "prep_duration": 600000000000,
+    "total_duration": 600000000000,
+    "ingredients": [
+      "3 avocados (ripe)",
+      "¼ cup diced red onion",
+      "¼ cup finely chopped fresh cilantro",
+      "Zest and juice of 2 limes",
+      "1 small jalapeño pepper (diced)",
+      "½ teaspoon sea salt (plus more to taste)",
+      "½ teaspoon ground cumin (optional)",
+      "optional: 1 to 2 Roma tomatoes (seeded and diced)"
+    ],
+    "instructions": [
+      {
+        "text": "In a large bowl, combine the avocados, onion, cilantro, lime zest and juice,"
+      },
+      {
+        "text": "Fold in the tomatoes, if using."
+      },
+      {
+        "text": "Season to taste and serve."
+      }
+    ],
+    "calories": "251 kcal",
+    "image_url": "https://cdn.loveandlemons.com/wp-content/uploads/2023/07/guacamole-recipe-500x500.jpg"
+  }
+}
