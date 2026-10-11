@@ -113,17 +113,19 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 // ListSnapshotKinds returns the kinds of snapshot stored for recipe id. A
 // missing recipe is ErrNotFound.
 func (s *Store) ListSnapshotKinds(ctx context.Context, id int64) ([]SnapshotKind, error) {
-	if _, err := loadInfo(ctx, s.db, id); err != nil {
-		return nil, err
-	}
 	var out []SnapshotKind
-	err := collect(ctx, s.db, "snapshot kinds", `SELECT kind FROM source_snapshots WHERE recipe_id = ? ORDER BY id`, []any{id}, func(rows *sql.Rows) error {
-		var k SnapshotKind
-		if err := rows.Scan(&k); err != nil {
+	err := s.read(ctx, func(q queryer) error {
+		if _, err := loadInfo(ctx, q, id); err != nil {
 			return err
 		}
-		out = append(out, k)
-		return nil
+		return collect(ctx, q, "snapshot kinds", `SELECT kind FROM source_snapshots WHERE recipe_id = ? ORDER BY id`, []any{id}, func(rows *sql.Rows) error {
+			var k SnapshotKind
+			if err := rows.Scan(&k); err != nil {
+				return err
+			}
+			out = append(out, k)
+			return nil
+		})
 	})
 	return out, err
 }

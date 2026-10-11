@@ -39,6 +39,20 @@ var ErrUnknownReference = errors.New("reference to an unknown catalog entry")
 // identity. Writes are never anonymous.
 var ErrNoIdentity = errors.New("no verified identity on the request context")
 
+// ErrCorrupt is returned when stored rows disagree with each other, such as a
+// step dependency naming a step that does not exist. It means the database is
+// broken, not that the caller asked for something absent.
+var ErrCorrupt = errors.New("stored data is inconsistent")
+
+// lookup returns m[key], or an ErrCorrupt error naming what was missing.
+func lookup[K comparable, V any](m map[K]V, key K, what string) (V, error) {
+	v, ok := m[key]
+	if !ok {
+		return v, fmt.Errorf("%w: %s %v not found", ErrCorrupt, what, key)
+	}
+	return v, nil
+}
+
 // Store reads and writes recipes. It is safe for concurrent use.
 type Store struct {
 	db  *sql.DB
@@ -99,6 +113,22 @@ func (s *Store) withTx(ctx context.Context, fn func(tx *sql.Tx) error) (err erro
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 	return nil
+}
+
+// read runs fn against one read-only transaction, so every query in a
+// multi-query read sees the same snapshot. Reading a document on the bare
+// pool lets a write land between its queries and return a torn mix of two
+// versions.
+func (s *Store) read(ctx context.Context, fn func(q queryer) error) error {
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return fmt.Errorf("begin read transaction: %w", err)
+	}
+	err = fn(tx)
+	if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
+		err = errors.Join(err, fmt.Errorf("end read transaction: %w", rbErr))
+	}
+	return err
 }
 
 // wrapWrite wraps a failed write with what it was doing. A foreign key

@@ -165,7 +165,10 @@ CREATE TABLE revisions (
 );
 
 -- Ingredient ids that appear inside revision documents. The document is opaque
--- JSON; this table is what lets the ingredient merge find and rewrite them.
+-- JSON; this table is what lets the ingredient merge find them. A merge
+-- rewrites those ids inside the stored documents (the loser becomes the winner)
+-- so an old revision stays restorable: the content of every edit is kept, but
+-- catalog ids in old revisions follow the catalog.
 CREATE TABLE revision_ingredients (
     revision_id   INTEGER NOT NULL REFERENCES revisions (id) ON DELETE CASCADE,
     ingredient_id INTEGER NOT NULL REFERENCES ingredients (id),

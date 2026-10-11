@@ -67,24 +67,26 @@ func (s *Store) AddNote(ctx context.Context, id int64, body string) (Note, error
 // ListNotes returns the notes on recipe id, oldest first. A missing recipe is
 // ErrNotFound.
 func (s *Store) ListNotes(ctx context.Context, id int64) ([]Note, error) {
-	if _, err := loadInfo(ctx, s.db, id); err != nil {
-		return nil, err
-	}
 	var out []Note
-	err := collect(ctx, s.db, "notes", `SELECT id, body, created_at, created_by FROM notes WHERE recipe_id = ? ORDER BY id`,
-		[]any{id}, func(rows *sql.Rows) error {
-			n := Note{RecipeID: id}
-			var at string
-			if err := rows.Scan(&n.ID, &n.Body, &at, &n.CreatedBy); err != nil {
-				return err
-			}
-			var err error
-			if n.CreatedAt, err = parseTime(at); err != nil {
-				return err
-			}
-			out = append(out, n)
-			return nil
-		})
+	err := s.read(ctx, func(q queryer) error {
+		if _, err := loadInfo(ctx, q, id); err != nil {
+			return err
+		}
+		return collect(ctx, q, "notes", `SELECT id, body, created_at, created_by FROM notes WHERE recipe_id = ? ORDER BY id`,
+			[]any{id}, func(rows *sql.Rows) error {
+				n := Note{RecipeID: id}
+				var at string
+				if err := rows.Scan(&n.ID, &n.Body, &at, &n.CreatedBy); err != nil {
+					return err
+				}
+				var err error
+				if n.CreatedAt, err = parseTime(at); err != nil {
+					return err
+				}
+				out = append(out, n)
+				return nil
+			})
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -129,32 +131,34 @@ func (s *Store) AddMadeIt(ctx context.Context, id int64, e MadeIt) (MadeIt, erro
 // ListMadeIt returns the made-it log of recipe id, oldest date first. A
 // missing recipe is ErrNotFound.
 func (s *Store) ListMadeIt(ctx context.Context, id int64) ([]MadeIt, error) {
-	if _, err := loadInfo(ctx, s.db, id); err != nil {
-		return nil, err
-	}
 	var out []MadeIt
-	err := collect(ctx, s.db, "made-it log",
-		`SELECT id, made_on, rating, comment, created_at, created_by FROM made_it WHERE recipe_id = ? ORDER BY made_on, id`,
-		[]any{id}, func(rows *sql.Rows) error {
-			e := MadeIt{RecipeID: id}
-			var (
-				on, at string
-				rating sql.NullInt64
-			)
-			if err := rows.Scan(&e.ID, &on, &rating, &e.Comment, &at, &e.CreatedBy); err != nil {
-				return err
-			}
-			var err error
-			if e.On, err = time.Parse(dateLayout, on); err != nil {
-				return fmt.Errorf("parse stored date %q: %w", on, err)
-			}
-			if e.CreatedAt, err = parseTime(at); err != nil {
-				return err
-			}
-			e.Rating = intPtr(rating)
-			out = append(out, e)
-			return nil
-		})
+	err := s.read(ctx, func(q queryer) error {
+		if _, err := loadInfo(ctx, q, id); err != nil {
+			return err
+		}
+		return collect(ctx, q, "made-it log",
+			`SELECT id, made_on, rating, comment, created_at, created_by FROM made_it WHERE recipe_id = ? ORDER BY made_on, id`,
+			[]any{id}, func(rows *sql.Rows) error {
+				e := MadeIt{RecipeID: id}
+				var (
+					on, at string
+					rating sql.NullInt64
+				)
+				if err := rows.Scan(&e.ID, &on, &rating, &e.Comment, &at, &e.CreatedBy); err != nil {
+					return err
+				}
+				var err error
+				if e.On, err = time.Parse(dateLayout, on); err != nil {
+					return fmt.Errorf("parse stored date %q: %w", on, err)
+				}
+				if e.CreatedAt, err = parseTime(at); err != nil {
+					return err
+				}
+				e.Rating = intPtr(rating)
+				out = append(out, e)
+				return nil
+			})
+	})
 	if err != nil {
 		return nil, err
 	}

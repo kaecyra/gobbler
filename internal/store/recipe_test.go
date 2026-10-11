@@ -502,3 +502,73 @@ func TestRevisionsSurviveAUnitRename(t *testing.T) {
 		t.Errorf("restored line = %+v", got.Components[0].Lines[0])
 	}
 }
+
+// A dependency on a step that is not there is a broken database, not a
+// dependency to attach to position zero. Foreign keys are switched off on the
+// single connection to manufacture the orphan.
+func TestReadOfInconsistentRowsFailsNamingTheMiss(t *testing.T) {
+	s, d := newTestStore(t)
+	_, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	d.SetMaxOpenConns(1)
+	id, err := s.Create(ctx, fullRecipe(t, ids))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`DELETE FROM steps WHERE step_key = 'mix'`); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.Get(ctx, id)
+	if !errors.Is(err, ErrCorrupt) || !strings.Contains(err.Error(), "step") {
+		t.Fatalf("Get = %v, %+v; want ErrCorrupt naming the missing step", err, got.Components)
+	}
+}
+
+func TestLookupNamesTheMiss(t *testing.T) {
+	m := map[int64]int{7: 1}
+	if v, err := lookup(m, 7, "component"); err != nil || v != 1 {
+		t.Errorf("lookup hit = %v, %v", v, err)
+	}
+	_, err := lookup(m, 8, "component")
+	if !errors.Is(err, ErrCorrupt) || !strings.Contains(err.Error(), "component 8") {
+		t.Errorf("lookup miss = %v, want ErrCorrupt naming component 8", err)
+	}
+}
+
+// A multi-query read must see one snapshot: a write that lands between its
+// queries is not visible to the later ones.
+func TestReadsSeeOneSnapshot(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := authedCtx(t)
+	id, err := s.Create(ctx, simpleRecipe("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes := func(q queryer) int {
+		var n int
+		if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM notes WHERE recipe_id = ?`, id).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	err = s.read(ctx, func(q queryer) error {
+		before := notes(q)
+		if _, err := s.AddNote(ctx, id, "lands mid-read"); err != nil {
+			t.Fatal(err)
+		}
+		if after := notes(q); after != before {
+			t.Errorf("a write between two queries of one read was visible: %d then %d", before, after)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.ListNotes(ctx, id); len(got) != 1 {
+		t.Errorf("notes after the read = %d, want 1", len(got))
+	}
+}

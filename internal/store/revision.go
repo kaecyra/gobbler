@@ -64,31 +64,33 @@ func insertRevision(ctx context.Context, tx *sql.Tx, recipeID, version int64, do
 // The current version is not among them; it is the recipe itself. A recipe
 // never edited has none; a missing recipe is ErrNotFound.
 func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error) {
-	if _, err := loadInfo(ctx, s.db, id); err != nil {
-		return nil, err
-	}
 	var out []Revision
-	err := collect(ctx, s.db, "revisions",
-		`SELECT version, created_at, created_by, restored_version FROM revisions WHERE recipe_id = ? ORDER BY version`,
-		[]any{id}, func(rows *sql.Rows) error {
-			var (
-				rev      Revision
-				at       string
-				restored sql.NullInt64
-			)
-			if err := rows.Scan(&rev.Version, &at, &rev.Author, &restored); err != nil {
-				return err
-			}
-			var err error
-			if rev.CreatedAt, err = parseTime(at); err != nil {
-				return err
-			}
-			if restored.Valid {
-				rev.Restored = &restored.Int64
-			}
-			out = append(out, rev)
-			return nil
-		})
+	err := s.read(ctx, func(q queryer) error {
+		if _, err := loadInfo(ctx, q, id); err != nil {
+			return err
+		}
+		return collect(ctx, q, "revisions",
+			`SELECT version, created_at, created_by, restored_version FROM revisions WHERE recipe_id = ? ORDER BY version`,
+			[]any{id}, func(rows *sql.Rows) error {
+				var (
+					rev      Revision
+					at       string
+					restored sql.NullInt64
+				)
+				if err := rows.Scan(&rev.Version, &at, &rev.Author, &restored); err != nil {
+					return err
+				}
+				var err error
+				if rev.CreatedAt, err = parseTime(at); err != nil {
+					return err
+				}
+				if restored.Valid {
+					rev.Restored = &restored.Int64
+				}
+				out = append(out, rev)
+				return nil
+			})
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +101,19 @@ func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error)
 // revision of that version, or the live document when version is current.
 // An unknown recipe or version is ErrNotFound.
 func (s *Store) GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error) {
-	units, err := loadUnits(ctx, s.db)
+	var r recipe.Recipe
+	err := s.read(ctx, func(q queryer) error {
+		units, err := loadUnits(ctx, q)
+		if err != nil {
+			return err
+		}
+		r, err = loadVersion(ctx, q, id, version, units)
+		return err
+	})
 	if err != nil {
 		return recipe.Recipe{}, err
 	}
-	return loadVersion(ctx, s.db, id, version, units)
+	return r, nil
 }
 
 func loadVersion(ctx context.Context, q queryer, id, version int64, units *unitTable) (recipe.Recipe, error) {
@@ -135,8 +145,10 @@ func loadVersion(ctx context.Context, q queryer, id, version int64, units *unitT
 
 // Restore makes the document of an earlier version the current one. It is an
 // edit like any other: the document it replaces is saved as a revision (marked
-// as written by a restore of version) and the version number grows, so the
-// history is never rewritten.
+// as written by a restore of version) and the version number grows, so no
+// revision is removed or overwritten by it. (Separately, an ingredient merge
+// re-points catalog ids inside stored revision documents; see
+// RegisterMergeHooks.)
 func (s *Store) Restore(ctx context.Context, id, version int64) error {
 	who, err := identity(ctx)
 	if err != nil {

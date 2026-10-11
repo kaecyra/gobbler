@@ -157,7 +157,10 @@ func loadComponents(ctx context.Context, q queryer, id int64, units *unitTable) 
 			l.Ingredient = recipe.IngredientID(ingredID.Int64)
 			l.Optional = optional == 1
 			l.Rule = quantity.Rule(rule)
-			ci := compIdx[cid]
+			ci, err := lookup(compIdx, cid, "component")
+			if err != nil {
+				return err
+			}
 			lineIdx[lid] = [2]int{ci, len(comps[ci].Lines)}
 			comps[ci].Lines = append(comps[ci].Lines, l)
 			return nil
@@ -178,7 +181,10 @@ func loadComponents(ctx context.Context, q queryer, id int64, units *unitTable) 
 			if err := rows.Scan(&lid, &kind, &text); err != nil {
 				return err
 			}
-			at := lineIdx[lid]
+			at, err := lookup(lineIdx, lid, "ingredient line")
+			if err != nil {
+				return err
+			}
 			line := &comps[at[0]].Lines[at[1]]
 			line.Qualifiers = append(line.Qualifiers, recipe.Qualifier{Kind: recipe.QualifierKind(kind), Text: text})
 			return nil
@@ -203,7 +209,10 @@ func loadComponents(ctx context.Context, q queryer, id int64, units *unitTable) 
 				return err
 			}
 			s.ID, s.Duration, s.Passive = recipe.StepID(key), time.Duration(ns), passive == 1
-			ci := compIdx[cid]
+			ci, err := lookup(compIdx, cid, "component")
+			if err != nil {
+				return err
+			}
 			stepKeys[sid] = s.ID
 			stepIdx[sid] = [2]int{ci, len(comps[ci].Steps)}
 			comps[ci].Steps = append(comps[ci].Steps, s)
@@ -220,9 +229,16 @@ func loadComponents(ctx context.Context, q queryer, id int64, units *unitTable) 
 			if err := rows.Scan(&sid, &dep); err != nil {
 				return err
 			}
-			at := stepIdx[sid]
+			at, err := lookup(stepIdx, sid, "step")
+			if err != nil {
+				return err
+			}
+			depKey, err := lookup(stepKeys, dep, "step")
+			if err != nil {
+				return fmt.Errorf("dependency of step %s: %w", stepKeys[sid], err)
+			}
 			step := &comps[at[0]].Steps[at[1]]
-			step.DependsOn = append(step.DependsOn, stepKeys[dep])
+			step.DependsOn = append(step.DependsOn, depKey)
 			return nil
 		})
 	if err != nil {
@@ -264,7 +280,11 @@ func loadEquipment(ctx context.Context, q queryer, id int64) ([]recipe.Equipment
 			if err := rows.Scan(&rid, &key); err != nil {
 				return err
 			}
-			l := &out[rowIdx[rid]]
+			at, err := lookup(rowIdx, rid, "equipment link")
+			if err != nil {
+				return err
+			}
+			l := &out[at]
 			l.Steps = append(l.Steps, recipe.StepID(key))
 			return nil
 		})

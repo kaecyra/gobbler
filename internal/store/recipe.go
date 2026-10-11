@@ -89,11 +89,19 @@ func (s *Store) insertRecipe(ctx context.Context, tx *sql.Tx, r recipe.Recipe, f
 
 // Get returns the current document of recipe id, or ErrNotFound.
 func (s *Store) Get(ctx context.Context, id int64) (recipe.Recipe, error) {
-	units, err := loadUnits(ctx, s.db)
+	var r recipe.Recipe
+	err := s.read(ctx, func(q queryer) error {
+		units, err := loadUnits(ctx, q)
+		if err != nil {
+			return err
+		}
+		r, err = loadDocument(ctx, q, id, units)
+		return err
+	})
 	if err != nil {
 		return recipe.Recipe{}, err
 	}
-	return loadDocument(ctx, s.db, id, units)
+	return r, nil
 }
 
 // Info returns the bookkeeping of recipe id, or ErrNotFound.
