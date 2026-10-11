@@ -59,10 +59,6 @@ func (s *Store) insertRecipe(ctx context.Context, tx *sql.Tx, r recipe.Recipe, f
 	if err != nil {
 		return 0, err
 	}
-	units, err := loadUnits(ctx, tx)
-	if err != nil {
-		return 0, err
-	}
 	var originID, originVersion sql.NullInt64
 	if from != nil {
 		originID = sql.NullInt64{Int64: from.RecipeID, Valid: true}
@@ -80,6 +76,13 @@ func (s *Store) insertRecipe(ctx context.Context, tx *sql.Tx, r recipe.Recipe, f
 	id, err := res.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("recipe id: %w", err)
+	}
+	// The recipe row goes in before any read: a transaction whose first
+	// statement is a read cannot upgrade to a write if another writer has
+	// committed since, and fails with SQLITE_BUSY at once.
+	units, err := loadUnits(ctx, tx)
+	if err != nil {
+		return 0, err
 	}
 	if err := insertChildren(ctx, tx, id, r, units); err != nil {
 		return 0, err

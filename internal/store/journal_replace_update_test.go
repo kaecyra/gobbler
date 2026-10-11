@@ -99,6 +99,16 @@ func TestGuardedRowsCannotBeOverwrittenByUpdateOrUpsert(t *testing.T) {
 		"upsert snapshots": `INSERT INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (1, 'text', 'T', 'x', 'n', 'me')
 			ON CONFLICT (recipe_id, kind) DO UPDATE SET content = 'TAMPERED'`,
 	}
+	// SQLite lets the key be set through its rowid aliases, which a trigger
+	// listing columns (UPDATE OF id) does not see.
+	for _, alias := range []string{"rowid", "_rowid_", "oid"} {
+		stmts["update or replace recipes "+alias] = `UPDATE OR REPLACE recipes SET ` + alias + ` = 1 WHERE id = 3`
+		stmts["update or replace revisions "+alias] = `UPDATE OR REPLACE revisions SET ` + alias + ` = 1 WHERE id = 2`
+		stmts["update or replace notes "+alias] = `UPDATE OR REPLACE notes SET ` + alias + ` = 1 WHERE id = 2`
+		stmts["update or replace made_it "+alias] = `UPDATE OR REPLACE made_it SET ` + alias + ` = 1 WHERE id = 2`
+		stmts["update or replace snapshots "+alias] = `UPDATE OR REPLACE source_snapshots SET ` + alias + ` = 1 WHERE id = 2`
+		stmts["plain update recipes "+alias] = `UPDATE recipes SET ` + alias + ` = 99 WHERE id = 3`
+	}
 	for name, stmt := range stmts {
 		t.Run(name, func(t *testing.T) {
 			d := guardedFixture(t)

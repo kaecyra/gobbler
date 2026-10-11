@@ -225,9 +225,11 @@ END;
 --   * a BEFORE INSERT trigger refuses an existing id (revisions also an
 --     existing (recipe_id, version)), which closes INSERT OR REPLACE, REPLACE
 --     and INSERT ... ON CONFLICT DO UPDATE;
---   * a BEFORE UPDATE OF trigger refuses any change to those key columns
---     (id; for revisions also recipe_id and version), which closes UPDATE OR
---     REPLACE and re-keying. Ids never change.
+--   * a BEFORE UPDATE trigger refuses any change to those key columns (id; for
+--     revisions also recipe_id and version), which closes UPDATE OR REPLACE and
+--     re-keying. Ids never change. The triggers deliberately do not list
+--     columns (UPDATE OF id): such a trigger does not fire when the key is set
+--     through the rowid aliases rowid, _rowid_ and oid.
 --   * revisions are history, so a BEFORE DELETE trigger refuses deleting one
 --     unless its recipe row is already gone (the cascade from deleting the
 --     recipe), as for snapshots.
@@ -245,7 +247,7 @@ END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
-CREATE TRIGGER recipes_no_rekey BEFORE UPDATE OF id ON recipes
+CREATE TRIGGER recipes_no_rekey BEFORE UPDATE ON recipes
 WHEN NEW.id IS NOT OLD.id
 BEGIN
     SELECT RAISE(ABORT, 'recipes keys cannot be changed');
@@ -261,7 +263,7 @@ END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
-CREATE TRIGGER revisions_no_rekey BEFORE UPDATE OF id, recipe_id, version ON revisions
+CREATE TRIGGER revisions_no_rekey BEFORE UPDATE ON revisions
 WHEN NEW.id IS NOT OLD.id OR NEW.recipe_id IS NOT OLD.recipe_id OR NEW.version IS NOT OLD.version
 BEGIN
     SELECT RAISE(ABORT, 'revisions keys cannot be changed');
@@ -285,7 +287,7 @@ END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
-CREATE TRIGGER notes_no_rekey BEFORE UPDATE OF id ON notes
+CREATE TRIGGER notes_no_rekey BEFORE UPDATE ON notes
 WHEN NEW.id IS NOT OLD.id
 BEGIN
     SELECT RAISE(ABORT, 'notes keys cannot be changed');
@@ -301,7 +303,7 @@ END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
-CREATE TRIGGER made_it_no_rekey BEFORE UPDATE OF id ON made_it
+CREATE TRIGGER made_it_no_rekey BEFORE UPDATE ON made_it
 WHEN NEW.id IS NOT OLD.id
 BEGIN
     SELECT RAISE(ABORT, 'made_it keys cannot be changed');
