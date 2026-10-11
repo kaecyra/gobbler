@@ -225,7 +225,38 @@ BEGIN
 END;
 -- +goose StatementEnd
 
+-- Revisions, notes and made-it entries are history that cannot be recreated.
+-- INSERT OR REPLACE would overwrite a row without firing any delete trigger, so
+-- each refuses an insert over an existing row.
+
+-- +goose StatementBegin
+CREATE TRIGGER revisions_no_replace BEFORE INSERT ON revisions
+WHEN EXISTS (SELECT 1 FROM revisions WHERE id = NEW.id OR (recipe_id = NEW.recipe_id AND version = NEW.version))
+BEGIN
+    SELECT RAISE(ABORT, 'revisions rows cannot be replaced');
+END;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+CREATE TRIGGER notes_no_replace BEFORE INSERT ON notes
+WHEN EXISTS (SELECT 1 FROM notes WHERE id = NEW.id)
+BEGIN
+    SELECT RAISE(ABORT, 'notes rows cannot be replaced');
+END;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+CREATE TRIGGER made_it_no_replace BEFORE INSERT ON made_it
+WHEN EXISTS (SELECT 1 FROM made_it WHERE id = NEW.id)
+BEGIN
+    SELECT RAISE(ABORT, 'made_it rows cannot be replaced');
+END;
+-- +goose StatementEnd
+
 -- +goose Down
+DROP TRIGGER made_it_no_replace;
+DROP TRIGGER notes_no_replace;
+DROP TRIGGER revisions_no_replace;
 DROP TRIGGER recipes_no_replace;
 DROP TRIGGER source_snapshots_no_replace;
 DROP TRIGGER source_snapshots_no_delete;
