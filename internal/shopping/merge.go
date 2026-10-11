@@ -87,6 +87,10 @@ type Item struct {
 	Sources []Source
 	// Manual reports whether a manual item contributed.
 	Manual bool
+	// Scale is the factor applied to an unresolved recipe line, whose text
+	// (Name) is as written and so cannot be rescaled. It is zero for every
+	// other item; Text renders it as "(x2)".
+	Scale quantity.Rat
 }
 
 // Aisle is a named group of items.
@@ -104,7 +108,11 @@ type List struct {
 
 type itemKey struct {
 	id   recipe.IngredientID
-	text string // lower-cased free text, only when id is zero
+	text string // lower-cased manual free text, only when id is zero
+	// seq is nonzero for an unresolved recipe line. Its text cannot be parsed
+	// into an ingredient and an amount, so two such lines are never merged:
+	// merging would drop one's scale or count.
+	seq int
 }
 
 type accum struct {
@@ -113,11 +121,13 @@ type accum struct {
 	density    quantity.Rat
 	amounts    []quantity.Amount
 	fromRecipe bool
+	seq        int // creation order, for deterministic output
 }
 
 // Generate builds the list described in ADR-00009. See the package comment.
 func Generate(in Input) (List, error) {
 	accs := map[itemKey]*accum{}
+	seq := 0
 
 	for _, e := range in.Entries {
 		if e.Multiplier.Sign() <= 0 {
@@ -133,36 +143,49 @@ func Generate(in Input) (List, error) {
 				if err != nil {
 					return List{}, fmt.Errorf("recipe %q line %q: %w", e.Recipe.Name, l.Raw, err)
 				}
-				acc, err := in.accumFor(accs, l.Ingredient, l.Raw)
+				key := itemKey{id: l.Ingredient}
+				if l.Ingredient == 0 {
+					seq++
+					key.seq = seq
+				}
+				acc, err := in.accumFor(accs, key, l.Raw)
 				if err != nil {
 					return List{}, fmt.Errorf("recipe %q line %q: %w", e.Recipe.Name, l.Raw, err)
 				}
 				acc.fromRecipe = true
 				acc.addSource(src)
-				if l.Ingredient != 0 {
-					acc.amounts = append(acc.amounts, a)
+				acc.amounts = append(acc.amounts, a)
+				if l.Ingredient == 0 && l.Rule == quantity.RuleLinear && !a.Qty.IsAbsent() {
+					acc.item.Scale = e.Multiplier
 				}
 			}
 		}
 	}
 
-	for _, m := range in.Manual {
+	for i, m := range in.Manual {
 		if m.Ingredient == 0 && strings.TrimSpace(m.Text) == "" {
-			return List{}, ErrInvalidManualItem
+			return List{}, fmt.Errorf("manual item %d: %w", i+1, ErrInvalidManualItem)
 		}
-		acc, err := in.accumFor(accs, m.Ingredient, m.Text)
+		key := itemKey{id: m.Ingredient}
+		if m.Ingredient == 0 {
+			key.text = strings.ToLower(strings.TrimSpace(m.Text))
+		}
+		acc, err := in.accumFor(accs, key, m.Text)
 		if err != nil {
 			return List{}, fmt.Errorf("manual item %q: %w", m.Text, err)
 		}
 		acc.item.Manual = true
-		if m.Ingredient != 0 {
-			acc.amounts = append(acc.amounts, m.Amount)
-		}
+		acc.amounts = append(acc.amounts, m.Amount)
 	}
 
 	var list List
 	byAisle := map[string][]Item{}
+	ordered := make([]*accum, 0, len(accs))
 	for _, acc := range accs {
+		ordered = append(ordered, acc)
+	}
+	sort.Slice(ordered, func(i, j int) bool { return ordered[i].seq < ordered[j].seq })
+	for _, acc := range ordered {
 		amounts, err := mergeAmounts(acc.amounts, acc.density)
 		if err != nil {
 			return List{}, fmt.Errorf("merge %q: %w", acc.item.Name, err)
@@ -194,18 +217,15 @@ func Generate(in Input) (List, error) {
 	return list, nil
 }
 
-// accumFor returns the accumulator for an ingredient, creating it. An
-// unresolved ingredient (zero id) is keyed by its text, case-insensitively.
-func (in Input) accumFor(accs map[itemKey]*accum, id recipe.IngredientID, text string) (*accum, error) {
+// accumFor returns the accumulator for key k, creating it. text names a
+// free-text item (zero ingredient id).
+func (in Input) accumFor(accs map[itemKey]*accum, k itemKey, text string) (*accum, error) {
 	text = strings.TrimSpace(text)
-	k := itemKey{id: id}
-	if id == 0 {
-		k.text = strings.ToLower(text)
-	}
+	id := k.id
 	if acc, ok := accs[k]; ok {
 		return acc, nil
 	}
-	acc := &accum{}
+	acc := &accum{seq: len(accs)}
 	if id == 0 {
 		acc.item = Item{Name: text}
 		acc.aisle = Uncategorised
@@ -241,7 +261,7 @@ func (a *accum) addSource(s Source) {
 }
 
 func sortItems(items []Item) {
-	sort.Slice(items, func(i, j int) bool {
+	sort.SliceStable(items, func(i, j int) bool {
 		a, b := items[i], items[j]
 		if a.Name != b.Name {
 			return a.Name < b.Name

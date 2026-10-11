@@ -51,7 +51,7 @@ func TestTextGolden(t *testing.T) {
 	}
 }
 
-func TestTextNoteOnItemsWithoutAmounts(t *testing.T) {
+func TestTextItemWithoutAmountsIsNameOnly(t *testing.T) {
 	taste := line(idSalt, quantity.Amount{})
 	taste.Rule = quantity.RuleToTaste
 	l := gen(t, Input{Entries: []RecipeEntry{entry(t, 1, "A", 1, taste)}})

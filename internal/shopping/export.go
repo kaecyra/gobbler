@@ -43,10 +43,19 @@ func itemLine(it Item) (string, error) {
 		}
 		parts = append(parts, r.Rounded.String())
 	}
-	if len(parts) == 0 {
-		return "- " + it.Name, nil
+	name := it.Name
+	if it.Ingredient == 0 && len(it.Sources) > 0 {
+		// An unresolved recipe line is free text that already holds its amount
+		// as written and cannot be rescaled; show the factor instead.
+		parts = nil
+		if it.Scale.Sign() > 0 && !it.Scale.Equal(quantity.Int(1)) {
+			name += " (x" + it.Scale.String() + ")"
+		}
 	}
-	return "- " + it.Name + ": " + strings.Join(parts, " + "), nil
+	if len(parts) == 0 {
+		return "- " + name, nil
+	}
+	return "- " + name + ": " + strings.Join(parts, " + "), nil
 }
 
 func titleCase(s string) string {

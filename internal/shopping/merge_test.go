@@ -310,8 +310,8 @@ func TestGenerateManualItems(t *testing.T) {
 
 func TestGenerateRejectsEmptyManualItem(t *testing.T) {
 	_, err := Generate(Input{Manual: []ManualItem{{Text: "  "}}, Catalog: testCatalog()})
-	if !errors.Is(err, ErrInvalidManualItem) {
-		t.Errorf("err = %v, want ErrInvalidManualItem", err)
+	if !errors.Is(err, ErrInvalidManualItem) || !strings.Contains(err.Error(), "manual item 1") {
+		t.Errorf("err = %v, want ErrInvalidManualItem naming manual item 1", err)
 	}
 }
 
@@ -336,6 +336,52 @@ func TestGenerateUnresolvedLineBecomesFreeText(t *testing.T) {
 	if len(l.Aisles) != 1 || l.Aisles[0].Name != Uncategorised || l.Aisles[0].Items[0].Name != "1 cup dragon fruit" {
 		t.Errorf("got %+v", l.Aisles)
 	}
+}
+
+func TestGenerateUnresolvedLineKeepsItsScale(t *testing.T) {
+	ln := line(0, amt(t, 2, 1, "cup"))
+	ln.Raw = "2 cups dragon fruit"
+	l := gen(t, Input{Entries: []RecipeEntry{entry(t, 1, "A", 2, ln)}})
+	it := l.Aisles[0].Items[0]
+	wantAmounts(t, it, "4 cup")
+	text, err := l.Text()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "Uncategorised\n- 2 cups dragon fruit (x2)\n"; text != want {
+		t.Errorf("text = %q, want %q", text, want)
+	}
+}
+
+func TestGenerateUnresolvedLinesAreNeverCollapsed(t *testing.T) {
+	ln := line(0, amt(t, 2, 1, "cup"))
+	ln.Raw = "2 cups dragon fruit"
+	l := gen(t, Input{Entries: []RecipeEntry{
+		entry(t, 1, "A", 1, ln),
+		entry(t, 2, "B", 3, ln),
+	}})
+	text, err := l.Text()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Uncategorised\n- 2 cups dragon fruit\n- 2 cups dragon fruit (x3)\n"
+	if text != want {
+		t.Errorf("text = %q, want %q", text, want)
+	}
+	if n := len(l.Aisles[0].Items); n != 2 {
+		t.Fatalf("items = %d, want 2", n)
+	}
+	if l.Aisles[0].Items[0].Sources[0].RecipeID != 1 || l.Aisles[0].Items[1].Sources[0].RecipeID != 2 {
+		t.Errorf("items out of input order: %+v", l.Aisles[0].Items)
+	}
+}
+
+func TestGenerateManualFreeTextKeepsAmount(t *testing.T) {
+	l := gen(t, Input{Manual: []ManualItem{
+		{Text: "Paper Towels", Amount: amt(t, 2, 1, "")},
+		{Text: "paper towels", Amount: amt(t, 1, 1, "")},
+	}})
+	wantAmounts(t, l.Aisles[0].Items[0], "3")
 }
 
 func TestGenerateSources(t *testing.T) {

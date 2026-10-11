@@ -17,8 +17,10 @@
 // Items group by aisle: aisles alphabetically, then Uncategorised last, items
 // alphabetically within each. The same input always yields the same output.
 //
-// A line with no resolved ingredient (ID zero) becomes a free-text item named
-// by its original line, so a recipe the owner has not finished cleaning up
-// still produces a usable list. A resolved ingredient that Input.Catalog does
-// not know is an error.
-package shopping
+// A line with no resolved ingredient (ID zero) becomes its own free-text item
+// named by its original line, so a recipe the owner has not finished cleaning
+// up still produces a usable list. Its text cannot be parsed or rescaled, so
+// such lines are never merged, and the multiplier is kept on Item.Scale and
+// shown by Text as "(x2)"; nothing is silently undercounted. Manual free-text
+// items merge by text and keep their amounts. A resolved ingredient that
+// Input.Catalog does not know is an error.
