@@ -24,7 +24,7 @@ var importUSDACommand = command{
 	run: func(ctx context.Context, args []string) error {
 		fs := flag.NewFlagSet("import-usda", flag.ContinueOnError)
 		dir := fs.String("dir", "", "directory holding food.csv, food_portion.csv and measure_unit.csv (required)")
-		offers := fs.String("offers", "", "write suggested new ingredients to this JSON file")
+		offers := fs.String("offers", "", "write suggested new ingredients and partial matches to this JSON file")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
@@ -57,10 +57,10 @@ func importUSDA(ctx context.Context, cfg config.Config, dir, offersPath string) 
 	if offersPath == "" {
 		return nil
 	}
-	return writeOffers(offersPath, rep.Offers)
+	return writeOffers(offersPath, rep)
 }
 
-func writeOffers(path string, offers []usda.Offer) (err error) {
+func writeOffers(path string, rep usda.Report) (err error) {
 	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("create offers file: %w", err)
@@ -70,16 +70,28 @@ func writeOffers(path string, offers []usda.Offer) (err error) {
 			err = errors.Join(err, fmt.Errorf("close offers file: %w", cerr))
 		}
 	}()
-	return encodeOffers(f, offers)
+	return encodeOffers(f, rep)
 }
 
-func encodeOffers(w io.Writer, offers []usda.Offer) error {
+// offersFile is the JSON the operator reviews: foods that match nothing
+// (candidate new ingredients) and foods that match only the start of an
+// ingredient name (add the alias to opt in, then re-run).
+type offersFile struct {
+	Offers         []usda.Offer        `json:"offers"`
+	PartialMatches []usda.PartialMatch `json:"partial_matches"`
+}
+
+func encodeOffers(w io.Writer, rep usda.Report) error {
+	out := offersFile{Offers: rep.Offers, PartialMatches: rep.PartialMatches}
+	if out.Offers == nil {
+		out.Offers = []usda.Offer{}
+	}
+	if out.PartialMatches == nil {
+		out.PartialMatches = []usda.PartialMatch{}
+	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	if offers == nil {
-		offers = []usda.Offer{}
-	}
-	if err := enc.Encode(offers); err != nil {
+	if err := enc.Encode(out); err != nil {
 		return fmt.Errorf("write offers: %w", err)
 	}
 	return nil

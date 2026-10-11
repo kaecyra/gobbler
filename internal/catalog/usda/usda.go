@@ -10,6 +10,12 @@
 //     are written back exactly as read (ADR-00008 obligation 2).
 //   - Nothing is created: a food that matches no ingredient becomes an Offer in
 //     the Report, for the catalog cleanup flow to act on (obligation 3).
+//   - Only an exact match writes: a food fills an ingredient only when its whole
+//     description equals the ingredient's name or an alias. "Milk, dry, nonfat"
+//     is not "milk"; matching on a leading segment would put the density of
+//     whichever family member sorts first onto the generic ingredient. Such a
+//     food is reported as a PartialMatch instead, and the owner opts it in by
+//     adding its description as an alias and re-running.
 //   - Re-running on the same input changes nothing: a filled field is no longer
 //     empty, and the candidate chosen for an ingredient is independent of file
 //     order.
@@ -30,10 +36,12 @@
 package usda
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -63,16 +71,33 @@ type Catalog interface {
 }
 
 // Offer is a food that matched no catalog ingredient, suggested as a new
-// canonical ingredient. It is only data: nothing is saved.
+// canonical ingredient. It is only data: nothing is saved. There is one offer
+// per food, so "Spices, cinnamon" and "Spices, cumin" stay separate.
 type Offer struct {
 	// Name is the suggested bare ingredient name (the first segment of the
-	// FoodData Central description, lower-case).
-	Name string
+	// FoodData Central description, lower-case). Several offers may share it.
+	Name string `json:"name"`
 	// FDCID and Description identify the food the suggestion came from.
-	FDCID       int64
-	Description string
+	FDCID       int64  `json:"fdc_id"`
+	Description string `json:"description"`
 	// DensityGPerML is nil when the food has no plain volume portion.
-	DensityGPerML *float64
+	DensityGPerML *float64 `json:"density_g_per_ml"`
+}
+
+// PartialMatch is a food whose description starts with the name of an existing
+// ingredient but is not that ingredient ("Milk, dry, nonfat" against "milk").
+// Nothing is written for it. Adding Alias to the ingredient and re-running
+// opts the food in.
+type PartialMatch struct {
+	// Ingredient is the name of the ingredient a leading part of the
+	// description matched.
+	Ingredient string `json:"ingredient"`
+	// Alias is the normalized description to add as an alias to opt in.
+	Alias       string `json:"alias"`
+	FDCID       int64  `json:"fdc_id"`
+	Description string `json:"description"`
+	// DensityGPerML is nil when the food has no plain volume portion.
+	DensityGPerML *float64 `json:"density_g_per_ml"`
 }
 
 // Report summarises one import. Every count is accumulated while the import
@@ -81,7 +106,7 @@ type Report struct {
 	// Foods is the number of non-branded foods read.
 	Foods int
 	// Matched is the number of distinct catalog ingredients that at least one
-	// food matched.
+	// food matched exactly.
 	Matched int
 	// Filled is the number of ingredients that were updated.
 	Filled int
@@ -89,10 +114,13 @@ type Report struct {
 	// because every field the import could fill already held a value, or is
 	// linked to a different food.
 	SkippedCurated int
-	// Unmatched is the number of foods that matched no ingredient.
+	// Unmatched is the number of foods that matched no ingredient at all.
 	Unmatched int
-	// Offers is one suggestion per distinct suggested name, ordered by name.
+	// Offers is one suggestion per unmatched food, ordered by name then FDC id.
 	Offers []Offer
+	// PartialMatches are foods matched only on a leading part of the
+	// description, ordered by ingredient then FDC id. None was written.
+	PartialMatches []PartialMatch
 }
 
 // candidate is what one food contributes to an ingredient.
@@ -131,7 +159,7 @@ func Import(ctx context.Context, cat Catalog, fsys fs.FS) (Report, error) {
 
 	var rep Report
 	chosen := map[int64]candidate{}
-	offers := map[string]Offer{}
+	var partials []PartialMatch
 
 	err = readCSV(fsys, foodFile, []string{"fdc_id", "data_type", "description"}, func(r row) error {
 		if r.get("data_type") == brandedDataType {
@@ -148,20 +176,23 @@ func Import(ctx context.Context, cat Catalog, fsys fs.FS) (Report, error) {
 		rep.Foods++
 		c := candidate{fdcID: id, description: desc, density: densities[id]}
 
-		ing, ok, err := matchFood(ctx, cat, desc)
+		m, err := matchFood(ctx, cat, desc)
 		if err != nil {
 			return r.errAt("match food %d %q: %w", id, desc, err)
 		}
-		if !ok {
+		switch m.kind {
+		case matchNone:
 			rep.Unmatched++
-			o := Offer{Name: suggestedName(desc), FDCID: id, Description: desc, DensityGPerML: c.density}
-			if prev, seen := offers[o.Name]; !seen || c.better(candidate{fdcID: prev.FDCID, density: prev.DensityGPerML}) {
-				offers[o.Name] = o
+			rep.Offers = append(rep.Offers, Offer{Name: suggestedName(desc), FDCID: id, Description: desc, DensityGPerML: c.density})
+		case matchPartial:
+			partials = append(partials, PartialMatch{
+				Ingredient: m.ing.Name, Alias: normalizeText(desc),
+				FDCID: id, Description: desc, DensityGPerML: c.density,
+			})
+		case matchExact:
+			if prev, seen := chosen[m.ing.ID]; !seen || c.better(prev) {
+				chosen[m.ing.ID] = c
 			}
-			return nil
-		}
-		if prev, seen := chosen[ing.ID]; !seen || c.better(prev) {
-			chosen[ing.ID] = c
 		}
 		return nil
 	})
@@ -194,14 +225,18 @@ func Import(ctx context.Context, cat Catalog, fsys fs.FS) (Report, error) {
 		rep.Filled++
 	}
 
-	for _, o := range offers {
-		rep.Offers = append(rep.Offers, o)
-	}
-	slices.SortFunc(rep.Offers, func(a, b Offer) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(rep.Offers, func(a, b Offer) int {
+		return cmp.Or(strings.Compare(a.Name, b.Name), cmp.Compare(a.FDCID, b.FDCID))
+	})
+	slices.SortFunc(partials, func(a, b PartialMatch) int {
+		return cmp.Or(strings.Compare(a.Ingredient, b.Ingredient), cmp.Compare(a.FDCID, b.FDCID))
+	})
+	rep.PartialMatches = partials
 
 	slog.InfoContext(ctx, "usda import finished",
 		"foods", rep.Foods, "matched", rep.Matched, "filled", rep.Filled,
-		"skipped_curated", rep.SkippedCurated, "unmatched", rep.Unmatched, "offers", len(rep.Offers))
+		"skipped_curated", rep.SkippedCurated, "unmatched", rep.Unmatched,
+		"offers", len(rep.Offers), "partial_matches", len(rep.PartialMatches))
 	return rep, nil
 }
 
@@ -227,19 +262,42 @@ func fill(in catalog.Ingredient, c candidate) (catalog.Ingredient, bool) {
 	return in, changed
 }
 
+type matchKind int
+
+const (
+	matchNone matchKind = iota
+	matchExact
+	matchPartial
+)
+
+type foodMatch struct {
+	ing  catalog.Ingredient
+	kind matchKind
+}
+
 // matchFood looks for an ingredient named by a FoodData Central description.
-// Descriptions run general to specific ("Butter, without salt"), so it tries
-// the whole description and then each shorter leading run of segments,
-// returning the first match. It stops at the first error.
-func matchFood(ctx context.Context, cat Catalog, desc string) (catalog.Ingredient, bool, error) {
+// The whole description must equal an ingredient name or alias to be exact.
+// Failing that, shorter leading runs of segments are tried only to report a
+// partial match, which the caller never writes.
+func matchFood(ctx context.Context, cat Catalog, desc string) (foodMatch, error) {
+	ing, ok, err := cat.MatchIngredient(ctx, desc)
+	if err != nil {
+		return foodMatch{}, err
+	}
+	if ok {
+		return foodMatch{ing: ing, kind: matchExact}, nil
+	}
 	segs := segments(desc)
-	for n := len(segs); n >= 1; n-- {
+	for n := len(segs) - 1; n >= 1; n-- {
 		ing, ok, err := cat.MatchIngredient(ctx, strings.Join(segs[:n], " "))
-		if err != nil || ok {
-			return ing, ok, err
+		if err != nil {
+			return foodMatch{}, err
+		}
+		if ok {
+			return foodMatch{ing: ing, kind: matchPartial}, nil
 		}
 	}
-	return catalog.Ingredient{}, false, nil
+	return foodMatch{}, nil
 }
 
 func suggestedName(desc string) string {
@@ -275,7 +333,7 @@ func readMeasureUnits(fsys fs.FS) (map[string]string, error) {
 }
 
 // readDensities returns, per FDC id, the density from the food's first plain
-// volume portion in seq_num order (file order breaks ties). Portions without
+// volume portion in seq_num order (blank last; file order breaks ties). Portions without
 // an amount or gram weight, and portions that are not a plain volume, give no
 // density and are skipped; an unparsable number is an error.
 func readDensities(fsys fs.FS, units map[string]string) (map[int64]*float64, error) {
@@ -298,7 +356,8 @@ func readDensities(fsys fs.FS, units map[string]string) (map[int64]*float64, err
 		if err != nil {
 			return r.errAt("food %d gram_weight: %w", id, err)
 		}
-		seq := 0
+		// A blank seq_num sorts after every numbered portion.
+		seq := math.MaxInt
 		if s := r.get("seq_num"); s != "" {
 			if seq, err = strconv.Atoi(s); err != nil {
 				return r.errAt("food %d seq_num %q is not an integer", id, s)

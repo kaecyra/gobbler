@@ -32,12 +32,23 @@ func TestImportUSDACommandFillsCatalogAndWritesOffers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("offers file: %v", err)
 	}
-	var got []struct{ Name string }
+	var got struct {
+		Offers []struct {
+			Name  string `json:"name"`
+			FDCID int64  `json:"fdc_id"`
+		} `json:"offers"`
+		PartialMatches []struct {
+			Alias string `json:"alias"`
+		} `json:"partial_matches"`
+	}
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatalf("offers file is not JSON: %v", err)
 	}
-	if len(got) == 0 {
-		t.Errorf("offers file is empty; the fixture has foods matching no seeded ingredient")
+	if len(got.Offers) == 0 || got.Offers[0].FDCID == 0 {
+		t.Errorf("offers = %+v; the fixture has foods matching no seeded ingredient", got.Offers)
+	}
+	if len(got.PartialMatches) == 0 {
+		t.Errorf("partial_matches is empty; \"Milk, whole\" and \"Cheese, cheddar\" match only the start of a seeded name")
 	}
 
 	cfg, err := config.Load()
@@ -50,11 +61,11 @@ func TestImportUSDACommandFillsCatalogAndWritesOffers(t *testing.T) {
 	}
 	defer func() { _ = d.Close() }()
 	var linked int
-	if err := d.QueryRow(`SELECT COUNT(*) FROM ingredients WHERE usda_fdc_id = 170001`).Scan(&linked); err != nil {
+	if err := d.QueryRow(`SELECT COUNT(*) FROM ingredients WHERE usda_fdc_id = 170003`).Scan(&linked); err != nil {
 		t.Fatal(err)
 	}
 	if linked != 1 {
-		t.Errorf("ingredients linked to FDC 170001 = %d, want 1 (seeded butter)", linked)
+		t.Errorf("ingredients linked to FDC 170003 = %d, want 1 (seeded honey)", linked)
 	}
 }
 

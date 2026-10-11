@@ -3,6 +3,7 @@ package usda
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"math"
 	"os"
 	"reflect"
@@ -33,6 +34,11 @@ func newStore(t *testing.T) (*catalog.Store, *sql.DB) {
 	}
 	return catalog.New(d), d
 }
+
+const (
+	butterAlias = "butter, without salt"
+	flourAlias  = "flour, wheat, all-purpose"
+)
 
 func f64(v float64) *float64 { return &v }
 func i64(v int64) *int64     { return &v }
@@ -76,8 +82,8 @@ func run(t *testing.T, s *catalog.Store) Report {
 
 func TestImportFillsEmptyDensityAndID(t *testing.T) {
 	s, _ := newStore(t)
-	butter := create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{"unsalted butter"}})
-	flour := create(t, s, catalog.Ingredient{Name: "flour", Aisle: "baking", Reviewed: true})
+	butter := create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias, "unsalted butter"}})
+	flour := create(t, s, catalog.Ingredient{Name: "flour", Aisle: "baking", Reviewed: true, Aliases: []string{flourAlias}})
 	honey := create(t, s, catalog.Ingredient{Name: "honey", Aisle: "pantry"})
 
 	rep := run(t, s)
@@ -104,7 +110,7 @@ func TestImportNeverChangesAnythingButEmptyDensityAndID(t *testing.T) {
 	}{
 		{
 			name: "all empty fills density and id, keeps reviewed false",
-			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{"unsalted butter"}, Reviewed: false},
+			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias, "unsalted butter"}, Reviewed: false},
 			want: func(i catalog.Ingredient) catalog.Ingredient {
 				i.DensityGPerML, i.USDAID = f64(227/236.5882365), i64(170001)
 				return i
@@ -112,7 +118,7 @@ func TestImportNeverChangesAnythingButEmptyDensityAndID(t *testing.T) {
 		},
 		{
 			name: "all empty fills density and id, keeps reviewed true",
-			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Reviewed: true},
+			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}, Reviewed: true},
 			want: func(i catalog.Ingredient) catalog.Ingredient {
 				i.DensityGPerML, i.USDAID = f64(227/236.5882365), i64(170001)
 				return i
@@ -120,27 +126,27 @@ func TestImportNeverChangesAnythingButEmptyDensityAndID(t *testing.T) {
 		},
 		{
 			name: "curated density kept, id still linked",
-			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", DensityGPerML: f64(0.91)},
+			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}, DensityGPerML: f64(0.91)},
 			want: func(i catalog.Ingredient) catalog.Ingredient { i.USDAID = i64(170001); return i },
 		},
 		{
 			name: "curated id of another food kept and density not borrowed",
-			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", USDAID: i64(999)},
+			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}, USDAID: i64(999)},
 			want: func(i catalog.Ingredient) catalog.Ingredient { return i },
 		},
 		{
 			name: "curated id of the same food leaves density to fill",
-			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", USDAID: i64(170001)},
+			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}, USDAID: i64(170001)},
 			want: func(i catalog.Ingredient) catalog.Ingredient { i.DensityGPerML = f64(227 / 236.5882365); return i },
 		},
 		{
 			name: "curated density and id both kept",
-			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", DensityGPerML: f64(0.9), USDAID: i64(5)},
+			in:   catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}, DensityGPerML: f64(0.9), USDAID: i64(5)},
 			want: func(i catalog.Ingredient) catalog.Ingredient { return i },
 		},
 		{
 			name: "curated aisle and aliases kept",
-			in:   catalog.Ingredient{Name: "butter", Aisle: "chilled aisle 7", Aliases: []string{"salted butter", "sweet butter"}},
+			in:   catalog.Ingredient{Name: "butter", Aisle: "chilled aisle 7", Aliases: []string{butterAlias, "salted butter", "sweet butter"}},
 			want: func(i catalog.Ingredient) catalog.Ingredient {
 				i.DensityGPerML, i.USDAID = f64(227/236.5882365), i64(170001)
 				return i
@@ -167,8 +173,8 @@ func TestImportNeverChangesAnythingButEmptyDensityAndID(t *testing.T) {
 
 func TestImportIsIdempotent(t *testing.T) {
 	s, d := newStore(t)
-	create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy"})
-	create(t, s, catalog.Ingredient{Name: "flour", Aisle: "baking", DensityGPerML: f64(0.5)})
+	create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}})
+	create(t, s, catalog.Ingredient{Name: "flour", Aisle: "baking", DensityGPerML: f64(0.5), Aliases: []string{flourAlias}})
 	create(t, s, catalog.Ingredient{Name: "honey", Aisle: "pantry"})
 
 	first := run(t, s)
@@ -202,7 +208,7 @@ func TestImportIsIdempotent(t *testing.T) {
 
 func TestImportOffersUnmatchedWithoutCreating(t *testing.T) {
 	s, d := newStore(t)
-	create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy"})
+	create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}})
 	var before int
 	if err := d.QueryRow(`SELECT COUNT(*) FROM ingredients`).Scan(&before); err != nil {
 		t.Fatal(err)
@@ -242,8 +248,8 @@ func TestImportOffersUnmatchedWithoutCreating(t *testing.T) {
 
 func TestImportSkipsBrandedAndUnusablePortions(t *testing.T) {
 	s, _ := newStore(t)
-	cheese := create(t, s, catalog.Ingredient{Name: "cheese", Aisle: "dairy"})
-	milk := create(t, s, catalog.Ingredient{Name: "milk", Aisle: "dairy"})
+	cheese := create(t, s, catalog.Ingredient{Name: "cheese", Aisle: "dairy", Aliases: []string{"cheese, cheddar"}})
+	milk := create(t, s, catalog.Ingredient{Name: "milk", Aisle: "dairy", Aliases: []string{"milk, whole"}})
 
 	rep := run(t, s)
 
@@ -273,7 +279,7 @@ func TestImportSkipsBrandedAndUnusablePortions(t *testing.T) {
 
 func TestImportPrefersFoodWithDensityThenLowestID(t *testing.T) {
 	s, _ := newStore(t)
-	flour := create(t, s, catalog.Ingredient{Name: "flour", Aisle: "baking"})
+	flour := create(t, s, catalog.Ingredient{Name: "flour", Aisle: "baking", Aliases: []string{"flour, rye", "flour, corn", "flour, oat"}})
 	fsys := fstest.MapFS{
 		"measure_unit.csv": {Data: []byte("id,name\n1000,cup\n")},
 		"food.csv": {Data: []byte("fdc_id,data_type,description\n" +
@@ -316,7 +322,7 @@ func TestImportFailsLoudlyOnMalformedInput(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			s, _ := newStore(t)
-			butter := create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy"})
+			butter := create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}})
 			fsys := fstest.MapFS{
 				"measure_unit.csv": {Data: []byte(units)},
 				"food.csv":         {Data: []byte(foods)},
@@ -378,7 +384,7 @@ func (updateFailCatalog) UpdateIngredient(context.Context, catalog.Ingredient) e
 
 func TestImportReportsUpdateFailure(t *testing.T) {
 	s, _ := newStore(t)
-	create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy"})
+	create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}})
 	_, err := Import(context.Background(), updateFailCatalog{s}, os.DirFS("testdata/fdc"))
 	if err == nil || !strings.Contains(err.Error(), `fill ingredient "butter"`) {
 		t.Fatalf("err = %v", err)
@@ -403,7 +409,7 @@ func (e *editAfterMatch) MatchIngredient(ctx context.Context, term string) (cata
 
 func TestImportKeepsEditsMadeDuringTheRun(t *testing.T) {
 	s, _ := newStore(t)
-	butter := create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy"})
+	butter := create(t, s, catalog.Ingredient{Name: "butter", Aisle: "dairy", Aliases: []string{butterAlias}})
 	cat := &editAfterMatch{Store: s, edit: func() {
 		edited := butter
 		edited.Aisle = "chilled"
@@ -426,5 +432,111 @@ func TestImportKeepsEditsMadeDuringTheRun(t *testing.T) {
 	approx(t, "hand-set density", got.DensityGPerML, 0.91)
 	if got.USDAID == nil || *got.USDAID != 170001 {
 		t.Errorf("USDAID = %v, want 170001", got.USDAID)
+	}
+}
+
+func TestImportWritesOnlyOnExactMatchAndReportsPartialMatches(t *testing.T) {
+	s, _ := newStore(t)
+	milk := create(t, s, catalog.Ingredient{Name: "milk", Aisle: "dairy"})
+	cheese := create(t, s, catalog.Ingredient{Name: "cheese", Aisle: "dairy"})
+
+	rep := run(t, s)
+
+	// "Milk, whole" and "Cheese, cheddar" start with an ingredient name but are
+	// not that ingredient: neither a density nor an id may be written.
+	for _, id := range []int64{milk.ID, cheese.ID} {
+		if got := get(t, s, id); got.DensityGPerML != nil || got.USDAID != nil {
+			t.Errorf("%s was written from a partial match: %+v", got.Name, got)
+		}
+	}
+	if rep.Filled != 0 || rep.Matched != 0 {
+		t.Errorf("Filled = %d, Matched = %d, want 0 for partial-only matches", rep.Filled, rep.Matched)
+	}
+	want := []PartialMatch{
+		{Ingredient: "cheese", Alias: "cheese, cheddar", FDCID: 170006, Description: "Cheese, cheddar"},
+		{Ingredient: "milk", Alias: "milk, whole", FDCID: 170007, Description: "Milk, whole"},
+	}
+	if !reflect.DeepEqual(rep.PartialMatches, want) {
+		t.Errorf("PartialMatches = %+v\nwant %+v", rep.PartialMatches, want)
+	}
+	for _, o := range rep.Offers {
+		if o.FDCID == 170006 || o.FDCID == 170007 {
+			t.Errorf("partial match was also offered as new: %+v", o)
+		}
+	}
+}
+
+func TestImportPartialMatchOptsInByAlias(t *testing.T) {
+	s, _ := newStore(t)
+	milk := create(t, s, catalog.Ingredient{Name: "milk", Aisle: "dairy"})
+	run(t, s)
+	if got := get(t, s, milk.ID); got.USDAID != nil {
+		t.Fatalf("first run wrote %+v", got)
+	}
+	milk.Aliases = []string{"Milk, whole"}
+	if err := s.UpdateIngredient(context.Background(), milk); err != nil {
+		t.Fatal(err)
+	}
+	rep := run(t, s)
+	if got := get(t, s, milk.ID); got.USDAID == nil || *got.USDAID != 170007 {
+		t.Errorf("after adding the alias USDAID = %v, want 170007", got.USDAID)
+	}
+	if len(rep.PartialMatches) != 0 { // no cheese ingredient exists in this test
+		t.Errorf("PartialMatches = %+v", rep.PartialMatches)
+	}
+}
+
+func TestImportOffersOnePerFood(t *testing.T) {
+	s, _ := newStore(t)
+	fsys := fstest.MapFS{
+		"measure_unit.csv": {Data: []byte("id,name\n1000,cup\n")},
+		"food.csv": {Data: []byte("fdc_id,data_type,description\n" +
+			"2,sr_legacy_food,\"Spices, cumin seed\"\n" +
+			"1,sr_legacy_food,\"Spices, cinnamon, ground\"\n")},
+		"food_portion.csv": {Data: []byte("fdc_id,seq_num,amount,measure_unit_id,portion_description,modifier,gram_weight\n")},
+	}
+	rep, err := Import(context.Background(), s, fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Offers) != 2 || rep.Offers[0].FDCID != 1 || rep.Offers[1].FDCID != 2 {
+		t.Fatalf("Offers = %+v, want one per food ordered by name then id", rep.Offers)
+	}
+	if rep.Offers[0].Name != "spices" || rep.Unmatched != 2 {
+		t.Errorf("Offers[0].Name = %q, Unmatched = %d", rep.Offers[0].Name, rep.Unmatched)
+	}
+}
+
+func TestImportBlankSeqNumSortsAfterNumbered(t *testing.T) {
+	s, _ := newStore(t)
+	honey := create(t, s, catalog.Ingredient{Name: "honey", Aisle: "pantry"})
+	fsys := fstest.MapFS{
+		"measure_unit.csv": {Data: []byte("id,name\n1000,cup\n")},
+		"food.csv":         {Data: []byte("fdc_id,data_type,description\n5,sr_legacy_food,Honey\n")},
+		// The blank-seq row comes first in the file and would win if blank meant 0.
+		"food_portion.csv": {Data: []byte("fdc_id,seq_num,amount,measure_unit_id,portion_description,modifier,gram_weight\n" +
+			"5,,1,1000,,,100\n5,3,1,1000,,,336\n")},
+	}
+	if _, err := Import(context.Background(), s, fsys); err != nil {
+		t.Fatal(err)
+	}
+	approx(t, "density from the numbered portion", get(t, s, honey.ID).DensityGPerML, 336/236.5882365)
+}
+
+func TestOfferAndPartialMatchJSONKeys(t *testing.T) {
+	raw, err := json.Marshal(struct {
+		O Offer
+		P PartialMatch
+	}{Offer{Name: "n", FDCID: 1, Description: "d", DensityGPerML: f64(1)}, PartialMatch{Ingredient: "i", Alias: "a", FDCID: 2, Description: "d"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{`"name"`, `"fdc_id"`, `"description"`, `"density_g_per_ml"`, `"ingredient"`, `"alias"`} {
+		if !strings.Contains(string(raw), key) {
+			t.Errorf("JSON %s lacks key %s", raw, key)
+		}
+	}
+	if strings.Contains(string(raw), `"FDCID"`) || strings.Contains(string(raw), `"DensityGPerML"`) {
+		t.Errorf("JSON uses Go field names: %s", raw)
 	}
 }
