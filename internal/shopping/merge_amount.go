@@ -42,7 +42,9 @@ func keyOf(a quantity.Amount) bucketKey {
 // mergeAmounts sums amounts that share a dimension (and package size) and
 // returns one amount per group, in display order. Amounts without a number
 // ("to taste") are ignored. density is grams per millilitre, zero when
-// unknown; only then may volume and mass merge into one mass amount.
+// unknown. When the density is known and both volume and mass are present,
+// the volume is converted to mass and merged into the mass amount; otherwise
+// volume and mass stay separate amounts.
 func mergeAmounts(in []quantity.Amount, density quantity.Rat) ([]quantity.Amount, error) {
 	buckets := map[bucketKey]quantity.Amount{}
 	for _, a := range in {

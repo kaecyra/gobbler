@@ -76,20 +76,31 @@ type Source struct {
 	Name     string
 }
 
-// Item is one line of the list: an ingredient (or free text) with its
-// merged amounts. Amounts is empty when no source gave a number.
+// Item is one line of the list: an ingredient or free text with its merged
+// amounts. Every consumer reads it the same way:
+//
+//   - Resolved ingredient (Ingredient != 0): Name is the catalog name and
+//     Amounts the merged amounts; Amounts is empty when no source gave a
+//     number.
+//   - Manual free text (Ingredient == 0, Unresolved false): Name is the text
+//     and Amounts its summed amounts, if any.
+//   - Unresolved recipe line (Unresolved true): Name is the line as written,
+//     amount included, and Scale is the factor the recipe was multiplied by.
+//     Amounts is always empty, so the amount is counted once, in Name; show
+//     Name with Scale and never total it.
 type Item struct {
 	// Ingredient is zero for a free-text item.
 	Ingredient recipe.IngredientID
-	// Name is the catalog name, or the text of a free-text item.
-	Name    string
-	Amounts []quantity.Amount
-	Sources []Source
+	Name       string
+	Amounts    []quantity.Amount
+	Sources    []Source
 	// Manual reports whether a manual item contributed.
 	Manual bool
-	// Scale is the factor applied to an unresolved recipe line, whose text
-	// (Name) is as written and so cannot be rescaled. It is zero for every
-	// other item; Text renders it as "(x2)".
+	// Unresolved marks a recipe line with no resolved ingredient. Its text
+	// cannot be parsed or rescaled.
+	Unresolved bool
+	// Scale applies to the text of an unresolved line scaled linearly; Text
+	// renders it as "(x2)". It is zero for every other item.
 	Scale quantity.Rat
 }
 
@@ -116,12 +127,11 @@ type itemKey struct {
 }
 
 type accum struct {
-	item       Item
-	aisle      string
-	density    quantity.Rat
-	amounts    []quantity.Amount
-	fromRecipe bool
-	seq        int // creation order, for deterministic output
+	item    Item
+	aisle   string
+	density quantity.Rat
+	amounts []quantity.Amount
+	seq     int // creation order, for deterministic output
 }
 
 // Generate builds the list described in ADR-00009. See the package comment.
@@ -152,10 +162,15 @@ func Generate(in Input) (List, error) {
 				if err != nil {
 					return List{}, fmt.Errorf("recipe %q line %q: %w", e.Recipe.Name, l.Raw, err)
 				}
-				acc.fromRecipe = true
 				acc.addSource(src)
-				acc.amounts = append(acc.amounts, a)
-				if l.Ingredient == 0 && l.Rule == quantity.RuleLinear {
+				if l.Ingredient != 0 {
+					acc.amounts = append(acc.amounts, a)
+					continue
+				}
+				// The line's text already holds its amount: record the factor
+				// rather than a second, countable amount.
+				acc.item.Unresolved = true
+				if l.Rule == quantity.RuleLinear {
 					acc.item.Scale = e.Multiplier
 				}
 			}
@@ -192,7 +207,7 @@ func Generate(in Input) (List, error) {
 		}
 		acc.item.Amounts = amounts
 		if acc.item.Ingredient != 0 && in.Pantry[acc.item.Ingredient] && !in.AddBack[acc.item.Ingredient] &&
-			acc.fromRecipe && !acc.item.Manual {
+			!acc.item.Manual {
 			list.Pantry = append(list.Pantry, acc.item)
 			continue
 		}

@@ -44,9 +44,9 @@ func itemLine(it Item) (string, error) {
 		parts = append(parts, r.Rounded.String())
 	}
 	name := it.Name
-	if it.Ingredient == 0 && len(it.Sources) > 0 {
-		// An unresolved recipe line is free text that already holds its amount
-		// as written and cannot be rescaled; show the factor instead.
+	if it.Unresolved {
+		// The text already holds its amount and cannot be rescaled; show the
+		// factor instead.
 		parts = nil
 		if it.Scale.Sign() > 0 && !it.Scale.Equal(quantity.Int(1)) {
 			name += " (x" + it.Scale.String() + ")"

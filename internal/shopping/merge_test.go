@@ -343,7 +343,9 @@ func TestGenerateUnresolvedLineKeepsItsScale(t *testing.T) {
 	ln.Raw = "2 cups dragon fruit"
 	l := gen(t, Input{Entries: []RecipeEntry{entry(t, 1, "A", 2, ln)}})
 	it := l.Aisles[0].Items[0]
-	wantAmounts(t, it, "4 cup")
+	if !it.Unresolved || it.Name != "2 cups dragon fruit" || len(it.Amounts) != 0 || !it.Scale.Equal(quantity.Int(2)) {
+		t.Errorf("unresolved item must carry the text, an empty Amounts and the scale: %+v", it)
+	}
 	text, err := l.Text()
 	if err != nil {
 		t.Fatal(err)
