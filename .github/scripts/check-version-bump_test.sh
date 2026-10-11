@@ -51,6 +51,12 @@ expect "source change with a lower VERSION fails" 1
 reset_repo; echo b >> "$tmp/internal/a.go"; echo 0.1.1 > "$tmp/VERSION"; echo b >> "$tmp/docs/a.md"; git_ commit -qam both
 expect "source and docs with a bump passes" 0
 
+# Main moves past the branch's bump while the branch is still cut from the old base.
+reset_repo; echo b >> "$tmp/internal/a.go"; echo 0.2.0 > "$tmp/VERSION"; git_ commit -qam src
+git_ checkout -q main; echo 0.2.0 > "$tmp/VERSION"; echo c >> "$tmp/internal/a.go"; git_ commit -qam "other unit"
+git_ update-ref refs/remotes/origin/main HEAD; git_ checkout -q feature
+expect "main moved past the branch's bump fails" 1
+
 reset_repo; echo 0.1.1 > "$tmp/VERSION"; git_ commit -qam ver
 expect "VERSION-only change passes" 0
 

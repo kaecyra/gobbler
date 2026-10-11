@@ -38,20 +38,23 @@ if [ "${#source_changes[@]}" -eq 0 ]; then
   exit 0
 fi
 
-old="$(git show "$base:VERSION" 2>/dev/null | tr -d '[:space:]' || true)"
+# Compare against VERSION at the tip of the base ref, not the merge base: when
+# main has shipped a version since this branch was cut, the branch's bump may
+# already be taken.
+old="$(git show "$base_ref:VERSION" 2>/dev/null | tr -d '[:space:]' || true)"
 new="$(tr -d '[:space:]' < VERSION)"
 if [ -z "$old" ]; then
   echo "version check: VERSION does not exist at $base_ref; nothing to bump against"
   exit 0
 fi
 if [ "$old" = "$new" ]; then
-  echo "version check: source changed but VERSION is still $old (bump it once per shipped unit). Changed:" >&2
+  echo "version check: source changed but VERSION is $old, the same as $base_ref. Rebase on $base_ref and re-bump VERSION (once per shipped unit). Changed:" >&2
   printf '  %s\n' "${source_changes[@]}" >&2
   exit 1
 fi
 highest="$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -n 1)"
 if [ "$highest" != "$new" ]; then
-  echo "version check: VERSION went backwards ($old -> $new)" >&2
+  echo "version check: VERSION $new is not greater than $old on $base_ref. Rebase on $base_ref and re-bump VERSION" >&2
   exit 1
 fi
 echo "version check: VERSION $old -> $new"
