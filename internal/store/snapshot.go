@@ -8,9 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"modernc.org/sqlite"
-	sqlitelib "modernc.org/sqlite/lib"
 )
 
 // ErrSnapshotExists is returned when a recipe already has a source snapshot of
@@ -68,6 +65,9 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 		if err := lockRecipe(ctx, tx, id); err != nil {
 			return err
 		}
+		// The recipe lock above makes this check and the insert atomic, so no
+		// concurrent AddSnapshot can slip a duplicate in between; the UNIQUE
+		// constraint and the triggers are the backstop for raw SQL only.
 		var existing int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = ? AND kind = ?`, id, string(kind)).Scan(&existing); err != nil {
 			return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)
@@ -78,10 +78,6 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
 			id, string(kind), content, hex.EncodeToString(sum[:]), s.stamp(), who)
-		var se *sqlite.Error
-		if errors.As(err, &se) && se.Code() == sqlitelib.SQLITE_CONSTRAINT_UNIQUE {
-			return fmt.Errorf("%w: recipe %d kind %s", ErrSnapshotExists, id, kind)
-		}
 		if err != nil {
 			return fmt.Errorf("write %s snapshot of recipe %d: %w", kind, id, err)
 		}

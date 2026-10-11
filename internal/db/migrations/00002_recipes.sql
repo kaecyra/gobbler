@@ -179,8 +179,10 @@ CREATE INDEX revision_ingredients_ingredient_id ON revision_ingredients (ingredi
 -- The ingested input, stored once per kind and never altered (ADR-00004
 -- obligation 4). The triggers hold the line below the Go API: no update at all,
 -- no delete except when the recipe itself is being deleted, and no insert over
--- an existing (recipe, kind): INSERT OR REPLACE removes the old row without
--- firing delete triggers, so the insert is what has to be refused.
+-- an existing row, whether it collides on id or on (recipe, kind): INSERT OR
+-- REPLACE removes the old row without firing delete triggers, so the insert is
+-- what has to be refused. Replacing a recipes row is refused for the same
+-- reason: the foreign key action would then delete its snapshots.
 CREATE TABLE source_snapshots (
     id         INTEGER PRIMARY KEY,
     recipe_id  INTEGER NOT NULL REFERENCES recipes (id) ON DELETE CASCADE,
@@ -209,13 +211,22 @@ END;
 
 -- +goose StatementBegin
 CREATE TRIGGER source_snapshots_no_replace BEFORE INSERT ON source_snapshots
-WHEN EXISTS (SELECT 1 FROM source_snapshots WHERE recipe_id = NEW.recipe_id AND kind = NEW.kind)
+WHEN EXISTS (SELECT 1 FROM source_snapshots WHERE id = NEW.id OR (recipe_id = NEW.recipe_id AND kind = NEW.kind))
 BEGIN
     SELECT RAISE(ABORT, 'source snapshots are immutable');
 END;
 -- +goose StatementEnd
 
+-- +goose StatementBegin
+CREATE TRIGGER recipes_no_replace BEFORE INSERT ON recipes
+WHEN EXISTS (SELECT 1 FROM recipes WHERE id = NEW.id)
+BEGIN
+    SELECT RAISE(ABORT, 'a recipe cannot be replaced; update it');
+END;
+-- +goose StatementEnd
+
 -- +goose Down
+DROP TRIGGER recipes_no_replace;
 DROP TRIGGER source_snapshots_no_replace;
 DROP TRIGGER source_snapshots_no_delete;
 DROP TRIGGER source_snapshots_no_update;

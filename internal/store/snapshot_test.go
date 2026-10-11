@@ -156,8 +156,9 @@ func TestSnapshotCannotBeReplacedThroughTheDatabase(t *testing.T) {
 	}
 
 	for name, stmt := range map[string]string{
-		"insert or replace": `INSERT OR REPLACE INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, 'text', 'TAMPERED', 'x', 'now', 'me')`,
-		"replace into":      `REPLACE INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, 'text', 'TAMPERED', 'x', 'now', 'me')`,
+		"insert or replace":         `INSERT OR REPLACE INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, 'text', 'TAMPERED', 'x', 'now', 'me')`,
+		"replace by id, other kind": `INSERT OR REPLACE INTO source_snapshots (id, recipe_id, kind, content, sha256, created_at, created_by) VALUES ((SELECT id FROM source_snapshots LIMIT 1), ?, 'ocr', 'TAMPERED', 'x', 'now', 'me')`,
+		"replace into":              `REPLACE INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, 'text', 'TAMPERED', 'x', 'now', 'me')`,
 	} {
 		if _, err := d.Exec(stmt, id); err == nil {
 			t.Errorf("%s: succeeded, want it refused", name)
@@ -181,5 +182,31 @@ func TestListSnapshotKindsOfMissingRecipe(t *testing.T) {
 	}
 	if kinds, err := s.ListSnapshotKinds(ctx, id); err != nil || len(kinds) != 0 {
 		t.Errorf("ListSnapshotKinds(no snapshots) = %v, %v; want empty", kinds, err)
+	}
+}
+
+// REPLACE on the recipes row deletes it without firing delete triggers; the
+// foreign key action then removes the snapshots after the parent is gone, which
+// is exactly the case the snapshot delete trigger allows.
+func TestSnapshotsSurviveReplacingTheRecipeRow(t *testing.T) {
+	s, d := newTestStore(t)
+	ctx := authedCtx(t)
+	id, err := s.Create(ctx, simpleRecipe("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddSnapshot(ctx, id, SnapshotText, []byte("original")); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, stmt := range map[string]string{
+		"insert or replace": `INSERT OR REPLACE INTO recipes (id, name, created_at, created_by, updated_at, updated_by) VALUES (?, 'replaced', 'now', 'me', 'now', 'me')`,
+		"replace into":      `REPLACE INTO recipes (id, name, created_at, created_by, updated_at, updated_by) VALUES (?, 'replaced', 'now', 'me', 'now', 'me')`,
+	} {
+		_, execErr := d.Exec(stmt, id)
+		got, err := s.GetSnapshot(ctx, id, SnapshotText)
+		if err != nil || string(got.Content) != "original" {
+			t.Errorf("%s (exec err %v): snapshot = %q, %v; want the original to survive", name, execErr, got.Content, err)
+		}
 	}
 }
