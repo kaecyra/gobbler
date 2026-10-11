@@ -177,12 +177,12 @@ CREATE TABLE revision_ingredients (
 CREATE INDEX revision_ingredients_ingredient_id ON revision_ingredients (ingredient_id);
 
 -- The ingested input, stored once per kind and never altered (ADR-00004
--- obligation 4). The triggers hold the line below the Go API: no update at all,
--- no delete except when the recipe itself is being deleted, and no insert over
--- an existing row, whether it collides on id or on (recipe, kind): INSERT OR
--- REPLACE removes the old row without firing delete triggers, so the insert is
--- what has to be refused. Replacing a recipes row is refused for the same
--- reason: the foreign key action would then delete its snapshots.
+-- obligation 4). The triggers below hold the line under the Go API. Refused:
+-- any UPDATE of a snapshot; any DELETE of one unless its recipe is already gone
+-- (the cascade from deleting the recipe); any INSERT whose id or (recipe, kind)
+-- already exists, which covers INSERT OR REPLACE, REPLACE and upsert because
+-- BEFORE INSERT triggers run before the conflict is resolved. See the history
+-- triggers further down for recipes, revisions, notes and made-it entries.
 CREATE TABLE source_snapshots (
     id         INTEGER PRIMARY KEY,
     recipe_id  INTEGER NOT NULL REFERENCES recipes (id) ON DELETE CASCADE,
@@ -217,23 +217,49 @@ BEGIN
 END;
 -- +goose StatementEnd
 
+-- Revisions, notes and made-it entries are history that cannot be recreated,
+-- and deleting a recipe row would cascade over all of it and its snapshots.
+-- SQLite resolves a key conflict under REPLACE by deleting the other row
+-- without firing delete triggers, and it does so for INSERT OR REPLACE, REPLACE
+-- and UPDATE OR REPLACE alike. So for recipes, revisions, notes and made_it:
+--   * a BEFORE INSERT trigger refuses an existing id (revisions also an
+--     existing (recipe_id, version)), which closes INSERT OR REPLACE, REPLACE
+--     and INSERT ... ON CONFLICT DO UPDATE;
+--   * a BEFORE UPDATE OF trigger refuses any change to those key columns
+--     (id; for revisions also recipe_id and version), which closes UPDATE OR
+--     REPLACE and re-keying. Ids never change.
+-- Left open on purpose: plain DELETE, and UPDATE of non-key columns (a recipe
+-- edit, a note edit, and the merge hook's UPDATE of revisions.document).
+
 -- +goose StatementBegin
 CREATE TRIGGER recipes_no_replace BEFORE INSERT ON recipes
 WHEN EXISTS (SELECT 1 FROM recipes WHERE id = NEW.id)
 BEGIN
-    SELECT RAISE(ABORT, 'a recipe cannot be replaced; update it');
+    SELECT RAISE(ABORT, 'recipes rows cannot be replaced');
 END;
 -- +goose StatementEnd
 
--- Revisions, notes and made-it entries are history that cannot be recreated.
--- INSERT OR REPLACE would overwrite a row without firing any delete trigger, so
--- each refuses an insert over an existing row.
+-- +goose StatementBegin
+CREATE TRIGGER recipes_no_rekey BEFORE UPDATE OF id ON recipes
+WHEN NEW.id IS NOT OLD.id
+BEGIN
+    SELECT RAISE(ABORT, 'recipes keys cannot be changed');
+END;
+-- +goose StatementEnd
 
 -- +goose StatementBegin
 CREATE TRIGGER revisions_no_replace BEFORE INSERT ON revisions
 WHEN EXISTS (SELECT 1 FROM revisions WHERE id = NEW.id OR (recipe_id = NEW.recipe_id AND version = NEW.version))
 BEGIN
     SELECT RAISE(ABORT, 'revisions rows cannot be replaced');
+END;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+CREATE TRIGGER revisions_no_rekey BEFORE UPDATE OF id, recipe_id, version ON revisions
+WHEN NEW.id IS NOT OLD.id OR NEW.recipe_id IS NOT OLD.recipe_id OR NEW.version IS NOT OLD.version
+BEGIN
+    SELECT RAISE(ABORT, 'revisions keys cannot be changed');
 END;
 -- +goose StatementEnd
 
@@ -246,6 +272,14 @@ END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
+CREATE TRIGGER notes_no_rekey BEFORE UPDATE OF id ON notes
+WHEN NEW.id IS NOT OLD.id
+BEGIN
+    SELECT RAISE(ABORT, 'notes keys cannot be changed');
+END;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
 CREATE TRIGGER made_it_no_replace BEFORE INSERT ON made_it
 WHEN EXISTS (SELECT 1 FROM made_it WHERE id = NEW.id)
 BEGIN
@@ -253,10 +287,22 @@ BEGIN
 END;
 -- +goose StatementEnd
 
+-- +goose StatementBegin
+CREATE TRIGGER made_it_no_rekey BEFORE UPDATE OF id ON made_it
+WHEN NEW.id IS NOT OLD.id
+BEGIN
+    SELECT RAISE(ABORT, 'made_it keys cannot be changed');
+END;
+-- +goose StatementEnd
+
 -- +goose Down
+DROP TRIGGER made_it_no_rekey;
 DROP TRIGGER made_it_no_replace;
+DROP TRIGGER notes_no_rekey;
 DROP TRIGGER notes_no_replace;
+DROP TRIGGER revisions_no_rekey;
 DROP TRIGGER revisions_no_replace;
+DROP TRIGGER recipes_no_rekey;
 DROP TRIGGER recipes_no_replace;
 DROP TRIGGER source_snapshots_no_replace;
 DROP TRIGGER source_snapshots_no_delete;

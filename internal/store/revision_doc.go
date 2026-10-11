@@ -183,19 +183,15 @@ func (d docRecipe) ingredientIDs() []int64 {
 	return ids
 }
 
-// repointIngredient rewrites references to loser as winner and reports whether
-// anything changed.
-func (d *docRecipe) repointIngredient(loser, winner int64) bool {
-	changed := false
+// repointIngredient rewrites references to loser as winner.
+func (d *docRecipe) repointIngredient(loser, winner int64) {
 	for ci := range d.Components {
 		for li := range d.Components[ci].Lines {
 			if l := &d.Components[ci].Lines[li]; l.Ingredient == loser {
 				l.Ingredient = winner
-				changed = true
 			}
 		}
 	}
-	return changed
 }
 
 // toRecipe rebuilds the domain document, resolving unit names against the
