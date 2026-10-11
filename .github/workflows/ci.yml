@@ -13,14 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          # The version-bump check needs origin/main and the merge base.
+          fetch-depth: 0
       - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.mod
-      - name: fmt
-        run: make fmt-check
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
       - name: install golangci-lint
         run: make tools
-      - name: lint
-        run: make lint
-      - name: test
-        run: make test
+      - name: install e2e dependencies
+        working-directory: e2e
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: check
+        run: make check
