@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
-// Server timeouts. WriteTimeout is generous because the slowest handler waits
-// on an LLM call bounded by config.LLM.Timeout (60s by default).
+// Server timeouts. WriteTimeout is fixed, not derived from configuration: it
+// is sized for the slowest expected handler (an LLM call, whose timeout
+// config.LLM.Timeout sets and defaults to 60s). If that setting is raised
+// above this value, such a response is cut off, so raise this constant too.
 const (
 	readHeaderTimeout = 10 * time.Second
 	readTimeout       = 30 * time.Second

@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -33,9 +34,10 @@ type Deps struct {
 	HealthDetails func(ctx context.Context) map[string]string
 }
 
-// New builds the router. Middleware order is fixed here: panic recovery, then
-// request logging (so refused requests are logged), then authentication, then
-// the handlers, which therefore never run for an unauthenticated request.
+// New builds the router. Middleware order is fixed here: request logging, then
+// panic recovery, then authentication, then the handlers. Logging is outermost
+// so refused requests and recovered panics (logged as 500) each get an access
+// line, and the handlers never run for an unauthenticated request.
 func New(d Deps) (http.Handler, error) {
 	return newRouter(d)
 }
@@ -50,7 +52,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 
 	r := chi.NewRouter()
-	r.Use(recoverer(log), requestLogger(log), d.Auth.Middleware(HealthPath))
+	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(HealthPath))
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})
@@ -73,6 +75,15 @@ func staticHandler() http.Handler {
 	}
 	files := http.StripPrefix("/static/", http.FileServerFS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// FileServerFS lists directories; only files are served.
+		name := strings.Trim(strings.TrimPrefix(r.URL.Path, "/static/"), "/")
+		if name == "" {
+			name = "."
+		}
+		if info, err := fs.Stat(sub, name); err == nil && info.IsDir() {
+			layout.WriteError(w, r, layout.ErrNotFound)
+			return
+		}
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		files.ServeHTTP(w, r)
 	})

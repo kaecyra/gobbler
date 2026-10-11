@@ -236,3 +236,34 @@ func TestAbortHandlerPanicPropagates(t *testing.T) {
 	}()
 	get(h, "/")
 }
+
+func TestPanickingRequestIsAccessLoggedAs500(t *testing.T) {
+	var buf bytes.Buffer
+	r := testRouter(t, devConfig(), Deps{Logger: slog.New(slog.NewJSONHandler(&buf, nil))})
+	r.Get("/boom", func(http.ResponseWriter, *http.Request) { panic("boom") })
+	if rec := get(r, "/boom"); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	var found bool
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		if strings.Contains(line, `"msg":"request"`) && strings.Contains(line, `"path":"/boom"`) && strings.Contains(line, `"status":500`) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no request log line with status 500 for the panic:\n%s", buf.String())
+	}
+}
+
+func TestStaticDirectoriesAreNotListed(t *testing.T) {
+	r := testRouter(t, devConfig(), Deps{})
+	for _, path := range []string{"/static/", "/static/."} {
+		rec := get(r, path)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s = %d, want 404", path, rec.Code)
+		}
+		if strings.Contains(rec.Body.String(), "htmx.VERSION.txt") {
+			t.Errorf("%s lists directory contents", path)
+		}
+	}
+}
