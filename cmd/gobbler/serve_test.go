@@ -13,6 +13,15 @@ import (
 	"github.com/kaecyra/gobbler/internal/config"
 )
 
+// testContext bounds a test so a regression that blocks fails instead of
+// hanging the suite.
+func testContext(t *testing.T) context.Context {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancel)
+	return ctx
+}
+
 func serveConfig(t *testing.T) config.Config {
 	t.Helper()
 	return config.Config{Server: config.Server{
@@ -27,7 +36,7 @@ func TestServeFailedMigrationNeverListens(t *testing.T) {
 		listened = true
 		return nil, errors.New("must not be called")
 	}
-	err := serve(context.Background(), serveConfig(t), fsys, listen)
+	err := serve(testContext(t), serveConfig(t), fsys, listen)
 	if err == nil || !strings.Contains(err.Error(), "00001_bad.sql") {
 		t.Fatalf("err = %v, want error naming 00001_bad.sql", err)
 	}
@@ -45,7 +54,7 @@ func TestServeRunsHealthAndStopsOnCancel(t *testing.T) {
 		}
 		return ln, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(testContext(t))
 	defer cancel()
 	done := make(chan error, 1)
 	go func() { done <- serve(ctx, serveConfig(t), fstest.MapFS{}, listen) }()
@@ -83,7 +92,7 @@ func TestServeRunsHealthAndStopsOnCancel(t *testing.T) {
 
 func TestServeRejectsListenFailure(t *testing.T) {
 	listen := func(context.Context, string) (net.Listener, error) { return nil, errors.New("address in use") }
-	err := serve(context.Background(), serveConfig(t), fstest.MapFS{}, listen)
+	err := serve(testContext(t), serveConfig(t), fstest.MapFS{}, listen)
 	if err == nil || !strings.Contains(err.Error(), "address in use") {
 		t.Fatalf("err = %v", err)
 	}
@@ -92,7 +101,7 @@ func TestServeRejectsListenFailure(t *testing.T) {
 func TestServeRejectsBadAccessConfig(t *testing.T) {
 	cfg := serveConfig(t)
 	cfg.Server.DevAuthBypass = false // no team domain or AUD
-	if err := serve(context.Background(), cfg, fstest.MapFS{}, tcpListen); err == nil {
+	if err := serve(testContext(t), cfg, fstest.MapFS{}, tcpListen); err == nil {
 		t.Fatal("want error without Access settings")
 	}
 }
