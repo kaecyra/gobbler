@@ -393,3 +393,44 @@ func mustJSON(t *testing.T, v any) string {
 	}
 	return string(b)
 }
+
+func TestCleanTextMarkup(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"<b>a</b><i>b</i>", "a b"},
+		{"<h3>Notes</h3>Serve warm.", "Notes Serve warm."},
+		{"1<sup>1</sup>/<sub>2</sub> cups flour", "1 1/2 cups flour"},
+		{"2 <b>cups</b><i>flour</i>", "2 cups flour"},
+		{"<b>flour</b>.", "flour."},
+		{"a<hr>b", "a b"},
+		{"<td>a</td><td>b</td>", "a b"},
+		{"Cool &amp; serve&nbsp;now", "Cool & serve now"},
+	} {
+		if got := cleanText(tc.in); got != tc.want {
+			t.Errorf("cleanText(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestInstructionSplitsAtHeadingsAndTableCells(t *testing.T) {
+	got := stepsFromText("<h3>Prep</h3>Chop it.<table><tr><td>Fry it.</td><td>Eat it.</td></tr></table>", "")
+	var texts []string
+	for _, s := range got {
+		texts = append(texts, s.Text)
+	}
+	if want := []string{"Prep", "Chop it.", "Fry it.", "Eat it."}; !reflect.DeepEqual(texts, want) {
+		t.Errorf("steps = %q, want %q", texts, want)
+	}
+}
+
+func TestHowToStepNonStringText(t *testing.T) {
+	page := `<script type="application/ld+json">{"@type":"Recipe","name":"R","recipeIngredient":["x"],"recipeInstructions":[
+{"@type":"HowToStep","text":{"@value":"Stir <b>well</b>."}},{"@type":"HowToStep","text":350}]}</script>`
+	r := mustExtract(t, page, "").Recipe
+	var got []string
+	for _, s := range r.Instructions {
+		got = append(got, s.Text)
+	}
+	if want := []string{"Stir well.", "350"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("steps = %q, want %q", got, want)
+	}
+}
