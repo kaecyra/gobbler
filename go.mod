@@ -11,6 +11,7 @@ require (
 	github.com/a-h/templ v0.3.1070
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/pressly/goose/v3 v3.28.0
+	golang.org/x/net v0.61.0
 	modernc.org/sqlite v1.60.1
 )
 
@@ -34,7 +35,7 @@ require (
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260924152758-ed294f943157 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	modernc.org/libc v1.77.1 // indirect

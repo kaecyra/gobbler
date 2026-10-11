@@ -1,0 +1,40 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Lemon Bars \u0026 Shortbread",
+    "author": "A. Cook",
+    "description": "Tart and sweet.",
+    "yield": [
+      "16",
+      "16 bars"
+    ],
+    "prep_time": "PT15M",
+    "cook_time": "PT35M",
+    "total_time": "PT1H",
+    "ingredients": [
+      "1 cup butter, softened",
+      "2 cups flour",
+      "3 lemons, juiced"
+    ],
+    "instructions": [
+      {
+        "section": "Crust",
+        "text": "Mix butter and flour."
+      },
+      {
+        "section": "Crust",
+        "text": "Press into a pan \u0026 bake."
+      },
+      {
+        "section": "Filling",
+        "text": "Whisk lemon juice into the eggs."
+      }
+    ],
+    "calories": "210 calories",
+    "image_url": "https://example.com/img/lemon.jpg"
+  },
+  "issues": [
+    "malformed_jsonld"
+  ]
+}
