@@ -3,7 +3,7 @@
 // ingredients that lack them, and offers a candidate for foods that match no
 // ingredient. It is an offline, operator-run import, never a start-up step.
 //
-// Three rules hold throughout:
+// These rules hold throughout:
 //
 //   - A value a human curated is never replaced: only an empty density or an
 //     empty FDC id is filled, and the name, aliases, aisle and reviewed flag
