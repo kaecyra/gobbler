@@ -155,7 +155,7 @@ func Generate(in Input) (List, error) {
 				acc.fromRecipe = true
 				acc.addSource(src)
 				acc.amounts = append(acc.amounts, a)
-				if l.Ingredient == 0 && l.Rule == quantity.RuleLinear && !a.Qty.IsAbsent() {
+				if l.Ingredient == 0 && l.Rule == quantity.RuleLinear {
 					acc.item.Scale = e.Multiplier
 				}
 			}

@@ -353,6 +353,19 @@ func TestGenerateUnresolvedLineKeepsItsScale(t *testing.T) {
 	}
 }
 
+func TestGenerateUnresolvedLineWithoutParsedAmountKeepsItsScale(t *testing.T) {
+	ln := line(0, quantity.Amount{})
+	ln.Raw = "some dragon fruit"
+	l := gen(t, Input{Entries: []RecipeEntry{entry(t, 1, "A", 2, ln)}})
+	text, err := l.Text()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "Uncategorised\n- some dragon fruit (x2)\n"; text != want {
+		t.Errorf("text = %q, want %q", text, want)
+	}
+}
+
 func TestGenerateUnresolvedLinesAreNeverCollapsed(t *testing.T) {
 	ln := line(0, amt(t, 2, 1, "cup"))
 	ln.Raw = "2 cups dragon fruit"
