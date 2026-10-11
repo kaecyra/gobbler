@@ -184,7 +184,7 @@ func (s *Store) replace(ctx context.Context, tx *sql.Tx, id int64, r recipe.Reci
 		return err
 	}
 	now := s.stamp()
-	if err := insertRevision(ctx, tx, id, cur.Version, old, change, restored, now, who); err != nil {
+	if err := insertRevision(ctx, tx, id, cur.Version, old, units, change, restored, now, who); err != nil {
 		return err
 	}
 	cols, err := documentColumns(r)

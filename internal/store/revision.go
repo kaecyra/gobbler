@@ -27,8 +27,8 @@ type Revision struct {
 	Restored  *int64
 }
 
-func insertRevision(ctx context.Context, tx *sql.Tx, recipeID, version int64, doc recipe.Recipe, change string, restored *int64, now, who string) error {
-	body, err := encodeDocument(doc)
+func insertRevision(ctx context.Context, tx *sql.Tx, recipeID, version int64, doc recipe.Recipe, units *unitTable, change string, restored *int64, now, who string) error {
+	body, err := encodeDocument(doc, units)
 	if err != nil {
 		return fmt.Errorf("revision of recipe %d: %w", recipeID, err)
 	}

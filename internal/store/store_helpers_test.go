@@ -202,11 +202,16 @@ func simpleRecipe(name string) recipe.Recipe {
 // fractions); units are compared field by field, factor included.
 func sameRecipe(t *testing.T, want, got recipe.Recipe) {
 	t.Helper()
-	w, err := encodeDocument(want)
+	units := &unitTable{ids: map[string]int64{}, units: map[int64]quantity.Unit{}}
+	for i, u := range quantity.Units() {
+		units.ids[u.Name], units.units[int64(i+1)] = int64(i+1), u
+	}
+	units.ids["can"], units.units[1000] = 1000, quantity.OtherUnit("can")
+	w, err := encodeDocument(want, units)
 	if err != nil {
 		t.Fatalf("encode want: %v", err)
 	}
-	g, err := encodeDocument(got)
+	g, err := encodeDocument(got, units)
 	if err != nil {
 		t.Fatalf("encode got: %v", err)
 	}

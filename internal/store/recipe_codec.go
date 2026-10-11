@@ -150,14 +150,13 @@ func (t *unitTable) unit(id sql.NullInt64) (quantity.Unit, error) {
 	return u, nil
 }
 
-// byName resolves a unit name stored in a revision document; "" is no unit.
-func (t *unitTable) byName(name string) (quantity.Unit, error) {
-	if name == "" {
-		return quantity.Unit{}, nil
-	}
-	id, ok := t.ids[name]
-	if !ok {
-		return quantity.Unit{}, fmt.Errorf("%w: unit %q", ErrUnknownReference, name)
-	}
-	return t.units[id], nil
+// refID returns the unit id stored in a revision document; the zero unit is 0.
+func (t *unitTable) refID(u quantity.Unit) (int64, error) {
+	id, err := t.id(u)
+	return id.Int64, err
+}
+
+// byRef resolves a unit id stored in a revision document; 0 is no unit.
+func (t *unitTable) byRef(id int64) (quantity.Unit, error) {
+	return t.unit(sql.NullInt64{Int64: id, Valid: id != 0})
 }

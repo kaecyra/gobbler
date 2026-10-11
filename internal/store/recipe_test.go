@@ -461,3 +461,44 @@ func TestNegativeQuantityIsRefusedOnWrite(t *testing.T) {
 		t.Errorf("Create = %v, want ErrInvalid", err)
 	}
 }
+
+// Live lines hold a unit id and survive a rename; revision documents must too.
+func TestRevisionsSurviveAUnitRename(t *testing.T) {
+	s, d := newTestStore(t)
+	c, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	id, err := s.Create(ctx, fullRecipe(t, ids))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Update(ctx, id, simpleRecipe("edited")); err != nil {
+		t.Fatal(err)
+	}
+
+	cup, ok, err := c.MatchUnit(ctx, "cup")
+	if err != nil || !ok {
+		t.Fatalf("MatchUnit(cup) = %v, %v", ok, err)
+	}
+	cup.Unit.Name = "zz renamed cup"
+	if err := c.UpdateUnit(ctx, cup); err != nil {
+		t.Fatalf("UpdateUnit: %v", err)
+	}
+
+	old, err := s.GetVersion(ctx, id, 1)
+	if err != nil {
+		t.Fatalf("GetVersion after rename: %v", err)
+	}
+	if got := old.Components[0].Lines[0].Amount.Unit.Name; got != "zz renamed cup" {
+		t.Errorf("unit name = %q, want the renamed unit", got)
+	}
+	if err := s.Restore(ctx, id, 1); err != nil {
+		t.Fatalf("Restore after rename: %v", err)
+	}
+	got, err := s.Get(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Components[0].Lines[0].Amount.Unit.Name != "zz renamed cup" || got.Components[0].Lines[0].Amount.Qty.String() != "1 1/3" {
+		t.Errorf("restored line = %+v", got.Components[0].Lines[0])
+	}
+}

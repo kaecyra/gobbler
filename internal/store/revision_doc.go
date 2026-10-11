@@ -12,7 +12,8 @@ import (
 // The revision document is the recipe in a JSON form of its own, not a
 // marshalled recipe.Recipe: quantities hold unexported rationals, and the
 // stored form must not change when the domain struct does. Quantities use the
-// column encoding, units are named, durations are nanoseconds.
+// column encoding, units are catalog ids (as on live lines, so a unit rename
+// leaves old revisions readable), durations are nanoseconds.
 
 type docQualifier struct {
 	Kind string `json:"kind"`
@@ -20,16 +21,16 @@ type docQualifier struct {
 }
 
 type docLine struct {
-	Qty         *string        `json:"qty,omitempty"`
-	Unit        string         `json:"unit,omitempty"`
-	HasPackage  bool           `json:"has_package,omitempty"`
-	PackageQty  *string        `json:"package_qty,omitempty"`
-	PackageUnit string         `json:"package_unit,omitempty"`
-	Ingredient  int64          `json:"ingredient,omitempty"`
-	Qualifiers  []docQualifier `json:"qualifiers,omitempty"`
-	Optional    bool           `json:"optional,omitempty"`
-	Rule        string         `json:"rule"`
-	Raw         string         `json:"raw,omitempty"`
+	Qty           *string        `json:"qty,omitempty"`
+	UnitID        int64          `json:"unit_id,omitempty"`
+	HasPackage    bool           `json:"has_package,omitempty"`
+	PackageQty    *string        `json:"package_qty,omitempty"`
+	PackageUnitID int64          `json:"package_unit_id,omitempty"`
+	Ingredient    int64          `json:"ingredient,omitempty"`
+	Qualifiers    []docQualifier `json:"qualifiers,omitempty"`
+	Optional      bool           `json:"optional,omitempty"`
+	Rule          string         `json:"rule"`
+	Raw           string         `json:"raw,omitempty"`
 }
 
 type docStep struct {
@@ -77,7 +78,7 @@ type docRecipe struct {
 }
 
 // encodeDocument renders r as revision document JSON.
-func encodeDocument(r recipe.Recipe) ([]byte, error) {
+func encodeDocument(r recipe.Recipe, units *unitTable) ([]byte, error) {
 	d := docRecipe{
 		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author,
 		YieldUnit: r.Yield.Unit, Calories: r.CaloriesPerServing, Tags: r.Tags, Rating: r.Rating,
@@ -96,7 +97,7 @@ func encodeDocument(r recipe.Recipe) ([]byte, error) {
 	for ci, c := range r.Components {
 		dc := docComponent{Name: c.Name}
 		for li, l := range c.Lines {
-			dl, err := encodeLine(l)
+			dl, err := encodeLine(l, units)
 			if err != nil {
 				return nil, fmt.Errorf("component %d line %d: %w", ci+1, li+1, err)
 			}
@@ -132,17 +133,22 @@ func encodeRaw(d docRecipe) ([]byte, error) {
 	return b, nil
 }
 
-func encodeLine(l recipe.IngredientLine) (docLine, error) {
+func encodeLine(l recipe.IngredientLine, units *unitTable) (docLine, error) {
 	dl := docLine{
-		Unit: l.Amount.Unit.Name, HasPackage: l.Amount.HasPackage, Ingredient: int64(l.Ingredient),
+		HasPackage: l.Amount.HasPackage, Ingredient: int64(l.Ingredient),
 		Optional: l.Optional, Rule: string(l.Rule), Raw: l.Raw,
 	}
 	var err error
 	if dl.Qty, err = encodeQty(l.Amount.Qty); err != nil {
 		return docLine{}, err
 	}
+	if dl.UnitID, err = units.refID(l.Amount.Unit); err != nil {
+		return docLine{}, err
+	}
 	if l.Amount.HasPackage {
-		dl.PackageUnit = l.Amount.Package.Unit.Name
+		if dl.PackageUnitID, err = units.refID(l.Amount.Package.Unit); err != nil {
+			return docLine{}, err
+		}
 		if dl.PackageQty, err = encodeQty(l.Amount.Package.Qty); err != nil {
 			return docLine{}, fmt.Errorf("package: %w", err)
 		}
@@ -251,7 +257,7 @@ func (dl docLine) line(units *unitTable) (recipe.IngredientLine, error) {
 	if l.Amount.Qty, err = decodeQty(dl.Qty); err != nil {
 		return recipe.IngredientLine{}, err
 	}
-	if l.Amount.Unit, err = units.byName(dl.Unit); err != nil {
+	if l.Amount.Unit, err = units.byRef(dl.UnitID); err != nil {
 		return recipe.IngredientLine{}, err
 	}
 	if dl.HasPackage {
@@ -259,7 +265,7 @@ func (dl docLine) line(units *unitTable) (recipe.IngredientLine, error) {
 		if l.Amount.Package.Qty, err = decodeQty(dl.PackageQty); err != nil {
 			return recipe.IngredientLine{}, err
 		}
-		if l.Amount.Package.Unit, err = units.byName(dl.PackageUnit); err != nil {
+		if l.Amount.Package.Unit, err = units.byRef(dl.PackageUnitID); err != nil {
 			return recipe.IngredientLine{}, err
 		}
 	}
