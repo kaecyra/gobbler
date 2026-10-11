@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	stdhtml "html"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -399,15 +400,56 @@ func TestCleanTextMarkup(t *testing.T) {
 		{"<b>a</b><i>b</i>", "a b"},
 		{"<h3>Notes</h3>Serve warm.", "Notes Serve warm."},
 		{"1<sup>1</sup>/<sub>2</sub> cups flour", "1 1/2 cups flour"},
+		{"1<sup>1</sup>&frasl;<sub>2</sub> cups flour", "1 1/2 cups flour"},
+		{"1<sup>1</sup>&#8260;<sub>2</sub> cups flour", "1 1/2 cups flour"},
+		{"1<sup>1</sup>\u2044<sub>2</sub> cups flour", "1 1/2 cups flour"},
+		{"1<sup>1</sup>/2 cups flour", "1 1/2 cups flour"},
 		{"2 <b>cups</b><i>flour</i>", "2 cups flour"},
 		{"<b>flour</b>.", "flour."},
+		{"<b>flour</b>, sifted", "flour, sifted"},
+		{"(<b>sifted</b>)", "(sifted)"},
 		{"a<hr>b", "a b"},
 		{"<td>a</td><td>b</td>", "a b"},
 		{"Cool &amp; serve&nbsp;now", "Cool & serve now"},
+		{"Add .5 cups <b>water</b>", "Add .5 cups water"},
+		{"1 cup <i>plus</i> .5 tsp salt", "1 cup plus .5 tsp salt"},
+		{"<b>1</b>/3 cup", "1/3 cup"},
+		{"the 1<sup>st</sup> rise", "the 1st rise"},
+		{"Heat to 350<sup>\u00b0</sup>F", "Heat to 350\u00b0F"},
+		{"Heat to 350<sup>&deg;</sup>F", "Heat to 350\u00b0F"},
+		{"flour<sup>1</sup> and sugar<sup>2</sup>", "flour and sugar"},
+		{"serves 4<sup>1</sup>", "serves 4 1"},
+		{"a < b and c > d", "a < b and c > d"},
 	} {
 		if got := cleanText(tc.in); got != tc.want {
 			t.Errorf("cleanText(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+// Text the page wrote is never reshaped: with no markup, cleanText is
+// entity decoding plus whitespace collapse and nothing else.
+func TestCleanTextLeavesMarkupFreeTextAlone(t *testing.T) {
+	for _, in := range []string{
+		"Add .5 cups water", "1 cup plus .5 tsp salt", "a ( b ) c", "x , y ; z", "3 < 4 > 2",
+		"  two   spaces\tand\nnewline ", "&amp; &lt;b&gt; &frac12; cup", "1 1/2 cups", "caf\u00e9 \u2044 x", "",
+	} {
+		if got, want := cleanText(in), collapse(stdhtml.UnescapeString(in)); got != want {
+			t.Errorf("cleanText(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestBlockElementsSharedWithTextFallback(t *testing.T) {
+	for _, tag := range []string{"td", "th", "thead", "tbody", "tfoot", "h1", "hr", "blockquote", "section", "figcaption", "pre", "dd"} {
+		if !blockElements[tag] {
+			t.Errorf("%s is not a block element", tag)
+		}
+	}
+	// The fallback text splits at a table cell, the same set cleanText uses.
+	res := mustExtract(t, "<body><table><tr><td>one</td><td>two</td></tr></table></body>", "")
+	if res.Text != "one\ntwo" {
+		t.Errorf("text = %q", res.Text)
 	}
 }
 

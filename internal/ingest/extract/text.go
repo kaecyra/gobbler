@@ -13,14 +13,6 @@ var textSkip = map[string]bool{
 	"iframe": true, "button": true, "select": true, "head": true,
 }
 
-var textBlock = map[string]bool{
-	"p": true, "div": true, "section": true, "article": true, "main": true,
-	"ul": true, "ol": true, "li": true, "br": true, "tr": true, "table": true,
-	"h1": true, "h2": true, "h3": true, "h4": true, "h5": true, "h6": true,
-	"blockquote": true, "dl": true, "dt": true, "dd": true, "figure": true,
-	"figcaption": true, "pre": true, "hr": true, "fieldset": true,
-}
-
 // headingMark stands for the blank line before a heading until renderText
 // has collapsed whitespace; NUL cannot occur in parsed text.
 const headingMark = "\x00"
@@ -99,11 +91,11 @@ func renderText(root *html.Node) string {
 			}
 			if textHeading[n.Data] {
 				b.WriteString("\n" + headingMark + "\n")
-			} else if textBlock[n.Data] {
+			} else if blockElements[n.Data] {
 				b.WriteByte('\n')
 			}
 			defer func() {
-				if textBlock[n.Data] {
+				if blockElements[n.Data] {
 					b.WriteByte('\n')
 				}
 			}()

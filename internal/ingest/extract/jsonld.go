@@ -3,18 +3,11 @@ package extract
 import (
 	"encoding/json"
 	"html"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	nethtml "golang.org/x/net/html"
-)
-
-var (
-	jsonldTagRE              = regexp.MustCompile(`<[^>]*>`)
-	jsonldSupSubFractionRE   = regexp.MustCompile(`(?i)<sup[^>]*>\s*(\d+)\s*</sup>\s*[/\x{2044}]\s*<sub[^>]*>\s*(\d+)\s*</sub>`)
-	jsonldSpaceBeforePunctRE = regexp.MustCompile(`\s+([.,;:!?)])`)
 )
 
 // extractJSONLD returns the first usable schema.org Recipe found in the page's
@@ -152,16 +145,10 @@ func firstOf(s []string) string {
 	return s[0]
 }
 
-// cleanText replaces every tag with a space so words and numbers never fuse
-// across markup, decodes entities, collapses whitespace and closes up the
-// space a tag left before punctuation ("<b>flour</b>." is "flour."). A
-// superscript/subscript fraction is rejoined first: "1<sup>1</sup>/<sub>2</sub>"
-// is "1 1/2", not "11/2" (which reads as 5.5).
+// cleanText turns a string that may carry HTML into one line of text; see
+// renderMarkup for the joining rules.
 func cleanText(s string) string {
-	s = jsonldSupSubFractionRE.ReplaceAllString(s, " $1/$2 ")
-	s = jsonldTagRE.ReplaceAllString(s, " ")
-	s = collapse(html.UnescapeString(s))
-	return jsonldSpaceBeforePunctRE.ReplaceAllString(s, "$1")
+	return collapse(renderMarkup(s))
 }
 
 // rawText reads a scalar or a {"@value": ...} wrapper as text without
@@ -213,23 +200,16 @@ func jsonStrings(v any) []string {
 	return out
 }
 
-var (
-	jsonldEscapedBlockRE = regexp.MustCompile(`(?i)&lt;/?(?:li|p|br|ol|ul|div|h[1-6]|hr|table|thead|tbody|tfoot|tr|td|th|blockquote|section)\b`)
-	jsonldBlockTagRE     = regexp.MustCompile(`(?i)</?(?:li|p|br|ol|ul|div|h[1-6]|hr|table|thead|tbody|tfoot|tr|td|th|blockquote|section)\b[^>]*>`)
-)
-
 // stepsFromText splits one instruction string into steps: at newlines and at
-// block-level markup (li, p, br, div, headings, hr, table cells and the like), which some sites embed as a
-// single HTML string, sometimes entity-escaped. Other tags are dropped. A
-// string with no such structure stays one step.
+// block-level markup, which some sites embed as a single HTML string,
+// sometimes entity-escaped. A string with no such structure stays one step.
 func stepsFromText(s, section string) []InstructionStep {
-	if jsonldEscapedBlockRE.MatchString(s) {
+	if markupEscapedBlockRE.MatchString(s) {
 		s = html.UnescapeString(s)
 	}
-	s = jsonldBlockTagRE.ReplaceAllString(s, "\n")
 	var out []InstructionStep
-	for _, line := range strings.Split(s, "\n") {
-		if t := cleanText(line); t != "" {
+	for _, line := range strings.Split(renderMarkup(s), "\n") {
+		if t := collapse(line); t != "" {
 			out = append(out, InstructionStep{Section: section, Text: t})
 		}
 	}
