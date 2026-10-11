@@ -243,7 +243,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 6,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "w0-web-shell"
       ],
@@ -608,7 +608,7 @@
       "wave": 4,
       "track": "shopping",
       "issue": 23,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-recipe-model",
         "w1-catalog"
@@ -1072,6 +1072,15 @@
         "00002",
         "00003",
         "00012"
+      ]
+    },
+    {
+      "id": "w4-shopping-merge",
+      "title": "List generation: scale, drop optional and pantry, merge by ingredient and dimension, aisle grouping, text export (pure)",
+      "merged": "18fb4a2",
+      "adrs": [
+        "00009",
+        "00005"
       ]
     }
   ],
