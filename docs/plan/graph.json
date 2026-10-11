@@ -57,7 +57,8 @@
         ".dockerignore",
         "compose.yaml",
         ".env.example",
-        "e2e/.gitignore"
+        "e2e/.gitignore",
+        "e2e/.node-version"
       ]
     },
     "domain": {
@@ -257,7 +258,8 @@
         "Makefile",
         "lefthook.yml",
         ".github/**",
-        "e2e/.gitignore"
+        "e2e/.gitignore",
+        "e2e/.node-version"
       ],
       "needs_migration": null,
       "adrs": [
