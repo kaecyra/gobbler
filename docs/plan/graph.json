@@ -353,7 +353,7 @@
       "wave": 1,
       "track": "persistence",
       "issue": 11,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "w1-recipe-model",
         "w1-catalog"
@@ -768,7 +768,7 @@
       "wave": 5,
       "track": "persistence",
       "issue": 31,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "w1-catalog"
       ],
@@ -1054,6 +1054,14 @@
       "adrs": [
         "00008",
         "00005"
+      ]
+    },
+    {
+      "id": "w5-usda-import",
+      "title": "USDA FoodData Central import command: idempotent, never overwrites curated fields",
+      "merged": "61b2bfe",
+      "adrs": [
+        "00008"
       ]
     }
   ],
