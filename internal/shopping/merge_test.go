@@ -125,6 +125,32 @@ func TestGenerateSumMovesToReadableUnit(t *testing.T) {
 	wantAmounts(t, items(l)["butter"], "1 cup")
 }
 
+func TestGenerateSumsRanges(t *testing.T) {
+	rng := func(lo, hi int64, unit string) quantity.Amount {
+		q, err := quantity.NewRange(quantity.Int(lo), quantity.Int(hi))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return quantity.Amount{Qty: q, Unit: quantity.MustUnit(unit)}
+	}
+	tests := []struct {
+		name string
+		a, b quantity.Amount
+		want string
+	}{
+		{"range plus exact", rng(2, 3, "tbsp"), amt(t, 1, 1, "tbsp"), "3-4 tbsp"},
+		{"exact plus range", amt(t, 1, 1, "tbsp"), rng(2, 3, "tbsp"), "3-4 tbsp"},
+		{"range plus range", rng(1, 2, "tbsp"), rng(2, 3, "tbsp"), "3-5 tbsp"},
+		{"across a unit conversion", rng(1, 2, "tbsp"), amt(t, 1, 2, "cup"), "9-10 tbsp"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			l := gen(t, Input{Entries: []RecipeEntry{entry(t, 1, "A", 1, line(idButter, tc.a), line(idButter, tc.b))}})
+			wantAmounts(t, items(l)["butter"], tc.want)
+		})
+	}
+}
+
 func TestGenerateScaling(t *testing.T) {
 	fixed := line(idGarlic, amt(t, 1, 1, "clove"))
 	fixed.Rule = quantity.RuleFixed
@@ -286,6 +312,20 @@ func TestGenerateAisleOrder(t *testing.T) {
 	}
 }
 
+func TestGenerateSortsNamesCaseInsensitively(t *testing.T) {
+	l := gen(t, Input{
+		Entries: []RecipeEntry{entry(t, 1, "A", 1, line(idMystery, amt(t, 1, 1, "")))},
+		Manual:  []ManualItem{{Text: "Zebra treats"}, {Text: "Bags"}, {Text: "apple"}},
+	})
+	var names []string
+	for _, it := range l.Aisles[0].Items {
+		names = append(names, it.Name)
+	}
+	if want := []string{"apple", "Bags", "mystery", "Zebra treats"}; !reflect.DeepEqual(names, want) {
+		t.Errorf("names = %q, want %q", names, want)
+	}
+}
+
 func TestGenerateManualItems(t *testing.T) {
 	l := gen(t, Input{
 		Entries: []RecipeEntry{entry(t, 1, "Cake", 1, line(idButter, amt(t, 1, 2, "cup")))},
@@ -323,9 +363,9 @@ func TestGenerateUnknownIngredientIsAnError(t *testing.T) {
 	if !errors.Is(err, ErrUnknownIngredient) {
 		t.Errorf("err = %v, want ErrUnknownIngredient", err)
 	}
-	_, err = Generate(Input{Manual: []ManualItem{{Ingredient: 99}}, Catalog: testCatalog()})
-	if !errors.Is(err, ErrUnknownIngredient) {
-		t.Errorf("manual: err = %v, want ErrUnknownIngredient", err)
+	_, err = Generate(Input{Manual: []ManualItem{{Text: "x"}, {Ingredient: 99}}, Catalog: testCatalog()})
+	if !errors.Is(err, ErrUnknownIngredient) || !strings.Contains(err.Error(), "manual item 2") {
+		t.Errorf("manual: err = %v, want ErrUnknownIngredient naming manual item 2", err)
 	}
 }
 

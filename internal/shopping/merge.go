@@ -187,7 +187,7 @@ func Generate(in Input) (List, error) {
 		}
 		acc, err := in.accumFor(accs, key, m.Text)
 		if err != nil {
-			return List{}, fmt.Errorf("manual item %q: %w", m.Text, err)
+			return List{}, fmt.Errorf("manual item %d: %w", i+1, err)
 		}
 		acc.item.Manual = true
 		acc.amounts = append(acc.amounts, m.Amount)
@@ -278,6 +278,9 @@ func (a *accum) addSource(s Source) {
 func sortItems(items []Item) {
 	sort.SliceStable(items, func(i, j int) bool {
 		a, b := items[i], items[j]
+		if fa, fb := strings.ToLower(a.Name), strings.ToLower(b.Name); fa != fb {
+			return fa < fb
+		}
 		if a.Name != b.Name {
 			return a.Name < b.Name
 		}
