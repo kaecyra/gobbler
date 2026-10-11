@@ -48,7 +48,8 @@ type Snapshot struct {
 
 // The store exposes snapshots for add and read only. Source snapshots are
 // never modified (AGENTS.md boundary); the migration's triggers refuse an
-// UPDATE or a stand-alone DELETE, and TestSnapshotAPIHasNoMutator fails if
+// UPDATE, a stand-alone DELETE and an insert over an existing kind
+// (INSERT OR REPLACE), and TestSnapshotAPIHasNoMutator fails if
 // a method that changes or removes one appears here.
 
 // AddSnapshot stores the ingested input of recipe id. Each kind is stored once
@@ -66,6 +67,13 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		if err := lockRecipe(ctx, tx, id); err != nil {
 			return err
+		}
+		var existing int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = ? AND kind = ?`, id, string(kind)).Scan(&existing); err != nil {
+			return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)
+		}
+		if existing > 0 {
+			return fmt.Errorf("%w: recipe %d kind %s", ErrSnapshotExists, id, kind)
 		}
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -102,8 +110,12 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 	return snap, nil
 }
 
-// ListSnapshotKinds returns the kinds of snapshot stored for recipe id.
+// ListSnapshotKinds returns the kinds of snapshot stored for recipe id. A
+// missing recipe is ErrNotFound.
 func (s *Store) ListSnapshotKinds(ctx context.Context, id int64) ([]SnapshotKind, error) {
+	if _, err := loadInfo(ctx, s.db, id); err != nil {
+		return nil, err
+	}
 	var out []SnapshotKind
 	err := collect(ctx, s.db, "snapshot kinds", `SELECT kind FROM source_snapshots WHERE recipe_id = ? ORDER BY id`, []any{id}, func(rows *sql.Rows) error {
 		var k SnapshotKind

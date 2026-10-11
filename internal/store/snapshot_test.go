@@ -141,3 +141,45 @@ func TestSnapshotAPIHasNoMutator(t *testing.T) {
 		t.Errorf("found %d snapshot methods, want the %d allowed ones", found, len(allowed))
 	}
 }
+
+// INSERT OR REPLACE and REPLACE INTO delete the conflicting row without firing
+// delete triggers, so they must be refused on insert.
+func TestSnapshotCannotBeReplacedThroughTheDatabase(t *testing.T) {
+	s, d := newTestStore(t)
+	ctx := authedCtx(t)
+	id, err := s.Create(ctx, simpleRecipe("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddSnapshot(ctx, id, SnapshotText, []byte("original")); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, stmt := range map[string]string{
+		"insert or replace": `INSERT OR REPLACE INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, 'text', 'TAMPERED', 'x', 'now', 'me')`,
+		"replace into":      `REPLACE INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, 'text', 'TAMPERED', 'x', 'now', 'me')`,
+	} {
+		if _, err := d.Exec(stmt, id); err == nil {
+			t.Errorf("%s: succeeded, want it refused", name)
+		}
+		got, err := s.GetSnapshot(ctx, id, SnapshotText)
+		if err != nil || string(got.Content) != "original" {
+			t.Fatalf("%s: snapshot = %q, %v; want the original", name, got.Content, err)
+		}
+	}
+}
+
+func TestListSnapshotKindsOfMissingRecipe(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := authedCtx(t)
+	if _, err := s.ListSnapshotKinds(ctx, 42); !errors.Is(err, ErrNotFound) {
+		t.Errorf("ListSnapshotKinds(missing) = %v, want ErrNotFound", err)
+	}
+	id, err := s.Create(ctx, simpleRecipe("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kinds, err := s.ListSnapshotKinds(ctx, id); err != nil || len(kinds) != 0 {
+		t.Errorf("ListSnapshotKinds(no snapshots) = %v, %v; want empty", kinds, err)
+	}
+}
