@@ -1,0 +1,42 @@
+package layout
+
+import "strconv"
+
+// Asset URLs served from the embedded static directory by package web.
+const (
+	StylesheetPath = "/static/app.css"
+	HTMXPath       = "/static/htmx.min.js"
+)
+
+// Page renders the document shell around its children: title, navigation and
+// the content slot.
+templ Page(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } - gobbler</title>
+			<link rel="stylesheet" href={ StylesheetPath }/>
+			<script src={ HTMXPath } defer></script>
+		</head>
+		<body>
+			<header class="site-header">
+				<a class="brand" href="/">gobbler</a>
+				// Navigation placeholder: feature nodes add their entries here.
+				<nav class="site-nav" aria-label="Primary"></nav>
+			</header>
+			<main id="content">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}
+
+// ErrorPage renders a failed request inside the shared layout.
+templ ErrorPage(status int, message string) {
+	@Page(strconv.Itoa(status)) {
+		<h1>{ strconv.Itoa(status) } { statusText(status) }</h1>
+		<p class="muted">{ message }</p>
+	}
+}
