@@ -25,39 +25,88 @@ const (
 	swallowsInvalid     mutant = "swallows-invalid"     // invalid response becomes an empty draft, no error
 	partialWithError    mutant = "partial-with-error"   // errors but still returns the half-decoded recipe
 	ignoresTimeout      mutant = "ignores-timeout"      // blocks past its timeout and the caller's context
+	lateTimeout         mutant = "late-timeout"         // returns after the timeout, well under the suite bound
 	timeoutNotWrapped   mutant = "timeout-not-wrapped"  // timeout is an opaque error
 	cancelAsTimeout     mutant = "cancel-as-timeout"    // cancellation reported as a timeout
 	unavailableNoError  mutant = "unavailable-no-error" // backend failure returns an empty draft
 	unavailableAsFetch  mutant = "unavailable-as-fetch" // backend failure mapped to ErrFetch
 	unavailableTimeout  mutant = "unavailable-timeout"  // backend failure mapped to a timeout
 	dropsComponentSteps mutant = "drops-steps"          // loses data from a valid response
+	mutatesRuleDraft    mutant = "mutates-rule-draft"   // edits the caller's draft in place
+	mutatesSnapshot     mutant = "mutates-snapshot"     // edits the caller's source snapshot
+	logsKey             mutant = "logs-key"             // writes the API key to a log attribute
+	errorLeaksKey       mutant = "error-leaks-key"      // puts the API key in an error
+	omitsLatency        mutant = "omits-latency"        // no latency in the call log
+	omitsModel          mutant = "omits-model"          // empty model in the call log
+	omitsTokens         mutant = "omits-tokens"         // no token counts in the call log
+	noLog               mutant = "no-log"               // logs nothing
 )
 
-// fakeProvider is a reference provider over a Scenario, with optional faults.
+// fakeProvider is a reference provider over an Env, with optional faults.
 type fakeProvider struct {
-	s       Scenario
-	timeout time.Duration
-	fault   mutant
+	env   Env
+	fault mutant
 }
 
-func (f fakeProvider) Structure(ctx context.Context, _ ingest.Request) (ingest.Structured, error) {
-	ctx, cancel := context.WithTimeout(ctx, f.timeout)
-	defer cancel()
-	switch f.s.Behavior {
-	case Hang:
-		return f.hang(ctx)
-	case Unavailable:
-		switch f.fault {
-		case unavailableNoError:
-			return ingest.Structured{}, nil
-		case unavailableAsFetch:
-			return ingest.Structured{}, fmt.Errorf("%w: backend down", ingest.ErrFetch)
-		case unavailableTimeout:
-			return ingest.Structured{}, fmt.Errorf("backend down: %w", context.DeadlineExceeded)
-		}
-		return ingest.Structured{}, errors.New("backend unavailable: 503")
+func (f fakeProvider) Structure(ctx context.Context, req ingest.Request) (ingest.Structured, error) {
+	start := time.Now()
+	if f.fault == mutatesRuleDraft {
+		req.RuleDraft.Issues[0] = "changed by provider"
 	}
-	return f.respond()
+	if f.fault == mutatesSnapshot {
+		req.RuleDraft.Source.Content[0] = 'X'
+	}
+	ctx, cancel := context.WithTimeout(ctx, f.env.Timeout)
+	defer cancel()
+	var (
+		s   ingest.Structured
+		err error
+	)
+	switch f.env.Scenario.Behavior {
+	case Hang:
+		s, err = f.hang(ctx)
+	case Unavailable:
+		s, err = f.unavailable()
+	default:
+		s, err = f.respond()
+	}
+	f.log(start, err)
+	if err != nil && f.fault == errorLeaksKey {
+		err = fmt.Errorf("%w (key %s)", err, f.env.APIKey)
+	}
+	return s, err
+}
+
+func (f fakeProvider) log(start time.Time, err error) {
+	if f.fault == noLog {
+		return
+	}
+	attrs := []any{LogProvider, "fake", LogModel, "configured-model"}
+	if f.fault == omitsModel {
+		attrs[3] = ""
+	}
+	if f.fault != omitsLatency {
+		attrs = append(attrs, LogLatencyMS, time.Since(start).Milliseconds())
+	}
+	if err == nil && f.fault != omitsTokens {
+		attrs = append(attrs, LogInputTokens, f.env.Scenario.Input, LogOutputTokens, f.env.Scenario.Output)
+	}
+	if f.fault == logsKey {
+		attrs = append(attrs, "api_key", f.env.APIKey)
+	}
+	f.env.Logger.Info("llm call", attrs...)
+}
+
+func (f fakeProvider) unavailable() (ingest.Structured, error) {
+	switch f.fault {
+	case unavailableNoError:
+		return ingest.Structured{}, nil
+	case unavailableAsFetch:
+		return ingest.Structured{}, fmt.Errorf("%w: backend down", ingest.ErrFetch)
+	case unavailableTimeout:
+		return ingest.Structured{}, fmt.Errorf("backend down: %w", context.DeadlineExceeded)
+	}
+	return ingest.Structured{}, errors.New("backend unavailable: 503")
 }
 
 func (f fakeProvider) hang(ctx context.Context) (ingest.Structured, error) {
@@ -65,6 +114,9 @@ func (f fakeProvider) hang(ctx context.Context) (ingest.Structured, error) {
 		time.Sleep(10 * returnBound)
 	}
 	<-ctx.Done()
+	if f.fault == lateTimeout {
+		time.Sleep(4 * timeoutMargin)
+	}
 	err := ctx.Err()
 	switch f.fault {
 	case timeoutNotWrapped:
@@ -76,19 +128,20 @@ func (f fakeProvider) hang(ctx context.Context) (ingest.Structured, error) {
 }
 
 func (f fakeProvider) respond() (ingest.Structured, error) {
+	payload := f.env.Scenario.Payload
 	if f.fault == acceptsAnything {
 		var s ingest.Structured
-		_ = json.Unmarshal(f.s.Payload, &s)
+		_ = json.Unmarshal(payload, &s)
 		return s, nil
 	}
-	s, err := decodeStrict(f.s.Payload)
+	s, err := decodeStrict(payload)
 	if err != nil {
 		switch f.fault {
 		case swallowsInvalid:
 			return ingest.Structured{}, nil
 		case partialWithError:
 			var partial ingest.Structured
-			_ = json.Unmarshal(f.s.Payload, &partial)
+			_ = json.Unmarshal(payload, &partial)
 			return partial, err
 		}
 		return ingest.Structured{}, err
@@ -122,8 +175,8 @@ func decodeStrict(payload []byte) (ingest.Structured, error) {
 }
 
 func factoryFor(fault mutant) Factory {
-	return func(_ *testing.T, s Scenario, timeout time.Duration) ingest.Provider {
-		return fakeProvider{s: s, timeout: timeout, fault: fault}
+	return func(_ *testing.T, env Env) ingest.Provider {
+		return fakeProvider{env: env, fault: fault}
 	}
 }
 
@@ -161,13 +214,23 @@ func TestSuiteCatchesBrokenProviders(t *testing.T) {
 		{unavailableAsFetch, "--- FAIL: TestContractMutant/backend_unavailable", "page fetch"},
 		{unavailableTimeout, "--- FAIL: TestContractMutant/backend_unavailable", "timeout or cancellation"},
 		{dropsComponentSteps, "--- FAIL: TestContractMutant/valid_response/", "differs"},
+		{lateTimeout, "--- FAIL: TestContractMutant/timeout", "not applying its configured timeout"},
+		{mutatesRuleDraft, "--- FAIL: TestContractMutant/valid_response/", "rule-based draft was modified"},
+		{mutatesRuleDraft, "--- FAIL: TestContractMutant/backend_unavailable", "rule-based draft was modified"},
+		{mutatesSnapshot, "--- FAIL: TestContractMutant/timeout", "rule-based draft was modified"},
+		{logsKey, "--- FAIL: TestContractMutant/valid_response/", "API key appears in log attribute"},
+		{errorLeaksKey, "--- FAIL: TestContractMutant/backend_unavailable", "API key appears in the error"},
+		{omitsLatency, "--- FAIL: TestContractMutant/valid_response/", "no log record carries"},
+		{omitsModel, "--- FAIL: TestContractMutant/valid_response/", `no non-empty "model"`},
+		{omitsTokens, "--- FAIL: TestContractMutant/valid_response/", `no "input_tokens"`},
+		{noLog, "--- FAIL: TestContractMutant/backend_unavailable", "no log record carries"},
 	}
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range cases {
-		t.Run(string(c.fault), func(t *testing.T) {
+		t.Run(string(c.fault)+"/"+strings.TrimPrefix(c.failsIn, "--- FAIL: TestContractMutant/"), func(t *testing.T) {
 			cmd := exec.Command(exe, "-test.run=^TestContractMutant$", "-test.v")
 			cmd.Env = append(os.Environ(), "LLMTEST_MUTANT="+string(c.fault))
 			out, err := cmd.CombinedOutput()
