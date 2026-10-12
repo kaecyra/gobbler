@@ -784,7 +784,20 @@
       "owns": [
         "internal/ingest/ocr/**",
         "internal/web/ingest/photo*",
-        "e2e/ingest/**"
+        "e2e/ingest/**",
+        "internal/web/ingest/ingest.go",
+        "internal/web/ingest/ingest.templ",
+        "internal/web/ingest/ingest_templ.go",
+        "internal/config/config.go",
+        "internal/config/config_test.go",
+        "internal/ingest/ingest.go",
+        "internal/ingest/draft.go",
+        "internal/ingest/fallback*.go",
+        "internal/ingest/llm.go",
+        "internal/ingest/structured*.go",
+        "internal/ingest/pipeline_test.go",
+        "docs/operations.md",
+        ".env.example"
       ],
       "needs_migration": null,
       "adrs": [
