@@ -13,14 +13,15 @@ Deploying, configuring and restoring from a backup: [docs/operations.md](./docs/
 ## Running with Docker Compose
 
 ```sh
-cp .env.example .env   # set the tunnel token and the Access team domain and AUD
+cp .env.example .env   # set the Access team domain and AUD
 docker compose up -d --build
 ```
 
-Compose runs `gobbler` and `cloudflared`. The database lives on the named
-volume `gobbler-data`, migrations apply at start-up, and `gobbler` publishes no
-host port: the only way in is the Cloudflare tunnel, whose public hostname
-should point at `http://gobbler:8080`. The image has no Node runtime and
+Compose runs `gobbler` alone. The database lives on the named volume
+`gobbler-data`, migrations apply at start-up, and `gobbler` publishes port 8080
+on host loopback only (`127.0.0.1:8080`). `cloudflared` runs on the VM guest,
+outside Compose, and its tunnel's public hostname should point at
+`http://127.0.0.1:8080`. The image has no Node runtime and
 nothing from `e2e/`.
 
 ## Development
