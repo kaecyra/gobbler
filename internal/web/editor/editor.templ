@@ -1,0 +1,322 @@
+package editor
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// editorPage is the editor on a page of its own: what the recipe links to and
+// the whole page of a browser without HTMX.
+templ editorPage(v view) {
+	@layout.Page("Edit: " + v.D.Name) {
+		<h1>Edit recipe</h1>
+		<p><a href={ templ.SafeURL(v.back()) }>Back to the recipe without saving</a></p>
+		@editorForm(v)
+	}
+}
+
+// editorForm is the whole form. Every button posts the whole form back: a
+// structural button (add, remove, move) changes the draft and shows the form
+// again, Save validates it and stores it. Save comes first in the markup so it
+// is the button the Enter key presses.
+templ editorForm(v view) {
+	<form id="editor" class="editor" method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
+		<style>
+			.editor fieldset { border: 1px solid var(--border); margin: 1rem 0; padding: 0.5rem 0.75rem; }
+			.editor legend { font-weight: 700; padding: 0 0.25rem; }
+			.editor label { display: block; font-weight: 600; margin-top: 0.5rem; }
+			.editor input[type=text], .editor textarea, .editor select { width: 100%; font: inherit; padding: 0.35rem; }
+			.editor label.inline { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 400; }
+			.editor label.inline input { width: auto; }
+			.editor .alert { border: 2px solid var(--accent); padding: 0.4rem 0.6rem; margin: 0.5rem 0; }
+			.editor .field-error { color: var(--accent); margin: 0.25rem 0 0; }
+			.editor .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0 0.75rem; }
+			.editor ol { list-style: none; padding-left: 0; }
+			.editor li.item { border-top: 1px solid var(--border); padding: 0.5rem 0; }
+			.editor .tools { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+			.editor .deps { margin-top: 0.5rem; }
+			.editor .deps label { font-weight: 400; margin-top: 0.15rem; }
+		</style>
+		<input type="hidden" name="version" value={ v.version() }/>
+		if len(v.D.Problems) > 0 {
+			<div class="alert" role="alert">
+				for _, p := range v.D.Problems {
+					<p>{ p }</p>
+				}
+			</div>
+		}
+		<p class="tools"><button type="submit" name="action" value="save">Save recipe</button></p>
+		@metaFields(v)
+		<h2>Components</h2>
+		for ci, c := range v.D.Components {
+			@componentFields(v, ci, c)
+		}
+		<p class="tools"><button type="submit" name="action" value="add-component">Add component</button></p>
+		@equipmentFields(v)
+		<p class="tools"><button type="submit" name="action" value="save">Save recipe</button></p>
+		<datalist id="ingredient-names">
+			for _, n := range v.Names.Ingredients {
+				<option value={ n }></option>
+			}
+		</datalist>
+		<datalist id="unit-names">
+			for _, n := range v.Names.Units {
+				<option value={ n }></option>
+			}
+		</datalist>
+		<datalist id="equipment-names">
+			for _, n := range v.Names.Equipment {
+				<option value={ n }></option>
+			}
+		</datalist>
+	</form>
+}
+
+templ fieldError(v view, field string) {
+	if msg := v.D.Errs[field]; msg != "" {
+		<p class="field-error" role="alert">{ msg }</p>
+	}
+}
+
+templ metaFields(v view) {
+	<fieldset>
+		<legend>Recipe</legend>
+		<label for="f-name">Name</label>
+		<input id="f-name" type="text" name="name" value={ v.D.Name }/>
+		@fieldError(v, "name")
+		<label for="f-description">Description</label>
+		<textarea id="f-description" name="description" rows="3">{ v.D.Description }</textarea>
+		<div class="grid">
+			<div>
+				<label for="f-author">Author</label>
+				<input id="f-author" type="text" name="author" value={ v.D.Author }/>
+			</div>
+			<div>
+				<label for="f-source">Source URL</label>
+				<input id="f-source" type="text" name="source_url" value={ v.D.SourceURL }/>
+			</div>
+			<div>
+				<label for="f-tags">Tags (comma separated)</label>
+				<input id="f-tags" type="text" name="tags" value={ v.D.Tags }/>
+			</div>
+		</div>
+		<div class="grid">
+			<div>
+				<label for="f-yield-qty">Yield amount</label>
+				<input id="f-yield-qty" type="text" name="yield_qty" value={ v.D.YieldQty }/>
+				@fieldError(v, "yield_qty")
+			</div>
+			<div>
+				<label for="f-yield-unit">Yield unit (for example loaf)</label>
+				<input id="f-yield-unit" type="text" name="yield_unit" value={ v.D.YieldUnit }/>
+			</div>
+			<div>
+				<label for="f-servings">Servings</label>
+				<input id="f-servings" type="text" name="servings" value={ v.D.Servings }/>
+				@fieldError(v, "servings")
+			</div>
+			<div>
+				<label for="f-calories">Calories per serving</label>
+				<input id="f-calories" type="text" name="calories" value={ v.D.Calories }/>
+				@fieldError(v, "calories")
+			</div>
+		</div>
+		<div class="grid">
+			<div>
+				<label for="f-prep">Prep time</label>
+				<input id="f-prep" type="text" name="prep" value={ v.D.Prep }/>
+				@fieldError(v, "prep")
+			</div>
+			<div>
+				<label for="f-cook">Cook time</label>
+				<input id="f-cook" type="text" name="cook" value={ v.D.Cook }/>
+				@fieldError(v, "cook")
+			</div>
+			<div>
+				<label for="f-total">Total time (empty to work it out)</label>
+				<input id="f-total" type="text" name="total" value={ v.D.Total }/>
+				@fieldError(v, "total")
+			</div>
+		</div>
+	</fieldset>
+}
+
+templ componentFields(v view, ci int, c compDraft) {
+	<fieldset class="component">
+		<legend>{ componentLabel(ci, c) }</legend>
+		<label for={ cField(ci, "name") }>Component name (empty for a recipe without parts)</label>
+		<input id={ cField(ci, "name") } type="text" name={ cField(ci, "name") } value={ c.Name }/>
+		<p class="tools">
+			<button type="submit" name="action" value={ act("up-component", ci) } disabled?={ ci == 0 }>Move component up</button>
+			<button type="submit" name="action" value={ act("down-component", ci) } disabled?={ ci == len(v.D.Components)-1 }>Move component down</button>
+			<button type="submit" name="action" value={ act("rm-component", ci) }>Remove component</button>
+		</p>
+		<h3>Ingredients</h3>
+		<ol>
+			for li, l := range c.Lines {
+				@lineFields(v, ci, li, len(c.Lines), l)
+			}
+		</ol>
+		<p class="tools"><button type="submit" name="action" value={ act("add-line", ci) }>Add ingredient line</button></p>
+		<h3>Steps</h3>
+		<ol>
+			for si, s := range c.Steps {
+				@stepFields(v, ci, si, len(c.Steps), s)
+			}
+		</ol>
+		<p class="tools"><button type="submit" name="action" value={ act("add-step", ci) }>Add step</button></p>
+	</fieldset>
+}
+
+templ lineFields(v view, ci, li, count int, l lineDraft) {
+	<li class="item line">
+		<strong>Line { n1(li) }</strong>
+		if l.Err != "" {
+			<p class="alert" role="alert">{ l.Err }</p>
+		}
+		<div class="grid">
+			<div>
+				<label for={ lField(ci, li, "qty") }>Quantity</label>
+				<input id={ lField(ci, li, "qty") } type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off"/>
+			</div>
+			<div>
+				<label for={ lField(ci, li, "unit") }>Unit</label>
+				<input id={ lField(ci, li, "unit") } type="text" name={ lField(ci, li, "unit") } value={ l.Unit } list="unit-names" autocomplete="off"/>
+			</div>
+			<div>
+				<label for={ lField(ci, li, "ing") }>Ingredient</label>
+				<input id={ lField(ci, li, "ing") } type="text" name={ lField(ci, li, "ing") } value={ l.Ingredient } list="ingredient-names" autocomplete="off"/>
+			</div>
+			<div>
+				<label for={ lField(ci, li, "rule") }>Scaling</label>
+				<select id={ lField(ci, li, "rule") } name={ lField(ci, li, "rule") }>
+					for _, r := range ruleOptions() {
+						<option value={ r } selected?={ l.ruleIs(r) }>{ r }</option>
+					}
+				</select>
+			</div>
+		</div>
+		<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Optional</label>
+		if l.OfferProposal || l.Propose {
+			<label class="inline"><input type="checkbox" name={ lField(ci, li, "propose") } value="1" checked?={ l.Propose }/> Add this ingredient to the catalog as new and unreviewed</label>
+		}
+		<label for={ lField(ci, li, "raw") }>Original text</label>
+		<input id={ lField(ci, li, "raw") } type="text" name={ lField(ci, li, "raw") } value={ l.Raw }/>
+		<details open?={ l.hasPackage() }>
+			<summary>Package size (for example the 14 oz of 1 (14 oz) can)</summary>
+			<div class="grid">
+				<div>
+					<label for={ lField(ci, li, "pkgqty") }>Package amount</label>
+					<input id={ lField(ci, li, "pkgqty") } type="text" name={ lField(ci, li, "pkgqty") } value={ l.PkgQty }/>
+				</div>
+				<div>
+					<label for={ lField(ci, li, "pkgunit") }>Package unit</label>
+					<input id={ lField(ci, li, "pkgunit") } type="text" name={ lField(ci, li, "pkgunit") } value={ l.PkgUnit } list="unit-names"/>
+				</div>
+			</div>
+		</details>
+		for qi, q := range l.Quals {
+			<div class="grid qualifier">
+				<div>
+					<label for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
+					<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
+						for _, k := range qualKinds() {
+							<option value={ k } selected?={ q.Kind == k }>{ k }</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
+					<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text }/>
+				</div>
+				<p class="tools">
+					<button type="submit" name="action" value={ act("up-qual", ci, li, qi) } disabled?={ qi == 0 }>Move qualifier up</button>
+					<button type="submit" name="action" value={ act("down-qual", ci, li, qi) } disabled?={ qi == len(l.Quals)-1 }>Move qualifier down</button>
+					<button type="submit" name="action" value={ act("rm-qual", ci, li, qi) }>Remove qualifier</button>
+				</p>
+			</div>
+		}
+		<p class="tools">
+			<button type="submit" name="action" value={ act("add-qual", ci, li) }>Add qualifier</button>
+			<button type="submit" name="action" value={ act("up-line", ci, li) } disabled?={ li == 0 }>Move line up</button>
+			<button type="submit" name="action" value={ act("down-line", ci, li) } disabled?={ li == count-1 }>Move line down</button>
+			<button type="submit" name="action" value={ act("rm-line", ci, li) }>Remove line</button>
+		</p>
+	</li>
+}
+
+templ stepFields(v view, ci, si, count int, s stepDraft) {
+	<li class="item step">
+		<strong>Step { n1(si) }</strong>
+		if s.Err != "" {
+			<p class="alert" role="alert">{ s.Err }</p>
+		}
+		<input type="hidden" name={ sField(ci, si, "id") } value={ s.ID }/>
+		<label for={ sField(ci, si, "text") }>Instruction</label>
+		<textarea id={ sField(ci, si, "text") } name={ sField(ci, si, "text") } rows="3">{ s.Text }</textarea>
+		<div class="grid">
+			<div>
+				<label for={ sField(ci, si, "dur") }>Duration</label>
+				<input id={ sField(ci, si, "dur") } type="text" name={ sField(ci, si, "dur") } value={ s.Duration }/>
+			</div>
+			<div>
+				<label for={ sField(ci, si, "to") }>Component</label>
+				<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
+					for oi, o := range v.D.Components {
+						<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
+					}
+				</select>
+			</div>
+		</div>
+		<label class="inline"><input type="checkbox" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/> Passive (no attention needed while it runs)</label>
+		<details class="deps" open?={ len(s.Deps) > 0 }>
+			<summary>Depends on</summary>
+			for _, o := range v.stepOptions() {
+				if o.ID != s.ID {
+					<label class="inline"><input type="checkbox" name={ sField(ci, si, "dep") } value={ o.ID } checked?={ hasID(s.Deps, o.ID) }/> { o.Label }</label>
+				}
+			}
+		</details>
+		<p class="tools">
+			<button type="submit" name="action" value={ act("up-step", ci, si) } disabled?={ si == 0 }>Move step up</button>
+			<button type="submit" name="action" value={ act("down-step", ci, si) } disabled?={ si == count-1 }>Move step down</button>
+			<button type="submit" name="action" value={ act("rm-step", ci, si) }>Remove step</button>
+		</p>
+	</li>
+}
+
+templ equipmentFields(v view) {
+	<h2>Equipment</h2>
+	<ol>
+		for ei, e := range v.D.Equipment {
+			<li class="item equipment">
+				<strong>Equipment { n1(ei) }</strong>
+				if e.Err != "" {
+					<p class="alert" role="alert">{ e.Err }</p>
+				}
+				<div class="grid">
+					<div>
+						<label for={ eField(ei, "name") }>Equipment</label>
+						<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
+					</div>
+					<div>
+						<label for={ eField(ei, "qty") }>Quantity</label>
+						<input id={ eField(ei, "qty") } type="text" name={ eField(ei, "qty") } value={ e.Qty }/>
+					</div>
+				</div>
+				if e.OfferProposal || e.Propose {
+					<label class="inline"><input type="checkbox" name={ eField(ei, "propose") } value="1" checked?={ e.Propose }/> Add this equipment to the catalog as new and unreviewed</label>
+				}
+				<details class="deps" open?={ len(e.Steps) > 0 }>
+					<summary>Used in steps</summary>
+					for _, o := range v.stepOptions() {
+						<label class="inline"><input type="checkbox" name={ eField(ei, "step") } value={ o.ID } checked?={ hasID(e.Steps, o.ID) }/> { o.Label }</label>
+					}
+				</details>
+				<p class="tools">
+					<button type="submit" name="action" value={ act("up-equip", ei) } disabled?={ ei == 0 }>Move equipment up</button>
+					<button type="submit" name="action" value={ act("down-equip", ei) } disabled?={ ei == len(v.D.Equipment)-1 }>Move equipment down</button>
+					<button type="submit" name="action" value={ act("rm-equip", ei) }>Remove equipment</button>
+				</p>
+			</li>
+		}
+	</ol>
+	<p class="tools"><button type="submit" name="action" value="add-equip">Add equipment</button></p>
+}
