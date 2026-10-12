@@ -30,6 +30,19 @@ Instructions:
 Stir the zest into the water.
 `;
 
+// Saving a draft creates its unknown ingredients in the shared catalog, so
+// each test that needs one owns its own: sharing UNKNOWN made the mapping test
+// depend on running before the test that creates dragonfruit zest.
+const UNKNOWN_FOR_MAPPING = `Starry Water
+
+Ingredients:
+- 2 cups water
+- 1 tsp starfruit zest
+
+Instructions:
+Stir the zest into the water.
+`;
+
 // One readable line and one the rules cannot make sense of.
 const MESSY = `Mystery Stew
 
@@ -148,7 +161,7 @@ test('a proposed new ingredient is listed, and is created only when the draft is
 
 test('a proposed line can be mapped to an existing ingredient', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(UNKNOWN);
+  await page.getByLabel('Or paste the recipe text').fill(UNKNOWN_FOR_MAPPING);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await page.getByLabel('Or use an existing ingredient (type its name)').fill('sugar');
   await page.getByRole('button', { name: 'Confirm and save' }).click();
