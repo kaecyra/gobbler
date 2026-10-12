@@ -534,7 +534,8 @@
       "status": "todo",
       "depends_on": [
         "w1-store",
-        "w0-e2e-harness"
+        "w0-e2e-harness",
+        "w3-csrf"
       ],
       "owns": [
         "internal/web/editor/**",
@@ -544,8 +545,7 @@
       "adrs": [
         "00004",
         "00005"
-      ],
-      "blocked": "CSRF ADR pending (#83): adds POST routes"
+      ]
     },
     {
       "id": "w3-history",
@@ -556,7 +556,8 @@
       "status": "todo",
       "depends_on": [
         "w1-store",
-        "w0-e2e-harness"
+        "w0-e2e-harness",
+        "w3-csrf"
       ],
       "owns": [
         "internal/web/history/**",
@@ -565,8 +566,7 @@
       "needs_migration": null,
       "adrs": [
         "00004"
-      ],
-      "blocked": "CSRF ADR pending (#83): adds POST routes"
+      ]
     },
     {
       "id": "w3-journal",
@@ -577,7 +577,8 @@
       "status": "todo",
       "depends_on": [
         "w1-store",
-        "w0-e2e-harness"
+        "w0-e2e-harness",
+        "w3-csrf"
       ],
       "owns": [
         "internal/web/journal/**",
@@ -587,8 +588,7 @@
       "adrs": [
         "00004",
         "00003"
-      ],
-      "blocked": "CSRF ADR pending (#83): adds POST routes"
+      ]
     },
     {
       "id": "w3-catalog-page",
@@ -599,7 +599,8 @@
       "status": "todo",
       "depends_on": [
         "w1-catalog",
-        "w0-e2e-harness"
+        "w0-e2e-harness",
+        "w3-csrf"
       ],
       "owns": [
         "internal/web/catalog/**",
@@ -608,8 +609,7 @@
       "needs_migration": null,
       "adrs": [
         "00008"
-      ],
-      "blocked": "CSRF ADR pending (#83): adds POST routes"
+      ]
     },
     {
       "id": "w4-shopping-merge",
@@ -858,7 +858,8 @@
       "status": "todo",
       "depends_on": [
         "w7-backup",
-        "w0-e2e-harness"
+        "w0-e2e-harness",
+        "w3-csrf"
       ],
       "owns": [
         "internal/web/settings/**",
@@ -867,8 +868,7 @@
       "needs_migration": null,
       "adrs": [
         "00010"
-      ],
-      "blocked": "CSRF ADR pending (#83): adds POST routes"
+      ]
     },
     {
       "id": "w7-todoist",
@@ -1039,6 +1039,24 @@
       ],
       "needs_migration": null,
       "adrs": []
+    },
+    {
+      "id": "w3-csrf",
+      "title": "Cross-origin protection middleware for unsafe methods",
+      "wave": 3,
+      "track": "ui",
+      "issue": 86,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/*.go",
+        "e2e/csrf/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00016"
+      ],
+      "note": "ADR-00016: router-wide http.CrossOriginProtection; every later unsafe route inherits it."
     }
   ],
   "shared_files": [
@@ -1290,6 +1308,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00013"
+    "last_used": "00016",
+    "note": "00014 and 00015 were written without drawing from the sequence; corrected 2026-10-12"
   }
 }
