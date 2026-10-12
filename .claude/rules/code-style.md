@@ -18,8 +18,10 @@ The tools cannot enforce layout and shape, so these are the rules:
   types. Define an interface in the package that calls it, sized to what that
   package calls. The LLM provider interface (ADR-00007) is the model.
 - **`context.Context` first** on anything that does I/O.
-- **SQL lives in its store package.** Handlers and templ components never build
-  queries.
+- **SQL lives in its store package**, as `.sql` files compiled by sqlc
+  (ADR-00014). Handlers and templ components never build queries; never edit
+  generated code by hand. `catalog` and `store` still hold hand-written
+  `database/sql` until their sqlc conversion lands.
 - **Pure logic stays pure.** Quantity arithmetic, unit conversion, the
   ingredient-line parser and shopping-list merging take values and return
   values, so they can be table-tested without a database.

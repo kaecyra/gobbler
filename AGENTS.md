@@ -64,6 +64,7 @@ always-on set, then route.
 - [rules/code-style.md](./.claude/rules/code-style.md) — Go layout, interfaces, logging, never typing versions from memory
 - [rules/error-handling.md](./.claude/rules/error-handling.md) — fail loud, wrapping, low confidence versus errors in ingestion
 - [rules/git-workflow.md](./.claude/rules/git-workflow.md) — branches, Conventional Commits, gates, SemVer bumps
+- [rules/lessons.md](./.claude/rules/lessons.md) — past corrections and the rules they produced
 
 **On demand — read the one that matches what you are touching:**
 
