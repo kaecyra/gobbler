@@ -93,6 +93,8 @@ test('a past version is shown in full and read only', async ({ page }) => {
   await expect(page.getByTestId('after')).toContainText('after step 1');
   await expect(page.getByTestId('equipment')).toContainText('e2e loaf pan');
   await expect(page.getByTestId('total')).toContainText('55 min');
+  // ADR-00004: the page says which rule produced the total.
+  await expect(page.getByTestId('total')).toContainText('from the longest chain of steps');
   await expect(page.getByTestId('version-banner')).toContainText('Read only');
   await expect(page.getByRole('textbox')).toHaveCount(0);
 });
