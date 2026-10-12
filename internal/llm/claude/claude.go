@@ -5,23 +5,21 @@
 // interchangeable with the Gemini provider.
 //
 // The model names, the API key and the timeout come from configuration
-// (config.LLM) through Options; nothing here names a model. A response that is
+// (config.LLM) passed to New; nothing here names a model. A response that is
 // not exactly the schema is an error, never a partial draft (ADR-00006).
 package claude
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 
+	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest"
 )
 
@@ -33,19 +31,12 @@ const (
 	maxOutputTokens = 8192
 )
 
-// Options configures a Provider. The caller fills it from config.LLM:
-// APIKey.Reveal(), TextModel, VisionModel and Timeout.
-type Options struct {
-	APIKey      string
-	TextModel   string
-	VisionModel string
-	// Timeout bounds every call (ADR-00007).
-	Timeout time.Duration
-	// BaseURL overrides the API endpoint; empty means Anthropic's. Tests use
-	// it to point at a fake server.
-	BaseURL string
-	// Logger receives one record per call; nil means slog.Default.
-	Logger *slog.Logger
+// Option adjusts a Provider; tests use it to point the SDK at a fake server.
+type Option func(*[]option.RequestOption)
+
+// WithBaseURL sends requests to baseURL instead of the Anthropic API.
+func WithBaseURL(baseURL string) Option {
+	return func(o *[]option.RequestOption) { *o = append(*o, option.WithBaseURL(baseURL)) }
 }
 
 // Provider implements ingest.Provider over the Anthropic Messages API.
@@ -59,37 +50,42 @@ type Provider struct {
 
 var _ ingest.Provider = (*Provider)(nil)
 
-// New validates opts and builds a Provider. It never reads the environment.
-func New(opts Options) (*Provider, error) {
+// New builds a Provider from the configured settings, the same shape as
+// gemini.New. It fails when the key, a model or the timeout is missing, so a
+// misconfiguration surfaces at startup rather than on the first ingest. It
+// never reads the environment; ctx is unused and exists so every provider
+// constructor has one signature.
+func New(_ context.Context, cfg config.LLM, log *slog.Logger, opts ...Option) (*Provider, error) {
 	switch {
-	case opts.APIKey == "":
-		return nil, errors.New("claude provider: API key is empty")
-	case opts.TextModel == "":
-		return nil, errors.New("claude provider: text model is empty")
-	case opts.VisionModel == "":
-		return nil, errors.New("claude provider: vision model is empty")
-	case opts.Timeout <= 0:
-		return nil, errors.New("claude provider: timeout must be positive")
+	case cfg.Provider != config.ProviderClaude:
+		return nil, fmt.Errorf("claude: configured provider is %q", cfg.Provider)
+	case !cfg.APIKey.IsSet():
+		return nil, errors.New("claude: API key is required")
+	case cfg.TextModel == "":
+		return nil, errors.New("claude: text model is required")
+	case cfg.VisionModel == "":
+		return nil, errors.New("claude: vision model is required")
+	case cfg.Timeout <= 0:
+		return nil, errors.New("claude: timeout must be positive")
 	}
 	reqOpts := []option.RequestOption{
-		option.WithAPIKey(opts.APIKey),
+		option.WithAPIKey(cfg.APIKey.Reveal()),
 		// One attempt: the call timeout covers the whole call, and a failure
 		// is shown on the review screen rather than retried behind it.
 		option.WithMaxRetries(0),
 	}
-	if opts.BaseURL != "" {
-		reqOpts = append(reqOpts, option.WithBaseURL(opts.BaseURL))
+	for _, o := range opts {
+		o(&reqOpts)
 	}
-	logger := opts.Logger
-	if logger == nil {
-		logger = slog.Default()
+	if log == nil {
+		log = slog.Default()
 	}
 	return &Provider{
 		client:      anthropic.NewClient(reqOpts...),
-		textModel:   opts.TextModel,
-		visionModel: opts.VisionModel,
-		timeout:     opts.Timeout,
-		log:         logger,
+		textModel:   cfg.TextModel,
+		visionModel: cfg.VisionModel,
+		timeout:     cfg.Timeout,
+		log:         log,
 	}, nil
 }
 
@@ -162,25 +158,7 @@ func decode(resp *anthropic.Message) (ingest.Structured, error) {
 		if !ok || tu.Name != toolName {
 			continue
 		}
-		return parseStructured(tu.Input)
+		return ingest.DecodeStructured(tu.Input)
 	}
 	return ingest.Structured{}, fmt.Errorf("the model did not call %s", toolName)
-}
-
-// parseStructured accepts exactly one JSON object in the ingestion schema:
-// no unknown fields, a name, and at least one component.
-func parseStructured(raw []byte) (ingest.Structured, error) {
-	var s ingest.Structured
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&s); err != nil {
-		return ingest.Structured{}, fmt.Errorf("does not match the ingestion schema: %w", err)
-	}
-	if strings.TrimSpace(s.Name) == "" {
-		return ingest.Structured{}, errors.New("does not match the ingestion schema: recipe has no name")
-	}
-	if len(s.Components) == 0 {
-		return ingest.Structured{}, errors.New("does not match the ingestion schema: recipe has no components")
-	}
-	return s, nil
 }

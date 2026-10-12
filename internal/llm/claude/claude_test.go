@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/llm/claude"
 	"github.com/kaecyra/gobbler/internal/llm/llmtest"
@@ -84,16 +85,26 @@ func message(payload []byte, stop string, in, out int) string {
 		textModel, content, stop, in, out)
 }
 
+// llmConfig loads the LLM settings the way production does, from the
+// environment, so the API key arrives as a config.Secret.
+func llmConfig(t *testing.T, key string, timeout time.Duration) config.LLM {
+	t.Helper()
+	t.Setenv(config.EnvDevAuthBypass, "true")
+	t.Setenv(config.EnvLLMProvider, config.ProviderClaude)
+	t.Setenv(config.EnvLLMTextModel, textModel)
+	t.Setenv(config.EnvLLMVisionModel, visionModel)
+	t.Setenv(config.EnvLLMTimeout, timeout.String())
+	t.Setenv(config.EnvAnthropicAPIKey, key)
+	c, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	return c.LLM
+}
+
 func newProvider(t *testing.T, srv *httptest.Server, key string, timeout time.Duration, logger *slog.Logger) ingest.Provider {
 	t.Helper()
-	p, err := claude.New(claude.Options{
-		APIKey:      key,
-		TextModel:   textModel,
-		VisionModel: visionModel,
-		Timeout:     timeout,
-		BaseURL:     srv.URL,
-		Logger:      logger,
-	})
+	p, err := claude.New(context.Background(), llmConfig(t, key, timeout), logger, claude.WithBaseURL(srv.URL))
 	if err != nil {
 		t.Fatalf("claude.New: %v", err)
 	}
@@ -240,23 +251,29 @@ func TestBackendFailureIsNotATimeout(t *testing.T) {
 	}
 }
 
-func TestNewValidatesOptions(t *testing.T) {
-	good := claude.Options{APIKey: "k", TextModel: "t", VisionModel: "v", Timeout: time.Second}
-	for name, mut := range map[string]func(*claude.Options){
-		"no key":          func(o *claude.Options) { o.APIKey = "" },
-		"no text model":   func(o *claude.Options) { o.TextModel = "" },
-		"no vision model": func(o *claude.Options) { o.VisionModel = "" },
-		"no timeout":      func(o *claude.Options) { o.Timeout = 0 },
+func TestNewRejectsIncompleteConfig(t *testing.T) {
+	good := llmConfig(t, "k", time.Second)
+	noKey := good
+	noKey.APIKey = config.LLM{}.APIKey
+	noText := good
+	noText.TextModel = ""
+	noVision := good
+	noVision.VisionModel = ""
+	noTimeout := good
+	noTimeout.Timeout = 0
+	wrongProvider := good
+	wrongProvider.Provider = config.ProviderGemini
+	for name, cfg := range map[string]config.LLM{
+		"no key": noKey, "no text model": noText, "no vision model": noVision,
+		"no timeout": noTimeout, "wrong provider": wrongProvider,
 	} {
 		t.Run(name, func(t *testing.T) {
-			o := good
-			mut(&o)
-			if _, err := claude.New(o); err == nil {
-				t.Fatal("accepted")
+			if _, err := claude.New(context.Background(), cfg, slog.New(slog.DiscardHandler)); err == nil {
+				t.Fatal("New accepted an incomplete configuration")
 			}
 		})
 	}
-	if _, err := claude.New(good); err != nil {
-		t.Fatalf("good options rejected: %v", err)
+	if _, err := claude.New(context.Background(), good, nil); err != nil {
+		t.Fatalf("good configuration rejected: %v", err)
 	}
 }

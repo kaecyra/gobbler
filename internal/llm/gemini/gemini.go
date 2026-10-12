@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 	"time"
@@ -25,8 +24,9 @@ import (
 // providerName is the value logged under the provider key.
 const providerName = "gemini"
 
-// ErrInvalidResponse marks a response that is not a valid ingest.Structured.
-var ErrInvalidResponse = errors.New("gemini response does not match the ingestion schema")
+// ErrInvalidResponse marks a response that is not a valid ingest.Structured:
+// the same sentinel ingest.DecodeStructured wraps.
+var ErrInvalidResponse = ingest.ErrInvalidStructured
 
 const systemPrompt = `You turn recipe source material into structured data.
 Return only the recipe the source contains; never invent ingredients, quantities or steps.
@@ -52,7 +52,8 @@ func WithBaseURL(baseURL string) Option {
 	return func(c *genai.ClientConfig) { c.HTTPOptions.BaseURL = baseURL }
 }
 
-// New builds a Provider. It fails when the key, a model or the timeout is
+// New builds a Provider from the configured settings, the same shape as
+// claude.New. It fails when the key, a model or the timeout is
 // missing, so a misconfiguration surfaces at startup rather than on the first
 // ingest.
 func New(ctx context.Context, cfg config.LLM, log *slog.Logger, opts ...Option) (*Provider, error) {
@@ -237,16 +238,16 @@ func responseSchema() *genai.Schema {
 func answerText(resp *genai.GenerateContentResponse) (string, error) {
 	if len(resp.Candidates) == 0 {
 		if resp.PromptFeedback != nil && resp.PromptFeedback.BlockReason != "" {
-			return "", fmt.Errorf("%w: prompt blocked (%s)", ErrInvalidResponse, resp.PromptFeedback.BlockReason)
+			return "", fmt.Errorf("gemini response: %w: prompt blocked (%s)", ErrInvalidResponse, resp.PromptFeedback.BlockReason)
 		}
-		return "", fmt.Errorf("%w: no candidates", ErrInvalidResponse)
+		return "", fmt.Errorf("gemini response: %w: no candidates", ErrInvalidResponse)
 	}
 	c := resp.Candidates[0]
 	if c.FinishReason != "" && c.FinishReason != genai.FinishReasonStop {
-		return "", fmt.Errorf("%w: finish reason %s", ErrInvalidResponse, c.FinishReason)
+		return "", fmt.Errorf("gemini response: %w: finish reason %s", ErrInvalidResponse, c.FinishReason)
 	}
 	if c.Content == nil {
-		return "", fmt.Errorf("%w: empty candidate", ErrInvalidResponse)
+		return "", fmt.Errorf("gemini response: %w: empty candidate", ErrInvalidResponse)
 	}
 	var b strings.Builder
 	for _, part := range c.Content.Parts {
@@ -258,29 +259,11 @@ func answerText(resp *genai.GenerateContentResponse) (string, error) {
 	return b.String(), nil
 }
 
-// decode parses and validates the model's JSON: exactly one object matching
-// ingest.Structured, with a name and at least one component.
+// decode reads the model's JSON through the shared strict decoder.
 func decode(text string) (ingest.Structured, error) {
-	dec := json.NewDecoder(strings.NewReader(text))
-	dec.DisallowUnknownFields()
-	var out ingest.Structured
-	if err := dec.Decode(&out); err != nil {
-		return ingest.Structured{}, fmt.Errorf("%w: %w", ErrInvalidResponse, err)
-	}
-	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
-		return ingest.Structured{}, fmt.Errorf("%w: text after the JSON object", ErrInvalidResponse)
-	}
-	if strings.TrimSpace(out.Name) == "" {
-		return ingest.Structured{}, fmt.Errorf("%w: no recipe name", ErrInvalidResponse)
-	}
-	if len(out.Components) == 0 {
-		return ingest.Structured{}, fmt.Errorf("%w: no components", ErrInvalidResponse)
-	}
-	for i, c := range out.Components {
-		// The response schema requires the key; absent or null is a violation.
-		if c.Ingredients == nil {
-			return ingest.Structured{}, fmt.Errorf("%w: component %d has no ingredients", ErrInvalidResponse, i)
-		}
+	out, err := ingest.DecodeStructured([]byte(text))
+	if err != nil {
+		return ingest.Structured{}, fmt.Errorf("gemini response: %w", err)
 	}
 	return out, nil
 }
