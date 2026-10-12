@@ -1053,12 +1053,12 @@
         "internal/parse/doc.go",
         "internal/parse/testdata/lines/**",
         "internal/catalog/seed/**",
-        "internal/ingest/assemble*.go"
+        "internal/ingest/*.go",
+        "internal/web/ingest/**"
       ],
       "needs_migration": "schema",
       "adrs": [],
-      "note": "Regenerates catalogdb (new catalog query file).",
-      "blocked": "Waits on #109 and #110: then widen its lane to drop proposed units (owner chose option A) and the two bag tests in internal/ingest/pipeline_test.go and save_test.go"
+      "note": "Regenerates catalogdb (new catalog query file)."
     },
     {
       "id": "w3-store-atomic-ingest",
