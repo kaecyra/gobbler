@@ -442,7 +442,7 @@
       "wave": 2,
       "track": "ingestion",
       "issue": 15,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w2-line-parser",
         "w2-text-sectioning",
@@ -1144,6 +1144,16 @@
       "merged": "becbbb7",
       "adrs": [
         "00010"
+      ]
+    },
+    {
+      "id": "w2-ingest-pipeline",
+      "title": "Acquire, extract, parse, score, draft; LLM provider interface declared; save with snapshot after review",
+      "merged": "f89e03e",
+      "adrs": [
+        "00006",
+        "00007",
+        "00008"
       ]
     }
   ],
