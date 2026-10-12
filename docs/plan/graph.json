@@ -535,7 +535,8 @@
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
-        "w3-csrf"
+        "w3-csrf",
+        "w3-store-atomic-ingest"
       ],
       "owns": [
         "internal/web/editor/**",
@@ -604,12 +605,14 @@
       ],
       "owns": [
         "internal/web/catalog/**",
-        "e2e/catalog/**"
+        "e2e/catalog/**",
+        "internal/catalog/usage*.go"
       ],
       "needs_migration": null,
       "adrs": [
         "00008"
-      ]
+      ],
+      "note": "Adds catalog.CountIngredientReferences (internal/catalog/usage*.go plus one new catalog query file) for the merge confirmation count #22 requires."
     },
     {
       "id": "w4-shopping-merge",
@@ -648,7 +651,9 @@
       "owns": [
         "internal/shopping/store*.go",
         "internal/shopping/list*.go",
-        "internal/shopping/pantry*.go"
+        "internal/shopping/pantry*.go",
+        "internal/shopping/queries/**",
+        "internal/shopping/shoppingdb/**"
       ],
       "needs_migration": "schema",
       "adrs": [
@@ -1054,7 +1059,8 @@
         "internal/ingest/save*.go"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "Also adds store.UpdateIfVersion (update only if the recipe is still at the version the caller read; a stale version is a typed error) for w3-editor's stale-save check (#19)."
     },
     {
       "id": "w3-csrf",
@@ -1136,6 +1142,31 @@
       "path": "internal/web/layout/httperr.go",
       "mode": "open",
       "note": "APPEND-ONLY by convention: a node that introduces a domain sentinel adds its import and one row to statusTable, never edits existing lines; the dispatcher enforces this in diff review. statusTable is first-match, so a sentinel that wraps one already listed must go above it -- the one case where a new row is inserted rather than appended, called out in that node's PR. It is the one place a domain error becomes an HTTP status (error-handling rule). mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/store/queries/**",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (ADR-00014 keeps queries per package; within one package several nodes add queries): a node adds its own new .sql file, or a new entry, and never edits another node's; the dispatcher enforces this in diff review. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/catalog/queries/**",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (ADR-00014 keeps queries per package; within one package several nodes add queries): a node adds its own new .sql file, or a new entry, and never edits another node's; the dispatcher enforces this in diff review. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "sqlc.yaml",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (ADR-00014 keeps queries per package; within one package several nodes add queries): a node adds its own new .sql file, or a new entry, and never edits another node's; the dispatcher enforces this in diff review. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/store/storedb/**",
+      "mode": "open",
+      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
+    },
+    {
+      "path": "internal/catalog/catalogdb/**",
+      "mode": "open",
+      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
     }
   ],
   "done": [
