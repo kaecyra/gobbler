@@ -14,6 +14,9 @@ The tools cannot enforce layout and shape, so these are the rules:
 - **Layout.** `cmd/gobbler/` holds the entry point. Everything else lives in
   `internal/<package>/` (ADR-00002). Name a package for what it provides —
   `ingest`, `quantity`, `catalog` — never `util`, `common` or `helpers`.
+  Go helpers that serve only the end-to-end suite live under `e2e/`
+  (ADR-00013). Application code never imports them, and they count toward
+  `make test` coverage and lint like any other package.
 - **Interfaces belong to the consumer.** Accept interfaces, return concrete
   types. Define an interface in the package that calls it, sized to what that
   package calls. The LLM provider interface (ADR-00007) is the model.
