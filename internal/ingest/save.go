@@ -61,11 +61,10 @@ func Confirm(d Draft) (Confirmed, error) {
 }
 
 // RecipeStore is what Save calls on the recipe store; *store.Store satisfies
-// it. Snapshots go through AddSnapshot, the only way to write one (ADR-00015).
+// it. The recipe and its snapshot are written in one transaction, so neither
+// can exist without the other.
 type RecipeStore interface {
-	Create(ctx context.Context, r recipe.Recipe) (int64, error)
-	AddSnapshot(ctx context.Context, id int64, kind store.SnapshotKind, content []byte) error
-	Delete(ctx context.Context, id int64) error
+	CreateWithSnapshots(ctx context.Context, r recipe.Recipe, snaps ...store.SnapshotInput) (int64, error)
 }
 
 // CatalogWriter is what Save calls on the catalog: the reads of CatalogReader
@@ -99,9 +98,9 @@ type Saved struct {
 // still lacks are created with reviewed false, since only a confirmed save may
 // create them (ADR-00008); ones that exist by now are reused.
 //
-// The recipe and its snapshot are two store calls. If the snapshot cannot be
-// written the recipe is deleted again and the error says so, so a recipe never
-// remains without its source.
+// The recipe and its snapshot are one store call and one transaction. If the
+// snapshot cannot be written nothing is, so a recipe never exists without its
+// source. The catalog entries created above are separate and stay.
 func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 	if !c.confirmed {
 		return Saved{}, ErrNotConfirmed
@@ -139,15 +138,10 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 	}
 	linkSteps(comps, d.Components)
 
-	id, err := s.recipes.Create(ctx, toRecipe(d, comps))
+	id, err := s.recipes.CreateWithSnapshots(ctx, toRecipe(d, comps),
+		store.SnapshotInput{Kind: d.Source.Kind, Content: d.Source.Content})
 	if err != nil {
-		return Saved{}, fmt.Errorf("save recipe %q: %w", d.Name.Value, err)
-	}
-	if err := s.recipes.AddSnapshot(ctx, id, d.Source.Kind, d.Source.Content); err != nil {
-		if derr := s.recipes.Delete(ctx, id); derr != nil {
-			return Saved{}, fmt.Errorf("save %s snapshot of recipe %d: %w (and removing the recipe failed, it has no source: %w)", d.Source.Kind, id, err, derr)
-		}
-		return Saved{}, fmt.Errorf("save %s snapshot, recipe not saved: %w", d.Source.Kind, err)
+		return Saved{}, fmt.Errorf("save recipe %q with its %s snapshot, recipe not stored: %w", d.Name.Value, d.Source.Kind, err)
 	}
 	out.RecipeID = id
 	return out, nil

@@ -46,6 +46,7 @@ var statusTable = []struct {
 	{extract.ErrEmptyInput, http.StatusBadRequest},
 	{store.ErrNotFound, http.StatusNotFound},
 	{display.ErrInvalid, http.StatusBadRequest},
+	{store.ErrStaleVersion, http.StatusConflict},
 }
 
 // classify returns the table row err matches. ok is false for an unmapped
