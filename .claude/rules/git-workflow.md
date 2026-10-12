@@ -60,6 +60,7 @@ the next change, however ready that change is.
 | `make test` | `go test -cover ./...`, failing below 70% line coverage | pre-push hook |
 | `make e2e` | Playwright against a running binary; every route has a test | pre-push hook |
 | `make test-scripts` | the shell and Node tests for the gate scripts themselves (version-bump check, e2e route coverage) | `make check` |
+| `make generate-check` | `sqlc diff`, failing if the committed sqlc output is stale | `make check` |
 | `make check` | all of the above plus the version-bump check | before every push |
 
 Hooks are managed by `lefthook`. No `--no-verify`.
