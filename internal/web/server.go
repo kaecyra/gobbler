@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -35,7 +36,9 @@ func newHTTPServer(h http.Handler) *http.Server {
 // Serve serves h on ln until ctx is cancelled, then stops accepting and gives
 // in-flight requests shutdownTimeout to finish. A clean shutdown returns nil.
 func Serve(ctx context.Context, ln net.Listener, h http.Handler) error {
-	srv := newHTTPServer(h)
+	down := make(chan struct{})
+	srv := newHTTPServer(endStreamsOnShutdown(h, down))
+	srv.RegisterOnShutdown(func() { close(down) })
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
 
@@ -55,4 +58,29 @@ func Serve(ctx context.Context, ln net.Listener, h http.Handler) error {
 		return fmt.Errorf("serve http: %w", err)
 	}
 	return nil
+}
+
+// endStreamsOnShutdown cancels the context of every event-stream request
+// (Accept: text/event-stream, which is what EventSource sends) once down is
+// closed. Shutdown waits for in-flight requests, and a stream never finishes on
+// its own, so without this one open phone view would hold the server for all of
+// shutdownTimeout and then fail the shutdown. Other requests keep the grace
+// period.
+func endStreamsOnShutdown(h http.Handler, down <-chan struct{}) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+			h.ServeHTTP(w, r)
+			return
+		}
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		go func() {
+			select {
+			case <-down:
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

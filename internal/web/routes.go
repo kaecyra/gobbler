@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
 	"github.com/kaecyra/gobbler/internal/web/cook"
@@ -14,6 +15,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
 	"github.com/kaecyra/gobbler/internal/web/settings"
+	webshopping "github.com/kaecyra/gobbler/internal/web/shopping"
 )
 
 // mountFeatures is where feature packages attach their routes (ADR-00012). A
@@ -36,15 +38,23 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountCatalog(r, d)
 }
 
-// mountCatalog mounts the catalog cleanup page. Its catalog store is the one
-// that merges ingredients, so the recipe store's merge hooks and usage counters
-// are registered on it here: without the hooks a merge of an ingredient that
-// recipes use fails on the foreign key, and without the counters the
-// confirmation cannot state how many lines it re-points.
+// mountCatalog mounts the catalog cleanup page and the shopping pages. Its
+// catalog store is the one that merges ingredients, so the recipe store's merge
+// hooks and usage counters are registered on it here: without the hooks a merge
+// of an ingredient that recipes use fails on the foreign key, and without the
+// counters the confirmation cannot state how many rows it re-points.
 func mountCatalog(r chi.Router, d Deps) {
 	cat, rec := catalog.New(d.DB), store.New(d.DB)
 	usage := catalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
 	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: cat, Usage: usage}))
+
+	// The shopping pages share the merging catalog store: the shopping store's
+	// hooks re-point its manual items, pantry and checks on a merge, and its
+	// counter adds those rows to the merge confirmation.
+	shop := shopping.New(d.DB, rec, cat)
+	shop.RegisterMergeHooks(cat)
+	shop.RegisterUsageCounters(usage)
+	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Lists: shop, Recipes: rec, Catalog: cat, Logger: d.Logger}))
 }

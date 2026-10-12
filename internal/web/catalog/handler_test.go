@@ -258,7 +258,7 @@ func TestEditOfMissingIngredientIsNotFound(t *testing.T) {
 	wantStatus(t, f.do("GET", "/catalog/abc", nil), 400)
 }
 
-func TestMergeConfirmationStatesTheLineCountThenRepointsEveryLine(t *testing.T) {
+func TestMergeConfirmationStatesTheUseCountThenRepointsEveryUse(t *testing.T) {
 	f := newFixture(t)
 	src := f.ingredient("zz merge source", "produce", false)
 	dst := f.ingredient("zz merge target", "produce", true)
@@ -272,7 +272,7 @@ func TestMergeConfirmationStatesTheLineCountThenRepointsEveryLine(t *testing.T) 
 	}
 
 	confirm := wantStatus(t, f.do("GET", "/catalog/merge?source="+idStr(src)+"&target="+idStr(dst), nil), 200)
-	wantContains(t, confirm, "3 recipe lines")
+	wantContains(t, confirm, `data-testid="merge-uses">3</span>`)
 
 	w := f.do("POST", "/catalog/merge", url.Values{"source": {idStr(src)}, "target": {idStr(dst)}})
 	if w.Code != http.StatusSeeOther {

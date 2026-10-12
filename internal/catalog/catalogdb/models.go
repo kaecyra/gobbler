@@ -177,9 +177,10 @@ type ShoppingEntry struct {
 }
 
 type ShoppingList struct {
-	ID        int64
-	Name      string
-	CreatedAt string
+	ID              int64
+	Name            string
+	CreatedAt       string
+	IncludeOptional int64
 }
 
 type ShoppingManualItem struct {

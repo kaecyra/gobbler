@@ -1,0 +1,18 @@
+.aisle h3 { text-transform: capitalize; margin-block: 1rem 0.25rem; }
+.aisle ul, .dropped, .entries, .manual { list-style: none; padding: 0; margin: 0; }
+.aisle li { border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.aisle form { margin: 0; }
+.item-toggle {
+  display: flex; justify-content: space-between; gap: 1rem; width: 100%;
+  min-height: 3rem; padding: 0.5rem 0.25rem; text-align: left;
+  font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
+}
+.item-toggle[aria-checked="true"] .item-name { text-decoration: line-through; opacity: 0.6; }
+.item-toggle[aria-checked="true"]::before { content: "\2713"; }
+.item-sources { display: block; font-size: 0.85em; padding: 0 0.25rem 0.5rem; }
+.entries li, .manual li, .dropped li { padding: 0.35rem 0; }
+#live-status[data-state="error"] { font-weight: bold; }
+.export-text { width: 100%; min-height: 8rem; font-family: monospace; }
+@media (max-width: 40rem) {
+  .item-toggle { font-size: 1.15rem; }
+}

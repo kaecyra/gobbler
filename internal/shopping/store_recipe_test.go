@@ -1,10 +1,8 @@
 package shopping
 
 import (
-	"io/fs"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -118,23 +116,9 @@ func TestIngredientMergeWithoutShoppingHooksIsRefusedAndRolledBack(t *testing.T)
 // recipes, and leaves them alone.
 func TestMigrationOnExistingData(t *testing.T) {
 	f := newFixture(t)
-	// A second database stopped before the shopping migration.
-	older := fstest.MapFS{}
-	all := db.Migrations()
-	entries, err := fs.ReadDir(all, ".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if e.Name() == "00005_shopping.sql" || e.IsDir() {
-			continue
-		}
-		body, err := fs.ReadFile(all, e.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
-		older[e.Name()] = &fstest.MapFile{Data: body}
-	}
+	// A second database stopped before the first shopping migration; every
+	// later one alters its tables.
+	older, all := migrationsBefore(t, "00005"), db.Migrations()
 	d2 := openRaw(t)
 	if err := db.Migrate(f.ctx, d2, older); err != nil {
 		t.Fatalf("migrate without shopping: %v", err)

@@ -30,11 +30,14 @@ type ManualView struct {
 // what Generate made of it. Aisles carries each item's key and check state;
 // Pantry holds the items set aside because their ingredient is in the pantry.
 type View struct {
-	List    ListInfo
-	Entries []EntryView
-	Manual  []ManualView
-	Aisles  []ViewAisle
-	Pantry  []Item
+	List ListInfo
+	// IncludeOptional reports whether the list keeps the optional lines of its
+	// recipes (SetIncludeOptional).
+	IncludeOptional bool
+	Entries         []EntryView
+	Manual          []ManualView
+	Aisles          []ViewAisle
+	Pantry          []Item
 }
 
 // Generated returns the view's generated list without the view-only fields, for
@@ -150,8 +153,11 @@ func (s *Store) build(ctx context.Context, snap snapshot, units *unitTable) (Vie
 	if err != nil {
 		return View{}, nil, err
 	}
-	view := View{List: info}
-	in := Input{Catalog: map[recipe.IngredientID]IngredientInfo{}, Pantry: map[recipe.IngredientID]bool{}}
+	view := View{List: info, IncludeOptional: snap.list.IncludeOptional != 0}
+	in := Input{
+		Catalog: map[recipe.IngredientID]IngredientInfo{}, Pantry: map[recipe.IngredientID]bool{},
+		IncludeOptional: view.IncludeOptional,
+	}
 	need := map[recipe.IngredientID]bool{}
 
 	for _, e := range snap.entries {
