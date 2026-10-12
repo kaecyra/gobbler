@@ -648,7 +648,7 @@
       "wave": 4,
       "track": "shopping",
       "issue": 24,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w4-shopping-merge",
         "w1-store",
