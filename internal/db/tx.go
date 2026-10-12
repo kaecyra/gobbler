@@ -81,15 +81,16 @@ func WithTx[Q Queries[Q]](ctx context.Context, d *sql.DB, q Q, fn func(q Q, tx *
 }
 
 // WithReadTx runs fn against one read-only transaction, so every query in a
-// multi-query read sees the same snapshot. Reading a document on the bare
+// multi-query read sees the same snapshot. fn gets q bound to the transaction,
+// and the transaction itself for a query sqlc cannot express (as WithTx). Reading a document on the bare
 // pool lets a write land between its queries and return a torn mix of two
 // versions. Whatever fn returns, the transaction is ended.
-func WithReadTx[Q Queries[Q]](ctx context.Context, d *sql.DB, q Q, fn func(q Q) error) error {
+func WithReadTx[Q Queries[Q]](ctx context.Context, d *sql.DB, q Q, fn func(q Q, tx *sql.Tx) error) error {
 	tx, err := d.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return fmt.Errorf("begin read transaction: %w", err)
 	}
-	err = fn(q.WithTx(tx))
+	err = fn(q.WithTx(tx), tx)
 	return errors.Join(err, rollback(tx, "end read transaction"))
 }
 

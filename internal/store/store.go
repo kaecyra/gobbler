@@ -97,7 +97,7 @@ func (s *Store) withTx(ctx context.Context, fn func(q *storedb.Queries) error) e
 // read runs fn against one read-only transaction (db.WithReadTx), so every
 // query in a multi-query read sees the same snapshot.
 func (s *Store) read(ctx context.Context, fn func(q *storedb.Queries) error) error {
-	return db.WithReadTx(ctx, s.db, s.q, fn)
+	return db.WithReadTx(ctx, s.db, s.q, func(q *storedb.Queries, _ *sql.Tx) error { return fn(q) })
 }
 
 // wrapWrite wraps a failed write with what it was doing. A foreign key

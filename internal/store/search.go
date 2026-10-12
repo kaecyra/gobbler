@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
@@ -28,8 +28,8 @@ type Summary struct {
 }
 
 // SearchQuery selects recipes. Text is what the user typed: every word must
-// appear (as a word prefix) in the name, description, ingredients, tags or
-// notes. Tags are exact tag names; a recipe must carry all of them. Both empty
+// appear in the name, description, ingredients, tags or notes, and the last
+// word may be unfinished (it matches as a prefix, so results follow typing). Tags are exact tag names; a recipe must carry all of them. Both empty
 // selects every recipe.
 type SearchQuery struct {
 	Text string
@@ -54,7 +54,7 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 	tags := cleanTags(q.Tags)
 
 	var out []Summary
-	err := s.readTx(ctx, func(tx *sql.Tx, qs *storedb.Queries) error {
+	err := db.WithReadTx(ctx, s.db, s.q, func(qs *storedb.Queries, tx *sql.Tx) error {
 		rows, err := s.summaryRows(ctx, tx, qs, expr)
 		if err != nil {
 			return err
@@ -182,19 +182,6 @@ func (s *Store) summaryRows(ctx context.Context, tx *sql.Tx, qs *storedb.Queries
 		return nil, readErr("search", err)
 	}
 	return out, nil
-}
-
-// readTx is read with the transaction itself, for the one hand-written query.
-func (s *Store) readTx(ctx context.Context, fn func(tx *sql.Tx, q *storedb.Queries) error) error {
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
-	if err != nil {
-		return fmt.Errorf("begin read transaction: %w", err)
-	}
-	err = fn(tx, s.q.WithTx(tx))
-	if rerr := tx.Rollback(); rerr != nil && !errors.Is(rerr, sql.ErrTxDone) {
-		err = errors.Join(err, fmt.Errorf("end read transaction: %w", rerr))
-	}
-	return err
 }
 
 // matchExpression turns what a user typed into an FTS5 query: each word is a
