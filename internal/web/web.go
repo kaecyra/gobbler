@@ -36,9 +36,10 @@ type Deps struct {
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
-// panic recovery, then authentication, then the handlers. Logging is outermost
-// so refused requests and recovered panics (logged as 500) each get an access
-// line, and the handlers never run for an unauthenticated request.
+// panic recovery, then authentication, then cross-origin protection
+// (ADR-00016), then the handlers. Logging is outermost so refused requests
+// (unauthenticated or cross-origin) and recovered panics (logged as 500) each
+// get an access line, and the handlers never run for either kind of refusal.
 func New(d Deps) (http.Handler, error) {
 	return newRouter(d)
 }
@@ -53,7 +54,9 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 
 	r := chi.NewRouter()
-	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(HealthPath))
+	// No trusted origins and no bypass patterns: no handler opts out (ADR-00016).
+	cop := http.NewCrossOriginProtection()
+	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(HealthPath), cop.Handler)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})
