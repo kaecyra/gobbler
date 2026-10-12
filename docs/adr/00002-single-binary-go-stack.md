@@ -51,7 +51,8 @@ gobbler is one Go binary serving server-rendered HTML.
   database file on a named volume. `cloudflared` runs alongside as its own
   service.
 - **Layout:** `cmd/gobbler/` for the entry point, `internal/<package>/` for all
-  other code.
+  other application code. Test tooling for the end-to-end suite lives under
+  `e2e/` (ADR-00013).
 
 ## Consequences
 

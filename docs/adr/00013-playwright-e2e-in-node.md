@@ -30,6 +30,10 @@ Options considered:
 - `make e2e` installs nothing; provisioning a checkout (`npm ci` and the
   browser install in `e2e/`) is a setup step, not part of the gate.
 - Nothing under `e2e/` is copied into the container image.
+- A Go program that exists only to serve the suite, such as one that builds
+  the real router and lists its routes for the route-coverage check, lives
+  under `e2e/` too. It is test tooling: application code never imports it,
+  and it is built and run only by the gates.
 
 ## Consequences
 
