@@ -65,8 +65,8 @@ type handler struct {
 	pending *pendingDrafts
 	log     *slog.Logger
 	// initErr is why the pipeline could not be built. Every route still exists
-	// and answers with it, so a bad configuration is a loud 500 rather than a
-	// missing page.
+	// and answers 500 with it (see requireReady), so a bad configuration is a
+	// loud failure rather than a missing page.
 	initErr error
 }
 
@@ -94,12 +94,25 @@ func Routes(d Deps) http.Handler {
 
 func (h *handler) routes() http.Handler {
 	r := chi.NewRouter()
+	r.Use(h.requireReady)
 	r.Get("/", h.form)
 	r.Post("/", h.submit)
 	r.Get("/{token}", h.review)
 	r.Post("/{token}/confirm", h.confirm)
 	r.Post("/{token}/cancel", h.cancel)
 	return r
+}
+
+// requireReady answers every route with 500 when the pipeline could not be
+// built, before any handler or token lookup runs.
+func (h *handler) requireReady(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h.initErr != nil {
+			layout.WriteError(w, r, h.initErr)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // formView is what the ingest form renders.
@@ -117,10 +130,6 @@ type reviewView struct {
 }
 
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
-	if h.initErr != nil {
-		layout.WriteError(w, r, h.initErr)
-		return
-	}
 	layout.Render(w, r, http.StatusOK, formPage(formView{}))
 }
 
@@ -128,10 +137,6 @@ func (h *handler) form(w http.ResponseWriter, r *http.Request) {
 // saved. A failure to produce a draft is shown on the form, never as a draft
 // (error-handling.md: an error is not turned into a low-scored draft).
 func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
-	if h.initErr != nil {
-		layout.WriteError(w, r, h.initErr)
-		return
-	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 	if err := r.ParseForm(); err != nil {
 		layout.WriteError(w, r, fmt.Errorf("read form: %w", layout.ErrInvalid))
@@ -162,8 +167,9 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		draft, err = h.drafter.FromText(r.Context(), v.Text)
 	}
 	if err != nil {
-		status, msg, ok := pipelineFailure(err)
-		if !ok {
+		status := layout.StatusFor(err)
+		msg, ok := inputFailure(err)
+		if status == http.StatusInternalServerError || !ok {
 			layout.WriteError(w, r, fmt.Errorf("ingest: %w", err))
 			return
 		}
@@ -180,16 +186,17 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
 }
 
-// pipelineFailure says how an input the pipeline rejected is shown on the
-// form. ok is false for an error that is not about the input.
-func pipelineFailure(err error) (status int, msg string, ok bool) {
+// inputFailure is the form's wording for an input the pipeline rejected; the
+// status comes from layout's table. ok is false for an error that is not about
+// the input.
+func inputFailure(err error) (msg string, ok bool) {
 	switch {
 	case errors.Is(err, ingestcore.ErrFetch):
-		return http.StatusBadGateway, "Could not fetch that page: " + err.Error(), true
+		return "Could not fetch that page: " + err.Error(), true
 	case errors.Is(err, parse.ErrEmptyText), errors.Is(err, extract.ErrEmptyInput):
-		return http.StatusBadRequest, "There was nothing to read. Enter a recipe URL or paste the recipe text.", true
+		return "There was nothing to read. Enter a recipe URL or paste the recipe text.", true
 	}
-	return 0, "", false
+	return "", false
 }
 
 func isWebURL(s string) bool {
@@ -264,16 +271,31 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 }
 
 // incompleteProblems turns Confirm's joined error into one message per
-// problem, without the sentinel's prefix.
+// problem, without the sentinel.
 func incompleteProblems(err error) []string {
-	text := strings.TrimPrefix(err.Error(), ingestcore.ErrIncompleteDraft.Error()+": ")
 	var out []string
-	for _, line := range strings.Split(text, "\n") {
-		if line = strings.TrimSpace(line); line != "" {
-			out = append(out, strings.ToUpper(line[:1])+line[1:]+".")
+	for _, e := range leaves(err) {
+		if errors.Is(e, ingestcore.ErrIncompleteDraft) {
+			continue
+		}
+		if text := strings.TrimSpace(e.Error()); text != "" {
+			out = append(out, strings.ToUpper(text[:1])+text[1:]+".")
 		}
 	}
 	return out
+}
+
+// leaves flattens errors joined with errors.Join or a multi-%w Errorf into the
+// errors that were joined.
+func leaves(err error) []error {
+	if multi, ok := err.(interface{ Unwrap() []error }); ok {
+		var out []error
+		for _, e := range multi.Unwrap() {
+			out = append(out, leaves(e)...)
+		}
+		return out
+	}
+	return []error{err}
 }
 
 // cancel discards the draft. Nothing was saved, so there is nothing to undo.

@@ -19,8 +19,11 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/ingest/extract"
+	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 const threshold = 0.7
@@ -464,10 +467,96 @@ func TestCancelDiscardsAndSavesNothing(t *testing.T) {
 
 func TestRoutesWithBadConfigAnswerLoudly(t *testing.T) {
 	h := Routes(Deps{Ingestion: config.Ingestion{}, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want 500", rec.Code)
+	routes := []struct{ method, target string }{
+		{http.MethodGet, "/"},
+		{http.MethodPost, "/"},
+		{http.MethodGet, "/sometoken"},
+		{http.MethodPost, "/sometoken/confirm"},
+		{http.MethodPost, "/sometoken/cancel"},
+	}
+	for _, rt := range routes {
+		t.Run(rt.method+" "+rt.target, func(t *testing.T) {
+			req := httptest.NewRequest(rt.method, rt.target, strings.NewReader(""))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			if rec.Code != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", rec.Code)
+			}
+		})
+	}
+}
+
+func TestSubmitMapsPipelineErrorsThroughTheStatusTable(t *testing.T) {
+	tests := []struct {
+		name   string
+		err    error
+		status int
+		want   string
+	}{
+		{"fetch", fmt.Errorf("%w: get https://a.test/x: refused", ingestcore.ErrFetch), http.StatusBadGateway, "Could not fetch that page"},
+		{"fetch wrapping a not-found cause", fmt.Errorf("%w: get x: %w", ingestcore.ErrFetch, layout.ErrNotFound), http.StatusBadGateway, "Could not fetch that page"},
+		{"empty text", fmt.Errorf("split: %w", parse.ErrEmptyText), http.StatusBadRequest, "nothing to read"},
+		{"empty html", fmt.Errorf("extract: %w", extract.ErrEmptyInput), http.StatusBadRequest, "nothing to read"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			f.drafter.err = tc.err
+			rec := f.do(http.MethodPost, "/", url.Values{"text": {"pie"}})
+			if rec.Code != tc.status || !strings.Contains(rec.Body.String(), tc.want) {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, tc.status, rec.Body)
+			}
+			if layout.StatusFor(tc.err) != tc.status {
+				t.Errorf("layout.StatusFor = %d, want %d", layout.StatusFor(tc.err), tc.status)
+			}
+		})
+	}
+}
+
+func TestReviewAfterFailedConfirmListsOnlyWhatConfirmWouldAdd(t *testing.T) {
+	t.Run("mapped line is no longer proposed", func(t *testing.T) {
+		f := newFixture(t)
+		f.store.known["zest"] = catalog.Ingredient{ID: 9, Name: "zest"}
+		token := f.ingestText(t)
+		form := reviewForm()
+		form.Set(lineExistingField(0, 1), "Zest")
+		form.Set(fieldName, "") // forces the 422
+		rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
+		if rec.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+		}
+		if strings.Contains(rec.Body.String(), `data-proposed="dragonfruit zest"`) {
+			t.Error("a line mapped to an existing ingredient is still listed as added on confirm")
+		}
+		if strings.Contains(f.do(http.MethodGet, "/"+token, nil).Body.String(), `data-proposed="dragonfruit zest"`) {
+			t.Error("the next review still lists the mapped line")
+		}
+	})
+	t.Run("renamed line is proposed under its new name", func(t *testing.T) {
+		f := newFixture(t)
+		token := f.ingestText(t)
+		form := reviewForm()
+		form.Set(lineNameField(0, 1), "Passion  Fruit")
+		form.Set(fieldName, "")
+		rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
+		body := rec.Body.String()
+		if rec.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("status = %d; body: %s", rec.Code, body)
+		}
+		if strings.Contains(body, `data-proposed="dragonfruit zest"`) || !strings.Contains(body, `data-proposed="passion fruit"`) {
+			t.Errorf("proposed list is stale after a rename: %s", between(t, body, "New ingredients", "</section>"))
+		}
+	})
+}
+
+func TestIncompleteProblemsUnwrapsEachProblem(t *testing.T) {
+	err := fmt.Errorf("%w: %w", ingestcore.ErrIncompleteDraft,
+		errors.Join(errors.New("the recipe has no name"), errors.New("line one\nline two")))
+	got := incompleteProblems(err)
+	want := []string{"The recipe has no name.", "Line one\nline two."}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("problems = %q, want %q", got, want)
 	}
 }
 
