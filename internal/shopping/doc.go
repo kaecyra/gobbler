@@ -1,11 +1,14 @@
 // Package shopping builds a shopping list from recipes and manual items
-// (ADR-00009) and exports it as text.
+// (ADR-00009), exports it as text, and persists lists, their check state and
+// the pantry.
 //
-// This part of the package is pure: Generate takes values and returns values.
-// It reads no database, clock or network and imports only internal/quantity
-// and internal/recipe, so persistence, check state, the live view and the
-// Todoist push live elsewhere. Catalog facts (name, aisle, density, pantry
-// membership) arrive as plain values in Input rather than through a store.
+// The generation half (merge*.go, export*.go) is pure: Generate takes values
+// and returns values. It reads no database, clock or network and imports only
+// internal/quantity and internal/recipe. Catalog facts (name, aisle, density,
+// pantry membership) arrive as plain values in Input rather than through a
+// store. The persistence half (Store in store*.go, list*.go and pantry*.go)
+// keeps the rows in SQLite and calls Generate to build a list; it adds no merge
+// logic. The live view and the Todoist push live elsewhere.
 //
 // Generate scales each recipe's lines by its multiplier with quantity.Scale,
 // drops optional lines unless Input.IncludeOptional is set, and sets aside

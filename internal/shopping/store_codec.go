@@ -1,3 +1,5 @@
+// Copy of internal/store's codec; see issue #123.
+
 package shopping
 
 import (
