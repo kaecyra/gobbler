@@ -788,22 +788,17 @@
         "internal/web/ingest/ingest.go",
         "internal/web/ingest/ingest.templ",
         "internal/web/ingest/ingest_templ.go",
-        "internal/config/config.go",
-        "internal/config/config_test.go",
         "internal/ingest/ingest.go",
         "internal/ingest/draft.go",
         "internal/ingest/fallback*.go",
-        "internal/ingest/llm.go",
-        "internal/ingest/structured*.go",
-        "internal/ingest/pipeline_test.go",
-        "docs/operations.md",
-        ".env.example"
+        "internal/ingest/pipeline_test.go"
       ],
       "needs_migration": null,
       "adrs": [
         "00006",
         "00007"
-      ]
+      ],
+      "note": "Edits outside its own packages are limited to: internal/web/ingest/ingest.go (mount the photo routes in routes() and extend the Drafter interface with the photo entry point), ingest.templ/_templ.go (a link to the photo form), and internal/ingest ingest.go/draft.go/fallback*.go/pipeline_test.go (an OCR source that stores SnapshotOCR and carries the image in memory to Request.Image on fallback, never into the snapshot). tesseract is found on PATH (Dockerfile installs it); e2e puts a stub on PATH, so there is no config field."
     },
     {
       "id": "w5-usda-import",
