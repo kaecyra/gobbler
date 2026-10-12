@@ -160,7 +160,8 @@ func (h *handler) renderEdit(w http.ResponseWriter, r *http.Request, status int,
 }
 
 // mergeShow shows the target chooser, or, once source and target are both
-// given, the confirmation with the number of uses (recipe lines, shopping rows) the merge re-points.
+// given, the confirmation with the number of uses (recipe lines, shopping rows)
+// the merge re-points.
 func (h *handler) mergeShow(w http.ResponseWriter, r *http.Request) {
 	h.mergeStep(w, r, r.URL.Query().Get("source"), r.URL.Query().Get("target"))
 }

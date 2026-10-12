@@ -96,6 +96,7 @@ templ livePage(v liveView) {
 		<h1>{ v.Name }</h1>
 		<p><a href={ formAction(v.ID, "") }>Edit this list</a></p>
 		<p id="live-status" role="status" data-testid="live-status" data-state="connecting">Connecting</p>
+		<p><button type="button" id="live-reload" data-testid="live-reload" hidden>Reload the page</button></p>
 		<div id="live-items" data-testid="live-items" data-events={ eventsPath(v.ID) }>
 			@itemsFragment(v.ID, v.Aisles, true)
 		</div>

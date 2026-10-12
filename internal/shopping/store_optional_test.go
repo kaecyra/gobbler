@@ -112,7 +112,8 @@ func TestSetIncludeOptionalNotifiesOnlyOnChange(t *testing.T) {
 	}
 }
 
-// migrationsBefore returns the embedded migrations from the one named first on.
+// migrationsBefore returns the embedded migrations that sort before the file
+// whose name starts with first, which is excluded along with every later one.
 func migrationsBefore(t *testing.T, first string) fs.FS {
 	t.Helper()
 	older := fstest.MapFS{}

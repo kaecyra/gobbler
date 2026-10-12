@@ -19,13 +19,6 @@ func mergeURL(id int64) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("%s/merge?source=%d", Pattern, id))
 }
 
-func usesText(n int64) string {
-	if n == 1 {
-		return "1 use"
-	}
-	return strconv.FormatInt(n, 10) + " uses"
-}
-
 templ listPage(v listView) {
 	@layout.Page("Ingredient catalog") {
 		<h1>Ingredient catalog</h1>
@@ -181,7 +174,9 @@ templ confirmPage(v confirmView) {
 		<h1>Confirm merge</h1>
 		<p data-testid="merge-summary">
 			Merge <strong>{ v.Source.Name }</strong> into <strong>{ v.Target.Name }</strong>.
-			<span data-testid="merge-uses">{ usesText(v.Uses) }</span> will be re-pointed to { v.Target.Name }.
+			Recipe lines and shopping entries that use { v.Source.Name }:
+			<span data-testid="merge-uses">{ strconv.FormatInt(v.Uses, 10) }</span>.
+			They will be re-pointed to { v.Target.Name }.
 			{ v.Source.Name } will be removed and kept as an alias of { v.Target.Name }.
 		</p>
 		<form method="post" action="/catalog/merge" data-testid="merge-confirm">

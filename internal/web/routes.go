@@ -38,11 +38,11 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountCatalog(r, d)
 }
 
-// mountCatalog mounts the catalog cleanup page and the shopping pages. Its catalog store is the one
-// that merges ingredients, so the recipe store's merge hooks and usage counters
-// are registered on it here: without the hooks a merge of an ingredient that
-// recipes use fails on the foreign key, and without the counters the
-// confirmation cannot state how many lines it re-points.
+// mountCatalog mounts the catalog cleanup page and the shopping pages. Its
+// catalog store is the one that merges ingredients, so the recipe store's merge
+// hooks and usage counters are registered on it here: without the hooks a merge
+// of an ingredient that recipes use fails on the foreign key, and without the
+// counters the confirmation cannot state how many rows it re-points.
 func mountCatalog(r chi.Router, d Deps) {
 	cat, rec := catalog.New(d.DB), store.New(d.DB)
 	usage := catalog.NewUsage(cat)

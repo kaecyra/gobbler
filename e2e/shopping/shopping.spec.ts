@@ -394,3 +394,36 @@ test('optional lines are left off until the list includes them, on the build pag
     await phone.close();
   }
 });
+
+test('the phone view reconnects when the stream endpoint fails, instead of staying stuck', async ({ browser }) => {
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const desk = await browser.newContext();
+  try {
+    const live = await phone.newPage();
+    // A proxy answering 502 during a redeploy closes an EventSource for good:
+    // the browser does not retry a failed response. The page must.
+    let hits = 0;
+    await live.route(`**/shopping/${listID}/events`, (route) => {
+      hits += 1;
+      return hits === 1 ? route.fulfill({ status: 502, body: 'bad gateway' }) : route.continue();
+    });
+    await live.goto(`/shopping/${listID}/live`);
+    const status = live.getByTestId('live-status');
+    await expect(status).toContainText('Reconnecting');
+    await expect(live.getByTestId('live-reload')).toBeVisible();
+    await expect(status).toHaveText('Live', { timeout: 10_000 });
+    await expect(live.getByTestId('live-reload')).toBeHidden();
+    expect(hits).toBeGreaterThanOrEqual(2);
+
+    // The new stream is a working one: a change made elsewhere arrives on it.
+    const flour = live.getByRole('checkbox', { name: /e2e flour/ });
+    const before = await flour.getAttribute('aria-checked');
+    const other = await desk.newPage();
+    await other.goto(`/shopping/${listID}/live`);
+    await other.getByRole('checkbox', { name: /e2e flour/ }).click();
+    await expect(flour).not.toHaveAttribute('aria-checked', before ?? '');
+  } finally {
+    await phone.close();
+    await desk.close();
+  }
+});

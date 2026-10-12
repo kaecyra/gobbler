@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -779,5 +781,92 @@ func TestOptionalToggleKeepsChecks(t *testing.T) {
 		if !strings.Contains(between(live, `data-key="i:`+id(key), "</li>"), `data-checked="true"`) {
 			t.Errorf("ingredient %d lost its check across the toggle", key)
 		}
+	}
+}
+
+// stuckWriter is a response writer for a client that has stopped reading: after
+// okWrites writes, a write blocks until the write deadline passes. With no
+// deadline set it blocks for far longer than any test waits.
+type stuckWriter struct {
+	mu       sync.Mutex
+	header   http.Header
+	deadline time.Time
+	writes   int
+	okWrites int
+}
+
+func (w *stuckWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = http.Header{}
+	}
+	return w.header
+}
+func (w *stuckWriter) WriteHeader(int) {}
+func (w *stuckWriter) Flush()          {}
+func (w *stuckWriter) SetWriteDeadline(t time.Time) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.deadline = t
+	return nil
+}
+
+func (w *stuckWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	w.writes++
+	n, d := w.writes, w.deadline
+	w.mu.Unlock()
+	if n <= w.okWrites {
+		return len(p), nil
+	}
+	wait := time.Minute
+	if !d.IsZero() {
+		wait = time.Until(d)
+	}
+	time.Sleep(wait)
+	return 0, os.ErrDeadlineExceeded
+}
+
+func TestEventStreamDropsAClientThatStopsReading(t *testing.T) {
+	f := newFixture(t)
+	list := f.newList("Week")
+	f.h.heartbeat = 40 * time.Millisecond
+	w := &stuckWriter{okWrites: 1} // the list goes out; the first keepalive blocks
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("%s/%d/events", Pattern, list), nil)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		f.srv.ServeHTTP(w, req)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("a stuck write held the stream open: no rolling write deadline")
+	}
+	if n := f.h.hub.count(); n != 0 {
+		t.Fatalf("%d subscriptions left after the client was dropped", n)
+	}
+}
+
+func TestEventFrameNeverLeavesALineBreakInsideAField(t *testing.T) {
+	got := string(eventFrame("list", "a\rb\r\nc\nd"))
+	if want := "event: list\ndata: a\ndata: b\ndata: c\ndata: d\n\n"; got != want {
+		t.Errorf("frame = %q, want %q", got, want)
+	}
+}
+
+func TestCarriageReturnInAnItemDoesNotBreakTheStream(t *testing.T) {
+	f := newFixture(t)
+	list := f.newList("Week")
+	rec := f.do(http.MethodPost, fmt.Sprintf("/%d/manual", list), url.Values{"text": {"line one\rline two"}})
+	wantStatus(t, rec, http.StatusSeeOther)
+	srv := f.streamServer(0)
+	c := openStream(t, srv.URL, list)
+	first := c.next(5 * time.Second)
+	if strings.Contains(first, "\r") {
+		t.Fatalf("a bare carriage return reached the event stream, where it ends a line: %q", first)
+	}
+	if !strings.Contains(first, "line one") || !strings.Contains(first, "line two") {
+		t.Fatalf("item text lost: %q", first)
 	}
 }

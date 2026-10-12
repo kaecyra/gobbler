@@ -27,13 +27,6 @@ func mergeURL(id int64) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("%s/merge?source=%d", Pattern, id))
 }
 
-func usesText(n int64) string {
-	if n == 1 {
-		return "1 use"
-	}
-	return strconv.FormatInt(n, 10) + " uses"
-}
-
 func listPage(v listView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -74,7 +67,7 @@ func listPage(v listView) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Query)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 34, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 27, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -117,7 +110,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var4 templ.SafeURL
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(editURL(r.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 51, Col: 30}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 44, Col: 30}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -130,7 +123,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 51, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 44, Col: 41}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -143,7 +136,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(r.Aisle)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 52, Col: 36}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 45, Col: 36}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -156,7 +149,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var7 templ.SafeURL
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(postURL(r.ID, "/reviewed")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 53, Col: 77}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 46, Col: 77}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -169,7 +162,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("Mark " + r.Name + " reviewed")
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 54, Col: 73}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 47, Col: 73}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 					if templ_7745c5c3_Err != nil {
@@ -182,7 +175,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var9 templ.SafeURL
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(mergeURL(r.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 56, Col: 31}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 49, Col: 31}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -235,7 +228,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var10 templ.SafeURL
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(editURL(r.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 85, Col: 35}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 78, Col: 35}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
@@ -248,7 +241,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 85, Col: 46}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 78, Col: 46}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -261,7 +254,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var12 string
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(r.Aisle)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 86, Col: 21}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 79, Col: 21}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -274,7 +267,7 @@ func listPage(v listView) templ.Component {
 					var templ_7745c5c3_Var13 string
 					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(r.Aliases)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 87, Col: 23}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 80, Col: 23}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 					if templ_7745c5c3_Err != nil {
@@ -348,7 +341,7 @@ func fieldProblem(msg string, id string) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 106, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 99, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -361,7 +354,7 @@ func fieldProblem(msg string, id string) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 106, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 99, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 			if templ_7745c5c3_Err != nil {
@@ -374,7 +367,7 @@ func fieldProblem(msg string, id string) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 106, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 99, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -437,7 +430,7 @@ func editPage(f formView) templ.Component {
 			var templ_7745c5c3_Var20 templ.SafeURL
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(postURL(f.ID, "")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 115, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 108, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -450,7 +443,7 @@ func editPage(f formView) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 118, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 111, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 			if templ_7745c5c3_Err != nil {
@@ -471,7 +464,7 @@ func editPage(f formView) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(f.Aliases)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 124, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 117, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -484,7 +477,7 @@ func editPage(f formView) templ.Component {
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Aisle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 129, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 122, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 			if templ_7745c5c3_Err != nil {
@@ -502,7 +495,7 @@ func editPage(f formView) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(a)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 132, Col: 23}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 125, Col: 23}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 				if templ_7745c5c3_Err != nil {
@@ -528,7 +521,7 @@ func editPage(f formView) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Density)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 139, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 132, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 			if templ_7745c5c3_Err != nil {
@@ -549,7 +542,7 @@ func editPage(f formView) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.USDAID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 144, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 137, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 			if templ_7745c5c3_Err != nil {
@@ -580,7 +573,7 @@ func editPage(f formView) templ.Component {
 			var templ_7745c5c3_Var27 templ.SafeURL
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinURLErrs(mergeURL(f.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 155, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 148, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -640,7 +633,7 @@ func chooserPage(v chooserView) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(v.Source.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 161, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 154, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -661,7 +654,7 @@ func chooserPage(v chooserView) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(v.Source.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 163, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 156, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -674,7 +667,7 @@ func chooserPage(v chooserView) templ.Component {
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(v.Source.ID, 10))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 165, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 158, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 			if templ_7745c5c3_Err != nil {
@@ -692,7 +685,7 @@ func chooserPage(v chooserView) templ.Component {
 				var templ_7745c5c3_Var33 string
 				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(t.ID, 10))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 170, Col: 48}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 163, Col: 48}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33)
 				if templ_7745c5c3_Err != nil {
@@ -705,7 +698,7 @@ func chooserPage(v chooserView) templ.Component {
 				var templ_7745c5c3_Var34 string
 				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 170, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 163, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
@@ -770,7 +763,7 @@ func confirmPage(v confirmView) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(v.Source.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 183, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 176, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
@@ -783,91 +776,104 @@ func confirmPage(v confirmView) templ.Component {
 			var templ_7745c5c3_Var38 string
 			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(v.Target.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 183, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 176, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</strong>. <span data-testid=\"merge-uses\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</strong>. Recipe lines and shopping entries that use ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var39 string
-			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(usesText(v.Uses))
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(v.Source.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 184, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 177, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</span> will be re-pointed to ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, ": <span data-testid=\"merge-uses\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 string
-			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(v.Target.Name)
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatInt(v.Uses, 10))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 184, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 178, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, ". ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</span>. They will be re-pointed to ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(v.Source.Name)
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(v.Target.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 185, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 179, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, " will be removed and kept as an alias of ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, ". ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var42 string
-			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(v.Target.Name)
+			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(v.Source.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 185, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 180, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, ".</p><form method=\"post\" action=\"/catalog/merge\" data-testid=\"merge-confirm\"><input type=\"hidden\" name=\"source\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, " will be removed and kept as an alias of ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var43 string
-			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(v.Source.ID, 10))
+			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(v.Target.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 188, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 180, Col: 76}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"> <input type=\"hidden\" name=\"target\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, ".</p><form method=\"post\" action=\"/catalog/merge\" data-testid=\"merge-confirm\"><input type=\"hidden\" name=\"source\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var44 string
-			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(v.Target.ID, 10))
+			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(v.Source.ID, 10))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 189, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 183, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\"> <button type=\"submit\">Merge</button></form><p><a href=\"/catalog\">Cancel</a></p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\"> <input type=\"hidden\" name=\"target\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var45 string
+			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(v.Target.ID, 10))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/catalog.templ`, Line: 184, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\"> <button type=\"submit\">Merge</button></form><p><a href=\"/catalog\">Cancel</a></p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

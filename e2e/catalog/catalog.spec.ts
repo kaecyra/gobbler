@@ -119,7 +119,7 @@ test('merging states the use count and re-points the recipe', async ({ page }) =
   await page.goto(`/catalog/merge?source=${ids.source}`);
   await page.getByLabel('Keep').selectOption({ label: 'e2e fresh dill' });
   await page.getByRole('button', { name: 'Review the merge' }).click();
-  await expect(page.getByTestId('merge-uses')).toHaveText('2 uses');
+  await expect(page.getByTestId('merge-uses')).toHaveText('2');
   await page.getByRole('button', { name: 'Merge' }).click();
   await expect(page).toHaveURL(new RegExp(`/catalog/${ids.target}$`));
   await expect(page.getByLabel('Aliases')).toHaveValue(/e2e dillweed/);

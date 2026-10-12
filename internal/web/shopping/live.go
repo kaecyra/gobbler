@@ -82,11 +82,21 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The server's write timeout would cut a stream that is meant to stay open.
+	// The server's write timeout is one deadline for the whole response, which
+	// would cut a stream meant to stay open. Replace it with a deadline that
+	// rolls forward before every write: a healthy client never sees it, and a
+	// client that stopped reading is dropped after two heartbeats instead of
+	// holding the stream until TCP gives up.
 	rc := http.NewResponseController(w)
-	if err := rc.SetWriteDeadline(time.Time{}); err != nil && !errors.Is(err, http.ErrNotSupported) {
-		h.log.WarnContext(ctx, "lift write deadline for event stream", "error", err.Error())
+	warned := false
+	roll := func() {
+		err := rc.SetWriteDeadline(time.Now().Add(2 * h.heartbeat))
+		if err != nil && !errors.Is(err, http.ErrNotSupported) && !warned {
+			warned = true
+			h.log.WarnContext(ctx, "set write deadline for event stream", "error", err.Error())
+		}
 	}
+	roll()
 	hdr := w.Header()
 	hdr.Set("Content-Type", "text/event-stream")
 	hdr.Set("Cache-Control", "no-cache")
@@ -94,6 +104,7 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	send := func(frame []byte) bool {
+		roll()
 		if _, err := w.Write(frame); err != nil {
 			return false
 		}
@@ -145,12 +156,17 @@ func (h *handler) sendList(ctx context.Context, id int64, view domain.View, send
 	return send(eventFrame("list", html.String()))
 }
 
+// lineBreaks turns every line ending the event-stream format knows into \n.
+var lineBreaks = strings.NewReplacer("\r\n", "\n", "\r", "\n")
+
 // eventFrame formats one server-sent event. Each line of data gets its own
-// "data:" field, which the browser joins back with newlines.
+// "data:" field, which the browser joins back with newlines. The format ends a
+// line at \r, \r\n or \n, so all three are split on; a \r left in a field would
+// cut the frame in the middle of the item's text.
 func eventFrame(name, data string) []byte {
 	var b bytes.Buffer
 	b.WriteString("event: " + name + "\n")
-	for _, line := range strings.Split(data, "\n") {
+	for _, line := range strings.Split(lineBreaks.Replace(data), "\n") {
 		b.WriteString("data: " + line + "\n")
 	}
 	b.WriteByte('\n')
