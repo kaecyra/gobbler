@@ -1010,7 +1010,8 @@
         "internal/parse/line*.go",
         "internal/parse/doc.go",
         "internal/parse/testdata/lines/**",
-        "internal/catalog/seed/**"
+        "internal/catalog/seed/**",
+        "internal/ingest/assemble*.go"
       ],
       "needs_migration": "schema",
       "adrs": []
