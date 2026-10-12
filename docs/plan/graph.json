@@ -1045,7 +1045,7 @@
       "wave": 3,
       "track": "ingestion",
       "issue": 65,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w2-sqlc",
         "w2-line-parser"
@@ -1523,6 +1523,12 @@
         "00004",
         "00005"
       ]
+    },
+    {
+      "id": "w3-unit-owner",
+      "title": "Units resolve through the catalog; parse drops its alias table; seed fixes",
+      "merged": "efb658d",
+      "note": "Regenerates catalogdb (new catalog query file)."
     }
   ],
   "adr_sequence": {
