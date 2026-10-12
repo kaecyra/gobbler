@@ -1058,7 +1058,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 86,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/*.go",
@@ -1350,6 +1350,15 @@
         "00007"
       ],
       "note": "Sanctioned exception to routes.go append-only: may edit the existing /ingest r.Mount line in internal/web/routes.go to pass the LLM config (config.Config keeps LLM apart from Ingestion). No other existing line. web.go stays untouched (w3-csrf's lane)."
+    },
+    {
+      "id": "w3-csrf",
+      "title": "Cross-origin protection middleware for unsafe methods",
+      "merged": "682dc99",
+      "adrs": [
+        "00016"
+      ],
+      "note": "ADR-00016: router-wide http.CrossOriginProtection; every later unsafe route inherits it."
     }
   ],
   "adr_sequence": {
