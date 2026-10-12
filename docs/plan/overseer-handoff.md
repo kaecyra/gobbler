@@ -24,7 +24,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 |---|---|---|
 | `wt-20` | w3-history (#20) | **Worker done at 9426dcc**: rebased, using `internal/recipe/display`, e2e port 38471, VERSION 0.30.0, gates green. Not yet verified, pushed or opened as a PR. Behaviour change: to-taste lines now read "... to taste", from the shared line builder. A time-rows helper is still local to history; `display` has none. |
 | `wt-30` | w5-photo-ocr (#30) | **Worker done at 06b6a45**: rebased, VERSION 0.30.0, gates green (71 e2e passed), failing proofs reported. Not yet verified, pushed or opened as a PR. Decisions to check in review: (1) a separate `PhotoDrafter` interface instead of extending `Drafter`, because `fakeDrafter` lives in `ingest_test.go` outside the lane; (2) each pending draft holds its photo in memory, up to 10 MB × 20 drafts, about 200 MB worst case. Consider a lower cap. |
-| `wt-66` | w3-store-atomic-ingest (#66, plus #104) | **Worker done at 0d45c69**, gates green, failing proofs reported. It covers `UpdateIfVersion` (409 `ErrStaleVersion`), `CreateWithSnapshots`, single-call `Save`, and `Delete` inside `withTx`. Not yet verified, pushed or opened as a PR. Its ownership check passes only after #106 merges. VERSION says 0.29.0, which equals main, so the worker must re-bump to the next free minor before merge. |
+| `wt-66` | w3-store-atomic-ingest (#66, plus #104) | **Worker done at 0d45c69**, gates green, failing proofs reported. It covers `UpdateIfVersion` (409 `ErrStaleVersion`), `CreateWithSnapshots`, single-call `Save`, and `Delete` inside `withTx`. Not yet verified, pushed or opened as a PR. #106 has merged, so its lane is live. VERSION says 0.29.0, which equals main, so the worker must re-bump to the next free minor before merge. |
 | `wt-65` | w3-unit-owner (#65, migration 00003) | Committed at 3e42aa2 (`refactor`, 0.28.3, needs a re-bump). **Blocked**, see below. |
 
 VERSION collides: history, photo-ocr and atomic-ingest all claim the next minor. Merge one at a time and re-bump each through its worker (lessons.md).
@@ -33,7 +33,7 @@ VERSION collides: history, photo-ocr and atomic-ingest all claim the next minor.
 
 - **w3-unit-owner (#65).**
   - **Tests:** two tests expect `bag` to be a proposed unit, `internal/ingest/pipeline_test.go:101` and `internal/ingest/save_test.go:98`, and #65 adds `bag` to the catalog. `pipeline_test.go` is in photo-ocr's lane and `save_test.go` in atomic-ingest's; both are in flight.
-  - **Decision:** owner item `ib-acf65b06cee6`. A: drop proposed units (recommended). B: keep them.
+  - **Decision:** the owner chose A, drop proposed units (see Owner decisions).
   - **Then:** once #30 and #66 merge, widen #65's lane to those two test files (or the dead proposed-units code, if A) and resume it.
   - **Stale comments** the worker reported: `internal/ingest/resolve.go:66-70`, `draft.go:94-96`, `fallback.go:204`, `assemble.go:82`, `ingest.templ:157-169`, `save.go:181`.
 - Record the block in the graph with `node.ts blocked w3-unit-owner "<reason>"` if it outlives this round.
