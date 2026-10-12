@@ -638,7 +638,8 @@
       "status": "todo",
       "depends_on": [
         "w4-shopping-merge",
-        "w1-store"
+        "w1-store",
+        "w2-sqlc"
       ],
       "owns": [
         "internal/shopping/store*.go",
