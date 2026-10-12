@@ -488,7 +488,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 17,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
@@ -1539,6 +1539,16 @@
         "00008"
       ],
       "note": "Merge confirmation count (#22): the catalog defines a small reference-counter interface in internal/catalog/usage*.go; the store implements it over its own tables in internal/store/usage*.go (one new store query file) and is wired in cmd/gobbler, mirroring the catalog.MergeHook / store.RegisterMergeHooks pattern. The catalog never queries a store table (ADR-00014). Regenerates storedb."
+    },
+    {
+      "id": "w3-search-list",
+      "title": "FTS5 index and search, tags, recipe list and search page",
+      "merged": "e83eafa",
+      "adrs": [
+        "00002",
+        "00004"
+      ],
+      "note": "Regenerates storedb (new store query file)."
     }
   ],
   "adr_sequence": {
