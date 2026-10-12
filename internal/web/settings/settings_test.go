@@ -259,3 +259,25 @@ func TestHealthDetailsLeakNothing(t *testing.T) {
 		}
 	}
 }
+
+func TestErrorShownWithSecretsRedacted(t *testing.T) {
+	const keyID, secret = "AKIAE2EKEYID", "s3cr3t/Value+xyz"
+	msg := `upload "snap.db": Put "http://s3.local/b/snap.db": 403 InvalidAccessKeyId ` + keyID + ` signature ` + secret + ` for ` + keyID
+	// A run that fails with msg leaves it in the status the fragment shows.
+	f := &fakeBackup{err: errors.New(msg), status: backup.Status{LastError: msg, Destination: backup.DestinationRemote}}
+	h := Routes(Deps{Backup: f, Secrets: []string{keyID, "", secret}})
+	for _, tc := range []struct {
+		name, method, target string
+		htmx                 bool
+	}{{"page", http.MethodGet, "/", false}, {"fragment", http.MethodPost, "/backup", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := serve(h, tc.method, tc.target, tc.htmx).Body.String()
+			if strings.Contains(body, keyID) || strings.Contains(body, secret) {
+				t.Fatalf("response contains a secret:\n%s", body)
+			}
+			if !strings.Contains(body, "upload &#34;snap.db&#34;") || !strings.Contains(body, "[redacted]") {
+				t.Fatalf("the rest of the error should remain, with [redacted] in place of secrets:\n%s", body)
+			}
+		})
+	}
+}

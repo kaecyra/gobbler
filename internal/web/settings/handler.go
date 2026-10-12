@@ -3,6 +3,8 @@ package settings
 import (
 	"context"
 	"net/http"
+	"slices"
+	"strings"
 	"sync/atomic"
 
 	"github.com/go-chi/chi/v5"
@@ -25,6 +27,11 @@ type Backup interface {
 // Deps is what the routes need.
 type Deps struct {
 	Backup Backup
+	// Secrets are the configured credential values (S3 access key id and
+	// secret access key). Each occurrence in the last error is replaced
+	// before the page shows it, so the page does not depend on the job's
+	// error text being clean.
+	Secrets []string
 }
 
 // Routes returns the routes of the settings page, relative to Pattern.
@@ -36,6 +43,21 @@ func Routes(d Deps) chi.Router {
 	return r
 }
 
+const redactedText = "[redacted]"
+
+// view builds the backup section from the live status with the secrets removed
+// from the error. Longer secrets go first so one that contains another is
+// replaced whole.
+func (h *handler) view(outcome string) backupView {
+	st := h.Backup.Status()
+	secrets := slices.DeleteFunc(slices.Clone(h.Secrets), func(s string) bool { return s == "" })
+	slices.SortFunc(secrets, func(a, b string) int { return len(b) - len(a) })
+	for _, s := range secrets {
+		st.LastError = strings.ReplaceAll(st.LastError, s, redactedText)
+	}
+	return newBackupView(st, outcome)
+}
+
 type handler struct {
 	Deps
 	// running is set while a request-started backup runs, so a double submit
@@ -44,7 +66,7 @@ type handler struct {
 }
 
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
-	layout.Render(w, r, http.StatusOK, settingsPage(newBackupView(h.Backup.Status(), outcomeNone)))
+	layout.Render(w, r, http.StatusOK, settingsPage(h.view(outcomeNone)))
 }
 
 func (h *handler) backupNow(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +80,7 @@ func (h *handler) backupNow(w http.ResponseWriter, r *http.Request) {
 	}
 	// A failed backup is a 200: htmx 2 does not swap a 4xx, and the outcome
 	// is the content of the response, not a fault of the request.
-	layout.Render(w, r, http.StatusOK, backupSection(newBackupView(h.Backup.Status(), outcome)))
+	layout.Render(w, r, http.StatusOK, backupSection(h.view(outcome)))
 }
 
 // run does one backup and releases the guard. The job outlives the request: a
