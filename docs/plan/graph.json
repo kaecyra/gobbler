@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00004",
+      "last_used": "00006",
       "contiguous": true
     }
   },
@@ -689,7 +689,7 @@
         "internal/shopping/shoppingdb/**",
         "internal/web/server.go"
       ],
-      "needs_migration": null,
+      "needs_migration": "schema",
       "adrs": [
         "00009"
       ]
@@ -1180,7 +1180,11 @@
       "owns": [
         "internal/quantity/codec*.go",
         "internal/store/recipe_codec*.go",
-        "internal/shopping/store_codec*.go"
+        "internal/shopping/store_codec*.go",
+        "internal/store/recipe_read.go",
+        "internal/store/recipe_write.go",
+        "internal/store/revision_doc.go",
+        "internal/shopping/store_entries.go"
       ],
       "needs_migration": null,
       "adrs": []
@@ -1605,7 +1609,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00016",
-    "note": "00014 and 00015 were written without drawing from the sequence; corrected 2026-10-12"
+    "last_used": "00017",
+    "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
   }
 }
