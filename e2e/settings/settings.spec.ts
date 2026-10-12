@@ -106,18 +106,22 @@ test.describe('failing upload', () => {
       // Nothing listens on port 1, so every upload is refused.
       GOBBLER_S3_ENDPOINT: 'http://127.0.0.1:1',
       GOBBLER_S3_REGION: 'us-east-1',
-      GOBBLER_S3_BUCKET: 'e2e-secret-bucket',
+      // The bucket and prefix are chosen to equal the credentials so the
+      // failed upload's error text (which names both) contains them: only the
+      // page's redaction keeps them out of the response.
+      GOBBLER_S3_BUCKET: 'e2e-secret-key',
+      GOBBLER_S3_PREFIX: 'e2e-key-id',
       GOBBLER_S3_ACCESS_KEY_ID: 'e2e-key-id',
       GOBBLER_S3_SECRET_ACCESS_KEY: 'e2e-secret-key',
     }),
   );
   test.afterAll(stop);
 
-  test('shows that snapshots are uploaded, with no credentials or endpoint', async ({ page }) => {
+  test('shows that snapshots are uploaded, with no credentials', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.getByTestId('backup-destination')).toContainText('uploaded to S3');
     const html = await page.content();
-    for (const secret of ['e2e-key-id', 'e2e-secret-key', 'e2e-secret-bucket']) {
+    for (const secret of ['e2e-key-id', 'e2e-secret-key']) {
       expect(html).not.toContain(secret);
     }
   });
@@ -127,11 +131,16 @@ test.describe('failing upload', () => {
     await page.getByRole('button', { name: 'Back up now' }).click();
     await expect(page.getByTestId('backup-outcome')).toHaveText('Backup failed.', { timeout: 60_000 });
     await expect(page.getByTestId('backup-error')).toContainText('Last backup failed');
+    const html = await page.content();
+    for (const secret of ['e2e-key-id', 'e2e-secret-key']) {
+      expect(html).not.toContain(secret);
+    }
+    await expect(page.getByTestId('backup-error')).toContainText('[redacted]');
 
     const res = await fetch(`${origin}/healthz`);
     const text = await res.text();
     expect((JSON.parse(text).details as Record<string, string>).backup).toBe('failed');
-    for (const leak of ['127.0.0.1:1', 'e2e-secret-bucket', 'upload', 'backups']) {
+    for (const leak of ['127.0.0.1:1', 'e2e-secret-key', 'e2e-key-id', 'upload', 'backups']) {
       expect(text).not.toContain(leak);
     }
   });

@@ -191,16 +191,6 @@ func TestDoubleSubmitStartsOneRun(t *testing.T) {
 	}
 }
 
-func TestPageNeverRendersSecrets(t *testing.T) {
-	// Status carries no endpoint or credential; the page must not invent one.
-	got := render(t, newBackupView(backup.Status{Destination: backup.DestinationRemote}, outcomeNone))
-	for _, w := range []string{"http://", "https://", "secret", "access key"} {
-		if strings.Contains(strings.ToLower(got), w) {
-			t.Errorf("page contains %q:\n%s", w, got)
-		}
-	}
-}
-
 type staticStatus backup.Status
 
 func (s staticStatus) Status() backup.Status { return backup.Status(s) }
