@@ -33,7 +33,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## In flight
 
-Nothing. No worktrees on disk and no open PRs from this fleet. The session handed off at about 450k context, before the next dispatch.
+No worker is in flight, and there are no worktrees on disk. **PR #140** (this tenancy split) is open and waiting for the owner. Merge it before dispatching anything, because the dispatch order below depends on it.
 
 Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands. #128 and #129 widened lanes for that.
 
