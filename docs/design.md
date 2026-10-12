@@ -52,6 +52,7 @@ dependencies.
 | `auth` | Access JWT verification middleware, dev bypass | `config` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types, step-graph validation, "meanwhile" derivation (pure) | `quantity` |
+| `recipe/display` | What pages show of a recipe: scale, servings and unit-mode options, formatted ingredient and equipment lines, step numbers, durations, meanwhile items; shared by the recipe view and cook mode, which may not import each other (pure apart from catalog lookups) | `quantity`, `recipe`, `catalog` |
 | `store` | Persistence for recipes, revisions, notes, snapshots, FTS index; queries in `queries/`, sqlc-generated `storedb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `recipe` |
 | `catalog` | Canonical ingredients, units, equipment, aliases, matching, USDA import; queries in `queries/`, sqlc-generated `catalogdb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `quantity` |
 | `parse` | Ingredient-line parser, duration parser, text sectioning (pure) | `quantity`, `catalog` (matching interface) |

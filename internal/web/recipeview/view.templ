@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -14,7 +15,7 @@ var scalePresets = []struct{ Param, Label string }{
 
 // unitModes are the display modes; Param is the text sent as units.
 var unitModes = []struct{ Param, Label string }{
-	{"", "As written"}, {unitsMetric, "Metric"}, {unitsWeight, "Weight"},
+	{"", "As written"}, {display.UnitsMetric, "Metric"}, {display.UnitsWeight, "Weight"},
 }
 
 // href is the URL of this recipe with the given state. Empty values are left
@@ -22,13 +23,13 @@ var unitModes = []struct{ Param, Label string }{
 func href(id int64, scale, servings, units string) string {
 	q := url.Values{}
 	if scale != "" && scale != "1" {
-		q.Set(paramScale, scale)
+		q.Set(display.ParamScale, scale)
 	}
 	if servings != "" {
-		q.Set(paramServings, servings)
+		q.Set(display.ParamServings, servings)
 	}
 	if units != "" {
-		q.Set(paramUnits, units)
+		q.Set(display.ParamUnits, units)
 	}
 	u := "/recipes/" + strconv.FormatInt(id, 10)
 	if len(q) > 0 {
@@ -38,13 +39,13 @@ func href(id int64, scale, servings, units string) string {
 }
 
 func presetActive(v view, param string) bool {
-	if v.Opts.servings != "" {
+	if v.Opts.Servings != "" {
 		return false
 	}
-	if v.Opts.scale == "" {
+	if v.Opts.Scale == "" {
 		return param == "1"
 	}
-	return v.Opts.scale == param
+	return v.Opts.Scale == param
 }
 
 templ recipePage(v view) {
@@ -190,8 +191,8 @@ templ controls(v view) {
 			<span id="scale-h">Scale</span>
 			for _, p := range scalePresets {
 				<a
-					href={ templ.SafeURL(href(v.ID, p.Param, "", v.Opts.units)) }
-					hx-get={ href(v.ID, p.Param, "", v.Opts.units) }
+					href={ templ.SafeURL(href(v.ID, p.Param, "", v.Opts.Units)) }
+					hx-get={ href(v.ID, p.Param, "", v.Opts.Units) }
 					hx-target="#recipe"
 					hx-select="#recipe"
 					hx-swap="outerHTML"
@@ -205,10 +206,10 @@ templ controls(v view) {
 		<form method="get" action={ templ.SafeURL(href(v.ID, "", "", "")) } hx-get={ href(v.ID, "", "", "") } hx-target="#recipe" hx-select="#recipe" hx-swap="outerHTML" hx-push-url="true">
 			<label>
 				Servings
-				<input type="text" name="servings" inputmode="decimal" value={ v.Opts.servings } size="4"/>
+				<input type="text" name="servings" inputmode="decimal" value={ v.Opts.Servings } size="4"/>
 			</label>
-			if v.Opts.units != "" {
-				<input type="hidden" name="units" value={ v.Opts.units }/>
+			if v.Opts.Units != "" {
+				<input type="hidden" name="units" value={ v.Opts.Units }/>
 			}
 			<button type="submit">Scale</button>
 		</form>
@@ -216,13 +217,13 @@ templ controls(v view) {
 			<span id="units-h">Units</span>
 			for _, m := range unitModes {
 				<a
-					href={ templ.SafeURL(href(v.ID, v.Opts.scale, v.Opts.servings, m.Param)) }
-					hx-get={ href(v.ID, v.Opts.scale, v.Opts.servings, m.Param) }
+					href={ templ.SafeURL(href(v.ID, v.Opts.Scale, v.Opts.Servings, m.Param)) }
+					hx-get={ href(v.ID, v.Opts.Scale, v.Opts.Servings, m.Param) }
 					hx-target="#recipe"
 					hx-select="#recipe"
 					hx-swap="outerHTML"
 					hx-push-url="true"
-					if v.Opts.units == m.Param {
+					if v.Opts.Units == m.Param {
 						aria-current="true"
 					}
 				>{ m.Label }</a>

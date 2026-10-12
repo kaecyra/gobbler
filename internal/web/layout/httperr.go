@@ -14,6 +14,7 @@ import (
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/parse"
+	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
@@ -44,6 +45,7 @@ var statusTable = []struct {
 	{parse.ErrEmptyText, http.StatusBadRequest},
 	{extract.ErrEmptyInput, http.StatusBadRequest},
 	{store.ErrNotFound, http.StatusNotFound},
+	{display.ErrInvalid, http.StatusBadRequest},
 }
 
 // classify returns the table row err matches. ok is false for an unmapped

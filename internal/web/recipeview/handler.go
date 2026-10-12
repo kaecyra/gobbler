@@ -16,8 +16,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
-	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -61,10 +61,11 @@ func handle(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
-		opts, err := parseOptions(r.URL.Query(), rec)
+		q := r.URL.Query()
+		opts, err := display.ParseOptions(q.Get(display.ParamScale), q.Get(display.ParamServings), q.Get(display.ParamUnits), rec)
 		notice := ""
 		if err != nil {
-			if !fromHTMX(r) || !errors.Is(err, layout.ErrInvalid) {
+			if !fromHTMX(r) || !errors.Is(err, display.ErrInvalid) {
 				layout.WriteError(w, r, err)
 				return
 			}
@@ -73,8 +74,8 @@ func handle(d Deps) http.HandlerFunc {
 			// a message, and keep the bad URL out of the address bar.
 			slog.WarnContext(r.Context(), "request rejected",
 				"error", err.Error(), "status", http.StatusOK, "method", r.Method, "path", r.URL.Path)
-			opts, notice = options{mult: quantity.Int(1)}, invalidNotice
-			if errors.Is(err, errNoServingsBase) {
+			opts, notice = display.Default(), invalidNotice
+			if errors.Is(err, display.ErrNoServingsBase) {
 				notice = noServingsBaseNotice
 			}
 			w.Header().Set("HX-Push-Url", "false")
@@ -98,13 +99,3 @@ const invalidNotice = "That value cannot be used for this recipe. Enter a positi
 const noServingsBaseNotice = "This recipe has no single serving count (a range, or none), so it cannot be scaled to one. Scale by a multiplier instead, such as 2× or 1/2×."
 
 func fromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
-
-// opaque flattens a catalog "not found" met while resolving a reference of an
-// existing recipe: it is a broken reference, not a missing page, so it must
-// not map to 404 (the page would claim the recipe does not exist).
-func opaque(err error, what string) error {
-	if errors.Is(err, catalog.ErrNotFound) {
-		return fmt.Errorf("%s: dangling reference: %s", what, err.Error())
-	}
-	return fmt.Errorf("%s: %w", what, err)
-}

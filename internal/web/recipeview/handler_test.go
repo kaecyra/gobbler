@@ -363,17 +363,6 @@ func TestSourceURLWithScriptSchemeIsNotLinked(t *testing.T) {
 	mustNotContain(t, body, `href="javascript:`)
 }
 
-func TestFormatDuration(t *testing.T) {
-	for d, want := range map[time.Duration]string{
-		0: "", 30 * time.Second: "1 min", 5 * time.Minute: "5 min", time.Hour: "1 h",
-		90 * time.Minute: "1 h 30 min", 10 * time.Second: "under 1 min",
-	} {
-		if got := formatDuration(d); got != want {
-			t.Errorf("formatDuration(%v) = %q, want %q", d, got, want)
-		}
-	}
-}
-
 // storeEnv is a real SQLite file with every migration applied and the real
 // recipe store and catalog over it.
 func storeEnv(t *testing.T) (context.Context, *store.Store, *catalog.Store) {
