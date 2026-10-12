@@ -79,6 +79,9 @@ type stepView struct {
 	Text string
 	// Note is the duration and the passive marker, "20 min, passive".
 	Note string
+	// Meanwhile is work offered while this passive step runs (ADR-00004);
+	// empty for every other step and for recipes without a step graph.
+	Meanwhile []meanwhileItem
 }
 
 type equipmentView struct {
@@ -105,6 +108,11 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o op
 		return view{}, err
 	}
 
+	guidance, err := buildMeanwhile(r)
+	if err != nil {
+		return view{}, err
+	}
+
 	ingredients := map[recipe.IngredientID]catalog.Ingredient{}
 	step := 1
 	for _, c := range r.Components {
@@ -117,7 +125,7 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o op
 			cv.Lines = append(cv.Lines, lv)
 		}
 		for _, s := range c.Steps {
-			cv.Steps = append(cv.Steps, stepView{Text: s.Text, Note: stepNote(s)})
+			cv.Steps = append(cv.Steps, stepView{Text: s.Text, Note: stepNote(s), Meanwhile: guidance[s.ID]})
 			step++
 		}
 		v.Components = append(v.Components, cv)

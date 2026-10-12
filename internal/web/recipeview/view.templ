@@ -144,6 +144,7 @@ templ recipeBody(v view) {
 								if s.Note != "" {
 									<span class="muted"> ({ s.Note })</span>
 								}
+								@meanwhile(s.Meanwhile)
 							</li>
 						}
 					</ol>

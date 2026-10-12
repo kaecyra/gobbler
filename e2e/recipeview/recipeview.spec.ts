@@ -21,6 +21,7 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 let dataDir = '';
 let server: ChildProcess | undefined;
 let id = 0;
+let meanwhileId = 0;
 
 test.use({ baseURL: origin });
 // One server per file: fullyParallel would otherwise run beforeAll in every worker.
@@ -32,7 +33,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  id = JSON.parse(out).recipe;
+  ({ recipe: id, meanwhile: meanwhileId } = JSON.parse(out));
   server = spawn(bin, ['serve'], {
     env: {
       PATH: process.env.PATH ?? '',
@@ -74,6 +75,22 @@ test('shows the recipe as written', async ({ page }) => {
   await expect(page.getByText('Bake until golden.')).toBeVisible();
   await expect(page.getByTestId('equipment')).toContainText('e2e 9x13 pan');
   await expect(page.getByTestId('total')).toContainText('55 min');
+});
+
+test('a passive step shows the work that can be done meanwhile', async ({ page }) => {
+  await page.goto(`/recipes/${meanwhileId}`);
+  const guidance = page.getByTestId('meanwhile');
+  // Only the dough rise has guidance; the sauce's second step waits for the first.
+  await expect(guidance).toHaveCount(1);
+  await expect(guidance).toContainText('step 4: Chop the tomatoes.');
+  await expect(guidance).not.toContainText('Simmer the sauce.');
+  await expect(page.locator('li', { hasText: 'Let the dough rise.' }).first()).toContainText('Meanwhile');
+});
+
+test('a recipe without anything to do meanwhile shows no guidance', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await expect(page.getByText('Bake until golden.')).toBeVisible();
+  await expect(page.getByTestId('meanwhile')).toHaveCount(0);
 });
 
 test('scaling by a preset swaps the recipe in place and keeps the URL shareable', async ({ page }) => {
