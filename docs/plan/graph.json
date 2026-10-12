@@ -1043,7 +1043,7 @@
       "wave": 3,
       "track": "ingestion",
       "issue": 65,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w2-sqlc",
         "w2-line-parser"
