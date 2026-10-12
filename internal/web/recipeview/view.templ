@@ -17,22 +17,27 @@ var unitModes = []struct{ Param, Label string }{
 	{"", "As written"}, {display.UnitsMetric, "Metric"}, {display.UnitsWeight, "Weight"},
 }
 
+// recipePath is the recipe page's path, the base of its sibling pages.
+func recipePath(id int64) string {
+	return "/recipes/" + strconv.FormatInt(id, 10)
+}
+
 // href is the URL of this recipe with the given state. Empty values are left
 // out so the default view keeps the bare URL.
 func href(id int64, scale, servings, units string) string {
-	return display.StateURL("/recipes/"+strconv.FormatInt(id, 10), scale, servings, units, nil)
+	return display.StateURL(recipePath(id), scale, servings, units, nil)
 }
 
 // cookHref is the cook-mode page of this recipe with the same state. Cook mode
 // is its own feature package (ADR-00012), so only its URL is known here.
 func cookHref(id int64, o display.Options) string {
-	return o.URL("/recipes/"+strconv.FormatInt(id, 10)+"/cook", nil)
+	return o.URL(recipePath(id)+"/cook", nil)
 }
 
 // editHref is the editor page of this recipe. The editor is its own feature
 // package (ADR-00012), so only its URL is known here; it takes no display state.
 func editHref(id int64) string {
-	return "/recipes/" + strconv.FormatInt(id, 10) + "/edit"
+	return recipePath(id) + "/edit"
 }
 
 func presetActive(v view, param string) bool {
