@@ -835,7 +835,9 @@
       "owns": [
         "internal/web/cook/**",
         "internal/web/static/cook*",
-        "e2e/cook/**"
+        "e2e/cook/**",
+        "internal/web/recipeview/**",
+        "internal/recipe/display/**"
       ],
       "needs_migration": null,
       "adrs": [
