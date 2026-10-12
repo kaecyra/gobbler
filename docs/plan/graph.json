@@ -677,7 +677,7 @@
       "wave": 5,
       "track": "ingestion",
       "issue": 26,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w2-ingest-pipeline"
       ],
@@ -1154,6 +1154,14 @@
         "00006",
         "00007",
         "00008"
+      ]
+    },
+    {
+      "id": "w5-llm-contract",
+      "title": "Provider contract test suite against recorded responses",
+      "merged": "d3e6c08",
+      "adrs": [
+        "00007"
       ]
     }
   ],
