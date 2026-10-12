@@ -775,7 +775,8 @@
       ],
       "owns": [
         "internal/ingest/ocr/**",
-        "internal/web/ingest/photo*"
+        "internal/web/ingest/photo*",
+        "e2e/ingest/**"
       ],
       "needs_migration": null,
       "adrs": [
@@ -874,7 +875,8 @@
       ],
       "owns": [
         "internal/web/settings/**",
-        "e2e/settings/**"
+        "e2e/settings/**",
+        "internal/web/health*"
       ],
       "needs_migration": null,
       "adrs": [
@@ -1069,6 +1071,29 @@
         "00016"
       ],
       "note": "ADR-00016: router-wide http.CrossOriginProtection; every later unsafe route inherits it."
+    },
+    {
+      "id": "w3-merge-busy",
+      "title": "MergeIngredients takes the write lock without SQLITE_BUSY under contention",
+      "wave": 3,
+      "track": "persistence",
+      "issue": 93,
+      "status": "todo",
+      "depends_on": [
+        "w2-sqlc"
+      ],
+      "owns": [
+        "internal/catalog/merge*.go",
+        "internal/catalog/catalog.go",
+        "internal/db/tx*.go",
+        "internal/db/db.go",
+        "internal/db/db_test.go",
+        "internal/store/store_concurrency_test.go",
+        "internal/store/store_merge*.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Fixes the flaky TestConcurrentMergesAndEditsDoNotFailBusy gate; #79 did not fully close #59."
     }
   ],
   "shared_files": [
