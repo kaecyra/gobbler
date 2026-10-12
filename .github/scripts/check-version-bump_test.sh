@@ -82,6 +82,15 @@ reset_repo; echo 0.9.0 > "$tmp/VERSION"; git_ commit -qam ver; git_ update-ref r
 echo b >> "$tmp/internal/a.go"; echo 0.10.0 > "$tmp/VERSION"; git_ commit -qam src
 expect "numeric comparison: 0.10.0 is above 0.9.0" 0
 
+reset_repo; echo .env >> "$tmp/.gitignore"; git_ add -A; git_ commit -qm ignore
+expect ".gitignore only passes without a bump" 0
+
+reset_repo; echo .env >> "$tmp/internal/.gitignore"; git_ add -A; git_ commit -qm ignore
+expect "nested .gitignore only passes without a bump" 0
+
+reset_repo; echo .env >> "$tmp/.gitignore"; echo b >> "$tmp/internal/a.go"; git_ add -A; git_ commit -qm both
+expect ".gitignore plus source without a bump fails" 1
+
 reset_repo; echo b >> "$tmp/internal/a.go"; git_ commit -qam src
 got=0; (cd "$tmp" && "$script" origin/nope >/dev/null 2>&1) || got=$?
 if [ "$got" -eq 1 ]; then echo "ok   missing base ref fails loudly"; else echo "FAIL missing base ref: got $got"; fails=$((fails+1)); fi
