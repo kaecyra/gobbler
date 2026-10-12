@@ -556,7 +556,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 20,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
@@ -1456,6 +1456,14 @@
       "adrs": [
         "00002",
         "00011"
+      ]
+    },
+    {
+      "id": "w3-history",
+      "title": "Revision list, view and restore; clone",
+      "merged": "4b7571e",
+      "adrs": [
+        "00004"
       ]
     }
   ],
