@@ -18,6 +18,8 @@ templ styles() {
 		.lines li, .steps li { margin: 0.5rem 0; }
 		.low { border-left: 4px solid var(--accent); padding-left: 0.5rem; background: color-mix(in srgb, var(--accent) 10%, transparent); }
 		.flag { color: var(--accent); font-weight: 700; margin-right: 0.4rem; }
+		.llm-mark { border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
+		.retry-form { margin: 1rem 0; }
 		.new-ingredient { border: 1px dashed var(--border); padding: 0.25rem 0.5rem; }
 		.times { display: flex; gap: 1.5rem; flex-wrap: wrap; }
 	</style>
@@ -60,20 +62,29 @@ templ reviewPage(v reviewView) {
 			</div>
 		}
 		@proposed(v.Draft)
+		if v.CanRetry {
+			<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
+				<button type="submit">Retry with LLM</button>
+				<span class="muted">Asks the configured LLM to read the source again. Edits you have not confirmed are discarded. Nothing is saved.</span>
+			</form>
+		}
 		<form class="review" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/confirm") }>
 			<label for="f-name">Name</label>
-			<div class={ flagClass(lowRequired(v.Draft.Name, v.Draft.Threshold)) }>
+			<div class={ markClass(lowRequired(v.Draft.Name, v.Draft.Threshold), v.Draft.Name.FromLLM) }>
 				@flagMark(lowRequired(v.Draft.Name, v.Draft.Threshold))
+				@llmMark(v.Draft.Name.FromLLM)
 				<input id="f-name" type="text" name="name" value={ v.Draft.Name.Value }/>
 			</div>
 			<label for="f-author">Author</label>
-			<div class={ flagClass(lowOptional(v.Draft.Author, v.Draft.Threshold)) }>
+			<div class={ markClass(lowOptional(v.Draft.Author, v.Draft.Threshold), v.Draft.Author.FromLLM) }>
 				@flagMark(lowOptional(v.Draft.Author, v.Draft.Threshold))
+				@llmMark(v.Draft.Author.FromLLM)
 				<input id="f-author" type="text" name="author" value={ v.Draft.Author.Value }/>
 			</div>
 			<label for="f-description">Description</label>
-			<div class={ flagClass(lowOptional(v.Draft.Description, v.Draft.Threshold)) }>
+			<div class={ markClass(lowOptional(v.Draft.Description, v.Draft.Threshold), v.Draft.Description.FromLLM) }>
 				@flagMark(lowOptional(v.Draft.Description, v.Draft.Threshold))
+				@llmMark(v.Draft.Description.FromLLM)
 				<textarea id="f-description" name="description">{ v.Draft.Description.Value }</textarea>
 			</div>
 			@facts(v.Draft)
@@ -93,8 +104,9 @@ templ reviewPage(v reviewView) {
 					<h3>Steps</h3>
 					<ol class="steps">
 						for si, s := range c.Steps {
-							<li class={ flagClass(s.Confidence < v.Draft.Threshold) }>
+							<li class={ markClass(s.Confidence < v.Draft.Threshold, s.FromLLM) } data-llm?={ s.FromLLM }>
 								@flagMark(s.Confidence < v.Draft.Threshold)
+								@llmMark(s.FromLLM)
 								<textarea name={ stepField(ci, si) } aria-label={ fmt.Sprintf("Step %d", si+1) }>{ s.Text }</textarea>
 								if s.Duration > 0 {
 									<span class="muted">{ formatDuration(s.Duration) }</span>
@@ -115,7 +127,15 @@ templ reviewPage(v reviewView) {
 // summary shows how sure the rules were, as words.
 templ summary(d ingestcore.Draft) {
 	<section class={ flagClass(d.BelowThreshold) } aria-label="Confidence">
-		if d.BelowThreshold {
+		if d.LLMError != "" {
+			<div class="error" role="alert">
+				<p><strong>{ d.LLMError }</strong></p>
+				<p>The draft below is the rule-based reading, unchanged. You can still review and save it.</p>
+			</div>
+		}
+		if d.UsedLLM {
+			<p><strong class="llm-mark">LLM</strong> The LLM supplied this draft. Check every item marked LLM before you confirm.</p>
+		} else if d.BelowThreshold {
 			<p><strong class="flag">Check this draft.</strong> The rules are not sure they read it correctly (confidence { percent(d.Overall) } of the { percent(d.Threshold) } needed). Look over every flagged item.</p>
 		} else {
 			<p>Confidence { percent(d.Overall) }.</p>
@@ -158,30 +178,32 @@ templ proposed(d ingestcore.Draft) {
 templ facts(d ingestcore.Draft) {
 	<div class="times">
 		if yieldText(d.Yield.Value) != "" {
-			@fact("Yield", yieldText(d.Yield.Value), d.Yield.Confidence < d.Threshold)
+			@fact("Yield", yieldText(d.Yield.Value), d.Yield.Confidence < d.Threshold, d.Yield.FromLLM)
 		}
 		if d.Prep.Value > 0 {
-			@fact("Prep", formatDuration(d.Prep.Value), d.Prep.Confidence < d.Threshold)
+			@fact("Prep", formatDuration(d.Prep.Value), d.Prep.Confidence < d.Threshold, d.Prep.FromLLM)
 		}
 		if d.Cook.Value > 0 {
-			@fact("Cook", formatDuration(d.Cook.Value), d.Cook.Confidence < d.Threshold)
+			@fact("Cook", formatDuration(d.Cook.Value), d.Cook.Confidence < d.Threshold, d.Cook.FromLLM)
 		}
 		if d.Total.Value > 0 {
-			@fact("Total", formatDuration(d.Total.Value), d.Total.Confidence < d.Threshold)
+			@fact("Total", formatDuration(d.Total.Value), d.Total.Confidence < d.Threshold, d.Total.FromLLM)
 		}
 	</div>
 }
 
-templ fact(label, text string, low bool) {
-	<p class={ flagClass(low) }>
+templ fact(label, text string, low, fromLLM bool) {
+	<p class={ markClass(low, fromLLM) }>
 		@flagMark(low)
+		@llmMark(fromLLM)
 		{ label }: { text }
 	</p>
 }
 
 templ lineItem(ci, li int, l ingestcore.Line, threshold float64) {
-	<li class={ flagClass(l.Confidence < threshold) } data-low?={ l.Confidence < threshold }>
+	<li class={ markClass(l.Confidence < threshold, l.FromLLM) } data-low?={ l.Confidence < threshold } data-llm?={ l.FromLLM }>
 		@flagMark(l.Confidence < threshold)
+		@llmMark(l.FromLLM)
 		<span class="raw">{ l.Raw }</span>
 		<div class="muted">{ lineSummary(l) }</div>
 		for _, issue := range l.Issues {

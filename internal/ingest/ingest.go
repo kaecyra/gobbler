@@ -15,13 +15,17 @@
 // (ADR-00008).
 //
 // The LLM provider interface (ADR-00007) is declared here and consumed by the
-// fallback; this package depends on the interface and never on a provider SDK.
+// fallback (fallback.go): a draft below the threshold, or one the user asks to
+// retry, goes to the provider, and a failure leaves the rule-based draft in
+// place with the error recorded on it. This package depends on the interface and
+// never on a provider SDK.
 package ingest
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/kaecyra/gobbler/internal/config"
@@ -43,10 +47,12 @@ type Deps struct {
 	HTTP HTTPClient
 	// Catalog resolves ingredient names and units.
 	Catalog CatalogReader
-	// Provider is the LLM provider for the fallback. Nothing in this
-	// package calls it yet: the fallback is wired by the LLM fallback work,
-	// and until then a draft below the threshold is simply flagged.
+	// Provider is the LLM provider for the fallback. Nil means none is
+	// configured: a draft below the threshold is then only flagged, and
+	// Fallback.Retry returns ErrNoProvider.
 	Provider Provider
+	// Logger receives the fallback's warnings; nil means slog.Default().
+	Logger *slog.Logger
 }
 
 // Pipeline acquires, extracts, parses and scores input into drafts. It holds
@@ -74,6 +80,17 @@ func New(cfg config.Ingestion, d Deps) (*Pipeline, error) {
 	return &Pipeline{cfg: cfg, deps: d}, nil
 }
 
+// draftWithFallback assembles the rule-based draft and, only when it scored
+// below the threshold and a provider is configured, asks the LLM to improve it
+// (ADR-00006).
+func (p *Pipeline) draftWithFallback(ctx context.Context, src Source, res extract.Result) (Draft, error) {
+	d, err := p.assemble(ctx, src, res)
+	if err != nil {
+		return Draft{}, err
+	}
+	return p.Fallback().autoFallback(ctx, d), nil
+}
+
 // FromURL fetches the page at rawURL and drafts the recipe on it. A failed or
 // timed-out fetch is an error wrapping ErrFetch.
 func (p *Pipeline) FromURL(ctx context.Context, rawURL string) (Draft, error) {
@@ -85,7 +102,7 @@ func (p *Pipeline) FromURL(ctx context.Context, rawURL string) (Draft, error) {
 	if err != nil {
 		return Draft{}, fmt.Errorf("extract recipe from %s: %w", finalURL, err)
 	}
-	return p.assemble(ctx, newSource(store.SnapshotHTML, finalURL, page), res)
+	return p.draftWithFallback(ctx, newSource(store.SnapshotHTML, finalURL, page), res)
 }
 
 // FromText drafts a recipe from pasted text, which is taken as given.
@@ -94,5 +111,5 @@ func (p *Pipeline) FromText(ctx context.Context, text string) (Draft, error) {
 		return Draft{}, fmt.Errorf("pasted text: %w", parse.ErrEmptyText)
 	}
 	res := extract.Result{Method: extract.MethodText, Text: text}
-	return p.assemble(ctx, newSource(store.SnapshotText, "", []byte(text)), res)
+	return p.draftWithFallback(ctx, newSource(store.SnapshotText, "", []byte(text)), res)
 }

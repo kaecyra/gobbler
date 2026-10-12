@@ -54,6 +54,13 @@ type Saver interface {
 type Deps struct {
 	DB        *sql.DB
 	Ingestion config.Ingestion
+	// LLM selects the fallback provider and models (ADR-00007). Empty means
+	// no provider: drafts below the threshold are flagged and the retry
+	// action is not offered.
+	LLM config.LLM
+	// Provider, when set, is used instead of building one from LLM; tests
+	// substitute a fake here.
+	Provider ingestcore.Provider
 	// Logger receives this package's logs; the default is slog.Default().
 	Logger *slog.Logger
 }
@@ -63,7 +70,11 @@ type handler struct {
 	saver   Saver
 	matcher ingredientMatcher
 	pending *pendingDrafts
-	log     *slog.Logger
+	retrier Retrier
+	// llmInitErr is why the configured provider could not be built. The rule
+	// based path still works; only the retry action reports it.
+	llmInitErr error
+	log        *slog.Logger
 	// initErr is why the pipeline could not be built. Every route still exists
 	// and answers 500 with it (see requireReady), so a bad configuration is a
 	// loud failure rather than a missing page.
@@ -71,21 +82,31 @@ type handler struct {
 }
 
 // Routes returns the ingest routes, to be mounted at /ingest. The pipeline,
-// catalog and recipe store are built over d.DB. The LLM provider is not wired
-// here: a draft below the threshold is flagged on the review screen until the
-// fallback lands.
+// catalog and recipe store are built over d.DB. The LLM provider comes from
+// d.Provider or is selected from d.LLM; a provider that cannot be built does
+// not take the rule-based path down (see handler.llmInitErr).
 func Routes(d Deps) http.Handler {
 	h := &handler{pending: newPendingDrafts(time.Now), log: d.Logger}
 	if h.log == nil {
 		h.log = slog.Default()
 	}
 	cat := catalog.New(d.DB)
-	pipeline, err := ingestcore.New(d.Ingestion, ingestcore.Deps{Catalog: cat})
+	provider := d.Provider
+	if provider == nil {
+		var perr error
+		provider, perr = ingestcore.SelectProvider(context.Background(), d.LLM, h.log, providerFactories())
+		if perr != nil {
+			h.llmInitErr = perr
+			h.log.Error("llm provider unavailable", "error", perr.Error())
+		}
+	}
+	pipeline, err := ingestcore.New(d.Ingestion, ingestcore.Deps{Catalog: cat, Provider: provider, Logger: h.log})
 	if err != nil {
 		h.initErr = fmt.Errorf("build ingest pipeline: %w", err)
 		h.log.Error("ingest routes unavailable", "error", err.Error())
 	} else {
 		h.drafter = pipeline
+		h.retrier = pipeline.Fallback()
 		h.saver = ingestcore.NewSaver(store.New(d.DB), cat)
 		h.matcher = cat
 	}
@@ -99,6 +120,7 @@ func (h *handler) routes() http.Handler {
 	r.Post("/", h.submit)
 	r.Get("/{token}", h.review)
 	r.Post("/{token}/confirm", h.confirm)
+	r.Post("/{token}/retry", h.retry)
 	r.Post("/{token}/cancel", h.cancel)
 	return r
 }
@@ -127,6 +149,8 @@ type reviewView struct {
 	Draft ingestcore.Draft
 	// Problems are why the last confirm did not go through, in words.
 	Problems []string
+	// CanRetry is whether the retry-with-LLM action is offered.
+	CanRetry bool
 }
 
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +235,7 @@ func (h *handler) review(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, errGone)
 		return
 	}
-	layout.Render(w, r, http.StatusOK, reviewPage(reviewView{Token: token, Draft: d}))
+	layout.Render(w, r, http.StatusOK, reviewPage(h.reviewView(token, d)))
 }
 
 // errGone is the not-found error for a draft token that is unknown, expired or
@@ -235,7 +259,9 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	retry := func(status int, problems []string) {
 		h.pending.put(token, d)
-		layout.Render(w, r, status, reviewPage(reviewView{Token: token, Draft: d, Problems: problems}))
+		view := h.reviewView(token, d)
+		view.Problems = problems
+		layout.Render(w, r, status, reviewPage(view))
 	}
 	fail := func(err error) {
 		h.pending.put(token, d)
