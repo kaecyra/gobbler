@@ -68,12 +68,11 @@ type RecipeStore interface {
 }
 
 // CatalogWriter is what Save calls on the catalog: the reads of CatalogReader
-// plus creating the ingredients and units a draft proposed.
+// plus creating the ingredients a draft proposed.
 // *catalog.Store satisfies it.
 type CatalogWriter interface {
 	CatalogReader
 	CreateIngredient(ctx context.Context, in catalog.Ingredient) (catalog.Ingredient, error)
-	CreateUnit(ctx context.Context, in catalog.Unit) (catalog.Unit, error)
 }
 
 // Saver writes confirmed drafts.
@@ -88,15 +87,15 @@ func NewSaver(r RecipeStore, c CatalogWriter) *Saver { return &Saver{recipes: r,
 // Saved reports what a Save wrote.
 type Saved struct {
 	RecipeID int64
-	// NewIngredients and NewUnits were created, unreviewed, for this recipe.
+	// NewIngredients were created, unreviewed, for this recipe.
 	NewIngredients []catalog.Ingredient
-	NewUnits       []catalog.Unit
 }
 
 // Save stores a confirmed draft as a recipe with its source snapshot, byte for
-// byte as ingested. Ingredients and units the draft proposed that the catalog
-// still lacks are created with reviewed false, since only a confirmed save may
-// create them (ADR-00008); ones that exist by now are reused.
+// byte as ingested. Ingredients the draft proposed that the catalog still
+// lacks are created with reviewed false, since only a confirmed save may create
+// them (ADR-00008); ones that exist by now are reused. Units are never created
+// here: the catalog owns them, so a unit it does not know is an error.
 //
 // The recipe and its snapshot are one store call and one transaction. If the
 // snapshot cannot be written nothing is, so a recipe never exists without its
@@ -119,11 +118,11 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 				return Saved{}, fmt.Errorf("component %d line %d (%q): %w", ci+1, li+1, l.Raw, err)
 			}
 			amount := l.Amount
-			if amount.Unit, err = s.unit(ctx, amount.Unit, units, &out); err != nil {
+			if amount.Unit, err = s.unit(ctx, amount.Unit, units); err != nil {
 				return Saved{}, fmt.Errorf("component %d line %d (%q): %w", ci+1, li+1, l.Raw, err)
 			}
 			if amount.HasPackage {
-				if amount.Package.Unit, err = s.unit(ctx, amount.Package.Unit, units, &out); err != nil {
+				if amount.Package.Unit, err = s.unit(ctx, amount.Package.Unit, units); err != nil {
 					return Saved{}, fmt.Errorf("component %d line %d (%q): %w", ci+1, li+1, l.Raw, err)
 				}
 			}
@@ -172,8 +171,10 @@ func (s *Saver) ingredient(ctx context.Context, l Line, seen map[string]recipe.I
 	return seen[name], nil
 }
 
-// unit returns the catalog's form of u, creating it unreviewed when absent.
-func (s *Saver) unit(ctx context.Context, u quantity.Unit, seen map[string]quantity.Unit, out *Saved) (quantity.Unit, error) {
+// unit returns the catalog's form of u. A draft only carries units the catalog
+// resolved while drafting, so one it no longer knows means the contract broke
+// and the save fails rather than inventing a unit.
+func (s *Saver) unit(ctx context.Context, u quantity.Unit, seen map[string]quantity.Unit) (quantity.Unit, error) {
 	if u.IsZero() {
 		return u, nil
 	}
@@ -189,13 +190,7 @@ func (s *Saver) unit(ctx context.Context, u quantity.Unit, seen map[string]quant
 		seen[key] = cu.Unit
 		return cu.Unit, nil
 	}
-	created, err := s.catalog.CreateUnit(ctx, catalog.Unit{Unit: u, Reviewed: false})
-	if err != nil {
-		return u, fmt.Errorf("create proposed unit %q: %w", u.Name, err)
-	}
-	out.NewUnits = append(out.NewUnits, created)
-	seen[key] = created.Unit
-	return created.Unit, nil
+	return u, fmt.Errorf("unit %q is not in the catalog", u.Name)
 }
 
 // linkSteps adds the steps of the draft to comps with ids unique across the

@@ -20,9 +20,6 @@ func TestParserUnitsAreTheCatalogs(t *testing.T) {
 			t.Errorf("%q: unit = %q, want %q", lines[i].Raw, got, want)
 		}
 	}
-	if len(d.ProposedUnits) != 0 {
-		t.Errorf("proposed units = %+v, want none: the catalog has every unit the parser read", d.ProposedUnits)
-	}
 	if z := lines[5]; z.Name != "zorbs butter" || !strings.Contains(strings.Join(z.Issues, "; "), "unrecognised unit") {
 		t.Errorf("unknown unit line = %q issues %v, want the word kept in the name and flagged", z.Name, z.Issues)
 	}

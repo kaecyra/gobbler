@@ -75,15 +75,13 @@ func (p *Pipeline) assemble(ctx context.Context, src Source, res extract.Result)
 	}
 
 	d.Proposed = proposedIngredients(d.Components)
-	d.ProposedUnits = a.proposedUnits
 	d.score(structure)
 	return d, nil
 }
 
 type assembler struct {
-	rs            *resolver
-	d             *Draft
-	proposedUnits []ProposedUnit
+	rs *resolver
+	d  *Draft
 }
 
 func (a *assembler) fromRaw(raw extract.Raw) {

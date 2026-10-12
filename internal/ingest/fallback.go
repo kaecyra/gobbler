@@ -228,7 +228,6 @@ func (f *Fallback) fromStructured(ctx context.Context, rule Draft, s Structured)
 	}
 
 	d.Proposed = proposedIngredients(d.Components)
-	d.ProposedUnits = a.proposedUnits
 	d.score(a.requiredStructure())
 	return d, nil
 }

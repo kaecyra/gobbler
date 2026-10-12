@@ -98,8 +98,9 @@ func TestLowConfidenceInputIsADraftNotAnError(t *testing.T) {
 	if !(bad.Confidence < good.Confidence) {
 		t.Errorf("unmatched line %.2f should score below matched line %.2f", bad.Confidence, good.Confidence)
 	}
-	if len(d.ProposedUnits) != 1 || d.ProposedUnits[0].Name != "bag" {
-		t.Errorf("proposed units = %+v, want bag", d.ProposedUnits)
+	// "bag" is a catalog unit, so the spinach line reads it as a unit.
+	if got := d.Components[0].Lines[1].Amount.Unit.Name; got != "bag" {
+		t.Errorf("spinach line unit = %q, want the catalog's bag", got)
 	}
 }
 
@@ -254,9 +255,6 @@ func TestUnitsResolveThroughTheCatalog(t *testing.T) {
 	l := d.Components[0].Lines[0]
 	if l.Amount.Unit.Name != "each" {
 		t.Errorf("unit = %q, want the catalog's %q", l.Amount.Unit.Name, "each")
-	}
-	if len(d.ProposedUnits) != 0 {
-		t.Errorf("proposed units = %+v, want none", d.ProposedUnits)
 	}
 }
 

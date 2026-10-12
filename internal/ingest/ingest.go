@@ -11,7 +11,7 @@
 // which Confirm produces from a draft the review screen has approved, so no
 // code path stores an ingested recipe without review. Save writes the recipe
 // and its unaltered source snapshot through the store API (ADR-00015) and
-// creates the ingredients and units the draft proposed, unreviewed, only then
+// creates the ingredients the draft proposed, unreviewed, only then
 // (ADR-00008).
 //
 // The LLM provider interface (ADR-00007) is declared here and consumed by the

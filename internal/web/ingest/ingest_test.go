@@ -88,10 +88,6 @@ func (s *fakeStore) CreateIngredient(_ context.Context, in catalog.Ingredient) (
 	return in, nil
 }
 
-func (s *fakeStore) CreateUnit(_ context.Context, in catalog.Unit) (catalog.Unit, error) {
-	return in, nil
-}
-
 func sampleDraft() ingestcore.Draft {
 	content := []byte("<html>the page</html>")
 	sum := sha256.Sum256(content)

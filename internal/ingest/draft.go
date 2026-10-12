@@ -97,12 +97,6 @@ type ProposedIngredient struct {
 	Aisle string
 }
 
-// ProposedUnit is a unit the catalog does not have. Like a proposed
-// ingredient, it is created unreviewed on confirmed save.
-type ProposedUnit struct {
-	Name string
-}
-
 // Draft is the reading of one input shown on the review screen: the rules'
 // reading, or the LLM's when UsedLLM is set.
 // It carries a confidence for every field and line and an overall score.
@@ -143,6 +137,5 @@ type Draft struct {
 	// Issues says in words why Overall is below 1, for the review screen.
 	Issues []string
 
-	Proposed      []ProposedIngredient
-	ProposedUnits []ProposedUnit
+	Proposed []ProposedIngredient
 }

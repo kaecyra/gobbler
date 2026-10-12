@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -57,7 +58,7 @@ func TestSaveJSONLDWithSnapshotRoundTrip(t *testing.T) {
 	if !bytes.Equal(snap.Content, page) {
 		t.Errorf("snapshot differs from the fetched page")
 	}
-	if len(saved.NewIngredients) != 0 || len(saved.NewUnits) != 0 {
+	if len(saved.NewIngredients) != 0 {
 		t.Errorf("all matched: nothing should be created, got %+v", saved)
 	}
 }
@@ -77,9 +78,6 @@ func TestSavePastedTextCreatesProposalsUnreviewedOnlyOnSave(t *testing.T) {
 	if unrev, err := e.catalog.ListUnreviewedIngredients(e.ctx); err != nil || len(unrev) != 0 {
 		t.Fatalf("after ingest: unreviewed ingredients %v, err %v", unrev, err)
 	}
-	if unrev, err := e.catalog.ListUnreviewedUnits(e.ctx); err != nil || len(unrev) != 0 {
-		t.Fatalf("after ingest: unreviewed units %v, err %v", unrev, err)
-	}
 
 	saved, err := e.saver().Save(e.ctx, confirm(t, d))
 	if err != nil {
@@ -93,9 +91,8 @@ func TestSavePastedTextCreatesProposalsUnreviewedOnlyOnSave(t *testing.T) {
 			t.Errorf("created ingredient %+v must be unreviewed in %q", ing, proposedAisle)
 		}
 	}
-	unrev, err := e.catalog.ListUnreviewedUnits(e.ctx)
-	if err != nil || len(unrev) != 1 || unrev[0].Unit.Name != "bag" {
-		t.Errorf("unreviewed units = %+v, err %v; want bag", unrev, err)
+	if unrev, err := e.catalog.ListUnreviewedUnits(e.ctx); err != nil || len(unrev) != 0 {
+		t.Errorf("unreviewed units = %+v, err %v; saving must not create units", unrev, err)
 	}
 
 	got, err := e.store.Get(e.ctx, saved.RecipeID)
@@ -125,7 +122,7 @@ func TestSaveReusesIngredientCreatedSinceTheDraft(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a second save of the same draft must reuse what the first created: %v", err)
 	}
-	if len(second.NewIngredients) != 0 || len(second.NewUnits) != 0 || second.RecipeID == first.RecipeID {
+	if len(second.NewIngredients) != 0 || second.RecipeID == first.RecipeID {
 		t.Errorf("second save = %+v", second)
 	}
 }
@@ -267,5 +264,22 @@ func TestPackageDependsOnNoLLMProviderSDK(t *testing.T) { // ADR-00007 obligatio
 func TestProposedAisleIsTheShoppingListsUncategorised(t *testing.T) {
 	if proposedAisle != shopping.Uncategorised {
 		t.Errorf("proposedAisle %q != shopping.Uncategorised %q", proposedAisle, shopping.Uncategorised)
+	}
+}
+
+// The catalog owns units, so a unit it does not know fails the save instead of
+// being created.
+func TestSaveRefusesAUnitTheCatalogDoesNotKnow(t *testing.T) {
+	e := newEnv(t)
+	d, err := e.pipeline(t, nil).FromText(e.ctx, string(readFixture(t, "garlic_spaghetti.txt")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Components[0].Lines[0].Amount.Unit = quantity.OtherUnit("zorb")
+	if _, err := e.saver().Save(e.ctx, confirm(t, d)); err == nil || !strings.Contains(err.Error(), `unit "zorb" is not in the catalog`) {
+		t.Fatalf("Save error = %v, want one naming the unknown unit", err)
+	}
+	if unrev, err := e.catalog.ListUnreviewedUnits(e.ctx); err != nil || len(unrev) != 0 {
+		t.Errorf("unreviewed units = %+v, err %v; a refused save must not create units", unrev, err)
 	}
 }
