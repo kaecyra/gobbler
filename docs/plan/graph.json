@@ -488,7 +488,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 17,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
