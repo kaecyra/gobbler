@@ -687,7 +687,13 @@
         "internal/shopping/store*.go",
         "internal/shopping/queries/**",
         "internal/shopping/shoppingdb/**",
-        "internal/web/server.go"
+        "internal/web/server.go",
+        "internal/web/catalog/catalog.templ",
+        "internal/web/catalog/catalog_templ.go",
+        "internal/web/catalog/handler.go",
+        "internal/web/catalog/handler_test.go",
+        "internal/web/catalog/view.go",
+        "e2e/catalog/catalog.spec.ts"
       ],
       "needs_migration": "schema",
       "adrs": [
