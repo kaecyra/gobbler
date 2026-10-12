@@ -88,7 +88,8 @@ func parseTime(s string) (time.Time, error) {
 // withTx runs fn in one transaction (db.WithTx). A caller that reads before it
 // writes must make its first statement a write, such as lockRecipe, so the
 // transaction takes the database write lock up front instead of failing to
-// upgrade a stale read snapshot.
+// upgrade a stale read snapshot: writers outside the db.WithTx queue (other
+// processes, bare-pool writes) can still commit between its read and write.
 func (s *Store) withTx(ctx context.Context, fn func(q *storedb.Queries) error) error {
 	return db.WithTx(ctx, s.db, s.q, func(q *storedb.Queries, _ *sql.Tx) error { return fn(q) })
 }

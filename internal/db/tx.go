@@ -19,7 +19,9 @@ type Queries[Q any] interface {
 }
 
 // writeGates holds one gate per database handle: a channel of capacity one,
-// so a queued writer can still give up when its context ends.
+// so a queued writer can still give up when its context ends. Entries are
+// never removed: production opens one database per process and tests one per
+// test, so the map stays as small as the number of databases ever opened.
 var writeGates sync.Map // *sql.DB -> chan struct{}
 
 // acquireWrite waits for the write gate of d and returns the function that
@@ -52,7 +54,7 @@ func acquireWrite(ctx context.Context, d *sql.DB) (release func(), err error) {
 // A transaction whose first statement is a read holds a snapshot, and when
 // another writer outside this queue commits before its first write it cannot
 // upgrade: it fails with SQLITE_BUSY at once, ignoring the busy timeout. fn
-// that reads before it writes should therefore make its first statement a
+// that reads before it writes must therefore make its first statement a
 // write (a no-op UPDATE of the row it is about to read is enough).
 func WithTx[Q Queries[Q]](ctx context.Context, d *sql.DB, q Q, fn func(q Q, tx *sql.Tx) error) (err error) {
 	release, err := acquireWrite(ctx, d)

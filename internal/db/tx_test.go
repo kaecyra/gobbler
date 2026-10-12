@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -144,23 +143,22 @@ func TestWrapWriteMapsOnlyTheNamedConstraints(t *testing.T) {
 // contention a writer can starve past the busy timeout and fail (#93).
 func TestWithTxRunsWritersOneAtATime(t *testing.T) {
 	d := txTestDB(t)
-	var running atomic.Int32
-	var peak atomic.Int32
-	var peakMu sync.Mutex
+	var mu sync.Mutex
+	var running, peak int
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			err := WithTx(context.Background(), d, fakeQueries{}, func(fakeQueries, *sql.Tx) error {
-				n := running.Add(1)
-				peakMu.Lock()
-				if n > peak.Load() {
-					peak.Store(n)
-				}
-				peakMu.Unlock()
+				mu.Lock()
+				running++
+				peak = max(peak, running)
+				mu.Unlock()
 				time.Sleep(5 * time.Millisecond)
-				running.Add(-1)
+				mu.Lock()
+				running--
+				mu.Unlock()
 				return nil
 			})
 			if err != nil {
@@ -169,8 +167,8 @@ func TestWithTxRunsWritersOneAtATime(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	if peak.Load() != 1 {
-		t.Errorf("peak concurrent write transactions = %d, want 1", peak.Load())
+	if peak != 1 {
+		t.Errorf("peak concurrent write transactions = %d, want 1", peak)
 	}
 }
 
