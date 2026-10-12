@@ -1068,7 +1068,8 @@
       "owns": [
         "internal/store/recipe*.go",
         "internal/store/snapshot*.go",
-        "internal/ingest/save*.go"
+        "internal/ingest/save*.go",
+        "internal/web/ingest/ingest_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
