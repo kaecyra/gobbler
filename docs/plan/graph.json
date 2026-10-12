@@ -676,7 +676,7 @@
       "wave": 4,
       "track": "ui",
       "issue": 25,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w4-shopping-store",
         "w0-e2e-harness"
@@ -1610,6 +1610,14 @@
       "id": "w4-shopping-store",
       "title": "Shopping list, entries, manual items, pantry and check-state persistence; regenerate keeps checks",
       "merged": "8ce630e",
+      "adrs": [
+        "00009"
+      ]
+    },
+    {
+      "id": "w4-shopping-ui",
+      "title": "Build-a-list page, pantry page, live phone view over SSE, text export",
+      "merged": "d10779e",
       "adrs": [
         "00009"
       ]
