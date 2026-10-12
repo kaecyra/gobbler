@@ -974,7 +974,8 @@
         "internal/catalog/**",
         "internal/store/**",
         ".claude/rules/code-style.md",
-        "docs/design.md"
+        "docs/design.md",
+        "internal/db/db.go"
       ],
       "needs_migration": null,
       "adrs": [],
