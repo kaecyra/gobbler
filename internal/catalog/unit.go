@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/kaecyra/gobbler/internal/catalog/catalogdb"
 	"github.com/kaecyra/gobbler/internal/quantity"
 )
 
@@ -20,47 +21,38 @@ type Unit struct {
 	Reviewed bool
 }
 
-func (u *Unit) prepare() (factor any, err error) {
+func (u *Unit) prepare() (factor sql.NullString, err error) {
 	u.Unit.Name = normalize(u.Unit.Name)
 	if err := validateName(u.Unit.Name); err != nil {
-		return nil, err
+		return sql.NullString{}, err
 	}
 	switch u.Unit.System {
 	case quantity.SystemUS, quantity.SystemMetric, quantity.SystemNone:
 	default:
-		return nil, fmt.Errorf("%w: unit %q has unknown system %q", ErrInvalid, u.Unit.Name, u.Unit.System)
+		return sql.NullString{}, fmt.Errorf("%w: unit %q has unknown system %q", ErrInvalid, u.Unit.Name, u.Unit.System)
 	}
 	switch u.Unit.Dimension {
 	case quantity.DimMass, quantity.DimVolume, quantity.DimCount:
 		if err := u.Unit.Validate(); err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
+			return sql.NullString{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 		}
-		factor = u.Unit.Factor.String()
+		factor = sql.NullString{String: u.Unit.Factor.String(), Valid: true}
 	case quantity.DimOther:
-		factor = nil
+		factor = sql.NullString{}
 	default:
-		return nil, fmt.Errorf("%w: unit %q has unknown dimension %q", ErrInvalid, u.Unit.Name, u.Unit.Dimension)
+		return sql.NullString{}, fmt.Errorf("%w: unit %q has unknown dimension %q", ErrInvalid, u.Unit.Name, u.Unit.Dimension)
 	}
 	u.Aliases = normalizeAliases(u.Unit.Name, u.Aliases)
 	return factor, nil
 }
 
-func scanUnit(sc interface{ Scan(...any) error }) (Unit, error) {
-	var (
-		u      Unit
-		sys    string
-		dim    string
-		factor sql.NullString
-		rev    int
-	)
-	if err := sc.Scan(&u.ID, &u.Unit.Name, &sys, &dim, &factor, &rev); err != nil {
-		return Unit{}, err
-	}
-	u.Unit.System, u.Unit.Dimension, u.Reviewed = quantity.System(sys), quantity.Dimension(dim), rev != 0
-	if factor.Valid {
-		f, err := quantity.ParseRat(factor.String)
+func unitFrom(r catalogdb.Unit) (Unit, error) {
+	u := Unit{ID: r.ID, Reviewed: r.Reviewed != 0}
+	u.Unit.Name, u.Unit.System, u.Unit.Dimension = r.Name, quantity.System(r.System), quantity.Dimension(r.Dimension)
+	if r.Factor.Valid {
+		f, err := quantity.ParseRat(r.Factor.String)
 		if err != nil {
-			return Unit{}, fmt.Errorf("unit %q has unreadable factor %q: %w", u.Unit.Name, factor.String, err)
+			return Unit{}, fmt.Errorf("unit %q has unreadable factor %q: %w", u.Unit.Name, r.Factor.String, err)
 		}
 		u.Unit.Factor = f
 	}
@@ -70,28 +62,24 @@ func scanUnit(sc interface{ Scan(...any) error }) (Unit, error) {
 	return u, nil
 }
 
-const unitColumns = `id, name, system, dimension, factor, reviewed`
-
 // CreateUnit stores a new unit and returns it with its id.
 func (s *Store) CreateUnit(ctx context.Context, in Unit) (Unit, error) {
 	factor, err := in.prepare()
 	if err != nil {
 		return Unit{}, err
 	}
-	err = s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := kindUnit.checkFree(ctx, tx, 0, in.Unit.Name, in.Aliases); err != nil {
+	err = s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) (err error) {
+		if err := kindUnit.checkFree(ctx, q, 0, in.Unit.Name, in.Aliases); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx,
-			`INSERT INTO units (name, system, dimension, factor, reviewed) VALUES (?, ?, ?, ?, ?)`,
-			in.Unit.Name, string(in.Unit.System), string(in.Unit.Dimension), factor, boolInt(in.Reviewed))
+		in.ID, err = q.CreateUnit(ctx, catalogdb.CreateUnitParams{
+			Name: in.Unit.Name, System: string(in.Unit.System), Dimension: string(in.Unit.Dimension),
+			Factor: factor, Reviewed: boolInt(in.Reviewed),
+		})
 		if err != nil {
 			return wrapWrite("create unit "+in.Unit.Name, err)
 		}
-		if in.ID, err = res.LastInsertId(); err != nil {
-			return fmt.Errorf("read new unit id: %w", err)
-		}
-		return kindUnit.replaceAliases(ctx, tx, in.ID, in.Aliases)
+		return kindUnit.replaceAliases(ctx, q, in.ID, in.Aliases)
 	})
 	if err != nil {
 		return Unit{}, err
@@ -105,37 +93,42 @@ func (s *Store) UpdateUnit(ctx context.Context, in Unit) error {
 	if err != nil {
 		return err
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := kindUnit.checkFree(ctx, tx, in.ID, in.Unit.Name, in.Aliases); err != nil {
+	return s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) error {
+		if err := kindUnit.checkFree(ctx, q, in.ID, in.Unit.Name, in.Aliases); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx,
-			`UPDATE units SET name = ?, system = ?, dimension = ?, factor = ?, reviewed = ? WHERE id = ?`,
-			in.Unit.Name, string(in.Unit.System), string(in.Unit.Dimension), factor, boolInt(in.Reviewed), in.ID)
+		n, err := q.UpdateUnit(ctx, catalogdb.UpdateUnitParams{
+			Name: in.Unit.Name, System: string(in.Unit.System), Dimension: string(in.Unit.Dimension),
+			Factor: factor, Reviewed: boolInt(in.Reviewed), ID: in.ID,
+		})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("update unit %d", in.ID), err)
 		}
-		if err := requireAffected(res, "unit", in.ID); err != nil {
+		if err := requireAffected(n, "unit", in.ID); err != nil {
 			return err
 		}
-		return kindUnit.replaceAliases(ctx, tx, in.ID, in.Aliases)
+		return kindUnit.replaceAliases(ctx, q, in.ID, in.Aliases)
 	})
 }
 
 // GetUnit returns the unit with the given id, or ErrNotFound.
 func (s *Store) GetUnit(ctx context.Context, id int64) (Unit, error) {
-	return getUnit(ctx, s.db, id)
+	return getUnit(ctx, s.q, id)
 }
 
-func getUnit(ctx context.Context, q queryer, id int64) (Unit, error) {
-	u, err := scanUnit(q.QueryRowContext(ctx, `SELECT `+unitColumns+` FROM units WHERE id = ?`, id))
+func getUnit(ctx context.Context, q *catalogdb.Queries, id int64) (Unit, error) {
+	row, err := q.GetUnit(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Unit{}, fmt.Errorf("%w: unit %d", ErrNotFound, id)
 	}
 	if err != nil {
 		return Unit{}, fmt.Errorf("read unit %d: %w", id, err)
 	}
-	if u.Aliases, err = kindUnit.aliases(ctx, q, id); err != nil {
+	u, err := unitFrom(row)
+	if err != nil {
+		return Unit{}, fmt.Errorf("read unit %d: %w", id, err)
+	}
+	if u.Aliases, err = kindUnit.aliasesOf(ctx, q, id); err != nil {
 		return Unit{}, err
 	}
 	return u, nil
@@ -143,33 +136,31 @@ func getUnit(ctx context.Context, q queryer, id int64) (Unit, error) {
 
 // ListUnits returns every unit ordered by name.
 func (s *Store) ListUnits(ctx context.Context) ([]Unit, error) {
-	return s.listUnits(ctx, ``)
+	rows, err := s.q.ListUnits(ctx)
+	return s.withUnitAliases(ctx, rows, err)
 }
 
 // ListUnreviewedUnits returns units awaiting review, ordered by name.
 func (s *Store) ListUnreviewedUnits(ctx context.Context) ([]Unit, error) {
-	return s.listUnits(ctx, `WHERE reviewed = 0`)
+	rows, err := s.q.ListUnreviewedUnits(ctx)
+	return s.withUnitAliases(ctx, rows, err)
 }
 
-func (s *Store) listUnits(ctx context.Context, where string) ([]Unit, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+unitColumns+` FROM units `+where+` ORDER BY name`)
+// withUnitAliases converts the rows of a list query, which failed with err if
+// it is set, and attaches every alias in one further query.
+func (s *Store) withUnitAliases(ctx context.Context, rows []catalogdb.Unit, err error) ([]Unit, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list units: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	var out []Unit
-	for rows.Next() {
-		u, err := scanUnit(rows)
+	for _, r := range rows {
+		u, err := unitFrom(r)
 		if err != nil {
 			return nil, fmt.Errorf("scan unit: %w", err)
 		}
 		out = append(out, u)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list units: %w", err)
-	}
-	_ = rows.Close() // free the connection before the alias read
-	aliases, err := kindUnit.allAliases(ctx, s.db)
+	aliases, err := kindUnit.aliasesByID(ctx, s.q)
 	if err != nil {
 		return nil, err
 	}
@@ -182,11 +173,11 @@ func (s *Store) listUnits(ctx context.Context, where string) ([]Unit, error) {
 // MatchUnit finds the unit whose canonical name or alias equals term, ignoring
 // case and tolerating plurals. Not found is (Unit{}, false, nil).
 func (s *Store) MatchUnit(ctx context.Context, term string) (Unit, bool, error) {
-	id, ok, err := kindUnit.match(ctx, s.db, term)
+	id, ok, err := kindUnit.match(ctx, s.q, term)
 	if err != nil || !ok {
 		return Unit{}, false, err
 	}
-	u, err := getUnit(ctx, s.db, id)
+	u, err := getUnit(ctx, s.q, id)
 	if err != nil {
 		return Unit{}, false, err
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/kaecyra/gobbler/internal/catalog/catalogdb"
 )
 
 // MergeHook re-points the rows of one referencing table from the ingredient
@@ -31,21 +33,30 @@ func (s *Store) MergeIngredients(ctx context.Context, winnerID, loserID int64) (
 		return Ingredient{}, fmt.Errorf("%w: cannot merge ingredient %d into itself", ErrInvalid, winnerID)
 	}
 	var merged Ingredient
-	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		if _, err := getIngredient(ctx, tx, winnerID); err != nil {
+	err := s.withTx(ctx, func(q *catalogdb.Queries, tx *sql.Tx) error {
+		// The winner row is written before anything is read, so the
+		// transaction takes the write lock up front (db.WithTx). A read first
+		// would pin a snapshot, and a concurrent writer committing before our
+		// first write would fail the merge with SQLITE_BUSY (#59). The lock
+		// doubles as the winner's existence check.
+		n, err := q.LockIngredient(ctx, winnerID)
+		if err != nil {
+			return fmt.Errorf("lock ingredient %d: %w", winnerID, err)
+		}
+		if err := requireAffected(n, "ingredient", winnerID); err != nil {
 			return err
 		}
-		loser, err := getIngredient(ctx, tx, loserID)
+		loser, err := getIngredient(ctx, q, loserID)
 		if err != nil {
 			return err
 		}
 		// Aliases move before the delete cascades over them; hooks run
 		// before the delete because referencing rows would otherwise block
 		// it; the loser row goes before the winner takes its unique USDA id.
-		if _, err := tx.ExecContext(ctx, `UPDATE ingredient_aliases SET ingredient_id = ? WHERE ingredient_id = ?`, winnerID, loserID); err != nil {
+		if err := q.MoveIngredientAliases(ctx, catalogdb.MoveIngredientAliasesParams{WinnerID: winnerID, LoserID: loserID}); err != nil {
 			return fmt.Errorf("move aliases of ingredient %d: %w", loserID, err)
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO ingredient_aliases (alias, ingredient_id) VALUES (?, ?)`, loser.Name, winnerID); err != nil {
+		if err := q.AddIngredientAlias(ctx, catalogdb.AddIngredientAliasParams{Alias: loser.Name, IngredientID: winnerID}); err != nil {
 			return wrapWrite(fmt.Sprintf("keep name %q of merged ingredient as an alias", loser.Name), err)
 		}
 		for _, h := range s.mergeHooks {
@@ -53,15 +64,15 @@ func (s *Store) MergeIngredients(ctx context.Context, winnerID, loserID int64) (
 				return fmt.Errorf("re-point references of ingredient %d: %w", loserID, err)
 			}
 		}
-		if err := kindIngredient.delete(ctx, tx, loserID); err != nil {
+		if err := kindIngredient.delete(ctx, q, loserID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx,
-			`UPDATE ingredients SET density_g_per_ml = COALESCE(density_g_per_ml, ?), usda_fdc_id = COALESCE(usda_fdc_id, ?) WHERE id = ?`,
-			loser.DensityGPerML, loser.USDAID, winnerID); err != nil {
+		if err := q.CarryIngredientData(ctx, catalogdb.CarryIngredientDataParams{
+			DensityGPerMl: nullFloat(loser.DensityGPerML), UsdaFdcID: nullInt(loser.USDAID), ID: winnerID,
+		}); err != nil {
 			return wrapWrite(fmt.Sprintf("carry density and USDA id into ingredient %d", winnerID), err)
 		}
-		merged, err = getIngredient(ctx, tx, winnerID)
+		merged, err = getIngredient(ctx, q, winnerID)
 		return err
 	})
 	if err != nil {
