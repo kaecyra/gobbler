@@ -85,11 +85,15 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 	// The server's write timeout is one deadline for the whole response, which
 	// would cut a stream meant to stay open. Replace it with a deadline that
 	// rolls forward before every write: a healthy client never sees it, and a
-	// client that stopped reading is dropped after two heartbeats instead of
-	// holding the stream until TCP gives up.
+	// client that stops reading is dropped once a write has blocked for two
+	// heartbeats. A peer that vanishes without closing the connection is still
+	// dropped only when TCP gives up.
 	rc := http.NewResponseController(w)
 	warned := false
 	roll := func() {
+		if ctx.Err() != nil {
+			return // ending: the deadline stays at now (see below)
+		}
 		err := rc.SetWriteDeadline(time.Now().Add(2 * h.heartbeat))
 		if err != nil && !errors.Is(err, http.ErrNotSupported) && !warned {
 			warned = true
@@ -97,6 +101,26 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	roll()
+	// Cancelling the request (shutdown, or the client leaving) cannot unblock a
+	// write that is already waiting on a full socket, and the rolling deadline
+	// can be longer than the shutdown grace period. So when the context ends,
+	// bring the deadline to now, which fails the blocked write.
+	stop, stopped := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(stopped)
+		select {
+		case <-ctx.Done():
+			if err := rc.SetWriteDeadline(time.Now()); err != nil && !errors.Is(err, http.ErrNotSupported) {
+				h.log.WarnContext(ctx, "end write deadline for event stream", "error", err.Error())
+			}
+		case <-stop:
+		}
+	}()
+	// The goroutine must be done with the response before the handler returns.
+	defer func() {
+		close(stop)
+		<-stopped
+	}()
 	hdr := w.Header()
 	hdr.Set("Content-Type", "text/event-stream")
 	hdr.Set("Cache-Control", "no-cache")

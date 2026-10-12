@@ -813,17 +813,31 @@ func (w *stuckWriter) SetWriteDeadline(t time.Time) error {
 func (w *stuckWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	w.writes++
-	n, d := w.writes, w.deadline
+	n := w.writes
 	w.mu.Unlock()
 	if n <= w.okWrites {
 		return len(p), nil
 	}
-	wait := time.Minute
-	if !d.IsZero() {
-		wait = time.Until(d)
+	// Blocked, like a write into a full socket buffer: it ends when the deadline
+	// passes, and the deadline can be moved while it waits, as on a real
+	// connection. Without one it gives up after a minute, long after any test.
+	giveUp := time.Now().Add(time.Minute)
+	for time.Now().Before(giveUp) {
+		w.mu.Lock()
+		d := w.deadline
+		w.mu.Unlock()
+		if !d.IsZero() && !time.Now().Before(d) {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
 	}
-	time.Sleep(wait)
 	return 0, os.ErrDeadlineExceeded
+}
+
+func (w *stuckWriter) writeCount() int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.writes
 }
 
 func TestEventStreamDropsAClientThatStopsReading(t *testing.T) {
@@ -845,6 +859,49 @@ func TestEventStreamDropsAClientThatStopsReading(t *testing.T) {
 	}
 	if n := f.h.hub.count(); n != 0 {
 		t.Fatalf("%d subscriptions left after the client was dropped", n)
+	}
+}
+
+// Shutdown cancels the request context. A write already blocked on a client
+// that stopped reading must end then, not when its rolling deadline, which is
+// longer than the shutdown grace period, finally passes.
+func TestCancelEndsAStreamBlockedMidWrite(t *testing.T) {
+	f := newFixture(t)
+	list := f.newList("Week")
+	f.h.heartbeat = time.Hour // the rolling deadline is two hours away
+	w := &stuckWriter{okWrites: 1}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("%s/%d/events", Pattern, list), nil).WithContext(ctx)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		f.srv.ServeHTTP(w, req)
+	}()
+	waitFor := func(what string, ok func() bool) {
+		t.Helper()
+		for deadline := time.Now().Add(3 * time.Second); !ok(); time.Sleep(5 * time.Millisecond) {
+			if time.Now().After(deadline) {
+				t.Fatalf("timed out waiting for %s", what)
+			}
+		}
+	}
+	waitFor("the first list", func() bool { return w.writeCount() >= 1 })
+	// A change makes the handler write again, and that write blocks.
+	if err := f.shop.SetChecked(context.Background(), list, domain.ItemKey("t:x"), true); err != nil {
+		t.Fatal(err)
+	}
+	waitFor("a blocked write", func() bool { return w.writeCount() >= 2 })
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("cancelling the request did not end a stream blocked in a write")
+	}
+	if n := f.h.hub.count(); n != 0 {
+		t.Fatalf("%d subscriptions left", n)
 	}
 }
 
