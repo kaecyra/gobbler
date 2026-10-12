@@ -3,13 +3,19 @@ package store
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 func TestUpdateIfVersionRejectsStaleSecondSave(t *testing.T) {
@@ -48,7 +54,11 @@ func TestUpdateIfVersionRejectsStaleSecondSave(t *testing.T) {
 	if n := count(t, d, `SELECT COUNT(*) FROM revisions`); n != revisions {
 		t.Errorf("revisions = %d, want %d: a rejected save wrote a revision", n, revisions)
 	}
-	if in, _ := s.Info(ctx, id); in.Version != a.Version+1 {
+	in, err := s.Info(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.Version != a.Version+1 {
 		t.Errorf("version = %d, want %d", in.Version, a.Version+1)
 	}
 }
@@ -68,7 +78,10 @@ func TestUpdateIfVersionMissingRecipeAndInvalidDocument(t *testing.T) {
 	if err := s.UpdateIfVersion(ctx, 99, 1, simpleRecipe("x")); !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing recipe = %v, want ErrNotFound", err)
 	}
-	id, _ := s.Create(ctx, simpleRecipe("x"))
+	id, err := s.Create(ctx, simpleRecipe("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := s.UpdateIfVersion(ctx, id, 1, cyclicRecipe()); err == nil || errors.Is(err, ErrStaleVersion) {
 		t.Errorf("invalid document = %v, want a validation error", err)
 	}
@@ -131,7 +144,11 @@ func TestCreateWithSnapshotsStoresBoth(t *testing.T) {
 	if kinds, err := s.ListSnapshotKinds(ctx, id); err != nil || len(kinds) != 2 {
 		t.Errorf("kinds = %v, %v", kinds, err)
 	}
-	if in, _ := s.Info(ctx, id); in.Version != 1 {
+	in, err := s.Info(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.Version != 1 {
 		t.Errorf("version = %d, want 1", in.Version)
 	}
 }
@@ -174,63 +191,78 @@ func TestCreateWithSnapshotsRejectsInvalidRecipeAndNoIdentity(t *testing.T) {
 	}
 }
 
-// A delete outside the writer queue contends with the queued writers and can
-// starve past busy_timeout (#104).
-func TestConcurrentDeletesAndEditsDoNotFailBusy(t *testing.T) {
-	s, _ := newTestStore(t)
-	s.now = func() time.Time { return time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC) }
-	ctx := authedCtx(t)
-	shared, err := s.Create(ctx, simpleRecipe("shared"))
+// openShortBusy opens a second handle on the database in dir with a busy
+// timeout far shorter than the production one, so a writer outside the queue
+// fails fast instead of the test waiting seconds for it.
+func openShortBusy(t *testing.T, dir string) *sql.DB {
+	t.Helper()
+	dsn := (&url.URL{
+		Scheme:   "file",
+		Opaque:   filepath.ToSlash(filepath.Join(dir, db.FileName)),
+		RawQuery: url.Values{"_pragma": {"journal_mode(wal)", "foreign_keys(1)", "busy_timeout(100)"}}.Encode(),
+	}).String()
+	d, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const victims = 150
-	ids := make(chan int64, victims)
-	for i := 0; i < victims; i++ {
-		id, err := s.Create(ctx, simpleRecipe(fmt.Sprintf("victim%d", i)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		ids <- id
-	}
-	close(ids)
+	t.Cleanup(func() { _ = d.Close() })
+	return d
+}
 
-	errs := make(chan error, 4096)
-	var editing, deleting sync.WaitGroup
-	stop := make(chan struct{})
-	for w := 0; w < 12; w++ {
-		editing.Add(1)
-		go func() {
-			defer editing.Done()
-			for i := 0; ; i++ {
-				select {
-				case <-stop:
-					return
-				default:
-				}
-				if err := s.Update(ctx, shared, simpleRecipe(fmt.Sprintf("w%d-%d", w, i))); err != nil {
-					errs <- fmt.Errorf("Update: %w", err)
-					return
-				}
-			}
-		}()
+// Delete must queue behind a write transaction rather than contend for the
+// SQLite write lock (#104). The test holds the queue and the write lock with a
+// transaction for several times the busy timeout: a delete on the bare pool
+// fails with SQLITE_BUSY, a queued one waits and succeeds.
+func TestDeleteWaitsForWriteQueueInsteadOfFailingBusy(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+	setup, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: dir}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	for w := 0; w < 6; w++ {
-		deleting.Add(1)
-		go func() {
-			defer deleting.Done()
-			for id := range ids {
-				if err := s.Delete(ctx, id); err != nil {
-					errs <- fmt.Errorf("Delete: %w", err)
-				}
-			}
-		}()
+	t.Cleanup(func() { _ = setup.Close() })
+	if err := db.Migrate(ctx, setup, db.Migrations()); err != nil {
+		t.Fatal(err)
 	}
-	deleting.Wait()
-	close(stop)
-	editing.Wait()
-	close(errs)
-	for err := range errs {
-		t.Error(err)
+	s := New(openShortBusy(t, dir))
+	actx := authedCtx(t)
+	victim, err := s.Create(actx, simpleRecipe("victim"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := s.Create(actx, simpleRecipe("other"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	held := make(chan struct{})
+	release := make(chan struct{})
+	holderDone := make(chan error, 1)
+	go func() {
+		holderDone <- db.WithTx(ctx, s.db, s.q, func(_ *storedb.Queries, tx *sql.Tx) error {
+			if _, err := tx.ExecContext(ctx, `UPDATE recipes SET name = name WHERE id = ?`, other); err != nil {
+				return err
+			}
+			close(held)
+			<-release
+			return nil
+		})
+	}()
+	<-held
+
+	deleted := make(chan error, 1)
+	go func() { deleted <- s.Delete(actx, victim) }()
+
+	select {
+	case err := <-deleted:
+		t.Fatalf("Delete returned while the write queue was held (outside the queue?): %v", err)
+	case <-time.After(1 * time.Second): // ten busy timeouts
+	}
+	close(release)
+	if err := <-holderDone; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-deleted; err != nil {
+		t.Fatalf("Delete after the queue cleared: %v", err)
 	}
 }
