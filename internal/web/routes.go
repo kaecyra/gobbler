@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
 	"github.com/kaecyra/gobbler/internal/web/cook"
@@ -14,6 +15,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
 	"github.com/kaecyra/gobbler/internal/web/settings"
+	webshopping "github.com/kaecyra/gobbler/internal/web/shopping"
 )
 
 // mountFeatures is where feature packages attach their routes (ADR-00012). A
@@ -47,4 +49,11 @@ func mountCatalog(r chi.Router, d Deps) {
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
 	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: cat, Usage: usage}))
+
+	// The shopping pages share the merging catalog store: the shopping store's
+	// hooks re-point its manual items, pantry and checks on a merge. It exposes
+	// no usage counter, so the merge confirmation does not count those rows.
+	shop := shopping.New(d.DB, rec, cat)
+	shop.RegisterMergeHooks(cat)
+	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Lists: shop, Recipes: rec, Catalog: cat, Logger: d.Logger}))
 }
