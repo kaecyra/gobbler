@@ -89,15 +89,6 @@ func (v view) stepOptions() []stepOption {
 	return out
 }
 
-func hasID(ids []string, id string) bool {
-	for _, x := range ids {
-		if x == id {
-			return true
-		}
-	}
-	return false
-}
-
 func ruleOptions() []string {
 	return []string{string(quantity.RuleLinear), string(quantity.RuleFixed), string(quantity.RuleToTaste)}
 }

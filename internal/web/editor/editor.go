@@ -156,6 +156,20 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		h.render(w, r, rejectedStatus(r), id, d, names)
 		return
 	}
+	if len(proposals) > 0 {
+		// Catch the common stale save before it adds anything to the catalog.
+		// A change landing after this check is still refused by
+		// UpdateIfVersion below, with the proposed entries left in the catalog.
+		info, err := h.Recipes.Info(ctx, id)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
+			return
+		}
+		if info.Version != d.Version {
+			h.stale(w, r, id, d, names, fmt.Errorf("%w: recipe %d is at version %d, not %d", store.ErrStaleVersion, id, info.Version, d.Version))
+			return
+		}
+	}
 	if err := h.propose(ctx, &rec, proposals); err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -163,9 +177,7 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 	err = h.Recipes.UpdateIfVersion(ctx, id, d.Version, rec)
 	switch {
 	case errors.Is(err, store.ErrStaleVersion):
-		slog.WarnContext(ctx, "stale editor save", "recipe_id", id, "form_version", d.Version, "error", err.Error())
-		d.Problems = append(d.Problems, staleMessage)
-		h.render(w, r, staleStatus(r), id, d, names)
+		h.stale(w, r, id, d, names, err)
 		return
 	case err != nil:
 		layout.WriteError(w, r, fmt.Errorf("save recipe %d: %w", id, err))
@@ -178,6 +190,13 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		return
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
+// stale shows the form again with the stale-save message.
+func (h *handler) stale(w http.ResponseWriter, r *http.Request, id int64, d draft, names lookups, cause error) {
+	slog.WarnContext(r.Context(), "stale editor save", "recipe_id", id, "form_version", d.Version, "error", cause.Error())
+	d.Problems = append(d.Problems, staleMessage)
+	h.render(w, r, staleStatus(r), id, d, names)
 }
 
 // rejectedStatus is the status of a form shown again with messages: htmx 2

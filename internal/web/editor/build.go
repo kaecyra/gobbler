@@ -13,11 +13,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/shopping"
 )
-
-// proposedAisle files an ingredient proposed from the editor until it is
-// reviewed on the catalog page, as ingestion does.
-const proposedAisle = "uncategorised"
 
 // proposal is a catalog entry the user asked to add as unreviewed. It sits at
 // a place in the built recipe whose id is filled in once the entry exists.
@@ -113,8 +110,12 @@ func validationMessage(err error) string {
 }
 
 // propose creates the unreviewed catalog entries the user asked for and puts
-// their ids into rec. Creating comes after every check passed, so a rejected
-// form adds nothing to the catalog.
+// their ids into rec. It runs after every check of the form has passed, so a
+// form rejected by validation or found stale beforehand adds nothing. The
+// entries are separate from the recipe write, as with ingest.Saver.Save: if a
+// later proposal or the recipe write fails (a store error, or a change landing
+// after the version check), the entries already created stay, unreviewed, for
+// the catalog page.
 func (h *handler) propose(ctx context.Context, rec *recipe.Recipe, props []proposal) error {
 	made := map[string]int64{}
 	for _, p := range props {
@@ -128,7 +129,7 @@ func (h *handler) propose(ctx context.Context, rec *recipe.Recipe, props []propo
 				}
 				id = e.ID
 			} else {
-				i, err := h.Catalog.CreateIngredient(ctx, catalog.Ingredient{Name: p.name, Aisle: proposedAisle, Reviewed: false})
+				i, err := h.Catalog.CreateIngredient(ctx, catalog.Ingredient{Name: p.name, Aisle: shopping.Uncategorised, Reviewed: false})
 				if err != nil {
 					return fmt.Errorf("add ingredient %q to the catalog: %w", p.name, err)
 				}

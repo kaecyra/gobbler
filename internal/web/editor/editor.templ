@@ -1,6 +1,10 @@
 package editor
 
-import "github.com/kaecyra/gobbler/internal/web/layout"
+import (
+	"slices"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
 
 // editorPage is the editor on a page of its own: what the recipe links to and
 // the whole page of a browser without HTMX.
@@ -270,7 +274,7 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 			<summary>Depends on</summary>
 			for _, o := range v.stepOptions() {
 				if o.ID != s.ID {
-					<label class="inline"><input type="checkbox" name={ sField(ci, si, "dep") } value={ o.ID } checked?={ hasID(s.Deps, o.ID) }/> { o.Label }</label>
+					<label class="inline"><input type="checkbox" name={ sField(ci, si, "dep") } value={ o.ID } checked?={ slices.Contains(s.Deps, o.ID) }/> { o.Label }</label>
 				}
 			}
 		</details>
@@ -307,7 +311,7 @@ templ equipmentFields(v view) {
 				<details class="deps" open?={ len(e.Steps) > 0 }>
 					<summary>Used in steps</summary>
 					for _, o := range v.stepOptions() {
-						<label class="inline"><input type="checkbox" name={ eField(ei, "step") } value={ o.ID } checked?={ hasID(e.Steps, o.ID) }/> { o.Label }</label>
+						<label class="inline"><input type="checkbox" name={ eField(ei, "step") } value={ o.ID } checked?={ slices.Contains(e.Steps, o.ID) }/> { o.Label }</label>
 					}
 				</details>
 				<p class="tools">

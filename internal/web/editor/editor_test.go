@@ -512,7 +512,7 @@ func TestUnknownIngredientIsRefusedUnlessProposed(t *testing.T) {
 	}
 }
 
-func TestRejectedFormDoesNotCreateProposedEntries(t *testing.T) {
+func TestFormRejectedByValidationDoesNotCreateProposedEntries(t *testing.T) {
 	e := newEnv(t)
 	f := e.form()
 	f.Set(lField(0, 0, "ing"), "zzyzx root")
@@ -632,4 +632,25 @@ func TestBlankNameAndNoComponentsAreRefused(t *testing.T) {
 	res = e.post(f)
 	res.wantStatus(t, http.StatusBadRequest)
 	res.wantBody(t, "at least one component")
+}
+
+func TestStaleSaveWithAProposalCreatesNoCatalogEntry(t *testing.T) {
+	e := newEnv(t)
+	loaded := e.form()
+
+	other := e.form()
+	other.Set("name", "Edited elsewhere")
+	e.post(other).wantStatus(t, http.StatusSeeOther)
+
+	loaded.Set(lField(0, 0, "ing"), "zzyzx root")
+	loaded.Set(lField(0, 0, "propose"), "1")
+	loaded.Set(eField(0, "name"), "zzyzx grinder")
+	loaded.Set(eField(0, "propose"), "1")
+	e.post(loaded).wantStatus(t, http.StatusConflict)
+	if _, ok, _ := e.cat.MatchIngredient(e.ctx, "zzyzx root"); ok {
+		t.Error("a stale save created the proposed ingredient")
+	}
+	if _, ok, _ := e.cat.MatchEquipment(e.ctx, "zzyzx grinder"); ok {
+		t.Error("a stale save created the proposed equipment")
+	}
 }
