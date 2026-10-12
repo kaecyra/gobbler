@@ -34,7 +34,14 @@ port; the only way in is the tunnel, behind Cloudflare Access
    - the **application AUD tag**, shown on the Access application, is
      `GOBBLER_ACCESS_AUD`;
    - your **team domain** (`<team>.cloudflareaccess.com`) is
-     `GOBBLER_ACCESS_TEAM_DOMAIN`.
+     `GOBBLER_ACCESS_TEAM_DOMAIN`, written as a bare host without `https://`.
+5. Set the Access application's cookie SameSite to **Lax** (unverified:
+   Zero Trust > Access controls > Applications > Configure > Advanced settings
+   > Cookie settings > SameSite). Cloudflare's default is None, which sends the
+   Access cookie on cross-site requests; Lax makes Access refuse a cross-site
+   POST at the edge. Do not use Strict: Cloudflare documents that it can cause
+   `ERR_TOO_MANY_REDIRECTS`. See
+   [ADR-00016](./adr/00016-cross-origin-protection.md).
 
 gobbler verifies the Access JWT on every request except `/healthz`; without
 both values it refuses to start.
@@ -90,7 +97,7 @@ the container runs in UTC.
 | Variable | Default | Secret | Notes |
 |---|---|---|---|
 | `CLOUDFLARE_TUNNEL_TOKEN` | none, required by Compose | yes | Read by `cloudflared` only, never by `gobbler`. |
-| `GOBBLER_ACCESS_TEAM_DOMAIN` | none | no | Required unless the dev bypass is on. |
+| `GOBBLER_ACCESS_TEAM_DOMAIN` | none | no | Bare host, e.g. `team.cloudflareaccess.com`: no `https://`, path or spaces. Required unless the dev bypass is on. `config.Load` only checks it is set; `auth.New` rejects a malformed value, so a bad value fails at `serve` start-up. |
 | `GOBBLER_ACCESS_AUD` | none | no | Application AUD tag. Required unless the dev bypass is on. |
 | `GOBBLER_LISTEN_ADDR` | `127.0.0.1:8080` | no | |
 | `GOBBLER_DATA_DIR` | `data` | no | Holds `gobbler.db` and `backups/`. |
@@ -215,25 +222,30 @@ app is simply unreachable until step 5.
 ### 4. Replace the database
 
 The database is `gobbler.db` in the data directory, in WAL mode, so it has
-`gobbler.db-wal` and `gobbler.db-shm` beside it. **Delete those with the old
-file.** A leftover WAL from the old database must never be applied to the
-restored one.
+`gobbler.db-wal` and `gobbler.db-shm` beside it. **Move those away with the
+old file.** A leftover WAL from the old database must never sit next to the
+restored one. After an unclean stop the WAL holds committed data, so the old
+copy is only complete with its WAL.
 
 This runs as the image's `gobbler` user, so the file ends up with the right
-owner. It keeps the old database as `gobbler.db.pre-restore` in case the
-restore was a mistake (unverified):
+owner. It keeps the old database as `gobbler.db.pre-restore`, with its WAL and
+shm as `gobbler.db.pre-restore-wal` and `gobbler.db.pre-restore-shm`, in case
+the restore was a mistake. Each move happens only if the file exists, so it
+also works on a fresh volume with no database, the usual case after losing the
+VM. An earlier `.pre-restore` set is overwritten (unverified):
 
 ```sh
 docker compose run --rm --no-deps -v "$PWD:/restore:ro" --entrypoint sh gobbler -c '
   set -e
   cd /data
-  mv gobbler.db gobbler.db.pre-restore
-  rm -f gobbler.db-wal gobbler.db-shm
+  for ext in "" -wal -shm; do
+    if [ -e "gobbler.db$ext" ]; then mv "gobbler.db$ext" "gobbler.db.pre-restore$ext"; fi
+  done
   cp /restore/gobbler-20261012T030000Z.db gobbler.db
 '
 ```
 
-Delete `gobbler.db.pre-restore` from the volume once you are satisfied.
+Delete the `gobbler.db.pre-restore*` files from the volume once you are satisfied.
 
 ### 5. Start and verify
 
