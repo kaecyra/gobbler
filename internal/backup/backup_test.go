@@ -1,13 +1,18 @@
 package backup
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -222,7 +227,9 @@ func localNames(t *testing.T, dir string) []string {
 	}
 	var out []string
 	for _, e := range entries {
-		out = append(out, e.Name())
+		if IsSnapshotName(e.Name()) { // status.json lives here too
+			out = append(out, e.Name())
+		}
 	}
 	slices.Sort(out)
 	return out
@@ -251,6 +258,9 @@ func TestRunUploadsAndPrunesBothSides(t *testing.T) {
 		t.Fatalf("remote = %v, want %v", keys, want)
 	}
 	st := r.Status()
+	if st.Destination != DestinationRemote {
+		t.Fatalf("Destination = %q, want %q", st.Destination, DestinationRemote)
+	}
 	if !st.LastSuccess.Equal(at(3, 0)) || st.LastError != "" {
 		t.Fatalf("status = %+v", st)
 	}
@@ -307,6 +317,9 @@ func TestRunLocalOnly(t *testing.T) {
 	if res.Uploaded {
 		t.Fatal("nothing should be uploaded without a store")
 	}
+	if got := r.Status().Destination; got != "local only" {
+		t.Fatalf("Destination = %q, want %q", got, "local only")
+	}
 	if got := localNames(t, dir); len(got) != 1 {
 		t.Fatalf("local = %v", got)
 	}
@@ -359,5 +372,128 @@ func TestParseEndpoint(t *testing.T) {
 	}
 	if _, _, err := parseEndpoint("ftp://x"); err == nil {
 		t.Error("want error for unsupported scheme")
+	}
+}
+
+func TestStatusSurvivesRestart(t *testing.T) {
+	d := openSource(t)
+	dir := t.TempDir()
+	store := newFakeStore()
+	clock := at(1, 0)
+	first := &Runner{DB: d, Dir: dir, Store: store, LocalKeep: 5, RemoteKeep: 5, Now: func() time.Time { return clock }}
+	if _, err := first.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	clock = at(2, 0)
+	store.putErr = errors.New("connection refused")
+	if _, err := first.Run(context.Background()); err == nil {
+		t.Fatal("want upload error")
+	}
+
+	second := &Runner{DB: d, Dir: dir, Store: store}
+	st := second.Status()
+	if !st.LastSuccess.Equal(at(1, 0)) {
+		t.Fatalf("LastSuccess = %v, want %v", st.LastSuccess, at(1, 0))
+	}
+	if !strings.Contains(st.LastError, "connection refused") {
+		t.Fatalf("LastError = %q", st.LastError)
+	}
+	// The status file must not be mistaken for a snapshot by retention.
+	if IsSnapshotName(statusFile) {
+		t.Fatal("status file name matches the snapshot pattern")
+	}
+}
+
+func TestStatusUnreadableFileStartsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, statusFile), []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	st := (&Runner{Dir: dir}).Status()
+	if !st.LastSuccess.IsZero() || st.LastError != "" {
+		t.Fatalf("status = %+v, want empty", st)
+	}
+}
+
+// slowStore reports the most Put calls that were ever in flight at once.
+type slowStore struct {
+	*fakeStore
+	active, peak atomic.Int32
+}
+
+func (s *slowStore) Put(ctx context.Context, key, path string) error {
+	n := s.active.Add(1)
+	defer s.active.Add(-1)
+	for {
+		p := s.peak.Load()
+		if n <= p || s.peak.CompareAndSwap(p, n) {
+			break
+		}
+	}
+	time.Sleep(100 * time.Millisecond)
+	return s.fakeStore.Put(ctx, key, path)
+}
+
+func TestConcurrentRunsAreSerialised(t *testing.T) {
+	d := openSource(t)
+	store := &slowStore{fakeStore: newFakeStore()}
+	var tick atomic.Int32
+	r := &Runner{DB: d, Dir: t.TempDir(), Store: store, LocalKeep: 5, RemoteKeep: 5,
+		Now: func() time.Time { return at(1, 0).Add(time.Duration(tick.Add(1)) * time.Minute) }}
+
+	var wg sync.WaitGroup
+	for range 3 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := r.Run(context.Background()); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if got := store.peak.Load(); got != 1 {
+		t.Fatalf("%d runs were uploading at once, want runs serialised", got)
+	}
+}
+
+func TestRunLogsDurationAndSize(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	defer slog.SetDefault(prev)
+
+	d := openSource(t)
+	ok := &Runner{DB: d, Dir: t.TempDir(), LocalKeep: 1, Now: func() time.Time { return at(1, 0) }}
+	if _, err := ok.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	store := newFakeStore()
+	store.putErr = errors.New("boom")
+	bad := &Runner{DB: d, Dir: t.TempDir(), Store: store, LocalKeep: 1, Now: func() time.Time { return at(2, 0) }}
+	if _, err := bad.Run(context.Background()); err == nil {
+		t.Fatal("want error")
+	}
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	byMsg := map[string]map[string]any{}
+	for _, l := range lines {
+		var m map[string]any
+		if err := json.Unmarshal([]byte(l), &m); err != nil {
+			t.Fatal(err)
+		}
+		byMsg[m["msg"].(string)] = m
+	}
+	for _, msg := range []string{"backup succeeded", "backup failed"} {
+		m := byMsg[msg]
+		if m == nil {
+			t.Fatalf("no %q log line in %s", msg, buf.String())
+		}
+		if _, ok := m["duration_ms"]; !ok {
+			t.Errorf("%q has no duration_ms: %v", msg, m)
+		}
+		if size, ok := m["size_bytes"].(float64); !ok || size <= 0 {
+			t.Errorf("%q size_bytes = %v, want > 0", msg, m["size_bytes"])
+		}
 	}
 }

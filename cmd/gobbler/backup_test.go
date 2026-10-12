@@ -23,7 +23,13 @@ func TestBackupNowWritesLocalSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 || !backup.IsSnapshotName(entries[0].Name()) {
+	var snaps int
+	for _, e := range entries {
+		if backup.IsSnapshotName(e.Name()) {
+			snaps++
+		}
+	}
+	if snaps != 1 {
 		t.Fatalf("backup dir holds %v, want one snapshot", entries)
 	}
 }
