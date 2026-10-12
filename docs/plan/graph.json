@@ -602,7 +602,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 22,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w1-catalog",
         "w0-e2e-harness",
