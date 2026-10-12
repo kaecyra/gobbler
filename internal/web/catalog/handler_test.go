@@ -213,6 +213,12 @@ func TestEditRejectsBadInputInlineAndSavesNothing(t *testing.T) {
 	f := newFixture(t)
 	in := f.ingredient("zz keep me", "produce", false)
 	f.ingredient("zz other", "produce", true, "zz taken alias")
+	withUSDA := f.ingredient("zz usda owner", "produce", true)
+	withUSDA.USDAID = new(int64)
+	*withUSDA.USDAID = 424242
+	if err := f.cat.UpdateIngredient(context.Background(), withUSDA); err != nil {
+		t.Fatal(err)
+	}
 
 	cases := []struct {
 		name   string
@@ -225,7 +231,8 @@ func TestEditRejectsBadInputInlineAndSavesNothing(t *testing.T) {
 		{"density zero", url.Values{"name": {"zz keep me"}, "aisle": {"produce"}, "density": {"0"}}, 400, `data-testid="density-error"`},
 		{"usda text", url.Values{"name": {"zz keep me"}, "aisle": {"produce"}, "usda_id": {"x"}}, 400, `data-testid="usda-error"`},
 		{"qualifier in name", url.Values{"name": {"zz butter, melted"}, "aisle": {"produce"}}, 400, `data-testid="form-error"`},
-		{"no aisle", url.Values{"name": {"zz keep me"}, "aisle": {""}}, 400, `data-testid="form-error"`},
+		{"no aisle", url.Values{"name": {"zz keep me"}, "aisle": {""}}, 400, `data-testid="aisle-error"`},
+		{"usda id taken", url.Values{"name": {"zz keep me"}, "aisle": {"produce"}, "usda_id": {"424242"}}, 409, `data-testid="usda-error"`},
 		{"alias collision", url.Values{"name": {"zz keep me"}, "aisle": {"produce"}, "aliases": {"zz taken alias"}}, 409, "already used by"},
 	}
 	for _, c := range cases {
@@ -287,7 +294,7 @@ func TestMergeConfirmationStatesTheLineCountThenRepointsEveryLine(t *testing.T) 
 
 func TestMergeFailureLeavesEverythingUnchanged(t *testing.T) {
 	f := newFixture(t)
-	src := f.ingredient("zz fail source", "produce", false)
+	src := f.ingredient("zz fail source", "produce", false, "zz fail alias")
 	dst := f.ingredient("zz fail target", "produce", true)
 	f.recipeUsing("zz fail recipe", src.ID)
 	// A later hook failing must roll back the lines the earlier hook moved.
@@ -300,6 +307,14 @@ func TestMergeFailureLeavesEverythingUnchanged(t *testing.T) {
 	}
 	if n := f.count(`SELECT COUNT(*) FROM ingredients WHERE id IN (?, ?)`, src.ID, dst.ID); n != 2 {
 		t.Errorf("ingredients left = %d, want both", n)
+	}
+	// The alias moves that ran before the failing hook were rolled back too:
+	// the source keeps its own alias, the target gained none.
+	if n := f.count(`SELECT COUNT(*) FROM ingredient_aliases WHERE ingredient_id = ?`, src.ID); n != 1 {
+		t.Errorf("source aliases = %d, want the 1 original", n)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM ingredient_aliases WHERE ingredient_id = ?`, dst.ID); n != 0 {
+		t.Errorf("target aliases = %d, want none gained", n)
 	}
 }
 

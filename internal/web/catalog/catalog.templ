@@ -111,14 +111,14 @@ templ editPage(f formView) {
 	@layout.Page("Edit " + f.Name) {
 		<h1>Edit ingredient</h1>
 		<p><a href="/catalog">Back to the catalog</a></p>
-		@fieldProblem(f.Problem("form"), "form-error")
+		@fieldProblem(f.Problem(fieldForm), fieldForm+"-error")
 		<form method="post" action={ templ.SafeURL(postURL(f.ID, "")) } data-testid="edit-form">
 			<p>
 				<label for="name">Name</label>
 				<input type="text" id="name" name="name" value={ f.Name } required/>
 				<span class="muted">The bare name, without preparation: "butter", not "melted butter".</span>
 			</p>
-			@fieldProblem(f.Problem("name"), "name-error")
+			@fieldProblem(f.Problem(fieldName), fieldName+"-error")
 			<p>
 				<label for="aliases">Aliases</label>
 				<textarea id="aliases" name="aliases" rows="4">{ f.Aliases }</textarea>
@@ -133,17 +133,17 @@ templ editPage(f formView) {
 					}
 				</datalist>
 			</p>
-			@fieldProblem(f.Problem("aisle"), "aisle-error")
+			@fieldProblem(f.Problem(fieldAisle), fieldAisle+"-error")
 			<p>
 				<label for="density">Density (grams per millilitre)</label>
 				<input type="text" id="density" name="density" value={ f.Density } inputmode="decimal"/>
 			</p>
-			@fieldProblem(f.Problem("density"), "density-error")
+			@fieldProblem(f.Problem(fieldDensity), fieldDensity+"-error")
 			<p>
 				<label for="usda_id">USDA FoodData Central id</label>
 				<input type="text" id="usda_id" name="usda_id" value={ f.USDAID } inputmode="numeric"/>
 			</p>
-			@fieldProblem(f.Problem("usda"), "usda-error")
+			@fieldProblem(f.Problem(fieldUSDA), fieldUSDA+"-error")
 			<p>
 				<label>
 					<input type="checkbox" name="reviewed" value="1" checked?={ f.Reviewed }/>

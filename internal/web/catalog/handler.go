@@ -118,8 +118,8 @@ func (h *handler) editSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Catalog.UpdateIngredient(r.Context(), in); err != nil {
-		if msg, ok := inlineMessage(err); ok {
-			f.Problems = map[string]string{fieldForm: msg}
+		if field, msg, ok := inlineMessage(err); ok {
+			f.Problems = map[string]string{field: msg}
 			h.renderEdit(w, r, layout.StatusFor(err), f)
 			return
 		}
@@ -170,42 +170,44 @@ func (h *handler) mergeDo(w http.ResponseWriter, r *http.Request) {
 	if !parseForm(w, r) {
 		return
 	}
-	sourceID, targetID, ok := h.mergePair(w, r, r.PostForm.Get("source"), r.PostForm.Get("target"))
+	src, dst, ok := h.mergePair(w, r, r.PostForm.Get("source"), r.PostForm.Get("target"))
 	if !ok {
 		return
 	}
-	if _, err := h.Catalog.MergeIngredients(r.Context(), targetID, sourceID); err != nil {
-		layout.WriteError(w, r, fmt.Errorf("merge ingredient %d into %d: %w", sourceID, targetID, err))
+	if _, err := h.Catalog.MergeIngredients(r.Context(), dst.ID, src.ID); err != nil {
+		layout.WriteError(w, r, fmt.Errorf("merge ingredient %d into %d: %w", src.ID, dst.ID, err))
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("%s/%d", Pattern, targetID), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("%s/%d", Pattern, dst.ID), http.StatusSeeOther)
 }
 
-// mergePair parses and checks source and target. A bad pair has already been
+// mergePair parses and loads source and target. A bad pair has already been
 // answered when ok is false: a self-merge with the chooser and its message, a
 // missing ingredient or an unreadable id with the error page.
-func (h *handler) mergePair(w http.ResponseWriter, r *http.Request, source, target string) (sourceID, targetID int64, ok bool) {
+func (h *handler) mergePair(w http.ResponseWriter, r *http.Request, source, target string) (src, dst domain.Ingredient, ok bool) {
 	sourceID, err := idParam(source)
 	if err != nil {
 		layout.WriteError(w, r, err)
-		return 0, 0, false
+		return src, dst, false
 	}
-	targetID, err = idParam(target)
+	targetID, err := idParam(target)
 	if err != nil {
 		layout.WriteError(w, r, err)
-		return 0, 0, false
+		return src, dst, false
 	}
 	if sourceID == targetID {
 		h.renderChooser(w, r, http.StatusBadRequest, sourceID, selfMergeMessage)
-		return 0, 0, false
+		return src, dst, false
 	}
-	for _, id := range []int64{sourceID, targetID} {
-		if _, err := h.Catalog.GetIngredient(r.Context(), id); err != nil {
-			layout.WriteError(w, r, err)
-			return 0, 0, false
-		}
+	if src, err = h.Catalog.GetIngredient(r.Context(), sourceID); err != nil {
+		layout.WriteError(w, r, err)
+		return src, dst, false
 	}
-	return sourceID, targetID, true
+	if dst, err = h.Catalog.GetIngredient(r.Context(), targetID); err != nil {
+		layout.WriteError(w, r, err)
+		return src, dst, false
+	}
+	return src, dst, true
 }
 
 func (h *handler) mergeStep(w http.ResponseWriter, r *http.Request, source, target string) {
@@ -218,24 +220,14 @@ func (h *handler) mergeStep(w http.ResponseWriter, r *http.Request, source, targ
 		h.renderChooser(w, r, http.StatusOK, sourceID, "")
 		return
 	}
-	sourceID, targetID, ok := h.mergePair(w, r, source, target)
+	src, dst, ok := h.mergePair(w, r, source, target)
 	if !ok {
 		return
 	}
 	ctx := r.Context()
-	src, err := h.Catalog.GetIngredient(ctx, sourceID)
+	lines, err := h.Usage.IngredientUsage(ctx, src.ID)
 	if err != nil {
-		layout.WriteError(w, r, err)
-		return
-	}
-	dst, err := h.Catalog.GetIngredient(ctx, targetID)
-	if err != nil {
-		layout.WriteError(w, r, err)
-		return
-	}
-	lines, err := h.Usage.IngredientUsage(ctx, sourceID)
-	if err != nil {
-		layout.WriteError(w, r, fmt.Errorf("count references of ingredient %d: %w", sourceID, err))
+		layout.WriteError(w, r, fmt.Errorf("count references of ingredient %d: %w", src.ID, err))
 		return
 	}
 	layout.Render(w, r, http.StatusOK, confirmPage(confirmView{Source: src, Target: dst, Lines: lines}))

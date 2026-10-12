@@ -5,12 +5,12 @@ package catalog
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
+import "github.com/a-h/templ"
+import templruntime "github.com/a-h/templ/runtime"
+
 import (
 	"fmt"
 	"strconv"
-
-	"github.com/a-h/templ"
-	templruntime "github.com/a-h/templ/runtime"
 
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -426,7 +426,7 @@ func editPage(f formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = fieldProblem(f.Problem("form"), "form-error").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = fieldProblem(f.Problem(fieldForm), fieldForm+"-error").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -460,7 +460,7 @@ func editPage(f formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = fieldProblem(f.Problem("name"), "name-error").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = fieldProblem(f.Problem(fieldName), fieldName+"-error").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -517,7 +517,7 @@ func editPage(f formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = fieldProblem(f.Problem("aisle"), "aisle-error").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = fieldProblem(f.Problem(fieldAisle), fieldAisle+"-error").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -538,7 +538,7 @@ func editPage(f formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = fieldProblem(f.Problem("density"), "density-error").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = fieldProblem(f.Problem(fieldDensity), fieldDensity+"-error").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -559,7 +559,7 @@ func editPage(f formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = fieldProblem(f.Problem("usda"), "usda-error").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = fieldProblem(f.Problem(fieldUSDA), fieldUSDA+"-error").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

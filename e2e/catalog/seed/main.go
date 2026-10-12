@@ -50,11 +50,6 @@ func run(dir string) error {
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		return err
 	}
-	// The seeded catalog can hold ingredients awaiting review of its own; the
-	// spec's unreviewed list should hold only what this seed adds.
-	if _, err := d.ExecContext(ctx, `UPDATE ingredients SET reviewed = 1`); err != nil {
-		return err
-	}
 	c := catalog.New(d)
 	ing := func(name string, reviewed bool) (int64, error) {
 		in, err := c.CreateIngredient(ctx, catalog.Ingredient{Name: name, Aisle: "produce", Reviewed: reviewed})

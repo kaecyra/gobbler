@@ -22,6 +22,7 @@ const (
 
 const (
 	nameMessage      = "Enter a name for the ingredient."
+	aisleMessage     = "Enter the aisle this ingredient is found in."
 	densityMessage   = "Enter the density as grams per millilitre, a number above zero, for example 0.53."
 	usdaMessage      = "Enter the USDA FoodData Central id as a whole number above zero."
 	selfMergeMessage = "An ingredient cannot be merged into itself. Choose a different ingredient."
@@ -117,6 +118,9 @@ func (f formView) ingredient() (domain.Ingredient, map[string]string) {
 	if strings.TrimSpace(f.Name) == "" {
 		problems[fieldName] = nameMessage
 	}
+	if strings.TrimSpace(f.Aisle) == "" {
+		problems[fieldAisle] = aisleMessage
+	}
 	for _, a := range strings.Split(f.Aliases, "\n") {
 		if a = strings.TrimSpace(a); a != "" {
 			in.Aliases = append(in.Aliases, a)
@@ -145,19 +149,27 @@ func (f formView) ingredient() (domain.Ingredient, map[string]string) {
 // entry. The rest of the chain can hold driver text, which is not shown.
 const conflictDetail = " is already used by "
 
-// inlineMessage returns the text to show beside the form for an error the
-// catalog raised about the submitted values. ok is false for any other error.
-func inlineMessage(err error) (string, bool) {
+// usdaColumn is how a UNIQUE violation names the USDA id column in the
+// catalog's error chain; it tells a USDA id clash from a name or alias clash.
+const usdaColumn = "usda_fdc_id"
+
+const usdaTakenMessage = "That USDA FoodData Central id already belongs to another ingredient."
+
+// inlineMessage returns the field and text to show for an error the catalog
+// raised about the submitted values. ok is false for any other error.
+func inlineMessage(err error) (field, msg string, ok bool) {
 	switch {
 	case errors.Is(err, domain.ErrInvalid):
-		return err.Error(), true
+		return fieldForm, err.Error(), true
 	case errors.Is(err, domain.ErrConflict):
-		if msg := err.Error(); strings.Contains(msg, conflictDetail) {
-			return msg, true
+		if text := err.Error(); strings.Contains(text, conflictDetail) {
+			return fieldForm, text, true
+		} else if strings.Contains(text, usdaColumn) {
+			return fieldUSDA, usdaTakenMessage, true
 		}
-		return domain.ErrConflict.Error() + ". Choose a different name or alias.", true
+		return fieldForm, domain.ErrConflict.Error() + ". Choose a different name or alias.", true
 	}
-	return "", false
+	return "", "", false
 }
 
 func aislesOf(all []domain.Ingredient) []string {
