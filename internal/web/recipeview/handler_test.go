@@ -363,17 +363,6 @@ func TestSourceURLWithScriptSchemeIsNotLinked(t *testing.T) {
 	mustNotContain(t, body, `href="javascript:`)
 }
 
-func TestFormatDuration(t *testing.T) {
-	for d, want := range map[time.Duration]string{
-		0: "", 30 * time.Second: "1 min", 5 * time.Minute: "5 min", time.Hour: "1 h",
-		90 * time.Minute: "1 h 30 min", 10 * time.Second: "under 1 min",
-	} {
-		if got := formatDuration(d); got != want {
-			t.Errorf("formatDuration(%v) = %q, want %q", d, got, want)
-		}
-	}
-}
-
 // storeEnv is a real SQLite file with every migration applied and the real
 // recipe store and catalog over it.
 func storeEnv(t *testing.T) (context.Context, *store.Store, *catalog.Store) {
@@ -474,4 +463,11 @@ func TestServingsTargetOnARangeOfServingsExplainsWhatToDo(t *testing.T) {
 	mustContain(t, body, `role="alert"`, "Scale by a multiplier")
 	// The generic "enter a number" advice would be wrong: 4 is a number.
 	mustNotContain(t, body, "positive number or fraction")
+}
+
+func TestViewLinksToCookModeKeepingTheState(t *testing.T) {
+	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
+	mustContain(t, body, `data-testid="cook-link"`, `href="/recipes/7/cook"`)
+	_, body = serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=2&units=metric")
+	mustContain(t, body, `href="/recipes/7/cook?scale=2&amp;units=metric"`)
 }

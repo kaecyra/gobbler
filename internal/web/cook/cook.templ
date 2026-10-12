@@ -1,0 +1,160 @@
+package cook
+
+import (
+	"strconv"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+// Asset URLs served from the embedded static directory by package web.
+const (
+	stylesheetPath = "/static/cook.css"
+	timersPath     = "/static/cook-timers.js"
+	scriptPath     = "/static/cook.js"
+)
+
+templ cookPage(p page) {
+	@layout.Page(p.Name + " - cook mode") {
+		<link rel="stylesheet" href={ stylesheetPath }/>
+		<article id="cook" class="cook" data-recipe={ strconv.FormatInt(p.ID, 10) }>
+			<header class="cook-head">
+				<h1>{ p.Name }</h1>
+				<a href={ templ.SafeURL(p.ExitHref) } data-cook-exit data-testid="cook-exit">Exit cook mode</a>
+			</header>
+			if p.Empty {
+				<p data-testid="cook-empty">This recipe has no steps yet, so there is nothing to cook through. <a href={ templ.SafeURL(p.ExitHref) }>Back to the recipe</a>.</p>
+			} else {
+				@stepPanel(p)
+			}
+			<p id="cook-wake" class="muted" role="status" data-testid="wake-status" hidden></p>
+			@timersPanel()
+		</article>
+		<script src={ timersPath } defer></script>
+		<script src={ scriptPath } defer></script>
+	}
+}
+
+// timersPanel sits outside the swapped step panel so running timers survive
+// stepping. cook.js fills the list.
+templ timersPanel() {
+	<section class="cook-timers" aria-labelledby="cook-timers-h">
+		<h2 id="cook-timers-h">Timers</h2>
+		<p class="muted" id="cook-timers-empty" data-testid="timers-empty">No timers running.</p>
+		<ul id="cook-timer-list" data-testid="timer-list"></ul>
+		<p id="cook-alert" class="cook-alert" role="alert" data-testid="timer-alert"></p>
+	</section>
+}
+
+templ stepPanel(p page) {
+	<div id="cook-step" data-testid="cook-step">
+		<p class="muted cook-progress" data-testid="progress">Step { strconv.Itoa(p.Current) } of { strconv.Itoa(p.Total) }
+			if p.Component != "" {
+				<span> - { p.Component }</span>
+			}
+		</p>
+		<p class="cook-text" data-testid="step-text">{ p.Step.Text }</p>
+		if p.Step.Note != "" {
+			<p class="muted" data-testid="step-note">{ p.Step.Note }</p>
+		}
+		if p.Step.Seconds > 0 {
+			<p>
+				<button
+					type="button"
+					class="cook-timer-start"
+					data-cook-timer
+					data-step={ strconv.Itoa(p.Step.Number) }
+					data-label={ "Step " + strconv.Itoa(p.Step.Number) + ": " + p.Step.Text }
+					data-seconds={ strconv.Itoa(p.Step.Seconds) }
+					data-duration={ timerLabel(p.Step.Seconds) }
+					data-testid="timer-start"
+				>Start timer ({ timerLabel(p.Step.Seconds) })</button>
+			</p>
+		}
+		@meanwhile(p)
+		<nav class="cook-nav" aria-label="Steps">
+			if p.PrevHref != "" {
+				<a class="cook-btn" href={ templ.SafeURL(p.PrevHref) } hx-get={ p.PrevHref } hx-target="#cook-step" hx-select="#cook-step" hx-swap="outerHTML" hx-push-url="true" rel="prev" data-testid="prev">Previous</a>
+			} else {
+				<span class="cook-btn disabled" aria-disabled="true">Previous</span>
+			}
+			if p.NextHref != "" {
+				<a class="cook-btn" href={ templ.SafeURL(p.NextHref) } hx-get={ p.NextHref } hx-target="#cook-step" hx-select="#cook-step" hx-swap="outerHTML" hx-push-url="true" rel="next" data-testid="next">Next</a>
+			} else {
+				<span class="cook-btn disabled" aria-disabled="true">Next</span>
+			}
+		</nav>
+		if len(p.Lines) > 0 {
+			<section aria-labelledby="cook-ing-h">
+				<h2 id="cook-ing-h">Ingredients</h2>
+				<ul data-testid="cook-ingredients">
+					for _, l := range p.Lines {
+						<li>
+							if l.Exact != "" {
+								<span title={ "exact: " + l.Exact }>{ l.Text }</span>
+							} else {
+								<span>{ l.Text }</span>
+							}
+							if l.Unscaled {
+								<span class="muted"> (not scaled or converted: ingredient not matched)</span>
+							}
+						</li>
+					}
+				</ul>
+			</section>
+		}
+		if len(p.Equipment) > 0 {
+			<section aria-labelledby="cook-eq-h">
+				<h2 id="cook-eq-h">Equipment</h2>
+				<ul data-testid="cook-equipment">
+					for _, e := range p.Equipment {
+						<li>{ e }</li>
+					}
+				</ul>
+			</section>
+		}
+		<section aria-labelledby="cook-list-h">
+			<h2 id="cook-list-h">All steps</h2>
+			<ol class="cook-steps" data-testid="step-list">
+				for _, s := range p.StepList {
+					<li>
+						<a
+							href={ templ.SafeURL(s.Href) }
+							hx-get={ s.Href }
+							hx-target="#cook-step"
+							hx-select="#cook-step"
+							hx-swap="outerHTML"
+							hx-push-url="true"
+							if s.Current {
+								aria-current="step"
+							}
+						>{ s.Text }</a>
+					</li>
+				}
+			</ol>
+		</section>
+	</div>
+}
+
+// meanwhile lists the work offered while a passive step runs. It renders
+// nothing when there is none.
+templ meanwhile(p page) {
+	if len(p.Meanwhile) > 0 {
+		<div class="cook-meanwhile" data-testid="meanwhile">
+			<strong>Meanwhile</strong>
+			<ul>
+				for _, it := range p.Meanwhile {
+					<li>
+						<a
+							href={ templ.SafeURL(it.Href) }
+							hx-get={ it.Href }
+							hx-target="#cook-step"
+							hx-select="#cook-step"
+							hx-swap="outerHTML"
+							hx-push-url="true"
+						>step { strconv.Itoa(it.Number) }</a>: { it.Text }
+					</li>
+				}
+			</ul>
+		</div>
+	}
+}
