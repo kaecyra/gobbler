@@ -832,7 +832,7 @@
       "wave": 7,
       "track": "ops",
       "issue": 34,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w0-db"
       ],
@@ -1136,6 +1136,14 @@
       "adrs": [
         "00004",
         "00003"
+      ]
+    },
+    {
+      "id": "w7-backup",
+      "title": "Nightly VACUUM INTO, S3-compatible upload, local and remote retention, backup subcommand",
+      "merged": "becbbb7",
+      "adrs": [
+        "00010"
       ]
     }
   ],
