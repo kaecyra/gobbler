@@ -50,9 +50,6 @@ the next change, however ready that change is.
 
 ## Gates
 
-> The `Makefile` targets and hooks below are created by the foundation (W0)
-> work. Until it lands they do not exist; do not report them as passing.
-
 | Target | Runs | When |
 |---|---|---|
 | `make fmt` | `gofmt`, `goimports` (auto-fix) | pre-commit hook |
@@ -60,6 +57,7 @@ the next change, however ready that change is.
 | `make test` | `go test -cover ./...`, failing below 70% line coverage | pre-push hook |
 | `make e2e` | Playwright against a running binary; every route has a test | pre-push hook |
 | `make test-scripts` | the shell and Node tests for the gate scripts themselves (version-bump check, e2e route coverage) | `make check` |
+| `make generate-check` | `sqlc diff`, failing if the committed sqlc output is stale | `make check` |
 | `make check` | all of the above plus the version-bump check | before every push |
 
 Hooks are managed by `lefthook`. No `--no-verify`.

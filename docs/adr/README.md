@@ -30,6 +30,7 @@ index below in the same commit.
 | [00013](00013-playwright-e2e-in-node.md) | End-to-end tests with Node Playwright under e2e/ | Accepted |
 | [00014](00014-sqlc-for-data-access.md) | Data access through sqlc-generated code | Accepted |
 | [00015](00015-immutability-at-the-store-api.md) | History immutability is enforced by the store API, not the database | Accepted |
+| [00016](00016-cross-origin-protection.md) | Cross-origin requests are refused by Fetch metadata, with SameSite=Lax at the edge | Accepted |
 
 ## What needs one
 
