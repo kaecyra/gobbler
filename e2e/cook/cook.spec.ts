@@ -299,3 +299,57 @@ test('a refused wake lock shows a notice and the page keeps working', async ({ p
   await page.getByTestId('timer-start').click();
   await expect(page.getByTestId('timer')).toHaveCount(1);
 });
+
+test('going Back after stepping runs one set of timers: one beep, no dismissed timer back', async ({ page }) => {
+  await stubAudio(page);
+  await page.clock.install();
+  await page.goto(`/recipes/${pizza}/cook?step=6`);
+  await page.getByTestId('timer-start').click();
+  await page.getByTestId('prev').click(); // htmx swap, pushes history
+  await expect(page.getByTestId('progress')).toContainText('Step 5 of 6');
+  await page.goBack(); // htmx restores the page and runs its scripts again
+  await expect(page.getByTestId('progress')).toContainText('Step 6 of 6');
+  await page.clock.fastForward(60_000);
+  await expect(page.getByTestId('timer')).toContainText('Done');
+  // One announcement is three beeps; a second live copy of the script would double it.
+  expect(await page.evaluate(() => (window as any).__beeps)).toBe(3);
+
+  // A dismissed timer stays dismissed across the same trip.
+  await page.getByTestId('timer').getByRole('button', { name: 'Dismiss' }).click();
+  await page.getByTestId('prev').click();
+  await expect(page.getByTestId('progress')).toContainText('Step 5 of 6');
+  await page.goBack();
+  await expect(page.getByTestId('progress')).toContainText('Step 6 of 6');
+  await page.clock.fastForward(1_000);
+  await expect(page.getByTestId('timer')).toHaveCount(0);
+});
+
+test('a page restored after leaving, or a cancelled exit, asks for the wake lock again', async ({ page }) => {
+  await stubWakeLock(page, 'granted');
+  await page.goto(`/recipes/${pizza}/cook`);
+  await expect.poll(() => page.evaluate(() => (window as any).__wake.held)).toBe(1);
+
+  // Back/forward cache: pagehide releases, pageshow brings the page back.
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wake.held)).toBe(0);
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  await expect.poll(() => page.evaluate(() => (window as any).__wake.held)).toBe(1);
+
+  // An exit that does not happen (the navigation is cancelled) must not leave the screen free to sleep.
+  await page.evaluate(() => document.querySelector('[data-cook-exit]')!.addEventListener('click', (e) => e.preventDefault()));
+  await page.getByTestId('cook-exit').click();
+  await expect.poll(() => page.evaluate(() => (window as any).__wake.held)).toBe(0);
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false })));
+  await expect.poll(() => page.evaluate(() => (window as any).__wake.held)).toBe(1);
+});
+
+test('a running timer\'s button offers a restart, not a silent second start', async ({ page }) => {
+  await page.clock.install();
+  await page.goto(`/recipes/${pizza}/cook?step=6`);
+  const button = page.getByTestId('timer-start');
+  await expect(button).toHaveText('Start timer (1 min)');
+  await button.click();
+  await expect(button).toHaveText('Restart timer (1 min)');
+  await page.clock.fastForward(60_000);
+  await expect(button).toHaveText('Start timer (1 min)');
+});

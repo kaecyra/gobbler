@@ -2,35 +2,48 @@
 // the step panel when stepping, so everything here listens on the document and
 // the timer list lives outside the swapped panel. Timer arithmetic is in
 // cook-timers.js.
+//
+// htmx restores history (Back) by swapping the body and running its scripts
+// again, so this file can execute many times in one document. Only the first
+// run installs listeners and the interval; later runs just refresh the page.
+// Elements are looked up by id when used, never cached, because a restore
+// replaces them.
 (function () {
   'use strict';
 
+  if (window.gobblerCook) {
+    window.gobblerCook.refresh();
+    return;
+  }
   var T = window.CookTimers;
-  var root = document.getElementById('cook');
-  if (!root || !T) return;
+  if (!T) return;
 
-  var list = document.getElementById('cook-timer-list');
-  var emptyNote = document.getElementById('cook-timers-empty');
-  var alertBox = document.getElementById('cook-alert');
-  var wakeNote = document.getElementById('cook-wake');
-  var storageKey = 'gobbler.cook.' + root.getAttribute('data-recipe') + '.timers';
-  var baseTitle = document.title;
+  function root() { return document.getElementById('cook'); }
+  function byId(id) { return document.getElementById(id); }
+  function storageKey() {
+    var r = root();
+    return r ? 'gobbler.cook.' + r.getAttribute('data-recipe') + '.timers' : '';
+  }
 
   // ---- timers ----
   var timers = [];
+  var loadedKey = '';
   var audio = null;
+  var baseTitle = document.title;
 
   function load() {
+    loadedKey = storageKey();
     try {
-      timers = T.restore(window.sessionStorage.getItem(storageKey) || '[]');
+      timers = loadedKey ? T.restore(window.sessionStorage.getItem(loadedKey) || '[]') : [];
     } catch (e) {
       timers = []; // storage blocked: timers still work for this page view
     }
   }
 
   function persist() {
+    if (!loadedKey) return;
     try {
-      window.sessionStorage.setItem(storageKey, T.save(timers));
+      window.sessionStorage.setItem(loadedKey, T.save(timers));
     } catch (e) {
       // Storage is a convenience (timers survive a reload); not having it is fine.
     }
@@ -67,9 +80,11 @@
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
   }
 
-  function render() {
-    var now = Date.now();
-    emptyNote.hidden = timers.length > 0;
+  function renderList(now) {
+    var list = byId('cook-timer-list');
+    if (!list) return;
+    var emptyNote = byId('cook-timers-empty');
+    if (emptyNote) emptyNote.hidden = timers.length > 0;
     var existing = {};
     Array.prototype.forEach.call(list.children, function (li) { existing[li.getAttribute('data-step')] = li; });
     timers.forEach(function (t) {
@@ -100,19 +115,39 @@
     Object.keys(existing).forEach(function (k) { list.removeChild(existing[k]); });
   }
 
+  // A running timer's button says so, so a second tap reads as a restart.
+  function renderButtons(now) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cook-timer]'), function (btn) {
+      var step = btn.getAttribute('data-step');
+      var running = timers.some(function (t) { return t.step === step && !T.isDone(t, now); });
+      btn.textContent = (running ? 'Restart timer' : 'Start timer') + ' (' + btn.getAttribute('data-duration') + ')';
+    });
+  }
+
   function announce() {
     var finished = T.due(timers, Date.now());
     if (finished.length === 0) return;
     timers = T.markNotified(timers, finished.map(function (t) { return t.step; }));
     persist();
-    alertBox.textContent = finished.map(function (t) { return 'Timer done: ' + t.label; }).join(' ');
+    var alertBox = byId('cook-alert');
+    if (alertBox) alertBox.textContent = finished.map(function (t) { return 'Timer done: ' + t.label; }).join(' ');
     document.title = 'Timer done - ' + baseTitle;
     beep();
   }
 
+  function clearAlert() {
+    var alertBox = byId('cook-alert');
+    if (alertBox) alertBox.textContent = '';
+    document.title = baseTitle;
+  }
+
   function tick() {
+    if (!root()) return; // not on a cook page (restored page is something else)
+    if (storageKey() !== loadedKey) load();
     announce();
-    render();
+    var now = Date.now();
+    renderList(now);
+    renderButtons(now);
   }
 
   document.addEventListener('click', function (e) {
@@ -123,8 +158,7 @@
       if (!Number.isFinite(seconds) || seconds <= 0) return;
       timers = T.upsert(timers, T.start(startBtn.getAttribute('data-step'), startBtn.getAttribute('data-label'), seconds, Date.now()));
       persist();
-      alertBox.textContent = '';
-      document.title = baseTitle;
+      clearAlert();
       tick();
       return;
     }
@@ -132,45 +166,47 @@
     if (dismiss) {
       timers = T.remove(timers, dismiss.getAttribute('data-cook-timer-dismiss'));
       persist();
-      alertBox.textContent = '';
-      document.title = baseTitle;
+      clearAlert();
       tick();
     }
   });
 
-  load();
-  tick();
-  window.setInterval(tick, 500);
   // A backgrounded page may not have ticked; the end timestamps make catching
-  // up exact.
+  // up exact. After htmx swaps in a new step panel its buttons need their text.
   document.addEventListener('visibilitychange', tick);
+  document.addEventListener('htmx:afterSettle', tick);
+  window.setInterval(tick, 500);
 
   // ---- screen wake lock ----
   var sentinel = null;
-  var wantLock = true;
+  var requesting = false;
 
   function note(text) {
-    wakeNote.textContent = text;
-    wakeNote.hidden = text === '';
+    var el = byId('cook-wake');
+    if (!el) return;
+    el.textContent = text;
+    el.hidden = text === '';
   }
 
   function acquire() {
-    if (!wantLock || sentinel) return;
+    if (!root() || sentinel || requesting) return;
     if (!('wakeLock' in navigator) || !navigator.wakeLock || !navigator.wakeLock.request) {
       note('Your browser cannot keep the screen awake, so it may dim while you cook.');
       return;
     }
+    requesting = true;
     navigator.wakeLock.request('screen').then(function (s) {
+      requesting = false;
       sentinel = s;
       note('');
       s.addEventListener('release', function () { if (sentinel === s) sentinel = null; });
     }, function () {
+      requesting = false;
       note('The screen could not be kept awake (permission denied or low battery), so it may dim while you cook.');
     });
   }
 
   function release() {
-    wantLock = false;
     if (sentinel) {
       var s = sentinel;
       sentinel = null;
@@ -178,13 +214,25 @@
     }
   }
 
+  // Leaving releases the lock, but leaving can be undone: a page restored from
+  // the back/forward cache, a cancelled exit, or a tab brought back all need
+  // it again, so every way back in re-requests it.
   document.addEventListener('visibilitychange', function () {
     // The browser drops the lock when the page is hidden; take it back.
     if (document.visibilityState === 'visible') acquire();
   });
+  window.addEventListener('pageshow', acquire);
+  window.addEventListener('focus', acquire);
   window.addEventListener('pagehide', release);
   document.addEventListener('click', function (e) {
     if (e.target.closest && e.target.closest('[data-cook-exit]')) release();
   });
-  acquire();
+
+  window.gobblerCook = {
+    refresh: function () {
+      tick();
+      acquire();
+    },
+  };
+  window.gobblerCook.refresh();
 })();

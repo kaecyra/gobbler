@@ -65,6 +65,7 @@ templ stepPanel(p page) {
 					data-step={ strconv.Itoa(p.Step.Number) }
 					data-label={ "Step " + strconv.Itoa(p.Step.Number) + ": " + p.Step.Text }
 					data-seconds={ strconv.Itoa(p.Step.Seconds) }
+					data-duration={ timerLabel(p.Step.Seconds) }
 					data-testid="timer-start"
 				>Start timer ({ timerLabel(p.Step.Seconds) })</button>
 			</p>
