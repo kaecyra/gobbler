@@ -1,0 +1,119 @@
+package journal
+
+import (
+	"strconv"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+// journalPage is the journal on a page of its own: the no-HTMX fallback, and
+// what the recipe page links to.
+templ journalPage(v view) {
+	@layout.Page("Journal: " + v.Name) {
+		<h1>{ v.Name }</h1>
+		<p><a href={ templ.SafeURL("/recipes/" + strconv.FormatInt(v.RecipeID, 10)) }>Back to the recipe</a></p>
+		@journalSection(v)
+	}
+}
+
+// journalSection is the fragment the recipe page loads. Every form targets
+// it and swaps the whole section, so the lists and the forms stay in step.
+templ journalSection(v view) {
+	<section id="journal" class="journal" aria-labelledby="journal-heading">
+		<style>
+			.journal form { margin: 0.75rem 0; }
+			.journal label { display: block; font-weight: 600; margin-top: 0.5rem; }
+			.journal textarea, .journal input[type=text] { width: 100%; font: inherit; padding: 0.4rem; }
+			.journal .alert { border: 2px solid var(--accent); padding: 0.4rem 0.6rem; margin: 0.5rem 0; }
+			.journal ul { padding-left: 0; list-style: none; }
+			.journal li { border-top: 1px solid var(--border); padding: 0.5rem 0; }
+			.journal .note-body { white-space: pre-wrap; margin: 0.25rem 0 0; }
+		</style>
+		<h2 id="journal-heading">Journal</h2>
+		@ratingForm(v)
+		@notesPart(v)
+		@madePart(v)
+	</section>
+}
+
+templ ratingForm(v view) {
+	<form class="rating" method="post" action={ templ.SafeURL(v.base() + "/rating") } hx-post={ v.base() + "/rating" } hx-target="#journal" hx-swap="outerHTML">
+		<label for="journal-rating">Rating</label>
+		if v.RatingError != "" {
+			<p class="alert" role="alert">{ v.RatingError }</p>
+		}
+		<select id="journal-rating" name="rating">
+			<option value="" selected?={ v.Rating == nil }>No rating</option>
+			for _, n := range stars() {
+				<option value={ strconv.Itoa(n) } selected?={ v.ratingIs(n) }>{ starText(n) }</option>
+			}
+		</select>
+		<button type="submit">Save rating</button>
+	</form>
+}
+
+templ notesPart(v view) {
+	<h3>Notes</h3>
+	<form class="note-form" method="post" action={ templ.SafeURL(v.base() + "/notes") } hx-post={ v.base() + "/notes" } hx-target="#journal" hx-swap="outerHTML">
+		<label for="journal-note">Add a note</label>
+		if v.NoteError != "" {
+			<p class="alert" role="alert">{ v.NoteError }</p>
+		}
+		<textarea id="journal-note" name="body" rows="3">{ v.NoteBody }</textarea>
+		<button type="submit">Add note</button>
+	</form>
+	if len(v.Notes) == 0 {
+		<p class="muted">No notes yet.</p>
+	} else {
+		<ul class="notes">
+			for _, n := range v.Notes {
+				<li>
+					<span class="muted"><time datetime={ n.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }>{ stamp(n.CreatedAt) }</time> by { n.CreatedBy }</span>
+					<p class="note-body">{ n.Body }</p>
+				</li>
+			}
+		</ul>
+	}
+}
+
+templ madePart(v view) {
+	<h3>Made it</h3>
+	<form class="made-form" method="post" action={ templ.SafeURL(v.base() + "/made") } hx-post={ v.base() + "/made" } hx-target="#journal" hx-swap="outerHTML">
+		<label for="journal-made-on">Date</label>
+		if v.DateError != "" {
+			<p class="alert" role="alert">{ v.DateError }</p>
+		}
+		<input id="journal-made-on" type="text" name="on" value={ v.MadeOn } placeholder="YYYY-MM-DD" inputmode="numeric"/>
+		<label for="journal-made-rating">Rating (optional)</label>
+		if v.MadeRatingError != "" {
+			<p class="alert" role="alert">{ v.MadeRatingError }</p>
+		}
+		<select id="journal-made-rating" name="rating">
+			<option value="" selected?={ v.MadeRating == "" }>No rating</option>
+			for _, n := range stars() {
+				<option value={ strconv.Itoa(n) } selected?={ v.MadeRating == strconv.Itoa(n) }>{ starText(n) }</option>
+			}
+		</select>
+		<label for="journal-made-comment">Comment (optional)</label>
+		<textarea id="journal-made-comment" name="comment" rows="2">{ v.MadeComment }</textarea>
+		<button type="submit">Log it</button>
+	</form>
+	if len(v.Made) == 0 {
+		<p class="muted">Not made yet.</p>
+	} else {
+		<ul class="made">
+			for _, m := range v.Made {
+				<li>
+					<strong><time datetime={ m.On.Format("2006-01-02") }>{ m.On.Format("2006-01-02") }</time></strong>
+					if m.Rating != nil {
+						<span> - { starText(*m.Rating) }</span>
+					}
+					<span class="muted"> by { m.CreatedBy }</span>
+					if m.Comment != "" {
+						<p class="note-body">{ m.Comment }</p>
+					}
+				</li>
+			}
+		</ul>
+	}
+}
