@@ -273,7 +273,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 7,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w0-web-shell"
       ],
@@ -1254,6 +1254,16 @@
       "id": "w5-llm-unify",
       "title": "One strict Structured decoder in ingest; one constructor shape for LLM providers",
       "merged": "b223254"
+    },
+    {
+      "id": "w0-container",
+      "title": "Dockerfile with tesseract, Compose with cloudflared, .env.example; compose up applies migrations",
+      "merged": "f81208f",
+      "adrs": [
+        "00002",
+        "00003",
+        "00006"
+      ]
     }
   ],
   "adr_sequence": {
