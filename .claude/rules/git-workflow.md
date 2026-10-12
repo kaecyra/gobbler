@@ -50,9 +50,6 @@ the next change, however ready that change is.
 
 ## Gates
 
-> The `Makefile` targets and hooks below are created by the foundation (W0)
-> work. Until it lands they do not exist; do not report them as passing.
-
 | Target | Runs | When |
 |---|---|---|
 | `make fmt` | `gofmt`, `goimports` (auto-fix) | pre-commit hook |
