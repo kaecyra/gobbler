@@ -49,7 +49,7 @@ func photoPage(v photoView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Add a recipe from a photo</h1><p class=\"muted\">Upload a photo of a recipe page. The text is read on this server, then you review the result before anything is saved. The photo itself is not kept.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Add a recipe from a photo</h1><p class=\"muted\">Upload a photo of a recipe page. The text is read on this server, then you review the result before anything is saved. The photo itself is never saved.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -72,7 +72,7 @@ func photoPage(v photoView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " <form class=\"ingest-form\" method=\"post\" action=\"/ingest/photo\" enctype=\"multipart/form-data\"><label for=\"ingest-photo\">Photo</label> <input id=\"ingest-photo\" type=\"file\" name=\"photo\" accept=\"image/png,image/jpeg,image/gif,image/webp,image/bmp\"><div class=\"review-actions\"><button type=\"submit\">Read photo</button></div></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " <form class=\"ingest-form\" method=\"post\" action=\"/ingest/photo\" enctype=\"multipart/form-data\"><label for=\"ingest-photo\">Photo</label> <input id=\"ingest-photo\" type=\"file\" name=\"photo\" accept=\"image/png,image/jpeg,image/webp\"><div class=\"review-actions\"><button type=\"submit\">Read photo</button></div></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

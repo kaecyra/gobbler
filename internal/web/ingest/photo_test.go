@@ -170,3 +170,27 @@ func TestPhotoOCRFailuresAreShownNotDrafted(t *testing.T) {
 		})
 	}
 }
+
+func TestPhotoOCRFailureShowsAFixedSentenceNotTesseractsError(t *testing.T) {
+	f := newPhotoFixture(t, &fakeReader{err: errors.Join(ocr.ErrFailed, errors.New("Error: leptonica pixRead failed"))})
+	rec := f.upload(t, "page.png", pngBytes)
+	body := rec.Body.String()
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(body, "That photo could not be read. Try a different photo") {
+		t.Errorf("status %d, body: %s", rec.Code, body)
+	}
+	if strings.Contains(body, "leptonica") || strings.Contains(body, "tesseract failed") {
+		t.Error("the page shows the OCR engine's raw error")
+	}
+}
+
+func TestPhotoRequestOverTheBodyCapIs413(t *testing.T) {
+	f := newPhotoFixture(t, &fakeReader{text: "x"})
+	body := append(append([]byte{}, pngBytes...), make([]byte, maxPhotoRequestBytes)...)
+	rec := f.upload(t, "huge.png", body)
+	if rec.Code != http.StatusRequestEntityTooLarge || !strings.Contains(rec.Body.String(), "too large") {
+		t.Errorf("status %d, body: %s", rec.Code, rec.Body)
+	}
+	if f.reader.calls != 0 || f.drafter.calls != 0 {
+		t.Error("an oversized request reached OCR or the pipeline")
+	}
+}

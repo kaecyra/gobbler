@@ -25,13 +25,16 @@ type TextReader interface {
 	Text(ctx context.Context, image []byte) (string, error)
 }
 
-// photoTypes are the image types tesseract can be given, by sniffed media type.
+// photoTypes are the image types accepted, by sniffed media type. The same
+// bytes go to tesseract and, on fallback, to the vision provider, so this is
+// the intersection of what tesseract, Anthropic (JPEG, PNG, GIF, WebP:
+// https://platform.claude.com/docs/en/build-with-claude/vision) and Gemini
+// (PNG, JPEG, WebP, HEIC, HEIF: https://ai.google.dev/gemini-api/docs/image-understanding)
+// accept. Checked against those pages when this was written.
 var photoTypes = map[string]bool{
 	"image/png":  true,
 	"image/jpeg": true,
-	"image/gif":  true,
 	"image/webp": true,
-	"image/bmp":  true,
 }
 
 // PhotoDrafter drafts a recipe from OCR text and the photo it came from;
@@ -51,9 +54,10 @@ func (h *handler) photoForm(w http.ResponseWriter, r *http.Request) {
 
 // photoSubmit reads the uploaded photo with OCR and feeds the text through the
 // same pipeline as pasted text, so it gets the same extraction, scoring and
-// fallback, and then the review screen. The photo itself is not kept: only the
-// OCR text, as the draft's source snapshot, outlives the request. Nothing is
-// saved here.
+// fallback, and then the review screen. The photo is never saved: only the OCR
+// text is the draft's source snapshot. The photo is held in memory on the
+// pending draft, for the vision fallback and retry, until the draft expires or
+// is confirmed. Nothing is saved here.
 func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPhotoRequestBytes)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
@@ -86,7 +90,7 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 		h.photoFormError(w, r, http.StatusRequestEntityTooLarge, "That photo is too large. The limit is 10 MB.")
 		return
 	case !photoTypes[mime]:
-		h.photoFormError(w, r, http.StatusUnsupportedMediaType, "That file is not a supported image. Upload a PNG, JPEG, GIF, WebP or BMP photo.")
+		h.photoFormError(w, r, http.StatusUnsupportedMediaType, "That file is not a supported image. Upload a PNG, JPEG or WebP photo.")
 		return
 	}
 
@@ -97,7 +101,7 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, ocr.ErrFailed):
 		h.log.WarnContext(r.Context(), "photo ocr failed", "error", err.Error())
-		h.photoFormError(w, r, http.StatusUnprocessableEntity, "That photo could not be read: "+err.Error())
+		h.photoFormError(w, r, http.StatusUnprocessableEntity, "That photo could not be read. Try a different photo, or one that is sharper and smaller.")
 		return
 	case err != nil:
 		// The OCR engine is missing or could not start: the pipeline is

@@ -118,3 +118,37 @@ func TestFromOCREmptyTextIsAnInputError(t *testing.T) {
 		t.Fatalf("err = %v, want ErrEmptyText", err)
 	}
 }
+
+func TestVisionImageIsAttachedOnlyWithinTheProviderSizeLimit(t *testing.T) {
+	cases := []struct {
+		name      string
+		size      int
+		wantImage bool
+	}{
+		{"at the limit", maxVisionImageBytes, true},
+		{"over the limit", maxVisionImageBytes + 1, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			fp := &fakeProvider{resp: llmAnswer()}
+			big := bytes.Repeat([]byte{1}, tc.size)
+			if _, err := e.pipelineWith(t, testConfig(), fp).FromOCR(e.ctx, messyText, big, "image/png"); err != nil {
+				t.Fatal(err)
+			}
+			if fp.count() != 1 {
+				t.Fatalf("provider calls = %d, want 1: the text still goes to the provider", fp.count())
+			}
+			req := fp.calls[0]
+			if tc.wantImage != (req.Image != nil) {
+				t.Errorf("request image = %d bytes, want attached = %v", len(req.Image), tc.wantImage)
+			}
+			if !tc.wantImage && req.ImageMIME != "" {
+				t.Errorf("image MIME = %q with no image", req.ImageMIME)
+			}
+			if req.Text != messyText {
+				t.Errorf("request text = %q, want the OCR text", req.Text)
+			}
+		})
+	}
+}
