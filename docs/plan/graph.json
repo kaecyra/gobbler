@@ -510,7 +510,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 18,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w1-store",
         "w0-e2e-harness"
@@ -1277,6 +1277,15 @@
       "adrs": [
         "00006",
         "00008"
+      ]
+    },
+    {
+      "id": "w3-recipe-view",
+      "title": "Recipe view with scaling, unit display modes, size and time hints",
+      "merged": "5410c86",
+      "adrs": [
+        "00005",
+        "00004"
       ]
     }
   ],
