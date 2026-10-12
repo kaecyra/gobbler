@@ -48,12 +48,12 @@ dependencies.
 |---|---|---|
 | `cmd/gobbler` | Entry point, wiring, subcommands (`serve`, `migrate`, `import-usda`, `backup`) | everything below |
 | `config` | Environment-driven configuration, validated at start-up | — |
-| `db` | SQLite connection, WAL setup, embedded `goose` migrations | `config` |
+| `db` | SQLite connection, WAL setup, embedded `goose` migrations, the shared transaction helpers (`WithTx`, `WithReadTx`) and constraint-error wrapper (`WrapWrite`) | `config` |
 | `auth` | Access JWT verification middleware, dev bypass | `config` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types, step-graph validation, "meanwhile" derivation (pure) | `quantity` |
-| `store` | Persistence for recipes, revisions, notes, snapshots, FTS index | `db`, `recipe` |
-| `catalog` | Canonical ingredients, units, equipment, aliases, matching, USDA import | `db`, `quantity` |
+| `store` | Persistence for recipes, revisions, notes, snapshots, FTS index; queries in `queries/`, sqlc-generated `storedb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `recipe` |
+| `catalog` | Canonical ingredients, units, equipment, aliases, matching, USDA import; queries in `queries/`, sqlc-generated `catalogdb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `quantity` |
 | `parse` | Ingredient-line parser, duration parser, text sectioning (pure) | `quantity`, `catalog` (matching interface) |
 | `ingest` | Acquire → extract → parse → score → fallback pipeline; JSON-LD, microdata, site extractors, OCR | `parse`, `recipe`, LLM interface |
 | `llm/claude`, `llm/gemini` | Provider implementations ([ADR-00007](adr/00007-llm-provider-interface.md)) | provider SDKs |
