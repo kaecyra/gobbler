@@ -39,6 +39,28 @@ func flagMark(low bool) templ.Component {
 	return templ.Raw(`<strong class="flag">Check:</strong>`)
 }
 
+// llmMark is the signal that the LLM, not the rules, supplied a value
+// (ADR-00006 obligation 4). It is text, so it does not rely on colour.
+func llmMark(fromLLM bool) templ.Component {
+	if !fromLLM {
+		return templ.NopComponent
+	}
+	return templ.Raw(`<strong class="llm-mark">LLM</strong>`)
+}
+
+// markClass joins the classes of a flagged and/or LLM-supplied item.
+func markClass(low, fromLLM bool) string {
+	switch {
+	case low && fromLLM:
+		return "low llm"
+	case low:
+		return "low"
+	case fromLLM:
+		return "llm"
+	}
+	return ""
+}
+
 func percent(f float64) string { return fmt.Sprintf("%.0f%%", f*100) }
 
 func formatDuration(d time.Duration) string {

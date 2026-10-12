@@ -39,6 +39,9 @@ func (s Source) intact() bool {
 type Field[T any] struct {
 	Value      T
 	Confidence float64
+	// FromLLM marks a value the LLM supplied rather than the rules read
+	// (ADR-00006 obligation 4).
+	FromLLM bool
 }
 
 // Line is one ingredient line of a draft. Ingredient is zero when the name did
@@ -56,6 +59,8 @@ type Line struct {
 	// Confidence is 0 to 1; Issues says why it is below 1.
 	Confidence float64
 	Issues     []string
+	// FromLLM marks a line the LLM supplied.
+	FromLLM bool
 }
 
 // Step is one instruction of a draft. Duration is zero when unknown.
@@ -63,6 +68,8 @@ type Step struct {
 	Text       string
 	Duration   time.Duration
 	Confidence float64
+	// FromLLM marks a step the LLM supplied.
+	FromLLM bool
 }
 
 // Component is an ordered part of a draft recipe; Name is empty for the single
@@ -71,6 +78,8 @@ type Component struct {
 	Name  string
 	Lines []Line
 	Steps []Step
+	// FromLLM marks a component the LLM supplied.
+	FromLLM bool
 }
 
 // ProposedIngredient is an ingredient the catalog does not have, proposed from
@@ -88,7 +97,8 @@ type ProposedUnit struct {
 	Name string
 }
 
-// Draft is the rule-based reading of one input, shown on the review screen.
+// Draft is the reading of one input shown on the review screen: the rules'
+// reading, or the LLM's when UsedLLM is set.
 // It carries a confidence for every field and line and an overall score.
 // Nothing here is stored until it is confirmed (Confirm) and saved.
 type Draft struct {
@@ -117,6 +127,12 @@ type Draft struct {
 	Overall        float64
 	Threshold      float64
 	BelowThreshold bool
+
+	// UsedLLM is true when the LLM supplied this draft; its values carry
+	// FromLLM. LLMError is why an LLM attempt failed and the rule-based draft
+	// was kept; it is an error, not a low score, and never blocks saving.
+	UsedLLM  bool
+	LLMError string
 
 	// Issues says in words why Overall is below 1, for the review screen.
 	Issues []string
