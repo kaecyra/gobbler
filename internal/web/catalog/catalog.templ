@@ -1,0 +1,194 @@
+package catalog
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+func editURL(id int64) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("%s/%d", Pattern, id))
+}
+
+func postURL(id int64, suffix string) string {
+	return fmt.Sprintf("%s/%d%s", Pattern, id, suffix)
+}
+
+func mergeURL(id int64) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("%s/merge?source=%d", Pattern, id))
+}
+
+func linesText(n int64) string {
+	if n == 1 {
+		return "1 recipe line"
+	}
+	return strconv.FormatInt(n, 10) + " recipe lines"
+}
+
+templ listPage(v listView) {
+	@layout.Page("Ingredient catalog") {
+		<h1>Ingredient catalog</h1>
+		<form method="get" action="/catalog" role="search" data-testid="catalog-filter">
+			<label for="q">Filter ingredients</label>
+			<input type="search" id="q" name="q" value={ v.Query }/>
+			<button type="submit">Filter</button>
+		</form>
+		<section aria-labelledby="unreviewed-h" data-testid="unreviewed">
+			<h2 id="unreviewed-h">Needs review</h2>
+			if len(v.Unreviewed) == 0 {
+				<p class="muted" data-testid="unreviewed-empty">
+					if v.Query != "" {
+						No ingredient awaiting review matches the filter.
+					} else {
+						Nothing to review. Ingredients proposed by ingestion appear here.
+					}
+				</p>
+			} else {
+				<ul>
+					for _, r := range v.Unreviewed {
+						<li data-testid="unreviewed-row">
+							<a href={ editURL(r.ID) }>{ r.Name }</a>
+							<span class="muted">{ r.Aisle }</span>
+							<form method="post" action={ templ.SafeURL(postURL(r.ID, "/reviewed")) }>
+								<button type="submit" aria-label={ "Mark " + r.Name + " reviewed" }>Mark reviewed</button>
+							</form>
+							<a href={ mergeURL(r.ID) }>Merge into another</a>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section aria-labelledby="all-h" data-testid="all">
+			<h2 id="all-h">All ingredients</h2>
+			if len(v.All) == 0 {
+				<p class="muted" data-testid="all-empty">
+					if v.Total == 0 {
+						The catalog is empty.
+					} else {
+						No ingredient matches the filter.
+					}
+				</p>
+			} else {
+				<table>
+					<thead>
+						<tr>
+							<th scope="col">Name</th>
+							<th scope="col">Aisle</th>
+							<th scope="col">Also called</th>
+							<th scope="col">Status</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, r := range v.All {
+							<tr data-testid="all-row">
+								<td><a href={ editURL(r.ID) }>{ r.Name }</a></td>
+								<td>{ r.Aisle }</td>
+								<td>{ r.Aliases }</td>
+								<td>
+									if r.Reviewed {
+										Reviewed
+									} else {
+										Needs review
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</section>
+	}
+}
+
+templ fieldProblem(msg string, id string) {
+	if msg != "" {
+		<p role="alert" class="field-error" id={ id } data-testid={ id }>{ msg }</p>
+	}
+}
+
+templ editPage(f formView) {
+	@layout.Page("Edit " + f.Name) {
+		<h1>Edit ingredient</h1>
+		<p><a href="/catalog">Back to the catalog</a></p>
+		@fieldProblem(f.Problem(fieldForm), fieldForm+"-error")
+		<form method="post" action={ templ.SafeURL(postURL(f.ID, "")) } data-testid="edit-form">
+			<p>
+				<label for="name">Name</label>
+				<input type="text" id="name" name="name" value={ f.Name } required/>
+				<span class="muted">The bare name, without preparation: "butter", not "melted butter".</span>
+			</p>
+			@fieldProblem(f.Problem(fieldName), fieldName+"-error")
+			<p>
+				<label for="aliases">Aliases</label>
+				<textarea id="aliases" name="aliases" rows="4">{ f.Aliases }</textarea>
+				<span class="muted">One per line: plurals and synonyms.</span>
+			</p>
+			<p>
+				<label for="aisle">Aisle</label>
+				<input type="text" id="aisle" name="aisle" value={ f.Aisle } list="aisles" required/>
+				<datalist id="aisles">
+					for _, a := range f.Aisles {
+						<option value={ a }></option>
+					}
+				</datalist>
+			</p>
+			@fieldProblem(f.Problem(fieldAisle), fieldAisle+"-error")
+			<p>
+				<label for="density">Density (grams per millilitre)</label>
+				<input type="text" id="density" name="density" value={ f.Density } inputmode="decimal"/>
+			</p>
+			@fieldProblem(f.Problem(fieldDensity), fieldDensity+"-error")
+			<p>
+				<label for="usda_id">USDA FoodData Central id</label>
+				<input type="text" id="usda_id" name="usda_id" value={ f.USDAID } inputmode="numeric"/>
+			</p>
+			@fieldProblem(f.Problem(fieldUSDA), fieldUSDA+"-error")
+			<p>
+				<label>
+					<input type="checkbox" name="reviewed" value="1" checked?={ f.Reviewed }/>
+					Reviewed
+				</label>
+			</p>
+			<button type="submit">Save</button>
+		</form>
+		<p><a href={ mergeURL(f.ID) }>Merge this ingredient into another</a></p>
+	}
+}
+
+templ chooserPage(v chooserView) {
+	@layout.Page("Merge " + v.Source.Name) {
+		<h1>Merge { v.Source.Name }</h1>
+		@fieldProblem(v.Problem, "merge-error")
+		<p>Choose the ingredient to keep. { v.Source.Name } is removed and its name becomes an alias of the one you keep.</p>
+		<form method="get" action="/catalog/merge" data-testid="merge-chooser">
+			<input type="hidden" name="source" value={ strconv.FormatInt(v.Source.ID, 10) }/>
+			<label for="target">Keep</label>
+			<select id="target" name="target" required>
+				<option value="">Choose an ingredient</option>
+				for _, t := range v.Targets {
+					<option value={ strconv.FormatInt(t.ID, 10) }>{ t.Name }</option>
+				}
+			</select>
+			<button type="submit">Review the merge</button>
+		</form>
+		<p><a href="/catalog">Cancel</a></p>
+	}
+}
+
+templ confirmPage(v confirmView) {
+	@layout.Page("Confirm merge") {
+		<h1>Confirm merge</h1>
+		<p data-testid="merge-summary">
+			Merge <strong>{ v.Source.Name }</strong> into <strong>{ v.Target.Name }</strong>.
+			<span data-testid="merge-lines">{ linesText(v.Lines) }</span> will be re-pointed to { v.Target.Name }.
+			{ v.Source.Name } will be removed and kept as an alias of { v.Target.Name }.
+		</p>
+		<form method="post" action="/catalog/merge" data-testid="merge-confirm">
+			<input type="hidden" name="source" value={ strconv.FormatInt(v.Source.ID, 10) }/>
+			<input type="hidden" name="target" value={ strconv.FormatInt(v.Target.ID, 10) }/>
+			<button type="submit">Merge</button>
+		</form>
+		<p><a href="/catalog">Cancel</a></p>
+	}
+}
