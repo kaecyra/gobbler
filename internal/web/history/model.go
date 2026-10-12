@@ -80,8 +80,11 @@ type versionView struct {
 	Servings    string
 	Yield       string
 
-	Times      []timeRow
-	Total      string
+	Times []timeRow
+	Total string
+	// TotalNote says where the total came from, so the page shows which rule
+	// produced it (ADR-00004).
+	TotalNote  string
 	Components []componentView
 	Equipment  []string
 }
@@ -119,6 +122,17 @@ func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion 
 		return versionView{}, fmt.Errorf("total time: %w", err)
 	}
 	v.Total = display.FormatDuration(total.Duration)
+	// These strings duplicate internal/web/recipeview; both move into
+	// internal/recipe/display once issue #111 lands, because history may not
+	// import recipeview (ADR-00012).
+	switch total.Source {
+	case recipe.TotalStored:
+		v.TotalNote = "as stated by the source"
+	case recipe.TotalCriticalPath:
+		v.TotalNote = "from the longest chain of steps"
+	case recipe.TotalSum:
+		v.TotalNote = "prep, cook and waiting times added"
+	}
 
 	number := display.StepNumbers(doc)
 	lines := display.NewLineBuilder(cat, display.Default())

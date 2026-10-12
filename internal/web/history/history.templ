@@ -103,7 +103,12 @@ templ versionPage(v versionView) {
 						}
 						if v.Total != "" {
 							<dt>Total</dt>
-							<dd data-testid="total">{ v.Total }</dd>
+							<dd data-testid="total">
+								{ v.Total }
+								if v.TotalNote != "" {
+									<span class="muted"> ({ v.TotalNote })</span>
+								}
+							</dd>
 						}
 					</dl>
 				</section>
