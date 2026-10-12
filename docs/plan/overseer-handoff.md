@@ -1,6 +1,6 @@
 # Overseer handoff: 2026-10-12, round 6
 
-This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.38.0**.
+This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.38.1**.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
@@ -24,6 +24,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 | w3-edit-link | #120 | #126 | 45981eb |
 | Graph: w4-shopping-store lane gains `internal/store/search_test.go` | — | #129 | a62c316 |
 | w4-shopping-store (schema 00005) | #24 | #125 | 8ce630e |
+| #124 deploy: no sidecar; ADR-00017 amends ADR-00002 | #124 | #127 | f4e1aa9 |
 
 #107 (the round-5 handoff PR) was closed as superseded.
 
@@ -31,8 +32,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 | Worktree | Node | State |
 |---|---|---|
-| `wt-124` | #124 deploy (no node), **PR #127** | Two review rounds are done and every finding is fixed and resolved. ADR-00017 amends ADR-00002 Packaging, following ADR-00001's "Amended" convention. The worker is re-bumping to 0.38.1. Merge once CI is green. |
-| `wt-25` | w4-shopping-ui (#25) | Worker dispatched. It must wire the shopping store's `RegisterMergeHooks` into `mountCatalog` in `routes.go`. Watch for the SSE versus server `WriteTimeout` risk, which is out of lane (`web.go` / `serve.go`). |
+| `wt-25` | w4-shopping-ui (#25), schema **`00006`** | First pass done (`950a1cd`, gates green): build page, pantry, live SSE view, export and merge-hook wiring. Owner chose option A, so the worker now adds the persisted optional-lines flag (00006), the shopping usage counter and a shutdown fix in `server.go`, under the lane widening in graph PR **#131**, which is in review. No push yet. VERSION is 0.39.0; set it at merge. |
 
 Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands. #128 and #129 widened lanes for that.
 
@@ -63,13 +63,14 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 - Handoffs are maintained throughout and committed to main (`.memory/feedback-handoff-maintained.md`).
 - #65 option A, recorded in #65's body: drop proposed units and flag unknown ones on review.
 - #24 option A: narrow `TestPackageIsPure` to the pure files instead of moving the store to a subpackage (graph PR #122).
+- #25 option A: finish the optional-lines toggle, the usage counter and the shutdown fix in #25 itself, and make a node for anything else (w7-nav #130, w5-codec #123).
 - No cloudflared sidecar. The tunnel runs on the guest and is configured by the owner's IaC (#124).
 - Ship fast: w4-shopping-store was started before #113 merged, accepting a `make generate` on rebase.
 
 ## Migration and ADR numbers
 
-- `schema`: `00003`, `00004` and `00005` are all merged. The next free number is `00006`.
-- The ADR sequence is at `00017` (#127, not yet merged). The next free number is `00018`.
+- `schema`: `00003`, `00004` and `00005` are all merged. `00006` belongs to w4-shopping-ui (wt-25). The next free number is `00007`.
+- ADR-00017 is merged (#127). The next free number is `00018`.
 
 ## Things a fresh dispatcher must know
 
@@ -87,7 +88,9 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 
 ## Next to dispatch, and why
 
-1. **Merge #127** once its re-bump is green.
-2. **Verify and open w4-shopping-ui (#25)**, then review it. After it merges, dispatch **w7-todoist (#36)**, which depends on the shopping list.
-3. **#123 (codec)** has no graph node yet. Add one (lane: `internal/quantity/**`, the store codec file, `internal/shopping/store_codec.go`) once nothing in flight holds `internal/store/**`.
-4. `l-meal-planning` (#38) and `l-invitations` (#39) each need an ADR first. That is the owner's call.
+1. **Merge #131** (graph). Then verify the wt-25 branch, open the PR for #25, review it and merge it.
+2. After #25 merges, three nodes become dispatchable together, with disjoint lanes:
+   - **w7-todoist (#36)**: `internal/todoist/**` and `internal/web/shopping/todoist*`
+   - **w7-nav (#130)**: the layout
+   - **w5-codec (#123)**: the codec files
+3. `l-meal-planning` (#38) and `l-invitations` (#39) each need an ADR first, which is the owner's call.
