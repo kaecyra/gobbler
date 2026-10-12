@@ -6,7 +6,7 @@ docs/plan/board.html
 docs/plan/board-state.json
 docs/plan/board-data.js
 
-# Local environment: holds API keys and the tunnel token (AGENTS.md: no secrets in the repository).
+# Local environment: holds API keys and other secrets (AGENTS.md: no secrets in the repository).
 .env
 .env.*
 !.env.example

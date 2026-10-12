@@ -31,6 +31,7 @@ index below in the same commit.
 | [00014](00014-sqlc-for-data-access.md) | Data access through sqlc-generated code | Accepted |
 | [00015](00015-immutability-at-the-store-api.md) | History immutability is enforced by the store API, not the database | Accepted |
 | [00016](00016-cross-origin-protection.md) | Cross-origin requests are refused by Fetch metadata, with SameSite=Lax at the edge | Accepted |
+| [00017](00017-cloudflared-on-the-guest.md) | cloudflared runs on the VM guest; Compose publishes gobbler on loopback only | Accepted |
 
 ## What needs one
 
