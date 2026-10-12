@@ -77,6 +77,13 @@ test('shows the recipe as written', async ({ page }) => {
   await expect(page.getByTestId('total')).toContainText('55 min');
 });
 
+test('the Edit link opens the editor form for that recipe', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await page.getByTestId('edit-link').click();
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}/edit$`));
+  await expect(page.locator('form#editor')).toBeVisible();
+});
+
 test('a passive step shows the work that can be done meanwhile', async ({ page }) => {
   await page.goto(`/recipes/${meanwhileId}`);
   const guidance = page.getByTestId('meanwhile');
