@@ -981,7 +981,7 @@
       "wave": 5,
       "track": "ingestion",
       "issue": 71,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w5-llm-claude",
         "w5-llm-gemini"
@@ -1249,6 +1249,11 @@
         "00002",
         "00013"
       ]
+    },
+    {
+      "id": "w5-llm-unify",
+      "title": "One strict Structured decoder in ingest; one constructor shape for LLM providers",
+      "merged": "b223254"
     }
   ],
   "adr_sequence": {
