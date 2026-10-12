@@ -74,6 +74,9 @@ func handle(d Deps) http.HandlerFunc {
 			slog.WarnContext(r.Context(), "request rejected",
 				"error", err.Error(), "status", http.StatusOK, "method", r.Method, "path", r.URL.Path)
 			opts, notice = options{mult: quantity.Int(1)}, invalidNotice
+			if errors.Is(err, errNoServingsBase) {
+				notice = noServingsBaseNotice
+			}
 			w.Header().Set("HX-Push-Url", "false")
 		}
 		v, err := buildView(r.Context(), d.Catalog, id, rec, opts)
@@ -89,6 +92,10 @@ func handle(d Deps) http.HandlerFunc {
 // invalidNotice is the message for a scale, servings or units value the page
 // cannot use. It is fixed text: the cause is in the log.
 const invalidNotice = "That value cannot be used for this recipe. Enter a positive number or fraction, such as 6 or 1/2."
+
+// noServingsBaseNotice answers a servings target on a recipe with a range of
+// servings (or none): the number typed is fine, so say what to do instead.
+const noServingsBaseNotice = "This recipe has no single serving count (a range, or none), so it cannot be scaled to one. Scale by a multiplier instead, such as 2× or 1/2×."
 
 func fromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 

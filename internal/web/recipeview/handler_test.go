@@ -462,3 +462,16 @@ func TestInvalidInputFromHTMXIsShownInPlace(t *testing.T) {
 		t.Errorf("plain request status = %d, want 400", code)
 	}
 }
+
+func TestServingsTargetOnARangeOfServingsExplainsWhatToDo(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/recipes/7?servings=4", nil)
+	req.Header.Set("HX-Request", "true")
+	rec := serveRequest(t, fakeRecipes{7: rangeRecipe(t)}, testCatalog(), req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	mustContain(t, body, `role="alert"`, "Scale by a multiplier")
+	// The generic "enter a number" advice would be wrong: 4 is a number.
+	mustNotContain(t, body, "positive number or fraction")
+}

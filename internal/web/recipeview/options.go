@@ -1,6 +1,7 @@
 package recipeview
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -24,6 +25,11 @@ const (
 	unitsMetric  = "metric"
 	unitsWeight  = "weight"
 )
+
+// errNoServingsBase marks a servings target on a recipe whose servings are a
+// range or absent, so there is no single count to scale from. The page tells
+// the user to scale by a multiplier instead.
+var errNoServingsBase = errors.New("recipe has no single serving count to scale from")
 
 // options is the parsed view state. scale and servings keep the raw text so
 // the controls can rebuild the same URL; at most one is set.
@@ -72,7 +78,7 @@ func parseOptions(q url.Values, r recipe.Recipe) (options, error) {
 			return options{}, fmt.Errorf("%w: servings %q: %w", layout.ErrInvalid, servings, err)
 		}
 		if r.Servings.Kind() != quantity.KindExact {
-			return options{}, fmt.Errorf("%w: recipe has no single serving count to scale from", layout.ErrInvalid)
+			return options{}, fmt.Errorf("%w: %w", layout.ErrInvalid, errNoServingsBase)
 		}
 		m, err := quantity.ServingsFactor(r.Servings.Min(), target)
 		if err != nil {
