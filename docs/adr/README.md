@@ -28,6 +28,8 @@ index below in the same commit.
 | [00011](00011-v1-scope-and-deferrals.md) | Scope and deferrals | Accepted |
 | [00012](00012-web-subpackage-per-feature.md) | Web layer as a server package plus one subpackage per feature area | Accepted |
 | [00013](00013-playwright-e2e-in-node.md) | End-to-end tests with Node Playwright under e2e/ | Accepted |
+| [00014](00014-sqlc-for-data-access.md) | Data access through sqlc-generated code | Accepted |
+| [00015](00015-immutability-at-the-store-api.md) | History immutability is enforced by the store API, not the database | Accepted |
 
 ## What needs one
 
