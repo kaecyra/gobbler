@@ -8,13 +8,17 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -129,15 +133,21 @@ func testCatalog() fakeCatalog {
 
 func serve(t *testing.T, recipes fakeRecipes, path string) (int, string) {
 	t.Helper()
+	rec := serveRequest(t, recipes, testCatalog(), httptest.NewRequest(http.MethodGet, path, nil))
+	return rec.Code, rec.Body.String()
+}
+
+func serveRequest(t *testing.T, recipes Recipes, cat Catalog, req *http.Request) *httptest.ResponseRecorder {
+	t.Helper()
 	r := chi.NewRouter()
-	r.Mount(Pattern, Routes(Deps{Recipes: recipes, Catalog: testCatalog()}))
+	r.Mount(Pattern, Routes(Deps{Recipes: recipes, Catalog: cat}))
 	// Errors are logged by layout.WriteError; keep the test output quiet.
 	prev := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	defer slog.SetDefault(prev)
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-	return rec.Code, rec.Body.String()
+	r.ServeHTTP(rec, req)
+	return rec
 }
 
 func mustContain(t *testing.T, body string, want ...string) {
@@ -178,7 +188,7 @@ func TestViewShowsRecipeAsWritten(t *testing.T) {
 		"Prep", "20 min", "Cook", "rest", "10 min",
 		"1 h 15 min", // critical path of mix -> bake; glaze has no duration, so sum is used
 	)
-	mustNotContain(t, body, "time may change", "may need a larger pan", "Scaled by")
+	mustNotContain(t, body, "time may change", "Scaled by")
 }
 
 func TestScaleMultipliesLinearLinesOnly(t *testing.T) {
@@ -190,7 +200,7 @@ func TestScaleMultipliesLinearLinesOnly(t *testing.T) {
 		"1 bay leaf",          // fixed
 		"salt to taste",       // to taste unchanged
 		`data-testid="servings">12<`,
-		"may need a larger pan", "time may change",
+		"time may change",
 		"Scaled by 3",
 	)
 }
@@ -204,8 +214,7 @@ func TestScaleReadsABetterUnit(t *testing.T) {
 
 func TestServingsParamScalesToTargetServings(t *testing.T) {
 	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?servings=2")
-	mustContain(t, body, "2/3 cup flour", "1/8 cup sugar", `data-testid="servings">2<`, "may need a smaller pan")
-	mustNotContain(t, body, "larger pan")
+	mustContain(t, body, "2/3 cup flour", "1/8 cup sugar", `data-testid="servings">2<`)
 }
 
 func TestUnitModes(t *testing.T) {
@@ -223,6 +232,59 @@ func TestUnitModes(t *testing.T) {
 func TestUnitModeAppliesAfterScaling(t *testing.T) {
 	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=2&units=metric")
 	mustContain(t, body, "630 ml flour")
+}
+
+func TestScaledViewHasNoEquipmentHint(t *testing.T) {
+	// ADR-00005 limits the pan hint to equipment with a size, and the schema
+	// has no equipment size (issue #85), so no equipment gets one.
+	for _, path := range []string{"/recipes/7?scale=3", "/recipes/7?scale=1/2"} {
+		_, body := serve(t, fakeRecipes{7: testRecipe(t)}, path)
+		mustContain(t, body, "9x13 pan")
+		mustNotContain(t, body, "larger pan", "smaller pan")
+	}
+}
+
+func rangeRecipe(t *testing.T) recipe.Recipe {
+	t.Helper()
+	span, err := quantity.NewRange(rat(t, "1"), rat(t, "2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	servings, err := quantity.NewRange(rat(t, "4"), rat(t, "6"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := testRecipe(t)
+	r.Servings = servings
+	r.Components[0].Lines = []recipe.IngredientLine{
+		{Amount: quantity.Amount{Qty: span, Unit: quantity.MustUnit("cup")}, Ingredient: 2, Rule: quantity.RuleLinear},
+		{Amount: quantity.Amount{Qty: span}, Ingredient: 3, Rule: quantity.RuleLinear},
+	}
+	return r
+}
+
+func TestRangesDisplayAsRanges(t *testing.T) {
+	_, body := serve(t, fakeRecipes{7: rangeRecipe(t)}, "/recipes/7")
+	mustContain(t, body, "1-2 cup sugar", "1-2 egg", `data-testid="servings">4-6<`)
+}
+
+func TestRangesScaleAsRanges(t *testing.T) {
+	_, body := serve(t, fakeRecipes{7: rangeRecipe(t)}, "/recipes/7?scale=3")
+	mustContain(t, body, "3-6 cup sugar", "3-6 egg", `data-testid="servings">12-18<`)
+	// Both ends are scaled; neither is collapsed into a single number.
+	mustNotContain(t, body, "9 cup", "6 cup sugar,")
+}
+
+func TestRangesConvertAsRanges(t *testing.T) {
+	_, body := serve(t, fakeRecipes{7: rangeRecipe(t)}, "/recipes/7?units=metric")
+	mustContain(t, body, "235-475 ml sugar")
+}
+
+func TestServingsTargetNeedsASingleServingCount(t *testing.T) {
+	code, _ := serve(t, fakeRecipes{7: rangeRecipe(t)}, "/recipes/7?servings=4")
+	if code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400: a range of servings has no single base to scale from", code)
+	}
 }
 
 func TestUnresolvedLineIsShownAsWrittenAndFlagged(t *testing.T) {
@@ -309,5 +371,94 @@ func TestFormatDuration(t *testing.T) {
 		if got := formatDuration(d); got != want {
 			t.Errorf("formatDuration(%v) = %q, want %q", d, got, want)
 		}
+	}
+}
+
+// storeEnv is a real SQLite file with every migration applied and the real
+// recipe store and catalog over it.
+func storeEnv(t *testing.T) (context.Context, *store.Store, *catalog.Store) {
+	t.Helper()
+	ctx := context.Background()
+	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("db.Migrate: %v", err)
+	}
+	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:8080", DevAuthBypass: true}})
+	if err != nil {
+		t.Fatalf("auth.New: %v", err)
+	}
+	var authed context.Context
+	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authed = r.Context() })).
+		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+	if authed == nil {
+		t.Fatal("auth middleware did not call the handler")
+	}
+	return authed, store.New(d), catalog.New(d)
+}
+
+func TestScalingAndUnitModesDoNotChangeTheStoredRecipe(t *testing.T) {
+	ctx, rs, cs := storeEnv(t)
+	density := 0.5
+	flour, err := cs.CreateIngredient(ctx, catalog.Ingredient{Name: "view test flour", Aisle: "baking", DensityGPerML: &density})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pan, err := cs.CreateEquipment(ctx, catalog.Equipment{Name: "view test pan"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := testRecipe(t)
+	r.Components[0].Lines = []recipe.IngredientLine{
+		{Amount: amount(t, "1 1/3", "cup"), Ingredient: recipe.IngredientID(flour.ID), Rule: quantity.RuleLinear},
+		{Raw: "a splash of the good stuff", Rule: quantity.RuleLinear},
+	}
+	r.Equipment = []recipe.EquipmentLink{{Equipment: recipe.EquipmentID(pan.ID)}}
+	id, err := rs.Create(ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := rs.Get(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path := fmt.Sprintf("/recipes/%d", id)
+	for _, q := range []string{"?scale=3", "?servings=2&units=metric", "?units=weight", "?scale=1/2&units=metric"} {
+		rec := serveRequest(t, rs, cs, httptest.NewRequest(http.MethodGet, path+q, nil).WithContext(ctx))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d\n%s", q, rec.Code, rec.Body)
+		}
+		after, err := rs.Get(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("%s changed the stored recipe:\nbefore %+v\nafter  %+v", q, before, after)
+		}
+	}
+}
+
+func TestInvalidInputFromHTMXIsShownInPlace(t *testing.T) {
+	// htmx 2 does not swap 4xx responses, so the user would see nothing. For
+	// an htmx request the page answers 200 with the recipe and a message, and
+	// asks htmx not to push the bad URL.
+	req := httptest.NewRequest(http.MethodGet, "/recipes/7?servings=x", nil)
+	req.Header.Set("HX-Request", "true")
+	rec := serveRequest(t, fakeRecipes{7: testRecipe(t)}, testCatalog(), req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("HX-Push-Url"); got != "false" {
+		t.Errorf("HX-Push-Url = %q, want false", got)
+	}
+	mustContain(t, rec.Body.String(), `id="recipe"`, `role="alert"`, "cannot be used", "1 1/3 cup flour")
+
+	// Without htmx the same input is a plain 400 page (TestErrors).
+	if code, _ := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?servings=x"); code != http.StatusBadRequest {
+		t.Errorf("plain request status = %d, want 400", code)
 	}
 }

@@ -89,6 +89,9 @@ templ recipeBody(v view) {
 			}
 		</p>
 		@controls(v)
+		if v.Notice != "" {
+			<p role="alert" class="recipe-error" data-testid="view-error">{ v.Notice }</p>
+		}
 		if v.Scaled {
 			<p class="muted" data-testid="scaled-note">Scaled by { v.Multiplier }. Quantities are rounded for the kitchen; hover one for the exact value.</p>
 		}
@@ -100,9 +103,6 @@ templ recipeBody(v view) {
 					for _, e := range v.Equipment {
 						<li>
 							{ e.Text }
-							if e.Hint != "" {
-								<span class="muted"> ({ e.Hint })</span>
-							}
 						</li>
 					}
 				</ul>

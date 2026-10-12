@@ -85,7 +85,6 @@ test('scaling by a preset swaps the recipe in place and keeps the URL shareable'
   await expect(page.getByText('6 e2e egg')).toBeVisible();
   await expect(page.getByText('1 e2e bay leaf')).toBeVisible();
   await expect(page.getByTestId('servings')).toHaveText('12');
-  await expect(page.getByTestId('equipment')).toContainText('may need a larger pan');
   await expect(page).toHaveURL(`/recipes/${id}?scale=3`);
 
   // The URL alone reproduces the state.
@@ -99,7 +98,6 @@ test('scaling to a serving count', async ({ page }) => {
   await page.getByRole('button', { name: 'Scale' }).click();
   await expect(page.getByTestId('servings')).toHaveText('2');
   await expect(page.getByText('2/3 cup e2e flour')).toBeVisible();
-  await expect(page.getByTestId('equipment')).toContainText('may need a smaller pan');
 });
 
 test('unit modes convert the view and combine with scaling', async ({ page }) => {
@@ -115,6 +113,16 @@ test('unit modes convert the view and combine with scaling', async ({ page }) =>
   await expect(page.getByText('315 g e2e flour')).toBeVisible();
   await page.getByRole('link', { name: 'As written' }).click();
   await expect(page.getByText('2 2/3 cup e2e flour')).toBeVisible();
+});
+
+test('a servings value that cannot be used shows a message in place', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await page.getByLabel('Servings').fill('0');
+  await page.getByRole('button', { name: 'Scale' }).click();
+  await expect(page.getByTestId('view-error')).toContainText('cannot be used');
+  // The recipe stays on screen and the bad value does not reach the address bar.
+  await expect(page.getByText('1 1/3 cup e2e flour')).toBeVisible();
+  await expect(page).toHaveURL(`/recipes/${id}`);
 });
 
 test('a missing recipe is a 404 page', async ({ page }) => {

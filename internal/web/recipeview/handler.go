@@ -9,12 +9,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -60,18 +62,35 @@ func handle(d Deps) http.HandlerFunc {
 			return
 		}
 		opts, err := parseOptions(r.URL.Query(), rec)
+		notice := ""
 		if err != nil {
-			layout.WriteError(w, r, err)
-			return
+			if !fromHTMX(r) || !errors.Is(err, layout.ErrInvalid) {
+				layout.WriteError(w, r, err)
+				return
+			}
+			// htmx 2 does not swap a 4xx response, so a 400 would leave the
+			// user with no feedback. Answer 200 with the recipe as stored and
+			// a message, and keep the bad URL out of the address bar.
+			slog.WarnContext(r.Context(), "request rejected",
+				"error", err.Error(), "status", http.StatusOK, "method", r.Method, "path", r.URL.Path)
+			opts, notice = options{mult: quantity.Int(1)}, invalidNotice
+			w.Header().Set("HX-Push-Url", "false")
 		}
 		v, err := buildView(r.Context(), d.Catalog, id, rec, opts)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("build view of recipe %d: %w", id, err))
 			return
 		}
+		v.Notice = notice
 		layout.Render(w, r, http.StatusOK, recipePage(v))
 	}
 }
+
+// invalidNotice is the message for a scale, servings or units value the page
+// cannot use. It is fixed text: the cause is in the log.
+const invalidNotice = "That value cannot be used for this recipe. Enter a positive number or fraction, such as 6 or 1/2."
+
+func fromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 
 // opaque flattens a catalog "not found" met while resolving a reference of an
 // existing recipe: it is a broken reference, not a missing page, so it must

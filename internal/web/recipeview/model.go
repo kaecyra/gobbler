@@ -12,13 +12,9 @@ import (
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
-// Hints shown on a scaled view (ADR-00005): equipment and times are not
-// scaled, so the page says they may need attention.
-const (
-	hintTime         = "time may change"
-	hintEquipLarger  = "may need a larger pan"
-	hintEquipSmaller = "may need a smaller pan"
-)
+// hintTime is shown on cook and special times of a scaled view (ADR-00005):
+// times are not scaled, so the page says they may need attention.
+const hintTime = "time may change"
 
 // view is everything the template shows, already formatted. All quantity
 // arithmetic happened in package quantity before it was built.
@@ -41,6 +37,10 @@ type view struct {
 	// TotalNote says where a derived total came from, so the page shows which
 	// rule produced it (ADR-00004).
 	TotalNote string
+
+	// Notice is an input problem shown in place of a bare error page, for
+	// requests made by htmx.
+	Notice string
 
 	Scaled     bool
 	Multiplier string
@@ -83,7 +83,6 @@ type stepView struct {
 
 type equipmentView struct {
 	Text string
-	Hint string
 }
 
 // buildView resolves catalog references and applies opts to every line.
@@ -124,19 +123,14 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o op
 		v.Components = append(v.Components, cv)
 	}
 
+	// No equipment hint ("may need a larger pan", ADR-00005): it applies only to
+	// equipment with a size and the schema has none yet (issue #85).
 	for _, link := range r.Equipment {
 		eq, err := cat.GetEquipment(ctx, int64(link.Equipment))
 		if err != nil {
 			return view{}, opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
 		}
-		ev := equipmentView{Text: strings.TrimSpace(link.Qty.String() + " " + eq.Name)}
-		if v.Scaled {
-			ev.Hint = hintEquipLarger
-			if o.mult.Cmp(quantity.Int(1)) < 0 {
-				ev.Hint = hintEquipSmaller
-			}
-		}
-		v.Equipment = append(v.Equipment, ev)
+		v.Equipment = append(v.Equipment, equipmentView{Text: strings.TrimSpace(link.Qty.String() + " " + eq.Name)})
 	}
 	return v, nil
 }
