@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -135,19 +136,32 @@ func TestSaveRemovesRecipeWhenSnapshotFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	failing := failingSnapshots{RecipeStore: e.store}
+	failing := &failingSnapshots{RecipeStore: e.store}
 	_, err = NewSaver(failing, e.catalog).Save(e.ctx, confirm(t, d))
 	if err == nil || !strings.Contains(err.Error(), "recipe not saved") {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := e.store.Get(e.ctx, 1); !errors.Is(err, store.ErrNotFound) {
+	if failing.created == 0 {
+		t.Fatal("the recipe was never created, so the rollback was not exercised")
+	}
+	if _, err := e.store.Get(e.ctx, failing.created); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("recipe left behind without its snapshot: %v", err)
 	}
 }
 
-type failingSnapshots struct{ RecipeStore }
+// failingSnapshots fails AddSnapshot and remembers the id Create returned.
+type failingSnapshots struct {
+	RecipeStore
+	created int64
+}
 
-func (failingSnapshots) AddSnapshot(_ context.Context, _ int64, _ store.SnapshotKind, _ []byte) error {
+func (f *failingSnapshots) Create(ctx context.Context, r recipe.Recipe) (int64, error) {
+	id, err := f.RecipeStore.Create(ctx, r)
+	f.created = id
+	return id, err
+}
+
+func (*failingSnapshots) AddSnapshot(_ context.Context, _ int64, _ store.SnapshotKind, _ []byte) error {
 	return errors.New("disk full")
 }
 

@@ -57,7 +57,6 @@ func Confirm(d Draft) (Confirmed, error) {
 	if len(problems) > 0 {
 		return Confirmed{}, fmt.Errorf("%w: %w", ErrIncompleteDraft, errors.Join(problems...))
 	}
-	d.Proposed = proposedIngredients(d.Components)
 	return Confirmed{draft: d, confirmed: true}, nil
 }
 

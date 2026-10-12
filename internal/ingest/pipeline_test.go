@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
@@ -118,8 +119,15 @@ func TestThresholdIsConfiguration(t *testing.T) {
 		t.Errorf("threshold %.2f below=%v", d.Threshold, d.BelowThreshold)
 	}
 	cfg.ConfidenceThreshold = 0
-	p, _ = New(cfg, Deps{Catalog: e.catalog})
-	if d, _ = p.FromText(e.ctx, string(readFixture(t, "mystery_stew.txt"))); d.BelowThreshold {
+	p, err = New(cfg, Deps{Catalog: e.catalog})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err = p.FromText(e.ctx, string(readFixture(t, "mystery_stew.txt")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.BelowThreshold {
 		t.Errorf("threshold 0 must never be below")
 	}
 }
@@ -282,5 +290,32 @@ func TestProposalsNameEachNewIngredientOnce(t *testing.T) {
 	}
 	if len(d.Proposed) != 1 || d.Proposed[0].Name != "quuxweed" {
 		t.Errorf("proposed = %+v, want quuxweed once", d.Proposed)
+	}
+}
+
+// A page with no structured recipe falls back to its visible text, which goes
+// through the sectioning parser (issue #15, Extract).
+func TestPageWithoutStructuredDataFallsBackToSectionedText(t *testing.T) {
+	e := newEnv(t)
+	srv, _ := serve(t, readFixture(t, "plain_page.html"))
+	d, err := e.pipeline(t, srv.Client()).FromURL(e.ctx, srv.URL+"/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Method != extract.MethodText {
+		t.Fatalf("method = %q, want text", d.Method)
+	}
+	if d.Name.Value != "Garlic Spaghetti" || len(d.Components) != 1 {
+		t.Fatalf("name %q components %+v", d.Name.Value, d.Components)
+	}
+	c := d.Components[0]
+	if len(c.Lines) != 4 || len(c.Steps) != 3 {
+		t.Fatalf("lines %d steps %d, want 4 and 3", len(c.Lines), len(c.Steps))
+	}
+	if c.Lines[2].Ingredient == 0 || c.Steps[0].Duration != 10*time.Minute {
+		t.Errorf("lines were not parsed: %+v / %+v", c.Lines[2], c.Steps[0])
+	}
+	if d.Source.Kind != store.SnapshotHTML {
+		t.Errorf("snapshot kind = %q, want html: the page is the source", d.Source.Kind)
 	}
 }
