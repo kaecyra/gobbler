@@ -574,7 +574,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 21,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
@@ -1388,6 +1388,15 @@
         "00016"
       ],
       "note": "ADR-00016: router-wide http.CrossOriginProtection; every later unsafe route inherits it."
+    },
+    {
+      "id": "w3-journal",
+      "title": "Notes, rating and made-it log on a recipe",
+      "merged": "0a2f2c0",
+      "adrs": [
+        "00004",
+        "00003"
+      ]
     }
   ],
   "adr_sequence": {
