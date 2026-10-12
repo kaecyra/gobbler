@@ -25,6 +25,10 @@ This file holds the volatile state the graph does not. The durable record is `do
 | `wt-65` | w3-unit-owner (#65, schema `00003`), **PR #118** | Rebased on main, VERSION 0.33.1, ownership and gates verified by the dispatcher. Added `0939d4a`: `ingest.ErrUnknownUnit` returns the user to the review screen (422). No unit picker, because drafting cannot produce an unknown unit (the parser flags the word at line scoring, and the LLM path goes through the same parser). The reasoning is in the PR body. First review is running. |
 | `wt-17` | w3-search-list (#17, schema `00004`), **PR #113** | Its 4 threads are resolved. Re-review 5491507666 found 0 MUST, 0 SHOULD and 3 NIT: rewrap two doc comments, use `sqlc.arg(tag_count)` in `search.sql`, and the test helper `five()` returns 4. **After #118 merges**, a worker rebases, re-bumps VERSION (feat, minor over main), fixes the 3 NITs, and then the threads are resolved. The original worker is gone, so this needs a fresh dispatch. |
 | `wt-19` | w3-editor (#19) | Worker dispatched this session. VERSION is set to 0.34.0 and is re-bumped at merge. |
+| `wt-22` | w3-catalog-page (#22) | Worker dispatched. The earlier hold over storedb was wrong. sqlc emits one `.sql.go` per query file and no `querier.go`, so with no migration the only shared generated file, `models.go`, is untouched. The worker adds new `usage.sql` query files only. |
+| `wt-24` | w4-shopping-store (#24), schema **`00005`** | Worker dispatched early, on the owner's push to finish today. It merges after #118 and #113. Its migration rewrites storedb and catalogdb `models.go`, so after rebasing it re-runs `make generate`. |
+
+**#118 review 5491557745** asked for 1 MUST (bump `ParserVersion`) and 4 NIT. All went back to the wt-65 worker, which is authorised to push this fix round. The PR body's overstated flag claim is corrected. Next: re-review, then resolve the threads.
 
 ## Side task: mockup mascots (owner request), done
 
@@ -52,7 +56,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Migration and ADR numbers
 
-- `schema`: `00003` belongs to w3-unit-owner (wt-65) and `00004` to w3-search-list (#113). The next free number is `00005`. Merge order must be 00003 then 00004.
+- `schema`: `00003` belongs to w3-unit-owner (wt-65) and `00004` to w3-search-list (#113). `00005` belongs to w4-shopping-store (wt-24). The next free number is `00006`. Merge order must be 00003, then 00004, then 00005.
 - The ADR sequence is at `00016`.
 
 ## Things a fresh dispatcher must know
