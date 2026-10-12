@@ -10,6 +10,7 @@ import (
 	webingest "github.com/kaecyra/gobbler/internal/web/ingest"
 	"github.com/kaecyra/gobbler/internal/web/journal"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
+	"github.com/kaecyra/gobbler/internal/web/settings"
 )
 
 // mountFeatures is where feature packages attach their routes (ADR-00012). A
@@ -26,4 +27,5 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
+	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
 }

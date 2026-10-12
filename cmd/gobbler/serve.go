@@ -12,6 +12,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/web"
+	"github.com/kaecyra/gobbler/internal/web/settings"
 )
 
 // listenFunc opens the listener for addr; a parameter so tests can observe
@@ -66,7 +67,7 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	if err != nil {
 		return err
 	}
-	handler, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn})
+	handler, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)})
 	if err != nil {
 		return err
 	}
