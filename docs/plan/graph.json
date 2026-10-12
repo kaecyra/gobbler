@@ -894,7 +894,9 @@
       ],
       "owns": [
         "internal/web/settings/**",
-        "e2e/settings/**"
+        "e2e/settings/**",
+        "internal/web/web.go",
+        "cmd/gobbler/serve.go"
       ],
       "needs_migration": null,
       "adrs": [
