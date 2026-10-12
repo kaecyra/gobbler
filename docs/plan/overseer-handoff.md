@@ -77,7 +77,8 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 
 - Settled with the owner on 2026-10-12. Multiple users means households as tenants. A household has several members, and an email belongs to at most one household. Every member has the same powers. Access admits any email that authenticates, and the app's membership check is the only lock. Nobody joins without an invitation. Only recipes are shared, and only as a copy sent to another household. The catalog is a central layer plus a per-household overlay. Only the operator promotes, and promotion merges exact duplicates automatically. Meal plans are household data.
 - ADR-00003 and ADR-00011 are amended. `AGENTS.md` and `README.md` no longer say single-user.
-- The graph attaches 00018 to `l-invitations`, and the ADR sequence's `last_used` is `00018`. The node is still `blocked`. Clearing that block, and splitting the tenancy work into nodes, is the next planning step. Obligations 4 to 6 in the ADR fall to those nodes.
+- The graph attaches 00018 to `l-invitations`, and the ADR sequence's `last_used` is `00018`. The tenancy work is split into the `tenancy` track: t-household-core, t-scope-recipes, t-scope-shopping, t-catalog-overlay, l-invitations, t-recipe-sharing and t-cross-household-gate (issues #134 to #139, plus #39). Obligations 4 and 6 fall to t-household-core, and obligation 5 to t-cross-household-gate.
+- Owner rulings while splitting: `/settings` is operator-only, and Todoist push is deferred. Both are recorded in ADR-00018, which also amends ADR-00009.
 - No deployment holds data, so tenancy needs no backfill.
 
 ## Things a fresh dispatcher must know
@@ -96,15 +97,15 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 
 ## Next to dispatch, and why
 
-All three are dispatchable now. Their lanes don't overlap, and none has a migration. Dispatch them in one message:
+All three are dispatchable now. Their lanes don't overlap, and only t-household-core has a migration. Dispatch them in one message:
 
-1. **w7-todoist (#36):** one-way, idempotent Todoist push of a shopping list. Lane: `internal/todoist/**` and `internal/web/shopping/todoist*`. Config keys `GOBBLER_TODOIST_TOKEN` and `GOBBLER_TODOIST_PROJECT` already exist in `compose.yaml`. Check how it mounts. Its lane has no `routes.go` entry, but `routes.go` is append-only shared, so it can add one.
-2. **w7-nav (#130):** fill the empty layout nav (`internal/web/layout/layout*`, `e2e/layout/**`). This is what makes `/recipes`, `/catalog`, `/shopping` and the other pages reachable from the home page.
-3. **w5-codec (#123):** move the quantity/unit DB codec into `internal/quantity`, shared by store and shopping. Its lane includes the callers. Decoding must stay byte-compatible with what is already stored.
+1. **t-household-core (#134), keystone:** household, membership, invitation and share tables (draw `schema` 00007 with `node.ts migration`). Membership middleware, the not-a-member page, operator emails in config, `/settings` made operator-only, and switchable dev/e2e identity.
+2. **w7-nav (#130):** fill the empty layout nav (`internal/web/layout/layout*`, `e2e/layout/**`).
+3. **w5-codec (#123):** move the quantity/unit DB codec into `internal/quantity`. Decoding must stay byte-compatible with what is already stored.
 
-Every one bumps VERSION. Whichever merges second and third re-bumps after rebasing.
+After that the tenancy chain (ADR-00018) runs one node at a time, because every link adds a migration and all the sqlc packages share one schema: t-scope-recipes (#135, also waits on w5-codec), then t-scope-shopping (#136), then t-catalog-overlay (#137). After the overlay, l-invitations (#39) and t-recipe-sharing (#138) can run in parallel; neither adds a migration. t-cross-household-gate (#139) is last.
 
-The `later` nodes, `l-meal-planning` (#38) and `l-invitations` (#39), each need an ADR first. That is the owner's call.
+**Deferred:** w7-todoist (#36) moved to wave 9 and is blocked by ADR-00018 until per-household Todoist configuration is decided. l-meal-planning (#38) still needs its own ADR.
 
 ## Lessons from this round (for the next dispatcher)
 

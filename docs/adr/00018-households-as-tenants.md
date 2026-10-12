@@ -254,8 +254,16 @@ it can revoke it before it is accepted.
 
 The **operator** is defined in configuration (a list of emails), never in the
 database, so operator status cannot be granted from inside the app. The
-operator page offers only issuing and revoking household invitations. It shows
-no household's data.
+operator's pages offer only three things: issuing and revoking household
+invitations, reviewing overlay entries suggested for central, and the
+deployment settings (backup, storage and health). None of them shows a
+household's data. Members who are not operators cannot reach them.
+
+### Todoist
+
+Todoist push (ADR-00009) is deferred. It uses one token and one project for
+the whole deployment, and whether each household brings its own has not been
+decided. It returns with that decision.
 
 ## Consequences
 

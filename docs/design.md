@@ -17,8 +17,8 @@ and this document is wrong.
 - **Follow** it: scale it, switch units, see "meanwhile" guidance, use cook mode
   ([ADR-00005](adr/00005-quantities-and-units.md)).
 - **Shop** for it: merged, aisle-grouped lists with pantry exclusion, a live
-  phone view, text export and Todoist push
-  ([ADR-00009](adr/00009-shopping-list.md)).
+  phone view and text export ([ADR-00009](adr/00009-shopping-list.md)).
+  Todoist push is deferred ([ADR-00018](adr/00018-households-as-tenants.md)).
 
 ## Runtime
 
@@ -102,5 +102,6 @@ breaks each wave into nodes.
 | **W4 Shopping** | List building from recipes and manual items, pantry, merge and aisle grouping, live view over SSE, text export |
 | **W5 LLM and photo** | LLM interface, Claude and Gemini providers, automatic and manual fallback, `tesseract` OCR, vision fallback, USDA import (can run in parallel with W3–W4 after W2) |
 | **W6 Cooking** | "Meanwhile" guidance in the recipe view, cook mode with step timers and screen wake lock |
-| **W7 Operations and integrations** | Nightly backups to S3 with retention, settings page with backup status, Todoist push, operations doc with deploy and restore steps |
-| **Later** | Meal planning; invitations and multiple users ([ADR-00011](adr/00011-v1-scope-and-deferrals.md)) |
+| **W7 Operations and integrations** | Nightly backups to S3 with retention, settings page with backup status, operations doc with deploy and restore steps |
+| **W8 Households** | Household membership and admission, `household_id` scoping of recipe and shopping data, the catalog's central layer and per-household overlay, invitations and the operator's pages, recipe sharing by copy, cross-household route tests ([ADR-00018](adr/00018-households-as-tenants.md)) |
+| **Later** | Meal planning ([ADR-00011](adr/00011-v1-scope-and-deferrals.md)); Todoist push ([ADR-00018](adr/00018-households-as-tenants.md)) |

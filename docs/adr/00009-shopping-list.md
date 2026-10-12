@@ -1,6 +1,6 @@
 # ADR-00009: Shopping list aggregation, pantry, live view, Todoist push
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00018](00018-households-as-tenants.md)
 
 **Date:** 2026-10-06
 
@@ -49,6 +49,9 @@ keeps check state for items that still exist.
 - **Todoist push:** creates or updates a Todoist project or section with one
   task per item, using a Todoist API token from the environment. Pushing is
   one-way; checks made in Todoist are not read back.
+
+  > Amended by [ADR-00018](00018-households-as-tenants.md): Todoist push is
+  > deferred until per-household configuration is decided.
 
 ## Consequences
 
