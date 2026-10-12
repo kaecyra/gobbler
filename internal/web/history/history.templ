@@ -1,0 +1,180 @@
+package history
+
+import (
+	"strconv"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+templ listPage(v listView) {
+	@layout.Page("History of " + v.Name) {
+		<article class="recipe">
+			<h1>History of { v.Name }</h1>
+			<p><a href={ templ.SafeURL(recipePath(v.ID)) }>Back to the recipe</a></p>
+			if v.Origin != nil {
+				<p data-testid="origin">
+					Cloned from
+					<a href={ templ.SafeURL(recipePath(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
+					at
+					<a href={ templ.SafeURL(versionPath(v.Origin.RecipeID, v.Origin.Version)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
+				</p>
+			}
+			<form method="post" action={ templ.SafeURL(recipePath(v.ID) + "/clone") }>
+				<button type="submit">Clone this recipe</button>
+			</form>
+			<h2>Versions</h2>
+			<ol reversed data-testid="revisions" class="history-list">
+				<li data-testid="current-version">
+					<a href={ templ.SafeURL(versionPath(v.ID, v.Current.Version)) }>Version { strconv.FormatInt(v.Current.Version, 10) }</a>
+					(current), last changed { v.Current.When } by { v.Current.Who }
+				</li>
+				for _, row := range v.Rows {
+					<li data-testid="revision">
+						<a href={ templ.SafeURL(versionPath(v.ID, row.Version)) }>Version { strconv.FormatInt(row.Version, 10) }</a>
+						if row.Restored != 0 {
+							, replaced by a restore of version { strconv.FormatInt(row.Restored, 10) }
+						} else {
+							, replaced by an edit
+						}
+						on { row.When } by { row.Who }
+					</li>
+				}
+			</ol>
+			if len(v.Rows) == 0 {
+				<p class="muted" data-testid="empty">This recipe has not been edited, so no earlier versions are saved.</p>
+			}
+		</article>
+	}
+}
+
+templ versionPage(v versionView) {
+	@layout.Page(v.Name + ", version " + strconv.FormatInt(v.Version, 10)) {
+		<article class="recipe" data-testid="version">
+			<p>
+				<a href={ templ.SafeURL(historyPath(v.ID)) }>Back to the history</a>
+			</p>
+			<p class="muted" data-testid="version-banner">
+				if v.Current {
+					Version { strconv.FormatInt(v.Version, 10) }, the current version.
+				} else {
+					Version { strconv.FormatInt(v.Version, 10) }, an earlier version. Read only.
+				}
+			</p>
+			<h1>{ v.Name }</h1>
+			if v.Description != "" {
+				<p>{ v.Description }</p>
+			}
+			<p class="muted recipe-meta">
+				if v.Author != "" {
+					<span>By { v.Author }</span>
+				}
+				if v.SourceURL != "" {
+					<a href={ templ.URL(v.SourceURL) } rel="noopener noreferrer">Source</a>
+				}
+				if v.Rating != nil {
+					<span>Rating { strconv.Itoa(*v.Rating) }/5</span>
+				}
+				if v.Calories != nil {
+					<span>{ strconv.Itoa(*v.Calories) } kcal per serving</span>
+				}
+			</p>
+			if len(v.Tags) > 0 {
+				<ul class="recipe-tags">
+					for _, t := range v.Tags {
+						<li>{ t }</li>
+					}
+				</ul>
+			}
+			<p class="recipe-yield">
+				if v.Servings != "" {
+					<span>Serves <strong data-testid="servings">{ v.Servings }</strong></span>
+				}
+				if v.Yield != "" {
+					<span>Makes <strong data-testid="yield">{ v.Yield }</strong></span>
+				}
+			</p>
+			if len(v.Times) > 0 || v.Total != "" {
+				<section aria-labelledby="times-h">
+					<h2 id="times-h">Times</h2>
+					<dl class="recipe-times">
+						for _, t := range v.Times {
+							<dt>{ t.Label }</dt>
+							<dd>{ t.Text }</dd>
+						}
+						if v.Total != "" {
+							<dt>Total</dt>
+							<dd data-testid="total">
+								{ v.Total }
+								if v.TotalNote != "" {
+									<span class="muted"> ({ v.TotalNote })</span>
+								}
+							</dd>
+						}
+					</dl>
+				</section>
+			}
+			if len(v.Equipment) > 0 {
+				<section aria-labelledby="equipment-h">
+					<h2 id="equipment-h">Equipment</h2>
+					<ul data-testid="equipment">
+						for _, e := range v.Equipment {
+							<li>{ e }</li>
+						}
+					</ul>
+				</section>
+			}
+			<section aria-labelledby="ingredients-h">
+				<h2 id="ingredients-h">Ingredients</h2>
+				for _, c := range v.Components {
+					if c.Name != "" {
+						<h3>{ c.Name }</h3>
+					}
+					<ul class="recipe-lines">
+						for _, l := range c.Lines {
+							<li>{ l }</li>
+						}
+					</ul>
+				}
+			</section>
+			<section aria-labelledby="steps-h">
+				<h2 id="steps-h">Steps</h2>
+				for _, c := range v.Components {
+					if len(c.Steps) > 0 {
+						if c.Name != "" {
+							<h3>{ c.Name }</h3>
+						}
+						<ol start={ strconv.Itoa(c.FirstStep) }>
+							for _, s := range c.Steps {
+								<li>
+									{ s.Text }
+									if s.Note != "" {
+										<span class="muted"> ({ s.Note })</span>
+									}
+									if len(s.After) > 0 {
+										<span class="muted" data-testid="after"> (after step { joinSteps(s.After) })</span>
+									}
+								</li>
+							}
+						</ol>
+					}
+				}
+			</section>
+			if !v.Current {
+				<section aria-labelledby="restore-h">
+					<h2 id="restore-h">Restore</h2>
+					<details>
+						<summary>Restore this version</summary>
+						<p>
+							This makes version { strconv.FormatInt(v.Version, 10) } the current recipe.
+							The recipe as it is now is kept in the history, so nothing is lost.
+						</p>
+						<form method="post" action={ templ.SafeURL(versionPath(v.ID, v.Version) + "/restore") }>
+							<input type="hidden" name="confirm" value="yes"/>
+							<button type="submit">Yes, restore version { strconv.FormatInt(v.Version, 10) }</button>
+						</form>
+					</details>
+				</section>
+			}
+		</article>
+	}
+}
