@@ -1061,7 +1061,7 @@
       "wave": 3,
       "track": "persistence",
       "issue": 66,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w2-sqlc",
         "w2-ingest-pipeline"
@@ -1475,6 +1475,12 @@
         "00007"
       ],
       "note": "Edits outside its own packages are limited to: internal/web/ingest/ingest.go (mount the photo routes in routes() and extend the Drafter interface with the photo entry point), ingest.templ/_templ.go (a link to the photo form), and internal/ingest ingest.go/draft.go/fallback*.go/pipeline_test.go (an OCR source that stores SnapshotOCR and carries the image in memory to Request.Image on fallback, never into the snapshot). tesseract is found on PATH (Dockerfile installs it); e2e puts a stub on PATH, so there is no config field."
+    },
+    {
+      "id": "w3-store-atomic-ingest",
+      "title": "Create a recipe and its source snapshot in one transaction; ingest uses it",
+      "merged": "bf4d0b9",
+      "note": "Also adds store.UpdateIfVersion (update only if the recipe is still at the version the caller read) for w3-editor's stale-save check (#19); its stale-version sentinel lives in its own recipe*.go. Also fixes #104: store.Delete must run inside s.withTx so it queues behind the write gate. Regenerates storedb."
     }
   ],
   "adr_sequence": {
