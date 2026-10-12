@@ -662,7 +662,8 @@
         "internal/shopping/queries/**",
         "internal/shopping/shoppingdb/**",
         "internal/shopping/merge_test.go",
-        "internal/shopping/doc.go"
+        "internal/shopping/doc.go",
+        "internal/store/search_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [
