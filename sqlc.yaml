@@ -20,3 +20,11 @@ sql:
       go:
         package: storedb
         out: internal/store/storedb
+  - name: shopping
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/shopping/queries
+    gen:
+      go:
+        package: shoppingdb
+        out: internal/shopping/shoppingdb

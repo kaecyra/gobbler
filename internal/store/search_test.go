@@ -325,7 +325,10 @@ func TestMigrationIndexesExistingRecipes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if e.Name() == "00004_recipe_search.sql" || e.Name() == "README.md" {
+		// Leave out 00004 and everything above it: a later migration applied
+		// first would put 00004 out of order, and goose refuses that. The
+		// README sorts after the numbered files, so it is left out too.
+		if e.Name() >= "00004" {
 			continue
 		}
 		b, err := fs.ReadFile(all, e.Name())
