@@ -497,7 +497,10 @@
       "owns": [
         "internal/store/search*.go",
         "internal/web/recipes/**",
-        "e2e/recipes/**"
+        "e2e/recipes/**",
+        "internal/db/tx.go",
+        "internal/db/tx_test.go",
+        "internal/store/store.go"
       ],
       "needs_migration": "schema",
       "adrs": [
