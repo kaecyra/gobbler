@@ -889,7 +889,7 @@
       "wave": 7,
       "track": "ui",
       "issue": 35,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w7-backup",
         "w0-e2e-harness",
@@ -1486,6 +1486,14 @@
       "title": "Create a recipe and its source snapshot in one transaction; ingest uses it",
       "merged": "bf4d0b9",
       "note": "Also adds store.UpdateIfVersion (update only if the recipe is still at the version the caller read) for w3-editor's stale-save check (#19); its stale-version sentinel lives in its own recipe*.go. Also fixes #104: store.Delete must run inside s.withTx so it queues behind the write gate. Regenerates storedb."
+    },
+    {
+      "id": "w7-settings",
+      "title": "Settings page with backup status and back-up-now; backup time in health detail",
+      "merged": "26fbe6c",
+      "adrs": [
+        "00010"
+      ]
     }
   ],
   "adr_sequence": {
