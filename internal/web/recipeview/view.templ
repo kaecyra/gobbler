@@ -1,9 +1,7 @@
 package recipeview
 
 import (
-	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -22,34 +20,13 @@ var unitModes = []struct{ Param, Label string }{
 // href is the URL of this recipe with the given state. Empty values are left
 // out so the default view keeps the bare URL.
 func href(id int64, scale, servings, units string) string {
-	q := url.Values{}
-	if scale != "" && scale != "1" {
-		q.Set(display.ParamScale, scale)
-	}
-	if servings != "" {
-		q.Set(display.ParamServings, servings)
-	}
-	if units != "" {
-		q.Set(display.ParamUnits, units)
-	}
-	u := "/recipes/" + strconv.FormatInt(id, 10)
-	if len(q) > 0 {
-		u += "?" + q.Encode()
-	}
-	return u
+	return display.StateURL("/recipes/"+strconv.FormatInt(id, 10), scale, servings, units, nil)
 }
 
-// cookHref is the cook-mode page of this recipe with the same scale and units.
-// Cook mode is its own feature package (ADR-00012), so only its URL is known
-// here.
+// cookHref is the cook-mode page of this recipe with the same state. Cook mode
+// is its own feature package (ADR-00012), so only its URL is known here.
 func cookHref(id int64, o display.Options) string {
-	u := href(id, o.Scale, o.Servings, o.Units)
-	path, query, found := strings.Cut(u, "?")
-	path += "/cook"
-	if found {
-		path += "?" + query
-	}
-	return path
+	return o.URL("/recipes/"+strconv.FormatInt(id, 10)+"/cook", nil)
 }
 
 func presetActive(v view, param string) bool {

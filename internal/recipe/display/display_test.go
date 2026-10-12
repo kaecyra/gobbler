@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -240,5 +241,31 @@ func TestScaleQty(t *testing.T) {
 	}
 	if got, _ := ScaleQty(quantity.Exact(rat(t, "4")), Default()); got != "4" {
 		t.Errorf("unscaled = %q", got)
+	}
+}
+
+func TestStateURL(t *testing.T) {
+	for _, tc := range []struct {
+		scale, servings, units string
+		extra                  url.Values
+		want                   string
+	}{
+		{"", "", "", nil, "/p"},
+		{"1", "", "", nil, "/p"}, // a scale of 1 is the default view
+		{"2", "", "", nil, "/p?scale=2"},
+		{"", "6", "weight", nil, "/p?servings=6&units=weight"},
+		{"1/2", "", "metric", url.Values{"step": {"3"}}, "/p?scale=1%2F2&step=3&units=metric"},
+		{"", "", "", url.Values{"step": {"3"}}, "/p?step=3"},
+	} {
+		if got := StateURL("/p", tc.scale, tc.servings, tc.units, tc.extra); got != tc.want {
+			t.Errorf("StateURL(%q,%q,%q,%v) = %q, want %q", tc.scale, tc.servings, tc.units, tc.extra, got, tc.want)
+		}
+	}
+	o, err := ParseOptions("2", "", UnitsMetric, servings(t, "4"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := o.URL("/p", nil); got != "/p?scale=2&units=metric" {
+		t.Errorf("Options.URL = %q", got)
 	}
 }

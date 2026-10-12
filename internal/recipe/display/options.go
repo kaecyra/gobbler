@@ -9,6 +9,7 @@ package display
 import (
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -35,8 +36,8 @@ const (
 var ErrInvalid = errors.New("invalid request")
 
 // ErrNoServingsBase marks a servings target on a recipe whose servings are a
-// range or absent, so there is no single count to scale from. It also matches
-// ErrInvalid.
+// range or absent, so there is no single count to scale from. ParseOptions
+// returns it wrapped in ErrInvalid, so the error it returns matches both.
 var ErrNoServingsBase = errors.New("recipe has no single serving count to scale from")
 
 // Options is the parsed view state. Scale and Servings keep the raw text so
@@ -114,4 +115,33 @@ func ScaleQty(q quantity.Quantity, o Options) (string, error) {
 		return "", err
 	}
 	return r.Rounded.Qty.String(), nil
+}
+
+// StateURL is path with the given scale, servings and units as its query, plus
+// any extra parameters. Empty values and a scale of 1 are left out so the
+// default view keeps the bare path. It is the one builder of the shareable
+// state URL, used by every page that shows a scaled or converted recipe.
+func StateURL(path, scale, servings, units string, extra url.Values) string {
+	q := url.Values{}
+	if scale != "" && scale != "1" {
+		q.Set(ParamScale, scale)
+	}
+	if servings != "" {
+		q.Set(ParamServings, servings)
+	}
+	if units != "" {
+		q.Set(ParamUnits, units)
+	}
+	for k, vs := range extra {
+		q[k] = vs
+	}
+	if len(q) == 0 {
+		return path
+	}
+	return path + "?" + q.Encode()
+}
+
+// URL is path carrying this view state, plus any extra parameters.
+func (o Options) URL(path string, extra url.Values) string {
+	return StateURL(path, o.Scale, o.Servings, o.Units, extra)
 }

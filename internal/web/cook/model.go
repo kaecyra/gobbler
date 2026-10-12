@@ -135,34 +135,12 @@ func usesStep(link recipe.EquipmentLink, id recipe.StepID) bool {
 	return false
 }
 
-// state is the scale and units query shared by every link of the page, so
-// cook mode shows what the recipe view showed.
-func state(o display.Options) url.Values {
-	q := url.Values{}
-	if o.Scale != "" && o.Scale != "1" {
-		q.Set(display.ParamScale, o.Scale)
-	}
-	if o.Servings != "" {
-		q.Set(display.ParamServings, o.Servings)
-	}
-	if o.Units != "" {
-		q.Set(display.ParamUnits, o.Units)
-	}
-	return q
-}
-
 func exitHref(id int64, o display.Options) string {
-	u := "/recipes/" + strconv.FormatInt(id, 10)
-	if q := state(o); len(q) > 0 {
-		u += "?" + q.Encode()
-	}
-	return u
+	return o.URL("/recipes/"+strconv.FormatInt(id, 10), nil)
 }
 
 func stepHref(id int64, n int, o display.Options) string {
-	q := state(o)
-	q.Set(paramStep, strconv.Itoa(n))
-	return "/recipes/" + strconv.FormatInt(id, 10) + "/cook?" + q.Encode()
+	return o.URL("/recipes/"+strconv.FormatInt(id, 10)+"/cook", url.Values{paramStep: {strconv.Itoa(n)}})
 }
 
 // timerLabel renders a duration given in seconds, such as "45 min".
