@@ -1,83 +1,76 @@
-# Overseer handoff — 2026-10-12, round 4
+# Overseer handoff: 2026-10-12, round 5
 
-Volatile state the graph does not hold. `docs/plan/graph.json` is the durable record. `VERSION` on main is 0.27.0.
+This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is 0.29.0.
 
-## Merged this session (squash SHA, PR)
+## Merged this round (squash SHA, PR)
 
 | Node / change | Issue | PR | SHA |
 |---|---|---|---|
-| w2-review-screen | #16 | #80 | 136c1aa |
-| `.gitignore` version-gate exemption, `.env` ignored | — | #77 | e0628d8 |
-| w3-recipe-view | #18 | #81 | 5410c86 |
-| ADR-00016 cross-origin protection, w3-csrf node | #83 | #87 | d08290c |
-| w7-ops-doc | #37 | #84 | a39008d |
-| w2-sqlc (closes #55, #59) | #60 | #79 | 66c3415 |
-| lanes widened: w5-llm-fallback, w6-meanwhile | — | #89 | 06057ee |
-| w6-meanwhile | #32 | #90 | 5117f8a |
-| w5-llm-fallback | #29 | #91 | 74c279e |
-| w3-csrf | #86 | #92 | 682dc99 |
-
-#82 (round-3 handoff) was closed, superseded by this one.
+| Graph: w3-merge-busy node; photo-ocr, cook-mode and settings lanes | — | #96 | 7651122 |
+| w3-journal | #21 | #97 | 0a2f2c0 |
+| Graph: sqlc lanes (owner option A), append-only queries, single-writer generated code | — | #101 | 5059fc8 |
+| Fix: ingest e2e specs no longer depend on run order (photo-ocr lane) | — | #105 | cba7827 |
+| w3-merge-busy (in-process write queue in `db.WithTx`) | #93 | #103 | d23e4e3 |
+| w6-cook-mode, plus the `internal/recipe/display` extraction | #33 | #100 | 16fc2b7 |
+| Graph: photo-ocr lane narrowed to the pipeline wiring | — | #102 | b9a66a1 |
 
 ## Open PRs
 
-None. The merge queue is empty.
+- **#106**, a graph PR. It adds `internal/web/ingest/ingest_test.go` to w3-store-atomic-ingest, a lane change. It waits on the owner's answer to item `ib-613cab711dc7`, which also asks for standing authority to merge widenings onto files no live node owns. The approval review gets posted once CI is green.
 
-## Owner decisions this session
+## In flight (worktrees on disk)
 
-- CSRF: option B. ADR-00016 records it: stdlib `http.CrossOriginProtection` plus Access cookie SameSite=Lax.
-- The owner merged the lane PRs #87 and #89 (escalation trigger 2).
+| Worktree | Node | State |
+|---|---|---|
+| `wt-20` | w3-history (#20) | Done once, then held to reuse `internal/recipe/display`. Now rebasing onto main: replace the copied helpers, move the e2e port to 38471, set VERSION 0.30.0. |
+| `wt-30` | w5-photo-ocr (#30) | The OCR runner and handler were done earlier. With #102 merged, it is finishing: mount routes, OCR snapshot, image passed to the fallback, e2e with a stub `tesseract` on PATH. VERSION 0.30.0. |
+| `wt-66` | w3-store-atomic-ingest (#66, plus #104) | **Worker done at 0d45c69**, gates green, failing proofs reported. It covers `UpdateIfVersion` (409 `ErrStaleVersion`), `CreateWithSnapshots`, single-call `Save`, and `Delete` inside `withTx`. Not yet verified, pushed or opened as a PR. Its ownership check passes only after #106 merges. VERSION says 0.29.0, which equals main, so the worker must re-bump to the next free minor before merge. |
+| `wt-65` | w3-unit-owner (#65, migration 00003) | Committed at 3e42aa2 (`refactor`, 0.28.3, needs a re-bump). **Blocked**, see below. |
 
-## First thing next round: sqlc lanes (uncovered, needs a graph decision)
+VERSION collides: history, photo-ocr and atomic-ingest all claim the next minor. Merge one at a time and re-bump each through its worker (lessons.md).
 
-Dispatchable now: w3-search-list (#17), w4-shopping-store (#24), w3-unit-owner (#65), w3-store-atomic-ingest (#66). Their lanes predate sqlc (ADR-00014):
+## Blocked, with the reason
 
-- w3-search-list and w3-store-atomic-ingest need `internal/store/queries/**`, and w3-unit-owner needs `internal/catalog/queries/**`. No live node owns these.
-- w4-shopping-store needs a new `sqlc.yaml` entry, plus its own `internal/shopping` queries and generated package. `sqlc.yaml` was only ever in w2-sqlc's lane, which has merged.
-- Any schema or query change regenerates `internal/store/storedb/**` or `internal/catalog/catalogdb/**`. That is generated code shared by every store node.
+- **w3-unit-owner (#65).**
+  - **Tests:** two tests expect `bag` to be a proposed unit, `internal/ingest/pipeline_test.go:101` and `internal/ingest/save_test.go:98`, and #65 adds `bag` to the catalog. `pipeline_test.go` is in photo-ocr's lane and `save_test.go` in atomic-ingest's; both are in flight.
+  - **Decision:** owner item `ib-acf65b06cee6`. A: drop proposed units (recommended). B: keep them.
+  - **Then:** once #30 and #66 merge, widen #65's lane to those two test files (or the dead proposed-units code, if A) and resume it.
+  - **Stale comments** the worker reported: `internal/ingest/resolve.go:66-70`, `draft.go:94-96`, `fallback.go:204`, `assemble.go:82`, `ingest.templ:157-169`, `save.go:181`.
+- Record the block in the graph with `node.ts blocked w3-unit-owner "<reason>"` if it outlives this round.
 
-Options:
-- Make `*/queries/**` and `sqlc.yaml` shared files with `mode: open` and an "APPEND-ONLY by convention" note, as `internal/db/migrations/**` already is: one new `.sql` file or entry per node. (`append_only` is not used, because graph-core counts it as outside every lane and `record-done` fails.) Make `*db/**` `single_writer_per_round`. Then two nodes touching the same generated package never run in one round.
-- Or serialise these four nodes.
+## Migration and ADR numbers
 
-Either way it goes through a dispatcher PR and the owner (it is a lane change). search, shopping-store and unit-owner each also need a `schema` migration: next is `00003`, and the sequence is contiguous, so assign at dispatch, one per round, or in merge order.
+- `schema`: `00003` went to w3-unit-owner, which has not merged. The next free number is `00004`.
+- The ADR sequence is at `00016`.
 
-## Issues filed this session (no node unless stated)
+## Issues filed this round
 
-- #85: equipment has no size, so ADR-00005's pan hint cannot apply. #81 removed the hint. Needs a decision and a migration.
-- #88: the proposed-ingredient recompute is duplicated in `internal/web/ingest/edit.go`. Export it from `internal/ingest`.
-- #93: **flaky `TestConcurrentMergesAndEditsDoNotFailBusy`**. `MergeIngredients` still hits SQLITE_BUSY after #79. A merge under contention fails with SQLITE_BUSY and rolls back, so the user's merge is refused, and the test is a flaky gate that blocks random PRs. **Top priority**: needs a node (owner of `internal/catalog/**` / `internal/db/tx*.go` work).
-- #78 (from round 3): a scripted check that the image has no Node and no `e2e/`. Still needs a node.
+- #98: recipeview should embed the journal, link history and clone, and show the clone origin.
+- #99: a shared e2e seed helper (recipeview, journal, cook and history seeds all duplicate it).
+- #104: `store.Delete` outside the write gate. Folded into w3-store-atomic-ingest's note.
 
-## Known out-of-lane leftovers
+## Owner decisions this round
 
-- `internal/web/ingest/edit.go` leaves `FromLLM` set after the user edits an LLM value (#91 worker). It belongs with #88's work.
+- sqlc lanes: option A (#101). Queries stay per package. Each node adds its own `.sql` file. The generated `storedb` and `catalogdb` have one writer per round, and the graph note names the writers.
+- The owner merged #96 and #102 and granted the #101 merge.
 
-## Worktrees on disk
+## UI mockup (not in the repo)
 
-None.
-
-## Migration numbers
-
-`schema`: `00002` was the last used. Next is `00003`. None were handed out this session.
-
-## ADR numbers
-
-The sequence is at `00016` (corrected this session: 00014/00015 had been written without drawing from it).
+The claude.ai artifact https://claude.ai/artifact/Maaf6isAd66jbzvgmtkz1g is at v9. The owner's choices are recorded in `.memory/gobbler-mockup.md`. Adopting it needs a design ADR plus new recipe fields: meal type, spice level, and stage kinds (ADR-00004 only has active/passive). That is uncovered, so discuss it with the owner before writing the ADR.
 
 ## Things a fresh dispatcher must know
 
-- **Rebase dispatcher branches with cherry-pick, not `git rebase`.** A `git rebase` of a dispatcher branch left the sequencer in a broken state (the same commit listed as done and pending). Cherry-picking onto `origin/main` worked cleanly. Bookkeeping commits on main touch `graph.json`, so every open graph PR needs this before merge.
-- **VERSION churn.** Every merge moves VERSION. Merge one PR at a time and re-bump the next through its worker. Do not hand out numbers ahead (lessons.md).
-- **Host plugin path:** `$ODETTE_SCRIPTS_HOST` is not set in the host shell. Use `/Users/timothygunter/.odette/base/.marketplace-cache/market/plugins/overseer/...`.
-- **Gates on the host:** `make fmt-check test test-scripts e2e-routes e2e version-check generate-check`, then pinned lint `GOTOOLCHAIN=go1.26.4 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...` and `go vet ./...`.
-- **Worktree setup** (still not in config): `go mod download && cd e2e && npm ci && npx playwright install chromium`, on the host. Give each concurrent worker distinct `GOBBLER_E2E_PORT` / `GOBBLER_E2E_ACCESS_PORT`.
-- **Lanes:** read each issue's acceptance criteria against its node's `owns` before dispatch. Three nodes this session needed widening first.
-- **Narrow fixes:** verify the diff yourself and post a `<!-- self-review-verdict: APPROVED -->` COMMENT review instead of another full round.
+- **e2e ports collide across concurrent worktrees.** Specs that start their own server use fixed default ports: recipeview 38431, retry 38441, journal 38451, cook 38461, history 38471, photo 38481. Give every concurrent worker distinct override values (`GOBBLER_E2E_<NAME>_PORT`) as well as `GOBBLER_E2E_PORT` and `GOBBLER_E2E_ACCESS_PORT`.
+- **Rebasing dispatcher branches:** a bookkeeping commit on main conflicts with any open graph PR. Rebuild the PR with `git checkout -B <b> origin/main && git cherry-pick <commits>` and force-push.
+- **The worker contract tail** is in the session scratchpad (`common.md`), which a new session will not have. Rebuild it from `worker_contract.md`, including the host-bridge environment notes and the gate command from the round-4 notes below.
+- **Gates on the host:** `make fmt-check test test-scripts e2e-routes e2e version-check generate-check`, then `GOTOOLCHAIN=go1.26.4 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...` and `go vet ./...`.
+- **Worktree setup** (not in config): on the host, `go mod download && cd e2e && npm ci && npx playwright install chromium`.
+- **Host plugin path:** `/Users/timothygunter/.odette/base/.marketplace-cache/market/plugins/overseer/...`.
+- **Version check:** test-only changes still need a bump.
 
 ## Next to dispatch, and why
 
-1. **A node for #93.** A flaky gate taxes every PR, and a merge under contention is refused with SQLITE_BUSY.
-2. **The sqlc-lane graph PR** (above), then w3-store-atomic-ingest (#66, no migration) and w3-search-list (#17, `00003`).
-3. **Also dispatchable, with all dependencies merged:** w5-photo-ocr (#30) and w6-cook-mode (#33).
-4. **Unblocked now that w3-csrf has merged:** w3-editor (#19), w3-history (#20), w3-journal (#21), w3-catalog-page (#22), w7-settings (#35). Check each lane against its issue first.
+1. **Merge in order, as each goes review-clean:** history (#20), photo-ocr (#30), atomic-ingest (#66, after #106). Re-bump VERSION between merges.
+2. **Then w3-unit-owner (#65)**, after the owner's proposed-units answer, with its lane widened as above.
+3. **w3-search-list (#17)** takes storedb and migration `00004`. Only after #66 merges, because it writes the same generated package.
+4. **w3-catalog-page (#22)** writes storedb, so not alongside #17 or #66. **w3-editor (#19)** needs #66 merged. **w7-settings (#35)** is dispatchable now (lane fixed in #96: it wires `HealthDetails` from `cmd/gobbler`).
