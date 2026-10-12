@@ -1,5 +1,5 @@
-# Keep the build context to what the Dockerfile copies: go.mod, go.sum, cmd/
-# and internal/. e2e/ must never reach the image (ADR-00013).
+# Paths kept out of the build context. The Dockerfile copies only go.mod,
+# go.sum, cmd/ and internal/; e2e/ must never reach the image (ADR-00013).
 .git
 .github
 .claude

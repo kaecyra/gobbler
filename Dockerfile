@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # Go toolchain and Alpine versions: golang:1.26.4 matches go.mod; alpine 3.24.2
 # is the release that golang's alpine3.24 variant is built on. Tags and digests
 # were looked up from Docker Hub; refresh both together when bumping.
