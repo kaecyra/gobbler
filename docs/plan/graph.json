@@ -844,7 +844,7 @@
       "wave": 6,
       "track": "ui",
       "issue": 33,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w6-meanwhile"
       ],
@@ -1446,6 +1446,15 @@
       "title": "MergeIngredients takes the write lock without SQLITE_BUSY under contention",
       "merged": "d23e4e3",
       "note": "Fixes the flaky TestConcurrentMergesAndEditsDoNotFailBusy gate; #79 did not fully close #59."
+    },
+    {
+      "id": "w6-cook-mode",
+      "title": "Cook mode: one step at a time, step timers, screen wake lock",
+      "merged": "16fc2b7",
+      "adrs": [
+        "00002",
+        "00011"
+      ]
     }
   ],
   "adr_sequence": {
