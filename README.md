@@ -8,6 +8,8 @@ The design is in [docs/design.md](./docs/design.md) and the decisions in
 [docs/adr/](./docs/adr/README.md). Contributor and agent rules are in
 [AGENTS.md](./AGENTS.md).
 
+Deploying, configuring and restoring from a backup: [docs/operations.md](./docs/operations.md).
+
 ## Running with Docker Compose
 
 ```sh
