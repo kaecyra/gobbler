@@ -616,3 +616,27 @@ func between(t *testing.T, s, start, end string) string {
 	}
 	return rest[:j]
 }
+
+type unknownUnitSaver struct{}
+
+func (unknownUnitSaver) Save(context.Context, ingestcore.Confirmed) (ingestcore.Saved, error) {
+	return ingestcore.Saved{}, fmt.Errorf("component 1 line 2 (%q): %w", "3 zorbs butter", ingestcore.ErrUnknownUnit)
+}
+
+// A unit the catalog no longer knows is a problem with the draft, not a broken
+// pipeline: the review screen comes back with the problem and the draft stays.
+func TestConfirmUnknownUnitReturnsToReviewWithProblem(t *testing.T) {
+	f := newFixture(t)
+	f.h.saver = unknownUnitSaver{}
+	token := f.ingestText(t)
+	rec := f.do(http.MethodPost, "/"+token+"/confirm", reviewForm())
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422; body %s", rec.Code, rec.Body)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "3 zorbs butter") {
+		t.Errorf("the review screen does not name the line: %s", body)
+	}
+	if f.do(http.MethodGet, "/"+token, nil).Code != http.StatusOK {
+		t.Error("the draft was lost")
+	}
+}

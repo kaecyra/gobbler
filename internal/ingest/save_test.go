@@ -276,7 +276,7 @@ func TestSaveRefusesAUnitTheCatalogDoesNotKnow(t *testing.T) {
 		t.Fatal(err)
 	}
 	d.Components[0].Lines[0].Amount.Unit = quantity.OtherUnit("zorb")
-	if _, err := e.saver().Save(e.ctx, confirm(t, d)); err == nil || !strings.Contains(err.Error(), `unit "zorb" is not in the catalog`) {
+	if _, err := e.saver().Save(e.ctx, confirm(t, d)); !errors.Is(err, ErrUnknownUnit) || !strings.Contains(err.Error(), `unit "zorb" is not in the catalog`) {
 		t.Fatalf("Save error = %v, want one naming the unknown unit", err)
 	}
 	if unrev, err := e.catalog.ListUnreviewedUnits(e.ctx); err != nil || len(unrev) != 0 {

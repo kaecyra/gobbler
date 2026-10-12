@@ -20,6 +20,11 @@ var (
 	// recipe yet: no name, no ingredient lines, a line with no ingredient, or
 	// a source snapshot that no longer matches what was ingested.
 	ErrIncompleteDraft = errors.New("draft is incomplete")
+	// ErrUnknownUnit is returned by Save for a draft line whose unit the
+	// catalog does not have. Drafting only emits catalog units, so this means
+	// the catalog changed after the draft was made; the draft is still good
+	// and the caller can show the problem instead of failing.
+	ErrUnknownUnit = errors.New("unit not in the catalog")
 )
 
 // Confirmed is a draft the user has reviewed and approved. It can be made only
@@ -190,7 +195,7 @@ func (s *Saver) unit(ctx context.Context, u quantity.Unit, seen map[string]quant
 		seen[key] = cu.Unit
 		return cu.Unit, nil
 	}
-	return u, fmt.Errorf("unit %q is not in the catalog", u.Name)
+	return u, fmt.Errorf("unit %q is not in the catalog: %w", u.Name, ErrUnknownUnit)
 }
 
 // linkSteps adds the steps of the draft to comps with ids unique across the
