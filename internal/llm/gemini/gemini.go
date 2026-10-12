@@ -105,7 +105,8 @@ func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.St
 	}
 	p.log.InfoContext(ctx, "llm call", append(attrs,
 		slog.Int("input_tokens", int(usage.PromptTokenCount)),
-		slog.Int("output_tokens", int(usage.CandidatesTokenCount)))...)
+		// Thinking tokens are billed as output, so they are counted in it.
+		slog.Int("output_tokens", int(usage.CandidatesTokenCount+usage.ThoughtsTokenCount)))...)
 	return out, nil
 }
 
@@ -274,6 +275,12 @@ func decode(text string) (ingest.Structured, error) {
 	}
 	if len(out.Components) == 0 {
 		return ingest.Structured{}, fmt.Errorf("%w: no components", ErrInvalidResponse)
+	}
+	for i, c := range out.Components {
+		// The response schema requires the key; absent or null is a violation.
+		if c.Ingredients == nil {
+			return ingest.Structured{}, fmt.Errorf("%w: component %d has no ingredients", ErrInvalidResponse, i)
+		}
 	}
 	return out, nil
 }

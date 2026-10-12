@@ -1,10 +1,12 @@
 package gemini_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -35,9 +37,18 @@ type recorded struct {
 func fakeBackend(t *testing.T, sc llmtest.Scenario, seen chan<- recorded) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		raw, _ := io.ReadAll(r.Body)
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("fake backend: read request body: %v", err)
+			http.Error(w, "unreadable body", http.StatusBadRequest)
+			return
+		}
 		var body map[string]any
-		_ = json.Unmarshal(raw, &body)
+		if err := json.Unmarshal(raw, &body); err != nil {
+			t.Errorf("fake backend: request body is not JSON: %v", err)
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
 		if seen != nil {
 			seen <- recorded{path: r.URL.Path, apiKey: r.Header.Get("x-goog-api-key"), body: body}
 		}
@@ -101,8 +112,7 @@ func structure(t *testing.T, req ingest.Request) recorded {
 	payload := `{"name":"Toast","components":[{"ingredients":["2 slices bread"]}]}`
 	seen := make(chan recorded, 1)
 	sc := llmtest.Scenario{Behavior: llmtest.Respond, Payload: []byte(payload), Input: 1, Output: 1}
-	env := llmtest.Env{Scenario: sc, Timeout: 5 * time.Second, Logger: nil, APIKey: llmtest.SentinelAPIKey}
-	env.Logger = discardLogger()
+	env := llmtest.Env{Scenario: sc, Timeout: 5 * time.Second, Logger: discardLogger(), APIKey: llmtest.SentinelAPIKey}
 	p := newProvider(t, env, fakeBackend(t, sc, seen))
 	if _, err := p.Structure(context.Background(), req); err != nil {
 		t.Fatalf("Structure: %v", err)
@@ -182,12 +192,14 @@ func TestRejectsWhatTheFixturesDoNot(t *testing.T) {
 		return `{"candidates":[{"finishReason":"` + finish + `","content":{"role":"model","parts":[{"text":` + mustJSON(t, body) + `}]}}]}`
 	}
 	for name, resp := range map[string]string{
-		"unknown field":       text("STOP", `{"name":"Toast","calories":3,"components":[{"ingredients":["x"]}]}`),
-		"cut off at max":      text("MAX_TOKENS", valid),
-		"blocked for safety":  text("SAFETY", valid),
-		"no candidates":       `{}`,
-		"prompt blocked":      `{"promptFeedback":{"blockReason":"SAFETY"}}`,
-		"candidate no answer": `{"candidates":[{"finishReason":"STOP"}]}`,
+		"unknown field":                 text("STOP", `{"name":"Toast","calories":3,"components":[{"ingredients":["x"]}]}`),
+		"cut off at max":                text("MAX_TOKENS", valid),
+		"blocked for safety":            text("SAFETY", valid),
+		"component without ingredients": text("STOP", `{"name":"x","components":[{}]}`),
+		"null ingredients":              text("STOP", `{"name":"x","components":[{"ingredients":null}]}`),
+		"no candidates":                 `{}`,
+		"prompt blocked":                `{"promptFeedback":{"blockReason":"SAFETY"}}`,
+		"candidate no answer":           `{"candidates":[{"finishReason":"STOP"}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -207,5 +219,31 @@ func TestRejectsWhatTheFixturesDoNot(t *testing.T) {
 				t.Errorf("error does not wrap ErrInvalidResponse: %v", err)
 			}
 		})
+	}
+}
+
+func TestOutputTokensIncludeThinking(t *testing.T) {
+	body := `{"candidates":[{"finishReason":"STOP","content":{"role":"model","parts":[{"text":` +
+		mustJSON(t, `{"name":"Toast","components":[{"ingredients":["x"]}]}`) +
+		`}]}}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":20,"thoughtsTokenCount":5}}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, body)
+	}))
+	t.Cleanup(srv.Close)
+	var buf bytes.Buffer
+	p, err := gemini.New(context.Background(), llmConfig(t, "k", 5*time.Second), slog.New(slog.NewJSONHandler(&buf, nil)), gemini.WithBaseURL(srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Structure(context.Background(), ingest.Request{Text: "Toast"}); err != nil {
+		t.Fatal(err)
+	}
+	var rec map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &rec); err != nil {
+		t.Fatalf("log record: %v: %s", err, buf.String())
+	}
+	if rec["input_tokens"] != float64(10) || rec["output_tokens"] != float64(25) {
+		t.Errorf("logged input/output tokens = %v/%v, want 10/25 (output includes thinking)", rec["input_tokens"], rec["output_tokens"])
 	}
 }
