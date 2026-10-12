@@ -43,7 +43,7 @@ cd e2e && npm ci && npx playwright install chromium
 ```
 
 `make version-check` fails when source changed against `origin/main` without a
-`VERSION` bump; docs, ADRs, Markdown and `.memory/` never need one.
+`VERSION` bump; docs, ADRs, Markdown, `.memory/` and `.gitignore` never need one.
 
 Install the git hooks once per clone with [lefthook](https://lefthook.dev/):
 

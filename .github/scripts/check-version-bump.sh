@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fails when a branch changes source relative to the trunk without raising
 # VERSION (.claude/rules/git-workflow.md, "Versioning"). Docs, ADRs, .memory/,
-# Markdown and agent-rule files never need a bump.
+# Markdown, agent-rule files and .gitignore never need a bump.
 #
 # usage: check-version-bump.sh [base-ref]   (default: origin/main)
 set -euo pipefail
@@ -20,7 +20,7 @@ base="$(git merge-base "$base_ref" HEAD)" || {
 # Files that never need a bump.
 is_exempt() {
   case "$1" in
-    docs/*|.memory/*|.claude/*|*.md) return 0 ;;
+    docs/*|.memory/*|.claude/*|*.md|.gitignore|*/.gitignore) return 0 ;;
     *) return 1 ;;
   esac
 }
