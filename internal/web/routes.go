@@ -11,6 +11,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/history"
 	webingest "github.com/kaecyra/gobbler/internal/web/ingest"
 	"github.com/kaecyra/gobbler/internal/web/journal"
+	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
 	"github.com/kaecyra/gobbler/internal/web/settings"
 )
@@ -45,4 +46,5 @@ func mountCatalog(r chi.Router, d Deps) {
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
 	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: cat, Usage: usage}))
+	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
 }

@@ -1,0 +1,102 @@
+package recipes
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// pageStyle is the list page's own styling. The shared stylesheet belongs to
+// the layout; a feature that needs more ships it with its page.
+const pageStyle = `
+.recipe-search { display: flex; gap: .5rem; margin: 0 0 1rem; }
+.recipe-search input[type=search] { flex: 1; min-width: 0; padding: .5rem .75rem; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: .375rem; }
+.recipe-search button { padding: .5rem 1rem; font: inherit; }
+.tag-chips { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; margin: 0 0 1rem; list-style: none; }
+.tag-chips a { display: inline-block; padding: .125rem .75rem; border: 1px solid var(--border); border-radius: 1rem; text-decoration: none; }
+.tag-chips a[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.recipe-list { padding: 0; margin: 0; list-style: none; }
+.recipe-list li { padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.recipe-list h2 { margin: 0; font-size: 1.125rem; }
+.recipe-list p { margin: .25rem 0 0; }
+.recipe-meta { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+.recipe-tags { display: inline-flex; flex-wrap: wrap; gap: .25rem .5rem; padding: 0; margin: 0; list-style: none; }
+.recipe-list .recipe-tags li { padding: 0; border: 0; }
+`
+
+templ listPage(v view) {
+	@layout.Page("Recipes") {
+		<style>{ templ.Raw(pageStyle) }</style>
+		<h1>Recipes</h1>
+		<form
+			id="recipe-search"
+			class="recipe-search"
+			role="search"
+			action="/recipes"
+			method="get"
+			hx-get="/recipes"
+			hx-target="#results"
+			hx-push-url="true"
+			hx-trigger="input changed delay:300ms from:find input[type=search], submit"
+		>
+			<input type="search" name="q" value={ v.Query } placeholder="Search recipes" aria-label="Search recipes" autocomplete="off"/>
+			<button type="submit">Search</button>
+		</form>
+		<div id="results" aria-live="polite">
+			@resultsFragment(v)
+		</div>
+	}
+}
+
+// resultsFragment is what the search box and the tag chips replace: the tag
+// filter and the list. The selected tags travel as hidden fields tied to the
+// search form, so a search typed after choosing a tag keeps the tag.
+templ resultsFragment(v view) {
+	for _, t := range v.Selected {
+		<input type="hidden" name="tag" value={ t } form="recipe-search"/>
+	}
+	if len(v.Chips) > 0 {
+		<ul class="tag-chips" aria-label="Filter by tag">
+			for _, c := range v.Chips {
+				<li>
+					<a
+						href={ templ.SafeURL(c.Href) }
+						hx-get={ c.Href }
+						hx-target="#results"
+						hx-push-url="true"
+						aria-pressed={ boolAttr(c.Active) }
+					>{ c.Tag } ({ itoa(c.Count) })</a>
+				</li>
+			}
+		</ul>
+	}
+	if len(v.Rows) == 0 {
+		if v.Filtered {
+			<p class="muted" data-testid="no-match">No recipes match. Try fewer words or remove a tag.</p>
+		} else {
+			<p class="muted" data-testid="empty-library">No recipes yet. <a href="/ingest">Add one from a URL, text or photo</a>.</p>
+		}
+	} else {
+		<ul class="recipe-list">
+			for _, r := range v.Rows {
+				<li>
+					<h2><a href={ templ.SafeURL(r.Href) }>{ r.Name }</a></h2>
+					if r.Description != "" {
+						<p class="muted">{ r.Description }</p>
+					}
+					<div class="recipe-meta muted">
+						if r.Rating != "" {
+							<span><span aria-hidden="true">{ r.Stars }</span> <span>{ r.Rating }</span></span>
+						}
+						for _, t := range r.Times {
+							<span>{ t }</span>
+						}
+						if len(r.Tags) > 0 {
+							<ul class="recipe-tags" aria-label="Tags">
+								for _, t := range r.Tags {
+									<li>{ t }</li>
+								}
+							</ul>
+						}
+					</div>
+				</li>
+			}
+		</ul>
+	}
+}
