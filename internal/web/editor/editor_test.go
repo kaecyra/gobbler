@@ -79,6 +79,36 @@ func (e *env) ingredientName(ci, li int) string {
 	return i.Name
 }
 
+// hasIngredient, hasUnit and hasEquipment report whether the catalog matches a
+// name, failing the test on a lookup error so an absence check cannot pass on
+// a failed read.
+func (e *env) hasIngredient(name string) bool {
+	e.t.Helper()
+	_, ok, err := e.cat.MatchIngredient(e.ctx, name)
+	if err != nil {
+		e.t.Fatalf("MatchIngredient(%q): %v", name, err)
+	}
+	return ok
+}
+
+func (e *env) hasUnit(name string) bool {
+	e.t.Helper()
+	_, ok, err := e.cat.MatchUnit(e.ctx, name)
+	if err != nil {
+		e.t.Fatalf("MatchUnit(%q): %v", name, err)
+	}
+	return ok
+}
+
+func (e *env) hasEquipment(name string) bool {
+	e.t.Helper()
+	_, ok, err := e.cat.MatchEquipment(e.ctx, name)
+	if err != nil {
+		e.t.Fatalf("MatchEquipment(%q): %v", name, err)
+	}
+	return ok
+}
+
 // fixture is a two-component recipe with a qualifier, a step dependency across
 // components and a piece of equipment.
 func (e *env) fixture() recipe.Recipe {
@@ -493,7 +523,7 @@ func TestUnknownIngredientIsRefusedUnlessProposed(t *testing.T) {
 	res := e.post(f)
 	res.wantStatus(t, http.StatusBadRequest)
 	res.wantBody(t, "No ingredient in the catalog is called", "unreviewed ingredient", `name="c.0.l.0.propose"`)
-	if _, ok, _ := e.cat.MatchIngredient(e.ctx, "zzyzx root"); ok {
+	if e.hasIngredient("zzyzx root") {
 		t.Error("a refused form must not add to the catalog")
 	}
 
@@ -519,7 +549,7 @@ func TestFormRejectedByValidationDoesNotCreateProposedEntries(t *testing.T) {
 	f.Set(lField(0, 0, "propose"), "1")
 	f.Set(lField(0, 0, "qty"), "lots")
 	e.post(f).wantStatus(t, http.StatusBadRequest)
-	if _, ok, _ := e.cat.MatchIngredient(e.ctx, "zzyzx root"); ok {
+	if e.hasIngredient("zzyzx root") {
 		t.Error("a form rejected for another reason must not create the proposed ingredient")
 	}
 }
@@ -531,7 +561,7 @@ func TestUnknownUnitIsFlaggedNotCreated(t *testing.T) {
 	res := e.post(f)
 	res.wantStatus(t, http.StatusBadRequest)
 	res.wantBody(t, "There is no unit called")
-	if _, ok, _ := e.cat.MatchUnit(e.ctx, "smidgeon-of-doom"); ok {
+	if e.hasUnit("smidgeon-of-doom") {
 		t.Error("the editor must not create units")
 	}
 }
@@ -647,10 +677,10 @@ func TestStaleSaveWithAProposalCreatesNoCatalogEntry(t *testing.T) {
 	loaded.Set(eField(0, "name"), "zzyzx grinder")
 	loaded.Set(eField(0, "propose"), "1")
 	e.post(loaded).wantStatus(t, http.StatusConflict)
-	if _, ok, _ := e.cat.MatchIngredient(e.ctx, "zzyzx root"); ok {
+	if e.hasIngredient("zzyzx root") {
 		t.Error("a stale save created the proposed ingredient")
 	}
-	if _, ok, _ := e.cat.MatchEquipment(e.ctx, "zzyzx grinder"); ok {
+	if e.hasEquipment("zzyzx grinder") {
 		t.Error("a stale save created the proposed equipment")
 	}
 }
