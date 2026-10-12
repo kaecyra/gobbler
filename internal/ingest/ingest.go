@@ -88,7 +88,7 @@ func (p *Pipeline) draftWithFallback(ctx context.Context, src Source, res extrac
 	if err != nil {
 		return Draft{}, err
 	}
-	return p.Fallback().autoFallback(ctx, d), nil
+	return p.Fallback().autoFallback(ctx, d)
 }
 
 // FromURL fetches the page at rawURL and drafts the recipe on it. A failed or

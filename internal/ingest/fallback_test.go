@@ -5,8 +5,10 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"testing"
 
+	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 )
 
@@ -16,12 +18,17 @@ type fakeProvider struct {
 	calls []Request
 	resp  Structured
 	err   error
+	// onCall runs inside Structure, to break the world mid-call.
+	onCall func()
 }
 
 func (f *fakeProvider) Structure(_ context.Context, req Request) (Structured, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, req)
+	if f.onCall != nil {
+		f.onCall()
+	}
 	return f.resp, f.err
 }
 
@@ -298,5 +305,69 @@ func TestSelectProviderBuildsTheConfiguredChoice(t *testing.T) {
 	}
 	if _, err := SelectProvider(ctx, config.LLM{Provider: "broken"}, nil, factories); err == nil {
 		t.Error("a factory error must surface")
+	}
+}
+
+// flakyCatalog reads through to the real catalog until broken.
+type flakyCatalog struct {
+	CatalogReader
+	broken atomic.Bool
+}
+
+func (c *flakyCatalog) MatchIngredient(ctx context.Context, term string) (catalog.Ingredient, bool, error) {
+	if c.broken.Load() {
+		return catalog.Ingredient{}, false, errCatalogDown
+	}
+	return c.CatalogReader.MatchIngredient(ctx, term)
+}
+
+var errCatalogDown = errors.New("catalog down")
+
+func flakyPipeline(t *testing.T, e *env) (*Pipeline, *flakyCatalog) {
+	t.Helper()
+	cat := &flakyCatalog{CatalogReader: e.catalog}
+	fp := &fakeProvider{resp: llmAnswer(), onCall: func() { cat.broken.Store(true) }}
+	p, err := New(testConfig(), Deps{Catalog: cat, Provider: fp})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p, cat
+}
+
+func TestCatalogFailureAfterTheLLMAnswersIsAPipelineErrorOnTheAutomaticPath(t *testing.T) {
+	e := newEnv(t)
+	p, _ := flakyPipeline(t, e)
+	_, err := p.FromText(e.ctx, messyText)
+	if !errors.Is(err, errCatalogDown) || errors.Is(err, ErrLLMFailed) {
+		t.Fatalf("err = %v, want the catalog failure and not an LLM failure", err)
+	}
+}
+
+func TestCatalogFailureAfterTheLLMAnswersIsAPipelineErrorOnRetry(t *testing.T) {
+	e := newEnv(t)
+	p, _ := flakyPipeline(t, e)
+	rule, err := e.pipelineWith(t, testConfig(), nil).FromText(e.ctx, messyText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = p.Fallback().Retry(e.ctx, rule)
+	if !errors.Is(err, errCatalogDown) || errors.Is(err, ErrLLMFailed) {
+		t.Fatalf("err = %v, want the catalog failure and not an LLM failure", err)
+	}
+}
+
+func TestProviderAndSchemaFailuresAreLLMFailures(t *testing.T) {
+	e := newEnv(t)
+	rule, err := e.pipelineWith(t, testConfig(), nil).FromText(e.ctx, messyText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, fp := range map[string]*fakeProvider{
+		"provider error": {err: context.DeadlineExceeded},
+		"empty answer":   {resp: Structured{}},
+	} {
+		if _, err := e.pipelineWith(t, testConfig(), fp).Fallback().Retry(e.ctx, rule); !errors.Is(err, ErrLLMFailed) {
+			t.Errorf("%s: err = %v, want ErrLLMFailed", name, err)
+		}
 	}
 }

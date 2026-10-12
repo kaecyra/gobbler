@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -73,7 +74,7 @@ func TestRetryReplacesDraftAndSendsBackToReviewWithoutSaving(t *testing.T) {
 }
 
 func TestRetryFailureShowsErrorKeepsRuleDraftAndStaysSaveable(t *testing.T) { // ADR-00007 obligation 4
-	r := &fakeRetrier{configured: true, err: errors.New("LLM provider: timed out")}
+	r := &fakeRetrier{configured: true, err: fmt.Errorf("%w: timed out", ingestcore.ErrLLMFailed)}
 	f, token := withRetrier(t, r)
 
 	rec := f.do(http.MethodPost, "/"+token+"/retry", nil)
@@ -81,7 +82,7 @@ func TestRetryFailureShowsErrorKeepsRuleDraftAndStaysSaveable(t *testing.T) { //
 		t.Fatalf("status = %d, want 502", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "timed out") || !strings.Contains(body, "rule-based reading, unchanged") {
+	if !strings.Contains(body, "timed out") || !strings.Contains(body, "The draft below is unchanged") {
 		t.Errorf("error not shown with the unchanged-draft note: %s", between(t, body, "<h1>", "<form"))
 	}
 	if !strings.Contains(body, "Apple pie") || strings.Contains(body, "LLM pie") {
@@ -196,5 +197,27 @@ func TestProviderFactoriesCoverEveryConfiguredProvider(t *testing.T) {
 		if err == nil || p != nil {
 			t.Errorf("%s: got %v, %v; want an error and a nil provider", name, p, err)
 		}
+	}
+}
+
+func TestRetryCatalogFailureIsAPipelineError(t *testing.T) {
+	r := &fakeRetrier{configured: true, err: errors.New("read catalog while drafting: disk on fire")}
+	f, token := withRetrier(t, r)
+	rec := f.do(http.MethodPost, "/"+token+"/retry", nil)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", rec.Code)
+	}
+	if strings.Contains(rec.Body.String(), "The LLM could not read") {
+		t.Error("a catalog failure is reported as an LLM failure")
+	}
+}
+
+func TestFailedRetryOfAnLLMDraftDoesNotCallItRuleBased(t *testing.T) {
+	r := &fakeRetrier{configured: true, err: fmt.Errorf("%w: timed out", ingestcore.ErrLLMFailed)}
+	f, token := withRetrier(t, r)
+	f.h.pending.put(token, llmDraft())
+	body := f.do(http.MethodPost, "/"+token+"/retry", nil).Body.String()
+	if strings.Contains(body, "rule-based") {
+		t.Error("the alert calls an LLM-filled draft rule-based")
 	}
 }

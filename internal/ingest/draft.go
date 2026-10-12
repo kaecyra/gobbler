@@ -97,7 +97,8 @@ type ProposedUnit struct {
 	Name string
 }
 
-// Draft is the rule-based reading of one input, shown on the review screen.
+// Draft is the reading of one input shown on the review screen: the rules'
+// reading, or the LLM's when UsedLLM is set.
 // It carries a confidence for every field and line and an overall score.
 // Nothing here is stored until it is confirmed (Confirm) and saved.
 type Draft struct {

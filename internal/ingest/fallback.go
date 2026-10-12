@@ -18,6 +18,11 @@ var (
 	// ErrNoProvider is returned by RetryWithLLM when no LLM provider is
 	// configured.
 	ErrNoProvider = errors.New("no LLM provider is configured")
+	// ErrLLMFailed marks a failure of the LLM step itself: the provider
+	// errored or timed out, or its answer does not match the schema. Any other
+	// error from Fallback.Retry is the pipeline breaking (the catalog could not
+	// be read) and is not an LLM failure.
+	ErrLLMFailed = errors.New("LLM provider failed")
 	// ErrUnknownProvider is returned by SelectProvider for a configured
 	// provider name it has no factory for.
 	ErrUnknownProvider = errors.New("unknown LLM provider")
@@ -62,17 +67,23 @@ func SelectProvider(ctx context.Context, cfg config.LLM, log *slog.Logger, facto
 // d comes back unchanged except for LLMError, which says why, and the failure
 // is never folded into the score (error-handling: an error is not a
 // low-confidence draft).
-func (f *Fallback) autoFallback(ctx context.Context, d Draft) Draft {
+//
+// A pipeline failure (the catalog could not be read) is returned as an error,
+// as it is on the rule-based path; only ErrLLMFailed keeps the rule draft.
+func (f *Fallback) autoFallback(ctx context.Context, d Draft) (Draft, error) {
 	if !d.BelowThreshold || f.deps.Provider == nil {
-		return d
+		return d, nil
 	}
 	out, err := f.Retry(ctx, d)
+	if err != nil && !errors.Is(err, ErrLLMFailed) {
+		return Draft{}, err
+	}
 	if err != nil {
 		f.log().WarnContext(ctx, "llm fallback failed, keeping the rule-based draft", "error", err.Error())
 		d.LLMError = err.Error()
-		return d
+		return d, nil
 	}
-	return out
+	return out, nil
 }
 
 func (f *Fallback) log() *slog.Logger {
@@ -103,7 +114,8 @@ func (f *Fallback) Configured() bool { return f.deps.Provider != nil }
 // (the user asked). On success it returns a new draft built from the answer
 // with the same Source and every LLM-supplied value marked FromLLM. On any
 // failure (no provider, a timeout, an answer that does not match the schema)
-// it returns an error and no draft; the caller keeps d. Nothing is saved.
+// it returns an error and no draft; the caller keeps d. Provider and schema
+// failures wrap ErrLLMFailed; a catalog read failure does not. Nothing is saved.
 func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 	if f.deps.Provider == nil {
 		return Draft{}, ErrNoProvider
@@ -114,7 +126,7 @@ func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 	}
 	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, RuleDraft: d})
 	if err != nil {
-		return Draft{}, fmt.Errorf("LLM provider: %w", err)
+		return Draft{}, fmt.Errorf("%w: %w", ErrLLMFailed, err)
 	}
 	return f.fromStructured(ctx, d, s)
 }
@@ -141,7 +153,7 @@ func llmSourceText(src Source) (string, error) {
 // empty keep the rule-based value, unmarked.
 func (f *Fallback) fromStructured(ctx context.Context, rule Draft, s Structured) (Draft, error) {
 	if strings.TrimSpace(s.Name) == "" || len(s.Components) == 0 {
-		return Draft{}, fmt.Errorf("LLM provider: answer %w", ErrInvalidStructured)
+		return Draft{}, fmt.Errorf("%w: answer %w", ErrLLMFailed, ErrInvalidStructured)
 	}
 	d := Draft{
 		ParserVersion: ParserVersion,

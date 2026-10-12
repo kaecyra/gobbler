@@ -130,7 +130,7 @@ templ summary(d ingestcore.Draft) {
 		if d.LLMError != "" {
 			<div class="error" role="alert">
 				<p><strong>{ d.LLMError }</strong></p>
-				<p>The draft below is the rule-based reading, unchanged. You can still review and save it.</p>
+				<p>The draft below is unchanged. You can still review and save it.</p>
 			</div>
 		}
 		if d.UsedLLM {

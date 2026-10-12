@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -70,6 +71,11 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, ingestcore.ErrNoProvider):
 		fail(http.StatusServiceUnavailable, "No LLM provider is configured.")
+		return
+	case err != nil && !errors.Is(err, ingestcore.ErrLLMFailed):
+		// The pipeline broke (the catalog could not be read), which is not an
+		// LLM failure.
+		layout.WriteError(w, r, fmt.Errorf("retry with LLM: %w", err))
 		return
 	case err != nil:
 		h.log.WarnContext(r.Context(), "llm retry failed", "error", err.Error())
