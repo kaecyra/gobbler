@@ -735,7 +735,8 @@
       "depends_on": [
         "w5-llm-claude",
         "w5-llm-gemini",
-        "w2-review-screen"
+        "w2-review-screen",
+        "w5-llm-unify"
       ],
       "owns": [
         "internal/ingest/fallback*.go",
@@ -973,6 +974,66 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00014. Absorbs #55 (shared tx helper) and #59 (MergeIngredients takes the write lock before its first read; regression test under concurrent load)."
+    },
+    {
+      "id": "w5-llm-unify",
+      "title": "One strict Structured decoder in ingest; one constructor shape for LLM providers",
+      "wave": 5,
+      "track": "ingestion",
+      "issue": 71,
+      "status": "todo",
+      "depends_on": [
+        "w5-llm-claude",
+        "w5-llm-gemini"
+      ],
+      "owns": [
+        "internal/llm/claude/**",
+        "internal/llm/gemini/**",
+        "internal/ingest/structured*.go",
+        "internal/config/secret*.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "w3-unit-owner",
+      "title": "Units resolve through the catalog; parse drops its alias table; seed fixes",
+      "wave": 3,
+      "track": "ingestion",
+      "issue": 65,
+      "status": "todo",
+      "depends_on": [
+        "w2-sqlc",
+        "w2-line-parser"
+      ],
+      "owns": [
+        "internal/parse/line*.go",
+        "internal/parse/doc.go",
+        "internal/parse/testdata/lines/**",
+        "internal/catalog/seed/**",
+        "internal/ingest/assemble*.go"
+      ],
+      "needs_migration": "schema",
+      "adrs": []
+    },
+    {
+      "id": "w3-store-atomic-ingest",
+      "title": "Create a recipe and its source snapshot in one transaction; ingest uses it",
+      "wave": 3,
+      "track": "persistence",
+      "issue": 66,
+      "status": "todo",
+      "depends_on": [
+        "w2-sqlc",
+        "w2-ingest-pipeline"
+      ],
+      "owns": [
+        "internal/store/recipe*.go",
+        "internal/store/snapshot*.go",
+        "internal/ingest/save*.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
     }
   ],
   "shared_files": [
