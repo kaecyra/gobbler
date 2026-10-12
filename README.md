@@ -8,6 +8,19 @@ The design is in [docs/design.md](./docs/design.md) and the decisions in
 [docs/adr/](./docs/adr/README.md). Contributor and agent rules are in
 [AGENTS.md](./AGENTS.md).
 
+## Running with Docker Compose
+
+```sh
+cp .env.example .env   # set the tunnel token and the Access team domain and AUD
+docker compose up -d --build
+```
+
+Compose runs `gobbler` and `cloudflared`. The database lives on the named
+volume `gobbler-data`, migrations apply at start-up, and `gobbler` publishes no
+host port: the only way in is the Cloudflare tunnel, whose public hostname
+should point at `http://gobbler:8080`. The image has no Node runtime and
+nothing from `e2e/`.
+
 ## Development
 
 Requires Go (the version in `go.mod`) and [golangci-lint](https://golangci-lint.run/) v2.14.0.

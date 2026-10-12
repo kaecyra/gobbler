@@ -1,0 +1,41 @@
+# gobbler and its Cloudflare tunnel. The only way in is the tunnel: gobbler
+# publishes no host port (ADR-00003).
+#
+# Usage: copy .env.example to .env, fill it in, then `docker compose up -d`.
+
+services:
+  gobbler:
+    build: .
+    image: gobbler:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Listen on the Compose network, where cloudflared reaches it. Access
+      # verification is on: the dev bypass is forced off whatever .env says.
+      GOBBLER_LISTEN_ADDR: 0.0.0.0:8080
+      GOBBLER_DEV_AUTH_BYPASS: "false"
+      GOBBLER_DATA_DIR: /data
+    volumes:
+      - gobbler-data:/data
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      gobbler:
+        condition: service_healthy
+
+volumes:
+  # Holds the SQLite database and <DataDir>/backups (ADR-00010).
+  gobbler-data:
