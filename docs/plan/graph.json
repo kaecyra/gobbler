@@ -466,7 +466,7 @@
       "wave": 2,
       "track": "ui",
       "issue": 16,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w2-ingest-pipeline",
         "w0-e2e-harness"
@@ -1268,6 +1268,15 @@
         "00002",
         "00003",
         "00006"
+      ]
+    },
+    {
+      "id": "w2-review-screen",
+      "title": "Ingest form (URL, text) and review screen with low-confidence highlights and proposed new ingredients",
+      "merged": "136c1aa",
+      "adrs": [
+        "00006",
+        "00008"
       ]
     }
   ],
