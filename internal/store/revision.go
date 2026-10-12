@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // Kinds of change recorded on a revision: what replaced the stored document.
@@ -27,7 +28,7 @@ type Revision struct {
 	Restored  *int64
 }
 
-func insertRevision(ctx context.Context, tx *sql.Tx, recipeID, version int64, doc recipe.Recipe, units *unitTable, change string, restored *int64, now, who string) error {
+func insertRevision(ctx context.Context, q *storedb.Queries, recipeID, version int64, doc recipe.Recipe, units *unitTable, change string, restored *int64, now, who string) error {
 	body, err := encodeDocument(doc, units)
 	if err != nil {
 		return fmt.Errorf("revision of recipe %d: %w", recipeID, err)
@@ -36,24 +37,20 @@ func insertRevision(ctx context.Context, tx *sql.Tx, recipeID, version int64, do
 	if restored != nil {
 		restoredVersion = sql.NullInt64{Int64: *restored, Valid: true}
 	}
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO revisions (recipe_id, version, document, change_kind, restored_version, created_at, created_by)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		recipeID, version, string(body), change, restoredVersion, now, who)
+	revID, err := q.InsertRevision(ctx, storedb.InsertRevisionParams{
+		RecipeID: recipeID, Version: version, Document: string(body), ChangeKind: change,
+		RestoredVersion: restoredVersion, CreatedAt: now, CreatedBy: who,
+	})
 	if err != nil {
 		return wrapWrite(fmt.Sprintf("write revision %d of recipe %d", version, recipeID), err)
-	}
-	revID, err := res.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("revision id: %w", err)
 	}
 	d, err := decodeDocument(body)
 	if err != nil {
 		return err
 	}
 	for _, ing := range d.ingredientIDs() {
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO revision_ingredients (revision_id, ingredient_id) VALUES (?, ?)`, revID, ing); err != nil {
+		err := q.InsertRevisionIngredient(ctx, storedb.InsertRevisionIngredientParams{RevisionID: revID, IngredientID: ing})
+		if err != nil {
 			return wrapWrite(fmt.Sprintf("index ingredient %d of revision %d", ing, version), err)
 		}
 	}
@@ -65,31 +62,25 @@ func insertRevision(ctx context.Context, tx *sql.Tx, recipeID, version int64, do
 // never edited has none; a missing recipe is ErrNotFound.
 func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error) {
 	var out []Revision
-	err := s.read(ctx, func(q queryer) error {
+	err := s.read(ctx, func(q *storedb.Queries) error {
 		if _, err := loadInfo(ctx, q, id); err != nil {
 			return err
 		}
-		return collect(ctx, q, "revisions",
-			`SELECT version, created_at, created_by, restored_version FROM revisions WHERE recipe_id = ? ORDER BY version`,
-			[]any{id}, func(rows *sql.Rows) error {
-				var (
-					rev      Revision
-					at       string
-					restored sql.NullInt64
-				)
-				if err := rows.Scan(&rev.Version, &at, &rev.Author, &restored); err != nil {
-					return err
-				}
-				var err error
-				if rev.CreatedAt, err = parseTime(at); err != nil {
-					return err
-				}
-				if restored.Valid {
-					rev.Restored = &restored.Int64
-				}
-				out = append(out, rev)
-				return nil
-			})
+		rows, err := q.ListRevisions(ctx, id)
+		if err != nil {
+			return readErr("revisions", err)
+		}
+		for _, r := range rows {
+			rev := Revision{Version: r.Version, Author: r.CreatedBy}
+			if rev.CreatedAt, err = parseTime(r.CreatedAt); err != nil {
+				return readErr("revisions", err)
+			}
+			if r.RestoredVersion.Valid {
+				rev.Restored = &r.RestoredVersion.Int64
+			}
+			out = append(out, rev)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -102,7 +93,7 @@ func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error)
 // An unknown recipe or version is ErrNotFound.
 func (s *Store) GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error) {
 	var r recipe.Recipe
-	err := s.read(ctx, func(q queryer) error {
+	err := s.read(ctx, func(q *storedb.Queries) error {
 		units, err := loadUnits(ctx, q)
 		if err != nil {
 			return err
@@ -116,7 +107,7 @@ func (s *Store) GetVersion(ctx context.Context, id, version int64) (recipe.Recip
 	return r, nil
 }
 
-func loadVersion(ctx context.Context, q queryer, id, version int64, units *unitTable) (recipe.Recipe, error) {
+func loadVersion(ctx context.Context, q *storedb.Queries, id, version int64, units *unitTable) (recipe.Recipe, error) {
 	cur, err := loadInfo(ctx, q, id)
 	if err != nil {
 		return recipe.Recipe{}, err
@@ -124,8 +115,7 @@ func loadVersion(ctx context.Context, q queryer, id, version int64, units *unitT
 	if version == cur.Version {
 		return loadDocument(ctx, q, id, units)
 	}
-	var body string
-	err = q.QueryRowContext(ctx, `SELECT document FROM revisions WHERE recipe_id = ? AND version = ?`, id, version).Scan(&body)
+	body, err := q.GetRevisionDocument(ctx, storedb.GetRevisionDocumentParams{RecipeID: id, Version: version})
 	if errors.Is(err, sql.ErrNoRows) {
 		return recipe.Recipe{}, fmt.Errorf("%w: version %d of recipe %d", ErrNotFound, version, id)
 	}
@@ -154,21 +144,21 @@ func (s *Store) Restore(ctx context.Context, id, version int64) error {
 	if err != nil {
 		return err
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := lockRecipe(ctx, tx, id); err != nil {
+	return s.withTx(ctx, func(q *storedb.Queries) error {
+		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
 		}
-		units, err := loadUnits(ctx, tx)
+		units, err := loadUnits(ctx, q)
 		if err != nil {
 			return err
 		}
-		target, err := loadVersion(ctx, tx, id, version, units)
+		target, err := loadVersion(ctx, q, id, version, units)
 		if err != nil {
 			return err
 		}
 		if err := target.Validate(); err != nil {
 			return fmt.Errorf("validate version %d of recipe %d: %w", version, id, err)
 		}
-		return s.replace(ctx, tx, id, target, who, changeRestore, &version)
+		return s.replace(ctx, q, id, target, who, changeRestore, &version)
 	})
 }

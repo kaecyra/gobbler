@@ -3,8 +3,11 @@ package store
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/catalog"
 )
 
 // Concurrent writers on one file database must queue on the write lock rather
@@ -85,5 +88,83 @@ func TestConcurrentEditsAndJournalDoNotFailBusy(t *testing.T) {
 	close(errs)
 	for err := range errs {
 		t.Error(err)
+	}
+}
+
+// An ingredient merge runs the store's hooks inside its transaction, so it is
+// a writer like any other: raced against recipe edits and against other
+// merges on a file database it must queue on the write lock. A merge whose
+// first statement is a read pins a snapshot and fails with SQLITE_BUSY when
+// another writer commits before its first write (#59).
+func TestConcurrentMergesAndEditsDoNotFailBusy(t *testing.T) {
+	s, d := newTestStore(t)
+	s.now = func() time.Time { return time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC) }
+	c := catalog.New(d)
+	s.RegisterMergeHooks(c)
+	ctx := authedCtx(t)
+	id, err := s.Create(ctx, simpleRecipe("shared"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const pairs, mergers = 40, 4
+	type pair struct{ winner, loser int64 }
+	work := make(chan pair, pairs)
+	for i := 0; i < pairs; i++ {
+		var p pair
+		for _, o := range []struct {
+			dst  *int64
+			name string
+		}{{&p.winner, "win"}, {&p.loser, "lose"}} {
+			in, err := c.CreateIngredient(ctx, catalog.Ingredient{Name: fmt.Sprintf("zz merge %s %d", o.name, i), Aisle: "test"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			*o.dst = in.ID
+		}
+		work <- p
+	}
+	close(work)
+
+	var merging sync.WaitGroup
+	var done atomic.Bool
+	errs := make(chan error, pairs+1024)
+	for m := 0; m < mergers; m++ {
+		merging.Add(1)
+		go func() {
+			defer merging.Done()
+			for p := range work {
+				if _, err := c.MergeIngredients(ctx, p.winner, p.loser); err != nil {
+					errs <- fmt.Errorf("MergeIngredients: %w", err)
+				}
+			}
+		}()
+	}
+	var editing sync.WaitGroup
+	for w := 0; w < 4; w++ {
+		editing.Add(1)
+		go func() {
+			defer editing.Done()
+			for i := 0; !done.Load(); i++ {
+				if err := s.Update(ctx, id, simpleRecipe(fmt.Sprintf("w%d-%d", w, i))); err != nil {
+					errs <- fmt.Errorf("Update: %w", err)
+					return
+				}
+				if _, err := s.AddNote(ctx, id, "n"); err != nil {
+					errs <- fmt.Errorf("AddNote: %w", err)
+					return
+				}
+			}
+		}()
+	}
+	merging.Wait()
+	done.Store(true)
+	editing.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM ingredients WHERE name LIKE 'zz merge lose %'`); n != 0 {
+		t.Errorf("%d merged ingredients still exist", n)
 	}
 }

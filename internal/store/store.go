@@ -2,7 +2,8 @@
 // components, ingredient lines, steps and dependency graph, plus notes, made-it
 // entries, revisions, clones and source snapshots. It owns the SQL
 // for those tables; the schema arrives through the migrations in
-// internal/db/migrations.
+// internal/db/migrations. The SQL is written in queries/ and generated into
+// storedb by sqlc (ADR-00014).
 //
 // Every write records the verified identity found on the request context
 // (ADR-00003) and fails with ErrNoIdentity when there is none; data is not
@@ -17,10 +18,9 @@ import (
 	"fmt"
 	"time"
 
-	"modernc.org/sqlite"
-	sqlitelib "modernc.org/sqlite/lib"
-
 	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // ErrNotFound is returned when a recipe (or a version of it) does not exist.
@@ -56,17 +56,12 @@ func lookup[K comparable, V any](m map[K]V, key K, what string) (V, error) {
 // Store reads and writes recipes. It is safe for concurrent use.
 type Store struct {
 	db  *sql.DB
+	q   *storedb.Queries
 	now func() time.Time
 }
 
 // New returns a Store over d, which must already be migrated.
-func New(d *sql.DB) *Store { return &Store{db: d, now: time.Now} }
-
-// queryer is the read surface shared by *sql.DB and *sql.Tx.
-type queryer interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
+func New(d *sql.DB) *Store { return &Store{db: d, q: storedb.New(d), now: time.Now} }
 
 // identity returns the verified user for a write.
 func identity(ctx context.Context) (string, error) {
@@ -90,60 +85,33 @@ func parseTime(s string) (time.Time, error) {
 	return t, nil
 }
 
-// withTx runs fn in a transaction, rolling back on error. A caller that reads
-// before it writes must make its first statement a write, so the transaction
-// takes the database write lock up front instead of failing to upgrade a
-// stale read snapshot.
-func (s *Store) withTx(ctx context.Context, fn func(tx *sql.Tx) error) (err error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
-				err = errors.Join(err, fmt.Errorf("rollback: %w", rbErr))
-			}
-		}
-	}()
-	if err = fn(tx); err != nil {
-		return err
-	}
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
-	}
-	return nil
+// withTx runs fn in one transaction (db.WithTx). A caller that reads before it
+// writes must make its first statement a write, such as lockRecipe, so the
+// transaction takes the database write lock up front instead of failing to
+// upgrade a stale read snapshot.
+func (s *Store) withTx(ctx context.Context, fn func(q *storedb.Queries) error) error {
+	return db.WithTx(ctx, s.db, s.q, func(q *storedb.Queries, _ *sql.Tx) error { return fn(q) })
 }
 
-// read runs fn against one read-only transaction, so every query in a
-// multi-query read sees the same snapshot. Reading a document on the bare
-// pool lets a write land between its queries and return a torn mix of two
-// versions.
-func (s *Store) read(ctx context.Context, fn func(q queryer) error) error {
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
-	if err != nil {
-		return fmt.Errorf("begin read transaction: %w", err)
-	}
-	err = fn(tx)
-	if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
-		err = errors.Join(err, fmt.Errorf("end read transaction: %w", rbErr))
-	}
-	return err
+// read runs fn against one read-only transaction (db.WithReadTx), so every
+// query in a multi-query read sees the same snapshot.
+func (s *Store) read(ctx context.Context, fn func(q *storedb.Queries) error) error {
+	return db.WithReadTx(ctx, s.db, s.q, fn)
 }
 
 // wrapWrite wraps a failed write with what it was doing. A foreign key
 // violation is a document naming a catalog entry that does not exist, which
-// callers branch on as ErrUnknownReference; the driver reports the SQLite
-// result code, so no message text is read.
+// callers branch on as ErrUnknownReference.
 func wrapWrite(what string, err error) error {
-	var se *sqlite.Error
-	if errors.As(err, &se) && se.Code() == sqlitelib.SQLITE_CONSTRAINT_FOREIGNKEY {
-		return fmt.Errorf("%w: %s: %w", ErrUnknownReference, what, err)
-	}
-	return fmt.Errorf("%s: %w", what, err)
+	return db.WrapWrite(what, err, ErrUnknownReference, db.ConstraintForeignKey)
 }
 
-func boolInt(b bool) int {
+// readErr wraps a failed read with what it was reading.
+func readErr(what string, err error) error {
+	return fmt.Errorf("read %s: %w", what, err)
+}
+
+func boolInt(b bool) int64 {
 	if b {
 		return 1
 	}

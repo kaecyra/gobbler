@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // rangeSep separates the bounds of a stored range.
@@ -95,33 +96,21 @@ type unitTable struct {
 	units map[int64]quantity.Unit
 }
 
-func loadUnits(ctx context.Context, q queryer) (*unitTable, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, name, system, dimension, factor FROM units`)
+func loadUnits(ctx context.Context, q *storedb.Queries) (*unitTable, error) {
+	rows, err := q.ListUnits(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("load units: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	t := &unitTable{ids: map[string]int64{}, units: map[int64]quantity.Unit{}}
-	for rows.Next() {
-		var (
-			id                    int64
-			name, system, dimName string
-			factor                sql.NullString
-		)
-		if err := rows.Scan(&id, &name, &system, &dimName, &factor); err != nil {
-			return nil, fmt.Errorf("scan unit: %w", err)
-		}
-		u := quantity.Unit{Name: name, System: quantity.System(system), Dimension: quantity.Dimension(dimName)}
-		if factor.Valid {
-			if u.Factor, err = quantity.ParseRat(factor.String); err != nil {
-				return nil, fmt.Errorf("unit %q factor: %w", name, err)
+	for _, r := range rows {
+		u := quantity.Unit{Name: r.Name, System: quantity.System(r.System), Dimension: quantity.Dimension(r.Dimension)}
+		if r.Factor.Valid {
+			if u.Factor, err = quantity.ParseRat(r.Factor.String); err != nil {
+				return nil, fmt.Errorf("unit %q factor: %w", r.Name, err)
 			}
 		}
-		t.ids[name] = id
-		t.units[id] = u
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("load units: %w", err)
+		t.ids[r.Name] = r.ID
+		t.units[r.ID] = u
 	}
 	return t, nil
 }

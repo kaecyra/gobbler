@@ -10,6 +10,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 func TestCreateGetRoundTrip(t *testing.T) {
@@ -548,14 +549,14 @@ func TestReadsSeeOneSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes := func(q queryer) int {
-		var n int
-		if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM notes WHERE recipe_id = ?`, id).Scan(&n); err != nil {
+	notes := func(q *storedb.Queries) int {
+		rows, err := q.ListNotes(ctx, id)
+		if err != nil {
 			t.Fatal(err)
 		}
-		return n
+		return len(rows)
 	}
-	err = s.read(ctx, func(q queryer) error {
+	err = s.read(ctx, func(q *storedb.Queries) error {
 		before := notes(q)
 		if _, err := s.AddNote(ctx, id, "lands mid-read"); err != nil {
 			t.Fatal(err)

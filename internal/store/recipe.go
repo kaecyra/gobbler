@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // Origin names the recipe and version a clone was copied from.
@@ -43,8 +44,8 @@ func (s *Store) create(ctx context.Context, r recipe.Recipe, from *Origin) (int6
 		return 0, fmt.Errorf("validate recipe: %w", err)
 	}
 	var id int64
-	err = s.withTx(ctx, func(tx *sql.Tx) (err error) {
-		id, err = s.insertRecipe(ctx, tx, r, from, who)
+	err = s.withTx(ctx, func(q *storedb.Queries) (err error) {
+		id, err = s.insertRecipe(ctx, q, r, from, who)
 		return err
 	})
 	if err != nil {
@@ -53,9 +54,10 @@ func (s *Store) create(ctx context.Context, r recipe.Recipe, from *Origin) (int6
 	return id, nil
 }
 
-// insertRecipe writes a validated document as a new recipe inside tx.
-func (s *Store) insertRecipe(ctx context.Context, tx *sql.Tx, r recipe.Recipe, from *Origin, who string) (int64, error) {
-	cols, err := documentColumns(r)
+// insertRecipe writes a validated document as a new recipe inside the
+// transaction q is bound to.
+func (s *Store) insertRecipe(ctx context.Context, q *storedb.Queries, r recipe.Recipe, from *Origin, who string) (int64, error) {
+	c, err := documentColumns(r)
 	if err != nil {
 		return 0, err
 	}
@@ -65,26 +67,25 @@ func (s *Store) insertRecipe(ctx context.Context, tx *sql.Tx, r recipe.Recipe, f
 		originVersion = sql.NullInt64{Int64: from.Version, Valid: true}
 	}
 	now := s.stamp()
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO recipes (name, description, source_url, author, yield_qty, yield_unit, servings, calories_per_serving, rating,
-		   prep_ns, cook_ns, total_ns, cloned_from_recipe_id, cloned_from_version, created_at, created_by, updated_at, updated_by)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		append(cols, originID, originVersion, now, who, now, who)...)
+	id, err := q.InsertRecipe(ctx, storedb.InsertRecipeParams{
+		Name: c.Name, Description: c.Description, SourceUrl: c.SourceUrl, Author: c.Author,
+		YieldQty: c.YieldQty, YieldUnit: c.YieldUnit, Servings: c.Servings,
+		CaloriesPerServing: c.CaloriesPerServing, Rating: c.Rating,
+		PrepNs: c.PrepNs, CookNs: c.CookNs, TotalNs: c.TotalNs,
+		ClonedFromRecipeID: originID, ClonedFromVersion: originVersion,
+		CreatedAt: now, CreatedBy: who, UpdatedAt: now, UpdatedBy: who,
+	})
 	if err != nil {
 		return 0, wrapWrite("write recipe", err)
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("recipe id: %w", err)
 	}
 	// The recipe row goes in before any read: a transaction whose first
 	// statement is a read cannot upgrade to a write if another writer has
 	// committed since, and fails with SQLITE_BUSY at once.
-	units, err := loadUnits(ctx, tx)
+	units, err := loadUnits(ctx, q)
 	if err != nil {
 		return 0, err
 	}
-	if err := insertChildren(ctx, tx, id, r, units); err != nil {
+	if err := insertChildren(ctx, q, id, r, units); err != nil {
 		return 0, err
 	}
 	return id, nil
@@ -93,7 +94,7 @@ func (s *Store) insertRecipe(ctx context.Context, tx *sql.Tx, r recipe.Recipe, f
 // Get returns the current document of recipe id, or ErrNotFound.
 func (s *Store) Get(ctx context.Context, id int64) (recipe.Recipe, error) {
 	var r recipe.Recipe
-	err := s.read(ctx, func(q queryer) error {
+	err := s.read(ctx, func(q *storedb.Queries) error {
 		units, err := loadUnits(ctx, q)
 		if err != nil {
 			return err
@@ -109,34 +110,26 @@ func (s *Store) Get(ctx context.Context, id int64) (recipe.Recipe, error) {
 
 // Info returns the bookkeeping of recipe id, or ErrNotFound.
 func (s *Store) Info(ctx context.Context, id int64) (Info, error) {
-	return loadInfo(ctx, s.db, id)
+	return loadInfo(ctx, s.q, id)
 }
 
-func loadInfo(ctx context.Context, q queryer, id int64) (Info, error) {
-	var (
-		in                      Info
-		created, updated        string
-		originID, originVersion sql.NullInt64
-	)
-	err := q.QueryRowContext(ctx,
-		`SELECT version, created_at, created_by, updated_at, updated_by, cloned_from_recipe_id, cloned_from_version
-		 FROM recipes WHERE id = ?`, id).
-		Scan(&in.Version, &created, &in.CreatedBy, &updated, &in.UpdatedBy, &originID, &originVersion)
+func loadInfo(ctx context.Context, q *storedb.Queries, id int64) (Info, error) {
+	row, err := q.GetRecipeInfo(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Info{}, fmt.Errorf("%w: recipe %d", ErrNotFound, id)
 	}
 	if err != nil {
 		return Info{}, fmt.Errorf("read recipe %d info: %w", id, err)
 	}
-	in.ID = id
-	if in.CreatedAt, err = parseTime(created); err != nil {
+	in := Info{ID: id, Version: row.Version, CreatedBy: row.CreatedBy, UpdatedBy: row.UpdatedBy}
+	if in.CreatedAt, err = parseTime(row.CreatedAt); err != nil {
 		return Info{}, err
 	}
-	if in.UpdatedAt, err = parseTime(updated); err != nil {
+	if in.UpdatedAt, err = parseTime(row.UpdatedAt); err != nil {
 		return Info{}, err
 	}
-	if originID.Valid {
-		in.ClonedFrom = &Origin{RecipeID: originID.Int64, Version: originVersion.Int64}
+	if row.ClonedFromRecipeID.Valid {
+		in.ClonedFrom = &Origin{RecipeID: row.ClonedFromRecipeID.Int64, Version: row.ClonedFromVersion.Int64}
 	}
 	return in, nil
 }
@@ -153,23 +146,19 @@ func (s *Store) Update(ctx context.Context, id int64, r recipe.Recipe) error {
 	if err := r.Validate(); err != nil {
 		return fmt.Errorf("validate recipe: %w", err)
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := lockRecipe(ctx, tx, id); err != nil {
+	return s.withTx(ctx, func(q *storedb.Queries) error {
+		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
 		}
-		return s.replace(ctx, tx, id, r, who, changeEdit, nil)
+		return s.replace(ctx, q, id, r, who, changeEdit, nil)
 	})
 }
 
 // lockRecipe takes the write lock with a no-op write, so the reads that
 // follow see the state the rest of the transaction will change, and reports
 // ErrNotFound for a missing recipe.
-func lockRecipe(ctx context.Context, tx *sql.Tx, id int64) error {
-	res, err := tx.ExecContext(ctx, `UPDATE recipes SET version = version WHERE id = ?`, id)
-	if err != nil {
-		return fmt.Errorf("lock recipe %d: %w", id, err)
-	}
-	n, err := res.RowsAffected()
+func lockRecipe(ctx context.Context, q *storedb.Queries, id int64) error {
+	n, err := q.LockRecipe(ctx, id)
 	if err != nil {
 		return fmt.Errorf("lock recipe %d: %w", id, err)
 	}
@@ -179,38 +168,38 @@ func lockRecipe(ctx context.Context, tx *sql.Tx, id int64) error {
 	return nil
 }
 
-// replace writes r over recipe id inside tx, after saving the current
-// document as a revision. The caller has locked the recipe and validated r.
-func (s *Store) replace(ctx context.Context, tx *sql.Tx, id int64, r recipe.Recipe, who, change string, restored *int64) error {
-	units, err := loadUnits(ctx, tx)
+// replace writes r over recipe id inside the transaction q is bound to, after
+// saving the current document as a revision. The caller has locked the recipe
+// and validated r.
+func (s *Store) replace(ctx context.Context, q *storedb.Queries, id int64, r recipe.Recipe, who, change string, restored *int64) error {
+	units, err := loadUnits(ctx, q)
 	if err != nil {
 		return err
 	}
-	cur, err := loadInfo(ctx, tx, id)
+	cur, err := loadInfo(ctx, q, id)
 	if err != nil {
 		return err
 	}
-	old, err := loadDocument(ctx, tx, id, units)
+	old, err := loadDocument(ctx, q, id, units)
 	if err != nil {
 		return err
 	}
 	now := s.stamp()
-	if err := insertRevision(ctx, tx, id, cur.Version, old, units, change, restored, now, who); err != nil {
+	if err := insertRevision(ctx, q, id, cur.Version, old, units, change, restored, now, who); err != nil {
 		return err
 	}
-	cols, err := documentColumns(r)
+	c, err := documentColumns(r)
 	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE recipes SET `+documentSetSQL+`, version = version + 1, updated_at = ?, updated_by = ? WHERE id = ?`,
-		append(cols, now, who, id)...); err != nil {
+	c.UpdatedAt, c.UpdatedBy, c.ID = now, who, id
+	if err := q.UpdateRecipeDocument(ctx, c); err != nil {
 		return wrapWrite("update recipe", err)
 	}
-	if err := clearChildren(ctx, tx, id); err != nil {
+	if err := clearChildren(ctx, q, id); err != nil {
 		return err
 	}
-	return insertChildren(ctx, tx, id, r, units)
+	return insertChildren(ctx, q, id, r, units)
 }
 
 // Delete removes recipe id with its revisions, notes, made-it entries and
@@ -220,11 +209,7 @@ func (s *Store) Delete(ctx context.Context, id int64) error {
 	if _, err := identity(ctx); err != nil {
 		return err
 	}
-	res, err := s.db.ExecContext(ctx, `DELETE FROM recipes WHERE id = ?`, id)
-	if err != nil {
-		return fmt.Errorf("delete recipe %d: %w", id, err)
-	}
-	n, err := res.RowsAffected()
+	n, err := s.q.DeleteRecipe(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete recipe %d: %w", id, err)
 	}
@@ -243,23 +228,23 @@ func (s *Store) Clone(ctx context.Context, id int64) (int64, error) {
 		return 0, err
 	}
 	var cloneID int64
-	err = s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := lockRecipe(ctx, tx, id); err != nil {
+	err = s.withTx(ctx, func(q *storedb.Queries) error {
+		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
 		}
-		units, err := loadUnits(ctx, tx)
+		units, err := loadUnits(ctx, q)
 		if err != nil {
 			return err
 		}
-		cur, err := loadInfo(ctx, tx, id)
+		cur, err := loadInfo(ctx, q, id)
 		if err != nil {
 			return err
 		}
-		doc, err := loadDocument(ctx, tx, id, units)
+		doc, err := loadDocument(ctx, q, id, units)
 		if err != nil {
 			return err
 		}
-		cloneID, err = s.insertRecipe(ctx, tx, doc, &Origin{RecipeID: id, Version: cur.Version}, who)
+		cloneID, err = s.insertRecipe(ctx, q, doc, &Origin{RecipeID: id, Version: cur.Version}, who)
 		return err
 	})
 	if err != nil {
