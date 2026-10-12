@@ -11,6 +11,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/history"
 	webingest "github.com/kaecyra/gobbler/internal/web/ingest"
 	"github.com/kaecyra/gobbler/internal/web/journal"
+	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
 	"github.com/kaecyra/gobbler/internal/web/settings"
 )
@@ -31,6 +32,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
 	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
+	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
 	mountCatalog(r, d)
 }
 

@@ -80,10 +80,13 @@ func TestWithTxReportsFailedBegin(t *testing.T) {
 func TestWithReadTxBindsQueriesAndEndsTheTransaction(t *testing.T) {
 	d := txTestDB(t)
 	var bound *sql.Tx
-	err := WithReadTx(context.Background(), d, fakeQueries{}, func(q fakeQueries) error {
+	err := WithReadTx(context.Background(), d, fakeQueries{}, func(q fakeQueries, tx *sql.Tx) error {
 		bound = q.tx
+		if tx != q.tx {
+			t.Errorf("fn got a transaction other than the one the queries are bound to")
+		}
 		var n int
-		return q.tx.QueryRow(`SELECT COUNT(*) FROM t`).Scan(&n)
+		return tx.QueryRow(`SELECT COUNT(*) FROM t`).Scan(&n)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +99,7 @@ func TestWithReadTxBindsQueriesAndEndsTheTransaction(t *testing.T) {
 func TestWithReadTxReturnsFnError(t *testing.T) {
 	d := txTestDB(t)
 	boom := errors.New("boom")
-	err := WithReadTx(context.Background(), d, fakeQueries{}, func(fakeQueries) error { return boom })
+	err := WithReadTx(context.Background(), d, fakeQueries{}, func(fakeQueries, *sql.Tx) error { return boom })
 	if !errors.Is(err, boom) {
 		t.Errorf("err = %v, want boom", err)
 	}
