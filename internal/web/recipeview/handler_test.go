@@ -471,3 +471,11 @@ func TestViewLinksToCookModeKeepingTheState(t *testing.T) {
 	_, body = serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=2&units=metric")
 	mustContain(t, body, `href="/recipes/7/cook?scale=2&amp;units=metric"`)
 }
+
+func TestViewLinksToTheEditor(t *testing.T) {
+	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
+	mustContain(t, body, `data-testid="edit-link"`, `href="/recipes/7/edit"`)
+	// The editor has no display state, so scaling does not leak into its URL.
+	_, body = serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=2&units=metric")
+	mustContain(t, body, `href="/recipes/7/edit"`)
+}

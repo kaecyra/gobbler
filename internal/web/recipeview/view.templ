@@ -29,6 +29,12 @@ func cookHref(id int64, o display.Options) string {
 	return o.URL("/recipes/"+strconv.FormatInt(id, 10)+"/cook", nil)
 }
 
+// editHref is the editor page of this recipe. The editor is its own feature
+// package (ADR-00012), so only its URL is known here; it takes no display state.
+func editHref(id int64) string {
+	return "/recipes/" + strconv.FormatInt(id, 10) + "/edit"
+}
+
 func presetActive(v view, param string) bool {
 	if v.Opts.Servings != "" {
 		return false
@@ -80,7 +86,7 @@ templ recipeBody(v view) {
 				<span>Makes <strong data-testid="yield">{ v.Yield }</strong></span>
 			}
 		</p>
-		<p><a href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">Cook mode</a></p>
+		<p><a href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">Cook mode</a> <a href={ templ.SafeURL(editHref(v.ID)) } data-testid="edit-link">Edit</a></p>
 		@controls(v)
 		if v.Notice != "" {
 			<p role="alert" class="recipe-error" data-testid="view-error">{ v.Notice }</p>
