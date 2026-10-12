@@ -103,8 +103,10 @@ test('sets and clears the rating', async ({ page }) => {
   await page.reload();
   await expect(page.locator('#journal-rating')).toHaveValue('4');
 
+  const cleared = page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/rating`) && r.request().method() === 'POST');
   await page.locator('#journal-rating').selectOption('');
   await page.getByRole('button', { name: 'Save rating' }).click();
+  expect((await cleared).status()).toBe(200);
   await page.reload();
   await expect(page.locator('#journal-rating')).toHaveValue('');
 });

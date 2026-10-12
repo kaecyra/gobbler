@@ -104,9 +104,13 @@ func (h *handler) addNote(w http.ResponseWriter, r *http.Request) {
 	var problem formProblem
 	if strings.TrimSpace(body) == "" {
 		problem = formProblem{note: emptyNoteMessage}
-	} else if _, err := h.Journal.AddNote(r.Context(), id, body); errors.Is(err, store.ErrInvalid) {
-		problem = formProblem{note: emptyNoteMessage}
-	} else if err != nil {
+	} else if _, err := h.Journal.AddNote(r.Context(), id, body); err != nil {
+		// The store rejects a note only for an empty body, which is handled
+		// above; any other ErrInvalid is a mismatch between us and the store, so
+		// it is reported as a bad request rather than as the empty-note message.
+		if errors.Is(err, store.ErrInvalid) {
+			err = fmt.Errorf("%w: %w", layout.ErrInvalid, err)
+		}
 		layout.WriteError(w, r, fmt.Errorf("add note to recipe %d: %w", id, err))
 		return
 	}

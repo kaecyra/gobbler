@@ -68,6 +68,45 @@ func newEnv(t *testing.T) *env {
 	return &env{t: t, ctx: authed, store: s, h: r, id: id}
 }
 
+// notes, made, rating and who read back through the store and fail the test on
+// any error, so an assertion that nothing was saved cannot pass on a failed
+// read.
+func (e *env) notes() []store.Note {
+	e.t.Helper()
+	n, err := e.store.ListNotes(e.ctx, e.id)
+	if err != nil {
+		e.t.Fatalf("ListNotes: %v", err)
+	}
+	return n
+}
+
+func (e *env) made() []store.MadeIt {
+	e.t.Helper()
+	m, err := e.store.ListMadeIt(e.ctx, e.id)
+	if err != nil {
+		e.t.Fatalf("ListMadeIt: %v", err)
+	}
+	return m
+}
+
+func (e *env) rating() *int {
+	e.t.Helper()
+	r, err := e.store.Get(e.ctx, e.id)
+	if err != nil {
+		e.t.Fatalf("Get: %v", err)
+	}
+	return r.Rating
+}
+
+func (e *env) who() string {
+	e.t.Helper()
+	w, ok := auth.EmailFromContext(e.ctx)
+	if !ok {
+		e.t.Fatal("no identity on the test context")
+	}
+	return w
+}
+
 func (e *env) path(suffix string) string { return fmt.Sprintf("/recipes/%d/journal%s", e.id, suffix) }
 
 func (e *env) do(method, path string, form url.Values, hdr ...string) *httptest.ResponseRecorder {
@@ -136,14 +175,11 @@ func TestNotesPersistWithVerifiedAuthorNewestFirst(t *testing.T) {
 			t.Fatalf("post note = %d\n%s", rec.Code, rec.Body)
 		}
 	}
-	notes, err := e.store.ListNotes(e.ctx, e.id)
-	if err != nil {
-		t.Fatal(err)
-	}
+	notes := e.notes()
 	if len(notes) != 2 {
 		t.Fatalf("notes = %+v", notes)
 	}
-	who, _ := auth.EmailFromContext(e.ctx)
+	who := e.who()
 	for _, n := range notes {
 		if n.CreatedBy != who || strings.Contains(n.CreatedBy, "mallory") {
 			t.Errorf("author = %q, want %q", n.CreatedBy, who)
@@ -164,7 +200,7 @@ func TestEmptyNoteIsRejectedInline(t *testing.T) {
 		t.Fatalf("status = %d, want 200 so htmx swaps the message", rec.Code)
 	}
 	mustContain(t, rec.Body.String(), `role="alert"`, "Write something")
-	if notes, _ := e.store.ListNotes(e.ctx, e.id); len(notes) != 0 {
+	if notes := e.notes(); len(notes) != 0 {
 		t.Errorf("saved %+v", notes)
 	}
 }
@@ -188,16 +224,14 @@ func TestRatingSetAndClear(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d\n%s", rec.Code, rec.Body)
 	}
-	r, _ := e.store.Get(e.ctx, e.id)
-	if r.Rating == nil || *r.Rating != 4 {
-		t.Fatalf("rating = %v, want 4", r.Rating)
+	if got := e.rating(); got == nil || *got != 4 {
+		t.Fatalf("rating = %v, want 4", got)
 	}
 	mustContain(t, rec.Body.String(), `<option value="4" selected>`)
 
 	e.do(http.MethodPost, e.path("/rating"), url.Values{"rating": {""}}, htmx...)
-	r, _ = e.store.Get(e.ctx, e.id)
-	if r.Rating != nil {
-		t.Fatalf("rating = %d, want cleared", *r.Rating)
+	if got := e.rating(); got != nil {
+		t.Fatalf("rating = %d, want cleared", *got)
 	}
 }
 
@@ -209,8 +243,8 @@ func TestRatingOutOfRangeIsRejectedAndNotSaved(t *testing.T) {
 			t.Errorf("%q: status = %d", v, rec.Code)
 		}
 		mustContain(t, rec.Body.String(), `role="alert"`, "whole number from 1 to 5")
-		if r, _ := e.store.Get(e.ctx, e.id); r.Rating != nil {
-			t.Errorf("%q saved rating %d", v, *r.Rating)
+		if got := e.rating(); got != nil {
+			t.Errorf("%q saved rating %d", v, *got)
 		}
 	}
 }
@@ -240,14 +274,11 @@ func TestMadeItWithAndWithoutOptionalFields(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("full = %d\n%s", rec.Code, rec.Body)
 	}
-	entries, err := e.store.ListMadeIt(e.ctx, e.id)
-	if err != nil {
-		t.Fatal(err)
-	}
+	entries := e.made()
 	if len(entries) != 2 {
 		t.Fatalf("entries = %+v", entries)
 	}
-	who, _ := auth.EmailFromContext(e.ctx)
+	who := e.who()
 	var bare, fullE store.MadeIt
 	for _, m := range entries {
 		if m.CreatedBy != who {
@@ -285,7 +316,7 @@ func TestMadeItInvalidInputIsRejectedInline(t *testing.T) {
 		}
 		mustContain(t, rec.Body.String(), `role="alert"`)
 	}
-	if entries, _ := e.store.ListMadeIt(e.ctx, e.id); len(entries) != 0 {
+	if entries := e.made(); len(entries) != 0 {
 		t.Errorf("saved %+v", entries)
 	}
 	// The typed values are kept so the user can fix them.
@@ -317,7 +348,7 @@ func TestOversizedFormIsRefused(t *testing.T) {
 	if rec.Code < 400 {
 		t.Errorf("status = %d, want an error", rec.Code)
 	}
-	if notes, _ := e.store.ListNotes(e.ctx, e.id); len(notes) != 0 {
+	if notes := e.notes(); len(notes) != 0 {
 		t.Errorf("saved %d notes", len(notes))
 	}
 }
