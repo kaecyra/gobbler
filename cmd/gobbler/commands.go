@@ -8,5 +8,6 @@ func commands() []command {
 		migrateCommand,
 		importUSDACommand,
 		serveCommand,
+		backupCommand,
 	}
 }
