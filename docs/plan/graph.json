@@ -744,7 +744,16 @@
       ],
       "owns": [
         "internal/ingest/fallback*.go",
-        "internal/web/ingest/retry*"
+        "internal/web/ingest/retry*",
+        "internal/ingest/ingest.go",
+        "internal/ingest/draft.go",
+        "internal/ingest/llm.go",
+        "internal/web/ingest/ingest.go",
+        "internal/web/ingest/ingest.templ",
+        "internal/web/ingest/ingest_templ.go",
+        "internal/web/ingest/views.go",
+        "internal/web/ingest/ingest_test.go",
+        "e2e/ingest/**"
       ],
       "needs_migration": null,
       "adrs": [
@@ -803,7 +812,8 @@
       ],
       "owns": [
         "internal/recipe/meanwhile*.go",
-        "internal/web/recipeview/meanwhile*"
+        "internal/web/recipeview/**",
+        "e2e/recipeview/**"
       ],
       "needs_migration": null,
       "adrs": [
