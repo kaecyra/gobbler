@@ -61,30 +61,38 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 	if !kind.Valid() {
 		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
 	}
-	sum := sha256.Sum256(content)
 	return s.withTx(ctx, func(q *storedb.Queries) error {
 		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
 		}
-		// The recipe lock above makes this check and the insert atomic, so no
-		// concurrent AddSnapshot can slip a duplicate in between; the UNIQUE
-		// constraint is the backstop.
-		existing, err := q.CountSnapshots(ctx, storedb.CountSnapshotsParams{RecipeID: id, Kind: string(kind)})
-		if err != nil {
-			return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)
-		}
-		if existing > 0 {
-			return fmt.Errorf("%w: recipe %d kind %s", ErrSnapshotExists, id, kind)
-		}
-		err = q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
-			RecipeID: id, Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
-			CreatedAt: s.stamp(), CreatedBy: who,
-		})
-		if err != nil {
-			return fmt.Errorf("write %s snapshot of recipe %d: %w", kind, id, err)
-		}
-		return nil
+		return s.insertSnapshot(ctx, q, id, kind, content, who)
 	})
+}
+
+// insertSnapshot writes one snapshot inside the transaction q is bound to. The
+// caller holds the write lock on the recipe, which makes the existence check
+// and the insert atomic, so no concurrent writer can slip a duplicate in
+// between; the UNIQUE constraint is the backstop.
+func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, id int64, kind SnapshotKind, content []byte, who string) error {
+	if !kind.Valid() {
+		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
+	}
+	existing, err := q.CountSnapshots(ctx, storedb.CountSnapshotsParams{RecipeID: id, Kind: string(kind)})
+	if err != nil {
+		return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)
+	}
+	if existing > 0 {
+		return fmt.Errorf("%w: recipe %d kind %s", ErrSnapshotExists, id, kind)
+	}
+	sum := sha256.Sum256(content)
+	err = q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
+		RecipeID: id, Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
+		CreatedAt: s.stamp(), CreatedBy: who,
+	})
+	if err != nil {
+		return fmt.Errorf("write %s snapshot of recipe %d: %w", kind, id, err)
+	}
+	return nil
 }
 
 // GetSnapshot returns the stored input of the given kind, or ErrNotFound.

@@ -35,7 +35,21 @@ func (s *Store) Create(ctx context.Context, r recipe.Recipe) (int64, error) {
 	return s.create(ctx, r, nil)
 }
 
-func (s *Store) create(ctx context.Context, r recipe.Recipe, from *Origin) (int64, error) {
+// SnapshotInput is one source snapshot to store with a new recipe.
+type SnapshotInput struct {
+	Kind    SnapshotKind
+	Content []byte
+}
+
+// CreateWithSnapshots is Create plus the source snapshots of what the recipe
+// was made from, all in one transaction: either the recipe and every snapshot
+// are stored, or nothing is. It fails like AddSnapshot for an invalid kind
+// (ErrInvalid) and for a kind given twice (ErrSnapshotExists).
+func (s *Store) CreateWithSnapshots(ctx context.Context, r recipe.Recipe, snaps ...SnapshotInput) (int64, error) {
+	return s.create(ctx, r, nil, snaps...)
+}
+
+func (s *Store) create(ctx context.Context, r recipe.Recipe, from *Origin, snaps ...SnapshotInput) (int64, error) {
 	who, err := identity(ctx)
 	if err != nil {
 		return 0, err
@@ -45,8 +59,20 @@ func (s *Store) create(ctx context.Context, r recipe.Recipe, from *Origin) (int6
 	}
 	var id int64
 	err = s.withTx(ctx, func(q *storedb.Queries) (err error) {
-		id, err = s.insertRecipe(ctx, q, r, from, who)
-		return err
+		if id, err = s.insertRecipe(ctx, q, r, from, who); err != nil {
+			return err
+		}
+		seen := map[SnapshotKind]bool{}
+		for _, sn := range snaps {
+			if seen[sn.Kind] {
+				return fmt.Errorf("%w: kind %s given twice", ErrSnapshotExists, sn.Kind)
+			}
+			seen[sn.Kind] = true
+			if err := s.insertSnapshot(ctx, q, id, sn.Kind, sn.Content, who); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return 0, err
@@ -139,6 +165,21 @@ func loadInfo(ctx context.Context, q *storedb.Queries, id int64) (Info, error) {
 // of this edit, and bumps the version. An invalid r, or a missing recipe,
 // writes nothing.
 func (s *Store) Update(ctx context.Context, id int64, r recipe.Recipe) error {
+	return s.update(ctx, id, r, nil)
+}
+
+// ErrStaleVersion is returned by UpdateIfVersion when the recipe has been
+// changed since the caller loaded it.
+var ErrStaleVersion = errors.New("the recipe was changed since it was loaded")
+
+// UpdateIfVersion is Update applied only if recipe id is still at
+// expectedVersion, checked in the same write transaction as the write. A stale
+// version is ErrStaleVersion and writes nothing, not even a revision.
+func (s *Store) UpdateIfVersion(ctx context.Context, id, expectedVersion int64, r recipe.Recipe) error {
+	return s.update(ctx, id, r, &expectedVersion)
+}
+
+func (s *Store) update(ctx context.Context, id int64, r recipe.Recipe, expected *int64) error {
 	who, err := identity(ctx)
 	if err != nil {
 		return err
@@ -149,6 +190,15 @@ func (s *Store) Update(ctx context.Context, id int64, r recipe.Recipe) error {
 	return s.withTx(ctx, func(q *storedb.Queries) error {
 		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
+		}
+		if expected != nil {
+			cur, err := loadInfo(ctx, q, id)
+			if err != nil {
+				return err
+			}
+			if cur.Version != *expected {
+				return fmt.Errorf("%w: recipe %d is at version %d, not %d", ErrStaleVersion, id, cur.Version, *expected)
+			}
 		}
 		return s.replace(ctx, q, id, r, who, changeEdit, nil)
 	})
@@ -209,14 +259,18 @@ func (s *Store) Delete(ctx context.Context, id int64) error {
 	if _, err := identity(ctx); err != nil {
 		return err
 	}
-	n, err := s.q.DeleteRecipe(ctx, id)
-	if err != nil {
-		return fmt.Errorf("delete recipe %d: %w", id, err)
-	}
-	if n == 0 {
-		return fmt.Errorf("%w: recipe %d", ErrNotFound, id)
-	}
-	return nil
+	// Through withTx, not the bare pool, so the delete queues with the other
+	// writers instead of contending with them for the SQLite write lock (#104).
+	return s.withTx(ctx, func(q *storedb.Queries) error {
+		n, err := q.DeleteRecipe(ctx, id)
+		if err != nil {
+			return fmt.Errorf("delete recipe %d: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("%w: recipe %d", ErrNotFound, id)
+		}
+		return nil
+	})
 }
 
 // Clone copies recipe id into a new, independent recipe at version 1 that

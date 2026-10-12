@@ -130,39 +130,58 @@ func TestSaveReusesIngredientCreatedSinceTheDraft(t *testing.T) {
 	}
 }
 
-func TestSaveRemovesRecipeWhenSnapshotFails(t *testing.T) {
+// The recipe and its snapshot reach the store in one call, so a failure leaves
+// nothing to compensate for.
+func TestSaveWritesRecipeAndSnapshotInOneStoreCall(t *testing.T) {
 	e := newEnv(t)
 	d, err := e.pipeline(t, nil).FromText(e.ctx, string(readFixture(t, "garlic_spaghetti.txt")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	failing := &failingSnapshots{RecipeStore: e.store}
-	_, err = NewSaver(failing, e.catalog).Save(e.ctx, confirm(t, d))
-	if err == nil || !strings.Contains(err.Error(), "recipe not saved") {
+	rec := &recordingStore{RecipeStore: e.store}
+	saved, err := NewSaver(rec, e.catalog).Save(e.ctx, confirm(t, d))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.calls != 1 || len(rec.snaps) != 1 || rec.snaps[0].Kind != d.Source.Kind || !bytes.Equal(rec.snaps[0].Content, d.Source.Content) {
+		t.Errorf("store calls = %d, snapshots = %+v", rec.calls, rec.snaps)
+	}
+	if _, err := e.store.GetSnapshot(e.ctx, saved.RecipeID, d.Source.Kind); err != nil {
+		t.Errorf("snapshot not stored: %v", err)
+	}
+}
+
+func TestSaveReportsStoreFailureAndReturnsNoRecipe(t *testing.T) {
+	e := newEnv(t)
+	d, err := e.pipeline(t, nil).FromText(e.ctx, string(readFixture(t, "garlic_spaghetti.txt")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := NewSaver(failingStore{}, e.catalog).Save(e.ctx, confirm(t, d))
+	if err == nil || !strings.Contains(err.Error(), "nothing stored") || !strings.Contains(err.Error(), "disk full") {
 		t.Fatalf("err = %v", err)
 	}
-	if failing.created == 0 {
-		t.Fatal("the recipe was never created, so the rollback was not exercised")
-	}
-	if _, err := e.store.Get(e.ctx, failing.created); !errors.Is(err, store.ErrNotFound) {
-		t.Errorf("recipe left behind without its snapshot: %v", err)
+	if saved.RecipeID != 0 {
+		t.Errorf("RecipeID = %d on failure", saved.RecipeID)
 	}
 }
 
-// failingSnapshots fails AddSnapshot and remembers the id Create returned.
-type failingSnapshots struct {
+type recordingStore struct {
 	RecipeStore
-	created int64
+	calls int
+	snaps []store.SnapshotInput
 }
 
-func (f *failingSnapshots) Create(ctx context.Context, r recipe.Recipe) (int64, error) {
-	id, err := f.RecipeStore.Create(ctx, r)
-	f.created = id
-	return id, err
+func (r *recordingStore) CreateWithSnapshots(ctx context.Context, rec recipe.Recipe, snaps ...store.SnapshotInput) (int64, error) {
+	r.calls++
+	r.snaps = append(r.snaps, snaps...)
+	return r.RecipeStore.CreateWithSnapshots(ctx, rec, snaps...)
 }
 
-func (*failingSnapshots) AddSnapshot(_ context.Context, _ int64, _ store.SnapshotKind, _ []byte) error {
-	return errors.New("disk full")
+type failingStore struct{}
+
+func (failingStore) CreateWithSnapshots(context.Context, recipe.Recipe, ...store.SnapshotInput) (int64, error) {
+	return 0, errors.New("disk full")
 }
 
 func TestSaveRefusesUnconfirmed(t *testing.T) {

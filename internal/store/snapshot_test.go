@@ -88,7 +88,7 @@ func TestSnapshotStoredUnalteredAndOncePerKind(t *testing.T) {
 // a snapshot is added to the store: the exported snapshot surface is add and
 // read only (ADR-00004 obligation 4).
 func TestSnapshotAPIHasNoMutator(t *testing.T) {
-	allowed := map[string]bool{"AddSnapshot": true, "GetSnapshot": true, "ListSnapshotKinds": true}
+	allowed := map[string]bool{"AddSnapshot": true, "GetSnapshot": true, "ListSnapshotKinds": true, "CreateWithSnapshots": true}
 	typ := reflect.TypeOf(&Store{})
 	var found int
 	for i := 0; i < typ.NumMethod(); i++ {

@@ -61,21 +61,13 @@ func newFakeStore() *fakeStore {
 	}}
 }
 
-func (s *fakeStore) Create(_ context.Context, r recipe.Recipe) (int64, error) {
+func (s *fakeStore) CreateWithSnapshots(_ context.Context, r recipe.Recipe, snaps ...store.SnapshotInput) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.recipes = append(s.recipes, r)
+	s.snapshots += len(snaps)
 	return int64(len(s.recipes)), nil
 }
-
-func (s *fakeStore) AddSnapshot(context.Context, int64, store.SnapshotKind, []byte) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.snapshots++
-	return nil
-}
-
-func (s *fakeStore) Delete(context.Context, int64) error { return nil }
 
 func (s *fakeStore) MatchIngredient(_ context.Context, term string) (catalog.Ingredient, bool, error) {
 	s.mu.Lock()
