@@ -141,7 +141,7 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 	id, err := s.recipes.CreateWithSnapshots(ctx, toRecipe(d, comps),
 		store.SnapshotInput{Kind: d.Source.Kind, Content: d.Source.Content})
 	if err != nil {
-		return Saved{}, fmt.Errorf("save recipe %q with its %s snapshot, nothing stored: %w", d.Name.Value, d.Source.Kind, err)
+		return Saved{}, fmt.Errorf("save recipe %q with its %s snapshot, recipe not stored: %w", d.Name.Value, d.Source.Kind, err)
 	}
 	out.RecipeID = id
 	return out, nil

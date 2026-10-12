@@ -158,7 +158,7 @@ func TestSaveReportsStoreFailureAndReturnsNoRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	saved, err := NewSaver(failingStore{}, e.catalog).Save(e.ctx, confirm(t, d))
-	if err == nil || !strings.Contains(err.Error(), "nothing stored") || !strings.Contains(err.Error(), "disk full") {
+	if err == nil || !strings.Contains(err.Error(), "recipe not stored") || !strings.Contains(err.Error(), "disk full") {
 		t.Fatalf("err = %v", err)
 	}
 	if saved.RecipeID != 0 {
