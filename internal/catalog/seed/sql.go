@@ -27,18 +27,9 @@ func SQL(names ...string) (string, error) {
 		if !want(u.Name) {
 			continue
 		}
-		qu := quantity.OtherUnit(u.Name)
-		factor := "NULL"
-		if !u.Other {
-			var ok bool
-			if qu, ok = quantity.LookupUnit(u.Name); !ok {
-				return "", fmt.Errorf("seed unit %q is not in quantity's unit table; mark it other or add it there", u.Name)
-			}
-			factor = quote(qu.Factor.String())
+		if err := unitInserts(&units, u, true); err != nil {
+			return "", err
 		}
-		fmt.Fprintf(&units, "INSERT INTO units (name, system, dimension, factor, reviewed) VALUES (%s, %s, %s, %s, 1);\n",
-			quote(qu.Name), quote(string(qu.System)), quote(string(qu.Dimension)), factor)
-		aliasInserts(&units, "unit_aliases", "unit_id", "units", u.Name, u.Aliases)
 	}
 
 	is, err := Ingredients()
@@ -70,6 +61,50 @@ func SQL(names ...string) (string, error) {
 		aliasInserts(&equip, "equipment_aliases", "equipment_id", "equipment", e.Name, e.Aliases)
 	}
 	return units.String() + "\n" + ings.String() + "\n" + equip.String(), nil
+}
+
+// unitInserts renders one unit. With create set it inserts the unit row first;
+// without, the unit already exists and only its aliases are inserted.
+func unitInserts(b *strings.Builder, u Unit, create bool) error {
+	if create {
+		qu := quantity.OtherUnit(u.Name)
+		factor := "NULL"
+		if !u.Other {
+			var ok bool
+			if qu, ok = quantity.LookupUnit(u.Name); !ok {
+				return fmt.Errorf("seed unit %q is not in quantity's unit table; mark it other or add it there", u.Name)
+			}
+			factor = quote(qu.Factor.String())
+		}
+		fmt.Fprintf(b, "INSERT INTO units (name, system, dimension, factor, reviewed) VALUES (%s, %s, %s, %s, 1);\n",
+			quote(qu.Name), quote(string(qu.System)), quote(string(qu.Dimension)), factor)
+	}
+	aliasInserts(b, "unit_aliases", "unit_id", "units", u.Name, u.Aliases)
+	return nil
+}
+
+// AdditionsSQL renders UnitAdditions as the body of the migration that ships
+// them: an INSERT for each unit the first seed did not have, then the aliases.
+func AdditionsSQL() (string, error) {
+	base, err := Units()
+	if err != nil {
+		return "", err
+	}
+	existing := map[string]bool{}
+	for _, u := range base {
+		existing[u.Name] = true
+	}
+	adds, err := UnitAdditions()
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	for _, u := range adds {
+		if err := unitInserts(&b, u, !existing[u.Name]); err != nil {
+			return "", err
+		}
+	}
+	return b.String(), nil
 }
 
 func aliasInserts(b *strings.Builder, aliasTable, fk, table, name string, aliases []string) {

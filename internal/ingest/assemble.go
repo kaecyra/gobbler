@@ -3,7 +3,6 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -40,9 +39,6 @@ const (
 	penaltyNoName        = 0.3
 	penaltyNoIngredients = 0.5
 	penaltyNoSteps       = 0.3
-	// penaltyUnitNotInCatalog lowers a line whose unit the catalog does not
-	// have: it will be proposed as a new unit.
-	penaltyUnitNotInCatalog = 0.1
 )
 
 var caloriesRE = regexp.MustCompile(`^\s*(\d+)`)
@@ -187,7 +183,7 @@ func (a *assembler) line(raw string) (Line, bool) {
 	if strings.TrimSpace(raw) == "" {
 		return Line{}, false
 	}
-	r := parse.IngredientLine(raw, a.rs)
+	r := parse.IngredientLine(raw, a.rs, a.rs)
 	l := Line{
 		Raw:        r.Raw,
 		Name:       r.Name,
@@ -207,35 +203,7 @@ func (a *assembler) line(raw string) (Line, bool) {
 		}
 		l.Qualifiers = append(l.Qualifiers, recipe.Qualifier{Kind: kind, Text: q.Text})
 	}
-
-	var missing []string
-	if u, ok := a.rs.unit(l.Amount.Unit); ok {
-		l.Amount.Unit = u
-	} else {
-		missing = append(missing, u.Name)
-	}
-	if l.Amount.HasPackage {
-		if u, ok := a.rs.unit(l.Amount.Package.Unit); ok {
-			l.Amount.Package.Unit = u
-		} else {
-			missing = append(missing, u.Name)
-		}
-	}
-	for _, name := range missing {
-		l.Confidence = round2(math.Max(l.Confidence-penaltyUnitNotInCatalog, 0))
-		l.Issues = append(l.Issues, fmt.Sprintf("unit %q is not in the catalog", name))
-		a.proposeUnit(name)
-	}
 	return l, true
-}
-
-func (a *assembler) proposeUnit(name string) {
-	for _, u := range a.proposedUnits {
-		if u.Name == name {
-			return
-		}
-	}
-	a.proposedUnits = append(a.proposedUnits, ProposedUnit{Name: name})
 }
 
 // proposedIngredients lists the names of lines that matched no catalog

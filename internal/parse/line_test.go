@@ -5,8 +5,49 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kaecyra/gobbler/internal/catalog/seed"
 	"github.com/kaecyra/gobbler/internal/quantity"
 )
+
+// lineFakeUnits is a map-backed UnitMatcher that behaves like the catalog's
+// units: names and aliases from the seed (first migration plus additions),
+// lowercase, plurals tolerated.
+type lineFakeUnits map[string]quantity.Unit
+
+func (c lineFakeUnits) MatchUnit(name string) (quantity.Unit, bool) {
+	for _, cand := range []string{name, strings.TrimSuffix(name, "es"), strings.TrimSuffix(name, "s")} {
+		if u, ok := c[cand]; ok {
+			return u, true
+		}
+	}
+	return quantity.Unit{}, false
+}
+
+func lineTestUnits() lineFakeUnits {
+	base, err := seed.Units()
+	if err != nil {
+		panic(err)
+	}
+	adds, err := seed.UnitAdditions()
+	if err != nil {
+		panic(err)
+	}
+	c := lineFakeUnits{}
+	for _, u := range append(base, adds...) {
+		qu := quantity.OtherUnit(u.Name)
+		if !u.Other {
+			var ok bool
+			if qu, ok = quantity.LookupUnit(u.Name); !ok {
+				panic("seed unit not in quantity: " + u.Name)
+			}
+		}
+		c[u.Name] = qu
+		for _, a := range u.Aliases {
+			c[strings.ToLower(a)] = qu
+		}
+	}
+	return c
+}
 
 // lineFakeCatalog is a map-backed IngredientMatcher for tests.
 type lineFakeCatalog map[string]IngredientMatch
@@ -74,7 +115,7 @@ func TestIngredientLineAmounts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			got := IngredientLine(tt.in, lineTestCatalog())
+			got := IngredientLine(tt.in, lineTestCatalog(), lineTestUnits())
 			if q := got.Amount.Qty.String(); q != tt.qty {
 				t.Errorf("qty = %q, want %q", q, tt.qty)
 			}
@@ -130,7 +171,7 @@ func TestIngredientLineQualifiers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			got := IngredientLine(tt.in, lineTestCatalog())
+			got := IngredientLine(tt.in, lineTestCatalog(), lineTestUnits())
 			if got.Name != tt.name {
 				t.Errorf("name = %q, want %q", got.Name, tt.name)
 			}
@@ -152,7 +193,7 @@ func TestIngredientLineOptional(t *testing.T) {
 		"Optional: 1 cup sugar", "1 cup sugar (optional, for heat)", "1 cup sugar, optional, divided",
 	} {
 		t.Run(in, func(t *testing.T) {
-			got := IngredientLine(in, lineTestCatalog())
+			got := IngredientLine(in, lineTestCatalog(), lineTestUnits())
 			if !got.Optional {
 				t.Errorf("Optional = false")
 			}
@@ -161,7 +202,7 @@ func TestIngredientLineOptional(t *testing.T) {
 			}
 		})
 	}
-	if got := IngredientLine("1 cup sugar", lineTestCatalog()); got.Optional {
+	if got := IngredientLine("1 cup sugar", lineTestCatalog(), lineTestUnits()); got.Optional {
 		t.Error("Optional = true for a required line")
 	}
 }
@@ -185,7 +226,7 @@ func TestIngredientLineLowConfidence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			got := IngredientLine(tt.in, c) // must not panic or fail: low confidence is data
+			got := IngredientLine(tt.in, c, lineTestUnits()) // must not panic or fail: low confidence is data
 			if got.Confidence > tt.max {
 				t.Errorf("confidence = %v, want <= %v", got.Confidence, tt.max)
 			}
@@ -197,14 +238,14 @@ func TestIngredientLineLowConfidence(t *testing.T) {
 }
 
 func TestIngredientLineUnitGuessKeepsName(t *testing.T) {
-	got := IngredientLine("2 cupz sugar", lineTestCatalog())
+	got := IngredientLine("2 cupz sugar", lineTestCatalog(), lineTestUnits())
 	if got.Name != "cupz sugar" || got.Matched {
 		t.Errorf("name %q matched %v, want the name as written, unmatched", got.Name, got.Matched)
 	}
 }
 
 func TestIngredientLineNilMatcher(t *testing.T) {
-	got := IngredientLine("1 cup flour", nil)
+	got := IngredientLine("1 cup flour", nil, lineTestUnits())
 	if got.Matched || got.Name != "flour" || got.Confidence != 1 {
 		t.Errorf("got %+v, want unmatched flour at confidence 1", got)
 	}
@@ -212,35 +253,74 @@ func TestIngredientLineNilMatcher(t *testing.T) {
 
 func TestIngredientLineKeepsRaw(t *testing.T) {
 	const raw = "  1  cup   sugar "
-	if got := IngredientLine(raw, nil); got.Raw != raw {
+	if got := IngredientLine(raw, nil, lineTestUnits()); got.Raw != raw {
 		t.Errorf("Raw = %q, want %q", got.Raw, raw)
 	}
 }
 
 func TestIngredientLineMatchRecorded(t *testing.T) {
-	got := IngredientLine("2 cloves garlic", lineTestCatalog())
+	got := IngredientLine("2 cloves garlic", lineTestCatalog(), lineTestUnits())
 	if !got.Matched || got.Match.Name != "garlic" || got.Match.ID == 0 {
 		t.Errorf("match = %+v matched=%v", got.Match, got.Matched)
 	}
 }
 
-func TestLookupUnitAliases(t *testing.T) {
+func TestLookupUnitThroughMatcher(t *testing.T) {
+	r := lineUnits{lineTestUnits()}
 	for in, want := range map[string]string{
 		"Tbsp.": "tbsp", "tablespoons": "tbsp", "T": "tbsp", "t": "tsp", "TSP": "tsp",
 		"fl. oz.": "fl oz", "Cups": "cup", "lbs": "lb", "mL": "ml", "cloves": "clove",
+		"c": "cup", "gr": "g", "bags": "bag", "box": "box", "piece": "each", "Pieces": "each",
 	} {
-		u, ok := lineLookupUnit(in)
+		u, ok := r.lookup(in)
 		if !ok || u.Name != want {
-			t.Errorf("lineLookupUnit(%q) = %q, %v; want %q", in, u.Name, ok, want)
+			t.Errorf("lookup(%q) = %q, %v; want %q", in, u.Name, ok, want)
 		}
 	}
-	if _, ok := lineLookupUnit("flour"); ok {
+	if _, ok := r.lookup("flour"); ok {
 		t.Error("flour read as a unit")
+	}
+	if _, ok := (lineUnits{}).lookup("cup"); ok {
+		t.Error("a nil matcher recognised a unit")
+	}
+}
+
+// recordingUnits proves the parser asks its matcher rather than a table of its own.
+type recordingUnits map[string]quantity.Unit
+
+func (r recordingUnits) MatchUnit(name string) (quantity.Unit, bool) {
+	u, ok := r[name]
+	return u, ok
+}
+
+func TestIngredientLineUnitsComeFromTheMatcher(t *testing.T) {
+	// A matcher that knows only "scoop": the parser's old built-in "cup" must not apply.
+	m := recordingUnits{"scoop": quantity.OtherUnit("scoop")}
+	got := IngredientLine("2 scoops sugar", lineTestCatalog(), m)
+	if got.Amount.Unit.Name != "" {
+		t.Errorf("unit = %q; plural handling belongs to the matcher, which did not match %q", got.Amount.Unit.Name, "scoops")
+	}
+	got = IngredientLine("2 scoop sugar", lineTestCatalog(), m)
+	if got.Amount.Unit.Name != "scoop" || got.Name != "sugar" {
+		t.Errorf("got unit %q name %q, want scoop sugar", got.Amount.Unit.Name, got.Name)
+	}
+	if got := IngredientLine("2 cups sugar", lineTestCatalog(), m); !got.Amount.Unit.IsZero() {
+		t.Errorf("cups read as %q without the matcher knowing it", got.Amount.Unit.Name)
+	}
+}
+
+func TestIngredientLineCatalogUnitSpellings(t *testing.T) {
+	for in, want := range map[string]string{
+		"1 c sugar": "cup", "100 gr flour": "g", "1 bag spinach": "bag", "2 boxes pasta": "box", "2 pieces garlic": "each",
+	} {
+		if got := IngredientLine(in, nil, lineTestUnits()); got.Amount.Unit.Name != want {
+			t.Errorf("%q: unit = %q, want %q", in, got.Amount.Unit.Name, want)
+		}
 	}
 }
 
 func TestParseLineAccentedNameIsNotANumber(t *testing.T) {
-	got := IngredientLine("Éclairs, halved", nil)
+	got := IngredientLine("Éclairs, halved", nil, lineTestUnits())
 	if got.Name != "éclairs" || got.Confidence != 0.9 {
 		t.Errorf("name %q confidence %v (%v), want éclairs at 0.9 (no quantity only)", got.Name, got.Confidence, got.Issues)
 	}

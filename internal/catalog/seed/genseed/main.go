@@ -3,6 +3,8 @@
 //
 //	go run ./internal/catalog/seed/genseed            # everything
 //	go run ./internal/catalog/seed/genseed "kale"     # just kale
+//	go run ./internal/catalog/seed/genseed -unit-additions
+//	                                                   # units and aliases added after the first migration
 package main
 
 import (
@@ -13,7 +15,11 @@ import (
 )
 
 func main() {
-	out, err := seed.SQL(os.Args[1:]...)
+	render := func() (string, error) { return seed.SQL(os.Args[1:]...) }
+	if len(os.Args) == 2 && os.Args[1] == "-unit-additions" {
+		render = seed.AdditionsSQL
+	}
+	out, err := render()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "genseed:", err)
 		os.Exit(1)
