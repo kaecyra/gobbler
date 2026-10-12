@@ -15,7 +15,7 @@ if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 const accessURL = process.env.GOBBLER_E2E_ACCESS_URL;
 if (!accessURL) throw new Error('GOBBLER_E2E_ACCESS_URL is not set; run through playwright.config.ts');
 
-const port = Number(process.env.GOBBLER_E2E_COOK_PORT ?? 38451);
+const port = Number(process.env.GOBBLER_E2E_COOK_PORT ?? 38461);
 const origin = `http://127.0.0.1:${port}`;
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
