@@ -14,6 +14,7 @@ import (
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/parse"
+	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // Web-level error kinds. A feature that has no domain sentinel for a failure
@@ -42,6 +43,7 @@ var statusTable = []struct {
 	{catalog.ErrConflict, http.StatusConflict},
 	{parse.ErrEmptyText, http.StatusBadRequest},
 	{extract.ErrEmptyInput, http.StatusBadRequest},
+	{store.ErrNotFound, http.StatusNotFound},
 }
 
 // classify returns the table row err matches. ok is false for an unmapped

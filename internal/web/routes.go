@@ -3,7 +3,10 @@ package web
 import (
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/store"
 	webingest "github.com/kaecyra/gobbler/internal/web/ingest"
+	"github.com/kaecyra/gobbler/internal/web/recipeview"
 )
 
 // mountFeatures is where feature packages attach their routes (ADR-00012). A
@@ -15,4 +18,5 @@ import (
 // The router has already applied authentication by the time r is passed here.
 func mountFeatures(r chi.Router, d Deps) {
 	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Ingestion: d.Config.Ingestion, Logger: d.Logger}))
+	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 }
