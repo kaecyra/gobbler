@@ -544,7 +544,8 @@
       "adrs": [
         "00004",
         "00005"
-      ]
+      ],
+      "blocked": "CSRF ADR pending (#83): adds POST routes"
     },
     {
       "id": "w3-history",
@@ -564,7 +565,8 @@
       "needs_migration": null,
       "adrs": [
         "00004"
-      ]
+      ],
+      "blocked": "CSRF ADR pending (#83): adds POST routes"
     },
     {
       "id": "w3-journal",
@@ -585,7 +587,8 @@
       "adrs": [
         "00004",
         "00003"
-      ]
+      ],
+      "blocked": "CSRF ADR pending (#83): adds POST routes"
     },
     {
       "id": "w3-catalog-page",
@@ -605,7 +608,8 @@
       "needs_migration": null,
       "adrs": [
         "00008"
-      ]
+      ],
+      "blocked": "CSRF ADR pending (#83): adds POST routes"
     },
     {
       "id": "w4-shopping-merge",
@@ -863,7 +867,8 @@
       "needs_migration": null,
       "adrs": [
         "00010"
-      ]
+      ],
+      "blocked": "CSRF ADR pending (#83): adds POST routes"
     },
     {
       "id": "w7-todoist",
