@@ -15,4 +15,6 @@ INSERT INTO unit_aliases (alias, unit_id) VALUES ('boxes', (SELECT id FROM units
 
 -- +goose Down
 DELETE FROM unit_aliases WHERE alias IN ('gr', 'c', 'bags', 'boxes');
-DELETE FROM units WHERE name IN ('bag', 'box');
+-- The bag and box units stay: Up may have adopted rows that already existed
+-- (and recipe lines may reference them), so Down cannot tell them from rows it
+-- created, and an extra reviewed unit is harmless.

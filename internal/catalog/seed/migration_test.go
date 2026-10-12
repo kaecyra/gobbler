@@ -6,6 +6,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/pressly/goose/v3"
+
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 )
@@ -60,6 +62,28 @@ func TestMigration00003AdoptsUnitsTheOldSaveFlowCreated(t *testing.T) {
 		err := d.QueryRowContext(ctx, `SELECT u.name FROM unit_aliases a JOIN units u ON u.id = a.unit_id WHERE a.alias = ?`, alias).Scan(&got)
 		if err != nil || got != unit {
 			t.Errorf("alias %q -> %q (err %v), want %q", alias, got, err, unit)
+		}
+	}
+
+	// Down cannot tell an adopted unit from a created one, so it keeps the
+	// units and removes only the aliases 00003 added.
+	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Down(ctx); err != nil {
+		t.Fatalf("rolling back 00003: %v", err)
+	}
+	for _, name := range []string{"bag", "box"} {
+		var n int
+		if err := d.QueryRowContext(ctx, `SELECT count(*) FROM units WHERE name = ?`, name).Scan(&n); err != nil || n != 1 {
+			t.Errorf("after Down, unit %q rows = %d (err %v), want it kept", name, n, err)
+		}
+	}
+	for _, alias := range []string{"bags", "boxes", "c", "gr"} {
+		var n int
+		if err := d.QueryRowContext(ctx, `SELECT count(*) FROM unit_aliases WHERE alias = ?`, alias).Scan(&n); err != nil || n != 0 {
+			t.Errorf("after Down, alias %q rows = %d (err %v), want removed", alias, n, err)
 		}
 	}
 }
