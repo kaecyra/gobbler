@@ -14,7 +14,8 @@
     "VERSION is bumped by every source PR (git-workflow rule): every merge invalidates every open branch's VERSION line. Expect a one-line rebase per merge; do not sequence around it.",
     "Wave 8 nodes (meal planning, invitations) are deferred by ADR-00011 and need their own ADR before dispatch; they are recorded blocked.",
     "internal/web is a server/router package plus one subpackage per feature area (internal/web/<area>/**), shared templ layout in internal/web/layout: ADR-00012.",
-    "E2E runs @playwright/test from e2e/, test-only and never shipped: ADR-00013."
+    "E2E runs @playwright/test from e2e/, test-only and never shipped: ADR-00013.",
+    "Generated sqlc packages are single-writer per round (shared_files notes). Nodes that regenerate storedb: w3-search-list, w3-store-atomic-ingest, w3-catalog-page. catalogdb: w3-unit-owner. Each node's note says which it regenerates; never dispatch two writers of the same package in one round."
   ],
   "gates": {
     "always": [
@@ -502,7 +503,8 @@
       "adrs": [
         "00002",
         "00004"
-      ]
+      ],
+      "note": "Regenerates storedb (new store query file)."
     },
     {
       "id": "w3-recipe-view",
@@ -535,7 +537,8 @@
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
-        "w3-csrf"
+        "w3-csrf",
+        "w3-store-atomic-ingest"
       ],
       "owns": [
         "internal/web/editor/**",
@@ -604,12 +607,15 @@
       ],
       "owns": [
         "internal/web/catalog/**",
-        "e2e/catalog/**"
+        "e2e/catalog/**",
+        "internal/catalog/usage*.go",
+        "internal/store/usage*.go"
       ],
       "needs_migration": null,
       "adrs": [
         "00008"
-      ]
+      ],
+      "note": "Merge confirmation count (#22): the catalog defines a small reference-counter interface in internal/catalog/usage*.go; the store implements it over its own tables in internal/store/usage*.go (one new store query file) and is wired in cmd/gobbler, mirroring the catalog.MergeHook / store.RegisterMergeHooks pattern. The catalog never queries a store table (ADR-00014). Regenerates storedb."
     },
     {
       "id": "w4-shopping-merge",
@@ -648,7 +654,9 @@
       "owns": [
         "internal/shopping/store*.go",
         "internal/shopping/list*.go",
-        "internal/shopping/pantry*.go"
+        "internal/shopping/pantry*.go",
+        "internal/shopping/queries/**",
+        "internal/shopping/shoppingdb/**"
       ],
       "needs_migration": "schema",
       "adrs": [
@@ -1035,7 +1043,8 @@
         "internal/ingest/assemble*.go"
       ],
       "needs_migration": "schema",
-      "adrs": []
+      "adrs": [],
+      "note": "Regenerates catalogdb (new catalog query file)."
     },
     {
       "id": "w3-store-atomic-ingest",
@@ -1054,7 +1063,8 @@
         "internal/ingest/save*.go"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "Also adds store.UpdateIfVersion (update only if the recipe is still at the version the caller read) for w3-editor's stale-save check (#19); its stale-version sentinel lives in its own recipe*.go, since store.go belongs to w3-merge-busy. Regenerates storedb."
     },
     {
       "id": "w3-csrf",
@@ -1136,6 +1146,31 @@
       "path": "internal/web/layout/httperr.go",
       "mode": "open",
       "note": "APPEND-ONLY by convention: a node that introduces a domain sentinel adds its import and one row to statusTable, never edits existing lines; the dispatcher enforces this in diff review. statusTable is first-match, so a sentinel that wraps one already listed must go above it -- the one case where a new row is inserted rather than appended, called out in that node's PR. It is the one place a domain error becomes an HTTP status (error-handling rule). mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/store/queries/**",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (ADR-00014 keeps queries per package; within one package several nodes add queries): a node adds its own new .sql file, or a new entry, and never edits another node's; the dispatcher enforces this in diff review. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/catalog/queries/**",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (ADR-00014 keeps queries per package; within one package several nodes add queries): a node adds its own new .sql file, or a new entry, and never edits another node's; the dispatcher enforces this in diff review. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "sqlc.yaml",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention: a node adds its own package entry (e.g. w4-shopping-store's internal/shopping) and never edits another package's entry; the dispatcher enforces this in diff review. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/store/storedb/**",
+      "mode": "open",
+      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
+    },
+    {
+      "path": "internal/catalog/catalogdb/**",
+      "mode": "open",
+      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
     }
   ],
   "done": [
