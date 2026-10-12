@@ -117,6 +117,23 @@ type RecipeEquipmentStep struct {
 	StepID            int64
 }
 
+type RecipeSearch struct {
+	Name        string
+	Description string
+	Ingredients string
+	Tags        string
+	Notes       string
+}
+
+type RecipeSearchSource struct {
+	ID          int64
+	Name        string
+	Description string
+	Ingredients interface{}
+	Tags        interface{}
+	Notes       interface{}
+}
+
 type RecipeSpecialTime struct {
 	RecipeID   int64
 	Position   int64

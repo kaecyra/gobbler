@@ -93,7 +93,7 @@ func (s *Store) Load(ctx context.Context, id int64) (View, error) {
 		return View{}, err
 	}
 	var snap snapshot
-	err = db.WithReadTx(ctx, s.db, s.q, func(q *shoppingdb.Queries) (err error) {
+	err = db.WithReadTx(ctx, s.db, s.q, func(q *shoppingdb.Queries, _ *sql.Tx) (err error) {
 		snap, err = readSnapshot(ctx, q, id)
 		return err
 	})
