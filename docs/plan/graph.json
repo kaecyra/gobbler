@@ -759,7 +759,8 @@
       "adrs": [
         "00006",
         "00007"
-      ]
+      ],
+      "note": "Sanctioned exception to routes.go append-only: may edit the existing /ingest r.Mount line in internal/web/routes.go to pass the LLM config (config.Config keeps LLM apart from Ingestion). No other existing line. web.go stays untouched (w3-csrf's lane)."
     },
     {
       "id": "w5-photo-ocr",
