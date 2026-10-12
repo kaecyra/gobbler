@@ -201,9 +201,10 @@ func newChooserView(src domain.Ingredient, all []domain.Ingredient, problem stri
 // confirmView is the second merge step: what the merge will do.
 type confirmView struct {
 	Source, Target domain.Ingredient
-	// Lines is the number of recipe lines the merge re-points, as counted by
-	// the catalog.
-	Lines int64
+	// Uses is the number of rows the merge re-points, as summed by the catalog
+	// over every table that references the ingredient: recipe lines and shopping
+	// rows. The counters are not told apart.
+	Uses int64
 }
 
 // formFromRequest reads the edit form of ingredient id from a parsed request.

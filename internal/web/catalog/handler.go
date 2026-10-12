@@ -160,7 +160,7 @@ func (h *handler) renderEdit(w http.ResponseWriter, r *http.Request, status int,
 }
 
 // mergeShow shows the target chooser, or, once source and target are both
-// given, the confirmation with the number of recipe lines the merge re-points.
+// given, the confirmation with the number of uses (recipe lines, shopping rows) the merge re-points.
 func (h *handler) mergeShow(w http.ResponseWriter, r *http.Request) {
 	h.mergeStep(w, r, r.URL.Query().Get("source"), r.URL.Query().Get("target"))
 }
@@ -225,12 +225,12 @@ func (h *handler) mergeStep(w http.ResponseWriter, r *http.Request, source, targ
 		return
 	}
 	ctx := r.Context()
-	lines, err := h.Usage.IngredientUsage(ctx, src.ID)
+	uses, err := h.Usage.IngredientUsage(ctx, src.ID)
 	if err != nil {
 		layout.WriteError(w, r, fmt.Errorf("count references of ingredient %d: %w", src.ID, err))
 		return
 	}
-	layout.Render(w, r, http.StatusOK, confirmPage(confirmView{Source: src, Target: dst, Lines: lines}))
+	layout.Render(w, r, http.StatusOK, confirmPage(confirmView{Source: src, Target: dst, Uses: uses}))
 }
 
 func (h *handler) renderChooser(w http.ResponseWriter, r *http.Request, status int, sourceID int64, problem string) {

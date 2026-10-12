@@ -272,7 +272,7 @@ func TestMergeConfirmationStatesTheLineCountThenRepointsEveryLine(t *testing.T) 
 	}
 
 	confirm := wantStatus(t, f.do("GET", "/catalog/merge?source="+idStr(src)+"&target="+idStr(dst), nil), 200)
-	wantContains(t, confirm, "3 recipe lines")
+	wantContains(t, confirm, "3 uses")
 
 	w := f.do("POST", "/catalog/merge", url.Values{"source": {idStr(src)}, "target": {idStr(dst)}})
 	if w.Code != http.StatusSeeOther {

@@ -77,7 +77,7 @@ func TestCatalogMergeRepointsShoppingRows(t *testing.T) {
 	// The confirmation counts the pantry row and the manual item.
 	confirm := httptest.NewRecorder()
 	router.ServeHTTP(confirm, httptest.NewRequest(http.MethodGet, "/catalog/merge?source="+loserID+"&target="+winnerID, nil))
-	if body := confirm.Body.String(); !strings.Contains(body, `data-testid="merge-lines">2 recipe lines`) {
+	if body := confirm.Body.String(); !strings.Contains(body, `data-testid="merge-uses">2 uses`) {
 		t.Errorf("merge confirmation does not count the shopping rows:\n%s", body)
 	}
 
