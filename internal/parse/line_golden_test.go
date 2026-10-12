@@ -81,7 +81,7 @@ func lineRenderCorpus(t *testing.T, lines []string) []byte {
 	c := lineLoadCatalog(t)
 	out := make([]lineGolden, len(lines))
 	for i, l := range lines {
-		out[i] = lineToGolden(IngredientLine(l, c))
+		out[i] = lineToGolden(IngredientLine(l, c, lineTestUnits()))
 	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -135,12 +135,12 @@ func TestLineDeterminism(t *testing.T) {
 	c := lineLoadCatalog(t)
 	first := make(map[string]lineGolden, len(lines))
 	for _, l := range lines {
-		first[l] = lineToGolden(IngredientLine(l, c))
+		first[l] = lineToGolden(IngredientLine(l, c, lineTestUnits()))
 	}
 
 	check := func(name string, order []string) {
 		for _, l := range order {
-			if got := lineToGolden(IngredientLine(l, c)); !reflect.DeepEqual(got, first[l]) {
+			if got := lineToGolden(IngredientLine(l, c, lineTestUnits())); !reflect.DeepEqual(got, first[l]) {
 				t.Errorf("%s: %q gave %+v, first run gave %+v", name, l, got, first[l])
 			}
 		}
@@ -157,7 +157,7 @@ func TestLineDeterminism(t *testing.T) {
 func TestLineCorpusNeverErrors(t *testing.T) {
 	c := lineLoadCatalog(t)
 	for _, l := range lineLoadCorpus(t) {
-		r := IngredientLine(l, c)
+		r := IngredientLine(l, c, lineTestUnits())
 		if r.Raw != l || r.Confidence < 0 || r.Confidence > 1 {
 			t.Errorf("%q: raw %q confidence %v", l, r.Raw, r.Confidence)
 		}

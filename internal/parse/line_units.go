@@ -6,74 +6,51 @@ import (
 	"github.com/kaecyra/gobbler/internal/quantity"
 )
 
-// lineUnitAliases lists, per canonical unit name, the spellings recipes use
-// for it. Canonical names that quantity knows (g, cup, ...) resolve through
-// quantity.LookupUnit so the factors stay in one place; the rest are
-// non-converting "other" units ("pinch", "clove", "can"). Aliases are matched
-// case-insensitively after trimming a trailing dot, except the single letters
-// "T" and "t", which differ only by case.
-var lineUnitAliases = map[string][]string{
-	"g":      {"g", "gram", "grams", "gr"},
-	"kg":     {"kg", "kgs", "kilogram", "kilograms"},
-	"oz":     {"oz", "ounce", "ounces"},
-	"lb":     {"lb", "lbs", "pound", "pounds"},
-	"ml":     {"ml", "mls", "milliliter", "milliliters", "millilitre", "millilitres"},
-	"l":      {"l", "liter", "liters", "litre", "litres"},
-	"tsp":    {"tsp", "tsps", "teaspoon", "teaspoons"},
-	"tbsp":   {"tbsp", "tbsps", "tbs", "tbl", "tablespoon", "tablespoons"},
-	"fl oz":  {"fl oz", "fluid ounce", "fluid ounces"},
-	"cup":    {"c", "cup", "cups"},
-	"pint":   {"pt", "pint", "pints"},
-	"quart":  {"qt", "quart", "quarts"},
-	"gallon": {"gal", "gallon", "gallons"},
-	"dozen":  {"dozen"},
-
-	"pinch":   {"pinch", "pinches"},
-	"dash":    {"dash", "dashes"},
-	"clove":   {"clove", "cloves"},
-	"can":     {"can", "cans", "tin", "tins"},
-	"jar":     {"jar", "jars"},
-	"package": {"package", "packages", "pkg", "pkgs", "packet", "packets"},
-	"stick":   {"stick", "sticks"},
-	"bunch":   {"bunch", "bunches"},
-	"sprig":   {"sprig", "sprigs"},
-	"slice":   {"slice", "slices"},
-	"head":    {"head", "heads"},
-	"stalk":   {"stalk", "stalks"},
-	"piece":   {"piece", "pieces"},
-	"bag":     {"bag", "bags"},
-	"box":     {"box", "boxes"},
-	"bottle":  {"bottle", "bottles"},
-	"handful": {"handful", "handfuls"},
+// UnitMatcher resolves a unit spelling (lowercase, trailing dot removed) to the
+// catalog's unit. The catalog owns unit names and aliases; this package keeps
+// no table of its own. Implementations must be deterministic and should answer
+// from memory, like IngredientMatcher. A nil UnitMatcher recognises no unit.
+type UnitMatcher interface {
+	MatchUnit(name string) (quantity.Unit, bool)
 }
 
-// lineUnitIndex maps a lowercase alias to its unit, built once at start-up.
-var lineUnitIndex = lineBuildUnitIndex()
+// lineUnits reads units through a UnitMatcher.
+type lineUnits struct{ m UnitMatcher }
 
-func lineBuildUnitIndex() map[string]quantity.Unit {
-	idx := make(map[string]quantity.Unit)
-	for canon, aliases := range lineUnitAliases {
-		u, ok := quantity.LookupUnit(canon)
-		if !ok {
-			u = quantity.OtherUnit(canon)
-		}
-		for _, a := range aliases {
-			idx[a] = u
-		}
+// lookup resolves a unit spelling such as "Tbsp.", "T" or "fl oz". Spellings
+// are lowercased and lose a trailing dot before the matcher sees them, except
+// the single letters "T" and "t", which differ only by case: the catalog
+// lowercases aliases, so they are mapped to "tbsp" and "tsp" here.
+func (r lineUnits) lookup(s string) (quantity.Unit, bool) {
+	if r.m == nil {
+		return quantity.Unit{}, false
 	}
-	return idx
-}
-
-// lineLookupUnit resolves a unit spelling such as "Tbsp.", "T" or "fl oz".
-func lineLookupUnit(s string) (quantity.Unit, bool) {
 	switch s {
 	case "T":
-		return quantity.MustUnit("tbsp"), true
+		return r.m.MatchUnit("tbsp")
 	case "t":
-		return quantity.MustUnit("tsp"), true
+		return r.m.MatchUnit("tsp")
 	}
 	s = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(s), "."))
 	s = strings.ReplaceAll(s, "fl. oz", "fl oz")
-	u, ok := lineUnitIndex[s]
-	return u, ok
+	if s == "" {
+		return quantity.Unit{}, false
+	}
+	return r.m.MatchUnit(s)
+}
+
+// at reads a unit from the front of toks: two words ("fl oz") are tried
+// before one. n is the number of tokens used.
+func (r lineUnits) at(toks []string) (u quantity.Unit, n int) {
+	if len(toks) >= 2 {
+		if u, ok := r.lookup(toks[0] + " " + toks[1]); ok && !lineIsParen(toks[0]) {
+			return u, 2
+		}
+	}
+	if len(toks) >= 1 && !lineIsParen(toks[0]) {
+		if u, ok := r.lookup(toks[0]); ok {
+			return u, 1
+		}
+	}
+	return quantity.Unit{}, 0
 }

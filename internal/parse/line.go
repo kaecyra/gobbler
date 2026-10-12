@@ -89,8 +89,9 @@ var (
 // IngredientLine reads one ingredient line. It never fails: a line it cannot fully
 // read comes back with a lower Confidence and Issues saying why. m may be
 // nil, in which case no catalog matching is attempted and an unmatched name
-// costs no confidence.
-func IngredientLine(raw string, m IngredientMatcher) LineResult {
+// costs no confidence. u resolves unit spellings through the catalog; a nil u
+// recognises no unit, so "1 cup flour" reads "cup" as part of the name.
+func IngredientLine(raw string, m IngredientMatcher, u UnitMatcher) LineResult {
 	res := LineResult{Raw: raw}
 	s := strings.Join(strings.Fields(raw), " ")
 	s = lineBulletRE.ReplaceAllString(s, "")
@@ -110,7 +111,7 @@ func IngredientLine(raw string, m IngredientMatcher) LineResult {
 	head := strings.TrimSpace(pieces[0])
 	tail := strings.TrimSpace(strings.Join(pieces[1:], ","))
 
-	p := lineParser{res: &res, m: m}
+	p := lineParser{res: &res, m: m, u: lineUnits{u}}
 	p.parseHead(head)
 	p.parseTail(tail)
 	p.score()
@@ -137,6 +138,7 @@ func lineTidy(s string) string {
 type lineParser struct {
 	res *LineResult
 	m   IngredientMatcher
+	u   lineUnits
 	// unitGuess is a word that looks like an unrecognised unit.
 	unitGuess string
 	leftover  int
@@ -159,14 +161,14 @@ func (p *lineParser) parseHead(head string) {
 		p.addQualifier(LineQualNote, strings.ToLower(strings.TrimPrefix(toks[0], "~")))
 		toks = toks[1:]
 	}
-	toks = lineSplitAttached(toks)
+	toks = p.u.splitAttached(toks)
 
 	qty, used := lineLeadingQuantity(toks)
 	// "1 14-ounce can": a size and a converting unit, then a packaging unit.
 	var barePkg quantity.PackageSize
 	nb := 0
 	if used > 0 {
-		barePkg, nb = lineBarePackage(toks[used:])
+		barePkg, nb = p.u.barePackage(toks[used:])
 	}
 	if nb == 0 && used > 0 && used < len(toks) && lineLooksNumeric(toks[used]) {
 		// "1 3/4/2 cups": a number follows the quantity we read, so we did
@@ -180,7 +182,7 @@ func (p *lineParser) parseHead(head string) {
 	// "a pinch", "an onion": the article is the number one when a unit follows.
 	if used == 0 && len(toks) > 1 {
 		if w := strings.ToLower(toks[0]); w == "a" || w == "an" {
-			if _, n := lineUnitAt(toks[1:]); n > 0 {
+			if _, n := p.u.at(toks[1:]); n > 0 {
 				qty, toks = quantity.Exact(quantity.Int(1)), toks[1:]
 				used = 1
 			}
@@ -194,13 +196,13 @@ func (p *lineParser) parseHead(head string) {
 
 	// "1 (14 oz) can": a package size sits between quantity and unit.
 	if len(toks) > 0 && lineIsParen(toks[0]) && used > 0 {
-		if pkg, ok := lineParsePackage(toks[0]); ok {
+		if pkg, ok := p.u.parsePackage(toks[0]); ok {
 			p.res.Amount.Package, p.res.Amount.HasPackage = pkg, true
 			toks = toks[1:]
 		}
 	}
 
-	if u, n := lineUnitAt(toks); n > 0 && (used > 0 || u.Dimension == quantity.DimOther) {
+	if u, n := p.u.at(toks); n > 0 && (used > 0 || u.Dimension == quantity.DimOther) {
 		p.res.Amount.Unit = u
 		toks = toks[n:]
 		if len(toks) > 1 && strings.EqualFold(toks[0], "of") {
@@ -208,7 +210,7 @@ func (p *lineParser) parseHead(head string) {
 		}
 		// "1 can (14 oz) tomatoes": the package size follows its unit.
 		if len(toks) > 0 && lineIsParen(toks[0]) && u.Dimension == quantity.DimOther && !p.res.Amount.HasPackage {
-			if pkg, ok := lineParsePackage(toks[0]); ok {
+			if pkg, ok := p.u.parsePackage(toks[0]); ok {
 				p.res.Amount.Package, p.res.Amount.HasPackage = pkg, true
 				toks = toks[1:]
 			}
@@ -372,13 +374,13 @@ func lineLooksNumeric(t string) bool {
 	return false
 }
 
-// lineSplitAttached turns "200g" and "8-ounce" into two tokens when the
+// splitAttached turns "200g" and "8-ounce" into two tokens when the
 // letters are a known unit, so quantity and unit are read the usual way.
-func lineSplitAttached(toks []string) []string {
+func (r lineUnits) splitAttached(toks []string) []string {
 	out := make([]string, 0, len(toks)+1)
 	for _, t := range toks {
 		if m := lineAttachedRE.FindStringSubmatch(t); m != nil {
-			if _, ok := lineLookupUnit(m[2]); ok {
+			if _, ok := r.lookup(m[2]); ok {
 				out = append(out, m[1], m[2])
 				continue
 			}
@@ -411,52 +413,36 @@ func lineLeadingQuantity(toks []string) (quantity.Quantity, int) {
 	return quantity.Absent(), 0
 }
 
-// lineUnitAt reads a unit from the front of toks: two words ("fl oz") are
-// tried before one. n is the number of tokens used.
-func lineUnitAt(toks []string) (u quantity.Unit, n int) {
-	if len(toks) >= 2 {
-		if u, ok := lineLookupUnit(toks[0] + " " + toks[1]); ok && !lineIsParen(toks[0]) {
-			return u, 2
-		}
-	}
-	if len(toks) >= 1 && !lineIsParen(toks[0]) {
-		if u, ok := lineLookupUnit(toks[0]); ok {
-			return u, 1
-		}
-	}
-	return quantity.Unit{}, 0
-}
-
-// lineParsePackage reads "(14 oz)", "(14-ounce)" or "(8 oz.)" as a package
+// parsePackage reads "(14 oz)", "(14-ounce)" or "(8 oz.)" as a package
 // size. Anything else in parentheses is a note, not a size.
-func lineParsePackage(tok string) (quantity.PackageSize, bool) {
+func (r lineUnits) parsePackage(tok string) (quantity.PackageSize, bool) {
 	inner := strings.TrimSpace(strings.Trim(tok, "()[]"))
-	toks := lineSplitAttached(strings.Fields(inner))
+	toks := r.splitAttached(strings.Fields(inner))
 	qty, used := lineLeadingQuantity(toks)
 	if used == 0 || used != len(toks)-1 {
 		return quantity.PackageSize{}, false
 	}
-	u, ok := lineLookupUnit(toks[used])
+	u, ok := r.lookup(toks[used])
 	if !ok || !u.Converts() {
 		return quantity.PackageSize{}, false
 	}
 	return quantity.PackageSize{Qty: qty, Unit: u}, true
 }
 
-// lineBarePackage reads an unparenthesised package size at the front of toks:
+// barePackage reads an unparenthesised package size at the front of toks:
 // a quantity and a converting unit followed by a non-converting packaging
 // unit ("14 ounce" before "can"). n is the tokens used by the size, zero when
 // toks does not start with one; the packaging unit is left for the caller.
-func lineBarePackage(toks []string) (pkg quantity.PackageSize, n int) {
+func (r lineUnits) barePackage(toks []string) (pkg quantity.PackageSize, n int) {
 	qty, used := lineLeadingQuantity(toks)
 	if used == 0 {
 		return quantity.PackageSize{}, 0
 	}
-	u, un := lineUnitAt(toks[used:])
+	u, un := r.at(toks[used:])
 	if un == 0 || !u.Converts() {
 		return quantity.PackageSize{}, 0
 	}
-	if outer, on := lineUnitAt(toks[used+un:]); on == 0 || outer.Dimension != quantity.DimOther {
+	if outer, on := r.at(toks[used+un:]); on == 0 || outer.Dimension != quantity.DimOther {
 		return quantity.PackageSize{}, 0
 	}
 	return quantity.PackageSize{Qty: qty, Unit: u}, used + un

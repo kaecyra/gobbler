@@ -63,11 +63,12 @@ func (r *resolver) MatchIngredient(name string) (parse.IngredientMatch, bool) {
 	return h.match, h.ok
 }
 
-// unit maps a unit the parser produced to the catalog's unit of that name or
-// alias. The catalog is where unit names and aliases are owned, and the store
-// references units by the catalog's canonical name, so every unit that reaches
-// a draft goes through here. found is false for a unit the catalog does not
-// have; u is then returned unchanged. The zero unit is always found.
+// unit is the parser's unit source (MatchUnit calls it for every unit spelling
+// in a line). It returns the catalog's unit for u's name or alias, so a draft
+// only ever carries catalog units, answering from a per-ingest cache. found is
+// false for a spelling the catalog does not have, or after a catalog failure
+// (r.err, which the caller checks); u is then returned unchanged. The zero
+// unit is always found.
 func (r *resolver) unit(u quantity.Unit) (quantity.Unit, bool) {
 	if u.IsZero() || r.err != nil {
 		return u, r.err == nil

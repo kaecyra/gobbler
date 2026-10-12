@@ -6,6 +6,8 @@
 // parser version produce the same output. A line or duration the rules cannot
 // fully read comes back as a low-confidence result, never as an error, so one
 // hard line cannot abort an ingest. Ingredient matching goes through the
-// IngredientMatcher interface, which the catalog satisfies at the call site;
-// this package imports neither the catalog nor the database.
+// IngredientMatcher interface and unit resolution through UnitMatcher; the
+// catalog satisfies both at the call site and is the only owner of ingredient
+// and unit names and aliases. This package imports neither the catalog nor the
+// database.
 package parse

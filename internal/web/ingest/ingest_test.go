@@ -88,10 +88,6 @@ func (s *fakeStore) CreateIngredient(_ context.Context, in catalog.Ingredient) (
 	return in, nil
 }
 
-func (s *fakeStore) CreateUnit(_ context.Context, in catalog.Unit) (catalog.Unit, error) {
-	return in, nil
-}
-
 func sampleDraft() ingestcore.Draft {
 	content := []byte("<html>the page</html>")
 	sum := sha256.Sum256(content)
@@ -619,4 +615,29 @@ func between(t *testing.T, s, start, end string) string {
 		t.Fatalf("%q not found after %q", end, start)
 	}
 	return rest[:j]
+}
+
+type unknownUnitSaver struct{}
+
+func (unknownUnitSaver) Save(context.Context, ingestcore.Confirmed) (ingestcore.Saved, error) {
+	return ingestcore.Saved{}, fmt.Errorf("component 1 line 2 (%q): %w", "3 zorbs butter", &ingestcore.UnknownUnitError{Name: "zorb"})
+}
+
+// A unit the catalog no longer knows is a problem with the draft, not a broken
+// pipeline: the review screen comes back with the problem and the draft stays.
+func TestConfirmUnknownUnitReturnsToReviewWithProblem(t *testing.T) {
+	f := newFixture(t)
+	f.h.saver = unknownUnitSaver{}
+	token := f.ingestText(t)
+	rec := f.do(http.MethodPost, "/"+token+"/confirm", reviewForm())
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422; body %s", rec.Code, rec.Body)
+	}
+	body := rec.Body.String()
+	if strings.Count(body, "not in the catalog") != 1 || !strings.Contains(body, "zorb") {
+		t.Errorf("the problem must name the unit and say catalog once: %s", body)
+	}
+	if f.do(http.MethodGet, "/"+token, nil).Code != http.StatusOK {
+		t.Error("the draft was lost")
+	}
 }

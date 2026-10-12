@@ -155,7 +155,7 @@ templ summary(d ingestcore.Draft) {
 // proposed lists the ingredients the catalog does not have. They are created,
 // unreviewed, only when the draft is confirmed (ADR-00008).
 templ proposed(d ingestcore.Draft) {
-	if len(d.Proposed) > 0 || len(d.ProposedUnits) > 0 {
+	if len(d.Proposed) > 0 {
 		<section class="new-ingredients" aria-label="New ingredients">
 			<h2>New ingredients</h2>
 			<p class="muted">The catalog does not have these. Confirming adds them as unreviewed ingredients, unless you map the line to an existing one below.</p>
@@ -164,14 +164,6 @@ templ proposed(d ingestcore.Draft) {
 					<li data-proposed={ p.Name }><strong>{ p.Name }</strong> <span class="muted">aisle: { p.Aisle }</span></li>
 				}
 			</ul>
-			if len(d.ProposedUnits) > 0 {
-				<p class="muted">New units, also added unreviewed:</p>
-				<ul>
-					for _, u := range d.ProposedUnits {
-						<li>{ u.Name }</li>
-					}
-				</ul>
-			}
 		</section>
 	}
 }

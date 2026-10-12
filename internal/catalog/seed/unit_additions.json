@@ -1,0 +1,6 @@
+[
+  {"name": "g", "aliases": ["gr"]},
+  {"name": "cup", "aliases": ["c"]},
+  {"name": "bag", "aliases": ["bags"], "other": true},
+  {"name": "box", "aliases": ["boxes"], "other": true}
+]

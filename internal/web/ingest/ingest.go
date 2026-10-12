@@ -295,12 +295,21 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	saved, err := h.saver.Save(r.Context(), confirmed)
+	var unitErr *ingestcore.UnknownUnitError
+	if errors.As(err, &unitErr) {
+		// The catalog changed since drafting: a problem with the draft, not a
+		// broken pipeline, so show it on the review screen.
+		retry(http.StatusUnprocessableEntity, []string{
+			fmt.Sprintf("The unit %q is not in the catalog (it may have changed since this draft was made). Ingest the recipe again to re-read it.", unitErr.Name),
+		})
+		return
+	}
 	if err != nil {
 		fail(fmt.Errorf("save confirmed draft: %w", err))
 		return
 	}
 	h.log.InfoContext(r.Context(), "recipe ingested", "recipe_id", saved.RecipeID,
-		"new_ingredients", len(saved.NewIngredients), "new_units", len(saved.NewUnits))
+		"new_ingredients", len(saved.NewIngredients))
 	http.Redirect(w, r, recipePath(saved.RecipeID), http.StatusSeeOther)
 }
 

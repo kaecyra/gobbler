@@ -6,7 +6,10 @@
 // carries it as SQL. SQL (and `go run ./internal/catalog/seed/genseed`) renders
 // it; a test asserts the migration contains exactly that output. Changing a
 // JSON file does not change an existing database: an addition to the seed
-// ships as a new migration whose INSERTs come from `genseed <name>...`.
+// ships as a new migration whose INSERTs come from `genseed <name>...`. Units
+// and unit aliases added after the first migration are listed in
+// unit_additions.json instead, so units.json keeps matching migration 00001;
+// `genseed -unit-additions` renders the migration that ships them.
 //
 // Unit factors, systems and dimensions are not repeated here. Units that
 // convert take them from internal/quantity, the single source of truth
@@ -20,7 +23,7 @@ import (
 	"fmt"
 )
 
-//go:embed ingredients.json units.json equipment.json
+//go:embed ingredients.json units.json unit_additions.json equipment.json
 var files embed.FS
 
 // Ingredient is one curated canonical ingredient. DensityGPerML is grams per
@@ -47,6 +50,12 @@ type Equipment struct {
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases"`
 }
+
+// UnitAdditions returns the units the first seed lacked: an entry whose name is
+// in Units() adds aliases to that unit, any other entry is a new unit. They
+// ship in a later migration, rendered by AdditionsSQL, because the first
+// migration's SQL must stay what Units() rendered when it was written.
+func UnitAdditions() ([]Unit, error) { return load[Unit]("unit_additions.json") }
 
 // Ingredients returns the curated ingredient list.
 func Ingredients() ([]Ingredient, error) { return load[Ingredient]("ingredients.json") }
