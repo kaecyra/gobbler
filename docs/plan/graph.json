@@ -1064,7 +1064,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Also adds store.UpdateIfVersion (update only if the recipe is still at the version the caller read) for w3-editor's stale-save check (#19); its stale-version sentinel lives in its own recipe*.go, since store.go belongs to w3-merge-busy. Regenerates storedb."
+      "note": "Also adds store.UpdateIfVersion (update only if the recipe is still at the version the caller read) for w3-editor's stale-save check (#19); its stale-version sentinel lives in its own recipe*.go. Also fixes #104: store.Delete must run inside s.withTx so it queues behind the write gate. Regenerates storedb."
     },
     {
       "id": "w3-csrf",
@@ -1090,7 +1090,7 @@
       "wave": 3,
       "track": "persistence",
       "issue": 93,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w2-sqlc"
       ],
@@ -1432,6 +1432,12 @@
         "00004",
         "00003"
       ]
+    },
+    {
+      "id": "w3-merge-busy",
+      "title": "MergeIngredients takes the write lock without SQLITE_BUSY under contention",
+      "merged": "d23e4e3",
+      "note": "Fixes the flaky TestConcurrentMergesAndEditsDoNotFailBusy gate; #79 did not fully close #59."
     }
   ],
   "adr_sequence": {
