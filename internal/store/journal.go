@@ -2,10 +2,11 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // dateLayout is the stored form of a made-it date.
@@ -45,17 +46,15 @@ func (s *Store) AddNote(ctx context.Context, id int64, body string) (Note, error
 	}
 	n := Note{RecipeID: id, Body: body, CreatedBy: who}
 	now := s.now().UTC()
-	err = s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := lockRecipe(ctx, tx, id); err != nil {
+	err = s.withTx(ctx, func(q *storedb.Queries) (err error) {
+		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx, `INSERT INTO notes (recipe_id, body, created_at, created_by) VALUES (?, ?, ?, ?)`,
-			id, body, formatTime(now), who)
+		n.ID, err = q.InsertNote(ctx, storedb.InsertNoteParams{RecipeID: id, Body: body, CreatedAt: formatTime(now), CreatedBy: who})
 		if err != nil {
 			return fmt.Errorf("write note on recipe %d: %w", id, err)
 		}
-		n.ID, err = res.LastInsertId()
-		return err
+		return nil
 	})
 	if err != nil {
 		return Note{}, err
@@ -68,24 +67,22 @@ func (s *Store) AddNote(ctx context.Context, id int64, body string) (Note, error
 // ErrNotFound.
 func (s *Store) ListNotes(ctx context.Context, id int64) ([]Note, error) {
 	var out []Note
-	err := s.read(ctx, func(q queryer) error {
+	err := s.read(ctx, func(q *storedb.Queries) error {
 		if _, err := loadInfo(ctx, q, id); err != nil {
 			return err
 		}
-		return collect(ctx, q, "notes", `SELECT id, body, created_at, created_by FROM notes WHERE recipe_id = ? ORDER BY id`,
-			[]any{id}, func(rows *sql.Rows) error {
-				n := Note{RecipeID: id}
-				var at string
-				if err := rows.Scan(&n.ID, &n.Body, &at, &n.CreatedBy); err != nil {
-					return err
-				}
-				var err error
-				if n.CreatedAt, err = parseTime(at); err != nil {
-					return err
-				}
-				out = append(out, n)
-				return nil
-			})
+		rows, err := q.ListNotes(ctx, id)
+		if err != nil {
+			return readErr("notes", err)
+		}
+		for _, r := range rows {
+			n := Note{ID: r.ID, RecipeID: id, Body: r.Body, CreatedBy: r.CreatedBy}
+			if n.CreatedAt, err = parseTime(r.CreatedAt); err != nil {
+				return readErr("notes", err)
+			}
+			out = append(out, n)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -109,18 +106,18 @@ func (s *Store) AddMadeIt(ctx context.Context, id int64, e MadeIt) (MadeIt, erro
 	if err != nil {
 		return MadeIt{}, fmt.Errorf("made-it date: %w", err)
 	}
-	err = s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := lockRecipe(ctx, tx, id); err != nil {
+	err = s.withTx(ctx, func(q *storedb.Queries) (err error) {
+		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx,
-			`INSERT INTO made_it (recipe_id, made_on, rating, comment, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
-			id, out.On.Format(dateLayout), nullInt(e.Rating), e.Comment, formatTime(now), who)
+		out.ID, err = q.InsertMadeIt(ctx, storedb.InsertMadeItParams{
+			RecipeID: id, MadeOn: out.On.Format(dateLayout), Rating: nullInt(e.Rating),
+			Comment: e.Comment, CreatedAt: formatTime(now), CreatedBy: who,
+		})
 		if err != nil {
 			return fmt.Errorf("write made-it entry on recipe %d: %w", id, err)
 		}
-		out.ID, err = res.LastInsertId()
-		return err
+		return nil
 	})
 	if err != nil {
 		return MadeIt{}, err
@@ -132,32 +129,25 @@ func (s *Store) AddMadeIt(ctx context.Context, id int64, e MadeIt) (MadeIt, erro
 // missing recipe is ErrNotFound.
 func (s *Store) ListMadeIt(ctx context.Context, id int64) ([]MadeIt, error) {
 	var out []MadeIt
-	err := s.read(ctx, func(q queryer) error {
+	err := s.read(ctx, func(q *storedb.Queries) error {
 		if _, err := loadInfo(ctx, q, id); err != nil {
 			return err
 		}
-		return collect(ctx, q, "made-it log",
-			`SELECT id, made_on, rating, comment, created_at, created_by FROM made_it WHERE recipe_id = ? ORDER BY made_on, id`,
-			[]any{id}, func(rows *sql.Rows) error {
-				e := MadeIt{RecipeID: id}
-				var (
-					on, at string
-					rating sql.NullInt64
-				)
-				if err := rows.Scan(&e.ID, &on, &rating, &e.Comment, &at, &e.CreatedBy); err != nil {
-					return err
-				}
-				var err error
-				if e.On, err = time.Parse(dateLayout, on); err != nil {
-					return fmt.Errorf("parse stored date %q: %w", on, err)
-				}
-				if e.CreatedAt, err = parseTime(at); err != nil {
-					return err
-				}
-				e.Rating = intPtr(rating)
-				out = append(out, e)
-				return nil
-			})
+		rows, err := q.ListMadeIt(ctx, id)
+		if err != nil {
+			return readErr("made-it log", err)
+		}
+		for _, r := range rows {
+			e := MadeIt{ID: r.ID, RecipeID: id, Comment: r.Comment, CreatedBy: r.CreatedBy, Rating: intPtr(r.Rating)}
+			if e.On, err = time.Parse(dateLayout, r.MadeOn); err != nil {
+				return readErr("made-it log", fmt.Errorf("parse stored date %q: %w", r.MadeOn, err))
+			}
+			if e.CreatedAt, err = parseTime(r.CreatedAt); err != nil {
+				return readErr("made-it log", err)
+			}
+			out = append(out, e)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

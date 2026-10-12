@@ -1,6 +1,8 @@
-// Package db provides the SQLite connection and the migration runner. SQL for
-// features lives in their own store packages; this package knows only how to
-// open the file and bring its schema up to date (ADR-00002).
+// Package db provides the SQLite connection, the migration runner and the
+// helpers every sqlc-backed store shares: WithTx and WithReadTx run a function
+// in one transaction, and WrapWrite wraps a failed write, mapping chosen
+// constraint violations to a sentinel error (ADR-00014). SQL for features
+// lives in their own store packages (ADR-00002).
 package db
 
 import (

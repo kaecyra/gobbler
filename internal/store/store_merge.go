@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // mergeRegistrar is what the store needs of the catalog: somewhere to register
@@ -25,7 +26,13 @@ func (s *Store) RegisterMergeHooks(c mergeRegistrar) {
 }
 
 func repointLines(ctx context.Context, tx *sql.Tx, loserID, winnerID int64) error {
-	if _, err := tx.ExecContext(ctx, `UPDATE ingredient_lines SET ingredient_id = ? WHERE ingredient_id = ?`, winnerID, loserID); err != nil {
+	// ingredient_lines.ingredient_id is nullable (unresolved lines), so sqlc
+	// types the parameters as nullable too.
+	err := storedb.New(tx).RepointIngredientLines(ctx, storedb.RepointIngredientLinesParams{
+		WinnerID: sql.NullInt64{Int64: winnerID, Valid: true},
+		LoserID:  sql.NullInt64{Int64: loserID, Valid: true},
+	})
+	if err != nil {
 		return fmt.Errorf("re-point recipe lines: %w", err)
 	}
 	return nil
@@ -35,42 +42,29 @@ func repointLines(ctx context.Context, tx *sql.Tx, loserID, winnerID int64) erro
 // that names the loser, then moves the index rows. A revision that already
 // names the winner keeps one index row.
 func repointRevisions(ctx context.Context, tx *sql.Tx, loserID, winnerID int64) error {
-	type row struct {
-		id   int64
-		body string
-	}
-	var affected []row
-	err := collect(ctx, tx, "revisions naming ingredient",
-		`SELECT r.id, r.document FROM revisions r JOIN revision_ingredients ri ON ri.revision_id = r.id WHERE ri.ingredient_id = ?`,
-		[]any{loserID}, func(rows *sql.Rows) error {
-			var r row
-			if err := rows.Scan(&r.id, &r.body); err != nil {
-				return err
-			}
-			affected = append(affected, r)
-			return nil
-		})
+	q := storedb.New(tx)
+	affected, err := q.ListRevisionsNamingIngredient(ctx, loserID)
 	if err != nil {
-		return err
+		return readErr("revisions naming ingredient", err)
 	}
 	for _, r := range affected {
-		d, err := decodeDocument([]byte(r.body))
+		d, err := decodeDocument([]byte(r.Document))
 		if err != nil {
-			return fmt.Errorf("revision %d: %w", r.id, err)
+			return fmt.Errorf("revision %d: %w", r.ID, err)
 		}
 		d.repointIngredient(loserID, winnerID)
 		body, err := encodeRaw(d)
 		if err != nil {
-			return fmt.Errorf("revision %d: %w", r.id, err)
+			return fmt.Errorf("revision %d: %w", r.ID, err)
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE revisions SET document = ? WHERE id = ?`, string(body), r.id); err != nil {
-			return fmt.Errorf("re-point revision %d: %w", r.id, err)
+		if err := q.UpdateRevisionDocument(ctx, storedb.UpdateRevisionDocumentParams{Document: string(body), ID: r.ID}); err != nil {
+			return fmt.Errorf("re-point revision %d: %w", r.ID, err)
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE OR IGNORE revision_ingredients SET ingredient_id = ? WHERE ingredient_id = ?`, winnerID, loserID); err != nil {
+	if err := q.RepointRevisionIndex(ctx, storedb.RepointRevisionIndexParams{WinnerID: winnerID, LoserID: loserID}); err != nil {
 		return fmt.Errorf("re-point revision index: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM revision_ingredients WHERE ingredient_id = ?`, loserID); err != nil {
+	if err := q.DeleteRevisionIndex(ctx, loserID); err != nil {
 		return fmt.Errorf("drop duplicate revision index rows: %w", err)
 	}
 	return nil

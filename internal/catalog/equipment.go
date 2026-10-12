@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/kaecyra/gobbler/internal/catalog/catalogdb"
 )
 
 // Equipment is a piece of kitchen equipment ("skillet", "stand mixer") with
@@ -25,16 +27,8 @@ func (e *Equipment) prepare() error {
 	return nil
 }
 
-func scanEquipment(sc interface{ Scan(...any) error }) (Equipment, error) {
-	var (
-		e   Equipment
-		rev int
-	)
-	if err := sc.Scan(&e.ID, &e.Name, &rev); err != nil {
-		return Equipment{}, err
-	}
-	e.Reviewed = rev != 0
-	return e, nil
+func equipmentFrom(r catalogdb.Equipment) Equipment {
+	return Equipment{ID: r.ID, Name: r.Name, Reviewed: r.Reviewed != 0}
 }
 
 // CreateEquipment stores new equipment and returns it with its id.
@@ -42,18 +36,15 @@ func (s *Store) CreateEquipment(ctx context.Context, in Equipment) (Equipment, e
 	if err := in.prepare(); err != nil {
 		return Equipment{}, err
 	}
-	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := kindEquipment.checkFree(ctx, tx, 0, in.Name, in.Aliases); err != nil {
+	err := s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) (err error) {
+		if err := kindEquipment.checkFree(ctx, q, 0, in.Name, in.Aliases); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx, `INSERT INTO equipment (name, reviewed) VALUES (?, ?)`, in.Name, boolInt(in.Reviewed))
+		in.ID, err = q.CreateEquipment(ctx, catalogdb.CreateEquipmentParams{Name: in.Name, Reviewed: boolInt(in.Reviewed)})
 		if err != nil {
 			return wrapWrite("create equipment "+in.Name, err)
 		}
-		if in.ID, err = res.LastInsertId(); err != nil {
-			return fmt.Errorf("read new equipment id: %w", err)
-		}
-		return kindEquipment.replaceAliases(ctx, tx, in.ID, in.Aliases)
+		return kindEquipment.replaceAliases(ctx, q, in.ID, in.Aliases)
 	})
 	if err != nil {
 		return Equipment{}, err
@@ -66,35 +57,36 @@ func (s *Store) UpdateEquipment(ctx context.Context, in Equipment) error {
 	if err := in.prepare(); err != nil {
 		return err
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := kindEquipment.checkFree(ctx, tx, in.ID, in.Name, in.Aliases); err != nil {
+	return s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) error {
+		if err := kindEquipment.checkFree(ctx, q, in.ID, in.Name, in.Aliases); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx, `UPDATE equipment SET name = ?, reviewed = ? WHERE id = ?`, in.Name, boolInt(in.Reviewed), in.ID)
+		n, err := q.UpdateEquipment(ctx, catalogdb.UpdateEquipmentParams{Name: in.Name, Reviewed: boolInt(in.Reviewed), ID: in.ID})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("update equipment %d", in.ID), err)
 		}
-		if err := requireAffected(res, "equipment", in.ID); err != nil {
+		if err := requireAffected(n, "equipment", in.ID); err != nil {
 			return err
 		}
-		return kindEquipment.replaceAliases(ctx, tx, in.ID, in.Aliases)
+		return kindEquipment.replaceAliases(ctx, q, in.ID, in.Aliases)
 	})
 }
 
 // GetEquipment returns the equipment with the given id, or ErrNotFound.
 func (s *Store) GetEquipment(ctx context.Context, id int64) (Equipment, error) {
-	return getEquipment(ctx, s.db, id)
+	return getEquipment(ctx, s.q, id)
 }
 
-func getEquipment(ctx context.Context, q queryer, id int64) (Equipment, error) {
-	e, err := scanEquipment(q.QueryRowContext(ctx, `SELECT id, name, reviewed FROM equipment WHERE id = ?`, id))
+func getEquipment(ctx context.Context, q *catalogdb.Queries, id int64) (Equipment, error) {
+	row, err := q.GetEquipment(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Equipment{}, fmt.Errorf("%w: equipment %d", ErrNotFound, id)
 	}
 	if err != nil {
 		return Equipment{}, fmt.Errorf("read equipment %d: %w", id, err)
 	}
-	if e.Aliases, err = kindEquipment.aliases(ctx, q, id); err != nil {
+	e := equipmentFrom(row)
+	if e.Aliases, err = kindEquipment.aliasesOf(ctx, q, id); err != nil {
 		return Equipment{}, err
 	}
 	return e, nil
@@ -102,33 +94,27 @@ func getEquipment(ctx context.Context, q queryer, id int64) (Equipment, error) {
 
 // ListEquipment returns all equipment ordered by name.
 func (s *Store) ListEquipment(ctx context.Context) ([]Equipment, error) {
-	return s.listEquipment(ctx, ``)
+	rows, err := s.q.ListEquipment(ctx)
+	return s.withEquipmentAliases(ctx, rows, err)
 }
 
 // ListUnreviewedEquipment returns equipment awaiting review, ordered by name.
 func (s *Store) ListUnreviewedEquipment(ctx context.Context) ([]Equipment, error) {
-	return s.listEquipment(ctx, `WHERE reviewed = 0`)
+	rows, err := s.q.ListUnreviewedEquipment(ctx)
+	return s.withEquipmentAliases(ctx, rows, err)
 }
 
-func (s *Store) listEquipment(ctx context.Context, where string) ([]Equipment, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, name, reviewed FROM equipment `+where+` ORDER BY name`)
+// withEquipmentAliases converts the rows of a list query, which failed with
+// err if it is set, and attaches every alias in one further query.
+func (s *Store) withEquipmentAliases(ctx context.Context, rows []catalogdb.Equipment, err error) ([]Equipment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list equipment: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	var out []Equipment
-	for rows.Next() {
-		e, err := scanEquipment(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan equipment: %w", err)
-		}
-		out = append(out, e)
+	for _, r := range rows {
+		out = append(out, equipmentFrom(r))
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list equipment: %w", err)
-	}
-	_ = rows.Close() // free the connection before the alias read
-	aliases, err := kindEquipment.allAliases(ctx, s.db)
+	aliases, err := kindEquipment.aliasesByID(ctx, s.q)
 	if err != nil {
 		return nil, err
 	}
@@ -141,11 +127,11 @@ func (s *Store) listEquipment(ctx context.Context, where string) ([]Equipment, e
 // MatchEquipment finds the equipment whose name or alias equals term, ignoring
 // case and tolerating plurals. Not found is (Equipment{}, false, nil).
 func (s *Store) MatchEquipment(ctx context.Context, term string) (Equipment, bool, error) {
-	id, ok, err := kindEquipment.match(ctx, s.db, term)
+	id, ok, err := kindEquipment.match(ctx, s.q, term)
 	if err != nil || !ok {
 		return Equipment{}, false, err
 	}
-	e, err := getEquipment(ctx, s.db, id)
+	e, err := getEquipment(ctx, s.q, id)
 	if err != nil {
 		return Equipment{}, false, err
 	}

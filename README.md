@@ -34,7 +34,8 @@ make fmt    # gofmt and goimports, rewrites files
 make lint   # golangci-lint and go vet
 make test   # go test; fails below 70% line coverage
 make e2e    # builds gobbler, runs the Playwright suite in e2e/ (installs nothing)
-make check  # fmt-check, lint, test, test-scripts, e2e and version-check
+make generate  # regenerate the sqlc data-access code
+make check  # fmt-check, generate-check, lint, test, test-scripts, e2e and version-check
 ```
 
 The end-to-end suite needs Node (ADR-00013). Provision a checkout once; `make e2e`

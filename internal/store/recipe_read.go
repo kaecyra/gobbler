@@ -9,35 +9,29 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // loadDocument reads the recipe document with the given id. Empty collections
 // come back nil. A missing recipe is ErrNotFound.
-func loadDocument(ctx context.Context, q queryer, id int64, units *unitTable) (recipe.Recipe, error) {
-	var (
-		r                  recipe.Recipe
-		yieldQty, servings sql.NullString
-		calories, rating   sql.NullInt64
-		prep, cook, total  int64
-	)
-	err := q.QueryRowContext(ctx,
-		`SELECT name, description, source_url, author, yield_qty, yield_unit, servings, calories_per_serving, rating, prep_ns, cook_ns, total_ns
-		 FROM recipes WHERE id = ?`, id).
-		Scan(&r.Name, &r.Description, &r.SourceURL, &r.Author, &yieldQty, &r.Yield.Unit, &servings, &calories, &rating, &prep, &cook, &total)
+func loadDocument(ctx context.Context, q *storedb.Queries, id int64, units *unitTable) (recipe.Recipe, error) {
+	row, err := q.GetRecipeDocument(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return recipe.Recipe{}, fmt.Errorf("%w: recipe %d", ErrNotFound, id)
 	}
 	if err != nil {
 		return recipe.Recipe{}, fmt.Errorf("read recipe %d: %w", id, err)
 	}
-	if r.Yield.Qty, err = decodeQty(stringPtr(yieldQty)); err != nil {
+	r := recipe.Recipe{Name: row.Name, Description: row.Description, SourceURL: row.SourceUrl, Author: row.Author}
+	r.Yield.Unit = row.YieldUnit
+	if r.Yield.Qty, err = decodeQty(stringPtr(row.YieldQty)); err != nil {
 		return recipe.Recipe{}, fmt.Errorf("recipe %d yield: %w", id, err)
 	}
-	if r.Servings, err = decodeQty(stringPtr(servings)); err != nil {
+	if r.Servings, err = decodeQty(stringPtr(row.Servings)); err != nil {
 		return recipe.Recipe{}, fmt.Errorf("recipe %d servings: %w", id, err)
 	}
-	r.CaloriesPerServing, r.Rating = intPtr(calories), intPtr(rating)
-	r.Times = recipe.Times{Prep: time.Duration(prep), Cook: time.Duration(cook), Total: time.Duration(total)}
+	r.CaloriesPerServing, r.Rating = intPtr(row.CaloriesPerServing), intPtr(row.Rating)
+	r.Times = recipe.Times{Prep: time.Duration(row.PrepNs), Cook: time.Duration(row.CookNs), Total: time.Duration(row.TotalNs)}
 
 	if r.Tags, err = loadTags(ctx, q, id); err != nil {
 		return recipe.Recipe{}, err
@@ -54,239 +48,156 @@ func loadDocument(ctx context.Context, q queryer, id int64, units *unitTable) (r
 	return r, nil
 }
 
-// collect runs a query and scans every row with scan, wrapping failures with
-// what the caller was reading.
-func collect(ctx context.Context, q queryer, what, query string, args []any, scan func(rows *sql.Rows) error) error {
-	rows, err := q.QueryContext(ctx, query, args...)
+func loadTags(ctx context.Context, q *storedb.Queries, id int64) ([]string, error) {
+	tags, err := q.ListRecipeTags(ctx, id)
 	if err != nil {
-		return fmt.Errorf("read %s: %w", what, err)
+		return nil, readErr("tags", err)
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		if err := scan(rows); err != nil {
-			return fmt.Errorf("read %s: %w", what, err)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("read %s: %w", what, err)
-	}
-	return nil
+	return tags, nil
 }
 
-func loadTags(ctx context.Context, q queryer, id int64) ([]string, error) {
-	var tags []string
-	err := collect(ctx, q, "tags", `SELECT tag FROM recipe_tags WHERE recipe_id = ? ORDER BY position`, []any{id}, func(rows *sql.Rows) error {
-		var t string
-		if err := rows.Scan(&t); err != nil {
-			return err
-		}
-		tags = append(tags, t)
-		return nil
-	})
-	return tags, err
-}
-
-func loadSpecialTimes(ctx context.Context, q queryer, id int64) ([]recipe.SpecialTime, error) {
+func loadSpecialTimes(ctx context.Context, q *storedb.Queries, id int64) ([]recipe.SpecialTime, error) {
+	rows, err := q.ListSpecialTimes(ctx, id)
+	if err != nil {
+		return nil, readErr("special times", err)
+	}
 	var out []recipe.SpecialTime
-	err := collect(ctx, q, "special times", `SELECT label, duration_ns FROM recipe_special_times WHERE recipe_id = ? ORDER BY position`, []any{id}, func(rows *sql.Rows) error {
-		var (
-			st recipe.SpecialTime
-			ns int64
-		)
-		if err := rows.Scan(&st.Label, &ns); err != nil {
-			return err
-		}
-		st.Duration = time.Duration(ns)
-		out = append(out, st)
-		return nil
-	})
-	return out, err
+	for _, r := range rows {
+		out = append(out, recipe.SpecialTime{Label: r.Label, Duration: time.Duration(r.DurationNs)})
+	}
+	return out, nil
 }
 
-func loadComponents(ctx context.Context, q queryer, id int64, units *unitTable) ([]recipe.Component, error) {
+func loadComponents(ctx context.Context, q *storedb.Queries, id int64, units *unitTable) ([]recipe.Component, error) {
+	compRows, err := q.ListComponents(ctx, id)
+	if err != nil {
+		return nil, readErr("components", err)
+	}
 	var comps []recipe.Component
 	compIdx := map[int64]int{}
-	err := collect(ctx, q, "components", `SELECT id, name FROM components WHERE recipe_id = ? ORDER BY position`, []any{id}, func(rows *sql.Rows) error {
-		var (
-			cid int64
-			c   recipe.Component
-		)
-		if err := rows.Scan(&cid, &c.Name); err != nil {
-			return err
-		}
-		compIdx[cid] = len(comps)
-		comps = append(comps, c)
-		return nil
-	})
-	if err != nil {
-		return nil, err
+	for _, r := range compRows {
+		compIdx[r.ID] = len(comps)
+		comps = append(comps, recipe.Component{Name: r.Name})
 	}
 
+	lineRows, err := q.ListIngredientLines(ctx, id)
+	if err != nil {
+		return nil, readErr("ingredient lines", err)
+	}
 	lineIdx := map[int64][2]int{} // line id -> component index, line index
-	err = collect(ctx, q, "ingredient lines",
-		`SELECT l.id, l.component_id, l.qty, l.unit_id, l.has_package, l.package_qty, l.package_unit_id, l.ingredient_id, l.optional, l.rule, l.raw
-		 FROM ingredient_lines l JOIN components c ON c.id = l.component_id
-		 WHERE c.recipe_id = ? ORDER BY c.position, l.position`, []any{id}, func(rows *sql.Rows) error {
-			var (
-				lid, cid                    int64
-				qty, pkgQty                 sql.NullString
-				unitID, pkgUnitID, ingredID sql.NullInt64
-				hasPkg, optional            int
-				l                           recipe.IngredientLine
-				rule                        string
-			)
-			if err := rows.Scan(&lid, &cid, &qty, &unitID, &hasPkg, &pkgQty, &pkgUnitID, &ingredID, &optional, &rule, &l.Raw); err != nil {
-				return err
-			}
-			var err error
-			if l.Amount.Qty, err = decodeQty(stringPtr(qty)); err != nil {
-				return err
-			}
-			if l.Amount.Unit, err = units.unit(unitID); err != nil {
-				return err
-			}
-			if hasPkg == 1 {
-				l.Amount.HasPackage = true
-				if l.Amount.Package.Qty, err = decodeQty(stringPtr(pkgQty)); err != nil {
-					return err
-				}
-				if l.Amount.Package.Unit, err = units.unit(pkgUnitID); err != nil {
-					return err
-				}
-			}
-			l.Ingredient = recipe.IngredientID(ingredID.Int64)
-			l.Optional = optional == 1
-			l.Rule = quantity.Rule(rule)
-			ci, err := lookup(compIdx, cid, "component")
-			if err != nil {
-				return err
-			}
-			lineIdx[lid] = [2]int{ci, len(comps[ci].Lines)}
-			comps[ci].Lines = append(comps[ci].Lines, l)
-			return nil
-		})
-	if err != nil {
-		return nil, err
+	for _, r := range lineRows {
+		l, err := lineFrom(r, units)
+		if err != nil {
+			return nil, readErr("ingredient lines", err)
+		}
+		ci, err := lookup(compIdx, r.ComponentID, "component")
+		if err != nil {
+			return nil, readErr("ingredient lines", err)
+		}
+		lineIdx[r.ID] = [2]int{ci, len(comps[ci].Lines)}
+		comps[ci].Lines = append(comps[ci].Lines, l)
 	}
 
-	err = collect(ctx, q, "line qualifiers",
-		`SELECT lq.line_id, lq.kind, lq.text FROM line_qualifiers lq
-		 JOIN ingredient_lines l ON l.id = lq.line_id JOIN components c ON c.id = l.component_id
-		 WHERE c.recipe_id = ? ORDER BY lq.line_id, lq.position`, []any{id}, func(rows *sql.Rows) error {
-			var (
-				lid  int64
-				kind string
-				text string
-			)
-			if err := rows.Scan(&lid, &kind, &text); err != nil {
-				return err
-			}
-			at, err := lookup(lineIdx, lid, "ingredient line")
-			if err != nil {
-				return err
-			}
-			line := &comps[at[0]].Lines[at[1]]
-			line.Qualifiers = append(line.Qualifiers, recipe.Qualifier{Kind: recipe.QualifierKind(kind), Text: text})
-			return nil
-		})
+	qualRows, err := q.ListLineQualifiers(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, readErr("line qualifiers", err)
+	}
+	for _, r := range qualRows {
+		at, err := lookup(lineIdx, r.LineID, "ingredient line")
+		if err != nil {
+			return nil, readErr("line qualifiers", err)
+		}
+		line := &comps[at[0]].Lines[at[1]]
+		line.Qualifiers = append(line.Qualifiers, recipe.Qualifier{Kind: recipe.QualifierKind(r.Kind), Text: r.Text})
 	}
 
+	stepRows, err := q.ListSteps(ctx, id)
+	if err != nil {
+		return nil, readErr("steps", err)
+	}
 	stepKeys := map[int64]recipe.StepID{}
 	stepIdx := map[int64][2]int{}
-	err = collect(ctx, q, "steps",
-		`SELECT s.id, s.component_id, s.step_key, s.text, s.duration_ns, s.passive
-		 FROM steps s JOIN components c ON c.id = s.component_id
-		 WHERE s.recipe_id = ? ORDER BY c.position, s.position`, []any{id}, func(rows *sql.Rows) error {
-			var (
-				sid, cid, ns int64
-				key          string
-				passive      int
-				s            recipe.Step
-			)
-			if err := rows.Scan(&sid, &cid, &key, &s.Text, &ns, &passive); err != nil {
-				return err
-			}
-			s.ID, s.Duration, s.Passive = recipe.StepID(key), time.Duration(ns), passive == 1
-			ci, err := lookup(compIdx, cid, "component")
-			if err != nil {
-				return err
-			}
-			stepKeys[sid] = s.ID
-			stepIdx[sid] = [2]int{ci, len(comps[ci].Steps)}
-			comps[ci].Steps = append(comps[ci].Steps, s)
-			return nil
-		})
-	if err != nil {
-		return nil, err
+	for _, r := range stepRows {
+		s := recipe.Step{ID: recipe.StepID(r.StepKey), Text: r.Text, Duration: time.Duration(r.DurationNs), Passive: r.Passive == 1}
+		ci, err := lookup(compIdx, r.ComponentID, "component")
+		if err != nil {
+			return nil, readErr("steps", err)
+		}
+		stepKeys[r.ID] = s.ID
+		stepIdx[r.ID] = [2]int{ci, len(comps[ci].Steps)}
+		comps[ci].Steps = append(comps[ci].Steps, s)
 	}
 
-	err = collect(ctx, q, "step dependencies",
-		`SELECT d.step_id, d.depends_on_step_id FROM step_dependencies d
-		 JOIN steps s ON s.id = d.step_id WHERE s.recipe_id = ? ORDER BY d.step_id, d.position`, []any{id}, func(rows *sql.Rows) error {
-			var sid, dep int64
-			if err := rows.Scan(&sid, &dep); err != nil {
-				return err
-			}
-			at, err := lookup(stepIdx, sid, "step")
-			if err != nil {
-				return err
-			}
-			depKey, err := lookup(stepKeys, dep, "step")
-			if err != nil {
-				return fmt.Errorf("dependency of step %s: %w", stepKeys[sid], err)
-			}
-			step := &comps[at[0]].Steps[at[1]]
-			step.DependsOn = append(step.DependsOn, depKey)
-			return nil
-		})
+	depRows, err := q.ListStepDependencies(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, readErr("step dependencies", err)
+	}
+	for _, r := range depRows {
+		at, err := lookup(stepIdx, r.StepID, "step")
+		if err != nil {
+			return nil, readErr("step dependencies", err)
+		}
+		depKey, err := lookup(stepKeys, r.DependsOnStepID, "step")
+		if err != nil {
+			return nil, readErr("step dependencies", fmt.Errorf("dependency of step %s: %w", stepKeys[r.StepID], err))
+		}
+		step := &comps[at[0]].Steps[at[1]]
+		step.DependsOn = append(step.DependsOn, depKey)
 	}
 	return comps, nil
 }
 
-func loadEquipment(ctx context.Context, q queryer, id int64) ([]recipe.EquipmentLink, error) {
+// lineFrom converts a stored ingredient line row, without its qualifiers.
+func lineFrom(r storedb.ListIngredientLinesRow, units *unitTable) (recipe.IngredientLine, error) {
+	l := recipe.IngredientLine{
+		Ingredient: recipe.IngredientID(r.IngredientID.Int64), Optional: r.Optional == 1,
+		Rule: quantity.Rule(r.Rule), Raw: r.Raw,
+	}
+	var err error
+	if l.Amount.Qty, err = decodeQty(stringPtr(r.Qty)); err != nil {
+		return recipe.IngredientLine{}, err
+	}
+	if l.Amount.Unit, err = units.unit(r.UnitID); err != nil {
+		return recipe.IngredientLine{}, err
+	}
+	if r.HasPackage == 1 {
+		l.Amount.HasPackage = true
+		if l.Amount.Package.Qty, err = decodeQty(stringPtr(r.PackageQty)); err != nil {
+			return recipe.IngredientLine{}, err
+		}
+		if l.Amount.Package.Unit, err = units.unit(r.PackageUnitID); err != nil {
+			return recipe.IngredientLine{}, err
+		}
+	}
+	return l, nil
+}
+
+func loadEquipment(ctx context.Context, q *storedb.Queries, id int64) ([]recipe.EquipmentLink, error) {
+	eqRows, err := q.ListRecipeEquipment(ctx, id)
+	if err != nil {
+		return nil, readErr("equipment", err)
+	}
 	var out []recipe.EquipmentLink
 	rowIdx := map[int64]int{}
-	err := collect(ctx, q, "equipment", `SELECT id, equipment_id, qty FROM recipe_equipment WHERE recipe_id = ? ORDER BY position`, []any{id}, func(rows *sql.Rows) error {
-		var (
-			rid, eid int64
-			qty      sql.NullString
-		)
-		if err := rows.Scan(&rid, &eid, &qty); err != nil {
-			return err
-		}
-		q, err := decodeQty(stringPtr(qty))
+	for _, r := range eqRows {
+		qty, err := decodeQty(stringPtr(r.Qty))
 		if err != nil {
-			return err
+			return nil, readErr("equipment", err)
 		}
-		rowIdx[rid] = len(out)
-		out = append(out, recipe.EquipmentLink{Equipment: recipe.EquipmentID(eid), Qty: q})
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		rowIdx[r.ID] = len(out)
+		out = append(out, recipe.EquipmentLink{Equipment: recipe.EquipmentID(r.EquipmentID), Qty: qty})
 	}
-	err = collect(ctx, q, "equipment steps",
-		`SELECT es.recipe_equipment_id, s.step_key FROM recipe_equipment_steps es
-		 JOIN recipe_equipment e ON e.id = es.recipe_equipment_id JOIN steps s ON s.id = es.step_id
-		 WHERE e.recipe_id = ? ORDER BY es.recipe_equipment_id, es.position`, []any{id}, func(rows *sql.Rows) error {
-			var (
-				rid int64
-				key string
-			)
-			if err := rows.Scan(&rid, &key); err != nil {
-				return err
-			}
-			at, err := lookup(rowIdx, rid, "equipment link")
-			if err != nil {
-				return err
-			}
-			l := &out[at]
-			l.Steps = append(l.Steps, recipe.StepID(key))
-			return nil
-		})
-	return out, err
+	stepRows, err := q.ListEquipmentSteps(ctx, id)
+	if err != nil {
+		return nil, readErr("equipment steps", err)
+	}
+	for _, r := range stepRows {
+		at, err := lookup(rowIdx, r.RecipeEquipmentID, "equipment link")
+		if err != nil {
+			return nil, readErr("equipment steps", err)
+		}
+		l := &out[at]
+		l.Steps = append(l.Steps, recipe.StepID(r.StepKey))
+	}
+	return out, nil
 }

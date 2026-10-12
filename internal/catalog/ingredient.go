@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+
+	"github.com/kaecyra/gobbler/internal/catalog/catalogdb"
 )
 
 // Ingredient is a canonical ingredient (ADR-00008). Name is the bare name
@@ -43,26 +45,15 @@ func (i *Ingredient) prepare() error {
 	return nil
 }
 
-const ingredientColumns = `id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed`
-
-func scanIngredient(sc interface{ Scan(...any) error }) (Ingredient, error) {
-	var (
-		i       Ingredient
-		density sql.NullFloat64
-		usda    sql.NullInt64
-		rev     int
-	)
-	if err := sc.Scan(&i.ID, &i.Name, &i.Aisle, &density, &usda, &rev); err != nil {
-		return Ingredient{}, err
+func ingredientFrom(r catalogdb.Ingredient) Ingredient {
+	i := Ingredient{ID: r.ID, Name: r.Name, Aisle: r.Aisle, Reviewed: r.Reviewed != 0}
+	if r.DensityGPerMl.Valid {
+		i.DensityGPerML = &r.DensityGPerMl.Float64
 	}
-	if density.Valid {
-		i.DensityGPerML = &density.Float64
+	if r.UsdaFdcID.Valid {
+		i.USDAID = &r.UsdaFdcID.Int64
 	}
-	if usda.Valid {
-		i.USDAID = &usda.Int64
-	}
-	i.Reviewed = rev != 0
-	return i, nil
+	return i
 }
 
 // CreateIngredient stores a new ingredient and returns it with its id. Set
@@ -72,20 +63,18 @@ func (s *Store) CreateIngredient(ctx context.Context, in Ingredient) (Ingredient
 	if err := in.prepare(); err != nil {
 		return Ingredient{}, err
 	}
-	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := kindIngredient.checkFree(ctx, tx, 0, in.Name, in.Aliases); err != nil {
+	err := s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) (err error) {
+		if err := kindIngredient.checkFree(ctx, q, 0, in.Name, in.Aliases); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx,
-			`INSERT INTO ingredients (name, aisle, density_g_per_ml, usda_fdc_id, reviewed) VALUES (?, ?, ?, ?, ?)`,
-			in.Name, in.Aisle, in.DensityGPerML, in.USDAID, boolInt(in.Reviewed))
+		in.ID, err = q.CreateIngredient(ctx, catalogdb.CreateIngredientParams{
+			Name: in.Name, Aisle: in.Aisle, DensityGPerMl: nullFloat(in.DensityGPerML),
+			UsdaFdcID: nullInt(in.USDAID), Reviewed: boolInt(in.Reviewed),
+		})
 		if err != nil {
 			return wrapWrite("create ingredient "+in.Name, err)
 		}
-		if in.ID, err = res.LastInsertId(); err != nil {
-			return fmt.Errorf("read new ingredient id: %w", err)
-		}
-		return kindIngredient.replaceAliases(ctx, tx, in.ID, in.Aliases)
+		return kindIngredient.replaceAliases(ctx, q, in.ID, in.Aliases)
 	})
 	if err != nil {
 		return Ingredient{}, err
@@ -99,37 +88,39 @@ func (s *Store) UpdateIngredient(ctx context.Context, in Ingredient) error {
 	if err := in.prepare(); err != nil {
 		return err
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := kindIngredient.checkFree(ctx, tx, in.ID, in.Name, in.Aliases); err != nil {
+	return s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) error {
+		if err := kindIngredient.checkFree(ctx, q, in.ID, in.Name, in.Aliases); err != nil {
 			return err
 		}
-		res, err := tx.ExecContext(ctx,
-			`UPDATE ingredients SET name = ?, aisle = ?, density_g_per_ml = ?, usda_fdc_id = ?, reviewed = ? WHERE id = ?`,
-			in.Name, in.Aisle, in.DensityGPerML, in.USDAID, boolInt(in.Reviewed), in.ID)
+		n, err := q.UpdateIngredient(ctx, catalogdb.UpdateIngredientParams{
+			Name: in.Name, Aisle: in.Aisle, DensityGPerMl: nullFloat(in.DensityGPerML),
+			UsdaFdcID: nullInt(in.USDAID), Reviewed: boolInt(in.Reviewed), ID: in.ID,
+		})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("update ingredient %d", in.ID), err)
 		}
-		if err := requireAffected(res, "ingredient", in.ID); err != nil {
+		if err := requireAffected(n, "ingredient", in.ID); err != nil {
 			return err
 		}
-		return kindIngredient.replaceAliases(ctx, tx, in.ID, in.Aliases)
+		return kindIngredient.replaceAliases(ctx, q, in.ID, in.Aliases)
 	})
 }
 
 // GetIngredient returns the ingredient with the given id, or ErrNotFound.
 func (s *Store) GetIngredient(ctx context.Context, id int64) (Ingredient, error) {
-	return getIngredient(ctx, s.db, id)
+	return getIngredient(ctx, s.q, id)
 }
 
-func getIngredient(ctx context.Context, q queryer, id int64) (Ingredient, error) {
-	i, err := scanIngredient(q.QueryRowContext(ctx, `SELECT `+ingredientColumns+` FROM ingredients WHERE id = ?`, id))
+func getIngredient(ctx context.Context, q *catalogdb.Queries, id int64) (Ingredient, error) {
+	row, err := q.GetIngredient(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Ingredient{}, fmt.Errorf("%w: ingredient %d", ErrNotFound, id)
 	}
 	if err != nil {
 		return Ingredient{}, fmt.Errorf("read ingredient %d: %w", id, err)
 	}
-	if i.Aliases, err = kindIngredient.aliases(ctx, q, id); err != nil {
+	i := ingredientFrom(row)
+	if i.Aliases, err = kindIngredient.aliasesOf(ctx, q, id); err != nil {
 		return Ingredient{}, err
 	}
 	return i, nil
@@ -137,34 +128,28 @@ func getIngredient(ctx context.Context, q queryer, id int64) (Ingredient, error)
 
 // ListIngredients returns every ingredient ordered by name.
 func (s *Store) ListIngredients(ctx context.Context) ([]Ingredient, error) {
-	return s.listIngredients(ctx, ``)
+	rows, err := s.q.ListIngredients(ctx)
+	return s.withIngredientAliases(ctx, rows, err)
 }
 
 // ListUnreviewedIngredients returns the ingredients awaiting review, ordered
 // by name, for the catalog cleanup page.
 func (s *Store) ListUnreviewedIngredients(ctx context.Context) ([]Ingredient, error) {
-	return s.listIngredients(ctx, `WHERE reviewed = 0`)
+	rows, err := s.q.ListUnreviewedIngredients(ctx)
+	return s.withIngredientAliases(ctx, rows, err)
 }
 
-func (s *Store) listIngredients(ctx context.Context, where string) ([]Ingredient, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+ingredientColumns+` FROM ingredients `+where+` ORDER BY name`)
+// withIngredientAliases converts the rows of a list query, which failed with
+// err if it is set, and attaches every alias in one further query.
+func (s *Store) withIngredientAliases(ctx context.Context, rows []catalogdb.Ingredient, err error) ([]Ingredient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list ingredients: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 	var out []Ingredient
-	for rows.Next() {
-		i, err := scanIngredient(rows)
-		if err != nil {
-			return nil, fmt.Errorf("scan ingredient: %w", err)
-		}
-		out = append(out, i)
+	for _, r := range rows {
+		out = append(out, ingredientFrom(r))
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list ingredients: %w", err)
-	}
-	_ = rows.Close() // free the connection before the alias read
-	aliases, err := kindIngredient.allAliases(ctx, s.db)
+	aliases, err := kindIngredient.aliasesByID(ctx, s.q)
 	if err != nil {
 		return nil, err
 	}
@@ -180,11 +165,11 @@ func (s *Store) listIngredients(ctx context.Context, where string) ([]Ingredient
 // error, and nothing is created. This is the method internal/parse consumes
 // through an interface it declares itself.
 func (s *Store) MatchIngredient(ctx context.Context, term string) (Ingredient, bool, error) {
-	id, ok, err := kindIngredient.match(ctx, s.db, term)
+	id, ok, err := kindIngredient.match(ctx, s.q, term)
 	if err != nil || !ok {
 		return Ingredient{}, false, err
 	}
-	i, err := getIngredient(ctx, s.db, id)
+	i, err := getIngredient(ctx, s.q, id)
 	if err != nil {
 		return Ingredient{}, false, err
 	}

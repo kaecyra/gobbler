@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // ErrSnapshotExists is returned when a recipe already has a source snapshot of
@@ -60,23 +62,24 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
 	}
 	sum := sha256.Sum256(content)
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := lockRecipe(ctx, tx, id); err != nil {
+	return s.withTx(ctx, func(q *storedb.Queries) error {
+		if err := lockRecipe(ctx, q, id); err != nil {
 			return err
 		}
 		// The recipe lock above makes this check and the insert atomic, so no
 		// concurrent AddSnapshot can slip a duplicate in between; the UNIQUE
 		// constraint is the backstop.
-		var existing int
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = ? AND kind = ?`, id, string(kind)).Scan(&existing); err != nil {
+		existing, err := q.CountSnapshots(ctx, storedb.CountSnapshotsParams{RecipeID: id, Kind: string(kind)})
+		if err != nil {
 			return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)
 		}
 		if existing > 0 {
 			return fmt.Errorf("%w: recipe %d kind %s", ErrSnapshotExists, id, kind)
 		}
-		_, err := tx.ExecContext(ctx,
-			`INSERT INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
-			id, string(kind), content, hex.EncodeToString(sum[:]), s.stamp(), who)
+		err = q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
+			RecipeID: id, Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
+			CreatedAt: s.stamp(), CreatedBy: who,
+		})
 		if err != nil {
 			return fmt.Errorf("write %s snapshot of recipe %d: %w", kind, id, err)
 		}
@@ -86,20 +89,15 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 
 // GetSnapshot returns the stored input of the given kind, or ErrNotFound.
 func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (Snapshot, error) {
-	var (
-		snap Snapshot
-		at   string
-	)
-	err := s.db.QueryRowContext(ctx,
-		`SELECT kind, content, sha256, created_at, created_by FROM source_snapshots WHERE recipe_id = ? AND kind = ?`, id, string(kind)).
-		Scan(&snap.Kind, &snap.Content, &snap.SHA256, &at, &snap.CreatedBy)
+	row, err := s.q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: id, Kind: string(kind)})
 	if errors.Is(err, sql.ErrNoRows) {
 		return Snapshot{}, fmt.Errorf("%w: %s snapshot of recipe %d", ErrNotFound, kind, id)
 	}
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("read %s snapshot of recipe %d: %w", kind, id, err)
 	}
-	if snap.CreatedAt, err = parseTime(at); err != nil {
+	snap := Snapshot{Kind: SnapshotKind(row.Kind), Content: row.Content, SHA256: row.Sha256, CreatedBy: row.CreatedBy}
+	if snap.CreatedAt, err = parseTime(row.CreatedAt); err != nil {
 		return Snapshot{}, err
 	}
 	return snap, nil
@@ -109,18 +107,18 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 // missing recipe is ErrNotFound.
 func (s *Store) ListSnapshotKinds(ctx context.Context, id int64) ([]SnapshotKind, error) {
 	var out []SnapshotKind
-	err := s.read(ctx, func(q queryer) error {
+	err := s.read(ctx, func(q *storedb.Queries) error {
 		if _, err := loadInfo(ctx, q, id); err != nil {
 			return err
 		}
-		return collect(ctx, q, "snapshot kinds", `SELECT kind FROM source_snapshots WHERE recipe_id = ? ORDER BY id`, []any{id}, func(rows *sql.Rows) error {
-			var k SnapshotKind
-			if err := rows.Scan(&k); err != nil {
-				return err
-			}
-			out = append(out, k)
-			return nil
-		})
+		kinds, err := q.ListSnapshotKinds(ctx, id)
+		if err != nil {
+			return readErr("snapshot kinds", err)
+		}
+		for _, k := range kinds {
+			out = append(out, SnapshotKind(k))
+		}
+		return nil
 	})
 	return out, err
 }
