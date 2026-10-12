@@ -1000,7 +1000,8 @@
       "needs_migration": "schema",
       "adrs": [
         "00011",
-        "00003"
+        "00003",
+        "00018"
       ],
       "blocked": "Deferred by ADR-00011; needs its own ADR before dispatch"
     },
@@ -1624,7 +1625,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00017",
+    "last_used": "00018",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
   }
 }

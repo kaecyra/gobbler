@@ -1,6 +1,7 @@
 # gobbler
 
-gobbler is a self-hosted, single-user recipe manager: recipes that are easy to
+gobbler is a self-hosted recipe manager for households
+([ADR-00018](./docs/adr/00018-households-as-tenants.md)): recipes that are easy to
 find and remember, free of ads, and easy to turn into shopping lists. It
 ingests recipes from URLs, pasted text and photos, stores them as structured
 data — components, ingredients with exact quantities and qualifiers,

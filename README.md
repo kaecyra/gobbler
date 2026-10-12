@@ -1,6 +1,6 @@
 # gobbler
 
-A self-hosted, single-user recipe manager. It ingests recipes from URLs, pasted
+A self-hosted recipe manager for households. It ingests recipes from URLs, pasted
 text and photos, stores them as structured data, and builds merged,
 aisle-grouped shopping lists from them. One Go binary over a SQLite file.
 

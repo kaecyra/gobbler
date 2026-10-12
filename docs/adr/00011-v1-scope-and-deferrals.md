@@ -1,6 +1,6 @@
 # ADR-00011: Scope and deferrals
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00018](00018-households-as-tenants.md)
 
 **Date:** 2026-10-06
 
@@ -31,6 +31,9 @@ integrations. The plan graph holds the detail.
 - **Meal planning** (a weekly plan that feeds the shopping list).
 - **Invitations and multiple users.** The app records who made each write
   (ADR-00003) so this can be added without a data migration.
+
+  > Amended by [ADR-00018](00018-households-as-tenants.md): multiple users means households as tenants,
+  > which is a tenancy change to the schema rather than a feature on top of it.
 
 ### Out, until decided otherwise
 

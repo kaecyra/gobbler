@@ -1,6 +1,6 @@
 # ADR-00003: Identity from verified Cloudflare Access JWT; single user
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00018](00018-households-as-tenants.md)
 
 **Date:** 2026-10-06
 
@@ -26,6 +26,10 @@ Options considered:
   even if the network assumption breaks. Chosen.
 
 ## Decision
+
+> Amended by [ADR-00018](00018-households-as-tenants.md): Access authenticates any email, and the app
+> authorises it. The verified email is mapped to household membership, and
+> every query is scoped to that household.
 
 Every request except the health check passes through middleware that:
 

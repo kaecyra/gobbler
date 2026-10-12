@@ -73,6 +73,13 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 - `schema`: `00003` to `00006` are all merged. The graph's `schema` sequence was corrected in #131 and is the source of truth: hand out numbers with `node.ts needs-migration` and `node.ts migration`, never by hand. The next free number is `00007`.
 - ADR-00017 is merged (#127), and the graph's ADR sequence was corrected to `00017` in #131. Draw the next number with `node.ts adr`.
 
+## ADR-00018: households as tenants (owner decision, accepted)
+
+- Settled with the owner on 2026-10-12. Multiple users means households as tenants. A household has several members, and an email belongs to at most one household. Every member has the same powers. Access admits any email that authenticates, and the app's membership check is the only lock. Nobody joins without an invitation. Only recipes are shared, and only as a copy sent to another household. The catalog is a central layer plus a per-household overlay. Only the operator promotes, and promotion merges exact duplicates automatically. Meal plans are household data.
+- ADR-00003 and ADR-00011 are amended. `AGENTS.md` and `README.md` no longer say single-user.
+- The graph attaches 00018 to `l-invitations`, and the ADR sequence's `last_used` is `00018`. The node is still `blocked`. Clearing that block, and splitting the tenancy work into nodes, is the next planning step. Obligations 4 to 6 in the ADR fall to those nodes.
+- No deployment holds data, so tenancy needs no backfill.
+
 ## Things a fresh dispatcher must know
 
 - **The worker contract tail** is session scratch: `common.md` in the session scratchpad, gone with the session. Rebuild it from `worker_contract.md` with these points:
