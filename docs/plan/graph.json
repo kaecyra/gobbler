@@ -895,7 +895,7 @@
       "wave": 7,
       "track": "ops",
       "issue": 37,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w7-backup",
         "w0-container"
@@ -1305,6 +1305,15 @@
       "adrs": [
         "00005",
         "00004"
+      ]
+    },
+    {
+      "id": "w7-ops-doc",
+      "title": "Operations doc: deploy, configuration, restore procedure",
+      "merged": "a39008d",
+      "adrs": [
+        "00010",
+        "00002"
       ]
     }
   ],
