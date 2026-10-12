@@ -10,8 +10,9 @@
 `cloudflared` runs alongside gobbler as its own Compose service. The owner
 already provisions the VM guest's Cloudflare tunnel with their infrastructure
 code. A second tunnel definition in this repository would describe the same
-thing twice, and the two would drift. A sidecar also cannot be reached by that
-guest process, because Compose only exposed gobbler's port to its own network.
+thing twice, and the two would drift. Compose also only exposed gobbler's port
+to its own network, so gobbler could not be reached by the guest's
+`cloudflared`.
 
 [ADR-00003](00003-cloudflare-access-identity.md) requires that nothing but
 the tunnel reaches the app, and that the app verifies the Access JWT on every
@@ -19,15 +20,20 @@ request.
 
 Options considered:
 
-- **Keep the sidecar.** Duplicates the tunnel the owner's infrastructure code
-  already defines, and puts a tunnel token in this repository's `.env`.
-  Rejected.
+- **Keep the sidecar.** It gave a self-contained Compose file and a pinned
+  `cloudflared` image, so the repository deployed on its own. Rejected because
+  it duplicates the tunnel the owner's infrastructure code already defines, and
+  a token for a second tunnel would sit in `.env`.
 - **Publish on all interfaces.** Reachable from the network, which ADR-00003
   rejects ("trust the network"). Rejected.
-- **Host network mode.** Widens exposure to every host interface for no gain
-  over a loopback-bound port. Rejected.
+- **Host network mode.** Drops the container's network isolation, and makes
+  the listen address, rather than the port mapping, carry the exposure
+  decision: one wrong address in configuration exposes the app on every host
+  interface. Rejected.
 - **Publish on guest loopback only.** The guest's `cloudflared` reaches it; the
-  network does not. Chosen.
+  network does not. Chosen. The cost: the tunnel's version and configuration
+  now live outside this repository, and this repository can no longer deploy
+  end to end by itself.
 
 ## Decision
 
@@ -38,10 +44,9 @@ the guest loopback only, at `127.0.0.1:8080`; the guest tunnel's service URL is
 
 ## Consequences
 
-This supersedes only the Packaging bullet of ADR-00002 ("`cloudflared` runs
-alongside as its own service"); the rest of ADR-00002 stands. ADR-00003 still
-holds: a loopback-only port is not reachable from the network, and the app
-still verifies the JWT on every request.
+This amends ADR-00002, section Packaging: its bullet "`cloudflared` runs
+alongside as its own service" no longer holds, and ADR-00002 carries a note
+pointing here. The rest of ADR-00002 stands, as does ADR-00003.
 
 **Obligations:**
 
@@ -49,3 +54,5 @@ still verifies the JWT on every request.
 2. gobbler's only published port in `compose.yaml` binds `127.0.0.1`.
 3. `docs/operations.md` names `http://127.0.0.1:8080` as the guest tunnel's
    service URL.
+4. ADR-00002 carries the amendment note at its Packaging bullet, and its Status
+   and index row name this ADR.

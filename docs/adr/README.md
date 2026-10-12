@@ -16,7 +16,7 @@ index below in the same commit.
 | ADR | Decision | Status |
 |---|---|---|
 | [00001](00001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
-| [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Accepted |
+| [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md) |
 | [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Accepted |
 | [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Accepted |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |

@@ -12,8 +12,9 @@ that matters. Run through them once on the real host and correct this file.
 
 One Ubuntu VM, Docker Compose, a Cloudflare tunnel. `cloudflared` runs on the
 VM guest, configured outside this repository by the owner's infrastructure
-code, not in Compose. The app publishes `127.0.0.1:8080` only; the only way in
-is the tunnel, behind Cloudflare Access
+code, not in Compose. The app publishes `127.0.0.1:8080` only, so the network
+reaches it only through the tunnel, behind Cloudflare Access. Other processes
+on the guest can reach `127.0.0.1:8080`; the Access JWT check stops them
 ([ADR-00003](./adr/00003-cloudflare-access-identity.md),
 [ADR-00002](./adr/00002-single-binary-go-stack.md),
 [ADR-00017](./adr/00017-cloudflared-on-the-guest.md)).
@@ -67,6 +68,7 @@ Verify:
 docker compose ps                                   # gobbler: healthy
 docker compose logs gobbler | grep listening        # JSON log line with the address
 docker compose exec gobbler wget -q -O - http://127.0.0.1:8080/healthz
+curl -fsS http://127.0.0.1:8080/healthz             # from the host: the published port
 ```
 
 `/healthz` returns `{"status":"ok"}` and is the only route served without
