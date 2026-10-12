@@ -60,7 +60,7 @@ func parseOptions(q url.Values, r recipe.Recipe) (options, error) {
 	case scale != "":
 		m, err := quantity.ParseRat(scale)
 		if err != nil {
-			return options{}, fmt.Errorf("%w: scale %q: %v", layout.ErrInvalid, scale, err)
+			return options{}, fmt.Errorf("%w: scale %q: %w", layout.ErrInvalid, scale, err)
 		}
 		if m.Sign() <= 0 {
 			return options{}, fmt.Errorf("%w: scale %q is not positive", layout.ErrInvalid, scale)
@@ -69,14 +69,14 @@ func parseOptions(q url.Values, r recipe.Recipe) (options, error) {
 	case servings != "":
 		target, err := quantity.ParseRat(servings)
 		if err != nil {
-			return options{}, fmt.Errorf("%w: servings %q: %v", layout.ErrInvalid, servings, err)
+			return options{}, fmt.Errorf("%w: servings %q: %w", layout.ErrInvalid, servings, err)
 		}
 		if r.Servings.Kind() != quantity.KindExact {
 			return options{}, fmt.Errorf("%w: recipe has no single serving count to scale from", layout.ErrInvalid)
 		}
 		m, err := quantity.ServingsFactor(r.Servings.Min(), target)
 		if err != nil {
-			return options{}, fmt.Errorf("%w: %v", layout.ErrInvalid, err)
+			return options{}, fmt.Errorf("%w: %w", layout.ErrInvalid, err)
 		}
 		o.mult, o.servings = m, servings
 	}

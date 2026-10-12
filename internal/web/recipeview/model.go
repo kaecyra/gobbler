@@ -97,11 +97,11 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o op
 	if v.Servings, err = scaleQty(r.Servings, o); err != nil {
 		return view{}, fmt.Errorf("servings: %w", err)
 	}
-	if yq, err := scaleQty(r.Yield.Qty, o); err != nil {
+	yq, err := scaleQty(r.Yield.Qty, o)
+	if err != nil {
 		return view{}, fmt.Errorf("yield: %w", err)
-	} else {
-		v.Yield = strings.TrimSpace(yq + " " + r.Yield.Unit)
 	}
+	v.Yield = strings.TrimSpace(yq + " " + r.Yield.Unit)
 	if err := fillTimes(&v, r); err != nil {
 		return view{}, err
 	}
