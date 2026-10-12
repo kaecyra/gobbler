@@ -1,0 +1,17 @@
+{
+  "name": "gobbler-e2e",
+  "private": true,
+  "description": "Playwright end-to-end tests (ADR-00013). Test tooling only; never part of the image.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:fixtures": "node --test fixtures/*.test.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.19.2"
+  }
+}

@@ -12,3 +12,7 @@ pre-push:
       run: make lint
     test:
       run: make test
+    e2e:
+      run: make e2e
+    version:
+      run: make version-check

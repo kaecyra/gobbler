@@ -7,7 +7,9 @@ MODULE     := $(shell go list -m)
 # `make lint` refuses to run any other, and CI calls `make tools`.
 GOLANGCI_LINT_VERSION := v2.14.0
 
-.PHONY: tools fmt fmt-check lint test
+E2E_SETUP := cd e2e && npm ci && npx playwright install chromium
+
+.PHONY: tools fmt fmt-check lint test test-scripts e2e e2e-routes version-check check
 
 ## tools: install the pinned golangci-lint
 tools:
@@ -36,3 +38,28 @@ test:
 	total="$$(go tool cover -func="$$f" | awk '/^total:/ {sub("%","",$$3); print $$3}')"; \
 	echo "total coverage: $$total% (minimum $(COVER_MIN)%)"; \
 	awk -v t="$$total" -v m="$(COVER_MIN)" 'BEGIN { exit !(t+0 >= m+0) }' || { echo "coverage below $(COVER_MIN)%"; exit 1; }
+
+## test-scripts: test the shell and Node helpers behind the gates
+test-scripts:
+	bash .github/scripts/check-version-bump_test.sh
+	@command -v node >/dev/null || { echo "node is required; install Node"; exit 1; }
+	node --test e2e/fixtures/*.test.mjs
+
+## e2e-routes: fail if a route registered in internal/web has no e2e test
+e2e-routes:
+	@command -v node >/dev/null || { echo "node is required for e2e; install Node, then: $(E2E_SETUP)"; exit 1; }
+	node e2e/fixtures/route-coverage.mjs
+
+## e2e: build gobbler and run the Playwright suite (installs nothing)
+e2e: e2e-routes
+	@test -d e2e/node_modules/@playwright/test || { echo "e2e dependencies missing; setup: $(E2E_SETUP)"; exit 1; }
+	@d="$$(mktemp -d)"; trap 'rm -rf "$$d"' EXIT; \
+	go build -o "$$d/gobbler" ./cmd/gobbler || exit 1; \
+	cd e2e && GOBBLER_E2E_BIN="$$d/gobbler" npx --no-install playwright test
+
+## version-check: fail if source changed against origin/main without a VERSION bump
+version-check:
+	bash .github/scripts/check-version-bump.sh origin/main
+
+## check: every gate; fails if any one fails
+check: fmt-check lint test test-scripts e2e version-check

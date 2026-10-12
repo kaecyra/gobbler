@@ -18,9 +18,19 @@ Run `make tools` to install the pinned version (set by `GOLANGCI_LINT_VERSION` i
 make fmt    # gofmt and goimports, rewrites files
 make lint   # golangci-lint and go vet
 make test   # go test; fails below 70% line coverage
+make e2e    # builds gobbler, runs the Playwright suite in e2e/ (installs nothing)
+make check  # fmt-check, lint, test, test-scripts, e2e and version-check
 ```
 
-`make e2e` and `make check` do not exist yet.
+The end-to-end suite needs Node (ADR-00013). Provision a checkout once; `make e2e`
+fails with a pointer here if it was skipped:
+
+```sh
+cd e2e && npm ci && npx playwright install chromium
+```
+
+`make version-check` fails when source changed against `origin/main` without a
+`VERSION` bump; docs, ADRs, Markdown and `.memory/` never need one.
 
 Install the git hooks once per clone with [lefthook](https://lefthook.dev/):
 
@@ -28,4 +38,4 @@ Install the git hooks once per clone with [lefthook](https://lefthook.dev/):
 lefthook install
 ```
 
-Pre-commit runs `make fmt`; pre-push runs `make lint` and `make test`.
+Pre-commit runs `make fmt`; pre-push runs `make lint`, `make test`, `make e2e` and `make version-check`.
