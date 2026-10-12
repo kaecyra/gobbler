@@ -695,7 +695,7 @@
       "wave": 5,
       "track": "ingestion",
       "issue": 27,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w5-llm-contract"
       ],
@@ -1168,6 +1168,14 @@
       "id": "w5-llm-gemini",
       "title": "Gemini provider via official Go Gen AI SDK with structured output",
       "merged": "b26190c",
+      "adrs": [
+        "00007"
+      ]
+    },
+    {
+      "id": "w5-llm-claude",
+      "title": "Claude provider via official Go SDK with structured output",
+      "merged": "989e23f",
       "adrs": [
         "00007"
       ]
