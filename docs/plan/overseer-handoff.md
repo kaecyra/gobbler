@@ -1,6 +1,6 @@
 # Overseer handoff: 2026-10-12, round 6
 
-This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.34.1**.
+This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.38.0**.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
@@ -18,6 +18,12 @@ This file holds the volatile state the graph does not. The durable record is `do
 | w3-editor | #19 | #119 | c8d8233 |
 | w3-unit-owner (schema 00003) | #65 | #118 | efb658d |
 | Graph: w4-shopping-store lane gains `merge_test.go` and `doc.go`, and node w3-edit-link (#120) is added | — | #122 | aa1007e |
+| w3-catalog-page | #22 | #121 | ed82088 |
+| Graph: w3-search-list lane gains the 00003 migration test | — | #128 | 1b411b7 |
+| w3-search-list (schema 00004) | #17 | #113 | e83eafa |
+| w3-edit-link | #120 | #126 | 45981eb |
+| Graph: w4-shopping-store lane gains `internal/store/search_test.go` | — | #129 | a62c316 |
+| w4-shopping-store (schema 00005) | #24 | #125 | 8ce630e |
 
 #107 (the round-5 handoff PR) was closed as superseded.
 
@@ -25,13 +31,10 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 | Worktree | Node | State |
 |---|---|---|
-| `wt-22` | w3-catalog-page (#22), **PR #121** | Approved, every thread resolved, CI green. GitHub refused the merge because the branch predates #118 and conflicts on VERSION. The worker is rebasing; VERSION stays 0.35.0. Merge once it is green. |
-| `wt-17` | w3-search-list (#17, schema `00004`), **PR #113** | A fresh worker is rebasing it onto main and fixing the 3 NITs from 5491507666: rewrap doc comments, `sqlc.arg(tag_count)`, and the helper `five()`. Then resolve the threads, check the delta and merge. Next in migration order. |
-| `wt-24` | w4-shopping-store (#24, schema `00005`), **PR #125** | Opened; first review running. It merges **after #113**, then rebases, runs `make generate` and re-bumps. `RegisterMergeHooks` stays unwired until #25. |
-| `wt-120` | w3-edit-link (#120) | Worker dispatched. |
-| `wt-124` | #124, deploy: drop the cloudflared sidecar | Worker dispatched. Owner decision: cloudflared runs on the VM guest from the owner's IaC. Publish gobbler on `127.0.0.1:8080:8080`; the guest's tunnel URL is `http://127.0.0.1:8080`. No graph node. |
+| `wt-124` | #124 deploy (no node), **PR #127** | Two review rounds are done and every finding is fixed and resolved. ADR-00017 amends ADR-00002 Packaging, following ADR-00001's "Amended" convention. The worker is re-bumping to 0.38.1. Merge once CI is green. |
+| `wt-25` | w4-shopping-ui (#25) | Worker dispatched. It must wire the shopping store's `RegisterMergeHooks` into `mountCatalog` in `routes.go`. Watch for the SSE versus server `WriteTimeout` risk, which is out of lane (`web.go` / `serve.go`). |
 
-Every open branch bumps VERSION over main, so each merge forces the rest to re-bump. Re-bump against main at merge time.
+Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands. #128 and #129 widened lanes for that.
 
 ## Side task: mockup mascots (owner request), done
 
@@ -52,7 +55,7 @@ Every open branch bumps VERSION over main, so each merge forces the rest to re-b
 - #111: extract the document time rows and total-source note into `internal/recipe/display`. History duplicates recipeview's strings until then.
 - #120: Edit link from the recipe page (node w3-edit-link).
 - #123: share the quantity/unit DB codec between store and shopping. It runs after #24, and not in a round with any node that holds `internal/store/**`.
-- #124: drop the cloudflared sidecar.
+- #124: drop the cloudflared sidecar (PR #127).
 - #112: gate to fail `make check` on stale templ output. `make generate` runs sqlc only. `journal_templ.go` (and others, per the #113 worker) on main are already stale, and every `go tool templ generate` rewrites them. Workers revert that drift out of lane.
 
 ## Owner decisions this round
@@ -65,8 +68,8 @@ Every open branch bumps VERSION over main, so each merge forces the rest to re-b
 
 ## Migration and ADR numbers
 
-- `schema`: `00003` is merged (w3-unit-owner). `00004` belongs to w3-search-list (#113) and `00005` to w4-shopping-store (#125). The next free number is `00006`. Merge order: #113, then #125.
-- The ADR sequence is at `00016`.
+- `schema`: `00003`, `00004` and `00005` are all merged. The next free number is `00006`.
+- The ADR sequence is at `00017` (#127, not yet merged). The next free number is `00018`.
 
 ## Things a fresh dispatcher must know
 
@@ -84,7 +87,7 @@ Every open branch bumps VERSION over main, so each merge forces the rest to re-b
 
 ## Next to dispatch, and why
 
-1. **Merge #121** once the rebase is green: it is approved and has no migration.
-2. **Merge #113**, then rebase #125 onto it (`make generate`, re-bump) and merge it once it is review-clean.
-3. **w4-shopping-ui (#25)** after #125. It must wire the shopping store's `RegisterMergeHooks` and usage counters in `mountCatalog`. Then **w7-todoist (#36)**.
-4. **#123** (codec) after #125.
+1. **Merge #127** once its re-bump is green.
+2. **Verify and open w4-shopping-ui (#25)**, then review it. After it merges, dispatch **w7-todoist (#36)**, which depends on the shopping list.
+3. **#123 (codec)** has no graph node yet. Add one (lane: `internal/quantity/**`, the store codec file, `internal/shopping/store_codec.go`) once nothing in flight holds `internal/store/**`.
+4. `l-meal-planning` (#38) and `l-invitations` (#39) each need an ADR first. That is the owner's call.
