@@ -67,8 +67,10 @@ func (r Runner) Text(ctx context.Context, image []byte) (string, error) {
 		switch {
 		case errors.Is(err, exec.ErrNotFound), errors.Is(err, os.ErrNotExist), errors.Is(err, os.ErrPermission):
 			return "", fmt.Errorf("%w: run %q: %w", ErrUnavailable, bin, err)
-		case ctx.Err() != nil:
+		case errors.Is(ctx.Err(), context.DeadlineExceeded):
 			return "", fmt.Errorf("%w: %q ran past %s: %w", ErrFailed, bin, timeout, ctx.Err())
+		case ctx.Err() != nil:
+			return "", fmt.Errorf("%w: %q stopped: %w", ErrFailed, bin, ctx.Err())
 		}
 		return "", fmt.Errorf("%w: %s: %w", ErrFailed, strings.TrimSpace(stderr.String()), err)
 	}

@@ -68,6 +68,22 @@ func TestTextTimeoutIsFailure(t *testing.T) {
 	if time.Since(start) > 3*time.Second {
 		t.Errorf("took %s, the timeout did not stop the process", time.Since(start))
 	}
+	if !errors.Is(err, context.DeadlineExceeded) || !strings.Contains(err.Error(), "ran past") {
+		t.Errorf("err = %q, want it to say the run ran past the timeout", err)
+	}
+}
+
+func TestTextCallerCancellationIsNotReportedAsATimeout(t *testing.T) {
+	bin := stub(t, `exec sleep 5`)
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(100*time.Millisecond, cancel)
+	_, err := Runner{Bin: bin, Timeout: time.Minute}.Text(ctx, []byte("x"))
+	if !errors.Is(err, ErrFailed) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want ErrFailed wrapping context.Canceled", err)
+	}
+	if strings.Contains(err.Error(), "ran past") {
+		t.Errorf("err = %q, a cancellation is not a timeout", err)
+	}
 }
 
 func TestTextFindsTesseractOnPath(t *testing.T) {
