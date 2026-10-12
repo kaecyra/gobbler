@@ -20,22 +20,17 @@ var (
 	// recipe yet: no name, no ingredient lines, a line with no ingredient, or
 	// a source snapshot that no longer matches what was ingested.
 	ErrIncompleteDraft = errors.New("draft is incomplete")
-	// ErrUnknownUnit is returned by Save for a draft line whose unit the
-	// catalog does not have. Drafting only emits catalog units, so this means
-	// the catalog changed after the draft was made; the draft is still good
-	// and the caller can show the problem instead of failing.
-	ErrUnknownUnit = errors.New("unknown unit")
 )
 
-// UnknownUnitError names the unit a Save refused. It matches ErrUnknownUnit.
+// UnknownUnitError is returned (wrapped) by Save for a draft line whose unit
+// the catalog does not have. Drafting only emits catalog units, so this means
+// the catalog changed after the draft was made; the draft is still good and
+// the caller can show the problem instead of failing.
 type UnknownUnitError struct{ Name string }
 
 func (e *UnknownUnitError) Error() string {
 	return fmt.Sprintf("unit %q is not in the catalog", e.Name)
 }
-
-// Is reports that an UnknownUnitError is an ErrUnknownUnit.
-func (e *UnknownUnitError) Is(target error) bool { return target == ErrUnknownUnit }
 
 // Confirmed is a draft the user has reviewed and approved. It can be made only
 // by Confirm, and Saver.Save accepts nothing else, so there is no path that

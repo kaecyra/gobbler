@@ -48,3 +48,26 @@ func TestAdditionsSQLCreatesOnlyNewUnits(t *testing.T) {
 		}
 	}
 }
+
+// Migration 00003 runs against databases the application has written to, so
+// every statement it renders must tolerate rows that already exist.
+func TestAdditionsSQLToleratesExistingRows(t *testing.T) {
+	got, err := AdditionsSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range strings.Split(strings.TrimSpace(got), "\n") {
+		switch {
+		case strings.HasPrefix(stmt, "INSERT INTO units"):
+			if !strings.HasSuffix(stmt, "ON CONFLICT (name) DO UPDATE SET reviewed = 1;") {
+				t.Errorf("unit insert is not conflict-safe: %q", stmt)
+			}
+		case strings.HasPrefix(stmt, "INSERT INTO unit_aliases"):
+			if !strings.HasSuffix(stmt, "ON CONFLICT (alias) DO NOTHING;") {
+				t.Errorf("alias insert is not conflict-safe: %q", stmt)
+			}
+		default:
+			t.Errorf("unexpected statement: %q", stmt)
+		}
+	}
+}
