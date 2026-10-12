@@ -13,7 +13,7 @@ FROM recipes ORDER BY lower(name), id;
 SELECT recipe_id FROM recipe_tags
 WHERE tag IN (sqlc.slice('tags'))
 GROUP BY recipe_id
-HAVING COUNT(DISTINCT tag) = CAST(sqlc.arg(tag_count) AS INTEGER);
+HAVING COUNT(DISTINCT tag) = CAST(? AS INTEGER);
 
 -- name: ListAllRecipeTags :many
 SELECT recipe_id, tag FROM recipe_tags ORDER BY recipe_id, position;

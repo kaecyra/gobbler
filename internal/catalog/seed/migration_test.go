@@ -71,6 +71,10 @@ func TestMigration00003AdoptsUnitsTheOldSaveFlowCreated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Later migrations sit above 00003; roll them back so 00003 is the next Down.
+	if _, err := p.DownTo(ctx, 3); err != nil {
+		t.Fatalf("rolling back to 00003: %v", err)
+	}
 	if _, err := p.Down(ctx); err != nil {
 		t.Fatalf("rolling back 00003: %v", err)
 	}

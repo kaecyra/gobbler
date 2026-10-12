@@ -61,7 +61,7 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 			return err
 		}
 		if len(tags) > 0 {
-			ids, err := qs.ListRecipeIDsWithAllTags(ctx, storedb.ListRecipeIDsWithAllTagsParams{Tags: tags, TagCount: int64(len(tags))})
+			ids, err := qs.ListRecipeIDsWithAllTags(ctx, storedb.ListRecipeIDsWithAllTagsParams{Tags: tags, Column2: int64(len(tags))})
 			if err != nil {
 				return readErr("recipes by tag", err)
 			}
