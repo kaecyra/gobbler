@@ -124,11 +124,38 @@ func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 	if err != nil {
 		return Draft{}, err
 	}
-	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, RuleDraft: d})
+	image, imageMIME := f.visionImage(ctx, d.Source)
+	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, Image: image, ImageMIME: imageMIME, RuleDraft: d})
 	if err != nil {
 		return Draft{}, fmt.Errorf("%w: %w", ErrLLMFailed, err)
 	}
 	return f.fromStructured(ctx, d, s)
+}
+
+// maxVisionImageBytes is the largest photo attached to a provider request.
+// Anthropic allows 10 MB per image base64-encoded on the Claude API directly
+// (5 MB on Bedrock and Google Cloud), https://platform.claude.com/docs/en/build-with-claude/vision;
+// base64 inflates by 4/3, so 7.5 MB of raw bytes is the strictest limit that
+// holds. Gemini's inline limit is 20 MB for the whole request, which is looser:
+// https://ai.google.dev/gemini-api/docs/image-understanding. Checked against
+// those pages when this was written.
+const maxVisionImageBytes = 7_500_000
+
+// visionImage returns the photo to attach to a provider request, or nothing
+// when the source has none or it is over maxVisionImageBytes. An oversized
+// photo is dropped rather than sent, and the provider reads the OCR text alone;
+// that is logged because the draft is then less well informed than the user
+// may expect.
+func (f *Fallback) visionImage(ctx context.Context, src Source) ([]byte, string) {
+	if len(src.Image) == 0 {
+		return nil, ""
+	}
+	if len(src.Image) > maxVisionImageBytes {
+		f.log().WarnContext(ctx, "photo not sent to the LLM provider, using the OCR text only",
+			"reason", "image_over_provider_limit", "image_bytes", len(src.Image), "limit_bytes", maxVisionImageBytes)
+		return nil, ""
+	}
+	return src.Image, src.ImageMIME
 }
 
 // llmSourceText is the text a provider is asked to read: pasted text as given,

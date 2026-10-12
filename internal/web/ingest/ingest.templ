@@ -33,6 +33,7 @@ templ formPage(v formView) {
 		if v.Error != "" {
 			<p class="error" role="alert">{ v.Error }</p>
 		}
+		<p><a href="/ingest/photo">Or add a recipe from a photo</a></p>
 		<form class="ingest-form" method="post" action="/ingest">
 			<label for="ingest-url">Recipe URL</label>
 			<input id="ingest-url" type="url" name="url" value={ v.URL } placeholder="https://"/>
