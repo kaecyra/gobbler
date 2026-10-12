@@ -1,8 +1,6 @@
 package recipeview
 
 import (
-	"fmt"
-
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
@@ -13,18 +11,25 @@ type meanwhileItem struct {
 	Text   string
 }
 
+// stepNumbers numbers every step of r by its place in the reading order of the
+// page. It is the single source of step numbers: the ordered lists and the
+// meanwhile items both use it, so they cannot drift apart.
+func stepNumbers(r recipe.Recipe) map[recipe.StepID]int {
+	number := map[recipe.StepID]int{}
+	for i, ref := range r.LinearOrder() {
+		number[ref.ID] = i + 1
+	}
+	return number
+}
+
 // buildMeanwhile turns the derived guidance (recipe.Meanwhile) into display
 // items keyed by the passive step they belong to. Steps without guidance have
 // no entry. An invalid step graph is an error: it should have been rejected
 // on save, so showing the page without guidance would hide a corrupt recipe.
-func buildMeanwhile(r recipe.Recipe) (map[recipe.StepID][]meanwhileItem, error) {
+func buildMeanwhile(r recipe.Recipe, number map[recipe.StepID]int) (map[recipe.StepID][]meanwhileItem, error) {
 	guidance, err := r.Meanwhile()
 	if err != nil {
-		return nil, fmt.Errorf("meanwhile guidance: %w", err)
-	}
-	number := map[recipe.StepID]int{}
-	for i, ref := range r.LinearOrder() {
-		number[ref.ID] = i + 1
+		return nil, err
 	}
 	out := map[recipe.StepID][]meanwhileItem{}
 	for _, g := range guidance {

@@ -108,15 +108,18 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o op
 		return view{}, err
 	}
 
-	guidance, err := buildMeanwhile(r)
+	number := stepNumbers(r)
+	guidance, err := buildMeanwhile(r, number)
 	if err != nil {
 		return view{}, err
 	}
 
 	ingredients := map[recipe.IngredientID]catalog.Ingredient{}
-	step := 1
 	for _, c := range r.Components {
-		cv := componentView{Name: c.Name, FirstStep: step}
+		cv := componentView{Name: c.Name}
+		if len(c.Steps) > 0 {
+			cv.FirstStep = number[c.Steps[0].ID]
+		}
 		for _, l := range c.Lines {
 			lv, err := buildLine(ctx, cat, ingredients, l, o)
 			if err != nil {
@@ -126,7 +129,6 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o op
 		}
 		for _, s := range c.Steps {
 			cv.Steps = append(cv.Steps, stepView{Text: s.Text, Note: stepNote(s), Meanwhile: guidance[s.ID]})
-			step++
 		}
 		v.Components = append(v.Components, cv)
 	}
