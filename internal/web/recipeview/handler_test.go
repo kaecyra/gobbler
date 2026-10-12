@@ -464,3 +464,10 @@ func TestServingsTargetOnARangeOfServingsExplainsWhatToDo(t *testing.T) {
 	// The generic "enter a number" advice would be wrong: 4 is a number.
 	mustNotContain(t, body, "positive number or fraction")
 }
+
+func TestViewLinksToCookModeKeepingTheState(t *testing.T) {
+	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
+	mustContain(t, body, `data-testid="cook-link"`, `href="/recipes/7/cook"`)
+	_, body = serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=2&units=metric")
+	mustContain(t, body, `href="/recipes/7/cook?scale=2&amp;units=metric"`)
+}

@@ -1,0 +1,86 @@
+/* Cook mode: large type and big tap targets for a phone propped on the counter. */
+.cook-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gutter);
+}
+
+.cook-text {
+  font-size: 1.5rem;
+  line-height: 1.4;
+}
+
+.cook-nav {
+  display: flex;
+  gap: var(--gutter);
+  margin: var(--gutter) 0;
+}
+
+.cook-btn,
+.cook-timer-start,
+.cook-timers button {
+  display: inline-block;
+  min-height: 3rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cook-nav .cook-btn {
+  flex: 1;
+  line-height: 2;
+}
+
+.cook-btn.disabled {
+  border-color: var(--border);
+  color: var(--muted);
+  cursor: default;
+}
+
+.cook-meanwhile {
+  margin: var(--gutter) 0;
+  padding: 0.5rem var(--gutter);
+  border-left: 4px solid var(--accent);
+}
+
+.cook-steps a[aria-current="step"] {
+  font-weight: 700;
+}
+
+.cook-timers ul {
+  padding: 0;
+  list-style: none;
+}
+
+.cook-timers li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem var(--gutter);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cook-timer-label { flex: 1 1 12rem; }
+
+.cook-timer-remaining {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cook-timers li.done {
+  border-left: 4px solid var(--accent);
+  padding-left: 0.5rem;
+  font-weight: 700;
+}
+
+.cook-alert:empty { display: none; }
+.cook-alert { font-weight: 700; color: var(--accent); }
