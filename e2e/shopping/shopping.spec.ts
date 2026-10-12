@@ -19,7 +19,7 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 let dataDir = '';
 let server: ChildProcess | undefined;
-let ids: { flour: number; milk: number; salt: number; pancakes: number; waffles: number };
+let ids: { flour: number; milk: number; salt: number; pancakes: number; waffles: number; garnish: number; basil: number };
 let listID = 0;
 
 test.use({ baseURL: origin });
@@ -344,4 +344,53 @@ test('removes a manual item and a pantry ingredient by their own routes', async 
   await expect(page.getByTestId('pantry-empty')).toBeVisible();
   await page.goto(`/shopping/${listID}`);
   await expect(item(page, 'e2e salt')).toHaveCount(1);
+});
+
+test('optional lines are left off until the list includes them, on the build page and the phone view', async ({ browser }) => {
+  const desk = await browser.newContext();
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const build = await desk.newPage();
+    await build.goto('/shopping');
+    await build.getByLabel('New list').fill('E2E Optional');
+    await build.getByRole('button', { name: 'Create' }).click();
+    const id = Number(build.url().split('/').pop());
+    await addRecipe(build, 'E2E Garnish');
+    await expect(item(build, 'e2e flour')).toHaveCount(1);
+    await expect(item(build, 'e2e basil')).toHaveCount(0);
+    await expect(build.getByLabel('Include optional ingredients')).not.toBeChecked();
+
+    const live = await phone.newPage();
+    await live.goto(`/shopping/${id}/live`);
+    await expect(live.getByTestId('live-status')).toHaveText('Live');
+    await expect(live.getByRole('checkbox', { name: /e2e basil/ })).toHaveCount(0);
+
+    // Including them adds basil to the build page and, without a reload, the phone.
+    await build.getByLabel('Include optional ingredients').check();
+    await build.getByTestId('optional-form').getByRole('button', { name: 'Save' }).click();
+    await expect(build.getByLabel('Include optional ingredients')).toBeChecked();
+    await expect(item(build, 'e2e basil')).toHaveCount(1);
+    const basil = live.getByRole('checkbox', { name: /e2e basil/ });
+    await expect(basil).toHaveCount(1);
+    await basil.click();
+    await expect(basil).toHaveAttribute('aria-checked', 'true');
+
+    // Excluding takes it off both, and including again brings its check back.
+    await build.getByLabel('Include optional ingredients').uncheck();
+    await build.getByTestId('optional-form').getByRole('button', { name: 'Save' }).click();
+    await expect(item(build, 'e2e basil')).toHaveCount(0);
+    await expect(live.getByRole('checkbox', { name: /e2e basil/ })).toHaveCount(0);
+    await expect(live.getByRole('checkbox', { name: /e2e flour/ })).toHaveCount(1);
+    await build.getByLabel('Include optional ingredients').check();
+    await build.getByTestId('optional-form').getByRole('button', { name: 'Save' }).click();
+    await expect(live.getByRole('checkbox', { name: /e2e basil/ })).toHaveAttribute('aria-checked', 'true');
+
+    // The route also answers a plain request, and an unknown list is a 404.
+    const ok = await desk.request.post(`/shopping/${id}/optional`, { form: { optional: '1' } });
+    expect(ok.ok()).toBe(true);
+    expect((await desk.request.post('/shopping/999999/optional', { form: { optional: '1' } })).status()).toBe(404);
+  } finally {
+    await desk.close();
+    await phone.close();
+  }
 });

@@ -74,13 +74,18 @@ func (q *Queries) DeleteManualItem(ctx context.Context, id int64) (int64, error)
 }
 
 const getList = `-- name: GetList :one
-SELECT id, name, created_at FROM shopping_lists WHERE id = ?
+SELECT id, name, created_at, include_optional FROM shopping_lists WHERE id = ?
 `
 
 func (q *Queries) GetList(ctx context.Context, id int64) (ShoppingList, error) {
 	row := q.db.QueryRowContext(ctx, getList, id)
 	var i ShoppingList
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.IncludeOptional,
+	)
 	return i, err
 }
 
@@ -237,7 +242,7 @@ func (q *Queries) ListListIDs(ctx context.Context) ([]int64, error) {
 }
 
 const listLists = `-- name: ListLists :many
-SELECT id, name, created_at FROM shopping_lists ORDER BY id
+SELECT id, name, created_at, include_optional FROM shopping_lists ORDER BY id
 `
 
 func (q *Queries) ListLists(ctx context.Context) ([]ShoppingList, error) {
@@ -249,7 +254,12 @@ func (q *Queries) ListLists(ctx context.Context) ([]ShoppingList, error) {
 	var items []ShoppingList
 	for rows.Next() {
 		var i ShoppingList
-		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.IncludeOptional,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -414,6 +424,23 @@ func (q *Queries) SetEntryMultiplier(ctx context.Context, arg SetEntryMultiplier
 	var list_id int64
 	err := row.Scan(&list_id)
 	return list_id, err
+}
+
+const setIncludeOptional = `-- name: SetIncludeOptional :execrows
+UPDATE shopping_lists SET include_optional = ?1 WHERE id = ?2 AND include_optional <> ?1
+`
+
+type SetIncludeOptionalParams struct {
+	IncludeOptional int64
+	ID              int64
+}
+
+func (q *Queries) SetIncludeOptional(ctx context.Context, arg SetIncludeOptionalParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setIncludeOptional, arg.IncludeOptional, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateManualItem = `-- name: UpdateManualItem :one

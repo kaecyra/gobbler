@@ -116,7 +116,7 @@ func (h *handler) renderBuild(w http.ResponseWriter, r *http.Request, id int64, 
 		return
 	}
 	v := buildView{
-		ID: id, Name: view.List.Name, Entries: newEntries(view.Entries), Manual: manual,
+		ID: id, Name: view.List.Name, IncludeOptional: view.IncludeOptional, Entries: newEntries(view.Entries), Manual: manual,
 		Aisles: aisles, Dropped: dropped, Export: text,
 		Ingredients: ingredientOptions(ingredients), Problem: problem,
 	}
@@ -390,6 +390,26 @@ func (h *handler) addBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.edited(w, r, id)
+}
+
+// setOptional saves whether the list keeps optional recipe lines. It does not
+// regenerate: the checks of items the change hides stay stored, so switching the
+// lines back on brings them back checked.
+func (h *handler) setOptional(w http.ResponseWriter, r *http.Request) {
+	id, err := listID(r)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	if !parseForm(w, r) {
+		return
+	}
+	include := r.PostForm.Get("optional") == "1"
+	if err := h.Lists.SetIncludeOptional(r.Context(), id, include); err != nil {
+		fail(w, r, fmt.Errorf("set include optional on list %d: %w", id, err))
+		return
+	}
+	http.Redirect(w, r, listURL(id), http.StatusSeeOther)
 }
 
 func (h *handler) regenerate(w http.ResponseWriter, r *http.Request) {

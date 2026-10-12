@@ -2,13 +2,16 @@
 INSERT INTO shopping_lists (name, created_at) VALUES (?, ?) RETURNING id;
 
 -- name: GetList :one
-SELECT id, name, created_at FROM shopping_lists WHERE id = ?;
+SELECT id, name, created_at, include_optional FROM shopping_lists WHERE id = ?;
 
 -- name: ListLists :many
-SELECT id, name, created_at FROM shopping_lists ORDER BY id;
+SELECT id, name, created_at, include_optional FROM shopping_lists ORDER BY id;
 
 -- name: ListListIDs :many
 SELECT id FROM shopping_lists ORDER BY id;
+
+-- name: SetIncludeOptional :execrows
+UPDATE shopping_lists SET include_optional = sqlc.arg(include_optional) WHERE id = sqlc.arg(id) AND include_optional <> sqlc.arg(include_optional);
 
 -- name: RenameList :execrows
 UPDATE shopping_lists SET name = ? WHERE id = ?;

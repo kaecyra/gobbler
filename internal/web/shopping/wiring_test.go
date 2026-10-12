@@ -74,6 +74,13 @@ func TestCatalogMergeRepointsShoppingRows(t *testing.T) {
 		t.Fatalf("add manual item: %d %s", rec.Code, rec.Body)
 	}
 
+	// The confirmation counts the pantry row and the manual item.
+	confirm := httptest.NewRecorder()
+	router.ServeHTTP(confirm, httptest.NewRequest(http.MethodGet, "/catalog/merge?source="+loserID+"&target="+winnerID, nil))
+	if body := confirm.Body.String(); !strings.Contains(body, `data-testid="merge-lines">2 recipe lines`) {
+		t.Errorf("merge confirmation does not count the shopping rows:\n%s", body)
+	}
+
 	if rec := do(http.MethodPost, "/catalog/merge", url.Values{"source": {loserID}, "target": {winnerID}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("merge: status %d, body %s", rec.Code, rec.Body)
 	}

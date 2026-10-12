@@ -38,7 +38,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountCatalog(r, d)
 }
 
-// mountCatalog mounts the catalog cleanup page. Its catalog store is the one
+// mountCatalog mounts the catalog cleanup page and the shopping pages. Its catalog store is the one
 // that merges ingredients, so the recipe store's merge hooks and usage counters
 // are registered on it here: without the hooks a merge of an ingredient that
 // recipes use fails on the foreign key, and without the counters the
@@ -51,9 +51,10 @@ func mountCatalog(r chi.Router, d Deps) {
 	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: cat, Usage: usage}))
 
 	// The shopping pages share the merging catalog store: the shopping store's
-	// hooks re-point its manual items, pantry and checks on a merge. It exposes
-	// no usage counter, so the merge confirmation does not count those rows.
+	// hooks re-point its manual items, pantry and checks on a merge, and its
+	// counter adds those rows to the merge confirmation.
 	shop := shopping.New(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
+	shop.RegisterUsageCounters(usage)
 	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Lists: shop, Recipes: rec, Catalog: cat, Logger: d.Logger}))
 }

@@ -57,6 +57,7 @@ func run(dir string) error {
 		"flour": {Name: "e2e flour", Aisle: "baking", Reviewed: true},
 		"milk":  {Name: "e2e milk", Aisle: "dairy", Reviewed: true},
 		"salt":  {Name: "e2e salt", Aisle: "spices", Reviewed: true},
+		"basil": {Name: "e2e basil", Aisle: "produce", Reviewed: true},
 	} {
 		created, err := cat.CreateIngredient(ctx, in)
 		if err != nil {
@@ -85,6 +86,11 @@ func run(dir string) error {
 		return err
 	}
 	if out["waffles"], err = create("E2E Waffles", line(out["flour"], 2, cup), line(out["milk"], 1, cup)); err != nil {
+		return err
+	}
+	garnish := line(out["basil"], 1, cup)
+	garnish.Optional = true
+	if out["garnish"], err = create("E2E Garnish", line(out["flour"], 1, cup), garnish); err != nil {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(out)

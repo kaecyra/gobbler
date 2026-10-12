@@ -61,17 +61,19 @@ type option struct {
 
 // buildView is the build-a-list page.
 type buildView struct {
-	ID          int64
-	Name        string
-	Entries     []entryView
-	Manual      []manualView
-	Aisles      []aisleView
-	Dropped     []droppedView
-	Export      string
-	Recipes     []option
-	Ingredients []option
-	Units       []string
-	Problem     string
+	ID   int64
+	Name string
+	// IncludeOptional is whether optional recipe lines are on the list.
+	IncludeOptional bool
+	Entries         []entryView
+	Manual          []manualView
+	Aisles          []aisleView
+	Dropped         []droppedView
+	Export          string
+	Recipes         []option
+	Ingredients     []option
+	Units           []string
+	Problem         string
 }
 
 // liveView is the phone view.

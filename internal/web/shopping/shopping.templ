@@ -146,6 +146,13 @@ templ buildPage(v buildView) {
 				<button type="submit">Add recipe</button>
 			</form>
 		</section>
+		<form method="post" action={ formAction(v.ID, "/optional") } data-testid="optional-form">
+			<label>
+				<input type="checkbox" name="optional" value="1" checked?={ v.IncludeOptional }/>
+				Include optional ingredients
+			</label>
+			<button type="submit">Save</button>
+		</form>
 		<section aria-labelledby="manual-h">
 			<h2 id="manual-h">Other items</h2>
 			if len(v.Manual) > 0 {

@@ -715,3 +715,69 @@ func TestEventFrameSplitsMultilineData(t *testing.T) {
 		t.Errorf("frame = %q, want %q", got, want)
 	}
 }
+
+func (f *fixture) optionalRecipe() int64 {
+	f.t.Helper()
+	cup := quantity.MustUnit("cup")
+	return f.recipe("Zz Optional", f.line(f.flour, 1, cup, false), f.line(f.milk, 1, cup, true))
+}
+
+func TestOptionalLinesToggleOnTheBuildAndLivePages(t *testing.T) {
+	f := newFixture(t)
+	list := f.newList("Week")
+	f.addRecipe(list, f.optionalRecipe(), "1")
+	item := `data-testid="item-name">zz milk`
+
+	page := f.do(http.MethodGet, "/"+id(list), nil)
+	if strings.Contains(page.Body.String(), item) || strings.Contains(page.Body.String(), "checked") && strings.Contains(between(page.Body.String(), `name="optional"`, ">"), "checked") {
+		t.Fatalf("optional milk listed by default, or the box is ticked:\n%s", page.Body)
+	}
+
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/optional", url.Values{"optional": {"1"}}), http.StatusSeeOther)
+	page = f.do(http.MethodGet, "/"+id(list), nil)
+	wantBody(t, page, item)
+	if !strings.Contains(between(page.Body.String(), `name="optional"`, ">"), "checked") {
+		t.Error("the box is not ticked after including optional lines")
+	}
+	wantBody(t, f.do(http.MethodGet, "/"+id(list)+"/live", nil), item)
+
+	// The box left unticked sends no value: that is "exclude".
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/optional", url.Values{}), http.StatusSeeOther)
+	if strings.Contains(f.do(http.MethodGet, "/"+id(list)+"/live", nil).Body.String(), item) {
+		t.Error("optional milk still on the phone view after excluding")
+	}
+	wantStatus(t, f.do(http.MethodPost, "/999/optional", url.Values{"optional": {"1"}}), http.StatusNotFound)
+}
+
+func TestOptionalToggleReachesAnOpenPhoneView(t *testing.T) {
+	f := newFixture(t)
+	list := f.newList("Week")
+	f.addRecipe(list, f.optionalRecipe(), "1")
+	srv := f.streamServer(0)
+	c := openStream(t, srv.URL, list)
+	if first := c.next(5 * time.Second); strings.Contains(first, "zz milk") {
+		t.Fatalf("optional milk in the first event: %q", first)
+	}
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/optional", url.Values{"optional": {"1"}}), http.StatusSeeOther)
+	if got := c.next(5 * time.Second); !strings.Contains(got, "zz milk") {
+		t.Fatalf("event after including optional lines = %q", got)
+	}
+}
+
+func TestOptionalToggleKeepsChecks(t *testing.T) {
+	f := newFixture(t)
+	list := f.newList("Week")
+	f.addRecipe(list, f.optionalRecipe(), "1")
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/optional", url.Values{"optional": {"1"}}), http.StatusSeeOther)
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/check", checkForm("i:"+id(f.flour), "1")), http.StatusSeeOther)
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/check", checkForm("i:"+id(f.milk), "1")), http.StatusSeeOther)
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/optional", url.Values{}), http.StatusSeeOther)
+	wantBody(t, f.do(http.MethodGet, "/"+id(list)+"/live", nil), `aria-checked="true"`)
+	wantStatus(t, f.do(http.MethodPost, "/"+id(list)+"/optional", url.Values{"optional": {"1"}}), http.StatusSeeOther)
+	live := f.do(http.MethodGet, "/"+id(list)+"/live", nil).Body.String()
+	for _, key := range []int64{f.flour, f.milk} {
+		if !strings.Contains(between(live, `data-key="i:`+id(key), "</li>"), `data-checked="true"`) {
+			t.Errorf("ingredient %d lost its check across the toggle", key)
+		}
+	}
+}

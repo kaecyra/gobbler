@@ -126,7 +126,8 @@ func TestMigrationOnExistingData(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if e.Name() == "00005_shopping.sql" || e.IsDir() {
+		// Stop before the first shopping migration; every later one alters its tables.
+		if e.Name() >= "00005" || e.IsDir() {
 			continue
 		}
 		body, err := fs.ReadFile(all, e.Name())

@@ -53,6 +53,7 @@ type Lists interface {
 	AddEntry(ctx context.Context, listID, recipeID int64, multiplier quantity.Rat) (int64, error)
 	SetEntryMultiplier(ctx context.Context, id int64, multiplier quantity.Rat) error
 	RemoveEntry(ctx context.Context, id int64) error
+	SetIncludeOptional(ctx context.Context, id int64, include bool) error
 	AddManualItem(ctx context.Context, listID int64, m domain.ManualItem) (int64, error)
 	RemoveManualItem(ctx context.Context, id int64) error
 	SetChecked(ctx context.Context, listID int64, key domain.ItemKey, checked bool) error
@@ -109,6 +110,7 @@ func (h *handler) routes() chi.Router {
 	r.Post("/{id}/manual/{item}/remove", h.removeManual)
 	r.Post("/{id}/addback", h.addBack)
 	r.Post("/{id}/regenerate", h.regenerate)
+	r.Post("/{id}/optional", h.setOptional)
 	r.Get("/{id}/live", h.live)
 	r.Post("/{id}/check", h.check)
 	r.Get("/{id}/events", h.events)
