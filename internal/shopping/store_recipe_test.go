@@ -75,6 +75,45 @@ func TestIngredientMergeRepointsShoppingRows(t *testing.T) {
 	}
 }
 
+// Until RegisterMergeHooks is wired, a merge of an ingredient that shopping rows
+// reference is refused by the foreign keys and rolled back whole.
+func TestIngredientMergeWithoutShoppingHooksIsRefusedAndRolledBack(t *testing.T) {
+	f := newFixture(t)
+	l := f.newList("L")
+	if _, err := f.s.AddManualItem(f.ctx, l.ID, ManualItem{Ingredient: recipeID(f.egg)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.AddToPantry(f.ctx, recipeID(f.egg)); err != nil {
+		t.Fatal(err)
+	}
+	f.check(l, ingKey(f.egg), true)
+
+	if _, err := f.catalog.MergeIngredients(f.ctx, f.butter, f.egg); err == nil {
+		t.Fatal("merge succeeded although shopping rows reference the loser and no hook is registered")
+	}
+	for _, id := range []int64{f.egg, f.butter} {
+		if _, err := f.catalog.GetIngredient(f.ctx, id); err != nil {
+			t.Errorf("ingredient %d after the refused merge: %v", id, err)
+		}
+	}
+	// The catalog moved the loser's name to the winner before the failure; the
+	// rollback must have undone that.
+	if _, ok, err := f.catalog.MatchIngredient(f.ctx, "zz test egg"); err != nil || !ok {
+		t.Errorf("loser name no longer matches: ok %v, err %v", ok, err)
+	} else if got, _, _ := f.catalog.MatchIngredient(f.ctx, "zz test egg"); got.ID != f.egg {
+		t.Errorf("loser name now matches ingredient %d, want %d", got.ID, f.egg)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM shopping_manual_items WHERE ingredient_id = ?`, f.egg); n != 1 {
+		t.Errorf("manual items on the loser = %d, want 1", n)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM shopping_pantry WHERE ingredient_id = ?`, f.egg); n != 1 {
+		t.Errorf("pantry rows on the loser = %d, want 1", n)
+	}
+	if n := f.count(`SELECT COUNT(*) FROM shopping_checks WHERE item_key = ?`, string(ingKey(f.egg))); n != 1 {
+		t.Errorf("checks on the loser = %d, want 1", n)
+	}
+}
+
 // The migration applies on a database that already holds catalog data and
 // recipes, and leaves them alone.
 func TestMigrationOnExistingData(t *testing.T) {

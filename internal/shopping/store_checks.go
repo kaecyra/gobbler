@@ -12,8 +12,9 @@ import (
 // wanted result rather than flipping the current one, so two devices or two
 // goroutines acting on the same item end in one of the two states they asked
 // for, never in an error or a duplicate. Setting what is already set changes
-// nothing and notifies nobody. It returns ErrNotFound for a missing list and
-// ErrInvalid for a key KeyOf could not have produced. A key naming no item is
+// nothing and notifies nobody. Setting a check on a missing list returns
+// ErrNotFound; clearing one there is a no-op that returns nil, since the wanted
+// state already holds. A key KeyOf could not have produced returns ErrInvalid. A key naming no item is
 // stored all the same and dropped by the next Regenerate.
 func (s *Store) SetChecked(ctx context.Context, listID int64, key ItemKey, checked bool) error {
 	if !key.valid() {

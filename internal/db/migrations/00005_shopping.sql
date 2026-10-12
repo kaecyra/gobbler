@@ -11,8 +11,11 @@
 -- recipe_id and the ingredient references are plain foreign keys (no cascade):
 -- deleting a recipe that a list uses fails instead of silently emptying the
 -- list. The tables that reference ingredients(id) (shopping_manual_items,
--- shopping_pantry) and the ingredient-keyed check rows have a
--- catalog.OnIngredientMerge hook registered by the shopping store.
+-- shopping_pantry) and the ingredient-keyed check rows need a
+-- catalog.OnIngredientMerge hook: the shopping store provides it as
+-- RegisterMergeHooks, which the UI node (#25) must wire at start-up. Until it
+-- is wired, these restricted foreign keys refuse a merge of an ingredient that
+-- shopping rows reference.
 
 CREATE TABLE shopping_lists (
     id         INTEGER PRIMARY KEY,

@@ -109,6 +109,10 @@ func TestSetCheckedErrors(t *testing.T) {
 	if err := f.s.SetChecked(f.ctx, l.ID, "i:1", false); err != nil {
 		t.Errorf("clearing what is not set: %v", err)
 	}
+	// Clearing on a missing list holds already; only setting is refused.
+	if err := f.s.SetChecked(f.ctx, 999, "i:1", false); err != nil {
+		t.Errorf("clearing on a missing list: %v, want nil", err)
+	}
 }
 
 // Two devices act on one item at once: the result is an answer one of them

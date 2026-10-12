@@ -42,7 +42,11 @@ func (k ItemKey) valid() bool {
 	return ok && rest != "" && (kind == "i" || kind == "t" || kind == "u")
 }
 
-// ViewItem is a generated item with its key and check state.
+// ViewItem is a generated item with its key and check state. Key is not unique
+// within a view: two identical unresolved lines of one recipe are separate
+// items that share it, and check together. Use Key to set or clear a check,
+// and the item's position (aisle index and item index in View.Aisles) for
+// anything that must be unique, such as a DOM id.
 type ViewItem struct {
 	Item
 	Key     ItemKey

@@ -488,7 +488,7 @@ func TestPackageIsPure(t *testing.T) {
 		}
 		files = append(files, m...)
 	}
-	banned := []string{"database/sql", "net/http", "net", "os", "time", "internal/db", "internal/catalog", "internal/web", "internal/store"}
+	banned := []string{"database/sql", "net/http", "net", "os", "time", "internal/db", "internal/catalog", "internal/web", "internal/store", "internal/shopping/shoppingdb"}
 	for _, f := range files {
 		if strings.HasSuffix(f, "_test.go") {
 			continue
