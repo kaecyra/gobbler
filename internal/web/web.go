@@ -19,6 +19,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/web/layout"
+	"github.com/kaecyra/gobbler/internal/web/settings"
 )
 
 // Deps is everything the server and the feature packages mounted on it need.
@@ -33,6 +34,11 @@ type Deps struct {
 	// "details". The health route is unauthenticated, so these must not carry
 	// anything sensitive.
 	HealthDetails func(ctx context.Context) map[string]string
+	// Backup is the live backup job behind the settings page.
+	Backup settings.Backup
+	// BackupSecrets are the credential values redacted from the backup error
+	// the settings page shows.
+	BackupSecrets []string
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then

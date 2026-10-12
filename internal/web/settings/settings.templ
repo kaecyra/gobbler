@@ -1,0 +1,37 @@
+package settings
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+templ settingsPage(v backupView) {
+	@layout.Page("Settings") {
+		<h1>Settings</h1>
+		@backupSection(v)
+	}
+}
+
+// backupSection is the swap target of "back up now"; it is also the whole
+// response to an HTMX request.
+templ backupSection(v backupView) {
+	<section id="backup" aria-labelledby="backup-h" data-testid="backup">
+		<h2 id="backup-h">Backup</h2>
+		if v.Outcome != "" {
+			<p role="status" data-testid="backup-outcome">{ v.Outcome }</p>
+		}
+		if v.LastSuccess != "" {
+			<p data-testid="backup-last-success">Last successful backup: <time>{ v.LastSuccess }</time></p>
+		} else {
+			<p data-testid="backup-never">No backup has completed yet.</p>
+		}
+		if v.LastError != "" {
+			<p role="alert" data-testid="backup-error">Last backup failed: { v.LastError }</p>
+		}
+		if v.Remote {
+			<p class="muted" data-testid="backup-destination">Snapshots are kept on this machine and uploaded to S3.</p>
+		} else {
+			<p class="muted" data-testid="backup-destination">Local only: no S3 endpoint is configured, so snapshots stay on this machine.</p>
+		}
+		<form method="post" action="/settings/backup" hx-post="/settings/backup" hx-target="#backup" hx-swap="outerHTML" hx-disabled-elt="find button">
+			<button type="submit">Back up now</button>
+		</form>
+	</section>
+}
