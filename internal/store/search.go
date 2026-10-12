@@ -29,8 +29,9 @@ type Summary struct {
 
 // SearchQuery selects recipes. Text is what the user typed: every word must
 // appear in the name, description, ingredients, tags or notes, and the last
-// word may be unfinished (it matches as a prefix, so results follow typing). Tags are exact tag names; a recipe must carry all of them. Both empty
-// selects every recipe.
+// word may be unfinished (it matches as a prefix, so results follow typing). Tags
+// are exact tag names; a recipe must carry all of them. Both empty selects every
+// recipe.
 type SearchQuery struct {
 	Text string
 	Tags []string
@@ -60,7 +61,7 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 			return err
 		}
 		if len(tags) > 0 {
-			ids, err := qs.ListRecipeIDsWithAllTags(ctx, storedb.ListRecipeIDsWithAllTagsParams{Tags: tags, Column2: int64(len(tags))})
+			ids, err := qs.ListRecipeIDsWithAllTags(ctx, storedb.ListRecipeIDsWithAllTagsParams{Tags: tags, TagCount: int64(len(tags))})
 			if err != nil {
 				return readErr("recipes by tag", err)
 			}

@@ -42,11 +42,11 @@ func get(t *testing.T, lib *fakeLibrary, target string, header map[string]string
 	return rec.Code, string(body), rec.Header()
 }
 
-func five() *int { n := 4; return &n }
+func four() *int { n := 4; return &n }
 
 func TestListShowsRecipeFields(t *testing.T) {
 	lib := &fakeLibrary{
-		results: []store.Summary{{ID: 7, Name: "Pancakes", Description: "Fluffy", Rating: five(), Tags: []string{"breakfast"},
+		results: []store.Summary{{ID: 7, Name: "Pancakes", Description: "Fluffy", Rating: four(), Tags: []string{"breakfast"},
 			Prep: 10 * time.Minute, Cook: 20 * time.Minute, Total: 30 * time.Minute}},
 		tags: []store.TagCount{{Tag: "breakfast", Recipes: 1}},
 	}

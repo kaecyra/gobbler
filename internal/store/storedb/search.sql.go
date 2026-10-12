@@ -48,12 +48,12 @@ const listRecipeIDsWithAllTags = `-- name: ListRecipeIDsWithAllTags :many
 SELECT recipe_id FROM recipe_tags
 WHERE tag IN (/*SLICE:tags*/?)
 GROUP BY recipe_id
-HAVING COUNT(DISTINCT tag) = CAST(? AS INTEGER)
+HAVING COUNT(DISTINCT tag) = CAST(?2 AS INTEGER)
 `
 
 type ListRecipeIDsWithAllTagsParams struct {
-	Tags    []string
-	Column2 int64
+	Tags     []string
+	TagCount int64
 }
 
 // The full-text query itself is hand-written in search.go: sqlc cannot resolve
@@ -70,7 +70,7 @@ func (q *Queries) ListRecipeIDsWithAllTags(ctx context.Context, arg ListRecipeID
 	} else {
 		query = strings.Replace(query, "/*SLICE:tags*/?", "NULL", 1)
 	}
-	queryParams = append(queryParams, arg.Column2)
+	queryParams = append(queryParams, arg.TagCount)
 	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
