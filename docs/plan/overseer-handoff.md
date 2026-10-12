@@ -25,19 +25,19 @@ This file holds the volatile state the graph does not. The durable record is `do
 | `wt-65` | w3-unit-owner (#65, schema `00003`) | **Worker done, not yet verified, no PR.** Commits `e967f2f` (the previous refactor, rebased) and `6937feb` (drops proposed units, option A). The worker reported gates green. VERSION is 0.32.1 and must become **0.33.1** (refactor, patch over main). Next: run ownership and gates, read the diff, push, open a PR with `Closes #65`, review. Check in review: `Saver.unit` now fails a save when a draft carries a unit the catalog doesn't know. Confirm the review screen lets the user fix that, for example when an LLM draft returns an unknown unit. |
 | `wt-17` | w3-search-list (#17, schema `00004`), **PR #113** | The review (5486684884) asked for 1 MUST, 2 SHOULD and 1 NIT. All are fixed in `8c8c9e5` and `db822bc` and pushed. `8c8c9e5` gives `db.WithReadTx` the same callback shape as `WithTx`, under the lane from #116. The worker also fixed page CSS that was rendering as literal text. Next: ownership check (it passes now that #116 has merged), reply to and resolve the 4 threads, re-review. **It merges after #65**, because goose refuses `00003` once `00004` is applied. Then re-bump VERSION over main; its 0.33.0 collides now. |
 
-## Side task: mockup mascots (owner request)
+## Side task: mockup mascots (owner request), done
 
-- The 9 new mascot SVGs are in `mascots/` at the repo root, untracked, made from the two `Gemini_Generated_Image_*.jpeg` files. Known small flaws:
+- **Mascot SVGs.** The 9 new SVGs are in `mascots/` at the repo root, untracked, along with the two `Gemini_Generated_Image_*.jpeg` sources. Known small flaws:
   - stair-steps on three bust edges
   - a pale patch on `mouse-dough`
   - grey flecks on the bandana knot
   - pie slits drawn in the wrong brown
   - a red patch in the mixing bowl
-- The owner asked: "incorp the new SVGs. match on shape / dimensions. feel free to flip them if needed/better. Leave nav bar alone."
-- A session agent was putting them into the mockup's 6 non-nav mascot slots, writing `.memory/mockup/gobbler-mockup-v20.html`. That file did not exist when this was written, and the agent ends with this session. If the file is still missing, redo the task from v19 (`.memory/mockup/gobbler-mockup.html`).
-  - Slots: suggestion card `.sg-gob`, forgot tile `.forgot-gob`, two cook-timer `.peek`s, `.done-state`, and the search no-results empty state in JS.
-  - The header `.brand` `svg.standing` must not change.
-- Publish to the same artifact, https://claude.ai/artifact/Maaf6isAd66jbzvgmtkz1g: read it first, then publish with that `url`.
+- **Mockup v20 is published** at https://claude.ai/artifact/Maaf6isAd66jbzvgmtkz1g. The source is `.memory/mockup/gobbler-mockup-v20.html`.
+  - The header mascot is unchanged.
+  - Suggestion: full rolling pin, flipped. Forgot tile: mixing bowl, flipped. Tablet timer peek: whisk, flipped. Phone peek: herbs. Basket full: pie. Search no-results: tasting.
+  - No CSS changed.
+  - Open points for the owner: the no-results mouse looks small in its 110×141 box; the suggestion mouse has lost its ground shadow; `mouse-wink` and `mouse-dough` are unused.
 
 ## Issues filed this round
 
