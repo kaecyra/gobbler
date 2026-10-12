@@ -536,7 +536,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 19,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
@@ -1493,6 +1493,15 @@
       "merged": "26fbe6c",
       "adrs": [
         "00010"
+      ]
+    },
+    {
+      "id": "w3-editor",
+      "title": "Recipe editor: components, lines, qualifiers, equipment, step dependencies; every save writes a revision",
+      "merged": "c8d8233",
+      "adrs": [
+        "00004",
+        "00005"
       ]
     }
   ],
