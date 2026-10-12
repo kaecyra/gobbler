@@ -357,7 +357,7 @@
       "wave": 1,
       "track": "persistence",
       "issue": 11,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-recipe-model",
         "w1-catalog"
@@ -1126,6 +1126,15 @@
       "merged": "954c71f",
       "adrs": [
         "00006"
+      ]
+    },
+    {
+      "id": "w1-store",
+      "title": "Recipe schema and store: recipes, components, lines, steps, notes, made-it, revisions, clone, immutable snapshots",
+      "merged": "ff3a996",
+      "adrs": [
+        "00004",
+        "00003"
       ]
     }
   ],
