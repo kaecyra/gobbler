@@ -22,7 +22,7 @@ const pageStyle = `
 
 templ listPage(v view) {
 	@layout.Page("Recipes") {
-		<style>{ templ.Raw(pageStyle) }</style>
+		@templ.Raw("<style>" + pageStyle + "</style>")
 		<h1>Recipes</h1>
 		<form
 			id="recipe-search"

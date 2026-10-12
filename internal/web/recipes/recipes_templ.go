@@ -63,7 +63,11 @@ func listPage(v view) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<style>{ templ.Raw(pageStyle) }</style> <h1>Recipes</h1><form id=\"recipe-search\" class=\"recipe-search\" role=\"search\" action=\"/recipes\" method=\"get\" hx-get=\"/recipes\" hx-target=\"#results\" hx-push-url=\"true\" hx-trigger=\"input changed delay:300ms from:find input[type=search], submit\"><input type=\"search\" name=\"q\" value=\"")
+			templ_7745c5c3_Err = templ.Raw("<style>"+pageStyle+"</style>").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Recipes</h1><form id=\"recipe-search\" class=\"recipe-search\" role=\"search\" action=\"/recipes\" method=\"get\" hx-get=\"/recipes\" hx-target=\"#results\" hx-push-url=\"true\" hx-trigger=\"input changed delay:300ms from:find input[type=search], submit\"><input type=\"search\" name=\"q\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -54,6 +54,14 @@ func buildView(q string, selected []string, found []store.Summary, inUse []store
 		}
 		v.Chips = append(v.Chips, chip{Tag: t.Tag, Count: t.Recipes, Active: active, Href: listHref(q, next)})
 	}
+	// A selected tag no recipe carries has no chip above, yet it still narrows
+	// the list: give it one (count 0) so it can be removed.
+	for _, sel := range selected {
+		if !slices.ContainsFunc(inUse, func(t store.TagCount) bool { return t.Tag == sel }) {
+			rest := slices.DeleteFunc(slices.Clone(selected), func(s string) bool { return s == sel })
+			v.Chips = append(v.Chips, chip{Tag: sel, Active: true, Href: listHref(q, rest)})
+		}
+	}
 	for _, s := range found {
 		v.Rows = append(v.Rows, rowFor(s))
 	}

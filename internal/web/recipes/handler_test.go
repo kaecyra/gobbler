@@ -130,3 +130,33 @@ func TestStoreFailureIsAServerError(t *testing.T) {
 		t.Fatalf("status %d, body leaks cause: %v", code, strings.Contains(body, "disk on fire"))
 	}
 }
+
+func TestHistoryRestoreRequestGetsTheWholePage(t *testing.T) {
+	// On a history-cache miss htmx asks for the URL again and swaps the answer
+	// into <body>, so a fragment would leave a page with no form or layout.
+	_, body, _ := get(t, &fakeLibrary{}, "/?q=soup", map[string]string{"HX-Request": "true", "HX-History-Restore-Request": "true"})
+	if !strings.Contains(body, "<html") || !strings.Contains(body, `id="recipe-search"`) {
+		t.Error("a history-restore request must get the whole page")
+	}
+}
+
+func TestSelectedTagNoRecipeCarriesStaysRemovable(t *testing.T) {
+	lib := &fakeLibrary{tags: []store.TagCount{{Tag: "quick", Recipes: 2}}}
+	_, body, _ := get(t, lib, "/?q=soup&tag=unknown&tag=quick", nil)
+	if !strings.Contains(body, "unknown (0)") {
+		t.Fatalf("no chip for the selected tag nothing carries:\n%s", body)
+	}
+	if !strings.Contains(body, `href="/recipes?q=soup&amp;tag=quick"`) {
+		t.Error("the chip for the unknown tag should link to the page without it")
+	}
+	if strings.Count(body, `aria-pressed="true"`) != 2 {
+		t.Error("both selected tags should be marked pressed")
+	}
+}
+
+func TestPageStyleIsRendered(t *testing.T) {
+	_, body, _ := get(t, &fakeLibrary{}, "/", nil)
+	if !strings.Contains(body, ".recipe-search {") || strings.Contains(body, "templ.Raw") {
+		t.Error("the page's stylesheet is not in the output")
+	}
+}

@@ -81,10 +81,14 @@ func handle(d Deps) http.HandlerFunc {
 	}
 }
 
-// fromHTMX reports an htmx-issued request that is not a boosted navigation
-// (a boosted link wants the whole page).
+// fromHTMX reports an htmx request that wants just the results. A boosted
+// navigation wants the whole page, and so does a history restore: on a
+// history-cache miss htmx asks for the URL again and swaps the answer into
+// <body>, so a fragment there would leave a page without its form or layout.
 func fromHTMX(r *http.Request) bool {
-	return r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Boosted") != "true"
+	return r.Header.Get("HX-Request") == "true" &&
+		r.Header.Get("HX-Boosted") != "true" &&
+		r.Header.Get("HX-History-Restore-Request") != "true"
 }
 
 func recipeHref(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }
