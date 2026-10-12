@@ -1,6 +1,6 @@
-# Overseer handoff: 2026-10-12, round 6
+# Overseer handoff: 2026-10-12, round 7
 
-This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.38.1**.
+This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
@@ -25,14 +25,15 @@ This file holds the volatile state the graph does not. The durable record is `do
 | Graph: w4-shopping-store lane gains `internal/store/search_test.go` | — | #129 | a62c316 |
 | w4-shopping-store (schema 00005) | #24 | #125 | 8ce630e |
 | #124 deploy: no sidecar; ADR-00017 amends ADR-00002 | #124 | #127 | f4e1aa9 |
+| Graph: widen w4-shopping-ui; add w7-nav, w5-codec; correct schema and ADR sequences | — | #131 | 58db291 |
+| Graph: w4-shopping-ui gains `internal/web/server_stream_test.go` | — | #132 | 0b00455 |
+| w4-shopping-ui (schema 00006) | #25 | #133 | d10779e |
 
 #107 (the round-5 handoff PR) was closed as superseded.
 
 ## In flight
 
-| Worktree | Node | State |
-|---|---|---|
-| `wt-25` | w4-shopping-ui (#25), schema **`00006`** | First pass done (`950a1cd`, gates green): build page, pantry, live SSE view, export and merge-hook wiring. Owner chose option A, so the worker now adds the persisted optional-lines flag (00006), the shopping usage counter and a shutdown fix in `server.go`, under the lane widening in graph PR **#131**, which is in review. No push yet. VERSION is 0.39.0; set it at merge. |
+Nothing. No worktrees on disk and no open PRs from this fleet. The session handed off at about 450k context, before the next dispatch.
 
 Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands. #128 and #129 widened lanes for that.
 
@@ -69,8 +70,8 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 
 ## Migration and ADR numbers
 
-- `schema`: `00003`, `00004` and `00005` are all merged. `00006` belongs to w4-shopping-ui (wt-25). The next free number is `00007`.
-- ADR-00017 is merged (#127). The next free number is `00018`.
+- `schema`: `00003` to `00006` are all merged. The graph's `schema` sequence was corrected in #131 and is the source of truth: hand out numbers with `node.ts needs-migration` and `node.ts migration`, never by hand. The next free number is `00007`.
+- ADR-00017 is merged (#127), and the graph's ADR sequence was corrected to `00017` in #131. Draw the next number with `node.ts adr`.
 
 ## Things a fresh dispatcher must know
 
@@ -88,9 +89,18 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 
 ## Next to dispatch, and why
 
-1. **Merge #131** (graph). Then verify the wt-25 branch, open the PR for #25, review it and merge it.
-2. After #25 merges, three nodes become dispatchable together, with disjoint lanes:
-   - **w7-todoist (#36)**: `internal/todoist/**` and `internal/web/shopping/todoist*`
-   - **w7-nav (#130)**: the layout
-   - **w5-codec (#123)**: the codec files
-3. `l-meal-planning` (#38) and `l-invitations` (#39) each need an ADR first, which is the owner's call.
+All three are dispatchable now. Their lanes don't overlap, and none has a migration. Dispatch them in one message:
+
+1. **w7-todoist (#36):** one-way, idempotent Todoist push of a shopping list. Lane: `internal/todoist/**` and `internal/web/shopping/todoist*`. Config keys `GOBBLER_TODOIST_TOKEN` and `GOBBLER_TODOIST_PROJECT` already exist in `compose.yaml`. Check how it mounts. Its lane has no `routes.go` entry, but `routes.go` is append-only shared, so it can add one.
+2. **w7-nav (#130):** fill the empty layout nav (`internal/web/layout/layout*`, `e2e/layout/**`). This is what makes `/recipes`, `/catalog`, `/shopping` and the other pages reachable from the home page.
+3. **w5-codec (#123):** move the quantity/unit DB codec into `internal/quantity`, shared by store and shopping. Its lane includes the callers. Decoding must stay byte-compatible with what is already stored.
+
+Every one bumps VERSION. Whichever merges second and third re-bumps after rebasing.
+
+The `later` nodes, `l-meal-planning` (#38) and `l-invitations` (#39), each need an ADR first. That is the owner's call.
+
+## Lessons from this round (for the next dispatcher)
+
+- **Migration tests that build "the schema minus the newest migration" break whenever a newer migration lands.** This happened on #113, #125 and #133. The fix each time was to skip from that migration upward. Expect it again.
+- **Reviewers checked out branches in the primary checkout** and ran `validate.ts` from an in-repo copy, which silently validates main's graph. Every review prompt now says to use `git show` or `git diff`, and a standalone `/tmp` copy for `validate.ts`.
+- **Host `sed` is BSD.** Edit files in the container and run only `gh` and `git` through the bridge.
