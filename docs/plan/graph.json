@@ -245,7 +245,7 @@
       "wave": 0,
       "track": "foundation",
       "issue": 6,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w0-web-shell"
       ],
@@ -1239,6 +1239,15 @@
       "merged": "989e23f",
       "adrs": [
         "00007"
+      ]
+    },
+    {
+      "id": "w0-e2e-harness",
+      "title": "Playwright harness in e2e/, make e2e and make check targets, version-bump check, health route e2e",
+      "merged": "1962cb1",
+      "adrs": [
+        "00002",
+        "00013"
       ]
     }
   ],
