@@ -959,7 +959,7 @@
       "wave": 2,
       "track": "persistence",
       "issue": 60,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w1-store",
         "w1-catalog",
@@ -1315,6 +1315,12 @@
         "00010",
         "00002"
       ]
+    },
+    {
+      "id": "w2-sqlc",
+      "title": "sqlc for catalog and store data access, one shared tx helper",
+      "merged": "66c3415",
+      "note": "ADR-00014. Absorbs #55 (shared tx helper) and #59 (MergeIngredients takes the write lock before its first read; regression test under concurrent load)."
     }
   ],
   "adr_sequence": {
