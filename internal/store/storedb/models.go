@@ -163,6 +163,41 @@ type RevisionIngredient struct {
 	IngredientID int64
 }
 
+type ShoppingCheck struct {
+	ListID    int64
+	ItemKey   string
+	CheckedAt string
+}
+
+type ShoppingEntry struct {
+	ID         int64
+	ListID     int64
+	RecipeID   int64
+	Multiplier string
+}
+
+type ShoppingList struct {
+	ID        int64
+	Name      string
+	CreatedAt string
+}
+
+type ShoppingManualItem struct {
+	ID            int64
+	ListID        int64
+	Text          string
+	IngredientID  sql.NullInt64
+	Qty           sql.NullString
+	UnitID        sql.NullInt64
+	HasPackage    int64
+	PackageQty    sql.NullString
+	PackageUnitID sql.NullInt64
+}
+
+type ShoppingPantry struct {
+	IngredientID int64
+}
+
 type SourceSnapshot struct {
 	ID        int64
 	RecipeID  int64
