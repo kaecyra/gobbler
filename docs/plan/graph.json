@@ -602,7 +602,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 22,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w1-catalog",
         "w0-e2e-harness",
@@ -1529,6 +1529,15 @@
       "title": "Units resolve through the catalog; parse drops its alias table; seed fixes",
       "merged": "efb658d",
       "note": "Regenerates catalogdb (new catalog query file)."
+    },
+    {
+      "id": "w3-catalog-page",
+      "title": "Catalog cleanup page: unreviewed ingredients, edit, merge",
+      "merged": "ed82088",
+      "adrs": [
+        "00008"
+      ],
+      "note": "Merge confirmation count (#22): the catalog defines a small reference-counter interface in internal/catalog/usage*.go; the store implements it over its own tables in internal/store/usage*.go (one new store query file) and is wired in cmd/gobbler, mirroring the catalog.MergeHook / store.RegisterMergeHooks pattern. The catalog never queries a store table (ADR-00014). Regenerates storedb."
     }
   ],
   "adr_sequence": {
