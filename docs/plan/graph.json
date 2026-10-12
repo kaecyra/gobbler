@@ -735,7 +735,7 @@
       "wave": 5,
       "track": "ingestion",
       "issue": 29,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w5-llm-claude",
         "w5-llm-gemini",
@@ -1340,6 +1340,16 @@
       "adrs": [
         "00004"
       ]
+    },
+    {
+      "id": "w5-llm-fallback",
+      "title": "Below-threshold and manual LLM fallback, provider selection, LLM values marked on review",
+      "merged": "74c279e",
+      "adrs": [
+        "00006",
+        "00007"
+      ],
+      "note": "Sanctioned exception to routes.go append-only: may edit the existing /ingest r.Mount line in internal/web/routes.go to pass the LLM config (config.Config keeps LLM apart from Ingestion). No other existing line. web.go stays untouched (w3-csrf's lane)."
     }
   ],
   "adr_sequence": {
