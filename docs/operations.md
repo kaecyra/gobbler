@@ -10,24 +10,28 @@ that matters. Run through them once on the real host and correct this file.
 
 ## Deploy
 
-One Ubuntu VM, Docker Compose, a Cloudflare tunnel. The app publishes no host
-port; the only way in is the tunnel, behind Cloudflare Access
+One Ubuntu VM, Docker Compose, a Cloudflare tunnel. `cloudflared` runs on the
+VM guest, configured outside this repository by the owner's infrastructure
+code, not in Compose. The app publishes `127.0.0.1:8080` only, so the network
+reaches it only through the tunnel, behind Cloudflare Access. Other processes
+on the guest can reach `127.0.0.1:8080`; the Access JWT check stops them
 ([ADR-00003](./adr/00003-cloudflare-access-identity.md),
-[ADR-00002](./adr/00002-single-binary-go-stack.md)).
+[ADR-00002](./adr/00002-single-binary-go-stack.md),
+[ADR-00017](./adr/00017-cloudflared-on-the-guest.md)).
 
 ### Prerequisites
 
 - Docker Engine with the Compose plugin (`docker compose`), and `git`.
 - A Cloudflare account with a domain on it and Zero Trust enabled.
-- Outbound HTTPS from the VM: `cloudflared` to Cloudflare, `gobbler` to recipe
+- Outbound HTTPS from the VM: the guest's `cloudflared` to Cloudflare, `gobbler` to recipe
   sites, the LLM provider and the S3 endpoint.
 
 ### Cloudflare side (unverified: dashboard labels change)
 
-1. In Zero Trust, create a tunnel and copy its token. That token is
-   `CLOUDFLARE_TUNNEL_TOKEN`.
-2. Give the tunnel a public hostname whose service is `http://gobbler:8080`
-   (the Compose service name and port).
+1. The guest's tunnel is managed by your infrastructure code, not by this
+   repository.
+2. That code must route the public hostname to `http://127.0.0.1:8080` (the
+   loopback port Compose publishes).
 3. Create a self-hosted Access application for that hostname with a policy that
    allows only you.
 4. Note two values for `.env`:
@@ -50,13 +54,13 @@ both values it refuses to start.
 
 ```sh
 git clone https://github.com/kaecyra/gobbler.git && cd gobbler
-cp .env.example .env     # fill in the tunnel token, team domain and AUD at least
+cp .env.example .env     # fill in the team domain and AUD at least
 docker compose up -d --build
 ```
 
 `.env` is the only file you create. Compose builds the image, starts `gobbler`,
-and starts `cloudflared` once `gobbler`'s health check passes. Migrations apply
-at start-up before the server listens.
+and publishes it on `127.0.0.1:8080`. Migrations apply at start-up before the
+server listens.
 
 Verify:
 
@@ -64,6 +68,7 @@ Verify:
 docker compose ps                                   # gobbler: healthy
 docker compose logs gobbler | grep listening        # JSON log line with the address
 docker compose exec gobbler wget -q -O - http://127.0.0.1:8080/healthz
+curl -fsS http://127.0.0.1:8080/healthz             # from the host: the published port
 ```
 
 `/healthz` returns `{"status":"ok"}` and is the only route served without
@@ -96,7 +101,6 @@ the container runs in UTC.
 
 | Variable | Default | Secret | Notes |
 |---|---|---|---|
-| `CLOUDFLARE_TUNNEL_TOKEN` | none, required by Compose | yes | Read by `cloudflared` only, never by `gobbler`. |
 | `GOBBLER_ACCESS_TEAM_DOMAIN` | none | no | Bare host, e.g. `team.cloudflareaccess.com`: no `https://`, path or spaces. Required unless the dev bypass is on. `config.Load` only checks it is set; `auth.New` rejects a malformed value, so a bad value fails at `serve` start-up. |
 | `GOBBLER_ACCESS_AUD` | none | no | Application AUD tag. Required unless the dev bypass is on. |
 | `GOBBLER_LISTEN_ADDR` | `127.0.0.1:8080` | no | |
@@ -216,8 +220,8 @@ It must print exactly `ok`. Do not continue otherwise; pick another snapshot.
 docker compose stop gobbler
 ```
 
-Stopping `gobbler` alone leaves `cloudflared` running, which is harmless: the
-app is simply unreachable until step 5.
+Stopping `gobbler` alone leaves the guest's `cloudflared` running, which is
+harmless: the app is simply unreachable until step 5.
 
 ### 4. Replace the database
 

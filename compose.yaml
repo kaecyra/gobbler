@@ -1,5 +1,7 @@
-# gobbler and its Cloudflare tunnel. The only way in is the tunnel: gobbler
-# publishes no host port (ADR-00003).
+# gobbler. cloudflared runs on the VM guest, not in Compose, and reaches
+# gobbler at http://127.0.0.1:8080. The port is published on loopback only, so
+# the network cannot reach it, but other guest processes can; the Access JWT
+# check guards every route except the health check (ADR-00003).
 #
 # Usage: copy .env.example to .env, fill it in, then `docker compose up -d`.
 
@@ -9,14 +11,15 @@ services:
     image: gobbler:local
     restart: unless-stopped
     environment:
-      # Listen on the Compose network, where cloudflared reaches it. Access
+      # The container's interface must accept the published traffic; publishing
+      # on host loopback below is what keeps it off the network. Access
       # verification is on: the dev bypass is forced off whatever .env says.
       GOBBLER_LISTEN_ADDR: 0.0.0.0:8080
       GOBBLER_DEV_AUTH_BYPASS: "false"
       GOBBLER_DATA_DIR: /data
       # Every other setting is passed through from .env by name. env_file is
-      # not used, so CLOUDFLARE_TUNNEL_TOKEN never reaches this container. An
-      # empty value counts as unset (internal/config). Add a new setting here too.
+      # not used, so nothing else in .env reaches this container. An empty
+      # value counts as unset (internal/config). Add a new setting here too.
       GOBBLER_LOG_LEVEL: ${GOBBLER_LOG_LEVEL:-}
       GOBBLER_ACCESS_TEAM_DOMAIN: ${GOBBLER_ACCESS_TEAM_DOMAIN:-}
       GOBBLER_ACCESS_AUD: ${GOBBLER_ACCESS_AUD:-}
@@ -42,24 +45,14 @@ services:
       GOBBLER_S3_SECRET_ACCESS_KEY: ${GOBBLER_S3_SECRET_ACCESS_KEY:-}
     volumes:
       - gobbler-data:/data
-    expose:
-      - "8080"
+    ports:
+      - "127.0.0.1:8080:8080"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
-
-  cloudflared:
-    image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
-    depends_on:
-      gobbler:
-        condition: service_healthy
 
 volumes:
   # Holds the SQLite database and <DataDir>/backups (ADR-00010).

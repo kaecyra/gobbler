@@ -16,7 +16,7 @@ index below in the same commit.
 | ADR | Decision | Status |
 |---|---|---|
 | [00001](00001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
-| [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Accepted |
+| [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md) |
 | [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Accepted |
 | [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Accepted |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
@@ -31,6 +31,7 @@ index below in the same commit.
 | [00014](00014-sqlc-for-data-access.md) | Data access through sqlc-generated code | Accepted |
 | [00015](00015-immutability-at-the-store-api.md) | History immutability is enforced by the store API, not the database | Accepted |
 | [00016](00016-cross-origin-protection.md) | Cross-origin requests are refused by Fetch metadata, with SameSite=Lax at the edge | Accepted |
+| [00017](00017-cloudflared-on-the-guest.md) | cloudflared runs on the VM guest; Compose publishes gobbler on loopback only | Accepted |
 
 ## What needs one
 

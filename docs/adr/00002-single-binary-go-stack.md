@@ -1,6 +1,6 @@
 # ADR-00002: Single Go binary: chi, templ, HTMX, SQLite
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00017](00017-cloudflared-on-the-guest.md)
 
 **Date:** 2026-10-06
 
@@ -50,6 +50,10 @@ gobbler is one Go binary serving server-rendered HTML.
 - **Packaging:** a container image run by Docker Compose on the VM, with the
   database file on a named volume. `cloudflared` runs alongside as its own
   service.
+
+  > Amended by [ADR-00017](00017-cloudflared-on-the-guest.md): `cloudflared`
+  > runs on the VM guest, not as a Compose service.
+
 - **Layout:** `cmd/gobbler/` for the entry point, `internal/<package>/` for all
   other application code. Test tooling for the end-to-end suite lives under
   `e2e/` (ADR-00013).

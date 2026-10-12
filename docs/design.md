@@ -32,8 +32,9 @@ browser ──► Cloudflare Access ──► cloudflared ──► gobbler (Go 
                                                       └──► S3-compatible storage (backups)
 ```
 
-Docker Compose runs two services on the Ubuntu VM: `gobbler` and
-`cloudflared`. gobbler verifies the Access JWT on every request
+Docker Compose runs `gobbler` on the Ubuntu VM and publishes its port on
+loopback only. `cloudflared` runs on the VM guest, outside Compose, and reaches
+it at `http://127.0.0.1:8080`. gobbler verifies the Access JWT on every request
 ([ADR-00003](adr/00003-cloudflare-access-identity.md)). The stack is
 [ADR-00002](adr/00002-single-binary-go-stack.md).
 
@@ -94,7 +95,7 @@ breaks each wave into nodes.
 
 | Wave | Delivers |
 |---|---|
-| **W0 Foundation** | Module scaffold, `config`, `db` with migrations, `auth` middleware, base layout and HTMX, health check, Dockerfile and Compose with `cloudflared`, Makefile gates, lefthook, `VERSION`, CI |
+| **W0 Foundation** | Module scaffold, `config`, `db` with migrations, `auth` middleware, base layout and HTMX, health check, Dockerfile and Compose, Makefile gates, lefthook, `VERSION`, CI |
 | **W1 Domain core** | `quantity` (rationals, units, conversion, scaling), `recipe` types and step-graph validation, schema and `store` with revisions and snapshots, `catalog` with seed data |
 | **W2 Rule ingestion** | `parse` with golden corpus, JSON-LD and microdata extraction, text sectioning, confidence scoring, review screen, save |
 | **W3 Recipe UI** | List and search (FTS5, tags), recipe view with scaling and unit modes, editor for components, lines, qualifiers, equipment and step dependencies, revisions and restore, clone, notes, ratings, made-it log, catalog cleanup page |
