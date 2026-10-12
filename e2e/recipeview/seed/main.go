@@ -1,5 +1,5 @@
 // Command seed fills a fresh data directory with the recipe the recipe-view
-// e2e spec reads, then prints its id as JSON. It is test tooling (ADR-00013):
+// e2e spec reads, and a second one with meanwhile guidance, then prints their ids as JSON. It is test tooling (ADR-00013):
 // it goes through the real store and catalog packages, so the spec exercises
 // the same read path as production. Usage: seed <data-dir>.
 package main
@@ -99,7 +99,30 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id})
+
+	// The meanwhile recipe: while the dough rises, the sauce can be made.
+	pizza := recipe.Recipe{
+		Name: "E2E Pizza",
+		Components: []recipe.Component{
+			{Name: "Dough", Steps: []recipe.Step{
+				{ID: "mix", Text: "Mix the dough.", Duration: 10 * time.Minute},
+				{ID: "rise", Text: "Let the dough rise.", Duration: time.Hour, Passive: true, DependsOn: []recipe.StepID{"mix"}},
+				{ID: "bake", Text: "Bake the pizza.", Duration: 15 * time.Minute, DependsOn: []recipe.StepID{"rise"}},
+			}},
+			{Name: "Sauce", Steps: []recipe.Step{
+				{ID: "chop", Text: "Chop the tomatoes.", Duration: 5 * time.Minute},
+				{ID: "simmer", Text: "Simmer the sauce.", Duration: 20 * time.Minute, DependsOn: []recipe.StepID{"chop"}},
+			}},
+			{Name: "Finish", Steps: []recipe.Step{
+				{ID: "serve", Text: "Top and serve.", Duration: time.Minute, DependsOn: []recipe.StepID{"bake", "simmer"}},
+			}},
+		},
+	}
+	meanwhileID, err := store.New(d).Create(ctx, pizza)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID})
 }
 
 func line(qty, unit string, ingredient int64, rule quantity.Rule) recipe.IngredientLine {
