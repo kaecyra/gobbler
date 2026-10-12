@@ -713,7 +713,7 @@
       "wave": 5,
       "track": "ingestion",
       "issue": 28,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w5-llm-contract"
       ],
@@ -1160,6 +1160,14 @@
       "id": "w5-llm-contract",
       "title": "Provider contract test suite against recorded responses",
       "merged": "d3e6c08",
+      "adrs": [
+        "00007"
+      ]
+    },
+    {
+      "id": "w5-llm-gemini",
+      "title": "Gemini provider via official Go Gen AI SDK with structured output",
+      "merged": "b26190c",
       "adrs": [
         "00007"
       ]
