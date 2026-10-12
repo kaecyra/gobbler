@@ -32,11 +32,12 @@ None. The merge queue is empty.
 
 Dispatchable now: w3-search-list (#17), w4-shopping-store (#24), w3-unit-owner (#65), w3-store-atomic-ingest (#66). Their lanes predate sqlc (ADR-00014):
 
-- They need `internal/store/queries/**`, plus `internal/catalog/queries/**` for unit-owner. No live node owns these.
+- w3-search-list and w3-store-atomic-ingest need `internal/store/queries/**`, and w3-unit-owner needs `internal/catalog/queries/**`. No live node owns these.
+- w4-shopping-store needs a new `sqlc.yaml` entry, plus its own `internal/shopping` queries and generated package. `sqlc.yaml` was only ever in w2-sqlc's lane, which has merged.
 - Any schema or query change regenerates `internal/store/storedb/**` or `internal/catalog/catalogdb/**`. That is generated code shared by every store node.
 
 Options:
-- Make `*/queries/**` an `append_only` shared file (one new `.sql` file per node), and `*db/**` `single_writer_per_round`. Then two nodes touching the same generated package never run in one round.
+- Make `*/queries/**` and `sqlc.yaml` shared files with `mode: open` and an "APPEND-ONLY by convention" note, as `internal/db/migrations/**` already is: one new `.sql` file or entry per node. (`append_only` is not used, because graph-core counts it as outside every lane and `record-done` fails.) Make `*db/**` `single_writer_per_round`. Then two nodes touching the same generated package never run in one round.
 - Or serialise these four nodes.
 
 Either way it goes through a dispatcher PR and the owner (it is a lane change). search, shopping-store and unit-owner each also need a `schema` migration: next is `00003`, and the sequence is contiguous, so assign at dispatch, one per round, or in merge order.
@@ -45,7 +46,7 @@ Either way it goes through a dispatcher PR and the owner (it is a lane change). 
 
 - #85: equipment has no size, so ADR-00005's pan hint cannot apply. #81 removed the hint. Needs a decision and a migration.
 - #88: the proposed-ingredient recompute is duplicated in `internal/web/ingest/edit.go`. Export it from `internal/ingest`.
-- #93: **flaky `TestConcurrentMergesAndEditsDoNotFailBusy`**. `MergeIngredients` still hits SQLITE_BUSY after #79. It is a real data-integrity defect and a flaky gate that blocks random PRs. **Top priority**: needs a node (owner of `internal/catalog/**` / `internal/db/tx*.go` work).
+- #93: **flaky `TestConcurrentMergesAndEditsDoNotFailBusy`**. `MergeIngredients` still hits SQLITE_BUSY after #79. A merge under contention fails with SQLITE_BUSY and rolls back, so the user's merge is refused, and the test is a flaky gate that blocks random PRs. **Top priority**: needs a node (owner of `internal/catalog/**` / `internal/db/tx*.go` work).
 - #78 (from round 3): a scripted check that the image has no Node and no `e2e/`. Still needs a node.
 
 ## Known out-of-lane leftovers
@@ -76,6 +77,7 @@ The sequence is at `00016` (corrected this session: 00014/00015 had been written
 
 ## Next to dispatch, and why
 
-1. **A node for #93.** A flaky gate taxes every PR, and a BUSY merge silently keeps both ingredients.
+1. **A node for #93.** A flaky gate taxes every PR, and a merge under contention is refused with SQLITE_BUSY.
 2. **The sqlc-lane graph PR** (above), then w3-store-atomic-ingest (#66, no migration) and w3-search-list (#17, `00003`).
-3. **Unblocked now that w3-csrf has merged:** w3-editor (#19), w3-history (#20), w3-journal (#21), w3-catalog-page (#22), w7-settings (#35). Check each lane against its issue first.
+3. **Also dispatchable, with all dependencies merged:** w5-photo-ocr (#30) and w6-cook-mode (#33).
+4. **Unblocked now that w3-csrf has merged:** w3-editor (#19), w3-history (#20), w3-journal (#21), w3-catalog-page (#22), w7-settings (#35). Check each lane against its issue first.
