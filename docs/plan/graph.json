@@ -683,7 +683,11 @@
       ],
       "owns": [
         "internal/web/shopping/**",
-        "e2e/shopping/**"
+        "e2e/shopping/**",
+        "internal/shopping/store*.go",
+        "internal/shopping/queries/**",
+        "internal/shopping/shoppingdb/**",
+        "internal/web/server.go"
       ],
       "needs_migration": null,
       "adrs": [
@@ -1142,6 +1146,41 @@
       "owns": [
         "internal/web/recipeview/**",
         "e2e/recipeview/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "w7-nav",
+      "title": "Primary navigation links in the layout",
+      "wave": 7,
+      "track": "ui",
+      "issue": 130,
+      "status": "todo",
+      "depends_on": [
+        "w4-shopping-ui"
+      ],
+      "owns": [
+        "internal/web/layout/layout*",
+        "e2e/layout/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "w5-codec",
+      "title": "Share the quantity/unit DB codec between store and shopping",
+      "wave": 5,
+      "track": "persistence",
+      "issue": 123,
+      "status": "todo",
+      "depends_on": [
+        "w4-shopping-ui"
+      ],
+      "owns": [
+        "internal/quantity/codec*.go",
+        "internal/store/recipe_codec*.go",
+        "internal/shopping/store_codec*.go"
       ],
       "needs_migration": null,
       "adrs": []
