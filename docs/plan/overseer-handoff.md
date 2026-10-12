@@ -1,62 +1,77 @@
-# Overseer handoff — 2026-10-11
+# Overseer handoff — 2026-10-12
 
-Volatile state the graph does not hold. `docs/plan/graph.json` is the durable record.
+Volatile state the graph does not hold. `docs/plan/graph.json` is the durable record. `VERSION` on main is 0.22.0.
 
 ## Merged this session (squash SHA, PR)
 
 | Node | Issue | PR | SHA |
 |---|---|---|---|
-| w5-usda-import | #31 | #54 | 61b2bfe |
-| w0-web-shell | #5 | #53 | aa7d1f3 |
-| w4-shopping-merge | #23 | #51 | 18fb4a2 |
-| w2-structured-extract | #14 | #52 | 954c71f |
+| w1-store | #11 | #56 | ff3a996 |
+| w7-backup | #34 | #64 | becbbb7 |
+| w2-ingest-pipeline | #15 | #67 | f89e03e |
+| w5-llm-contract | #26 | #68 | d3e6c08 |
+| w5-llm-gemini | #28 | #69 | b26190c |
+| w5-llm-claude | #27 | #70 | 989e23f |
+| w0-e2e-harness | #6 | #58 | 1962cb1 |
+| w5-llm-unify | #71 | #75 | b223254 |
+| w0-container | #7 | #76 | f81208f |
 
-`VERSION` on main is 0.13.0. Earlier merges are in the graph's `done[]`.
+Dispatcher PRs merged:
+- #61: ADR-00014 (sqlc) and ADR-00015 (immutability lives at the store API; no triggers).
+- #62: added the w2-sqlc node.
+- #63: made w4-shopping-store depend on w2-sqlc.
+- #72: e2e-only Go tooling lives under `e2e/` (ADR-00013 corrected, ADR-00002 scoped).
+- #73: added the w5-llm-unify, w3-unit-owner and w3-store-atomic-ingest nodes.
+- #74: VERSION lesson.
 
-## Open PRs — none merge under the standing authority yet
+## Open PRs. None are reviewed yet.
 
-| PR | Node | Head | State | Next step |
-|---|---|---|---|---|
-| #57 | dispatcher (no node) | chore/plan-round2-lanes | Review-clean (APPROVED, threads resolved), plus two later commits: `e2e/.node-version` added to the w0-e2e-harness lane, and this handoff | **Held for the owner**: it widens a lane (escalation trigger 2). Owner merges, or rejects — then #58 must drop `e2e/.gitignore` and `e2e/.node-version` |
-| #56 | w1-store (#11) | 69bdf52, VERSION 0.14.0 | Round-4 fixes pushed, **not re-reviewed**: rowid/_rowid_/oid re-key guard (`BEFORE UPDATE ON … WHEN NEW.id IS NOT OLD.id`) and Create taking the write lock first (concurrent-create test). Open thread PRRT_kwDOU-iivM6rP0eh, PRRT_kwDOU-iivM6rP5Y1, PRRT_kwDOU-iivM6rP5Y2 | Re-review (`/sdlc-review-pr 56`), resolve threads. Also carries an **escalated question** (below), so it goes to the owner even when clean |
-| #58 | w0-e2e-harness (#6) | 0910ac7, VERSION 0.15.0 | Round-1 fixes pushed, **not re-reviewed**: route coverage now walks the real router (`e2e/fixtures/routes`, `chi.Walk`), version script reads `HEAD:VERSION` with `--no-renames` and strict SemVer, health tested against a second server with Access on. 12 threads from review 5484272074 still open | Re-review (`/sdlc-review-pr 58`); merge only after #57; check ownership from a checkout that has #57's graph |
+| PR | Node | Branch / worktree | Next step |
+|---|---|---|---|
+| #79 | w2-sqlc (#60, closes #55, #59) | feat/60-sqlc, `.claude/worktrees/wt-60` | `/sdlc-review-pr 79`. At merge, rebase and re-bump VERSION to one patch over main |
+| #80 | w2-review-screen (#16) | feat/16-review-screen, `wt-16` | Review. Carries an **owner question: CSRF** (below). Rebase; re-bump to one minor over main |
+| #81 | w3-recipe-view (#18) | feat/18-recipe-view, `wt-18` | Review. Rebase; re-bump. #80 and #81 both append to `internal/web/routes.go` and `layout/httperr.go`, so the second one to merge rebases |
+| #77 | dispatcher: ignore `.env` | chore/gitignore-env (no worktree) | Review found 1 MUST: the version gate counts `.gitignore` as source. Bump VERSION one patch over main, or exempt `.gitignore` in `check-version-bump.sh` (that file is outside the dispatcher's lane, so it would need its own change) |
 
-Versions are assigned by planned merge order (#56 0.14.0, #58 0.15.0). The new version gate compares against the tip of main, so if the order changes, re-bump.
+The workers for #79, #80 and #81 belonged to this session. Send any review fixes to a **fresh** worker, pointed at the branch and the PR threads.
 
-## Escalated questions waiting on the owner
+## Owner questions
 
-1. **#57 lane change** — merge to give w0-e2e-harness `e2e/.gitignore` and `e2e/.node-version`, and to make `internal/web/layout/httperr.go` shared append-only. Recommended: merge.
-2. **#56 DB-level immutability** (inbox item `ib-8e7251c15b0e`) — four review rounds on raw-SQL paths that overwrite or delete history (INSERT OR REPLACE, REPLACE on the parent, UPDATE OR REPLACE, rowid re-key). Options: A) stop after the rowid fix, triggers are best-effort defence in depth (recommended); B) also enable `PRAGMA recursive_triggers` in `internal/db` (separate change, outside the lane); C) keep hardening each path found. If the next re-review finds yet another path, do not send it back — wait for this answer.
+1. **CSRF.** The web layer has no CSRF protection, and the ingest POSTs (#80) inherit that. A cross-site POST could trigger a fetch, even behind Access. This needs an ADR before more POST routes land (editor, journal, settings).
 
 ## Worktrees on disk
 
-- `.claude/worktrees/wt-11` — w1-store, branch `feat/11-store`
-- `.claude/worktrees/wt-6` — w0-e2e-harness, branch `feat/6-e2e-harness` (has `e2e/node_modules` and Playwright installed)
-
-Container git refuses both ("dubious ownership"); run git there through the host bridge. Their workers belonged to this session and cannot be messaged from a new one: send review fixes to a **fresh** worker, pointing it at the branch, the PR's open threads and this table.
+`wt-60` (w2-sqlc), `wt-16` (w2-review-screen), `wt-18` (w3-recipe-view). All three are provisioned with Go modules, e2e `node_modules` and Playwright chromium.
 
 ## Migration numbers
 
-`schema`: `00001` w1-catalog (merged), `00002` w1-store (#56, open). Next is `00003`.
+`schema`: `00002` was the last used (w1-store, merged). `w3-unit-owner` will draw `00003`.
 
-## Issues opened this session
+## Follow-up issues filed this session (no node unless stated)
 
-- #55 — one shared SQLite transaction / write-error helper (store duplicates catalog's `withTx`/`wrapWrite`). Needs a node.
-- #59 — `catalog.MergeIngredients` reads before its first write (SQLITE_BUSY under concurrency). Needs a node; #55's helper is the natural home for a "begin with the write lock" option.
+- #65: unit-alias owner. Node `w3-unit-owner`, after w2-sqlc.
+- #66: atomic create-with-snapshot. Node `w3-store-atomic-ingest`, after w2-sqlc.
+- #78: scripted check that the image has no Node and no `e2e/` (ADR-00013 obligation 1). Lives in Makefile/CI. Needs a node.
+
+## Stale claims reported by workers and not yet fixed
+
+- `README.md:22`: the `make check` description omits `generate-check` (after #79).
+- `.claude/rules/git-workflow.md`: the Gates table has no `generate-check` row (after #79).
+- `internal/db/db.go`: the package doc omits the tx helpers (after #79; this file is in w2-sqlc's lane, so it can be fixed in #79).
+- `internal/web/routes.go`: the "this node imports none" comment above `mountFeatures` is false.
 
 ## Things a fresh dispatcher must know
 
-- **origin is HTTPS** with the host `gh` credential helper (switched from SSH this session because the SSH agent kept refusing to sign). Push and fetch via the host bridge.
-- **Gates until #58 merges:** `make fmt-check`, `make test`, and lint as `GOTOOLCHAIN=go1.26.4 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...` plus `go vet ./...`, all on the host. After #58: `make check` (needs golangci-lint v2.14.0 on PATH — the host's Homebrew one is 2.13.2), and set `worktree_setup_command` in `.claude/overseer/config.json` to `go mod download && cd e2e && npm ci && npx playwright install chromium`.
-- **Scratchpad paths are not visible on the host.** Pass PR bodies to `gh` on stdin (`--body-file -`).
-- `node.ts status <id> in_review` can race GitHub's closing-issue link; wait a few seconds and retry.
-- Reviews posted by `/sdlc-review-pr` keep finding something new each round on large PRs. Verify small, narrow fixes yourself, then reply on and resolve the thread, instead of running another full round.
-- Carry-overs still open: w2-ingest-pipeline (#15) must give unit aliases one owner (`internal/parse/line_units.go` vs catalog aliases); w0-container (#7) must keep `e2e/` out of the image (ADR-00013 obligation 1).
+- **VERSION.** Each PR is one bump over main *at merge*. Never reserve numbers ahead. See `.claude/rules/lessons.md`.
+- **Review findings** need a named obligation (lessons.md). Decline anything that hardens against hypothetical code.
+- **Gates on the host:** `make fmt-check test test-scripts e2e-routes e2e version-check` (plus `generate-check` once #79 merges), then pinned lint `GOTOOLCHAIN=go1.26.4 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...` and `go vet ./...`. `make lint` refuses the host's 2.13.2.
+- **Worktree setup.** `.claude/overseer/config.json` still has an empty `worktree_setup_command`. Until it is set, provision by hand: `go mod download && cd e2e && npm ci && npx playwright install chromium`, run on the host.
+- **e2e ports.** Concurrent workers clash on the default ports 38417/38418. Give each worker distinct `GOBBLER_E2E_PORT` and `GOBBLER_E2E_ACCESS_PORT` values.
+- **Host `sed` is BSD.** Workers editing files by script through the bridge should use perl or python.
+- **Dispatcher approvals.** For narrow fixes, the dispatcher may verify the diff and post its own `<!-- self-review-verdict: APPROVED -->` COMMENT review, instead of running another full review round.
 
-## Next three to dispatch, and why
+## Next to dispatch, and why
 
-1. **w0-container (#7)** — next on the serial foundation track once #58 merges; deployable artefact.
-2. **w7-backup (#34)** — independent lane, dependencies merged; personal data needs backups early.
-3. **A node for #55 + #59** (shared transaction helper with write-lock-first) — two concurrency/duplication defects now sit in catalog and store; every later store package will copy whichever pattern exists.
-
-Also dispatchable once #56 merges: everything that depends on w1-store (search, recipe UI, ingest pipeline persistence).
+1. **Merge #79 (w2-sqlc).** It unblocks w3-search-list, w4-shopping-store, w3-unit-owner and w3-store-atomic-ingest.
+2. **w3-editor, w3-history, w3-journal, w3-catalog-page.** All are ready now, and their lanes don't overlap. Ask the owner about CSRF first, because they add POST routes.
+3. **w7-settings (#35).** Ready. It needs the live backup Runner from `cmd/gobbler` (`backups.Runner`).
