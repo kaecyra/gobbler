@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // fakeQueries stands in for a generated Queries type.
@@ -133,5 +136,67 @@ func TestWrapWriteMapsOnlyTheNamedConstraints(t *testing.T) {
 	}
 	if WrapWrite("what", nil, sentinel, ConstraintUnique) != nil {
 		t.Error("nil error must stay nil")
+	}
+}
+
+// Write transactions on one database queue in the process rather than race on
+// SQLite's busy handler, which polls and is not fair: under sustained
+// contention a writer can starve past the busy timeout and fail (#93).
+func TestWithTxRunsWritersOneAtATime(t *testing.T) {
+	d := txTestDB(t)
+	var running atomic.Int32
+	var peak atomic.Int32
+	var peakMu sync.Mutex
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := WithTx(context.Background(), d, fakeQueries{}, func(fakeQueries, *sql.Tx) error {
+				n := running.Add(1)
+				peakMu.Lock()
+				if n > peak.Load() {
+					peak.Store(n)
+				}
+				peakMu.Unlock()
+				time.Sleep(5 * time.Millisecond)
+				running.Add(-1)
+				return nil
+			})
+			if err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if peak.Load() != 1 {
+		t.Errorf("peak concurrent write transactions = %d, want 1", peak.Load())
+	}
+}
+
+func TestWithTxQueuedWriterHonoursContext(t *testing.T) {
+	d := txTestDB(t)
+	held, release := make(chan struct{}), make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		done <- WithTx(context.Background(), d, fakeQueries{}, func(fakeQueries, *sql.Tx) error {
+			close(held)
+			<-release
+			return nil
+		})
+	}()
+	<-held
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	err := WithTx(ctx, d, fakeQueries{}, func(fakeQueries, *sql.Tx) error {
+		t.Error("fn ran while another write transaction was open")
+		return nil
+	})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("err = %v, want context.DeadlineExceeded", err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
 }

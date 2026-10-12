@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 
 	"modernc.org/sqlite"
 	sqlitelib "modernc.org/sqlite/lib"
@@ -17,18 +18,48 @@ type Queries[Q any] interface {
 	WithTx(tx *sql.Tx) Q
 }
 
+// writeGates holds one gate per database handle: a channel of capacity one,
+// so a queued writer can still give up when its context ends.
+var writeGates sync.Map // *sql.DB -> chan struct{}
+
+// acquireWrite waits for the write gate of d and returns the function that
+// releases it.
+func acquireWrite(ctx context.Context, d *sql.DB) (release func(), err error) {
+	g, _ := writeGates.LoadOrStore(d, make(chan struct{}, 1))
+	gate := g.(chan struct{})
+	select {
+	case gate <- struct{}{}:
+		return func() { <-gate }, nil
+	case <-ctx.Done():
+		return nil, fmt.Errorf("wait for write transaction: %w", ctx.Err())
+	}
+}
+
 // WithTx runs fn in one transaction, rolling back when fn returns an error
 // and committing otherwise. fn gets q bound to the transaction, and the
 // transaction itself for callers that must hand it on (the catalog merge
 // hooks). A failed rollback is joined onto the error that caused it.
 //
-// SQLite takes the write lock when a transaction first writes. A transaction
-// whose first statement is a read holds a snapshot, and when another writer
-// commits before its first write it cannot upgrade: it fails with SQLITE_BUSY
-// at once, ignoring the busy timeout. fn that reads before it writes must
-// therefore make its first statement a write (a no-op UPDATE of the row it is
-// about to read is enough), so the transaction queues on the lock instead.
+// Write transactions on one *sql.DB run one at a time: WithTx waits for its
+// turn in the process before it begins. SQLite allows one writer, and waiting
+// on its busy handler is unfair: the handler polls, so under sustained
+// contention a writer can starve past the busy timeout and fail with
+// SQLITE_BUSY (#93). Queueing here makes the wait ordered and bounded by the
+// transactions ahead rather than by the poll. The busy timeout remains for
+// writers outside WithTx. fn must not call WithTx on the same database: that
+// waits on itself.
+//
+// A transaction whose first statement is a read holds a snapshot, and when
+// another writer outside this queue commits before its first write it cannot
+// upgrade: it fails with SQLITE_BUSY at once, ignoring the busy timeout. fn
+// that reads before it writes should therefore make its first statement a
+// write (a no-op UPDATE of the row it is about to read is enough).
 func WithTx[Q Queries[Q]](ctx context.Context, d *sql.DB, q Q, fn func(q Q, tx *sql.Tx) error) (err error) {
+	release, err := acquireWrite(ctx, d)
+	if err != nil {
+		return err
+	}
+	defer release()
 	tx, err := d.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
