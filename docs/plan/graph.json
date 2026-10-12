@@ -490,7 +490,8 @@
       "status": "todo",
       "depends_on": [
         "w1-store",
-        "w0-e2e-harness"
+        "w0-e2e-harness",
+        "w2-sqlc"
       ],
       "owns": [
         "internal/store/search*.go",
@@ -944,6 +945,33 @@
         "00003"
       ],
       "blocked": "Deferred by ADR-00011; needs its own ADR before dispatch"
+    },
+    {
+      "id": "w2-sqlc",
+      "title": "sqlc for catalog and store data access, one shared tx helper",
+      "wave": 2,
+      "track": "persistence",
+      "issue": 60,
+      "status": "todo",
+      "depends_on": [
+        "w1-store",
+        "w1-catalog",
+        "w0-e2e-harness"
+      ],
+      "owns": [
+        "sqlc.yaml",
+        "Makefile",
+        "go.mod",
+        "go.sum",
+        "internal/db/tx*.go",
+        "internal/catalog/**",
+        "internal/store/**",
+        ".claude/rules/code-style.md",
+        "docs/design.md"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00014. Absorbs #55. Touches internal/catalog/merge.go: do not dispatch concurrently with #59's fix (no node yet); dispatch after it or fold it in."
     }
   ],
   "shared_files": [
