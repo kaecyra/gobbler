@@ -37,7 +37,7 @@ The workers for #79, #80 and #81 belonged to this session. Send any review fixes
 
 ## Owner questions
 
-1. **CSRF.** The web layer has no CSRF protection, and the ingest POSTs (#80) inherit that. A cross-site POST could trigger a fetch, even behind Access. This needs an ADR before more POST routes land (editor, journal, settings).
+1. **CSRF: owner agreed an ADR is needed (#83).** w3-editor, w3-history, w3-journal, w3-catalog-page and w7-settings are marked `blocked` in the graph until it lands. Run the ADR conversation first, presenting the options listed in #83. #80 must adopt the decision, either before it merges or in a follow-up.
 
 ## Worktrees on disk
 
@@ -73,5 +73,5 @@ The workers for #79, #80 and #81 belonged to this session. Send any review fixes
 ## Next to dispatch, and why
 
 1. **Merge #79 (w2-sqlc).** It unblocks w3-search-list, w4-shopping-store, w3-unit-owner and w3-store-atomic-ingest.
-2. **w3-editor, w3-history, w3-journal, w3-catalog-page.** All are ready now, and their lanes don't overlap. Ask the owner about CSRF first, because they add POST routes.
-3. **w7-settings (#35).** Ready. It needs the live backup Runner from `cmd/gobbler` (`backups.Runner`).
+2. **The CSRF ADR (#83)**, decided with the owner. Then unblock w3-editor, w3-history, w3-journal, w3-catalog-page and w7-settings. w7-settings needs the live backup Runner from `cmd/gobbler` (`backups.Runner`).
+3. **w3-search-list and w4-shopping-store**, once #79 merges.
