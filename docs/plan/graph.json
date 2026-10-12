@@ -556,7 +556,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 20,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w1-store",
         "w0-e2e-harness",
@@ -776,7 +776,7 @@
       "wave": 5,
       "track": "ingestion",
       "issue": 30,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w5-llm-fallback",
         "w0-container"
@@ -1052,7 +1052,8 @@
       ],
       "needs_migration": "schema",
       "adrs": [],
-      "note": "Regenerates catalogdb (new catalog query file)."
+      "note": "Regenerates catalogdb (new catalog query file).",
+      "blocked": "Waits on #109 and #110: then widen its lane to drop proposed units (owner chose option A) and the two bag tests in internal/ingest/pipeline_test.go and save_test.go"
     },
     {
       "id": "w3-store-atomic-ingest",
@@ -1060,7 +1061,7 @@
       "wave": 3,
       "track": "persistence",
       "issue": 66,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "w2-sqlc",
         "w2-ingest-pipeline"
