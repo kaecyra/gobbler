@@ -659,7 +659,9 @@
         "internal/shopping/list*.go",
         "internal/shopping/pantry*.go",
         "internal/shopping/queries/**",
-        "internal/shopping/shoppingdb/**"
+        "internal/shopping/shoppingdb/**",
+        "internal/shopping/merge_test.go",
+        "internal/shopping/doc.go"
       ],
       "needs_migration": "schema",
       "adrs": [
@@ -1123,6 +1125,24 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Fixes the flaky TestConcurrentMergesAndEditsDoNotFailBusy gate; #79 did not fully close #59."
+    },
+    {
+      "id": "w3-edit-link",
+      "title": "Recipe page links to its editor",
+      "wave": 3,
+      "track": "ui",
+      "issue": 120,
+      "status": "todo",
+      "depends_on": [
+        "w3-editor",
+        "w3-recipe-view"
+      ],
+      "owns": [
+        "internal/web/recipeview/**",
+        "e2e/recipeview/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
     }
   ],
   "shared_files": [
