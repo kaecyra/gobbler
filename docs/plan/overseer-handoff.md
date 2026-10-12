@@ -16,7 +16,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Open PRs
 
-- **#106**, a graph PR. It adds `internal/web/ingest/ingest_test.go` to w3-store-atomic-ingest, a lane change. It waits on the owner's answer to item `ib-613cab711dc7`, which also asks for standing authority to merge widenings onto files no live node owns. The approval review gets posted once CI is green.
+- None besides this handoff. #106 (the w3-store-atomic-ingest lane, plus `internal/web/ingest/ingest_test.go`) merged at 65e25f6, so #66's ownership check now passes on main.
 
 ## In flight (worktrees on disk)
 
@@ -50,6 +50,9 @@ VERSION collides: history, photo-ocr and atomic-ingest all claim the next minor.
 - #104: `store.Delete` outside the write gate. Folded into w3-store-atomic-ingest's note.
 
 ## Owner decisions this round
+
+- **New standing authority** (item `ib-613cab711dc7`): the dispatcher may merge its own graph PRs that widen a lane **onto files no live node owns**, once they are review-clean, and must report each one. A widening that touches a live node's lane still needs the owner (escalation trigger 2).
+- **#65 proposed units: option A** (item `ib-acf65b06cee6`). Drop proposed units, and flag unknown units on review. The dead `ProposedUnits` code, the review-screen section, the unit creation on save, and the two `bag` tests are removed once #66 and #30 merge. Widen #65's lane onto those files under the new standing authority if no live node owns them by then.
 
 - sqlc lanes: option A (#101). Queries stay per package. Each node adds its own `.sql` file. The generated `storedb` and `catalogdb` have one writer per round, and the graph note names the writers.
 - The owner merged #96 and #102 and granted the #101 merge.
