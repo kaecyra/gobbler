@@ -22,7 +22,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 | Worktree | Node | State |
 |---|---|---|
-| `wt-20` | w3-history (#20) | Done once, then held to reuse `internal/recipe/display`. Now rebasing onto main: replace the copied helpers, move the e2e port to 38471, set VERSION 0.30.0. |
+| `wt-20` | w3-history (#20) | **Worker done at 9426dcc**: rebased, using `internal/recipe/display`, e2e port 38471, VERSION 0.30.0, gates green. Not yet verified, pushed or opened as a PR. Behaviour change: to-taste lines now read "... to taste", from the shared line builder. A time-rows helper is still local to history; `display` has none. |
 | `wt-30` | w5-photo-ocr (#30) | The OCR runner and handler were done earlier. With #102 merged, it is finishing: mount routes, OCR snapshot, image passed to the fallback, e2e with a stub `tesseract` on PATH. VERSION 0.30.0. |
 | `wt-66` | w3-store-atomic-ingest (#66, plus #104) | **Worker done at 0d45c69**, gates green, failing proofs reported. It covers `UpdateIfVersion` (409 `ErrStaleVersion`), `CreateWithSnapshots`, single-call `Save`, and `Delete` inside `withTx`. Not yet verified, pushed or opened as a PR. Its ownership check passes only after #106 merges. VERSION says 0.29.0, which equals main, so the worker must re-bump to the next free minor before merge. |
 | `wt-65` | w3-unit-owner (#65, migration 00003) | Committed at 3e42aa2 (`refactor`, 0.28.3, needs a re-bump). **Blocked**, see below. |
