@@ -32,6 +32,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
 	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
+	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
 	mountCatalog(r, d)
 }
 
@@ -46,5 +47,4 @@ func mountCatalog(r chi.Router, d Deps) {
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
 	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: cat, Usage: usage}))
-	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
 }
