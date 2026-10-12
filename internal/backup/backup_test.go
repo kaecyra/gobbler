@@ -93,7 +93,7 @@ func TestNextRun(t *testing.T) {
 
 func openSource(t *testing.T) *sql.DB {
 	t.Helper()
-	d, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "src.db")+"?_pragma=journal_mode(wal)")
+	d, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "src.db")+"?_pragma=journal_mode(wal)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,6 +112,8 @@ func TestSnapshotIsConsistentUnderWrites(t *testing.T) {
 		}
 	}
 	stop := make(chan struct{})
+	var written atomic.Int64
+	writeErr := make(chan error, 1)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -121,14 +123,39 @@ func TestSnapshotIsConsistentUnderWrites(t *testing.T) {
 			case <-stop:
 				return
 			default:
-				_, _ = d.Exec(`INSERT INTO recipe (title) VALUES ('w')`)
 			}
+			if _, err := d.Exec(`INSERT INTO recipe (title) VALUES ('w')`); err != nil {
+				writeErr <- err
+				return
+			}
+			written.Add(1)
 		}
 	}()
+	waitForWrites := func(n int64) {
+		deadline := time.Now().Add(10 * time.Second)
+		for written.Load() < n {
+			select {
+			case err := <-writeErr:
+				t.Fatalf("concurrent writer: %v", err)
+			default:
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("concurrent writer made no progress")
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+	waitForWrites(1) // the writer is running before the snapshot starts
 	dir := t.TempDir()
 	path, err := Snapshot(context.Background(), d, dir, at(3, 30))
+	waitForWrites(written.Load() + 1) // and still committing after it
 	close(stop)
 	wg.Wait()
+	select {
+	case werr := <-writeErr:
+		t.Fatalf("concurrent writer: %v", werr)
+	default:
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,6 +182,13 @@ func TestSnapshotIsConsistentUnderWrites(t *testing.T) {
 	if n < 50 {
 		t.Fatalf("snapshot has %d rows, want at least the 50 committed before it", n)
 	}
+	var live int
+	if err := d.QueryRow(`SELECT count(*) FROM recipe`).Scan(&live); err != nil {
+		t.Fatal(err)
+	}
+	if live <= n {
+		t.Fatalf("live database has %d rows, snapshot %d: no write landed after the snapshot, so it was not taken under writes", live, n)
+	}
 }
 
 func TestSnapshotFailureLeavesNoFile(t *testing.T) {
@@ -180,6 +214,7 @@ type fakeStore struct {
 	mu      sync.Mutex
 	objects map[string][]byte
 	putErr  error
+	listErr error
 	deleted []string
 }
 
@@ -200,6 +235,9 @@ func (f *fakeStore) Put(_ context.Context, key, path string) error {
 }
 
 func (f *fakeStore) List(_ context.Context, prefix string) ([]string, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var keys []string
@@ -495,5 +533,23 @@ func TestRunLogsDurationAndSize(t *testing.T) {
 		if size, ok := m["size_bytes"].(float64); !ok || size <= 0 {
 			t.Errorf("%q size_bytes = %v, want > 0", msg, m["size_bytes"])
 		}
+	}
+}
+
+func TestRunReportsUploadedWhenRetentionFails(t *testing.T) {
+	d := openSource(t)
+	store := newFakeStore()
+	store.listErr = errors.New("list denied")
+	r := &Runner{DB: d, Dir: t.TempDir(), Store: store, LocalKeep: 1, RemoteKeep: 1,
+		Now: func() time.Time { return at(3, 0) }}
+	res, err := r.Run(context.Background())
+	if err == nil {
+		t.Fatal("want the list error")
+	}
+	if !res.Uploaded {
+		t.Fatal("Uploaded = false although the snapshot reached the store")
+	}
+	if len(store.objects) != 1 {
+		t.Fatalf("store holds %d objects, want the uploaded snapshot", len(store.objects))
 	}
 }

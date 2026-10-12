@@ -200,10 +200,10 @@ func (r *Runner) run(ctx context.Context, now time.Time) (Result, error) {
 
 	var errs []error
 	if r.Store != nil {
-		if err := r.upload(ctx, snap); err != nil {
+		uploaded, err := r.upload(ctx, snap)
+		res.Uploaded = uploaded
+		if err != nil {
 			errs = append(errs, err)
-		} else {
-			res.Uploaded = true
 		}
 	}
 	if err := r.pruneLocal(); err != nil {
@@ -212,14 +212,17 @@ func (r *Runner) run(ctx context.Context, now time.Time) (Result, error) {
 	return res, errors.Join(errs...)
 }
 
-func (r *Runner) upload(ctx context.Context, snap string) error {
+// upload puts snap in the store, then applies remote retention. uploaded
+// reports whether the snapshot reached the store, even if retention failed
+// afterwards.
+func (r *Runner) upload(ctx context.Context, snap string) (uploaded bool, err error) {
 	key := r.Prefix + filepath.Base(snap)
 	if err := r.Store.Put(ctx, key, snap); err != nil {
-		return fmt.Errorf("upload %q: %w", key, err)
+		return false, fmt.Errorf("upload %q: %w", key, err)
 	}
 	keys, err := r.Store.List(ctx, r.Prefix)
 	if err != nil {
-		return fmt.Errorf("list remote snapshots under %q: %w", r.Prefix, err)
+		return true, fmt.Errorf("list remote snapshots under %q: %w", r.Prefix, err)
 	}
 	byName := make(map[string]string, len(keys))
 	names := make([]string, 0, len(keys))
@@ -234,7 +237,7 @@ func (r *Runner) upload(ctx context.Context, snap string) error {
 			errs = append(errs, fmt.Errorf("delete remote snapshot %q: %w", byName[name], err))
 		}
 	}
-	return errors.Join(errs...)
+	return true, errors.Join(errs...)
 }
 
 func (r *Runner) pruneLocal() error {

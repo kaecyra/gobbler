@@ -3,7 +3,6 @@ package backup
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 )
 
@@ -30,8 +29,8 @@ type ScheduleDeps struct {
 }
 
 // Schedule runs the job once a day at hhmm until ctx ends, then returns the
-// context's error. A failed run is logged and the schedule continues: one bad
-// night must not end the backups after it.
+// context's error. A failed run does not stop the schedule: one bad night must
+// not end the backups after it. The job logs its own failures.
 func Schedule(ctx context.Context, hhmm string, deps ScheduleDeps) error {
 	for {
 		next, err := NextRun(deps.Now(), hhmm)
@@ -41,9 +40,10 @@ func Schedule(ctx context.Context, hhmm string, deps ScheduleDeps) error {
 		if err := deps.Sleep(ctx, next.Sub(deps.Now())); err != nil {
 			return err
 		}
-		if err := deps.Run(ctx); err != nil {
-			slog.ErrorContext(ctx, "scheduled backup failed", "error", err.Error())
-		}
+		// Runner.Run has already logged a failure with its details; logging it
+		// again here would double every failed night. Either way the schedule
+		// continues.
+		_ = deps.Run(ctx)
 		if err := ctx.Err(); err != nil {
 			return err
 		}

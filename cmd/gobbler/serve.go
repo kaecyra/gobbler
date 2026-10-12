@@ -54,11 +54,13 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 		return fmt.Errorf("migrate database: %w", err)
 	}
 
-	stopBackups, err := startBackups(ctx, cfg, d)
+	backups, err := startBackups(ctx, cfg, d)
 	if err != nil {
 		return err
 	}
-	defer stopBackups()
+	defer backups.Stop()
+	// backups.Runner is the live job: hand it to anything that triggers a
+	// backup or reads its status, never build a second Runner.
 
 	authn, err := auth.New(cfg)
 	if err != nil {
