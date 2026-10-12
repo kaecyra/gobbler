@@ -1,0 +1,17 @@
+#!/bin/sh
+# Stand-in for tesseract in the photo e2e spec: reads and discards the image on
+# stdin, prints fixture recipe text on stdout.
+cat >/dev/null
+cat <<'TEXT'
+Photo Pancakes
+
+Ingredients:
+- 2 cups all-purpose flour
+- 2 tbsp sugar
+- 2 eggs
+
+Instructions:
+Whisk the dry ingredients together in a large bowl.
+
+Cook on a hot greased griddle until golden on both sides.
+TEXT

@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	// EnvBin names the tesseract binary; it defaults to "tesseract" on PATH.
-	EnvBin = "GOBBLER_TESSERACT_BIN"
 	// DefaultBin is the binary looked up on PATH.
 	DefaultBin = "tesseract"
 	// DefaultTimeout bounds one OCR run.
@@ -38,14 +36,11 @@ var (
 
 // Runner runs tesseract. The zero value uses the defaults.
 type Runner struct {
-	// Bin is the binary to run; empty means DefaultBin.
+	// Bin is the binary to run; empty means DefaultBin, found on PATH.
 	Bin string
 	// Timeout bounds one run; zero means DefaultTimeout.
 	Timeout time.Duration
 }
-
-// FromEnv returns a Runner whose binary comes from EnvBin.
-func FromEnv() Runner { return Runner{Bin: os.Getenv(EnvBin)} }
 
 // Text returns the text tesseract reads from image, which it receives on
 // stdin. A missing binary wraps ErrUnavailable, any other failure wraps

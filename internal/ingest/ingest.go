@@ -113,3 +113,19 @@ func (p *Pipeline) FromText(ctx context.Context, text string) (Draft, error) {
 	res := extract.Result{Method: extract.MethodText, Text: text}
 	return p.draftWithFallback(ctx, newSource(store.SnapshotText, "", []byte(text)), res)
 }
+
+// FromOCR drafts a recipe from a photo. text is what OCR read from image; it
+// is the source snapshot, stored as SnapshotOCR, and goes through the same
+// sectioning, parsing, scoring and fallback as pasted text. The image is held
+// on the draft's Source in memory only, so that a draft below the threshold, or
+// one the user asks to retry, can show the photo to a vision-capable provider
+// (ADR-00006); it is never saved.
+func (p *Pipeline) FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (Draft, error) {
+	if strings.TrimSpace(text) == "" {
+		return Draft{}, fmt.Errorf("photo text: %w", parse.ErrEmptyText)
+	}
+	res := extract.Result{Method: extract.MethodText, Text: text}
+	src := newSource(store.SnapshotOCR, "", []byte(text))
+	src.Image, src.ImageMIME = image, imageMIME
+	return p.draftWithFallback(ctx, src, res)
+}

@@ -8,8 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-
+	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -21,7 +20,7 @@ const (
 	maxPhotoRequestBytes = maxPhotoBytes + 1<<20
 )
 
-// TextReader reads the text out of a photo; *ocr.Runner satisfies it.
+// TextReader reads the text out of a photo; ocr.Runner satisfies it.
 type TextReader interface {
 	Text(ctx context.Context, image []byte) (string, error)
 }
@@ -35,24 +34,19 @@ var photoTypes = map[string]bool{
 	"image/bmp":  true,
 }
 
+// PhotoDrafter drafts a recipe from OCR text and the photo it came from;
+// *ingestcore.Pipeline satisfies it.
+type PhotoDrafter interface {
+	FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (ingestcore.Draft, error)
+}
+
 // photoView is what the photo upload form renders.
 type photoView struct {
 	Error string
 }
 
-// mountPhoto attaches the photo routes to r with the tesseract binary named by
-// the environment (ocr.EnvBin).
-func (h *handler) mountPhoto(r chi.Router) {
-	runner := ocr.FromEnv()
-	h.mountPhotoWith(r, runner)
-}
-
-// mountPhotoWith attaches the photo routes, reading photos with reader.
-func (h *handler) mountPhotoWith(r chi.Router, reader TextReader) {
-	r.Get("/photo", func(w http.ResponseWriter, r *http.Request) {
-		layout.Render(w, r, http.StatusOK, photoPage(photoView{}))
-	})
-	r.Post("/photo", func(w http.ResponseWriter, r *http.Request) { h.photoSubmit(w, r, reader) })
+func (h *handler) photoForm(w http.ResponseWriter, r *http.Request) {
+	layout.Render(w, r, http.StatusOK, photoPage(photoView{}))
 }
 
 // photoSubmit reads the uploaded photo with OCR and feeds the text through the
@@ -60,7 +54,7 @@ func (h *handler) mountPhotoWith(r chi.Router, reader TextReader) {
 // fallback, and then the review screen. The photo itself is not kept: only the
 // OCR text, as the draft's source snapshot, outlives the request. Nothing is
 // saved here.
-func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request, reader TextReader) {
+func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPhotoRequestBytes)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		var tooBig *http.MaxBytesError
@@ -83,6 +77,7 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request, reader Tex
 		layout.WriteError(w, r, fmt.Errorf("read uploaded photo: %w", err))
 		return
 	}
+	mime := strings.ToLower(http.DetectContentType(image))
 	switch {
 	case len(image) == 0:
 		h.photoFormError(w, r, http.StatusBadRequest, "Choose a photo to upload.")
@@ -90,12 +85,12 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request, reader Tex
 	case len(image) > maxPhotoBytes:
 		h.photoFormError(w, r, http.StatusRequestEntityTooLarge, "That photo is too large. The limit is 10 MB.")
 		return
-	case !photoTypes[strings.ToLower(http.DetectContentType(image))]:
+	case !photoTypes[mime]:
 		h.photoFormError(w, r, http.StatusUnsupportedMediaType, "That file is not a supported image. Upload a PNG, JPEG, GIF, WebP or BMP photo.")
 		return
 	}
 
-	text, err := reader.Text(r.Context(), image)
+	text, err := h.ocr.Text(r.Context(), image)
 	switch {
 	case errors.Is(err, ocr.ErrNoText):
 		h.photoFormError(w, r, http.StatusUnprocessableEntity, "No text could be read from that photo. Try a sharper, better lit photo of the page.")
@@ -111,7 +106,7 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request, reader Tex
 		return
 	}
 
-	draft, err := h.drafter.FromText(r.Context(), text)
+	draft, err := h.photos.FromOCR(r.Context(), text, image, mime)
 	if err != nil {
 		layout.WriteError(w, r, fmt.Errorf("ingest photo text: %w", err))
 		return

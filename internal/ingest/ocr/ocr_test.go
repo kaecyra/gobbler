@@ -70,10 +70,12 @@ func TestTextTimeoutIsFailure(t *testing.T) {
 	}
 }
 
-func TestFromEnvReadsBinary(t *testing.T) {
-	t.Setenv(EnvBin, "/opt/tess")
-	if got := FromEnv().Bin; got != "/opt/tess" {
-		t.Errorf("Bin = %q", got)
+func TestTextFindsTesseractOnPath(t *testing.T) {
+	dir := filepath.Dir(stub(t, `echo from-path`))
+	t.Setenv("PATH", dir)
+	got, err := Runner{}.Text(context.Background(), []byte("x"))
+	if err != nil || strings.TrimSpace(got) != "from-path" {
+		t.Fatalf("Text = %q, %v; want the PATH binary's output", got, err)
 	}
 }
 

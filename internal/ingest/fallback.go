@@ -124,7 +124,7 @@ func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 	if err != nil {
 		return Draft{}, err
 	}
-	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, RuleDraft: d})
+	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, Image: d.Source.Image, ImageMIME: d.Source.ImageMIME, RuleDraft: d})
 	if err != nil {
 		return Draft{}, fmt.Errorf("%w: %w", ErrLLMFailed, err)
 	}

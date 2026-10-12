@@ -21,6 +21,12 @@ type Source struct {
 	URL     string
 	Content []byte
 	SHA256  string
+	// Image is the uploaded photo behind an OCR source, kept in memory only so
+	// a vision-capable provider can be shown the page itself (ADR-00006). It is
+	// never part of the snapshot: Content is the OCR text, and nothing here is
+	// stored. ImageMIME is its media type.
+	Image     []byte
+	ImageMIME string
 }
 
 func newSource(kind store.SnapshotKind, url string, content []byte) Source {

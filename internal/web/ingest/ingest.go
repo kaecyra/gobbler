@@ -1,7 +1,7 @@
 // Package ingest is the web side of ingestion: the form that takes a URL or
 // pasted text, and the review screen where the user checks, edits and confirms
 // the draft before anything is saved (ADR-00006). It drives the pipeline in
-// internal/ingest (FromURL or FromText, then Confirm, then Saver.Save) and
+// internal/ingest (FromURL, FromText or FromOCR, then Confirm, then Saver.Save) and
 // never saves anything itself.
 //
 // A draft waits in memory under a random token between ingest and confirm.
@@ -27,6 +27,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/config"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
+	"github.com/kaecyra/gobbler/internal/ingest/ocr"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -71,6 +72,9 @@ type handler struct {
 	matcher ingredientMatcher
 	pending *pendingDrafts
 	retrier Retrier
+	// photos drafts from a photo's OCR text, and ocr reads the photo.
+	photos PhotoDrafter
+	ocr    TextReader
 	// llmInitErr is why the configured provider could not be built. The rule
 	// based path still works; only the retry action reports it.
 	llmInitErr error
@@ -106,6 +110,8 @@ func Routes(d Deps) http.Handler {
 		h.log.Error("ingest routes unavailable", "error", err.Error())
 	} else {
 		h.drafter = pipeline
+		h.photos = pipeline
+		h.ocr = ocr.Runner{}
 		h.retrier = pipeline.Fallback()
 		h.saver = ingestcore.NewSaver(store.New(d.DB), cat)
 		h.matcher = cat
@@ -118,6 +124,8 @@ func (h *handler) routes() http.Handler {
 	r.Use(h.requireReady)
 	r.Get("/", h.form)
 	r.Post("/", h.submit)
+	r.Get("/photo", h.photoForm)
+	r.Post("/photo", h.photoSubmit)
 	r.Get("/{token}", h.review)
 	r.Post("/{token}/confirm", h.confirm)
 	r.Post("/{token}/retry", h.retry)

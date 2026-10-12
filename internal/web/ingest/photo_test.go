@@ -7,11 +7,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
-
-	"github.com/go-chi/chi/v5"
 
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
@@ -34,15 +31,19 @@ func (f *fakeReader) Text(_ context.Context, image []byte) (string, error) {
 	return f.text, f.err
 }
 
-// textDrafter records the text it is asked to draft.
+// textDrafter records what it is asked to draft from a photo.
 type textDrafter struct {
-	fakeDrafter
-	text string
+	draft ingestcore.Draft
+	calls int
+	text  string
+	image []byte
+	mime  string
 }
 
-func (d *textDrafter) FromText(ctx context.Context, text string) (ingestcore.Draft, error) {
-	d.text = text
-	return d.fakeDrafter.FromText(ctx, text)
+func (d *textDrafter) FromOCR(_ context.Context, text string, image []byte, mime string) (ingestcore.Draft, error) {
+	d.calls++
+	d.text, d.image, d.mime = text, image, mime
+	return d.draft, nil
 }
 
 type photoFixture struct {
@@ -55,12 +56,10 @@ type photoFixture struct {
 func newPhotoFixture(t *testing.T, reader *fakeReader) *photoFixture {
 	t.Helper()
 	f := newFixture(t)
-	d := &textDrafter{fakeDrafter: fakeDrafter{draft: sampleDraft()}}
-	f.h.drafter = d
-	r := chi.NewRouter()
-	f.h.mountPhotoWith(r, reader)
-	r.Handle("/*", f.h.routes())
-	return &photoFixture{fixture: f, reader: reader, drafter: d, srv: r}
+	d := &textDrafter{draft: sampleDraft()}
+	f.h.photos = d
+	f.h.ocr = reader
+	return &photoFixture{fixture: f, reader: reader, drafter: d, srv: f.h.routes()}
 }
 
 func (f *photoFixture) upload(t *testing.T, filename string, content []byte) *httptest.ResponseRecorder {
@@ -102,6 +101,9 @@ func TestPhotoUploadFeedsOCRTextToTheTextPipelineAndReviews(t *testing.T) {
 	}
 	if !bytes.Equal(f.reader.got, pngBytes) {
 		t.Errorf("OCR received %d bytes, want the uploaded image", len(f.reader.got))
+	}
+	if !bytes.Equal(f.drafter.image, pngBytes) || f.drafter.mime != "image/png" {
+		t.Errorf("pipeline image = %d bytes (%s), want the photo", len(f.drafter.image), f.drafter.mime)
 	}
 	if f.drafter.text != "Apple pie\n2 tbsp butter" {
 		t.Errorf("pipeline text = %q, want the OCR text", f.drafter.text)
@@ -166,25 +168,5 @@ func TestPhotoOCRFailuresAreShownNotDrafted(t *testing.T) {
 				t.Error("an OCR failure was turned into a draft")
 			}
 		})
-	}
-}
-
-func TestMountPhotoUsesTheTesseractBinaryFromTheEnvironment(t *testing.T) {
-	bin := t.TempDir() + "/tesseract"
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\necho 'Apple pie'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv(ocr.EnvBin, bin)
-	f := newFixture(t)
-	d := &textDrafter{fakeDrafter: fakeDrafter{draft: sampleDraft()}}
-	f.h.drafter = d
-	r := chi.NewRouter()
-	f.h.mountPhoto(r)
-	pf := &photoFixture{fixture: f, reader: &fakeReader{}, drafter: d, srv: r}
-	if rec := pf.upload(t, "page.png", pngBytes); rec.Code != http.StatusSeeOther {
-		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
-	}
-	if strings.TrimSpace(d.text) != "Apple pie" {
-		t.Errorf("pipeline text = %q, want the stub's output", d.text)
 	}
 }
