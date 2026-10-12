@@ -1134,7 +1134,7 @@
       "wave": 3,
       "track": "ui",
       "issue": 120,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w3-editor",
         "w3-recipe-view"
@@ -1550,6 +1550,11 @@
         "00004"
       ],
       "note": "Regenerates storedb (new store query file)."
+    },
+    {
+      "id": "w3-edit-link",
+      "title": "Recipe page links to its editor",
+      "merged": "45981eb"
     }
   ],
   "adr_sequence": {
