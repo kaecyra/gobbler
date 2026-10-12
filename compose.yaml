@@ -1,6 +1,7 @@
 # gobbler. cloudflared runs on the VM guest, not in Compose, and reaches
 # gobbler at http://127.0.0.1:8080. The port is published on loopback only, so
-# the tunnel is the only way in (ADR-00003).
+# the network cannot reach it, but other guest processes can; the Access JWT
+# check guards every route except the health check (ADR-00003).
 #
 # Usage: copy .env.example to .env, fill it in, then `docker compose up -d`.
 

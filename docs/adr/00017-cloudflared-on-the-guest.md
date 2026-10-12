@@ -14,9 +14,11 @@ thing twice, and the two would drift. Compose also only exposed gobbler's port
 to its own network, so gobbler could not be reached by the guest's
 `cloudflared`.
 
-[ADR-00003](00003-cloudflare-access-identity.md) requires that nothing but
-the tunnel reaches the app, and that the app verifies the Access JWT on every
-request.
+[ADR-00003](00003-cloudflare-access-identity.md) says gobbler is reached
+through a Cloudflare tunnel with an Access application in front of it. It
+rejects trusting the network, and lists "a published port" among the
+misconfigurations the app must survive by verifying the Access JWT itself on
+every request except the health check.
 
 Options considered:
 
@@ -24,8 +26,10 @@ Options considered:
   `cloudflared` image, so the repository deployed on its own. Rejected because
   it duplicates the tunnel the owner's infrastructure code already defines, and
   a token for a second tunnel would sit in `.env`.
-- **Publish on all interfaces.** Reachable from the network, which ADR-00003
-  rejects ("trust the network"). Rejected.
+- **Publish on all interfaces.** Reachable from the network, so only the JWT
+  check would stand between the network and the app. ADR-00003 treats a
+  published port as a misconfiguration to survive, not a design to adopt.
+  Rejected.
 - **Host network mode.** Drops the container's network isolation, and makes
   the listen address, rather than the port mapping, carry the exposure
   decision: one wrong address in configuration exposes the app on every host

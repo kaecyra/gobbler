@@ -30,8 +30,8 @@ on the guest can reach `127.0.0.1:8080`; the Access JWT check stops them
 
 1. The guest's tunnel is managed by your infrastructure code, not by this
    repository.
-2. Give the tunnel a public hostname whose service is `http://127.0.0.1:8080`
-   (the loopback port Compose publishes).
+2. That code must route the public hostname to `http://127.0.0.1:8080` (the
+   loopback port Compose publishes).
 3. Create a self-hosted Access application for that hostname with a policy that
    allows only you.
 4. Note two values for `.env`:
