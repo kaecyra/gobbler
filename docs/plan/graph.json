@@ -693,7 +693,8 @@
         "internal/web/catalog/handler.go",
         "internal/web/catalog/handler_test.go",
         "internal/web/catalog/view.go",
-        "e2e/catalog/catalog.spec.ts"
+        "e2e/catalog/catalog.spec.ts",
+        "internal/web/server_stream_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [
