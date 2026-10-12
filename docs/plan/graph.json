@@ -886,7 +886,7 @@
       "wave": 7,
       "track": "ui",
       "issue": 35,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "w7-backup",
         "w0-e2e-harness",
