@@ -1,5 +1,5 @@
-# Gates for gobbler. goimports runs through the `tool` directive in go.mod, so
-# its version is pinned there.
+# Gates for gobbler. goimports and sqlc run through the `tool` directive in
+# go.mod, so their versions are pinned there.
 
 COVER_MIN  := 70
 MODULE     := $(shell go list -m)
@@ -9,11 +9,19 @@ GOLANGCI_LINT_VERSION := v2.14.0
 
 E2E_SETUP := cd e2e && npm ci && npx playwright install chromium
 
-.PHONY: tools fmt fmt-check lint test test-scripts e2e e2e-routes version-check check
+.PHONY: tools generate generate-check fmt fmt-check lint test test-scripts e2e e2e-routes version-check check
 
 ## tools: install the pinned golangci-lint
 tools:
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+## generate: regenerate the sqlc data-access code from queries/ and the migrations (ADR-00014)
+generate:
+	go tool sqlc generate
+
+## generate-check: fail if the committed sqlc output is stale (sqlc diff)
+generate-check:
+	go tool sqlc diff
 
 ## fmt: rewrite Go files with gofmt and goimports
 fmt:
@@ -62,4 +70,4 @@ version-check:
 	bash .github/scripts/check-version-bump.sh origin/main
 
 ## check: every gate; fails if any one fails
-check: fmt-check lint test test-scripts e2e version-check
+check: fmt-check generate-check lint test test-scripts e2e version-check

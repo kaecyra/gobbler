@@ -1,0 +1,14 @@
+# sqlc configuration (ADR-00014). Each package that owns SQL has its own entry:
+# queries beside the package, generated code in a subpackage nothing else
+# imports. The schema is the goose migrations; there is no second schema file.
+# Regenerate with `make generate`; `make check` fails if the output is stale.
+version: "2"
+sql:
+  - name: catalog
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/catalog/queries
+    gen:
+      go:
+        package: catalogdb
+        out: internal/catalog/catalogdb
