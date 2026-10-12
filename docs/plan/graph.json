@@ -807,7 +807,7 @@
       "wave": 6,
       "track": "domain",
       "issue": 32,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w3-recipe-view"
       ],
@@ -1332,6 +1332,14 @@
       "title": "sqlc for catalog and store data access, one shared tx helper",
       "merged": "66c3415",
       "note": "ADR-00014. Absorbs #55 (shared tx helper) and #59 (MergeIngredients takes the write lock before its first read; regression test under concurrent load)."
+    },
+    {
+      "id": "w6-meanwhile",
+      "title": "Meanwhile derivation from the step graph and its display in the recipe view",
+      "merged": "5117f8a",
+      "adrs": [
+        "00004"
+      ]
     }
   ],
   "adr_sequence": {
