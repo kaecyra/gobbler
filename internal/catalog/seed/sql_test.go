@@ -37,9 +37,14 @@ func TestAdditionsSQLCreatesOnlyNewUnits(t *testing.T) {
 			t.Errorf("AdditionsSQL() lacks %q", want)
 		}
 	}
-	for _, bad := range []string{"VALUES ('cup'", "VALUES ('g',"} {
-		if strings.Contains(got, "INSERT INTO units") && strings.Contains(got, bad) {
-			t.Errorf("AdditionsSQL() re-creates an existing unit: %q", bad)
+	for _, stmt := range strings.Split(got, "\n") {
+		if !strings.Contains(stmt, "INSERT INTO units") {
+			continue
+		}
+		for _, bad := range []string{"VALUES ('cup'", "VALUES ('g',"} {
+			if strings.Contains(stmt, bad) {
+				t.Errorf("AdditionsSQL() re-creates an existing unit: %q", stmt)
+			}
 		}
 	}
 }

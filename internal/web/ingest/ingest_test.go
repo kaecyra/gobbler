@@ -620,7 +620,7 @@ func between(t *testing.T, s, start, end string) string {
 type unknownUnitSaver struct{}
 
 func (unknownUnitSaver) Save(context.Context, ingestcore.Confirmed) (ingestcore.Saved, error) {
-	return ingestcore.Saved{}, fmt.Errorf("component 1 line 2 (%q): %w", "3 zorbs butter", ingestcore.ErrUnknownUnit)
+	return ingestcore.Saved{}, fmt.Errorf("component 1 line 2 (%q): %w", "3 zorbs butter", &ingestcore.UnknownUnitError{Name: "zorb"})
 }
 
 // A unit the catalog no longer knows is a problem with the draft, not a broken
@@ -633,8 +633,9 @@ func TestConfirmUnknownUnitReturnsToReviewWithProblem(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want 422; body %s", rec.Code, rec.Body)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "3 zorbs butter") {
-		t.Errorf("the review screen does not name the line: %s", body)
+	body := rec.Body.String()
+	if strings.Count(body, "not in the catalog") != 1 || !strings.Contains(body, "zorb") {
+		t.Errorf("the problem must name the unit and say catalog once: %s", body)
 	}
 	if f.do(http.MethodGet, "/"+token, nil).Code != http.StatusOK {
 		t.Error("the draft was lost")

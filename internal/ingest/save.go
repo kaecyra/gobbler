@@ -24,8 +24,18 @@ var (
 	// catalog does not have. Drafting only emits catalog units, so this means
 	// the catalog changed after the draft was made; the draft is still good
 	// and the caller can show the problem instead of failing.
-	ErrUnknownUnit = errors.New("unit not in the catalog")
+	ErrUnknownUnit = errors.New("unknown unit")
 )
+
+// UnknownUnitError names the unit a Save refused. It matches ErrUnknownUnit.
+type UnknownUnitError struct{ Name string }
+
+func (e *UnknownUnitError) Error() string {
+	return fmt.Sprintf("unit %q is not in the catalog", e.Name)
+}
+
+// Is reports that an UnknownUnitError is an ErrUnknownUnit.
+func (e *UnknownUnitError) Is(target error) bool { return target == ErrUnknownUnit }
 
 // Confirmed is a draft the user has reviewed and approved. It can be made only
 // by Confirm, and Saver.Save accepts nothing else, so there is no path that
@@ -195,7 +205,7 @@ func (s *Saver) unit(ctx context.Context, u quantity.Unit, seen map[string]quant
 		seen[key] = cu.Unit
 		return cu.Unit, nil
 	}
-	return u, fmt.Errorf("unit %q is not in the catalog: %w", u.Name, ErrUnknownUnit)
+	return u, &UnknownUnitError{Name: u.Name}
 }
 
 // linkSteps adds the steps of the draft to comps with ids unique across the
