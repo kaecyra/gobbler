@@ -16,7 +16,7 @@
 // ADR-00007); the caller's RuleDraft left deep-equal to what was passed in
 // (the rule-based draft stays in place when a provider fails); and one log
 // record carrying the keys LogProvider, LogModel and LogLatencyMS, plus
-// LogInputTokens and LogOutputTokens when the call got an answer, with the
+// LogInputTokens and LogOutputTokens when the call succeeds, with the
 // sentinel API key in no log attribute, message or error text.
 //
 // # Recording a fixture
@@ -45,6 +45,7 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"path"
 	"reflect"
 	"strconv"
@@ -82,7 +83,8 @@ type Scenario struct {
 	Payload []byte
 	// Input and Output are the token counts the backend reports with its
 	// answer (usage metadata in the provider's wire format). The provider must
-	// log them as LogInputTokens and LogOutputTokens. Set for Respond.
+	// log them as LogInputTokens and LogOutputTokens when the call succeeds. Set
+	// for Respond.
 	Input, Output int
 }
 
@@ -274,7 +276,7 @@ func invoke(ctx context.Context, t *testing.T, newProvider Factory, sc Scenario,
 	elapsed := time.Since(start)
 
 	if maxElapsed > 0 && elapsed > maxElapsed {
-		t.Errorf("call took %s, over the configured %s plus %s margin: the provider is not applying its configured timeout", elapsed, maxElapsed-timeoutMargin, timeoutMargin)
+		t.Errorf("call took %s, over the %s allowed (timeout or cancellation delay, plus %s margin): the provider is not applying its configured timeout or honouring cancellation", elapsed, maxElapsed, timeoutMargin)
 	}
 	if want := newRuleDraft(); !reflect.DeepEqual(req.RuleDraft, want) {
 		t.Errorf("the caller's rule-based draft was modified\n got: %+v\nwant: %+v", req.RuleDraft, want)
@@ -342,7 +344,9 @@ type logRecord struct {
 type capture struct {
 	sink   *sink
 	prefix string
-	attrs  []slog.Attr
+	// fixed holds attributes added with WithAttrs, already keyed with the
+	// group prefix in force when they were added.
+	fixed map[string]slog.Value
 }
 
 type sink struct {
@@ -362,9 +366,7 @@ func (c *capture) Enabled(context.Context, slog.Level) bool { return true }
 
 func (c *capture) Handle(_ context.Context, r slog.Record) error {
 	rec := logRecord{msg: r.Message, attrs: map[string]slog.Value{}}
-	for _, a := range c.attrs {
-		flatten(rec.attrs, c.prefix, a)
-	}
+	maps.Copy(rec.attrs, c.fixed)
 	r.Attrs(func(a slog.Attr) bool {
 		flatten(rec.attrs, c.prefix, a)
 		return true
@@ -376,11 +378,18 @@ func (c *capture) Handle(_ context.Context, r slog.Record) error {
 }
 
 func (c *capture) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &capture{sink: c.sink, prefix: c.prefix, attrs: append(append([]slog.Attr(nil), c.attrs...), attrs...)}
+	fixed := maps.Clone(c.fixed)
+	if fixed == nil {
+		fixed = map[string]slog.Value{}
+	}
+	for _, a := range attrs {
+		flatten(fixed, c.prefix, a)
+	}
+	return &capture{sink: c.sink, prefix: c.prefix, fixed: fixed}
 }
 
 func (c *capture) WithGroup(name string) slog.Handler {
-	return &capture{sink: c.sink, prefix: c.prefix + name + ".", attrs: c.attrs}
+	return &capture{sink: c.sink, prefix: c.prefix + name + ".", fixed: c.fixed}
 }
 
 func flatten(into map[string]slog.Value, prefix string, a slog.Attr) {

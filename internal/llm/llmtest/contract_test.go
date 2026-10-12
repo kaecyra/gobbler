@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -250,5 +251,25 @@ func TestSuiteCatchesBrokenProviders(t *testing.T) {
 func TestFixturesPairUp(t *testing.T) {
 	for _, name := range fixtureNames(t, "valid") {
 		readFixture(t, "valid", name+".want.json")
+	}
+}
+
+// TestCaptureGroupsFollowSlogSemantics: only attributes added after WithGroup
+// take the group prefix.
+func TestCaptureGroupsFollowSlogSemantics(t *testing.T) {
+	c := newCapture()
+	l := slog.New(c).With("before", 1).WithGroup("g").With("after", 2)
+	l.Info("m", "own", 3)
+	recs := c.records()
+	if len(recs) != 1 {
+		t.Fatalf("got %d records, want 1", len(recs))
+	}
+	for _, key := range []string{"before", "g.after", "g.own"} {
+		if _, ok := recs[0].attrs[key]; !ok {
+			t.Errorf("missing key %q in %v", key, recs[0].attrs)
+		}
+	}
+	if _, ok := recs[0].attrs["g.before"]; ok {
+		t.Error("attribute added before WithGroup was prefixed")
 	}
 }
