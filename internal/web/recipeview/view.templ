@@ -1,0 +1,231 @@
+package recipeview
+
+import (
+	"net/url"
+	"strconv"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+// scalePresets are the one-tap multipliers; Param is the text sent as scale.
+var scalePresets = []struct{ Param, Label string }{
+	{"1/2", "½×"}, {"1", "1×"}, {"2", "2×"}, {"3", "3×"},
+}
+
+// unitModes are the display modes; Param is the text sent as units.
+var unitModes = []struct{ Param, Label string }{
+	{"", "As written"}, {unitsMetric, "Metric"}, {unitsWeight, "Weight"},
+}
+
+// href is the URL of this recipe with the given state. Empty values are left
+// out so the default view keeps the bare URL.
+func href(id int64, scale, servings, units string) string {
+	q := url.Values{}
+	if scale != "" && scale != "1" {
+		q.Set(paramScale, scale)
+	}
+	if servings != "" {
+		q.Set(paramServings, servings)
+	}
+	if units != "" {
+		q.Set(paramUnits, units)
+	}
+	u := "/recipes/" + strconv.FormatInt(id, 10)
+	if len(q) > 0 {
+		u += "?" + q.Encode()
+	}
+	return u
+}
+
+func presetActive(v view, param string) bool {
+	if v.Opts.servings != "" {
+		return false
+	}
+	if v.Opts.scale == "" {
+		return param == "1"
+	}
+	return v.Opts.scale == param
+}
+
+templ recipePage(v view) {
+	@layout.Page(v.Name) {
+		@recipeBody(v)
+	}
+}
+
+templ recipeBody(v view) {
+	<article id="recipe" class="recipe">
+		<h1>{ v.Name }</h1>
+		if v.Description != "" {
+			<p>{ v.Description }</p>
+		}
+		<p class="muted recipe-meta">
+			if v.Author != "" {
+				<span>By { v.Author }</span>
+			}
+			if v.SourceURL != "" {
+				<a href={ templ.URL(v.SourceURL) } rel="noopener noreferrer">Source</a>
+			}
+			if v.Rating != nil {
+				<span>Rating { strconv.Itoa(*v.Rating) }/5</span>
+			}
+			if v.Calories != nil {
+				<span>{ strconv.Itoa(*v.Calories) } kcal per serving</span>
+			}
+		</p>
+		if len(v.Tags) > 0 {
+			<ul class="recipe-tags">
+				for _, t := range v.Tags {
+					<li>{ t }</li>
+				}
+			</ul>
+		}
+		<p class="recipe-yield">
+			if v.Servings != "" {
+				<span>Serves <strong data-testid="servings">{ v.Servings }</strong></span>
+			}
+			if v.Yield != "" {
+				<span>Makes <strong data-testid="yield">{ v.Yield }</strong></span>
+			}
+		</p>
+		@controls(v)
+		if v.Notice != "" {
+			<p role="alert" class="recipe-error" data-testid="view-error">{ v.Notice }</p>
+		}
+		if v.Scaled {
+			<p class="muted" data-testid="scaled-note">Scaled by { v.Multiplier }. Quantities are rounded for the kitchen; hover one for the exact value.</p>
+		}
+		@times(v)
+		if len(v.Equipment) > 0 {
+			<section aria-labelledby="equipment-h">
+				<h2 id="equipment-h">Equipment</h2>
+				<ul data-testid="equipment">
+					for _, e := range v.Equipment {
+						<li>
+							{ e.Text }
+						</li>
+					}
+				</ul>
+			</section>
+		}
+		<section aria-labelledby="ingredients-h">
+			<h2 id="ingredients-h">Ingredients</h2>
+			for _, c := range v.Components {
+				if c.Name != "" {
+					<h3>{ c.Name }</h3>
+				}
+				<ul class="recipe-lines">
+					for _, l := range c.Lines {
+						<li>
+							if l.Exact != "" {
+								<span title={ "exact: " + l.Exact }>{ l.Text }</span>
+							} else {
+								<span>{ l.Text }</span>
+							}
+							if l.Unscaled {
+								<span class="muted"> (not scaled or converted: ingredient not matched)</span>
+							}
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section aria-labelledby="steps-h">
+			<h2 id="steps-h">Steps</h2>
+			for _, c := range v.Components {
+				if len(c.Steps) > 0 {
+					if c.Name != "" {
+						<h3>{ c.Name }</h3>
+					}
+					<ol start={ strconv.Itoa(c.FirstStep) }>
+						for _, s := range c.Steps {
+							<li>
+								{ s.Text }
+								if s.Note != "" {
+									<span class="muted"> ({ s.Note })</span>
+								}
+							</li>
+						}
+					</ol>
+				}
+			}
+		</section>
+	</article>
+}
+
+templ times(v view) {
+	if len(v.Times) > 0 || v.Total != "" {
+		<section aria-labelledby="times-h">
+			<h2 id="times-h">Times</h2>
+			<dl class="recipe-times">
+				for _, t := range v.Times {
+					<dt>{ t.Label }</dt>
+					<dd>
+						{ t.Text }
+						if t.Hint != "" {
+							<span class="muted"> ({ t.Hint })</span>
+						}
+					</dd>
+				}
+				if v.Total != "" {
+					<dt>Total</dt>
+					<dd data-testid="total">
+						{ v.Total }
+						if v.TotalNote != "" {
+							<span class="muted"> ({ v.TotalNote })</span>
+						}
+					</dd>
+				}
+			</dl>
+		</section>
+	}
+}
+
+// controls are plain links and a GET form, so they work without scripts; the
+// hx-* attributes only make HTMX swap the recipe in place.
+templ controls(v view) {
+	<div class="recipe-controls">
+		<p>
+			<span id="scale-h">Scale</span>
+			for _, p := range scalePresets {
+				<a
+					href={ templ.SafeURL(href(v.ID, p.Param, "", v.Opts.units)) }
+					hx-get={ href(v.ID, p.Param, "", v.Opts.units) }
+					hx-target="#recipe"
+					hx-select="#recipe"
+					hx-swap="outerHTML"
+					hx-push-url="true"
+					if presetActive(v, p.Param) {
+						aria-current="true"
+					}
+				>{ p.Label }</a>
+			}
+		</p>
+		<form method="get" action={ templ.SafeURL(href(v.ID, "", "", "")) } hx-get={ href(v.ID, "", "", "") } hx-target="#recipe" hx-select="#recipe" hx-swap="outerHTML" hx-push-url="true">
+			<label>
+				Servings
+				<input type="text" name="servings" inputmode="decimal" value={ v.Opts.servings } size="4"/>
+			</label>
+			if v.Opts.units != "" {
+				<input type="hidden" name="units" value={ v.Opts.units }/>
+			}
+			<button type="submit">Scale</button>
+		</form>
+		<p>
+			<span id="units-h">Units</span>
+			for _, m := range unitModes {
+				<a
+					href={ templ.SafeURL(href(v.ID, v.Opts.scale, v.Opts.servings, m.Param)) }
+					hx-get={ href(v.ID, v.Opts.scale, v.Opts.servings, m.Param) }
+					hx-target="#recipe"
+					hx-select="#recipe"
+					hx-swap="outerHTML"
+					hx-push-url="true"
+					if v.Opts.units == m.Param {
+						aria-current="true"
+					}
+				>{ m.Label }</a>
+			}
+		</p>
+	</div>
+}
