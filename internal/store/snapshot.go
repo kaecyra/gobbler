@@ -44,10 +44,9 @@ type Snapshot struct {
 }
 
 // The store exposes snapshots for add and read only. Source snapshots are
-// never modified (AGENTS.md boundary); the migration's triggers refuse an
-// UPDATE, a stand-alone DELETE and an insert over an existing kind
-// (INSERT OR REPLACE), and TestSnapshotAPIHasNoMutator fails if
-// a method that changes or removes one appears here.
+// never modified (AGENTS.md boundary). That is a property of this API, not of
+// the database (ADR-00004 obligation 4, ADR-00015): TestSnapshotAPIHasNoMutator
+// fails if a method that changes or removes one appears here.
 
 // AddSnapshot stores the ingested input of recipe id. Each kind is stored once
 // per recipe; a second AddSnapshot of the same kind is ErrSnapshotExists and
@@ -67,7 +66,7 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 		}
 		// The recipe lock above makes this check and the insert atomic, so no
 		// concurrent AddSnapshot can slip a duplicate in between; the UNIQUE
-		// constraint and the triggers are the backstop for raw SQL only.
+		// constraint is the backstop.
 		var existing int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = ? AND kind = ?`, id, string(kind)).Scan(&existing); err != nil {
 			return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)

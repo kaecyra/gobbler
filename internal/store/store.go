@@ -1,6 +1,6 @@
 // Package store persists recipes (ADR-00004): the recipe document with its
 // components, ingredient lines, steps and dependency graph, plus notes, made-it
-// entries, revisions, clones and immutable source snapshots. It owns the SQL
+// entries, revisions, clones and source snapshots. It owns the SQL
 // for those tables; the schema arrives through the migrations in
 // internal/db/migrations.
 //
