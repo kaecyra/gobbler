@@ -46,3 +46,5 @@ the end-to-end gate.
 1. The `Dockerfile` copies nothing from `e2e/`, and the production image contains
    no Node runtime.
 2. Every route registered by `internal/web` has at least one test under `e2e/`.
+3. No package outside `e2e/` imports a Go package under `e2e/`
+   (`go list -deps ./cmd/... ./internal/...` lists none).

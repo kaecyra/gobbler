@@ -39,8 +39,9 @@ Docker Compose runs two services on the Ubuntu VM: `gobbler` and
 
 ## Package map
 
-All application code except the entry point lives under `internal/`; Go
-test tooling for the end-to-end suite lives under `e2e/` (ADR-00013). Arrows point at
+All application code except the entry point lives under `internal/`;
+Go test tooling for the end-to-end suite lives under `e2e/`
+(ADR-00013). Arrows point at
 dependencies.
 
 | Package | Owns | Depends on |
