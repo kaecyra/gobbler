@@ -837,7 +837,8 @@
         "internal/web/static/cook*",
         "e2e/cook/**",
         "internal/web/recipeview/**",
-        "internal/recipe/display/**"
+        "internal/recipe/display/**",
+        "docs/design.md"
       ],
       "needs_migration": null,
       "adrs": [
@@ -877,8 +878,7 @@
       ],
       "owns": [
         "internal/web/settings/**",
-        "e2e/settings/**",
-        "internal/web/health*"
+        "e2e/settings/**"
       ],
       "needs_migration": null,
       "adrs": [
@@ -1091,7 +1091,9 @@
         "internal/db/db.go",
         "internal/db/db_test.go",
         "internal/store/store_concurrency_test.go",
-        "internal/store/store_merge*.go"
+        "internal/store/store_merge*.go",
+        "internal/store/store.go",
+        "internal/store/store_helpers_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
