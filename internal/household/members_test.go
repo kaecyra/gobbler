@@ -250,3 +250,33 @@ func TestInvalidReasonCarriesTheStoresMessage(t *testing.T) {
 		t.Error("a not-found error was offered as input to correct")
 	}
 }
+
+// Inviting needs the issuer to be a member when the row is written, not only
+// when it was looked up: a departed member's invite writes nothing.
+func TestDepartedIssuerWritesNoInvitation(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	h := f.create("Alpha", "ann@example.com")
+	id := f.invite(Invite{Kind: KindJoin, Email: "bea@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	if _, err := f.s.Accept(ctx, id, "bea@example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.Remove(ctx, h.ID, "ann@example.com", "bea@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	var before int
+	if err := f.s.db.QueryRow(`SELECT count(*) FROM invitations`).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.s.Invite(ctx, Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "bea@example.com"})
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("Invite by a removed member = %v, want ErrNotFound", err)
+	}
+	var after int
+	if err := f.s.db.QueryRow(`SELECT count(*) FROM invitations`).Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Errorf("invitations: %d before, %d after the refused invite", before, after)
+	}
+}

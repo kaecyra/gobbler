@@ -81,6 +81,38 @@ func (q *Queries) GetInvitationFor(ctx context.Context, arg GetInvitationForPara
 	return i, err
 }
 
+const insertJoinInvitation = `-- name: InsertJoinInvitation :one
+INSERT INTO invitations (kind, email, household_id, issued_by, created_at, expires_at)
+SELECT 'join', ?1, ?2, ?3, ?4, ?5
+WHERE EXISTS (SELECT 1 FROM household_members m
+              WHERE m.household_id = ?2 AND m.email = ?3)
+RETURNING id
+`
+
+type InsertJoinInvitationParams struct {
+	Email       string
+	HouseholdID sql.NullInt64
+	IssuedBy    string
+	CreatedAt   string
+	ExpiresAt   string
+}
+
+// InsertJoinInvitation issues a join invitation only while the issuer is a
+// member of the household, in the one statement, so an invitation racing the
+// issuer's own removal cannot leave a live invitation from a departed member.
+func (q *Queries) InsertJoinInvitation(ctx context.Context, arg InsertJoinInvitationParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertJoinInvitation,
+		arg.Email,
+		arg.HouseholdID,
+		arg.IssuedBy,
+		arg.CreatedAt,
+		arg.ExpiresAt,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const leaveHousehold = `-- name: LeaveHousehold :one
 DELETE FROM household_members
 WHERE household_members.email = ?1

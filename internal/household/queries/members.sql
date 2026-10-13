@@ -63,3 +63,13 @@ SELECT i.id, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expir
 FROM invitations i
 LEFT JOIN households h ON h.id = i.household_id
 WHERE i.id = sqlc.arg(id) AND i.email = sqlc.arg(email);
+
+-- InsertJoinInvitation issues a join invitation only while the issuer is a
+-- member of the household, in the one statement, so an invitation racing the
+-- issuer's own removal cannot leave a live invitation from a departed member.
+-- name: InsertJoinInvitation :one
+INSERT INTO invitations (kind, email, household_id, issued_by, created_at, expires_at)
+SELECT 'join', sqlc.arg(email), sqlc.arg(household_id), sqlc.arg(issued_by), sqlc.arg(created_at), sqlc.arg(expires_at)
+WHERE EXISTS (SELECT 1 FROM household_members m
+              WHERE m.household_id = sqlc.arg(household_id) AND m.email = sqlc.arg(issued_by))
+RETURNING id;

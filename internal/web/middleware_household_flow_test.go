@@ -242,3 +242,12 @@ func TestOperatorRevokesOnlyOwnInvitations(t *testing.T) {
 		t.Error("a revoked invitation is still listed")
 	}
 }
+
+func TestOperatorInvitationShowsWhyInputWasRefused(t *testing.T) {
+	h := tenantRouter(t)
+	rec := post(h, "/operator/invitations", operatorEmail, url.Values{"email": {"nope"}})
+	wantStatus(t, "bad email", rec, http.StatusBadRequest)
+	if !strings.Contains(rec.Body.String(), `&#34;nope&#34; is not an email address`) {
+		t.Errorf("a mistyped invitee gets no reason:\n%s", rec.Body.String())
+	}
+}
