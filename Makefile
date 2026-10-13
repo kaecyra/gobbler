@@ -67,6 +67,7 @@ test:
 test-scripts:
 	bash .github/scripts/check-version-bump_test.sh
 	bash .github/scripts/check-templ_test.sh
+	bash .github/scripts/check-image_test.sh
 	@command -v node >/dev/null || { echo "node is required; install Node"; exit 1; }
 	node --test e2e/fixtures/*.test.mjs
 
