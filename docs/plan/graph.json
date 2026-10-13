@@ -1325,7 +1325,14 @@
         "internal/web/ingest/edit*.go",
         "internal/web/operator/promot*",
         "e2e/operator/promot*",
-        "internal/shopping/shoppingdb/**"
+        "internal/shopping/shoppingdb/**",
+        "e2e/operator/promot*/**",
+        "internal/shopping/store_helpers_test.go",
+        "internal/shopping/store_optional_test.go",
+        "internal/shopping/store_recipe_test.go",
+        "internal/store/usage_test.go",
+        "internal/web/shopping/wiring_test.go",
+        "docs/design.md"
       ],
       "needs_migration": "schema",
       "adrs": [
