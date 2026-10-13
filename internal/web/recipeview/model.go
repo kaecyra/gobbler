@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
@@ -92,9 +91,18 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		return view{}, fmt.Errorf("yield: %w", err)
 	}
 	v.Yield = strings.TrimSpace(yq + " " + r.Yield.Unit)
-	if err := fillTimes(&v, r); err != nil {
+	times, err := display.BuildTimes(r)
+	if err != nil {
 		return view{}, err
 	}
+	for _, t := range times.Rows {
+		row := timeRow{Label: t.Label, Text: t.Text}
+		if t.Scales && v.Scaled {
+			row.Hint = hintTime
+		}
+		v.Times = append(v.Times, row)
+	}
+	v.Total, v.TotalNote = times.Total, times.TotalNote
 
 	number := display.StepNumbers(r)
 	guidance, err := display.BuildMeanwhile(r, number)
@@ -131,37 +139,4 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		v.Equipment = append(v.Equipment, equipmentView{Text: text})
 	}
 	return v, nil
-}
-
-func fillTimes(v *view, r recipe.Recipe) error {
-	t := r.Times
-	add := func(label string, d time.Duration, hinted bool) {
-		if d <= 0 {
-			return
-		}
-		row := timeRow{Label: label, Text: display.FormatDuration(d)}
-		if hinted && v.Scaled {
-			row.Hint = hintTime
-		}
-		v.Times = append(v.Times, row)
-	}
-	add("Prep", t.Prep, false)
-	add("Cook", t.Cook, true)
-	for _, s := range t.Special {
-		add(s.Label, s.Duration, true)
-	}
-	total, err := r.TotalTime()
-	if err != nil {
-		return fmt.Errorf("total time: %w", err)
-	}
-	v.Total = display.FormatDuration(total.Duration)
-	switch total.Source {
-	case recipe.TotalStored:
-		v.TotalNote = "as stated by the source"
-	case recipe.TotalCriticalPath:
-		v.TotalNote = "from the longest chain of steps"
-	case recipe.TotalSum:
-		v.TotalNote = "prep, cook and waiting times added"
-	}
-	return nil
 }
