@@ -1,7 +1,8 @@
 // Package catalog is the catalog cleanup page: the ingredients ingestion
 // proposed, listed for review, with an edit form and a merge flow (ADR-00008).
 // Persistence and the merge itself belong to internal/catalog; this package is
-// the page over them. It never creates an ingredient: creation stays on the
+// the page over them. A household edits its own overlay entries freely and,
+// for a central entry, only its own aliases and aisle (ADR-00018). It never creates an ingredient: creation stays on the
 // ingest review screen. It is mounted from internal/web (ADR-00012).
 package catalog
 
@@ -31,6 +32,8 @@ type Catalog interface {
 	ListIngredients(ctx context.Context) ([]domain.Ingredient, error)
 	ListUnreviewedIngredients(ctx context.Context) ([]domain.Ingredient, error)
 	GetIngredient(ctx context.Context, id int64) (domain.Ingredient, error)
+	SuggestIngredient(ctx context.Context, id int64) error
+	UnsuggestIngredient(ctx context.Context, id int64) error
 	UpdateIngredient(ctx context.Context, in domain.Ingredient) error
 	MergeIngredients(ctx context.Context, winnerID, loserID int64) (domain.Ingredient, error)
 }
@@ -57,6 +60,8 @@ func Routes(d Deps) chi.Router {
 	r.Get("/{id}", h.editShow)
 	r.Post("/{id}", h.editSave)
 	r.Post("/{id}/reviewed", h.markReviewed)
+	r.Post("/{id}/suggest", h.suggest(true))
+	r.Post("/{id}/unsuggest", h.suggest(false))
 	return r
 }
 
@@ -149,6 +154,28 @@ func (h *handler) markReviewed(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, Pattern, http.StatusSeeOther)
 }
 
+// suggest flags the household's own entry for the operator to consider
+// promoting to the central catalog, or withdraws the flag.
+func (h *handler) suggest(on bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := idParam(chi.URLParam(r, "id"))
+		if err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
+		if on {
+			err = h.Catalog.SuggestIngredient(r.Context(), id)
+		} else {
+			err = h.Catalog.UnsuggestIngredient(r.Context(), id)
+		}
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("flag ingredient %d for the central catalog: %w", id, err))
+			return
+		}
+		http.Redirect(w, r, fmt.Sprintf("%s/%d", Pattern, id), http.StatusSeeOther)
+	}
+}
+
 func (h *handler) renderEdit(w http.ResponseWriter, r *http.Request, status int, f formView) {
 	all, err := h.Catalog.ListIngredients(r.Context())
 	if err != nil {
@@ -202,6 +229,12 @@ func (h *handler) mergePair(w http.ResponseWriter, r *http.Request, source, targ
 	}
 	if src, err = h.Catalog.GetIngredient(r.Context(), sourceID); err != nil {
 		layout.WriteError(w, r, err)
+		return src, dst, false
+	}
+	if src.Central {
+		// Only a household's own entry can be merged away; the central
+		// catalog is the operator's (ADR-00018).
+		layout.WriteError(w, r, fmt.Errorf("merge ingredient %d: %w: %w", sourceID, layout.ErrInvalid, domain.ErrCentral))
 		return src, dst, false
 	}
 	if dst, err = h.Catalog.GetIngredient(r.Context(), targetID); err != nil {

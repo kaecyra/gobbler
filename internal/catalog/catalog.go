@@ -2,7 +2,9 @@
 // equipment (ADR-00008, ADR-00005). It owns the SQL for those tables, written
 // in queries/ and generated into catalogdb by sqlc (ADR-00014), matching
 // of free text to a canonical entry, and the transactional merge of two
-// ingredients. The schema and the curated seed arrive through the migration
+// ingredients, in two layers: the central catalog every household reads and a
+// per-household overlay (ADR-00018). Ingredient calls act in the scope of the
+// household on the context (scope.go). The schema and the curated seed arrive through the migration
 // in internal/db/migrations; the seed data itself lives in internal/catalog/seed.
 //
 // Nothing here creates a catalog entry as a side effect of matching: a match
@@ -30,6 +32,15 @@ var ErrConflict = errors.New("catalog name or alias already in use")
 
 // ErrInvalid is returned when an entry fails validation before it is stored.
 var ErrInvalid = errors.New("invalid catalog entry")
+
+// ErrCentral is returned when a household tries to change a central entry
+// beyond its own aliases and aisle, or to merge one away (ADR-00018). It always
+// arrives wrapped in ErrInvalid, so it maps to a bad request.
+var ErrCentral = errors.New("central catalog entries are curated by the operator")
+
+func errCentral(what string) error {
+	return fmt.Errorf("%w: %w: %s", ErrInvalid, ErrCentral, what)
+}
 
 // Store reads and writes the catalog. It is safe for concurrent use.
 type Store struct {

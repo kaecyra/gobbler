@@ -20,7 +20,6 @@ type kind struct {
 	allAliases   func(q *catalogdb.Queries, ctx context.Context) ([]aliasRow, error)
 	clearAliases func(q *catalogdb.Queries, ctx context.Context, id int64) error
 	addAlias     func(q *catalogdb.Queries, ctx context.Context, alias string, id int64) error
-	deleteEntry  func(q *catalogdb.Queries, ctx context.Context, id int64) (int64, error)
 }
 
 // aliasRow is one alias and the id of the entry it names.
@@ -29,31 +28,11 @@ type aliasRow struct {
 	alias string
 }
 
-var kindIngredient = kind{
-	label:        "ingredient",
-	lookup:       (*catalogdb.Queries).LookupIngredientID,
-	aliases:      (*catalogdb.Queries).ListIngredientAliases,
-	clearAliases: (*catalogdb.Queries).DeleteIngredientAliases,
-	deleteEntry:  (*catalogdb.Queries).DeleteIngredient,
-	addAlias: func(q *catalogdb.Queries, ctx context.Context, alias string, id int64) error {
-		return q.AddIngredientAlias(ctx, catalogdb.AddIngredientAliasParams{Alias: alias, IngredientID: id})
-	},
-	allAliases: func(q *catalogdb.Queries, ctx context.Context) ([]aliasRow, error) {
-		rows, err := q.ListAllIngredientAliases(ctx)
-		out := make([]aliasRow, len(rows))
-		for i, r := range rows {
-			out[i] = aliasRow{r.IngredientID, r.Alias}
-		}
-		return out, err
-	},
-}
-
 var kindUnit = kind{
 	label:        "unit",
 	lookup:       (*catalogdb.Queries).LookupUnitID,
 	aliases:      (*catalogdb.Queries).ListUnitAliases,
 	clearAliases: (*catalogdb.Queries).DeleteUnitAliases,
-	deleteEntry:  (*catalogdb.Queries).DeleteUnit,
 	addAlias: func(q *catalogdb.Queries, ctx context.Context, alias string, id int64) error {
 		return q.AddUnitAlias(ctx, catalogdb.AddUnitAliasParams{Alias: alias, UnitID: id})
 	},
@@ -72,7 +51,6 @@ var kindEquipment = kind{
 	lookup:       (*catalogdb.Queries).LookupEquipmentID,
 	aliases:      (*catalogdb.Queries).ListEquipmentAliases,
 	clearAliases: (*catalogdb.Queries).DeleteEquipmentAliases,
-	deleteEntry:  (*catalogdb.Queries).DeleteEquipment,
 	addAlias: func(q *catalogdb.Queries, ctx context.Context, alias string, id int64) error {
 		return q.AddEquipmentAlias(ctx, catalogdb.AddEquipmentAliasParams{Alias: alias, EquipmentID: id})
 	},
@@ -148,15 +126,6 @@ func (k kind) aliasesOf(ctx context.Context, q *catalogdb.Queries, id int64) ([]
 		return nil, fmt.Errorf("read %s aliases: %w", k.label, err)
 	}
 	return out, nil
-}
-
-// delete removes the entry row; its aliases go with it by cascade.
-func (k kind) delete(ctx context.Context, q *catalogdb.Queries, id int64) error {
-	n, err := k.deleteEntry(q, ctx, id)
-	if err != nil {
-		return fmt.Errorf("delete %s %d: %w", k.label, id, err)
-	}
-	return requireAffected(n, k.label, id)
 }
 
 func requireAffected(n int64, label string, id int64) error {

@@ -79,10 +79,15 @@ templ listPage(v listView) {
 								<td>{ r.Aisle }</td>
 								<td>{ r.Aliases }</td>
 								<td>
-									if r.Reviewed {
+									if r.Central {
+										<span data-testid="central-badge">Central</span>
+									} else if r.Reviewed {
 										Reviewed
 									} else {
 										Needs review
+									}
+									if r.Suggested {
+										<span class="muted" data-testid="suggested-badge">Suggested for central</span>
 									}
 								</td>
 							</tr>
@@ -105,10 +110,15 @@ templ editPage(f formView) {
 		<h1>Edit ingredient</h1>
 		<p><a href="/catalog">Back to the catalog</a></p>
 		@fieldProblem(f.Problem(fieldForm), fieldForm+"-error")
+		if f.Central {
+			<p class="muted" data-testid="central-note">
+				This ingredient is part of the central catalog. You can add your own aliases and choose the aisle your lists use; the rest is curated by the operator.
+			</p>
+		}
 		<form method="post" action={ templ.SafeURL(postURL(f.ID, "")) } data-testid="edit-form">
 			<p>
 				<label for="name">Name</label>
-				<input type="text" id="name" name="name" value={ f.Name } required/>
+				<input type="text" id="name" name="name" value={ f.Name } required readonly?={ f.Central }/>
 				<span class="muted">The bare name, without preparation: "butter", not "melted butter".</span>
 			</p>
 			@fieldProblem(f.Problem(fieldName), fieldName+"-error")
@@ -129,23 +139,38 @@ templ editPage(f formView) {
 			@fieldProblem(f.Problem(fieldAisle), fieldAisle+"-error")
 			<p>
 				<label for="density">Density (grams per millilitre)</label>
-				<input type="text" id="density" name="density" value={ f.Density } inputmode="decimal"/>
+				<input type="text" id="density" name="density" value={ f.Density } inputmode="decimal" readonly?={ f.Central }/>
 			</p>
 			@fieldProblem(f.Problem(fieldDensity), fieldDensity+"-error")
 			<p>
 				<label for="usda_id">USDA FoodData Central id</label>
-				<input type="text" id="usda_id" name="usda_id" value={ f.USDAID } inputmode="numeric"/>
+				<input type="text" id="usda_id" name="usda_id" value={ f.USDAID } inputmode="numeric" readonly?={ f.Central }/>
 			</p>
 			@fieldProblem(f.Problem(fieldUSDA), fieldUSDA+"-error")
-			<p>
-				<label>
-					<input type="checkbox" name="reviewed" value="1" checked?={ f.Reviewed }/>
-					Reviewed
-				</label>
-			</p>
+			if !f.Central {
+				<p>
+					<label>
+						<input type="checkbox" name="reviewed" value="1" checked?={ f.Reviewed }/>
+						Reviewed
+					</label>
+				</p>
+			}
 			<button type="submit">Save</button>
 		</form>
-		<p><a href={ mergeURL(f.ID) }>Merge this ingredient into another</a></p>
+		if !f.Central {
+			<p><a href={ mergeURL(f.ID) }>Merge this ingredient into another</a></p>
+			if f.Suggested {
+				<form method="post" action={ templ.SafeURL(postURL(f.ID, "/unsuggest")) } data-testid="unsuggest-form">
+					<p class="muted">You suggested this ingredient for the central catalog. The operator reviews suggestions, and the name becomes visible to every household if it is promoted.</p>
+					<button type="submit">Withdraw suggestion</button>
+				</form>
+			} else {
+				<form method="post" action={ templ.SafeURL(postURL(f.ID, "/suggest")) } data-testid="suggest-form">
+					<p class="muted">Suggest this ingredient for the central catalog, where every household can use it. The operator reviews suggestions, and the name becomes visible to every household if it is promoted.</p>
+					<button type="submit">Suggest for the central catalog</button>
+				</form>
+			}
+		}
 	}
 }
 
