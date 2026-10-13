@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-10-13, round 8 close
+# Overseer handoff: 2026-10-13, round 8 close (late)
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
 
@@ -41,40 +41,58 @@ This file holds the volatile state the graph does not. The durable record is `do
 | #142 | w7-nav | 78b7af9 |
 | #143 | w5-codec | c9fae2e |
 | #144 | t-household-core (schema 00007) | 55c2c71 |
-| #145 | graph node for t-operator-nav | ab21550 |
-| #146 | t-operator-nav | 3ba7487 |
-| #147 | t-scope-recipes lane widening | 743c9f5 |
-| #148 | graph nodes for every open issue | f9ea8e7 |
+| #145, #146 | t-operator-nav | 3ba7487 |
+| #147 | lane widening | 743c9f5 |
+| #148 | graph fill | f9ea8e7 |
 | #149 | t-scope-recipes (schema 00008) | f979813 |
 | #150 | g-image-check | 26de55f |
+| #151 | g-templ-gate | 396d7c1 |
+| #154 | w2-proposed-dedup | 57686f7 |
+| #152 | e2e-seed-helper | 29944a4 |
 
-VERSION on main is 0.43.1. The next schema number is 00009.
+VERSION on main is 0.43.4. The next schema number is 00009.
 
-**Owner direction (2026-10-13):** every open issue that needs doing has a graph node, and dispatch runs as wide as the graph allows. See `.memory/feedback-graph-holds-all-work.md`.
+**Owner direction (2026-10-13):** every open issue has a graph node, and dispatch runs as wide as the graph allows (`.memory/feedback-graph-holds-all-work.md`).
 
-| Node | Issue | PR | Worktree | State |
-|---|---|---|---|---|
-| g-templ-gate | #112 | #151 | — | **Merged** at 396d7c1; VERSION on main is 0.43.2 |
-| e2e-seed-helper | #99 | #152 | wt-99 | In review |
-| w3-display-times | #111 | #153 | wt-111 | In review |
-| w2-proposed-dedup | #88 | #154 | wt-88 | In review |
+**Owner decisions (2026-10-13):**
+- **l-invitations runs in parallel** with the shopping scope.
+- **#36 Todoist** is closed as not planned.
+- **#38 meal planning** stays deferred.
+- **#85 equipment size:** option 1, a `sized` flag on catalog equipment, set during review (recorded on #85).
+  - Next: write a short ADR for it.
+  - Then re-derive the w3-equipment-size lane (migration, `internal/catalog` equipment, the catalog review page, recipeview) and unblock the node.
 
-- **The review agent covering #152, #153 and #154 may have finished in the old session.** Read its posted reviews on GitHub. Route findings to a fresh worker in the PR's worktree; the old workers are gone with the session.
-- **VERSION:** each of these PRs re-bumps at merge, one patch over main.
-- **Next to dispatch:**
-  - After #152 merges: **t-scope-shopping** (#136). Draw schema 00009 with `node.ts migration`.
-  - After #152 and #153 merge: **w3-recipeview-links** (#98).
-  - After t-scope-shopping merges: **t-catalog-overlay** (#137, schema 00010). It also waits on w2-proposed-dedup.
-- **Follow-ups worth a node:**
-  - `internal/ingest/fallback.go:230` calls the `proposedIngredients` wrapper that #154 left behind. Fold it into `ProposedFor(d.Components, nil)` and delete the wrapper. This belongs to the next node that owns `internal/ingest`.
-  - `check-image.sh` misses the JSON form `COPY ["e2e/", ...]`, which `.dockerignore` still blocks (#150, NIT recorded).
-- **Before dispatching l-invitations:** widen its lane onto `internal/web/layout/layout_operator.go`. `layout.OperatorPaths` is the single list of operator pages (#146).
-- **Blocked:** w3-equipment-size (#85) needs an owner decision on how equipment gets a size (ADR-00005).
-- **Notes:**
-  - `dev@localhost` is an operator on the shared e2e server; `other@localhost` is a member who is not.
-  - Dot-segment paths get a 404 before admission.
-  - Run `make generate` from the root, never `templ generate` in a package directory.
-  - Worker brief tail: rebuild it from `worker_contract.md` plus the gate list below. Port blocks are per worker, in steps of 100 from 41100.
+**Open PRs:**
+
+| PR | Node | State |
+|---|---|---|
+| #153 | w3-display-times (#111) | Approved; its NIT is fixed. A worker in wt-111 was rebasing to VERSION 0.43.5. If that worker is gone, rebase in a fresh worker, push, and merge on green. |
+| #155 | graph: parallel invitations, drop Todoist | **CHANGES_REQUESTED, 1 MUST.** Fix it before merging (details below). |
+
+**#155 fix:**
+- **MUST (correct):** household deletion (#39's "no rows remain") needs every table scoped and cascading, and on main `shopping_entries.recipe_id` does not cascade.
+  - Fix: split household deletion out of l-invitations into a new node (for example `t-household-delete`) that depends on t-catalog-overlay. l-invitations keeps invite, accept, revoke, members, remove and leave, and can then run beside t-scope-shopping.
+  - Update #39's body to match.
+- **SHOULD:**
+  - Actually narrow l-invitations' `internal/web/operator/**` and `e2e/operator/**` so they exclude `promot*`.
+  - Fix the `householddb` shared-file note: single writer per round means the two nodes merge in sequence, with a rebase and `make generate`; it does not mean "two writers in a round". Check this against graph note line 18.
+  - Remove the stale Todoist mention in graph note line 18.
+- **NIT:** if l-invitations adds nav links, `e2e/layout/layout.spec.ts` and `layout_test.go` need updating. Widen its lane onto them.
+
+**Next to dispatch, after #155 merges:**
+- **t-scope-shopping** (#136): draw schema 00009 with `node.ts migration`.
+- **l-invitations** (#39), reduced as above.
+- **w3-recipeview-links** (#98), after #153 merges.
+
+**Follow-ups worth a node:**
+- `internal/ingest/fallback.go:230` still calls the `proposedIngredients` wrapper. Fold it into `ProposedFor`.
+- `check-image.sh` misses the JSON form `COPY ["e2e/", ...]`.
+
+**Notes:**
+- `dev@localhost` is an operator on the shared e2e server.
+- Run `make generate` from the repository root.
+- Workers on parallel runs use port blocks in steps of 100 from 41100.
+- The worker brief tail is `worker_contract.md` plus the gate list below.
 
 ## Side task: mockup mascots (owner request), done
 
