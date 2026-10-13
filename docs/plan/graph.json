@@ -1178,7 +1178,7 @@
       "wave": 7,
       "track": "ui",
       "issue": 130,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w4-shopping-ui"
       ],
@@ -1791,6 +1791,11 @@
       "adrs": [
         "00009"
       ]
+    },
+    {
+      "id": "w7-nav",
+      "title": "Primary navigation links in the layout",
+      "merged": "78b7af9"
     }
   ],
   "adr_sequence": {
