@@ -57,7 +57,9 @@ export function uncovered(routes, urls) {
 // A probe is a line of a tenancy spec holding a method literal ('GET', 'POST',
 // ...) followed on the same line by a path literal: the route table of the spec.
 // A route (method and pattern) is covered when a probe has that method and a
-// path that matches the pattern (as above). A route registered for every HTTP
+// path the router would serve with that pattern: of the patterns a path matches,
+// a literal segment beats a {param}, which beats a *, so /catalog/merge covers
+// /catalog/merge and not /catalog/{id}. A route registered for every HTTP
 // method (the static file mount) needs a probe with any one method. Methods are
 // compared, so a GET probe does not cover a POST-only route.
 //
@@ -127,6 +129,41 @@ function actsAs(code, identifier) {
   return false;
 }
 
+const SEGMENT_RANK = { literal: 2, param: 1, wildcard: 0 };
+
+function segmentKind(seg) {
+  if (seg === '*') return 'wildcard';
+  return seg.startsWith('{') && seg.endsWith('}') ? 'param' : 'literal';
+}
+
+/**
+ * The pattern the router serves for url, as chi picks it: of the patterns that
+ * match, a literal segment beats a {param}, which beats a trailing *, compared
+ * from the first segment. Null when none matches.
+ */
+export function resolveRoute(patterns, url) {
+  let best = null;
+  let bestRanks = [];
+  for (const pattern of patterns) {
+    if (!matchesPattern(pattern, url)) continue;
+    const ranks = segments(pattern).map((seg) => SEGMENT_RANK[segmentKind(seg)]);
+    let better = best === null;
+    for (let i = 0; !better && i < Math.max(ranks.length, bestRanks.length); i++) {
+      const a = ranks[i] ?? -1;
+      const b = bestRanks[i] ?? -1;
+      if (a !== b) {
+        better = a > b;
+        break;
+      }
+    }
+    if (better) {
+      best = pattern;
+      bestRanks = ranks;
+    }
+  }
+  return best;
+}
+
 /** The methods a route must be probed with: all of them for a route mounted on every method, else each it lists. */
 function requiredMethods(methods) {
   return methods.length >= HTTP_METHODS.length ? [null] : methods;
@@ -152,10 +189,14 @@ export function tenancyUncovered(routes, specs) {
     if (!methodsByPattern.has(r.pattern)) methodsByPattern.set(r.pattern, new Set());
     methodsByPattern.get(r.pattern).add(r.method);
   }
+  const patterns = [...methodsByPattern.keys()];
+  // A probe covers only the route the router would serve for its URL, so a
+  // literal sibling (/catalog/merge) does not cover its {param} neighbour.
+  for (const s of analysed) s.served = s.probes.map((p) => ({ method: p.method, pattern: resolveRoute(patterns, p.url) }));
   const out = [];
   for (const [pattern, set] of methodsByPattern) {
     for (const method of requiredMethods([...set])) {
-      const reaching = analysed.filter((s) => s.probes.some((p) => (method === null || p.method === method) && matchesPattern(pattern, p.url)));
+      const reaching = analysed.filter((s) => s.served.some((p) => p.pattern === pattern && (method === null || p.method === method)));
       const missing = [];
       if (reaching.length === 0) {
         missing.push(`a ${method ?? 'request'} probe in any *${TENANCY_SUFFIX}`);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { extractProbes, extractURLs, matchesPattern, stripComments, tenancyStray, tenancyUncovered, uncovered } from './route-coverage.mjs';
+import { extractProbes, extractURLs, matchesPattern, resolveRoute, stripComments, tenancyStray, tenancyUncovered, uncovered } from './route-coverage.mjs';
 
 test('a literal pattern matches only the same path', () => {
   assert.ok(matchesPattern('/healthz', '/healthz'));
@@ -143,4 +143,24 @@ test('a request helper taking the method second is not a probe', () => {
   const got = extractProbes("await send(ctx, 'POST', `/shopping/${id}/regenerate`);\nhidden('POST', (i) => `/x`);");
   assert.deepEqual(got.probes, [{ method: 'POST', url: '/x' }]);
   assert.deepEqual(got.stray, ['/shopping/x/regenerate']);
+});
+
+test('resolveRoute picks the most specific pattern: literal over {param} over *', () => {
+  const patterns = ['/catalog/{id}', '/catalog/merge', '/static/*', '/{x}/*'];
+  assert.equal(resolveRoute(patterns, '/catalog/merge'), '/catalog/merge');
+  assert.equal(resolveRoute(patterns, '/catalog/7'), '/catalog/{id}');
+  assert.equal(resolveRoute(patterns, '/static/app.css'), '/static/*');
+  assert.equal(resolveRoute(patterns, '/nothing/here'), '/{x}/*');
+  assert.equal(resolveRoute(['/a'], '/b'), null);
+});
+
+test('a probe of a literal sibling does not cover the {param} route beside it', () => {
+  const sibling = [
+    { method: 'GET', pattern: '/catalog/{id}' },
+    { method: 'GET', pattern: '/catalog/merge' },
+  ];
+  const onlyMerge = spec("hidden('GET', (i) => `/catalog/merge`),", identities);
+  assert.deepEqual(tenancyUncovered(sibling, [onlyMerge]).map((g) => g.pattern), ['/catalog/{id}']);
+  const both = spec("hidden('GET', (i) => `/catalog/merge`),\nhidden('GET', (i) => `/catalog/${i.id}`),", identities);
+  assert.deepEqual(tenancyUncovered(sibling, [both]), []);
 });
