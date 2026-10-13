@@ -82,3 +82,11 @@ func TestInfoFailureIsAServerError(t *testing.T) {
 		t.Errorf("status = %d, want 500", rec.Code)
 	}
 }
+
+func TestRecipeToolsAreAnAsideOutsideTheRecipe(t *testing.T) {
+	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
+	mustContain(t, body, `<aside aria-label="Recipe tools">`)
+	if indexOf(t, body, "<aside") < indexOf(t, body, "</article>") {
+		t.Error("aside is inside the recipe article")
+	}
+}

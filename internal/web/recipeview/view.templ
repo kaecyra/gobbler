@@ -187,15 +187,17 @@ templ recipeBody(v view) {
 // outside #recipe so scaling does not swap it, and the journal does not reload
 // (and lose a half-typed note) on every tap.
 templ aside(v view) {
-	<p>
-		<a href={ templ.SafeURL(historyHref(v.ID)) } data-testid="history-link">History</a>
-	</p>
-	<form method="post" action={ templ.SafeURL(cloneHref(v.ID)) }>
-		<button type="submit" data-testid="clone-button">Clone this recipe</button>
-	</form>
-	<div data-testid="journal-slot" hx-get={ journalHref(v.ID) } hx-trigger="load" hx-swap="outerHTML">
-		<p><a href={ templ.SafeURL(journalHref(v.ID)) }>Journal</a></p>
-	</div>
+	<aside aria-label="Recipe tools">
+		<p>
+			<a href={ templ.SafeURL(historyHref(v.ID)) } data-testid="history-link">History</a>
+		</p>
+		<form method="post" action={ templ.SafeURL(cloneHref(v.ID)) }>
+			<button type="submit" data-testid="clone-button">Clone this recipe</button>
+		</form>
+		<div data-testid="journal-slot" hx-get={ journalHref(v.ID) } hx-trigger="load" hx-swap="outerHTML">
+			<p><a href={ templ.SafeURL(journalHref(v.ID)) }>Journal</a></p>
+		</div>
+	</aside>
 }
 
 templ times(v view) {
