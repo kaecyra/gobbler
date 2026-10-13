@@ -111,10 +111,9 @@
       ]
     },
     "shopping": {
-      "name": "Shopping lists and Todoist",
+      "name": "Shopping lists",
       "owns": [
-        "internal/shopping/**",
-        "internal/todoist/**"
+        "internal/shopping/**"
       ]
     },
     "ops": {
@@ -1666,6 +1665,25 @@
         "e2e/layout/layout.spec.ts",
         "e2e/recipeview/recipeview.spec.ts",
         "docs/design.md"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "r-drop-todoist-config",
+      "title": "Drop the Todoist settings",
+      "wave": 8,
+      "track": null,
+      "issue": 180,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/config/config.go",
+        "internal/config/config_test.go",
+        "compose.yaml",
+        ".env.example",
+        "docs/operations.md",
+        "internal/shopping/doc.go"
       ],
       "needs_migration": null,
       "adrs": []
