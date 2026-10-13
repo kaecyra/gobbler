@@ -64,7 +64,7 @@ VERSION on main is 0.43.4. The next schema number is 00009.
 
 **Round 9 (2026-10-13, resumed session):**
 - #153 w3-display-times merged at 377f838 (VERSION 0.43.5), recorded on main.
-- #155 rebuilt on main (head e6b2e4b). MUST declined and resolved (no midpoint deploy); SHOULDs and NIT fixed and resolved; #39 body rewritten, #136 and #139 bodies gain a "Household deletion" section. A fresh /sdlc-review-pr is running on it. Possible follow-up: the storedb and catalogdb shared-file notes still say single-writer-per-round, which the new graph note replaces.
+- #155 rebuilt on main (head e6b2e4b). MUST declined and resolved (no midpoint deploy); SHOULDs and NIT fixed and resolved; #39 body rewritten, #136 and #139 bodies gain a "Household deletion" section. A fresh /sdlc-review-pr is running on it. Its re-review SHOULD (storedb and catalogdb notes still said single-writer) is fixed at 1bd6f6b.
 - **In flight:** t-scope-shopping (#136, schema 00009 promised; write it with `node.ts migration` on main once #155 merges, since a main commit forces #155 to be rebuilt again) in `.claude/worktrees/wt-136`, ports 41100+; w3-recipeview-links (#98) in `.claude/worktrees/wt-98`, ports 41200+.
 - **Next:** l-invitations (#39) once #155 merges.
 - The worker brief tail is in the session scratchpad as `common.md` and `prompt-<issue>.md`.
@@ -144,7 +144,7 @@ VERSION on main is 0.43.4. The next schema number is 00009.
 - **Host plugin path:** `/Users/timothygunter/.odette/base/.marketplace-cache/market/plugins/overseer/...`. `bun` and `gh` exist only on the host.
 - **Graph PRs:** a bookkeeping commit on main conflicts with any open graph PR. Rebuild with `git checkout -B <b> origin/main && git cherry-pick <c>` and force-push. Concurrent git on the primary checkout can hit `index.lock`. After a failed checkout, check that `graph.json` edits didn't carry over to `main`.
 - **Review agents** share `.cc-scratch/`, so tell each one to suffix its files with the PR number. **Tell them never to check out a branch in the primary checkout.** One did this round; nothing was lost.
-- **sqlc packages share one schema.** Any migration also regenerates the other package's `models.go`. Nodes that add migrations therefore can't share a round, whatever their single-writer notes say.
+- **sqlc packages share one schema.** Any migration also regenerates the other package's `models.go`. Nodes that add migrations therefore can't share a round. Nodes that only add queries to one package can: the later merge rebases and runs `make generate` (graph notes, from #155).
 
 ## Next to dispatch, and why
 
