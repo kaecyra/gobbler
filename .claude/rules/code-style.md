@@ -29,6 +29,11 @@ The tools cannot enforce layout and shape, so these are the rules:
   `db.WithTx` and `db.WithReadTx`, and constraint errors through
   `db.WrapWrite`, never a per-package copy. A query sqlc cannot express may be
   hand-written, with a comment naming the sqlc limitation.
+- **templ output is generated and checked the same way.** Never edit a
+  `*_templ.go` by hand: change the `.templ` and run `make generate` from the
+  repository root (generating from inside a package directory writes a
+  different `FileName` into the output). `make check` fails on stale output
+  via `make generate-check`.
 - **Pure logic stays pure.** Quantity arithmetic, unit conversion, the
   ingredient-line parser and shopping-list merging take values and return
   values, so they can be table-tested without a database.
