@@ -40,3 +40,15 @@ jobs:
             e2e/playwright-report/
             e2e/test-results/
           if-no-files-found: ignore
+
+  image:
+    # ADR-00013 obligation 1: the production image has no Node runtime and
+    # nothing from e2e/; the image is one Go binary plus tesseract (ADR-00002).
+    # No new actions: docker is preinstalled on the runner.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: build production image
+        run: docker build -t gobbler:ci .
+      - name: check image contents
+        run: bash .github/scripts/check-image.sh gobbler:ci
