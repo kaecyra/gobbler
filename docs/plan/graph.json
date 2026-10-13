@@ -1572,7 +1572,7 @@
       "wave": 8,
       "track": "foundation",
       "issue": 162,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "g-image-check"
       ],
@@ -2127,6 +2127,11 @@
       "id": "r-proposed-wrapper",
       "title": "Fold the proposedIngredients wrapper into ProposedFor",
       "merged": "a5260c1fbc6ff8c76c9da3c727e8d6734027380d"
+    },
+    {
+      "id": "g-image-check-json",
+      "title": "check-image.sh recognises the JSON form of COPY and ADD",
+      "merged": "f953e76e468a8b33ad20750ecef42f6bd41d1e73"
     }
   ],
   "adr_sequence": {
