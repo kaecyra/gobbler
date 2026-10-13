@@ -62,25 +62,12 @@ VERSION on main is 0.43.4. The next schema number is 00009.
   - Next: write a short ADR for it.
   - Then re-derive the w3-equipment-size lane (migration, `internal/catalog` equipment, the catalog review page, recipeview) and unblock the node.
 
-**Open PRs:**
-
-| PR | Node | State |
-|---|---|---|
-| #153 | w3-display-times (#111) | Approved; its NIT is fixed. A worker in wt-111 was rebasing to VERSION 0.43.5. If that worker is gone, rebase in a fresh worker, push, and merge on green. |
-| #155 | graph: parallel invitations, drop Todoist | CHANGES_REQUESTED. Fix the SHOULDs and decline the MUST (below), then merge. |
-
-**#155 fix:**
-- **MUST (household deletion before shopping is scoped): decline it, citing the owner ruling of 2026-10-13.** No deploy happens partway through a track ("we are pre-building. dont serialize just in case of a hypothetical midpoint deploy that wont happen"). l-invitations stays parallel and is not split.
-  - Instead, add an end-state obligation to t-cross-household-gate's note and to #139: deleting a household leaves no rows anywhere.
-  - Make sure t-scope-shopping's migration cascades `shopping_entries` from households.
-  - Reply to the thread with this reasoning, resolve it, and post a fresh review on the fixed head.
-- **SHOULD:**
-  - Actually narrow l-invitations' `internal/web/operator/**` and `e2e/operator/**` so they exclude `promot*`.
-  - Fix the `householddb` shared-file note: the two writers merge in sequence, with a rebase and `make generate`. Check this against graph note line 18.
-  - Remove the stale Todoist mention in graph note line 18.
-  - Update #39's body: it no longer waits on the overlay.
-- **NIT:** widen l-invitations onto `e2e/layout/layout.spec.ts` and `internal/web/layout/layout_test.go`, in case it adds nav links.
-- **Branch:** `chore/39-parallel-invitations`. Rebuild it on main with `git checkout -B ... origin/main` and cherry-pick, because main's `graph.json` has moved.
+**Round 9 (2026-10-13, resumed session):**
+- #153 w3-display-times merged at 377f838 (VERSION 0.43.5), recorded on main.
+- #155 rebuilt on main (head e6b2e4b). MUST declined and resolved (no midpoint deploy); SHOULDs and NIT fixed and resolved; #39 body rewritten, #136 and #139 bodies gain a "Household deletion" section. A fresh /sdlc-review-pr is running on it. Possible follow-up: the storedb and catalogdb shared-file notes still say single-writer-per-round, which the new graph note replaces.
+- **In flight:** t-scope-shopping (#136, schema 00009 promised; write it with `node.ts migration` on main once #155 merges, since a main commit forces #155 to be rebuilt again) in `.claude/worktrees/wt-136`, ports 41100+; w3-recipeview-links (#98) in `.claude/worktrees/wt-98`, ports 41200+.
+- **Next:** l-invitations (#39) once #155 merges.
+- The worker brief tail is in the session scratchpad as `common.md` and `prompt-<issue>.md`.
 
 **Worker brief rule (new, 2026-10-13):** workers must never spawn their own subagents. The t-household-core worker left a helper ("Proving dot-segment guard fails") running and burning tokens after its PR had merged. Say so in every worker prompt.
 
