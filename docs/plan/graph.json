@@ -1373,7 +1373,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 139,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "l-invitations",
         "t-recipe-sharing",
@@ -1540,7 +1540,7 @@
       "wave": 9,
       "track": "ui",
       "issue": 85,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "w3-recipeview-links",
         "t-catalog-overlay",
