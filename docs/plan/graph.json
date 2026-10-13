@@ -13,9 +13,9 @@
     "VERSION is bumped by every source PR (git-workflow rule): every merge invalidates every open branch's VERSION line. Expect a one-line rebase per merge; do not sequence around it.",
     "internal/web is a server/router package plus one subpackage per feature area (internal/web/<area>/**), shared templ layout in internal/web/layout: ADR-00012.",
     "E2E runs @playwright/test from e2e/, test-only and never shipped: ADR-00013.",
-    "Generated sqlc packages are single-writer per round (shared_files notes). Nodes that regenerate storedb: w3-search-list, w3-store-atomic-ingest, w3-catalog-page. catalogdb: w3-unit-owner. Each node's note says which it regenerates; never dispatch two writers of the same package in one round.",
     "Greenfield: every glob names a path that does not exist yet. Waves follow docs/design.md (W0-W7, W8 = households per ADR-00018, Later = wave 9).",
-    "Wave 9 nodes are deferred and recorded blocked until their own ADR: meal planning by ADR-00011, Todoist push by ADR-00018."
+    "Generated sqlc packages (storedb, catalogdb, shoppingdb, householddb) are never hand-edited; make generate rewrites them. Two nodes that write one package may share a round: they merge in sequence, and the later one rebases and runs make generate. Two nodes that each add a migration never share a round, because every migration regenerates every package's models.go and draws from the one schema sequence.",
+    "Wave 9 nodes are deferred and recorded blocked until their own ADR: meal planning by ADR-00011."
   ],
   "gates": {
     "always": [
@@ -933,27 +933,6 @@
       ]
     },
     {
-      "id": "w7-todoist",
-      "title": "One-way idempotent Todoist push of a shopping list",
-      "wave": 9,
-      "track": "shopping",
-      "issue": 36,
-      "status": "todo",
-      "depends_on": [
-        "w4-shopping-ui",
-        "t-scope-shopping"
-      ],
-      "owns": [
-        "internal/todoist/**",
-        "internal/web/shopping/todoist*"
-      ],
-      "needs_migration": null,
-      "adrs": [
-        "00009"
-      ],
-      "blocked": "Deferred by ADR-00018; returns with its own ADR"
-    },
-    {
       "id": "w7-ops-doc",
       "title": "Operations doc: deploy, configuration, restore procedure",
       "wave": 7,
@@ -1003,17 +982,23 @@
       "issue": 39,
       "status": "todo",
       "depends_on": [
-        "t-catalog-overlay",
-        "t-operator-nav"
+        "t-operator-nav",
+        "e2e-seed-helper"
       ],
       "owns": [
-        "internal/household/**",
         "internal/web/household/**",
-        "internal/web/operator/**",
         "e2e/household/**",
-        "e2e/operator/**",
         "internal/web/middleware_household*.go",
-        "internal/web/layout/layout_nav*.go"
+        "internal/web/layout/layout_nav*.go",
+        "internal/household/*.go",
+        "internal/household/queries/**",
+        "internal/web/layout/layout_operator*.go",
+        "internal/web/operator/doc.go",
+        "internal/web/operator/operator*.go",
+        "internal/web/operator/invitation*",
+        "e2e/operator/invitation*",
+        "e2e/layout/layout.spec.ts",
+        "internal/web/layout/layout_test.go"
       ],
       "needs_migration": null,
       "adrs": [
@@ -1307,13 +1292,13 @@
       "owns": [
         "internal/shopping/**",
         "internal/web/shopping/**",
-        "e2e/shopping/**",
-        "internal/household/householddb/**"
+        "e2e/shopping/**"
       ],
       "needs_migration": "schema",
       "adrs": [
         "00018"
-      ]
+      ],
+      "note": "Its migration scopes shopping lists to a household and cascades shopping_entries (and lists) from households, so deleting a household leaves no shopping rows. Required because l-invitations ships household deletion in parallel (owner ruling 2026-10-13: no deploy happens partway through the tenancy track)."
     },
     {
       "id": "t-catalog-overlay",
@@ -1324,7 +1309,8 @@
       "status": "todo",
       "depends_on": [
         "t-scope-shopping",
-        "w2-proposed-dedup"
+        "w2-proposed-dedup",
+        "l-invitations"
       ],
       "owns": [
         "internal/catalog/**",
@@ -1338,8 +1324,7 @@
         "internal/web/ingest/edit*.go",
         "internal/web/operator/promot*",
         "e2e/operator/promot*",
-        "internal/shopping/shoppingdb/**",
-        "internal/household/householddb/**"
+        "internal/shopping/shoppingdb/**"
       ],
       "needs_migration": "schema",
       "adrs": [
@@ -1390,7 +1375,8 @@
       "needs_migration": null,
       "adrs": [
         "00018"
-      ]
+      ],
+      "note": "End-state obligation (ADR-00018): deleting a household leaves no rows anywhere. The gate deletes a seeded household and asserts that no household-scoped table still holds its rows."
     },
     {
       "id": "t-operator-nav",
@@ -1612,17 +1598,22 @@
     {
       "path": "internal/store/storedb/**",
       "mode": "open",
-      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root (queries/ and every migration feed it). Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges. Two nodes that each add a migration still never share a round (graph notes)."
     },
     {
       "path": "internal/catalog/catalogdb/**",
       "mode": "open",
-      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root (queries/ and every migration feed it). Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges. Two nodes that each add a migration still never share a round (graph notes)."
     },
     {
       "path": "internal/web/**/*_templ.go",
       "mode": "open",
       "note": "GENERATED by templ: never hand-edited. Regenerate with make generate from the repository root: it runs templ and then goimports, the same formatting make fmt applies. Running templ inside a package directory writes the wrong FileName. g-templ-gate (#112) regenerates every stale file once, so its new gate passes on main. After that the gate keeps the output current, and each node regenerates only its own .templ."
+    },
+    {
+      "path": "internal/household/householddb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go, and l-invitations adds household queries. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
     }
   ],
   "done": [
