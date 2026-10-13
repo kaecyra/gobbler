@@ -110,7 +110,16 @@ func TestRevokedExpiredAndRefusedInvitations(t *testing.T) {
 	wantStatus(t, "open revoked", do(h, http.MethodGet, link, "rev@example.com"), http.StatusGone)
 	wantStatus(t, "accept revoked", post(h, link+"/accept", "rev@example.com", nil), http.StatusGone)
 	wantStatus(t, "bad id", do(h, http.MethodGet, "/invitations/abc", "rev@example.com"), http.StatusNotFound)
-	wantStatus(t, "bad email", post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {"nope"}}), http.StatusBadRequest)
+	bad := post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {"nope"}})
+	wantStatus(t, "bad email", bad, http.StatusBadRequest)
+	if !strings.Contains(bad.Body.String(), `&#34;nope&#34; is not an email address`) {
+		t.Errorf("a mistyped email gets no reason:\n%s", bad.Body.String())
+	}
+	self := post(h, "/household/members/remove", auth.DevEmail, url.Values{"email": {auth.DevEmail}})
+	wantStatus(t, "remove oneself", self, http.StatusBadRequest)
+	if !strings.Contains(self.Body.String(), "use leave to remove yourself") {
+		t.Errorf("removing oneself gets no reason:\n%s", self.Body.String())
+	}
 
 	// A person who already has a household is told to leave it first.
 	wantStatus(t, "invite a member", post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {auth.DevOtherEmail}}), http.StatusSeeOther)

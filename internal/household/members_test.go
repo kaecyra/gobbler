@@ -193,3 +193,60 @@ func TestInvitationFor(t *testing.T) {
 		t.Errorf("expired invitation = %v, want ErrExpired", err)
 	}
 }
+
+// A member's open invitations die with their membership: only the issuer can
+// revoke one, and a member who has gone cannot.
+func TestDepartedMembersInvitationsAreRevoked(t *testing.T) {
+	ctx := context.Background()
+	for _, how := range []string{"removed", "leaves"} {
+		t.Run(how, func(t *testing.T) {
+			f := newFixture(t)
+			h := f.create("Alpha", "ann@example.com")
+			join := f.invite(Invite{Kind: KindJoin, Email: "bea@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+			if _, err := f.s.Accept(ctx, join, "bea@example.com", ""); err != nil {
+				t.Fatal(err)
+			}
+			byBea := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "bea@example.com"})
+			byAnn := f.invite(Invite{Kind: KindJoin, Email: "dee@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+
+			var err error
+			if how == "removed" {
+				err = f.s.Remove(ctx, h.ID, "ann@example.com", "bea@example.com")
+			} else {
+				err = f.s.Leave(ctx, "bea@example.com")
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := f.s.Accept(ctx, byBea, "cy@example.com", ""); !errors.Is(err, ErrRevoked) {
+				t.Errorf("accepting the departed member's invitation = %v, want ErrRevoked", err)
+			}
+			if _, err := f.s.Accept(ctx, byAnn, "dee@example.com", ""); err != nil {
+				t.Errorf("accepting a remaining member's invitation = %v, want success", err)
+			}
+		})
+	}
+}
+
+func TestRefusedLeaveKeepsTheLastMembersInvitations(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	h := f.create("Alpha", "ann@example.com")
+	id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	if err := f.s.Leave(ctx, "ann@example.com"); !errors.Is(err, ErrLastMember) {
+		t.Fatalf("Leave = %v, want ErrLastMember", err)
+	}
+	if _, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil {
+		t.Errorf("the refused leaver's invitation was revoked: %v", err)
+	}
+}
+
+func TestInvalidReasonCarriesTheStoresMessage(t *testing.T) {
+	_, err := NormalizeEmail("nope")
+	if got, ok := InvalidReason(err); !ok || got != err.Error() {
+		t.Errorf("InvalidReason = %q, %v", got, ok)
+	}
+	if _, ok := InvalidReason(ErrNotFound); ok {
+		t.Error("a not-found error was offered as input to correct")
+	}
+}

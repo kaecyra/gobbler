@@ -81,22 +81,22 @@ func (q *Queries) GetInvitationFor(ctx context.Context, arg GetInvitationForPara
 	return i, err
 }
 
-const leaveHousehold = `-- name: LeaveHousehold :execrows
+const leaveHousehold = `-- name: LeaveHousehold :one
 DELETE FROM household_members
 WHERE household_members.email = ?1
   AND (SELECT count(*) FROM household_members m
        WHERE m.household_id = household_members.household_id) > 1
+RETURNING household_id
 `
 
 // LeaveHousehold removes email unless it is the household's last member. The
 // count and the delete are one statement, so two members leaving at once
 // cannot both succeed and strand the household with nobody.
 func (q *Queries) LeaveHousehold(ctx context.Context, email string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, leaveHousehold, email)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	row := q.db.QueryRowContext(ctx, leaveHousehold, email)
+	var household_id int64
+	err := row.Scan(&household_id)
+	return household_id, err
 }
 
 const listPendingHouseholdInvitations = `-- name: ListPendingHouseholdInvitations :many
@@ -231,6 +231,27 @@ func (q *Queries) RemoveMember(ctx context.Context, arg RemoveMemberParams) (int
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const revokeMemberInvitations = `-- name: RevokeMemberInvitations :exec
+UPDATE invitations SET revoked_at = ?1
+WHERE issued_by = ?2 AND household_id = ?3 AND kind = 'join'
+  AND accepted_at IS NULL AND revoked_at IS NULL
+`
+
+type RevokeMemberInvitationsParams struct {
+	Now         sql.NullString
+	IssuedBy    string
+	HouseholdID sql.NullInt64
+}
+
+// RevokeMemberInvitations withdraws the join invitations a member issued into
+// a household and nobody has accepted yet. Run when the member leaves or is
+// removed: only the issuer can revoke an invitation, and they can no longer
+// reach the page that does it.
+func (q *Queries) RevokeMemberInvitations(ctx context.Context, arg RevokeMemberInvitationsParams) error {
+	_, err := q.db.ExecContext(ctx, revokeMemberInvitations, arg.Now, arg.IssuedBy, arg.HouseholdID)
+	return err
 }
 
 const touchHousehold = `-- name: TouchHousehold :execrows

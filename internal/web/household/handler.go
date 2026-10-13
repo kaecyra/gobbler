@@ -88,17 +88,17 @@ func idParam(r *http.Request) (int64, error) {
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 	email, hh, err := actor(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	members, err := h.Households.Members(r.Context(), hh.ID)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	pending, err := h.Households.PendingForHousehold(r.Context(), hh.ID)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	layout.Render(w, r, http.StatusOK, membersPage(pageView{
@@ -109,7 +109,7 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 // done sends the browser back to the members page after a change.
 func done(w http.ResponseWriter, r *http.Request, err error) {
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, Pattern, http.StatusSeeOther)
@@ -118,7 +118,7 @@ func done(w http.ResponseWriter, r *http.Request, err error) {
 func (h *handler) invite(w http.ResponseWriter, r *http.Request) {
 	email, hh, err := actor(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	_, err = h.Households.Invite(r.Context(), domain.Invite{
@@ -130,12 +130,12 @@ func (h *handler) invite(w http.ResponseWriter, r *http.Request) {
 func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 	email, _, err := actor(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	id, err := idParam(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	done(w, r, h.Households.Revoke(r.Context(), id, email))
@@ -144,7 +144,7 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
 	email, hh, err := actor(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	done(w, r, h.Households.Remove(r.Context(), hh.ID, email, r.PostFormValue("email")))
@@ -153,11 +153,11 @@ func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
 func (h *handler) leave(w http.ResponseWriter, r *http.Request) {
 	email, _, err := actor(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	if err := h.Households.Leave(r.Context(), email); err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	// Having left, the reader is a non-member: the home page says so.
@@ -167,11 +167,11 @@ func (h *handler) leave(w http.ResponseWriter, r *http.Request) {
 func (h *handler) delete(w http.ResponseWriter, r *http.Request) {
 	email, hh, err := actor(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	if err := h.Households.Delete(r.Context(), hh.ID, email, r.PostFormValue("confirm")); err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -180,17 +180,17 @@ func (h *handler) delete(w http.ResponseWriter, r *http.Request) {
 func (h *handler) showInvitation(w http.ResponseWriter, r *http.Request) {
 	email, ok := auth.EmailFromContext(r.Context())
 	if !ok {
-		layout.WriteError(w, r, fmt.Errorf("no identity on the request: %w", layout.ErrNotFound))
+		fail(w, r, fmt.Errorf("no identity on the request: %w", layout.ErrNotFound))
 		return
 	}
 	id, err := idParam(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	inv, err := h.Households.InvitationFor(r.Context(), id, email)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	_, member := domain.FromContext(r.Context())
@@ -203,17 +203,28 @@ func (h *handler) showInvitation(w http.ResponseWriter, r *http.Request) {
 func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 	email, ok := auth.EmailFromContext(r.Context())
 	if !ok {
-		layout.WriteError(w, r, fmt.Errorf("no identity on the request: %w", layout.ErrNotFound))
+		fail(w, r, fmt.Errorf("no identity on the request: %w", layout.ErrNotFound))
 		return
 	}
 	id, err := idParam(r)
 	if err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	if _, err := h.Households.Accept(r.Context(), id, email, r.PostFormValue("name")); err != nil {
-		layout.WriteError(w, r, err)
+		fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, Pattern, http.StatusSeeOther)
+}
+
+// fail writes err as an error page. Input the store refused shows its own
+// reason, so a mistyped email says so; any other error goes through
+// layout.WriteError, which shows only the mapped status text.
+func fail(w http.ResponseWriter, r *http.Request, err error) {
+	if reason, ok := domain.InvalidReason(err); ok {
+		layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest, reason))
+		return
+	}
+	layout.WriteError(w, r, err)
 }

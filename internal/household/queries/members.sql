@@ -4,11 +4,12 @@ SELECT count(*) FROM household_members WHERE household_id = ?;
 -- LeaveHousehold removes email unless it is the household's last member. The
 -- count and the delete are one statement, so two members leaving at once
 -- cannot both succeed and strand the household with nobody.
--- name: LeaveHousehold :execrows
+-- name: LeaveHousehold :one
 DELETE FROM household_members
 WHERE household_members.email = sqlc.arg(email)
   AND (SELECT count(*) FROM household_members m
-       WHERE m.household_id = household_members.household_id) > 1;
+       WHERE m.household_id = household_members.household_id) > 1
+RETURNING household_id;
 
 -- RemoveMember removes target from the household, on behalf of another member
 -- of that same household. It removes nobody when removed_by is not a member of
@@ -20,6 +21,15 @@ WHERE household_members.household_id = sqlc.arg(household_id)
   AND household_members.email <> sqlc.arg(removed_by)
   AND EXISTS (SELECT 1 FROM household_members m
               WHERE m.household_id = sqlc.arg(household_id) AND m.email = sqlc.arg(removed_by));
+
+-- RevokeMemberInvitations withdraws the join invitations a member issued into
+-- a household and nobody has accepted yet. Run when the member leaves or is
+-- removed: only the issuer can revoke an invitation, and they can no longer
+-- reach the page that does it.
+-- name: RevokeMemberInvitations :exec
+UPDATE invitations SET revoked_at = sqlc.arg(now)
+WHERE issued_by = sqlc.arg(issued_by) AND household_id = sqlc.arg(household_id) AND kind = 'join'
+  AND accepted_at IS NULL AND revoked_at IS NULL;
 
 -- TouchHousehold is a no-op write that opens the write lock before the reads
 -- that follow it (db.WithTx).

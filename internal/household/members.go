@@ -146,29 +146,53 @@ func (s *Store) Remove(ctx context.Context, householdID int64, by, target string
 	if remover == t {
 		return fmt.Errorf("%w: use leave to remove yourself", ErrInvalid)
 	}
-	n, err := s.q.RemoveMember(ctx, householddb.RemoveMemberParams{HouseholdID: householdID, Target: t, RemovedBy: remover})
+	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+		n, err := q.RemoveMember(ctx, householddb.RemoveMemberParams{HouseholdID: householdID, Target: t, RemovedBy: remover})
+		if err != nil {
+			return fmt.Errorf("remove %s from household %d: %w", t, householdID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("%w: %s is not in household %d", ErrNotFound, t, householdID)
+		}
+		return s.revokeIssued(ctx, q, t, householdID)
+	})
+	return err
+}
+
+// revokeIssued withdraws the open join invitations issuer made into the
+// household, for a member who is no longer in it.
+func (s *Store) revokeIssued(ctx context.Context, q *householddb.Queries, issuer string, householdID int64) error {
+	err := q.RevokeMemberInvitations(ctx, householddb.RevokeMemberInvitationsParams{
+		Now: sql.NullString{String: s.stamp(), Valid: true}, IssuedBy: issuer, HouseholdID: sql.NullInt64{Int64: householdID, Valid: true},
+	})
 	if err != nil {
-		return fmt.Errorf("remove %s from household %d: %w", t, householdID, err)
-	}
-	if n == 0 {
-		return fmt.Errorf("%w: %s is not in household %d", ErrNotFound, t, householdID)
+		return fmt.Errorf("revoke invitations of %s into household %d: %w", issuer, householdID, err)
 	}
 	return nil
 }
 
-// Leave takes the email out of its household. The household's last member is
-// refused with ErrLastMember; someone in no household gets ErrNotFound.
+// Leave takes the email out of its household and withdraws the invitations it
+// issued into it. The household's last member is refused with ErrLastMember;
+// someone in no household gets ErrNotFound.
 func (s *Store) Leave(ctx context.Context, email string) error {
 	e, err := NormalizeEmail(email)
 	if err != nil {
 		return err
 	}
-	n, err := s.q.LeaveHousehold(ctx, e)
-	if err != nil {
-		return fmt.Errorf("leave household as %s: %w", e, err)
-	}
-	if n > 0 {
-		return nil
+	left := true
+	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+		hid, err := q.LeaveHousehold(ctx, e)
+		if errors.Is(err, sql.ErrNoRows) {
+			left = false
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("leave household as %s: %w", e, err)
+		}
+		return s.revokeIssued(ctx, q, e, hid)
+	})
+	if err != nil || left {
+		return err
 	}
 	if _, err := lookup(ctx, s.q, e); err != nil {
 		return err
@@ -213,4 +237,15 @@ func (s *Store) Delete(ctx context.Context, householdID int64, by, confirm strin
 		}
 		return nil
 	})
+}
+
+// InvalidReason returns the message of an error caused by input the store
+// refused, such as a malformed email, and whether err is one. Those messages
+// are written by the store for the person who typed the input; nothing else
+// is safe to show.
+func InvalidReason(err error) (string, bool) {
+	if errors.Is(err, ErrInvalid) {
+		return err.Error(), true
+	}
+	return "", false
 }
