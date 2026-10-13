@@ -1456,7 +1456,7 @@
       "wave": 8,
       "track": "domain",
       "issue": 111,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "t-scope-recipes"
       ],
@@ -2054,6 +2054,15 @@
         "00013"
       ],
       "note": "ADR-00013 allows Go helpers under e2e/. After t-scope-recipes every seed also seeds the dev household; extract that with the identity context and open/migrate/store setup, and migrate every seed."
+    },
+    {
+      "id": "w3-display-times",
+      "title": "Extract document time rows and total-source note into internal/recipe/display",
+      "merged": "377f838a04f310a93c0d988eb3d135851da78762",
+      "adrs": [
+        "00004"
+      ],
+      "note": "ADR-00004 Times. One table-tested builder in internal/recipe/display; recipeview, history and cook call it."
     }
   ],
   "adr_sequence": {
