@@ -20,13 +20,17 @@ func (s *Store) SetIncludeOptional(ctx context.Context, id int64, include bool) 
 	if include {
 		v = 1
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	var changed int64
-	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
-		if err := lockList(ctx, q, id); err != nil {
+	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
+		if err := lockList(ctx, q, hid, id); err != nil {
 			return err
 		}
 		var err error
-		changed, err = q.SetIncludeOptional(ctx, shoppingdb.SetIncludeOptionalParams{IncludeOptional: v, ID: id})
+		changed, err = q.SetIncludeOptional(ctx, shoppingdb.SetIncludeOptionalParams{IncludeOptional: v, ID: id, HouseholdID: hid})
 		if err != nil {
 			return fmt.Errorf("set include optional on list %d: %w", id, err)
 		}

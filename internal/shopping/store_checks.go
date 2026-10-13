@@ -20,15 +20,19 @@ func (s *Store) SetChecked(ctx context.Context, listID int64, key ItemKey, check
 	if !key.valid() {
 		return fmt.Errorf("%w: item key %q", ErrInvalid, key)
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	var changed int64
-	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
+	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
 		if checked {
-			changed, err = q.SetChecked(ctx, shoppingdb.SetCheckedParams{ListID: listID, ItemKey: string(key), CheckedAt: s.stamp()})
-			// The only foreign key is the list.
+			changed, err = q.SetChecked(ctx, shoppingdb.SetCheckedParams{HouseholdID: hid, ListID: listID, ItemKey: string(key), CheckedAt: s.stamp()})
+			// The only foreign key is the list, within the household.
 			return db.WrapWrite(fmt.Sprintf("check %q on list %d", key, listID), err, ErrNotFound, db.ConstraintForeignKey)
 		}
-		changed, err = q.ClearChecked(ctx, shoppingdb.ClearCheckedParams{ListID: listID, ItemKey: string(key)})
+		changed, err = q.ClearChecked(ctx, shoppingdb.ClearCheckedParams{HouseholdID: hid, ListID: listID, ItemKey: string(key)})
 		if err != nil {
 			return fmt.Errorf("uncheck %q on list %d: %w", key, listID, err)
 		}

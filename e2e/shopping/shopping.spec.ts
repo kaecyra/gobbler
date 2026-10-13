@@ -1,9 +1,10 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, request as pwRequest, type Page } from '@playwright/test';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { asIdentity, OTHER } from '../fixtures/identity';
 
 // The shopping pages need recipes that share an ingredient, which the shared
 // server of the suite does not have. This spec seeds its own data directory
@@ -426,4 +427,23 @@ test('the phone view reconnects when the stream endpoint fails, instead of stayi
     await phone.close();
     await desk.close();
   }
+});
+
+test("another household cannot see or watch this household's list or pantry", async ({ page }) => {
+  // The other household's member gets 404 for the list on every read route
+  // (the event stream included), an index without it, and an empty pantry.
+  const other = await pwRequest.newContext({ baseURL: origin, ...asIdentity(OTHER) });
+  try {
+    for (const path of [`/shopping/${listID}`, `/shopping/${listID}/live`, `/shopping/${listID}/events`, `/shopping/${listID}/export.txt`]) {
+      expect((await other.get(path)).status(), path).toBe(404);
+    }
+    const index = await other.get('/shopping');
+    expect(index.status()).toBe(200);
+    expect(await index.text()).not.toContain('E2E Week');
+    expect(await (await other.get('/shopping/pantry')).text()).toContain('The pantry is empty.');
+  } finally {
+    await other.dispose();
+  }
+  // The owner still has it.
+  expect((await page.request.get(`/shopping/${listID}`)).status()).toBe(200);
 });

@@ -11,11 +11,16 @@ import (
 )
 
 const addPantryIngredient = `-- name: AddPantryIngredient :execrows
-INSERT INTO shopping_pantry (ingredient_id) VALUES (?) ON CONFLICT (ingredient_id) DO NOTHING
+INSERT INTO shopping_pantry (household_id, ingredient_id) VALUES (?, ?) ON CONFLICT (household_id, ingredient_id) DO NOTHING
 `
 
-func (q *Queries) AddPantryIngredient(ctx context.Context, ingredientID int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, addPantryIngredient, ingredientID)
+type AddPantryIngredientParams struct {
+	HouseholdID  int64
+	IngredientID int64
+}
+
+func (q *Queries) AddPantryIngredient(ctx context.Context, arg AddPantryIngredientParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, addPantryIngredient, arg.HouseholdID, arg.IngredientID)
 	if err != nil {
 		return 0, err
 	}
@@ -23,16 +28,17 @@ func (q *Queries) AddPantryIngredient(ctx context.Context, ingredientID int64) (
 }
 
 const clearChecked = `-- name: ClearChecked :execrows
-DELETE FROM shopping_checks WHERE list_id = ? AND item_key = ?
+DELETE FROM shopping_checks WHERE household_id = ? AND list_id = ? AND item_key = ?
 `
 
 type ClearCheckedParams struct {
-	ListID  int64
-	ItemKey string
+	HouseholdID int64
+	ListID      int64
+	ItemKey     string
 }
 
 func (q *Queries) ClearChecked(ctx context.Context, arg ClearCheckedParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, clearChecked, arg.ListID, arg.ItemKey)
+	result, err := q.db.ExecContext(ctx, clearChecked, arg.HouseholdID, arg.ListID, arg.ItemKey)
 	if err != nil {
 		return 0, err
 	}
@@ -40,22 +46,32 @@ func (q *Queries) ClearChecked(ctx context.Context, arg ClearCheckedParams) (int
 }
 
 const deleteEntry = `-- name: DeleteEntry :one
-DELETE FROM shopping_entries WHERE id = ? RETURNING list_id
+DELETE FROM shopping_entries WHERE id = ? AND household_id = ? RETURNING list_id
 `
 
-func (q *Queries) DeleteEntry(ctx context.Context, id int64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, deleteEntry, id)
+type DeleteEntryParams struct {
+	ID          int64
+	HouseholdID int64
+}
+
+func (q *Queries) DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, deleteEntry, arg.ID, arg.HouseholdID)
 	var list_id int64
 	err := row.Scan(&list_id)
 	return list_id, err
 }
 
 const deleteList = `-- name: DeleteList :execrows
-DELETE FROM shopping_lists WHERE id = ?
+DELETE FROM shopping_lists WHERE id = ? AND household_id = ?
 `
 
-func (q *Queries) DeleteList(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteList, id)
+type DeleteListParams struct {
+	ID          int64
+	HouseholdID int64
+}
+
+func (q *Queries) DeleteList(ctx context.Context, arg DeleteListParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteList, arg.ID, arg.HouseholdID)
 	if err != nil {
 		return 0, err
 	}
@@ -63,25 +79,36 @@ func (q *Queries) DeleteList(ctx context.Context, id int64) (int64, error) {
 }
 
 const deleteManualItem = `-- name: DeleteManualItem :one
-DELETE FROM shopping_manual_items WHERE id = ? RETURNING list_id
+DELETE FROM shopping_manual_items WHERE id = ? AND household_id = ? RETURNING list_id
 `
 
-func (q *Queries) DeleteManualItem(ctx context.Context, id int64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, deleteManualItem, id)
+type DeleteManualItemParams struct {
+	ID          int64
+	HouseholdID int64
+}
+
+func (q *Queries) DeleteManualItem(ctx context.Context, arg DeleteManualItemParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, deleteManualItem, arg.ID, arg.HouseholdID)
 	var list_id int64
 	err := row.Scan(&list_id)
 	return list_id, err
 }
 
 const getList = `-- name: GetList :one
-SELECT id, name, created_at, include_optional FROM shopping_lists WHERE id = ?
+SELECT id, household_id, name, created_at, include_optional FROM shopping_lists WHERE id = ? AND household_id = ?
 `
 
-func (q *Queries) GetList(ctx context.Context, id int64) (ShoppingList, error) {
-	row := q.db.QueryRowContext(ctx, getList, id)
+type GetListParams struct {
+	ID          int64
+	HouseholdID int64
+}
+
+func (q *Queries) GetList(ctx context.Context, arg GetListParams) (ShoppingList, error) {
+	row := q.db.QueryRowContext(ctx, getList, arg.ID, arg.HouseholdID)
 	var i ShoppingList
 	err := row.Scan(
 		&i.ID,
+		&i.HouseholdID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.IncludeOptional,
@@ -90,44 +117,55 @@ func (q *Queries) GetList(ctx context.Context, id int64) (ShoppingList, error) {
 }
 
 const insertEntry = `-- name: InsertEntry :one
-INSERT INTO shopping_entries (list_id, recipe_id, multiplier) VALUES (?, ?, ?) RETURNING id
+INSERT INTO shopping_entries (household_id, list_id, recipe_id, multiplier) VALUES (?, ?, ?, ?) RETURNING id
 `
 
 type InsertEntryParams struct {
-	ListID     int64
-	RecipeID   int64
-	Multiplier string
+	HouseholdID int64
+	ListID      int64
+	RecipeID    int64
+	Multiplier  string
 }
 
 func (q *Queries) InsertEntry(ctx context.Context, arg InsertEntryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, insertEntry, arg.ListID, arg.RecipeID, arg.Multiplier)
+	row := q.db.QueryRowContext(ctx, insertEntry,
+		arg.HouseholdID,
+		arg.ListID,
+		arg.RecipeID,
+		arg.Multiplier,
+	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
 
 const insertList = `-- name: InsertList :one
-INSERT INTO shopping_lists (name, created_at) VALUES (?, ?) RETURNING id
+
+INSERT INTO shopping_lists (household_id, name, created_at) VALUES (?, ?, ?) RETURNING id
 `
 
 type InsertListParams struct {
-	Name      string
-	CreatedAt string
+	HouseholdID int64
+	Name        string
+	CreatedAt   string
 }
 
+// Every query is filtered by household_id (ADR-00018): the caller passes the
+// household of the request, so a row of another household is never found.
 func (q *Queries) InsertList(ctx context.Context, arg InsertListParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, insertList, arg.Name, arg.CreatedAt)
+	row := q.db.QueryRowContext(ctx, insertList, arg.HouseholdID, arg.Name, arg.CreatedAt)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
 
 const insertManualItem = `-- name: InsertManualItem :one
-INSERT INTO shopping_manual_items (list_id, text, ingredient_id, qty, unit_id, has_package, package_qty, package_unit_id)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+INSERT INTO shopping_manual_items (household_id, list_id, text, ingredient_id, qty, unit_id, has_package, package_qty, package_unit_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
 `
 
 type InsertManualItemParams struct {
+	HouseholdID   int64
 	ListID        int64
 	Text          string
 	IngredientID  sql.NullInt64
@@ -140,6 +178,7 @@ type InsertManualItemParams struct {
 
 func (q *Queries) InsertManualItem(ctx context.Context, arg InsertManualItemParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, insertManualItem,
+		arg.HouseholdID,
 		arg.ListID,
 		arg.Text,
 		arg.IngredientID,
@@ -155,11 +194,16 @@ func (q *Queries) InsertManualItem(ctx context.Context, arg InsertManualItemPara
 }
 
 const listChecked = `-- name: ListChecked :many
-SELECT item_key FROM shopping_checks WHERE list_id = ? ORDER BY item_key
+SELECT item_key FROM shopping_checks WHERE list_id = ? AND household_id = ? ORDER BY item_key
 `
 
-func (q *Queries) ListChecked(ctx context.Context, listID int64) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listChecked, listID)
+type ListCheckedParams struct {
+	ListID      int64
+	HouseholdID int64
+}
+
+func (q *Queries) ListChecked(ctx context.Context, arg ListCheckedParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listChecked, arg.ListID, arg.HouseholdID)
 	if err != nil {
 		return nil, err
 	}
@@ -182,8 +226,13 @@ func (q *Queries) ListChecked(ctx context.Context, listID int64) ([]string, erro
 }
 
 const listEntries = `-- name: ListEntries :many
-SELECT id, recipe_id, multiplier FROM shopping_entries WHERE list_id = ? ORDER BY id
+SELECT id, recipe_id, multiplier FROM shopping_entries WHERE list_id = ? AND household_id = ? ORDER BY id
 `
+
+type ListEntriesParams struct {
+	ListID      int64
+	HouseholdID int64
+}
 
 type ListEntriesRow struct {
 	ID         int64
@@ -191,8 +240,8 @@ type ListEntriesRow struct {
 	Multiplier string
 }
 
-func (q *Queries) ListEntries(ctx context.Context, listID int64) ([]ListEntriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEntries, listID)
+func (q *Queries) ListEntries(ctx context.Context, arg ListEntriesParams) ([]ListEntriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEntries, arg.ListID, arg.HouseholdID)
 	if err != nil {
 		return nil, err
 	}
@@ -215,11 +264,11 @@ func (q *Queries) ListEntries(ctx context.Context, listID int64) ([]ListEntriesR
 }
 
 const listListIDs = `-- name: ListListIDs :many
-SELECT id FROM shopping_lists ORDER BY id
+SELECT id FROM shopping_lists WHERE household_id = ? ORDER BY id
 `
 
-func (q *Queries) ListListIDs(ctx context.Context) ([]int64, error) {
-	rows, err := q.db.QueryContext(ctx, listListIDs)
+func (q *Queries) ListListIDs(ctx context.Context, householdID int64) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listListIDs, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +291,11 @@ func (q *Queries) ListListIDs(ctx context.Context) ([]int64, error) {
 }
 
 const listLists = `-- name: ListLists :many
-SELECT id, name, created_at, include_optional FROM shopping_lists ORDER BY id
+SELECT id, household_id, name, created_at, include_optional FROM shopping_lists WHERE household_id = ? ORDER BY id
 `
 
-func (q *Queries) ListLists(ctx context.Context) ([]ShoppingList, error) {
-	rows, err := q.db.QueryContext(ctx, listLists)
+func (q *Queries) ListLists(ctx context.Context, householdID int64) ([]ShoppingList, error) {
+	rows, err := q.db.QueryContext(ctx, listLists, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -256,6 +305,7 @@ func (q *Queries) ListLists(ctx context.Context) ([]ShoppingList, error) {
 		var i ShoppingList
 		if err := rows.Scan(
 			&i.ID,
+			&i.HouseholdID,
 			&i.Name,
 			&i.CreatedAt,
 			&i.IncludeOptional,
@@ -275,8 +325,13 @@ func (q *Queries) ListLists(ctx context.Context) ([]ShoppingList, error) {
 
 const listManualItems = `-- name: ListManualItems :many
 SELECT id, text, ingredient_id, qty, unit_id, has_package, package_qty, package_unit_id
-FROM shopping_manual_items WHERE list_id = ? ORDER BY id
+FROM shopping_manual_items WHERE list_id = ? AND household_id = ? ORDER BY id
 `
+
+type ListManualItemsParams struct {
+	ListID      int64
+	HouseholdID int64
+}
 
 type ListManualItemsRow struct {
 	ID            int64
@@ -289,8 +344,8 @@ type ListManualItemsRow struct {
 	PackageUnitID sql.NullInt64
 }
 
-func (q *Queries) ListManualItems(ctx context.Context, listID int64) ([]ListManualItemsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listManualItems, listID)
+func (q *Queries) ListManualItems(ctx context.Context, arg ListManualItemsParams) ([]ListManualItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listManualItems, arg.ListID, arg.HouseholdID)
 	if err != nil {
 		return nil, err
 	}
@@ -322,11 +377,11 @@ func (q *Queries) ListManualItems(ctx context.Context, listID int64) ([]ListManu
 }
 
 const listPantry = `-- name: ListPantry :many
-SELECT ingredient_id FROM shopping_pantry ORDER BY ingredient_id
+SELECT ingredient_id FROM shopping_pantry WHERE household_id = ? ORDER BY ingredient_id
 `
 
-func (q *Queries) ListPantry(ctx context.Context) ([]int64, error) {
-	rows, err := q.db.QueryContext(ctx, listPantry)
+func (q *Queries) ListPantry(ctx context.Context, householdID int64) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listPantry, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -349,13 +404,18 @@ func (q *Queries) ListPantry(ctx context.Context) ([]int64, error) {
 }
 
 const lockList = `-- name: LockList :execrows
-UPDATE shopping_lists SET name = name WHERE id = ?
+UPDATE shopping_lists SET name = name WHERE id = ? AND household_id = ?
 `
+
+type LockListParams struct {
+	ID          int64
+	HouseholdID int64
+}
 
 // LockList takes the database write lock with a no-op write, so the reads
 // that follow in the same transaction see the state it will change.
-func (q *Queries) LockList(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, lockList, id)
+func (q *Queries) LockList(ctx context.Context, arg LockListParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, lockList, arg.ID, arg.HouseholdID)
 	if err != nil {
 		return 0, err
 	}
@@ -363,11 +423,16 @@ func (q *Queries) LockList(ctx context.Context, id int64) (int64, error) {
 }
 
 const removePantryIngredient = `-- name: RemovePantryIngredient :execrows
-DELETE FROM shopping_pantry WHERE ingredient_id = ?
+DELETE FROM shopping_pantry WHERE household_id = ? AND ingredient_id = ?
 `
 
-func (q *Queries) RemovePantryIngredient(ctx context.Context, ingredientID int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, removePantryIngredient, ingredientID)
+type RemovePantryIngredientParams struct {
+	HouseholdID  int64
+	IngredientID int64
+}
+
+func (q *Queries) RemovePantryIngredient(ctx context.Context, arg RemovePantryIngredientParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, removePantryIngredient, arg.HouseholdID, arg.IngredientID)
 	if err != nil {
 		return 0, err
 	}
@@ -375,16 +440,17 @@ func (q *Queries) RemovePantryIngredient(ctx context.Context, ingredientID int64
 }
 
 const renameList = `-- name: RenameList :execrows
-UPDATE shopping_lists SET name = ? WHERE id = ?
+UPDATE shopping_lists SET name = ? WHERE id = ? AND household_id = ?
 `
 
 type RenameListParams struct {
-	Name string
-	ID   int64
+	Name        string
+	ID          int64
+	HouseholdID int64
 }
 
 func (q *Queries) RenameList(ctx context.Context, arg RenameListParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, renameList, arg.Name, arg.ID)
+	result, err := q.db.ExecContext(ctx, renameList, arg.Name, arg.ID, arg.HouseholdID)
 	if err != nil {
 		return 0, err
 	}
@@ -392,18 +458,24 @@ func (q *Queries) RenameList(ctx context.Context, arg RenameListParams) (int64, 
 }
 
 const setChecked = `-- name: SetChecked :execrows
-INSERT INTO shopping_checks (list_id, item_key, checked_at) VALUES (?, ?, ?)
+INSERT INTO shopping_checks (household_id, list_id, item_key, checked_at) VALUES (?, ?, ?, ?)
 ON CONFLICT (list_id, item_key) DO NOTHING
 `
 
 type SetCheckedParams struct {
-	ListID    int64
-	ItemKey   string
-	CheckedAt string
+	HouseholdID int64
+	ListID      int64
+	ItemKey     string
+	CheckedAt   string
 }
 
 func (q *Queries) SetChecked(ctx context.Context, arg SetCheckedParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setChecked, arg.ListID, arg.ItemKey, arg.CheckedAt)
+	result, err := q.db.ExecContext(ctx, setChecked,
+		arg.HouseholdID,
+		arg.ListID,
+		arg.ItemKey,
+		arg.CheckedAt,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -411,32 +483,35 @@ func (q *Queries) SetChecked(ctx context.Context, arg SetCheckedParams) (int64, 
 }
 
 const setEntryMultiplier = `-- name: SetEntryMultiplier :one
-UPDATE shopping_entries SET multiplier = ? WHERE id = ? RETURNING list_id
+UPDATE shopping_entries SET multiplier = ? WHERE id = ? AND household_id = ? RETURNING list_id
 `
 
 type SetEntryMultiplierParams struct {
-	Multiplier string
-	ID         int64
+	Multiplier  string
+	ID          int64
+	HouseholdID int64
 }
 
 func (q *Queries) SetEntryMultiplier(ctx context.Context, arg SetEntryMultiplierParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, setEntryMultiplier, arg.Multiplier, arg.ID)
+	row := q.db.QueryRowContext(ctx, setEntryMultiplier, arg.Multiplier, arg.ID, arg.HouseholdID)
 	var list_id int64
 	err := row.Scan(&list_id)
 	return list_id, err
 }
 
 const setIncludeOptional = `-- name: SetIncludeOptional :execrows
-UPDATE shopping_lists SET include_optional = ?1 WHERE id = ?2 AND include_optional <> ?1
+UPDATE shopping_lists SET include_optional = ?1
+WHERE id = ?2 AND household_id = ?3 AND include_optional <> ?1
 `
 
 type SetIncludeOptionalParams struct {
 	IncludeOptional int64
 	ID              int64
+	HouseholdID     int64
 }
 
 func (q *Queries) SetIncludeOptional(ctx context.Context, arg SetIncludeOptionalParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setIncludeOptional, arg.IncludeOptional, arg.ID)
+	result, err := q.db.ExecContext(ctx, setIncludeOptional, arg.IncludeOptional, arg.ID, arg.HouseholdID)
 	if err != nil {
 		return 0, err
 	}
@@ -446,7 +521,7 @@ func (q *Queries) SetIncludeOptional(ctx context.Context, arg SetIncludeOptional
 const updateManualItem = `-- name: UpdateManualItem :one
 UPDATE shopping_manual_items
 SET text = ?, ingredient_id = ?, qty = ?, unit_id = ?, has_package = ?, package_qty = ?, package_unit_id = ?
-WHERE id = ? RETURNING list_id
+WHERE id = ? AND household_id = ? RETURNING list_id
 `
 
 type UpdateManualItemParams struct {
@@ -458,6 +533,7 @@ type UpdateManualItemParams struct {
 	PackageQty    sql.NullString
 	PackageUnitID sql.NullInt64
 	ID            int64
+	HouseholdID   int64
 }
 
 func (q *Queries) UpdateManualItem(ctx context.Context, arg UpdateManualItemParams) (int64, error) {
@@ -470,6 +546,7 @@ func (q *Queries) UpdateManualItem(ctx context.Context, arg UpdateManualItemPara
 		arg.PackageQty,
 		arg.PackageUnitID,
 		arg.ID,
+		arg.HouseholdID,
 	)
 	var list_id int64
 	err := row.Scan(&list_id)
