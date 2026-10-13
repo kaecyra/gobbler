@@ -1217,7 +1217,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 134,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w7-settings",
         "w7-ops-doc"
@@ -1801,6 +1801,14 @@
       "id": "w5-codec",
       "title": "Share the quantity/unit DB codec between store and shopping",
       "merged": "c9fae2e"
+    },
+    {
+      "id": "t-household-core",
+      "title": "Households, membership and admission",
+      "merged": "55c2c71",
+      "adrs": [
+        "00018"
+      ]
     }
   ],
   "adr_sequence": {
