@@ -10,6 +10,10 @@
 // keeps the rows in SQLite and calls Generate to build a list; it adds no merge
 // logic. The live view and the Todoist push live elsewhere.
 //
+// Lists, entries, manual items, check state and the pantry belong to a
+// household (ADR-00018): every Store call is scoped to the household on the
+// request context, and a list of another household is ErrNotFound.
+//
 // Generate scales each recipe's lines by its multiplier with quantity.Scale,
 // drops optional lines unless Input.IncludeOptional is set, and sets aside
 // pantry ingredients in List.Pantry (Input.AddBack puts one back). Lines merge

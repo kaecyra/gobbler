@@ -215,20 +215,23 @@ type RevisionIngredient struct {
 }
 
 type ShoppingCheck struct {
-	ListID    int64
-	ItemKey   string
-	CheckedAt string
+	HouseholdID int64
+	ListID      int64
+	ItemKey     string
+	CheckedAt   string
 }
 
 type ShoppingEntry struct {
-	ID         int64
-	ListID     int64
-	RecipeID   int64
-	Multiplier string
+	ID          int64
+	HouseholdID int64
+	ListID      int64
+	RecipeID    int64
+	Multiplier  string
 }
 
 type ShoppingList struct {
 	ID              int64
+	HouseholdID     int64
 	Name            string
 	CreatedAt       string
 	IncludeOptional int64
@@ -236,6 +239,7 @@ type ShoppingList struct {
 
 type ShoppingManualItem struct {
 	ID            int64
+	HouseholdID   int64
 	ListID        int64
 	Text          string
 	IngredientID  sql.NullInt64
@@ -247,6 +251,7 @@ type ShoppingManualItem struct {
 }
 
 type ShoppingPantry struct {
+	HouseholdID  int64
 	IngredientID int64
 }
 

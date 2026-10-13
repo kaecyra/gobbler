@@ -73,6 +73,12 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	// Only a list of the caller's household may be watched: check before
+	// subscribing, so another household's list is never registered (ADR-00018).
+	if _, err := h.Lists.GetList(ctx, id); err != nil {
+		fail(w, r, fmt.Errorf("get list %d: %w", id, err))
+		return
+	}
 	// Subscribe before the first load, so a change between the two is not lost.
 	sub, unsubscribe := h.hub.subscribe(id)
 	defer unsubscribe()

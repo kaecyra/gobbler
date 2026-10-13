@@ -2,6 +2,8 @@ package shopping
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -38,11 +40,15 @@ func (s *Store) CreateList(ctx context.Context, name string) (ListInfo, error) {
 	if err != nil {
 		return ListInfo{}, err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return ListInfo{}, err
+	}
 	created := s.now().UTC()
 	var id int64
 	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
-		id, err = q.InsertList(ctx, shoppingdb.InsertListParams{Name: name, CreatedAt: created.Format(time.RFC3339Nano)})
+		id, err = q.InsertList(ctx, shoppingdb.InsertListParams{HouseholdID: hid, Name: name, CreatedAt: created.Format(time.RFC3339Nano)})
 		if err != nil {
 			return fmt.Errorf("create list %q: %w", name, err)
 		}
@@ -54,9 +60,31 @@ func (s *Store) CreateList(ctx context.Context, name string) (ListInfo, error) {
 	return ListInfo{ID: id, Name: name, CreatedAt: created}, nil
 }
 
-// Lists returns every list, oldest first.
+// GetList returns list id without its contents, or ErrNotFound when it does not
+// exist in the household. It is the cheap ownership check: a list of another
+// household is ErrNotFound.
+func (s *Store) GetList(ctx context.Context, id int64) (ListInfo, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return ListInfo{}, err
+	}
+	row, err := s.q.GetList(ctx, shoppingdb.GetListParams{ID: id, HouseholdID: hid})
+	if errors.Is(err, sql.ErrNoRows) {
+		return ListInfo{}, fmt.Errorf("%w: list %d", ErrNotFound, id)
+	}
+	if err != nil {
+		return ListInfo{}, fmt.Errorf("read list %d: %w", id, err)
+	}
+	return listInfoFrom(row)
+}
+
+// Lists returns every list of the household, oldest first.
 func (s *Store) Lists(ctx context.Context) ([]ListInfo, error) {
-	rows, err := s.q.ListLists(ctx)
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.q.ListLists(ctx, hid)
 	if err != nil {
 		return nil, fmt.Errorf("read lists: %w", err)
 	}
@@ -77,8 +105,12 @@ func (s *Store) RenameList(ctx context.Context, id int64, name string) error {
 	if err != nil {
 		return err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
-		n, err := q.RenameList(ctx, shoppingdb.RenameListParams{Name: name, ID: id})
+		n, err := q.RenameList(ctx, shoppingdb.RenameListParams{Name: name, ID: id, HouseholdID: hid})
 		if err != nil {
 			return fmt.Errorf("rename list %d: %w", id, err)
 		}
@@ -97,8 +129,12 @@ func (s *Store) RenameList(ctx context.Context, id int64, name string) error {
 // DeleteList removes a list with its entries, manual items and check state, or
 // returns ErrNotFound.
 func (s *Store) DeleteList(ctx context.Context, id int64) error {
-	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
-		n, err := q.DeleteList(ctx, id)
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
+	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
+		n, err := q.DeleteList(ctx, shoppingdb.DeleteListParams{ID: id, HouseholdID: hid})
 		if err != nil {
 			return fmt.Errorf("delete list %d: %w", id, err)
 		}

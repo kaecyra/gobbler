@@ -82,9 +82,6 @@ func TestMigration00008AssignsExistingRecipesToTheFirstHousehold(t *testing.T) {
 		if n := count(t, d, `SELECT COUNT(*) FROM `+table); n != want {
 			t.Errorf("%s has %d rows after the migration, want %d", table, n, want)
 		}
-		if table == "shopping_entries" {
-			continue // shopping rows carry no household yet
-		}
 		if n := count(t, d, `SELECT COUNT(*) FROM `+table+` WHERE household_id <> ?`, first.ID); n != 0 {
 			t.Errorf("%s has %d rows outside the first household", table, n)
 		}
@@ -153,7 +150,9 @@ func TestMigration00008DownKeepsRecipes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Down(ctx); err != nil {
+	// Later migrations sit above 00008; roll them back so 00008 is rolled back
+	// too, whatever is newest.
+	if _, err := p.DownTo(ctx, 7); err != nil {
 		t.Fatalf("rolling back 00008: %v", err)
 	}
 	if n := count(t, d, `SELECT COUNT(*) FROM pragma_table_info('recipes') WHERE name = 'household_id'`); n != 0 {

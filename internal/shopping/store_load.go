@@ -63,24 +63,24 @@ type snapshot struct {
 	checked []string
 }
 
-func readSnapshot(ctx context.Context, q *shoppingdb.Queries, id int64) (snapshot, error) {
+func readSnapshot(ctx context.Context, q *shoppingdb.Queries, hid, id int64) (snapshot, error) {
 	var s snapshot
 	var err error
-	if s.list, err = q.GetList(ctx, id); errors.Is(err, sql.ErrNoRows) {
+	if s.list, err = q.GetList(ctx, shoppingdb.GetListParams{ID: id, HouseholdID: hid}); errors.Is(err, sql.ErrNoRows) {
 		return s, fmt.Errorf("%w: list %d", ErrNotFound, id)
 	} else if err != nil {
 		return s, fmt.Errorf("read list %d: %w", id, err)
 	}
-	if s.entries, err = q.ListEntries(ctx, id); err != nil {
+	if s.entries, err = q.ListEntries(ctx, shoppingdb.ListEntriesParams{ListID: id, HouseholdID: hid}); err != nil {
 		return s, fmt.Errorf("read entries of list %d: %w", id, err)
 	}
-	if s.manual, err = q.ListManualItems(ctx, id); err != nil {
+	if s.manual, err = q.ListManualItems(ctx, shoppingdb.ListManualItemsParams{ListID: id, HouseholdID: hid}); err != nil {
 		return s, fmt.Errorf("read manual items of list %d: %w", id, err)
 	}
-	if s.pantry, err = q.ListPantry(ctx); err != nil {
+	if s.pantry, err = q.ListPantry(ctx, hid); err != nil {
 		return s, fmt.Errorf("read pantry: %w", err)
 	}
-	if s.checked, err = q.ListChecked(ctx, id); err != nil {
+	if s.checked, err = q.ListChecked(ctx, shoppingdb.ListCheckedParams{ListID: id, HouseholdID: hid}); err != nil {
 		return s, fmt.Errorf("read checks of list %d: %w", id, err)
 	}
 	return s, nil
@@ -91,13 +91,17 @@ func readSnapshot(ctx context.Context, q *shoppingdb.Queries, id int64) (snapsho
 // the ones that are checked. It writes nothing: check state of items that no
 // longer exist is ignored here and dropped by Regenerate.
 func (s *Store) Load(ctx context.Context, id int64) (View, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return View{}, err
+	}
 	units, err := s.loadUnits(ctx)
 	if err != nil {
 		return View{}, err
 	}
 	var snap snapshot
 	err = db.WithReadTx(ctx, s.db, s.q, func(q *shoppingdb.Queries, _ *sql.Tx) (err error) {
-		snap, err = readSnapshot(ctx, q, id)
+		snap, err = readSnapshot(ctx, q, hid, id)
 		return err
 	})
 	if err != nil {
@@ -112,6 +116,10 @@ func (s *Store) Load(ctx context.Context, id int64) (View, error) {
 // starts it unchecked. Items that still exist keep their checks, whatever
 // happened to their amounts.
 func (s *Store) Regenerate(ctx context.Context, id int64) (View, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return View{}, err
+	}
 	units, err := s.loadUnits(ctx)
 	if err != nil {
 		return View{}, err
@@ -119,10 +127,10 @@ func (s *Store) Regenerate(ctx context.Context, id int64) (View, error) {
 	var view View
 	var dropped int
 	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
-		if err := lockList(ctx, q, id); err != nil {
+		if err := lockList(ctx, q, hid, id); err != nil {
 			return err
 		}
-		snap, err := readSnapshot(ctx, q, id)
+		snap, err := readSnapshot(ctx, q, hid, id)
 		if err != nil {
 			return err
 		}
@@ -131,7 +139,7 @@ func (s *Store) Regenerate(ctx context.Context, id int64) (View, error) {
 			return err
 		}
 		for _, k := range stale {
-			if _, err := q.ClearChecked(ctx, shoppingdb.ClearCheckedParams{ListID: id, ItemKey: string(k)}); err != nil {
+			if _, err := q.ClearChecked(ctx, shoppingdb.ClearCheckedParams{HouseholdID: hid, ListID: id, ItemKey: string(k)}); err != nil {
 				return fmt.Errorf("drop check %q of list %d: %w", k, id, err)
 			}
 		}

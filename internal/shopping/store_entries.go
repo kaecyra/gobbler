@@ -17,14 +17,18 @@ func (s *Store) AddEntry(ctx context.Context, listID, recipeID int64, multiplier
 	if err := checkMultiplier(multiplier); err != nil {
 		return 0, err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return 0, err
+	}
 	var id int64
-	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
-		if err := lockList(ctx, q, listID); err != nil {
+	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
+		if err := lockList(ctx, q, hid, listID); err != nil {
 			return err
 		}
 		var err error
 		id, err = q.InsertEntry(ctx, shoppingdb.InsertEntryParams{
-			ListID: listID, RecipeID: recipeID, Multiplier: quantity.EncodeRat(multiplier),
+			HouseholdID: hid, ListID: listID, RecipeID: recipeID, Multiplier: quantity.EncodeRat(multiplier),
 		})
 		return wrapWrite(fmt.Sprintf("add recipe %d to list %d", recipeID, listID), err)
 	})
@@ -41,10 +45,14 @@ func (s *Store) SetEntryMultiplier(ctx context.Context, id int64, multiplier qua
 	if err := checkMultiplier(multiplier); err != nil {
 		return err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	var listID int64
-	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
+	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
-		listID, err = q.SetEntryMultiplier(ctx, shoppingdb.SetEntryMultiplierParams{Multiplier: quantity.EncodeRat(multiplier), ID: id})
+		listID, err = q.SetEntryMultiplier(ctx, shoppingdb.SetEntryMultiplierParams{Multiplier: quantity.EncodeRat(multiplier), ID: id, HouseholdID: hid})
 		return rowOrNotFound("entry", id, err)
 	})
 	if err != nil {
@@ -56,10 +64,14 @@ func (s *Store) SetEntryMultiplier(ctx context.Context, id int64, multiplier qua
 
 // RemoveEntry takes entry id off its list, or returns ErrNotFound.
 func (s *Store) RemoveEntry(ctx context.Context, id int64) error {
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	var listID int64
-	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
+	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
-		listID, err = q.DeleteEntry(ctx, id)
+		listID, err = q.DeleteEntry(ctx, shoppingdb.DeleteEntryParams{ID: id, HouseholdID: hid})
 		return rowOrNotFound("entry", id, err)
 	})
 	if err != nil {

@@ -48,6 +48,7 @@ var styleCSS []byte
 type Lists interface {
 	CreateList(ctx context.Context, name string) (domain.ListInfo, error)
 	Lists(ctx context.Context) ([]domain.ListInfo, error)
+	GetList(ctx context.Context, id int64) (domain.ListInfo, error)
 	Load(ctx context.Context, id int64) (domain.View, error)
 	Regenerate(ctx context.Context, id int64) (domain.View, error)
 	AddEntry(ctx context.Context, listID, recipeID int64, multiplier quantity.Rat) (int64, error)

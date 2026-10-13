@@ -31,6 +31,10 @@ func (s *Store) AddManualItem(ctx context.Context, listID int64, m ManualItem) (
 	if err != nil {
 		return 0, err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return 0, err
+	}
 	units, err := s.loadUnits(ctx)
 	if err != nil {
 		return 0, err
@@ -41,12 +45,12 @@ func (s *Store) AddManualItem(ctx context.Context, listID int64, m ManualItem) (
 	}
 	var id int64
 	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
-		if err := lockList(ctx, q, listID); err != nil {
+		if err := lockList(ctx, q, hid, listID); err != nil {
 			return err
 		}
 		var err error
 		id, err = q.InsertManualItem(ctx, shoppingdb.InsertManualItemParams{
-			ListID: listID, Text: m.Text, IngredientID: ingredientCol(m),
+			HouseholdID: hid, ListID: listID, Text: m.Text, IngredientID: ingredientCol(m),
 			Qty: cols.qty, UnitID: cols.unit, HasPackage: cols.hasPackage, PackageQty: cols.pkgQty, PackageUnitID: cols.pkgUnit,
 		})
 		return wrapWrite(fmt.Sprintf("add manual item to list %d", listID), err)
@@ -65,6 +69,10 @@ func (s *Store) EditManualItem(ctx context.Context, id int64, m ManualItem) erro
 	if err != nil {
 		return err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	units, err := s.loadUnits(ctx)
 	if err != nil {
 		return err
@@ -79,7 +87,7 @@ func (s *Store) EditManualItem(ctx context.Context, id int64, m ManualItem) erro
 		listID, err = q.UpdateManualItem(ctx, shoppingdb.UpdateManualItemParams{
 			Text: m.Text, IngredientID: ingredientCol(m),
 			Qty: cols.qty, UnitID: cols.unit, HasPackage: cols.hasPackage, PackageQty: cols.pkgQty, PackageUnitID: cols.pkgUnit,
-			ID: id,
+			ID: id, HouseholdID: hid,
 		})
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("%w: manual item %d", ErrNotFound, id)
@@ -95,10 +103,14 @@ func (s *Store) EditManualItem(ctx context.Context, id int64, m ManualItem) erro
 
 // RemoveManualItem deletes manual item id, or returns ErrNotFound.
 func (s *Store) RemoveManualItem(ctx context.Context, id int64) error {
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	var listID int64
-	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
+	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
-		listID, err = q.DeleteManualItem(ctx, id)
+		listID, err = q.DeleteManualItem(ctx, shoppingdb.DeleteManualItemParams{ID: id, HouseholdID: hid})
 		return rowOrNotFound("manual item", id, err)
 	})
 	if err != nil {

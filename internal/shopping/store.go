@@ -9,6 +9,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/shopping/shoppingdb"
 )
@@ -36,6 +37,10 @@ var (
 	ErrUnknownReference = errors.New("reference to an unknown recipe, ingredient or unit")
 	// ErrDuplicate is returned when a recipe is already an entry of the list.
 	ErrDuplicate = errors.New("already on the list")
+	// ErrNoHousehold is returned by any call whose context carries no household.
+	// It is a programming error (a route outside the membership middleware, or a
+	// job that never set one), and the store never falls back to unscoped data.
+	ErrNoHousehold = errors.New("no household on the request context")
 	// ErrCorrupt is returned when stored rows cannot be read back, such as an
 	// unparseable quantity. It means the database is broken, not that the
 	// caller asked for something absent.
@@ -53,6 +58,12 @@ type CatalogSource interface {
 	GetIngredient(ctx context.Context, id int64) (catalog.Ingredient, error)
 	ListUnits(ctx context.Context) ([]catalog.Unit, error)
 }
+
+// Every call is scoped to the household on the request context
+// (household.FromContext, ADR-00018) and fails with ErrNoHousehold when there is
+// none; a list, entry or manual item of another household is ErrNotFound, and
+// the pantry is the household's own. The catalog merge hooks and the usage
+// counter act on every household's rows.
 
 // Change says that something about a list changed: its check state, its
 // entries, its manual items, its name, or the pantry it is generated against.
@@ -94,6 +105,16 @@ func (s *Store) notify(listIDs ...int64) {
 	}
 }
 
+// scope returns the id of the household on the request context, the tenant
+// every query is filtered by (ADR-00018).
+func scope(ctx context.Context) (int64, error) {
+	h, ok := household.FromContext(ctx)
+	if !ok {
+		return 0, ErrNoHousehold
+	}
+	return h.ID, nil
+}
+
 func (s *Store) stamp() string { return s.now().UTC().Format(time.RFC3339Nano) }
 
 // withTx runs fn in one transaction (db.WithTx). A caller that reads before it
@@ -104,10 +125,10 @@ func (s *Store) withTx(ctx context.Context, fn func(q *shoppingdb.Queries) error
 	return db.WithTx(ctx, s.db, s.q, func(q *shoppingdb.Queries, _ *sql.Tx) error { return fn(q) })
 }
 
-// lockList takes the write lock with a no-op write to list id, and returns
-// ErrNotFound when it does not exist.
-func lockList(ctx context.Context, q *shoppingdb.Queries, id int64) error {
-	n, err := q.LockList(ctx, id)
+// lockList takes the write lock with a no-op write to list id of household
+// hid, and returns ErrNotFound when it does not exist there.
+func lockList(ctx context.Context, q *shoppingdb.Queries, hid, id int64) error {
+	n, err := q.LockList(ctx, shoppingdb.LockListParams{ID: id, HouseholdID: hid})
 	if err != nil {
 		return fmt.Errorf("lock list %d: %w", id, err)
 	}
