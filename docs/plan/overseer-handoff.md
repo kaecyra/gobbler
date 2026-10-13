@@ -33,17 +33,17 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## In flight
 
-PR #140 (tenancy split) merged at ea28f9b. Round 8 dispatched at dc2f902, worktrees under `.claude/worktrees/`, provisioned:
+Round 8 merged so far: #140 (tenancy split, ea28f9b), #142 w7-nav (78b7af9), #143 w5-codec (c9fae2e), #144 t-household-core (55c2c71, schema 00007), #145 graph node t-operator-nav (ab21550).
 
 | Node | Issue | Branch / worktree | Migration | e2e port block |
 |---|---|---|---|---|
-| t-household-core | #134 | feat/134-household-core, wt-134 | schema 00007 | 41100-41199 |
-| w7-nav | #130 | feat/130-nav, wt-130 | none | 41200-41299 |
-| w5-codec | #123 | feat/123-codec, wt-123 | none | 41300-41399 |
+| t-scope-recipes | #135 | feat/135-scope-recipes, wt-135 | schema 00008 | 41400-41499 |
+| t-operator-nav | #141 | feat/141-operator-nav, wt-141 | none | 41500-41599 |
 
-#134 gained a spec comment: an operator email reaches `/settings` without membership (ADR-00018 Admission). #141 filed: hide operator-only nav links from non-operators; it needs a graph node after #130 and #134.
-
-Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands.
+- Both bump VERSION minor; whichever merges second re-bumps.
+- t-scope-recipes was told it may edit existing `internal/store/queries/**` because it owns `internal/store/**`.
+- The shared e2e server makes `dev@localhost` an operator (`e2e/fixtures/serve.mjs`); `other@localhost` is a member who is not an operator.
+- #144 refuses any path with a dot segment (404) before admission. New operator pages are added to `operatorPaths` in `internal/web/middleware_household.go`; l-invitations' lane was widened for that (#145).
 
 ## Side task: mockup mascots (owner request), done
 
