@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-10-13, round 8
+# Overseer handoff: 2026-10-13, round 8 (late)
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
 
@@ -33,22 +33,28 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## In flight
 
-Round 8 merged so far: #140 (tenancy split, ea28f9b), #142 w7-nav (78b7af9), #143 w5-codec (c9fae2e), #144 t-household-core (55c2c71, schema 00007), #145 graph node t-operator-nav (ab21550), #146 t-operator-nav (3ba7487). VERSION on main is 0.42.0.
+Round 8 merged: #140 tenancy split (ea28f9b), #142 w7-nav (78b7af9), #143 w5-codec (c9fae2e), #144 t-household-core (55c2c71, schema 00007), #145 graph node t-operator-nav (ab21550), #146 t-operator-nav (3ba7487), #147 t-scope-recipes lane widening (743c9f5), #148 graph nodes for every open issue (f9ea8e7). VERSION on main is 0.42.0.
 
-| Node | Issue | Branch / worktree | Migration | e2e port block |
+**Owner direction (2026-10-13):** every open issue that needs doing has a graph node, and dispatch runs as wide as the graph allows (`.memory/feedback-graph-holds-all-work.md`).
+
+| Node | Issue | PR | Worktree | State |
 |---|---|---|---|---|
-| t-scope-recipes | #135 | feat/135-scope-recipes, wt-135 | schema 00008 | 41400-41499 |
+| t-scope-recipes (schema 00008) | #135 | #149 | wt-135 | review fixes done, threads resolved; merge when CI is green. VERSION 0.43.0 |
+| g-image-check | #78 | #150 | wt-78 | review fixes done, not pushed. Re-bump after #149 merges (0.43.1). Merge before #151 |
+| g-templ-gate | #112 | #151 | wt-112 | fixing review findings. After #150 merges: add `check-image_test.sh` to `make test-scripts` and the git-workflow.md row, then re-bump |
 
-- **t-scope-recipes:**
-  - It came back partial: callers outside its lane had no household on the context.
-  - Graph PR **#147** widens its lane onto test helpers in 8 packages, the e2e seed programs, and `internal/web/ingest/{ingest,photo,retry}*.go`. It is in review.
-  - The worker is finishing those caller fixes now. Rebuild #147 on main before merging, because bookkeeping commits touch `graph.json`.
-  - It was told it may edit existing `internal/store/queries/**`, because it owns `internal/store/**`.
-- **Shared e2e server:** `dev@localhost` is an operator there (`e2e/fixtures/serve.mjs`). `other@localhost` is a member who is not an operator.
-- **Dot segments:** #144 refuses any path with a dot segment (404) before admission.
-- **Operator pages:**
-  - They are listed in `layout.OperatorPaths` (`internal/web/layout/layout_operator.go`). The middleware's lock and the nav both read that list (#146).
-  - **Before dispatching l-invitations, widen its lane onto `internal/web/layout/layout_operator.go`.** #145 gave it `layout_nav*.go` and the household middleware, but its operator pages are registered in `layout_operator.go`.
+**Merge order:** #149, then #150, then #151.
+
+**Next to dispatch once #149 merges** (lanes are disjoint): w3-display-times (#111), e2e-seed-helper (#99), w2-proposed-dedup (#88). After e2e-seed-helper: t-scope-shopping (#136, schema 00009). Then w3-recipeview-links (#98).
+
+**Before dispatching l-invitations:** widen its lane onto `internal/web/layout/layout_operator.go`. `layout.OperatorPaths` there is the one list of operator pages, read by both the middleware lock and the nav (#146).
+
+**Blocked:** w3-equipment-size (#85) needs an owner decision on how equipment gets a size (ADR-00005).
+
+**Notes:**
+- `dev@localhost` is an operator on the shared e2e server; `other@localhost` is a member who is not.
+- Dot-segment paths get a 404 before admission (#144).
+- The interim e2e seed helper lives at `e2e/recipeview/seed/devhousehold`; #99 moves it.
 
 ## Side task: mockup mascots (owner request), done
 
@@ -101,7 +107,7 @@ Round 8 merged so far: #140 (tenancy split, ea28f9b), #142 w7-nav (78b7af9), #14
   - The toolchain is on the host, through `mcp__exec-daemon__execute_command`, and so are git and gh.
   - The gate list is below.
   - Use per-worker e2e port blocks: `GOBBLER_E2E_{,ACCESS_,RECIPEVIEW_,RETRY_,JOURNAL_,COOK_,HISTORY_,PHOTO_,SETTINGS_,RECIPES_}PORT`. The spec defaults are recipes 38491 and settings 38501.
-  - **`make generate` is sqlc only. Run `go tool templ generate` by hand**, then commit the `_templ.go` for your own `.templ` and revert out-of-lane drift.
+  - **Generated code:** run `make generate` from the worktree root. Once #151 lands it runs templ, goimports and sqlc. Never run `go tool templ generate` inside a package directory, because it writes the wrong `FileName`.
 - **Gates on the host:** `make fmt-check test test-scripts e2e-routes e2e version-check generate-check`, then `GOTOOLCHAIN=go1.26.4 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...` and `go vet ./...`.
 - **Worktree setup** (not in config): on the host, run `go mod download && cd e2e && npm ci && npx playwright install chromium`.
 - **Host plugin path:** `/Users/timothygunter/.odette/base/.marketplace-cache/market/plugins/overseer/...`. `bun` and `gh` exist only on the host.
