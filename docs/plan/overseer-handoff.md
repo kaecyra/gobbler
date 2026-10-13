@@ -61,7 +61,7 @@ VERSION on main is 0.43.4. The next schema number is 00009.
 - **#85 equipment size:** option 1, a `sized` flag on catalog equipment, set during review (recorded on #85).
   - Recorded as ADR-00019 in #159, which also re-derives the w3-equipment-size lane and unblocks it.
 
-**Round 9 (2026-10-13, resumed session):**
+**Round 9 (2026-10-13, resumed session), closed. Nothing is in flight; no worktrees on disk.**
 
 | PR | What | SHA |
 |---|---|---|
@@ -75,16 +75,28 @@ VERSION on main is 0.43.4. The next schema number is 00009.
 | #163 | graph: nodes r-proposed-wrapper (#161), g-image-check-json (#162) | 98d4157 |
 | #164 | r-proposed-wrapper | a5260c1 |
 | #165 | g-image-check-json | f953e76 |
+| #166 | graph: overlay lane widened (tests, write paths, promotion seed, design.md) | 089ab17 |
+| #167 | graph: `internal/shopping/queries/**` shared, append-only | 71940c0 |
+| #168 | t-catalog-overlay (schema 00010) | e3cdd65 |
 
-VERSION on main is 0.46.2. Schema 00010 is handed to t-catalog-overlay; the next free number is 00011. The next ADR is 00020.
+VERSION on main is 0.47.0. The next free schema number is 00011; the next ADR is 00020.
 
-**In flight:** t-catalog-overlay (#137, schema 00010) in `.claude/worktrees/wt-137`, ports 41400+. Told to stop and report rather than leave its lane.
+**Calls the dispatcher made under ADR text, for the owner to check:**
+- #160: a departing or removed member's pending join invitations are revoked.
+- ADR-00019: the operator sets `sized`, because equipment is central (ADR-00018 Catalog).
+- #168 migration 00010: an unreviewed ingredient referenced by exactly one household moves to that household's overlay; anything else stays central.
+- #168 also adds store-level checks that refuse an ingredient id outside central or the writer's overlay (shopping manual items, pantry, recipe lines).
 
-**Owner-facing calls made this round:** #160 revokes a departing member's pending join invitations (ADR-00018 lets only the issuer revoke). ADR-00019 has the operator set `sized`, following ADR-00018 Catalog.
+**Next, one at a time (all large):**
+1. **t-recipe-sharing (#138):** dispatchable now. No migration. Read #168's overlay model first, because shared recipes re-match lines against the recipient's catalog (ADR-00018 Sharing).
+2. **w3-equipment-size (#85):** waits on #138. Its equipment review surface must be operator-only (ADR-00019). #168 did not move central curation, so the lane stands.
+3. **t-cross-household-gate (#139):** last.
 
-**Next:** after the overlay merges, t-recipe-sharing (#138) and w3-equipment-size (#85; re-derive its lane first if the overlay moved central curation under `internal/web/operator`). t-cross-household-gate (#139) is last.
-
-**Approval prompts:** a review agent's compound `gh` command (whoami + write body + post) is held for the owner, who denied one. Post reviews with a plain `gh pr review N --comment --body-file F` instead.
+**Follow-ups worth a node (from #160 and #168 reviews):**
+- `fail`, the time layout and the pending view are duplicated between `internal/web/household` and `internal/web/operator`; a shared helper belongs in `internal/web/layout`.
+- No nav link from `/operator` to `/operator/promotions` (`layout.OperatorPaths`, `internal/web/operator/invitation.templ`).
+- `internal/household/delete_test.go` seeds no overlay entries, aliases or overrides, so its schema-wide "no rows left" check passes trivially for those tables.
+- The migration 00010 tests reference ingredients only through the pantry and recipe lines; the revision-index and manual-item branches of the `refs` CTE are not exercised.
 
 **Worker brief rule (new, 2026-10-13):** workers must never spawn their own subagents. The t-household-core worker left a helper ("Proving dot-segment guard fails") running and burning tokens after its PR had merged. Say so in every worker prompt.
 
