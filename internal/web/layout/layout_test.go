@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/a-h/templ"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 )
@@ -104,5 +105,73 @@ func TestRenderWritesStatusAndBody(t *testing.T) {
 	}
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
 		t.Errorf("content type = %q", ct)
+	}
+}
+
+// renderAt serves path through a router that mounts a page at each pattern the
+// way package web mounts features, so the layout sees real chi route state.
+func renderAt(t *testing.T, path string) string {
+	t.Helper()
+	page := func(w http.ResponseWriter, r *http.Request) {
+		Render(w, r, http.StatusOK, Page("Probe"))
+	}
+	r := chi.NewRouter()
+	r.Get("/", page)
+	for _, pattern := range []string{"/recipes", "/recipes/{id}/cook", "/ingest", "/catalog", "/shopping", "/settings"} {
+		sub := chi.NewRouter()
+		sub.Get("/", page)
+		sub.Get("/*", page)
+		r.Mount(pattern, sub)
+	}
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET %s = %d:\n%s", path, rec.Code, rec.Body.String())
+	}
+	return rec.Body.String()
+}
+
+func TestNavLinksEveryTopLevelPage(t *testing.T) {
+	got := renderAt(t, "/")
+	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/settings"} {
+		if !strings.Contains(got, `href="`+href+`"`) {
+			t.Errorf("nav missing link to %s in:\n%s", href, got)
+		}
+	}
+	if strings.Contains(got, "aria-current") {
+		t.Errorf("home page marks a nav link current:\n%s", got)
+	}
+}
+
+func TestNavMarksOnlyTheCurrentSection(t *testing.T) {
+	cases := []struct{ path, current string }{
+		{"/recipes", "/recipes"},
+		{"/recipes/7/cook", "/recipes"},
+		{"/ingest", "/ingest"},
+		{"/ingest/photo", "/ingest"},
+		{"/catalog", "/catalog"},
+		{"/shopping/3", "/shopping"},
+		{"/settings", "/settings"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			got := renderAt(t, tc.path)
+			if n := strings.Count(got, `aria-current="page"`); n != 1 {
+				t.Fatalf("aria-current marks = %d, want exactly one:\n%s", n, got)
+			}
+			if !strings.Contains(got, `href="`+tc.current+`" aria-current="page"`) {
+				t.Errorf("link %s not marked current:\n%s", tc.current, got)
+			}
+		})
+	}
+}
+
+func TestNavWithoutRouterMarksNothing(t *testing.T) {
+	var b bytes.Buffer
+	if err := Page("x").Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), "aria-current") {
+		t.Errorf("no request context, yet a link is current:\n%s", b.String())
 	}
 }

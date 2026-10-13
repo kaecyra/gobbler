@@ -23,8 +23,13 @@ templ Page(title string) {
 		<body>
 			<header class="site-header">
 				<a class="brand" href="/">gobbler</a>
-				// Navigation placeholder: feature nodes add their entries here.
-				<nav class="site-nav" aria-label="Primary"></nav>
+				<nav class="site-nav" aria-label="Primary">
+					for _, item := range navItems {
+						<a href={ templ.SafeURL(item.Path) } if isCurrent(ctx, item) {
+	aria-current="page"
+}>{ item.Label }</a>
+					}
+				</nav>
 			</header>
 			<main id="content">
 				{ children... }
