@@ -37,6 +37,14 @@ func (f fakeRecipes) Get(_ context.Context, id int64) (recipe.Recipe, error) {
 	return r, nil
 }
 
+// Info is the bookkeeping of a recipe that was never cloned.
+func (f fakeRecipes) Info(_ context.Context, id int64) (store.Info, error) {
+	if _, ok := f[id]; !ok {
+		return store.Info{}, fmt.Errorf("recipe %d: %w", id, store.ErrNotFound)
+	}
+	return store.Info{ID: id, Version: 1}, nil
+}
+
 type fakeCatalog struct {
 	ingredients map[int64]catalog.Ingredient
 	equipment   map[int64]catalog.Equipment
@@ -357,6 +365,10 @@ type failingRecipes struct{}
 
 func (failingRecipes) Get(context.Context, int64) (recipe.Recipe, error) {
 	return recipe.Recipe{}, errors.New("disk on fire")
+}
+
+func (failingRecipes) Info(context.Context, int64) (store.Info, error) {
+	return store.Info{}, errors.New("disk on fire")
 }
 
 func TestSourceURLWithScriptSchemeIsNotLinked(t *testing.T) {

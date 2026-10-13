@@ -45,6 +45,15 @@ type view struct {
 
 	Components []componentView
 	Equipment  []equipmentView
+
+	// Origin is the recipe and version this one was cloned from; nil when it
+	// is not a clone or the original is gone.
+	Origin *originView
+}
+
+type originView struct {
+	RecipeID int64
+	Version  int64
 }
 
 type timeRow struct {

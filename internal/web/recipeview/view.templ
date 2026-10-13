@@ -34,6 +34,22 @@ func cookHref(id int64, o display.Options) string {
 	return o.URL(recipePath(id)+"/cook", nil)
 }
 
+// journalHref is the journal of this recipe: loaded into the page by HTMX, and
+// a plain link where scripts do not run. The journal is its own feature package
+// (ADR-00012), so only its URL is known here.
+func journalHref(id int64) string { return recipePath(id) + "/journal" }
+
+// historyHref is the history page of this recipe.
+func historyHref(id int64) string { return recipePath(id) + "/history" }
+
+// cloneHref is where the clone form posts.
+func cloneHref(id int64) string { return recipePath(id) + "/clone" }
+
+// originHref is the history page of one version of the recipe a clone came from.
+func originHref(o *originView) string {
+	return historyHref(o.RecipeID) + "/" + strconv.FormatInt(o.Version, 10)
+}
+
 // editHref is the editor page of this recipe. The editor is its own feature
 // package (ADR-00012), so only its URL is known here; it takes no display state.
 func editHref(id int64) string {
@@ -53,6 +69,7 @@ func presetActive(v view, param string) bool {
 templ recipePage(v view) {
 	@layout.Page(v.Name) {
 		@recipeBody(v)
+		@aside(v)
 	}
 }
 
@@ -61,6 +78,14 @@ templ recipeBody(v view) {
 		<h1>{ v.Name }</h1>
 		if v.Description != "" {
 			<p>{ v.Description }</p>
+		}
+		if v.Origin != nil {
+			<p class="muted" data-testid="origin">
+				Cloned from
+				<a href={ templ.SafeURL(recipePath(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
+				at
+				<a href={ templ.SafeURL(originHref(v.Origin)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
+			</p>
 		}
 		<p class="muted recipe-meta">
 			if v.Author != "" {
@@ -156,6 +181,23 @@ templ recipeBody(v view) {
 			}
 		</section>
 	</article>
+}
+
+// aside holds what belongs to the recipe but not to its scaled view: it sits
+// outside #recipe so scaling does not swap it, and the journal does not reload
+// (and lose a half-typed note) on every tap.
+templ aside(v view) {
+	<aside aria-label="Recipe tools">
+		<p>
+			<a href={ templ.SafeURL(historyHref(v.ID)) } data-testid="history-link">History</a>
+		</p>
+		<form method="post" action={ templ.SafeURL(cloneHref(v.ID)) }>
+			<button type="submit" data-testid="clone-button">Clone this recipe</button>
+		</form>
+		<div data-testid="journal-slot" hx-get={ journalHref(v.ID) } hx-trigger="load" hx-swap="outerHTML">
+			<p><a href={ templ.SafeURL(journalHref(v.ID)) }>Journal</a></p>
+		</div>
+	</aside>
 }
 
 templ times(v view) {
