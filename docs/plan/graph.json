@@ -1544,7 +1544,8 @@
       "depends_on": [
         "w3-recipeview-links",
         "t-catalog-overlay",
-        "t-recipe-sharing"
+        "t-recipe-sharing",
+        "t-sharing-entry-points"
       ],
       "owns": [
         "internal/web/recipeview/**",
@@ -1625,7 +1626,8 @@
         "internal/web/layout/**",
         "internal/web/operator/**",
         "e2e/operator/**",
-        "e2e/layout/**"
+        "e2e/layout/**",
+        "internal/web/middleware_household*.go"
       ],
       "needs_migration": null,
       "adrs": []
@@ -1641,6 +1643,28 @@
       "owns": [
         "internal/household/delete_test.go",
         "internal/catalog/overlay_migration_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "t-sharing-entry-points",
+      "title": "Link the sharing pages from the recipe page and the nav",
+      "wave": 8,
+      "track": null,
+      "issue": 176,
+      "status": "todo",
+      "depends_on": [
+        "t-recipe-sharing",
+        "r-operator-promotions-link"
+      ],
+      "owns": [
+        "internal/web/recipeview/view.templ",
+        "internal/web/layout/layout_nav*.go",
+        "internal/web/layout/layout_test.go",
+        "e2e/layout/layout.spec.ts",
+        "e2e/recipeview/recipeview.spec.ts",
+        "docs/design.md"
       ],
       "needs_migration": null,
       "adrs": []
