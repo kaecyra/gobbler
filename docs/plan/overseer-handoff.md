@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-10-13, round 8 close (late)
+# Overseer handoff: 2026-10-13, round 10 in progress
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
 
@@ -87,12 +87,23 @@ VERSION on main is 0.47.0. The next free schema number is 00011; the next ADR is
 - #168 migration 00010: an unreviewed ingredient referenced by exactly one household moves to that household's overlay; anything else stays central.
 - #168 also adds store-level checks that refuse an ingredient id outside central or the writer's overlay (shopping manual items, pantry, recipe lines).
 
+**Round 10 (2026-10-13), in progress.**
+
+| Node | Issue | Worktree / branch | State |
+|---|---|---|---|
+| t-recipe-sharing | #138 | `wt-138`, `feat/138-recipe-sharing` | worker running (e2e ports 41100) |
+| r-web-household-operator-shared | #169 | `wt-169`, `refactor/169-web-shared-helpers` | worker running (ports 41200) |
+| r-tenancy-test-gaps | #171 | `wt-171`, `test/171-tenancy-test-gaps` | worker running (ports 41300) |
+
+- #172 (graph: nodes for #169, #170, #171, all wave 8; t-cross-household-gate now waits on r-operator-promotions-link) merged at 51e0df0 under standing authority. The two NITs were recorded, not fixed: there is no verb to attach an existing ADR.
+- r-operator-promotions-link (#170) waits on #169.
+
 **Next, one at a time (all large):**
 1. **t-recipe-sharing (#138):** dispatchable now. No migration. Read #168's overlay model first, because shared recipes re-match lines against the recipient's catalog (ADR-00018 Sharing).
 2. **w3-equipment-size (#85):** waits on #138. Its equipment review surface must be operator-only (ADR-00019). #168 did not move central curation, so the lane stands.
 3. **t-cross-household-gate (#139):** last.
 
-**Follow-ups worth a node (from #160 and #168 reviews):**
+**Follow-ups from #160 and #168 reviews (now nodes #169, #170, #171):**
 - `fail`, the time layout and the pending view are duplicated between `internal/web/household` and `internal/web/operator`; a shared helper belongs in `internal/web/layout`.
 - No nav link from `/operator` to `/operator/promotions` (`layout.OperatorPaths`, `internal/web/operator/invitation.templ`).
 - `internal/household/delete_test.go` seeds no overlay entries, aliases or overrides, so its schema-wide "no rows left" check passes trivially for those tables.
