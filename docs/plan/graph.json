@@ -1666,6 +1666,11 @@
       "path": "internal/household/householddb/**",
       "mode": "open",
       "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go, and l-invitations adds household queries. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/shopping/queries/**",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (ADR-00014 keeps queries per package; within one package several nodes add queries): a node adds its own new .sql file, or a new entry, and never edits another node's; the dispatcher enforces this in diff review. mode is open for the same partition_by_lane reason as the other append-only entries."
     }
   ],
   "done": [
