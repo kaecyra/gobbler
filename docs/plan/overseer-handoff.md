@@ -59,8 +59,7 @@ VERSION on main is 0.43.4. The next schema number is 00009.
 - **#36 Todoist** is closed as not planned.
 - **#38 meal planning** stays deferred.
 - **#85 equipment size:** option 1, a `sized` flag on catalog equipment, set during review (recorded on #85).
-  - Next: write a short ADR for it.
-  - Then re-derive the w3-equipment-size lane (migration, `internal/catalog` equipment, the catalog review page, recipeview) and unblock the node.
+  - Recorded as ADR-00019 in #159, which also re-derives the w3-equipment-size lane and unblocks it.
 
 **Round 9 (2026-10-13, resumed session):**
 - #153 w3-display-times merged at 377f838 (VERSION 0.43.5), recorded on main.

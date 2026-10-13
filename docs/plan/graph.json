@@ -1535,13 +1535,19 @@
       ],
       "owns": [
         "internal/web/recipeview/**",
-        "internal/catalog/equipment*"
+        "internal/catalog/equipment*",
+        "internal/web/catalog/**",
+        "e2e/catalog/catalog.spec.ts",
+        "e2e/recipeview/recipeview.spec.ts",
+        "e2e/catalog/seed/*.go",
+        "e2e/recipeview/seed/*.go"
       ],
       "needs_migration": "schema",
       "adrs": [
-        "00005"
+        "00005",
+        "00019"
       ],
-      "blocked": "Needs an owner decision: how equipment gets a size (a sized flag set on review, or a size parsed from the ingested line), ADR-00005 Scaling. The lane is a placeholder and is re-derived when the decision lands."
+      "note": "ADR-00019: a hand-set sized flag on catalog equipment (migration), set by the operator during catalog review, drives the scaled-view larger-pan hint. No equipment review surface exists yet; if t-catalog-overlay moves central curation under internal/web/operator, re-derive this lane before dispatch. Waits on t-catalog-overlay because both edit catalog equipment and the catalog page. Remove the recipeview model comment saying the schema has no size yet (#85)."
     }
   ],
   "shared_files": [
@@ -2067,7 +2073,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00018",
+    "last_used": "00019",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
   }
 }
