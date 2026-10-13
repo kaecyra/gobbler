@@ -1284,7 +1284,7 @@
       "wave": 8,
       "track": "shopping",
       "issue": 136,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "t-scope-recipes",
         "e2e-seed-helper"
@@ -2070,6 +2070,15 @@
         "00012"
       ],
       "note": "ADR-00012: include by URL, no cross-feature import."
+    },
+    {
+      "id": "t-scope-shopping",
+      "title": "Scope shopping data and the pantry to the household",
+      "merged": "814f1955311565b48ed217aace6f09dacc541cfe",
+      "adrs": [
+        "00018"
+      ],
+      "note": "Its migration scopes shopping lists to a household and cascades shopping_entries (and lists) from households, so deleting a household leaves no shopping rows. Required because l-invitations ships household deletion in parallel (owner ruling 2026-10-13: no deploy happens partway through the tenancy track)."
     }
   ],
   "adr_sequence": {
