@@ -1675,7 +1675,7 @@
       "wave": 8,
       "track": null,
       "issue": 180,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/config/config.go",
@@ -2279,6 +2279,11 @@
       "id": "t-sharing-entry-points",
       "title": "Link the sharing pages from the recipe page and the nav",
       "merged": "a2af80a6d83c954672624022eda284f061dc2292"
+    },
+    {
+      "id": "r-drop-todoist-config",
+      "title": "Drop the Todoist settings",
+      "merged": "ece09e5e3f807b048f3eb4a82479ce147b3447f0"
     }
   ],
   "adr_sequence": {
