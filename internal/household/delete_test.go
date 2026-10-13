@@ -93,6 +93,31 @@ func fill(t *testing.T, d *sql.DB, h household.Household, name string) {
 		t.Fatal(err)
 	}
 	shop(t, d, h, id)
+	overlay(t, d, h)
+}
+
+// overlay gives the household catalog overlay rows: an ingredient of its own
+// with an alias, its own alias and an aisle override on a central entry, so the
+// deletion check does not pass trivially for those tables.
+func overlay(t *testing.T, d *sql.DB, h household.Household) {
+	t.Helper()
+	var central int64
+	if err := d.QueryRow(`SELECT id FROM ingredients WHERE household_id IS NULL ORDER BY id LIMIT 1`).Scan(&central); err != nil {
+		t.Fatalf("the catalog has no central ingredient: %v", err)
+	}
+	var own int64
+	if err := d.QueryRow(`INSERT INTO ingredients (household_id, name, aisle, suggested_at) VALUES (?, 'zz house ghee', 'pantry', 'x') RETURNING id`, h.ID).Scan(&own); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO ingredient_aliases (household_id, alias, ingredient_id) VALUES (?1, 'zz house clarified', ?2)`,
+		`INSERT INTO ingredient_aliases (household_id, alias, ingredient_id) VALUES (?1, 'zz house bulb', ?3)`,
+		`INSERT INTO ingredient_aisle_overrides (household_id, ingredient_id, aisle) VALUES (?1, ?3, 'zz veg')`,
+	} {
+		if _, err := d.Exec(q, h.ID, own, central); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
 }
 
 // shop gives the household a shopping list holding an entry for its recipe, a
@@ -163,8 +188,9 @@ func TestDeleteLeavesNothingOfTheHousehold(t *testing.T) {
 
 	with, alpha := deletionDB(t, true)
 	have := rowCounts(t, with)
-	for _, table := range []string{"recipes", "shopping_lists", "shopping_entries", "shopping_manual_items", "shopping_checks", "shopping_pantry"} {
-		if have[table] != want[table]+1 {
+	for _, table := range []string{"recipes", "shopping_lists", "shopping_entries", "shopping_manual_items", "shopping_checks", "shopping_pantry",
+		"ingredients", "ingredient_aliases", "ingredient_aisle_overrides"} {
+		if have[table] <= want[table] {
 			t.Fatalf("the fixture did not add a row to %s for Alpha: %d rows, %d without Alpha", table, have[table], want[table])
 		}
 	}
