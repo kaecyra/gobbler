@@ -74,7 +74,7 @@ func (p *Pipeline) assemble(ctx context.Context, src Source, res extract.Result)
 		return Draft{}, fmt.Errorf("read catalog while drafting: %w", rs.err)
 	}
 
-	d.Proposed = proposedIngredients(d.Components)
+	d.Proposed = ProposedFor(d.Components, nil)
 	d.score(structure)
 	return d, nil
 }
@@ -204,9 +204,16 @@ func (a *assembler) line(raw string) (Line, bool) {
 	return l, true
 }
 
-// proposedIngredients lists the names of lines that matched no catalog
-// ingredient, once each, in reading order.
-func proposedIngredients(comps []Component) []ProposedIngredient {
+// ProposedFor lists what confirming comps would add to the catalog: the
+// names of lines matched to no catalog ingredient, normalised, once each, in
+// reading order. The assembler calls it with no prior list; the review screen
+// calls it again after edits, passing the draft's earlier list so a name
+// already proposed keeps its aisle.
+func ProposedFor(comps []Component, prior []ProposedIngredient) []ProposedIngredient {
+	aisle := make(map[string]string, len(prior))
+	for _, p := range prior {
+		aisle[p.Name] = p.Aisle
+	}
 	var out []ProposedIngredient
 	seen := map[string]bool{}
 	for _, c := range comps {
@@ -216,10 +223,21 @@ func proposedIngredients(comps []Component) []ProposedIngredient {
 				continue
 			}
 			seen[name] = true
-			out = append(out, ProposedIngredient{Name: name, Aisle: proposedAisle})
+			a, ok := aisle[name]
+			if !ok {
+				a = proposedAisle
+			}
+			out = append(out, ProposedIngredient{Name: name, Aisle: a})
 		}
 	}
 	return out
+}
+
+// proposedIngredients is ProposedFor with no prior list, for the fallback path
+// in fallback.go, which sits outside this node's lane; fold it into a direct
+// ProposedFor call there.
+func proposedIngredients(comps []Component) []ProposedIngredient {
+	return ProposedFor(comps, nil)
 }
 
 // normalizeName is the catalog's stored form of a name: trimmed, lower-case,
