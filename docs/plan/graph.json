@@ -1420,7 +1420,7 @@
       "wave": 8,
       "track": "foundation",
       "issue": 112,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "Makefile",
@@ -2030,6 +2030,12 @@
         "00013"
       ],
       "note": "ADR-00013 obligation 1. A CI job (not a Makefile target, so it never collides with g-templ-gate) builds the image and asserts command -v node fails and no e2e/ path exists."
+    },
+    {
+      "id": "g-templ-gate",
+      "title": "Fail make check when committed templ output is stale",
+      "merged": "396d7c1",
+      "note": "make generate runs templ and then goimports (matching make fmt). generate-check regenerates and compares every tracked *_templ.go, and a test-scripts case proves it. Regenerating from the repository root fixes the files whose FileName was written from inside a package directory. code-style.md and the git-workflow.md gates table say templ output is checked like sqlc's."
     }
   ],
   "adr_sequence": {

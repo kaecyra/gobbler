@@ -54,7 +54,7 @@ VERSION on main is 0.43.1. The next schema number is 00009.
 
 | Node | Issue | PR | Worktree | State |
 |---|---|---|---|---|
-| g-templ-gate | #112 | #151 | wt-112 | Round 1 fixes done, threads resolved, CI was running. Merge when green (VERSION 0.43.2). |
+| g-templ-gate | #112 | #151 | — | **Merged** at 396d7c1; VERSION on main is 0.43.2 |
 | e2e-seed-helper | #99 | #152 | wt-99 | In review |
 | w3-display-times | #111 | #153 | wt-111 | In review |
 | w2-proposed-dedup | #88 | #154 | wt-88 | In review |
