@@ -74,40 +74,8 @@ func applyEdits(ctx context.Context, form url.Values, d *ingestcore.Draft, m ing
 			}
 		}
 	}
-	d.Proposed = proposedFor(*d)
+	d.Proposed = ingestcore.ProposedFor(d.Components, d.Proposed)
 	return problems, nil
-}
-
-// proposedAisle files a proposed ingredient until it is reviewed. It matches
-// the aisle ingest.Saver creates it under.
-const proposedAisle = "uncategorised"
-
-// proposedFor lists what confirming d would add: the names of lines still
-// matched to no catalog ingredient, once each, in reading order. The edits just
-// applied can map a line or rename it, so the draft's list from ingest time is
-// stale; a name already proposed keeps its aisle.
-func proposedFor(d ingestcore.Draft) []ingestcore.ProposedIngredient {
-	aisle := map[string]string{}
-	for _, p := range d.Proposed {
-		aisle[p.Name] = p.Aisle
-	}
-	var out []ingestcore.ProposedIngredient
-	seen := map[string]bool{}
-	for _, c := range d.Components {
-		for _, l := range c.Lines {
-			name := strings.Join(strings.Fields(strings.ToLower(l.Name)), " ")
-			if l.Ingredient != 0 || name == "" || seen[name] {
-				continue
-			}
-			seen[name] = true
-			a, ok := aisle[name]
-			if !ok {
-				a = proposedAisle
-			}
-			out = append(out, ingestcore.ProposedIngredient{Name: name, Aisle: a})
-		}
-	}
-	return out
 }
 
 func editString(form url.Values, key string, f *ingestcore.Field[string]) {
