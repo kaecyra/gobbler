@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 )
@@ -13,15 +14,16 @@ import (
 // times are not scaled, so the page says they may need attention.
 const hintTime = "time may change"
 
-// hintLargerPan is shown on sized equipment of a scaled view (ADR-00005,
-// ADR-00019): equipment is not scaled, so the page says the pan may not hold
+// hintLargerPan is shown on sized equipment of a view scaled up (ADR-00005,
+// ADR-00019 as amended): equipment is not scaled, so the page says the pan may not hold
 // the new amount.
 const hintLargerPan = "may need a larger pan"
 
 // equipmentHint is the hint beside one equipment line: the larger-pan hint on
-// sized catalog equipment of a scaled view, and nothing otherwise.
-func equipmentHint(scaled, sized bool) string {
-	if scaled && sized {
+// sized catalog equipment of a view scaled up, and nothing otherwise. A view
+// scaled down needs a smaller pan at most, never a larger one.
+func equipmentHint(scaledUp, sized bool) string {
+	if scaledUp && sized {
 		return hintLargerPan
 	}
 	return ""
@@ -164,7 +166,7 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		if err != nil {
 			return view{}, display.Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
 		}
-		v.Equipment = append(v.Equipment, equipmentView{Text: text, Hint: equipmentHint(v.Scaled, eq.Sized)})
+		v.Equipment = append(v.Equipment, equipmentView{Text: text, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
 	}
 	return v, nil
 }

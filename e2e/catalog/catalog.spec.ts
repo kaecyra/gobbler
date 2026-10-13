@@ -187,7 +187,7 @@ test('another household sees nothing of an ingredient it does not own', async ({
 });
 
 // The sized flag (ADR-00019): the operator sets it on catalog equipment, and a
-// scaled recipe view then hints at a larger pan on that equipment only.
+// scaled recipe view then hints at a larger pan on that equipment only when scaled up.
 test.describe('equipment sized flag', () => {
   const hint = 'may need a larger pan';
 
@@ -228,6 +228,10 @@ test.describe('equipment sized flag', () => {
       await expect(memberPage.getByTestId('equipment-hint')).toHaveText(`(${hint})`);
       // Unscaled, the same sized equipment has no hint.
       await memberPage.goto(`/recipes/${ids.recipe}`);
+      await expect(memberPage.getByTestId('equipment')).toContainText('e2e roasting tin');
+      await expect(memberPage.getByTestId('equipment-hint')).toHaveCount(0);
+      // Scaled down, there is no larger pan to hint at either.
+      await memberPage.goto(`/recipes/${ids.recipe}?scale=1/2`);
       await expect(memberPage.getByTestId('equipment')).toContainText('e2e roasting tin');
       await expect(memberPage.getByTestId('equipment-hint')).toHaveCount(0);
 

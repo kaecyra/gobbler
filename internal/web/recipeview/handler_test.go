@@ -274,14 +274,16 @@ func equipmentItems(t *testing.T, body string) map[string]string {
 	return items
 }
 
-func TestLargerPanHintIsOnSizedEquipmentOfAScaledView(t *testing.T) {
+func TestLargerPanHintIsOnSizedEquipmentOfAViewScaledUp(t *testing.T) {
 	for _, c := range []struct {
 		name, path string
 		pan, whisk bool // whether the line carries the hint
 	}{
 		{"unscaled", "/recipes/7", false, false},
 		{"scaled up", "/recipes/7?scale=3", true, false},
-		{"scaled by servings", "/recipes/7?servings=2", true, false},
+		{"scaled up by servings", "/recipes/7?servings=8", true, false},
+		{"scaled down", "/recipes/7?scale=1/2", false, false},
+		{"scaled down by servings", "/recipes/7?servings=2", false, false},
 	} {
 		recipes, cat := sizedKitchen(t)
 		rec := serveRequest(t, recipes, cat, httptest.NewRequest(http.MethodGet, c.path, nil))
@@ -300,16 +302,16 @@ func TestLargerPanHintIsOnSizedEquipmentOfAScaledView(t *testing.T) {
 
 func TestEquipmentHint(t *testing.T) {
 	for _, c := range []struct {
-		scaled, sized bool
-		want          string
+		scaledUp, sized bool
+		want            string
 	}{
 		{true, true, hintLargerPan},
 		{true, false, ""},
 		{false, true, ""},
 		{false, false, ""},
 	} {
-		if got := equipmentHint(c.scaled, c.sized); got != c.want {
-			t.Errorf("equipmentHint(scaled=%v, sized=%v) = %q, want %q", c.scaled, c.sized, got, c.want)
+		if got := equipmentHint(c.scaledUp, c.sized); got != c.want {
+			t.Errorf("equipmentHint(scaledUp=%v, sized=%v) = %q, want %q", c.scaledUp, c.sized, got, c.want)
 		}
 	}
 }
