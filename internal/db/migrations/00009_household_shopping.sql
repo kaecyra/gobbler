@@ -100,7 +100,6 @@ ALTER TABLE shopping_manual_items_new RENAME TO shopping_manual_items;
 ALTER TABLE shopping_pantry_new RENAME TO shopping_pantry;
 ALTER TABLE shopping_checks_new RENAME TO shopping_checks;
 
-CREATE INDEX shopping_lists_household_id ON shopping_lists (household_id);
 CREATE INDEX shopping_entries_recipe_id ON shopping_entries (household_id, recipe_id);
 CREATE INDEX shopping_manual_items_list_id ON shopping_manual_items (list_id);
 CREATE INDEX shopping_manual_items_ingredient_id ON shopping_manual_items (ingredient_id);

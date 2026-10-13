@@ -115,6 +115,17 @@ func TestMigration00009DownKeepsShoppingRows(t *testing.T) {
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatal(err)
 	}
+	// The second household holds the same ingredient as the first (901) and
+	// one of its own (902): the rollback must leave one row per ingredient.
+	for _, q := range []string{
+		`INSERT INTO ingredients (id, name, aisle) VALUES (902, 'zz migration pepper', 'test')`,
+		`INSERT INTO shopping_pantry (household_id, ingredient_id) SELECT max(id), 901 FROM households`,
+		`INSERT INTO shopping_pantry (household_id, ingredient_id) SELECT max(id), 902 FROM households`,
+	} {
+		if _, err := d.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
 	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
 	if err != nil {
 		t.Fatal(err)
@@ -128,8 +139,12 @@ func TestMigration00009DownKeepsShoppingRows(t *testing.T) {
 		if n := countRows(t, d, `SELECT COUNT(*) FROM pragma_table_info('`+table+`') WHERE name = 'household_id'`); n != 0 {
 			t.Errorf("household_id survived the rollback on %s", table)
 		}
-		if n := countRows(t, d, `SELECT COUNT(*) FROM `+table); n != 1 {
-			t.Errorf("%s has %d rows after the rollback, want 1", table, n)
+		want := 1
+		if table == "shopping_pantry" {
+			want = 2 // 901 and 902, once each
+		}
+		if n := countRows(t, d, `SELECT COUNT(*) FROM `+table); n != want {
+			t.Errorf("%s has %d rows after the rollback, want %d", table, n, want)
 		}
 	}
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
