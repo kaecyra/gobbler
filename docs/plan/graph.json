@@ -1601,7 +1601,7 @@
       "wave": 8,
       "track": null,
       "issue": 169,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [],
       "owns": [
         "internal/web/household/**",
@@ -1636,7 +1636,7 @@
       "wave": 8,
       "track": null,
       "issue": 171,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [],
       "owns": [
         "internal/household/delete_test.go",
