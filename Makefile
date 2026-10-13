@@ -9,19 +9,26 @@ GOLANGCI_LINT_VERSION := v2.14.0
 
 E2E_SETUP := cd e2e && npm ci && npx playwright install chromium
 
-.PHONY: tools generate generate-check fmt fmt-check lint test test-scripts e2e e2e-routes version-check check
+.PHONY: tools generate generate-templ generate-check fmt fmt-check lint test test-scripts e2e e2e-routes version-check check
 
 ## tools: install the pinned golangci-lint
 tools:
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
-## generate: regenerate the sqlc data-access code from queries/ and the migrations (ADR-00014)
-generate:
+## generate: regenerate the sqlc data-access code (ADR-00014) and the templ output
+generate: generate-templ
 	go tool sqlc generate
 
-## generate-check: fail if the committed sqlc output is stale (sqlc diff)
+## generate-templ: regenerate *_templ.go from the repository root, then goimports
+## them as make fmt does, so the committed form is stable
+generate-templ:
+	go tool templ generate
+	@find . -name '*_templ.go' -not -path '*/node_modules/*' -not -path './.git/*' -not -path './.claude/*' -print0 | xargs -0 go tool goimports -local $(MODULE) -w
+
+## generate-check: fail if the committed sqlc or templ output is stale
 generate-check:
 	go tool sqlc diff
+	bash .github/scripts/check-templ.sh
 
 ## fmt: rewrite Go files with gofmt and goimports
 fmt:
@@ -50,6 +57,7 @@ test:
 ## test-scripts: test the shell and Node helpers behind the gates
 test-scripts:
 	bash .github/scripts/check-version-bump_test.sh
+	bash .github/scripts/check-templ_test.sh
 	@command -v node >/dev/null || { echo "node is required; install Node"; exit 1; }
 	node --test e2e/fixtures/*.test.mjs
 
