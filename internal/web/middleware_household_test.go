@@ -72,8 +72,6 @@ func TestNonMemberReachesOnlyTheAllowedRoutes(t *testing.T) {
 		{http.MethodGet, "/nope"},
 		{http.MethodPost, "/ingest"},
 		{http.MethodGet, "/invitations"}, // the prefix is "/invitations/"
-		{http.MethodGet, "/invitations/../recipes"},
-		{http.MethodGet, "/static/../recipes"},
 	} {
 		rec := do(h, tc.method, tc.path, strangerEmail)
 		body := rec.Body.String()
@@ -124,7 +122,6 @@ func TestSettingsIsOperatorOnly(t *testing.T) {
 		{"non-operator member", auth.DevEmail, http.MethodGet, "/settings", http.StatusForbidden},
 		{"non-operator member, slash", auth.DevEmail, http.MethodGet, "/settings/", http.StatusForbidden},
 		{"non-operator member, action", auth.DevEmail, http.MethodPost, "/settings/backup", http.StatusForbidden},
-		{"non-operator member, dot segment", auth.DevEmail, http.MethodPost, "/settings/./backup", http.StatusForbidden},
 		{"operator who is a member", auth.DevOtherEmail, http.MethodGet, "/settings", http.StatusOK},
 		{"operator with no household", operatorEmail, http.MethodGet, "/settings", http.StatusOK},
 		{"operator with no household, action", operatorEmail, http.MethodPost, "/settings/backup", http.StatusSeeOther},
@@ -176,5 +173,37 @@ func TestDevHouseholdsAreNotSeededOutsideTheBypass(t *testing.T) {
 	testRouter(t, prodConfig(), Deps{DB: d})
 	if _, err := household.New(d).ForEmail(context.Background(), auth.DevEmail); err == nil {
 		t.Fatal("a deployment behind Access got the dev member")
+	}
+}
+
+// dotSegmentPaths are spellings chi would dispatch into the /settings mount
+// (it routes the raw path) but whose cleaned form names no operator page.
+var dotSegmentPaths = []string{"/invitations/../recipes", "/static/../recipes", "/settings/..", "/settings/%2e%2e", "/settings/%2E%2E", "/settings/./backup", "/settings/%2e/backup", "/settings/.%2e", "/settings/../recipes"}
+
+// probeRouter is tenantRouter plus a /settings/{id} child, so a path that slips
+// past the operator check is observable as a 200 instead of a 404.
+func probeRouter(t *testing.T) http.Handler {
+	t.Helper()
+	cfg := devConfig()
+	cfg.Operator = config.Operator{Emails: []string{operatorEmail}}
+	r := testRouter(t, cfg, Deps{Backup: idleBackup{}})
+	r.Get("/settings/{id}", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("operator child")) })
+	return r
+}
+
+func TestDotSegmentsNeverReachAnOperatorChild(t *testing.T) {
+	h := probeRouter(t)
+	if rec := do(h, http.MethodGet, "/settings/5", auth.DevEmail); rec.Code != http.StatusForbidden {
+		t.Fatalf("control: member on /settings/5 = %d, want 403", rec.Code)
+	}
+	for _, email := range []string{auth.DevEmail, strangerEmail, operatorEmail} {
+		for _, p := range dotSegmentPaths {
+			for _, method := range []string{http.MethodGet, http.MethodPost} {
+				rec := do(h, method, p, email)
+				if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "operator child") {
+					t.Errorf("%s %s %s = %d, want the 404 page", email, method, p, rec.Code)
+				}
+			}
+		}
 	}
 }

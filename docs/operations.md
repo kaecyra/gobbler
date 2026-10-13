@@ -59,7 +59,8 @@ both values it refuses to start.
 
 Admission is decided in the app, not in Access. A verified email that is a
 member of a household reaches the app. One that is not reaches only `/healthz`,
-the "not a member" page and invitation acceptance. Nobody joins or starts a
+the "not a member" page, invitation acceptance and `/static/*` (the embedded
+assets that page is drawn with; it serves no household data). Nobody joins or starts a
 household without an invitation addressed to their email.
 
 The **operator** is whoever `GOBBLER_OPERATOR_EMAILS` lists (comma-separated).

@@ -53,6 +53,15 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 				next.ServeHTTP(w, r)
 				return
 			}
+			// chi routes the raw path, so "/settings/.." is dispatched into the
+			// /settings mount while its cleaned form "/" names no operator page.
+			// No page lives behind a dot segment, so refuse one before any
+			// admission decision, whoever asks, and the checks below can read
+			// the path as written.
+			if hasDotSegment(r) {
+				layout.WriteError(w, r, fmt.Errorf("dot segment in %q: %w", r.URL.Path, layout.ErrNotFound))
+				return
+			}
 			email, ok := auth.EmailFromContext(r.Context())
 			if !ok {
 				http.Error(w, "forbidden", http.StatusForbidden)
@@ -84,20 +93,30 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 	}
 }
 
-// nonMemberMay reports whether a verified non-member may open p. It looks at
-// the raw path, and a path with a dot segment is never admitted, so
-// "/invitations/../recipes" does not ride in on its prefix.
+// nonMemberMay reports whether a verified non-member may open p. The caller
+// has already refused dot segments, so the prefixes mean what they say.
 func nonMemberMay(p string) bool {
-	if slices.ContainsFunc(strings.Split(p, "/"), func(seg string) bool { return seg == "." || seg == ".." }) {
-		return false
-	}
 	return p == nonmember.Pattern || strings.HasPrefix(p, InvitationsPrefix) || strings.HasPrefix(p, "/static/")
 }
 
-// isOperatorPath reports whether the request is for an operator page. It is
-// deliberately broad: it checks the decoded and the escaped path, cleaned, so
-// no spelling the router could resolve to an operator page escapes the check.
-// Over-matching only refuses a path that would not have routed anyway.
+// hasDotSegment reports whether the request path has a "." or ".." segment,
+// in its decoded form or as sent (so "%2e%2e" is caught either way).
+func hasDotSegment(r *http.Request) bool {
+	for _, p := range []string{r.URL.Path, r.URL.EscapedPath()} {
+		if slices.ContainsFunc(strings.Split(p, "/"), func(seg string) bool {
+			return seg == "." || seg == ".." || strings.EqualFold(seg, "%2e") || strings.EqualFold(seg, "%2e%2e") ||
+				strings.EqualFold(seg, ".%2e") || strings.EqualFold(seg, "%2e.")
+		}) {
+			return true
+		}
+	}
+	return false
+}
+
+// isOperatorPath reports whether the request is for an operator page: its
+// decoded or its escaped path, cleaned, is an operator root or lies under one.
+// Dot segments never get this far (hasDotSegment), so cleaning changes nothing
+// on a request that reaches it; it only normalises repeated slashes.
 func isOperatorPath(r *http.Request) bool {
 	for _, p := range []string{r.URL.Path, r.URL.EscapedPath()} {
 		p = path.Clean("/" + p)
