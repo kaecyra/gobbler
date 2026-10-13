@@ -18,7 +18,9 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
+	"github.com/kaecyra/gobbler/internal/web/nonmember"
 	"github.com/kaecyra/gobbler/internal/web/settings"
 )
 
@@ -42,10 +44,11 @@ type Deps struct {
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
-// panic recovery, then authentication, then cross-origin protection
-// (ADR-00016), then the handlers. Logging is outermost so refused requests
-// (unauthenticated or cross-origin) and recovered panics (logged as 500) each
-// get an access line, and the handlers never run for either kind of refusal.
+// panic recovery, then authentication, then household membership
+// (ADR-00018), then cross-origin protection (ADR-00016), then the handlers.
+// Logging is outermost so refused requests (unauthenticated, not a member or
+// cross-origin) and recovered panics (logged as 500) each get an access line,
+// and the handlers never run for any kind of refusal.
 func New(d Deps) (http.Handler, error) {
 	return newRouter(d)
 }
@@ -54,15 +57,23 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	if d.Auth == nil {
 		return nil, errors.New("web: an authenticator is required")
 	}
+	if d.DB == nil {
+		return nil, errors.New("web: a database is required")
+	}
 	log := d.Logger
 	if log == nil {
 		log = slog.Default()
 	}
 
+	var members memberLookup = household.New(d.DB)
+	if d.Config.Server.DevAuthBypass {
+		members = &devSeeded{store: household.New(d.DB)}
+	}
+
 	r := chi.NewRouter()
 	// No trusted origins and no bypass patterns: no handler opts out (ADR-00016).
 	cop := http.NewCrossOriginProtection()
-	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(HealthPath), cop.Handler)
+	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(HealthPath), membership(members, d.Config.Operator), cop.Handler)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})
@@ -71,6 +82,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	})
 
 	r.Get(HealthPath, healthHandler(d.HealthDetails))
+	r.Mount(nonmember.Pattern, nonmember.Routes())
 	r.Get("/", homeHandler)
 	r.Handle("/static/*", staticHandler())
 	mountFeatures(r, d)

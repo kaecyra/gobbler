@@ -33,7 +33,12 @@ on the guest can reach `127.0.0.1:8080`; the Access JWT check stops them
 2. That code must route the public hostname to `http://127.0.0.1:8080` (the
    loopback port Compose publishes).
 3. Create a self-hosted Access application for that hostname with a policy that
-   allows only you.
+   **admits any email that can authenticate** (for example an Allow rule that
+   includes Everyone, with the One-time PIN identity provider enabled). Do not restrict it to your own address: Access
+   proves who a person is, and the app decides whether they may enter
+   ([ADR-00018](./adr/00018-households-as-tenants.md)). Because the app's
+   membership check is then the only lock, an email that is not a household
+   member sees only the "not a member" page.
 4. Note two values for `.env`:
    - the **application AUD tag**, shown on the Access application, is
      `GOBBLER_ACCESS_AUD`;
@@ -49,6 +54,23 @@ on the guest can reach `127.0.0.1:8080`; the Access JWT check stops them
 
 gobbler verifies the Access JWT on every request except `/healthz`; without
 both values it refuses to start.
+
+### Admission and the first household
+
+Admission is decided in the app, not in Access. A verified email that is a
+member of a household reaches the app. One that is not reaches only `/healthz`,
+the "not a member" page, invitation acceptance and `/static/*` (the embedded
+assets that page is drawn with; it serves no household data). Nobody joins or starts a
+household without an invitation addressed to their email.
+
+The **operator** is whoever `GOBBLER_OPERATOR_EMAILS` lists (comma-separated).
+An operator email reaches the operator's pages, today `/settings`
+(backup, storage and health), without being a member of any household; a member
+who is not an operator is refused there. Operator status lives only in
+configuration and cannot be granted from inside the app. Set the variable
+before first use: with no operator and no household nobody can issue the first
+invitation. The first household is created like any other, by the operator
+inviting an email (their own, if they want to use it) to start one.
 
 ### Bring it up
 
@@ -103,10 +125,11 @@ the container runs in UTC.
 |---|---|---|---|
 | `GOBBLER_ACCESS_TEAM_DOMAIN` | none | no | Bare host, e.g. `team.cloudflareaccess.com`: no `https://`, path or spaces. Required unless the dev bypass is on. `config.Load` only checks it is set; `auth.New` rejects a malformed value, so a bad value fails at `serve` start-up. |
 | `GOBBLER_ACCESS_AUD` | none | no | Application AUD tag. Required unless the dev bypass is on. |
+| `GOBBLER_OPERATOR_EMAILS` | empty (no operator) | no | Comma-separated bare email addresses, case-insensitive. Each is an operator: it reaches `/settings` and the other operator pages without being a household member ([ADR-00018](./adr/00018-households-as-tenants.md)). A malformed entry is an error. |
 | `GOBBLER_LISTEN_ADDR` | `127.0.0.1:8080` | no | |
 | `GOBBLER_DATA_DIR` | `data` | no | Holds `gobbler.db` and `backups/`. |
 | `GOBBLER_LOG_LEVEL` | `info` | no | `debug`, `info`, `warn` or `error`. |
-| `GOBBLER_DEV_AUTH_BYPASS` | `false` | no | Skips Access verification; refuses to start unless the listen address is loopback. Development only. |
+| `GOBBLER_DEV_AUTH_BYPASS` | `false` | no | Skips Access verification; refuses to start unless the listen address is loopback. Development only. Every request acts as `dev@localhost` unless it sends `X-Gobbler-Dev-Identity`, and `dev@localhost` and `other@localhost` are seeded as members of two separate households. None of this exists with the bypass off. |
 | `GOBBLER_INGEST_CONFIDENCE_THRESHOLD` | `0.7` | no | 0 to 1. Drafts below it fall back to the LLM ([ADR-00006](./adr/00006-rule-first-ingestion.md)). |
 | `GOBBLER_INGEST_FETCH_TIMEOUT` | `15s` | no | Go duration, positive. |
 | `GOBBLER_INGEST_USER_AGENT` | `gobbler (self-hosted recipe manager)` | no | |
@@ -166,9 +189,8 @@ Design and reasoning: [ADR-00010](./adr/00010-backups.md).
   ```
 
 - Status (last success time, last error) is stored in
-  `<data dir>/backups/status.json`. As of this writing nothing in the web UI or
-  `/healthz` shows it yet: `serve` does not set `web.Deps.HealthDetails`, and
-  no settings page exists on this branch. Check logs and `status.json` instead.
+  `<data dir>/backups/status.json`. The operator's `/settings` page shows it,
+  and `/healthz` reports it under `details`.
 
 ## Restore
 
@@ -266,8 +288,5 @@ there. The next scheduled run takes a fresh snapshot of the restored database.
 
 ## Not covered here
 
-- The settings page and its backup status display, and the manual "back up now"
-  button (ADR-00010), are not on this branch. The `gobbler backup` subcommand
-  is the manual trigger today.
 - The Todoist settings are read and validated, but this document does not
   describe the push feature.

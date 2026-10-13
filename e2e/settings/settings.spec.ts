@@ -34,6 +34,8 @@ async function start(extraEnv: Record<string, string>) {
       GOBBLER_DATA_DIR: dataDir,
       GOBBLER_LOG_LEVEL: 'warn',
       GOBBLER_DEV_AUTH_BYPASS: 'true',
+      // /settings is operator-only (ADR-00018); the dev identity is the operator here.
+      GOBBLER_OPERATOR_EMAILS: 'dev@localhost',
       ...extraEnv,
     },
     stdio: 'inherit',

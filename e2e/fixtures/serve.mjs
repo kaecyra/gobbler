@@ -2,7 +2,8 @@
 // fresh temp directory removed on exit. Run by the webServer entries in
 // playwright.config.ts; never with real credentials.
 //
-//   serve.mjs            dev-auth bypass on (every request is the dev identity)
+//   serve.mjs            dev-auth bypass on (a request is the dev identity unless it
+//                        sends X-Gobbler-Dev-Identity; the dev households are seeded)
 //   serve.mjs --access   Access verification ON with a fake team domain and AUD,
 //                        so a request without a valid token is refused (ADR-00003)
 import { spawn } from 'node:child_process';
@@ -30,6 +31,11 @@ const env = {
   GOBBLER_LISTEN_ADDR: `127.0.0.1:${port}`,
   GOBBLER_DATA_DIR: dataDir,
   GOBBLER_LOG_LEVEL: 'warn',
+  // The operators of the e2e deployment: one who is a member of no household
+  // and the default dev identity, so suites that open /settings as dev (the
+  // layout nav) keep working. Keep them in step with OPERATOR and DEV in
+  // identity.ts. OTHER is a member who is not an operator.
+  GOBBLER_OPERATOR_EMAILS: 'operator@e2e.example,dev@localhost',
   ...(access
     ? { GOBBLER_ACCESS_TEAM_DOMAIN: 'e2e.invalid', GOBBLER_ACCESS_AUD: 'e2e-fake-aud' }
     : { GOBBLER_DEV_AUTH_BYPASS: 'true' }),

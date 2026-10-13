@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net/mail"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +24,7 @@ const (
 	EnvDevAuthBypass       = "GOBBLER_DEV_AUTH_BYPASS"
 	EnvAccessTeamDomain    = "GOBBLER_ACCESS_TEAM_DOMAIN"
 	EnvAccessAUD           = "GOBBLER_ACCESS_AUD"
+	EnvOperatorEmails      = "GOBBLER_OPERATOR_EMAILS"
 	EnvConfidenceThreshold = "GOBBLER_INGEST_CONFIDENCE_THRESHOLD"
 	EnvFetchTimeout        = "GOBBLER_INGEST_FETCH_TIMEOUT"
 	EnvUserAgent           = "GOBBLER_INGEST_USER_AGENT"
@@ -72,6 +75,7 @@ const (
 type Config struct {
 	Server    Server
 	Access    Access
+	Operator  Operator
 	Ingestion Ingestion
 	LLM       LLM
 	Todoist   Todoist
@@ -93,6 +97,19 @@ type Server struct {
 type Access struct {
 	TeamDomain string
 	AUD        string
+}
+
+// Operator holds the operator identities (ADR-00018). The operator is defined
+// here and never in the database, so operator status cannot be granted from
+// inside the app.
+type Operator struct {
+	// Emails are trimmed and lower-cased, without duplicates.
+	Emails []string
+}
+
+// IsOperator reports whether the verified email is an operator's.
+func (o Operator) IsOperator(email string) bool {
+	return slices.Contains(o.Emails, strings.ToLower(strings.TrimSpace(email)))
 }
 
 // Ingestion holds ingestion settings (ADR-00006).
@@ -176,6 +193,8 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 		r.require(EnvAccessTeamDomain, c.Access.TeamDomain, "required unless "+EnvDevAuthBypass+" is set")
 		r.require(EnvAccessAUD, c.Access.AUD, "required unless "+EnvDevAuthBypass+" is set")
 	}
+
+	c.Operator.Emails = r.emails(EnvOperatorEmails)
 
 	c.Ingestion.ConfidenceThreshold = r.float(EnvConfidenceThreshold, defaultConfidenceThreshold, 0, 1)
 	c.Ingestion.FetchTimeout = r.duration(EnvFetchTimeout, defaultFetchTimeout)
@@ -286,6 +305,28 @@ func (r *reader) str(env, def string) string {
 		}
 	}
 	return def
+}
+
+// emails reads a comma-separated list of email addresses, normalised to lower
+// case and deduplicated. A blank list is empty; an entry that is not a bare
+// address is an error naming it.
+func (r *reader) emails(env string) []string {
+	v := r.str(env, "")
+	if v == "" {
+		return nil
+	}
+	var out []string
+	for _, part := range strings.Split(v, ",") {
+		e := strings.ToLower(strings.TrimSpace(part))
+		if a, err := mail.ParseAddress(e); err != nil || a.Address != e {
+			r.fail(env, "invalid email address %q (want a comma-separated list of bare addresses)", strings.TrimSpace(part))
+			continue
+		}
+		if !slices.Contains(out, e) {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 func (r *reader) boolean(env string) bool {

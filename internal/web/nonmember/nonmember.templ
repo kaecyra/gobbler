@@ -1,0 +1,13 @@
+package nonmember
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+templ page(email string) {
+	@layout.Page("Not a member") {
+		<h1>You are not a member of a household</h1>
+		if email != "" {
+			<p data-testid="nonmember-email">Signed in as <strong>{ email }</strong>.</p>
+		}
+		<p>gobbler is by invitation. Ask a member of a household to invite this email address, then open the link in the invitation.</p>
+	}
+}

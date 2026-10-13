@@ -336,3 +336,40 @@ func TestBlankValuesTreatedAsUnset(t *testing.T) {
 		t.Errorf("blank not treated as unset: %+v", c)
 	}
 }
+
+func TestOperatorEmails(t *testing.T) {
+	c, err := loadFrom(env(with(EnvOperatorEmails, " Op@Example.com, second@example.com ,op@example.com")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(c.Operator.Emails, "|"); got != "op@example.com|second@example.com" {
+		t.Errorf("emails = %q, want normalised and deduplicated", got)
+	}
+	for email, want := range map[string]bool{
+		"op@example.com": true, " OP@example.com ": true, "second@example.com": true,
+		"member@example.com": false, "": false,
+	} {
+		if got := c.Operator.IsOperator(email); got != want {
+			t.Errorf("IsOperator(%q) = %v, want %v", email, got, want)
+		}
+	}
+}
+
+func TestOperatorEmailsDefaultToNone(t *testing.T) {
+	c, err := loadFrom(env(base()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Operator.Emails) != 0 || c.Operator.IsOperator("anyone@example.com") {
+		t.Errorf("no operator is configured by default: %+v", c.Operator)
+	}
+}
+
+func TestOperatorEmailsRejectMalformedEntries(t *testing.T) {
+	for _, v := range []string{"not-an-email", "a@example.com,", "Name <a@example.com>", "a@example.com b@example.com"} {
+		_, err := loadFrom(env(with(EnvOperatorEmails, v)))
+		if err == nil || !strings.Contains(err.Error(), EnvOperatorEmails) {
+			t.Errorf("%q: want error naming %s, got %v", v, EnvOperatorEmails, err)
+		}
+	}
+}
