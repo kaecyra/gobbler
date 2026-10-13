@@ -24,7 +24,7 @@ func (s *Store) AddEntry(ctx context.Context, listID, recipeID int64, multiplier
 		}
 		var err error
 		id, err = q.InsertEntry(ctx, shoppingdb.InsertEntryParams{
-			ListID: listID, RecipeID: recipeID, Multiplier: ratText(multiplier),
+			ListID: listID, RecipeID: recipeID, Multiplier: quantity.EncodeRat(multiplier),
 		})
 		return wrapWrite(fmt.Sprintf("add recipe %d to list %d", recipeID, listID), err)
 	})
@@ -44,7 +44,7 @@ func (s *Store) SetEntryMultiplier(ctx context.Context, id int64, multiplier qua
 	var listID int64
 	err := s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
-		listID, err = q.SetEntryMultiplier(ctx, shoppingdb.SetEntryMultiplierParams{Multiplier: ratText(multiplier), ID: id})
+		listID, err = q.SetEntryMultiplier(ctx, shoppingdb.SetEntryMultiplierParams{Multiplier: quantity.EncodeRat(multiplier), ID: id})
 		return rowOrNotFound("entry", id, err)
 	})
 	if err != nil {
