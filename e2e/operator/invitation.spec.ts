@@ -22,6 +22,13 @@ test.describe('the operator', () => {
     await expect(page.locator('body')).not.toContainText('Other household');
   });
 
+  test('reaches the promotion suggestions from the operator page', async ({ page }) => {
+    await page.goto('/operator');
+    await page.getByRole('link', { name: 'Suggested ingredients' }).click();
+    await expect(page).toHaveURL(/\/operator\/promotions\/?$/);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  });
+
   test('revokes an invitation, which the invitee can then no longer open', async ({ page, browser, baseURL }) => {
     const email = uniqueEmail('founder');
     await page.goto('/operator');
@@ -79,6 +86,8 @@ test.describe('a member who is not an operator, and a non-member', () => {
       const page = await ctx.newPage();
       await page.goto('/operator');
       await expect(page.locator('body')).not.toContainText('Pending invitations');
+      await expect(page.getByRole('link', { name: 'Suggested ingredients' })).toHaveCount(0);
+      expect(await page.locator('a[href^="/operator/promotions"]').count()).toBe(0);
       await ctx.close();
     });
   }
