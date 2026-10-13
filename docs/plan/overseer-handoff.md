@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-10-13, round 8 (late)
+# Overseer handoff: 2026-10-13, round 8 close
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
 
@@ -33,28 +33,48 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## In flight
 
-Round 8 merged: #140 tenancy split (ea28f9b), #142 w7-nav (78b7af9), #143 w5-codec (c9fae2e), #144 t-household-core (55c2c71, schema 00007), #145 graph node t-operator-nav (ab21550), #146 t-operator-nav (3ba7487), #147 t-scope-recipes lane widening (743c9f5), #148 graph nodes for every open issue (f9ea8e7). VERSION on main is 0.42.0.
+**Round 8 merged:**
 
-**Owner direction (2026-10-13):** every open issue that needs doing has a graph node, and dispatch runs as wide as the graph allows (`.memory/feedback-graph-holds-all-work.md`).
+| PR | What | SHA |
+|---|---|---|
+| #140 | tenancy split | ea28f9b |
+| #142 | w7-nav | 78b7af9 |
+| #143 | w5-codec | c9fae2e |
+| #144 | t-household-core (schema 00007) | 55c2c71 |
+| #145 | graph node for t-operator-nav | ab21550 |
+| #146 | t-operator-nav | 3ba7487 |
+| #147 | t-scope-recipes lane widening | 743c9f5 |
+| #148 | graph nodes for every open issue | f9ea8e7 |
+| #149 | t-scope-recipes (schema 00008) | f979813 |
+| #150 | g-image-check | 26de55f |
+
+VERSION on main is 0.43.1. The next schema number is 00009.
+
+**Owner direction (2026-10-13):** every open issue that needs doing has a graph node, and dispatch runs as wide as the graph allows. See `.memory/feedback-graph-holds-all-work.md`.
 
 | Node | Issue | PR | Worktree | State |
 |---|---|---|---|---|
-| t-scope-recipes (schema 00008) | #135 | #149 | wt-135 | review fixes done, threads resolved; merge when CI is green. VERSION 0.43.0 |
-| g-image-check | #78 | #150 | wt-78 | review fixes done, not pushed. Re-bump after #149 merges (0.43.1). Merge before #151 |
-| g-templ-gate | #112 | #151 | wt-112 | fixing review findings. After #150 merges: add `check-image_test.sh` to `make test-scripts` and the git-workflow.md row, then re-bump |
+| g-templ-gate | #112 | #151 | wt-112 | Round 1 fixes done, threads resolved, CI was running. Merge when green (VERSION 0.43.2). |
+| e2e-seed-helper | #99 | #152 | wt-99 | In review |
+| w3-display-times | #111 | #153 | wt-111 | In review |
+| w2-proposed-dedup | #88 | #154 | wt-88 | In review |
 
-**Merge order:** #149, then #150, then #151.
-
-**Next to dispatch once #149 merges** (lanes are disjoint): w3-display-times (#111), e2e-seed-helper (#99), w2-proposed-dedup (#88). After e2e-seed-helper: t-scope-shopping (#136, schema 00009). Then w3-recipeview-links (#98).
-
-**Before dispatching l-invitations:** widen its lane onto `internal/web/layout/layout_operator.go`. `layout.OperatorPaths` there is the one list of operator pages, read by both the middleware lock and the nav (#146).
-
-**Blocked:** w3-equipment-size (#85) needs an owner decision on how equipment gets a size (ADR-00005).
-
-**Notes:**
-- `dev@localhost` is an operator on the shared e2e server; `other@localhost` is a member who is not.
-- Dot-segment paths get a 404 before admission (#144).
-- The interim e2e seed helper lives at `e2e/recipeview/seed/devhousehold`; #99 moves it.
+- **The review agent covering #152, #153 and #154 may have finished in the old session.** Read its posted reviews on GitHub. Route findings to a fresh worker in the PR's worktree; the old workers are gone with the session.
+- **VERSION:** each of these PRs re-bumps at merge, one patch over main.
+- **Next to dispatch:**
+  - After #152 merges: **t-scope-shopping** (#136). Draw schema 00009 with `node.ts migration`.
+  - After #152 and #153 merge: **w3-recipeview-links** (#98).
+  - After t-scope-shopping merges: **t-catalog-overlay** (#137, schema 00010). It also waits on w2-proposed-dedup.
+- **Follow-ups worth a node:**
+  - `internal/ingest/fallback.go:230` calls the `proposedIngredients` wrapper that #154 left behind. Fold it into `ProposedFor(d.Components, nil)` and delete the wrapper. This belongs to the next node that owns `internal/ingest`.
+  - `check-image.sh` misses the JSON form `COPY ["e2e/", ...]`, which `.dockerignore` still blocks (#150, NIT recorded).
+- **Before dispatching l-invitations:** widen its lane onto `internal/web/layout/layout_operator.go`. `layout.OperatorPaths` is the single list of operator pages (#146).
+- **Blocked:** w3-equipment-size (#85) needs an owner decision on how equipment gets a size (ADR-00005).
+- **Notes:**
+  - `dev@localhost` is an operator on the shared e2e server; `other@localhost` is a member who is not.
+  - Dot-segment paths get a 404 before admission.
+  - Run `make generate` from the root, never `templ generate` in a package directory.
+  - Worker brief tail: rebuild it from `worker_contract.md` plus the gate list below. Port blocks are per worker, in steps of 100 from 41100.
 
 ## Side task: mockup mascots (owner request), done
 
@@ -72,7 +92,6 @@ Round 8 merged: #140 tenancy split (ea28f9b), #142 w7-nav (78b7af9), #143 w5-cod
 
 ## Issues filed this round
 
-- #111: extract the document time rows and total-source note into `internal/recipe/display`. History duplicates recipeview's strings until then.
 - #120: Edit link from the recipe page (node w3-edit-link).
 - #123: share the quantity/unit DB codec between store and shopping. It runs after #24, and not in a round with any node that holds `internal/store/**`.
 - #124: drop the cloudflared sidecar (PR #127).
