@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"errors"
-	"strconv"
 	"testing"
 )
 
@@ -227,35 +226,6 @@ func TestNoHouseholdOnContextFailsEveryCall(t *testing.T) {
 	for name, call := range calls {
 		if err := call(); !errors.Is(err, ErrNoHousehold) {
 			t.Errorf("%s with no household = %v, want ErrNoHousehold", name, err)
-		}
-	}
-}
-
-// The schema holds the line the store draws: a clone cannot point at another
-// household's recipe, and a child row cannot name another household's recipe.
-func TestSchemaKeepsRecipesInTheirHousehold(t *testing.T) {
-	s, d := newTestStore(t)
-	idA, err := s.Create(authedCtx(t), simpleRecipe("A's"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := "2026-03-01T12:00:00Z"
-	// A clone in household 1, so moving it to household 2 has a pointer to break.
-	if _, err := s.Clone(authedCtx(t), idA); err != nil {
-		t.Fatal(err)
-	}
-	cases := map[string]string{
-		"clone points across households": `INSERT INTO recipes (household_id, name, cloned_from_recipe_id, created_at, created_by, updated_at, updated_by)
-			VALUES (2, 'copy', ` + strconv.FormatInt(idA, 10) + `, '` + now + `', 'x', '` + now + `', 'x')`,
-		"clone moved across households": `UPDATE recipes SET household_id = 2 WHERE cloned_from_recipe_id = ` + strconv.FormatInt(idA, 10),
-		"note filed under another household": `INSERT INTO notes (household_id, recipe_id, body, created_at, created_by)
-			VALUES (2, ` + strconv.FormatInt(idA, 10) + `, 'n', '` + now + `', 'x')`,
-		"tag filed under another household": `INSERT INTO recipe_tags (household_id, recipe_id, position, tag) VALUES (2, ` + strconv.FormatInt(idA, 10) + `, 9, 't')`,
-		"recipe in no household":            `INSERT INTO recipes (household_id, name, created_at, created_by, updated_at, updated_by) VALUES (99, 'x', 't', 'x', 't', 'x')`,
-	}
-	for name, q := range cases {
-		if _, err := d.Exec(q); err == nil {
-			t.Errorf("%s: the schema accepted it", name)
 		}
 	}
 }

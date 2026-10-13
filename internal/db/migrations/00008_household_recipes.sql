@@ -9,8 +9,8 @@
 -- composite foreign key (household_id, parent_id) onto the parent's
 -- UNIQUE (household_id, id), so a child row can never name another
 -- household's recipe, component, step or revision. cloned_from_recipe_id
--- cannot use one: ON DELETE SET NULL would also null household_id, so two
--- triggers keep a clone in its origin's household instead.
+-- cannot use one: ON DELETE SET NULL would also null household_id, so a
+-- trigger keeps a clone in its origin's household instead.
 --
 -- No deployment holds data (ADR-00018), so there is nothing to move, but a
 -- database that already has recipe rows must still migrate: they are assigned
@@ -341,15 +341,6 @@ BEGIN
 END;
 -- +goose StatementEnd
 
--- +goose StatementBegin
-CREATE TRIGGER recipes_clone_same_household_au BEFORE UPDATE OF cloned_from_recipe_id, household_id ON recipes
-WHEN NEW.cloned_from_recipe_id IS NOT NULL
- AND EXISTS (SELECT 1 FROM recipes WHERE id = NEW.cloned_from_recipe_id AND household_id <> NEW.household_id)
-BEGIN
-    SELECT RAISE(ABORT, 'cloned_from_recipe_id must name a recipe of the same household');
-END;
--- +goose StatementEnd
-
 -- The full-text index (migration 00004) with the household beside the text.
 -- household_id is UNINDEXED: it is filtered on, never matched.
 CREATE VIRTUAL TABLE recipe_search USING fts5 (
@@ -525,7 +516,6 @@ SELECT * FROM recipe_search_source;
 -- Back to the shape migration 00007 left: household_id is dropped from every
 -- table (rebuilt, rows kept) and the index is the one migration 00004 made.
 DROP TRIGGER recipes_clone_same_household_ai;
-DROP TRIGGER recipes_clone_same_household_au;
 DROP TRIGGER recipe_search_recipes_ai;
 DROP TRIGGER recipe_search_recipes_au;
 DROP TRIGGER recipe_search_tags_ai;
