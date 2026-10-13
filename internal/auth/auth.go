@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -21,8 +22,17 @@ const (
 	HeaderName = "Cf-Access-Jwt-Assertion"
 	// CookieName is the fallback when the header is absent.
 	CookieName = "CF_Authorization"
-	// DevEmail is the fixed identity in dev-bypass mode.
+	// DevEmail is the default identity in dev-bypass mode.
 	DevEmail = "dev@localhost"
+	// DevOtherEmail is a second seeded identity in dev-bypass mode, a member
+	// of a household DevEmail is not, so tests can act as a member of another
+	// household.
+	DevOtherEmail = "other@localhost"
+	// DevIdentityHeader overrides the dev-bypass identity for one request, so
+	// tests can act as several members and non-members. It is read only when
+	// the bypass is on, which is valid only on a loopback listener; with
+	// Access verification on it is ignored like any other header.
+	DevIdentityHeader = "X-Gobbler-Dev-Identity"
 
 	defaultMinRefresh = time.Minute
 )
@@ -131,7 +141,7 @@ func (a *Authenticator) Middleware(exempt ...string) func(http.Handler) http.Han
 
 func (a *Authenticator) authenticate(r *http.Request) (string, error) {
 	if a.bypass {
-		return DevEmail, nil
+		return devIdentity(r)
 	}
 	token := r.Header.Get(HeaderName)
 	if token == "" {
@@ -143,6 +153,21 @@ func (a *Authenticator) authenticate(r *http.Request) (string, error) {
 		return "", reject("no token")
 	}
 	return a.verify(r.Context(), token)
+}
+
+// devIdentity returns the identity of a bypass-mode request: DevEmail, or the
+// address in DevIdentityHeader. A malformed override is refused rather than
+// falling back to DevEmail, so a typo in a test cannot act as a member.
+func devIdentity(r *http.Request) (string, error) {
+	v := r.Header.Get(DevIdentityHeader)
+	if v == "" {
+		return DevEmail, nil
+	}
+	a, err := mail.ParseAddress(v)
+	if err != nil || a.Address != v || v != strings.ToLower(v) {
+		return "", reject("malformed dev identity")
+	}
+	return v, nil
 }
 
 // verify returns the email of a valid token. No error it returns contains any

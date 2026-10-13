@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/db"
 )
 
 func devConfig() config.Config {
@@ -36,6 +38,9 @@ func testRouter(t *testing.T, cfg config.Config, d Deps) *chi.Mux {
 		t.Fatal(err)
 	}
 	d.Config, d.Auth = cfg, a
+	if d.DB == nil {
+		d.DB = testDB(t)
+	}
 	if d.Logger == nil {
 		d.Logger = quiet
 	}
@@ -44,6 +49,21 @@ func testRouter(t *testing.T, cfg config.Config, d Deps) *chi.Mux {
 		t.Fatal(err)
 	}
 	return r
+}
+
+// testDB is a real SQLite file migrated as the binary does.
+func testDB(t *testing.T) *sql.DB {
+	t.Helper()
+	ctx := context.Background()
+	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("db.Migrate: %v", err)
+	}
+	return d
 }
 
 func get(h http.Handler, path string, hdr ...string) *httptest.ResponseRecorder {

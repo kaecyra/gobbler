@@ -661,3 +661,64 @@ func TestFailedRefreshKeepsWarmKeysInService(t *testing.T) {
 		t.Fatalf("warm key stopped working after a failed refresh: %d", code)
 	}
 }
+
+func devAuth(t *testing.T) *Authenticator {
+	t.Helper()
+	cfg := config.Config{Server: config.Server{ListenAddr: "127.0.0.1:8080", DevAuthBypass: true}}
+	a, err := New(cfg, WithLogger(slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
+}
+
+func identityOf(a *Authenticator, header string) (int, string) {
+	var got string
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if header != "" {
+		req.Header.Set(DevIdentityHeader, header)
+	}
+	rec := httptest.NewRecorder()
+	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		got, _ = EmailFromContext(r.Context())
+	})).ServeHTTP(rec, req)
+	return rec.Code, got
+}
+
+func TestDevBypassIdentityIsSwitchablePerRequest(t *testing.T) {
+	a := devAuth(t)
+	if code, got := identityOf(a, DevOtherEmail); code != http.StatusOK || got != DevOtherEmail {
+		t.Errorf("override: got %d %q, want 200 %q", code, got, DevOtherEmail)
+	}
+	if code, got := identityOf(a, "stranger@example.com"); code != http.StatusOK || got != "stranger@example.com" {
+		t.Errorf("override to a non-member: got %d %q", code, got)
+	}
+	if code, got := identityOf(a, ""); code != http.StatusOK || got != DevEmail {
+		t.Errorf("no override: got %d %q, want %q", code, got, DevEmail)
+	}
+}
+
+func TestDevBypassRefusesMalformedIdentity(t *testing.T) {
+	a := devAuth(t)
+	for _, v := range []string{"not-an-email", "Name <a@example.com>", "UPPER@example.com", "a@example.com, b@example.com"} {
+		if code, got := identityOf(a, v); code != http.StatusForbidden || got != "" {
+			t.Errorf("%q: got %d %q, want 403 and no identity", v, code, got)
+		}
+	}
+}
+
+// The override must not exist outside the bypass: with Access verification on,
+// a client that sends it is still just a request without a token.
+func TestDevIdentityHeaderIgnoredWithoutBypass(t *testing.T) {
+	h := newHarness(t)
+	req := withHeader("")
+	req.Header.Set(DevIdentityHeader, DevEmail)
+	if code, _ := serve(h, req); code != http.StatusForbidden {
+		t.Fatalf("identity header admitted a request without a token: %d", code)
+	}
+	req = withHeader(goodToken(t, nil))
+	req.Header.Set(DevIdentityHeader, "someone.else@example.com")
+	if code, email := serve(h, req); code != http.StatusOK || email != "tim@example.com" {
+		t.Fatalf("identity header changed a verified identity: %d %q", code, email)
+	}
+}

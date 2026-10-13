@@ -28,3 +28,11 @@ sql:
       go:
         package: shoppingdb
         out: internal/shopping/shoppingdb
+  - name: household
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/household/queries
+    gen:
+      go:
+        package: householddb
+        out: internal/household/householddb

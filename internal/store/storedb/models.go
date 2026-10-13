@@ -26,6 +26,19 @@ type EquipmentAlias struct {
 	EquipmentID int64
 }
 
+type Household struct {
+	ID        int64
+	Name      string
+	CreatedAt string
+}
+
+type HouseholdMember struct {
+	ID          int64
+	HouseholdID int64
+	Email       string
+	JoinedAt    string
+}
+
 type Ingredient struct {
 	ID            int64
 	Name          string
@@ -53,6 +66,18 @@ type IngredientLine struct {
 	Optional      int64
 	Rule          string
 	Raw           string
+}
+
+type Invitation struct {
+	ID          int64
+	Kind        string
+	Email       string
+	HouseholdID sql.NullInt64
+	IssuedBy    string
+	CreatedAt   string
+	ExpiresAt   string
+	AcceptedAt  sql.NullString
+	RevokedAt   sql.NullString
 }
 
 type LineQualifier struct {
@@ -132,6 +157,18 @@ type RecipeSearchSource struct {
 	Ingredients interface{}
 	Tags        interface{}
 	Notes       interface{}
+}
+
+type RecipeShare struct {
+	ID                   int64
+	SenderHouseholdID    int64
+	RecipientHouseholdID int64
+	SentBy               string
+	RecipeDocument       string
+	SourceSnapshot       sql.NullString
+	Status               string
+	CreatedAt            string
+	ResolvedAt           sql.NullString
 }
 
 type RecipeSpecialTime struct {
