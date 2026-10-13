@@ -9,7 +9,12 @@ GOLANGCI_LINT_VERSION := v2.14.0
 
 E2E_SETUP := cd e2e && npm ci && npx playwright install chromium
 
-.PHONY: tools generate generate-templ generate-check fmt fmt-check lint test test-scripts e2e e2e-routes version-check check
+# The *_templ.go files templ itself generates: it skips vendor, node_modules
+# and any directory starting with "." or "_" (skipdir.ShouldSkip in templ).
+# Keep this in step with that rule or the staleness check misreads scratch dirs.
+TEMPL_GO := find . -type d \( -name vendor -o -name node_modules -o -name '.?*' -o -name '_*' \) -prune -o -type f -name '*_templ.go'
+
+.PHONY: tools generate generate-templ templ-files generate-check fmt fmt-check lint test test-scripts e2e e2e-routes version-check check
 
 ## tools: install the pinned golangci-lint
 tools:
@@ -23,7 +28,11 @@ generate: generate-templ
 ## them as make fmt does, so the committed form is stable
 generate-templ:
 	go tool templ generate
-	@find . -name '*_templ.go' -not -path '*/node_modules/*' -not -path './.git/*' -not -path './.claude/*' -print0 | xargs -0 go tool goimports -local $(MODULE) -w
+	@$(TEMPL_GO) -print0 | xargs -0 go tool goimports -local $(MODULE) -w
+
+## templ-files: list the *_templ.go files templ generates (used by check-templ.sh)
+templ-files:
+	@$(TEMPL_GO) -print
 
 ## generate-check: fail if the committed sqlc or templ output is stale
 generate-check:

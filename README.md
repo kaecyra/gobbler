@@ -35,7 +35,7 @@ make fmt    # gofmt and goimports, rewrites files
 make lint   # golangci-lint and go vet
 make test   # go test; fails below 70% line coverage
 make e2e    # builds gobbler, runs the Playwright suite in e2e/ (installs nothing)
-make generate  # regenerate the sqlc data-access code
+make generate  # regenerate the sqlc data-access code and the templ output
 make check  # fmt-check, generate-check, lint, test, test-scripts, e2e and version-check
 ```
 

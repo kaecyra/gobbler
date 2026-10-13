@@ -56,7 +56,7 @@ the next change, however ready that change is.
 | `make lint` | `golangci-lint`, `go vet` | pre-push hook |
 | `make test` | `go test -cover ./...`, failing below 70% line coverage | pre-push hook |
 | `make e2e` | Playwright against a running binary; every route has a test | pre-push hook |
-| `make test-scripts` | the shell and Node tests for the gate scripts themselves (version-bump check, e2e route coverage) | `make check` |
+| `make test-scripts` | the shell and Node tests for the gate scripts themselves (version-bump check, templ staleness check, e2e route coverage) | `make check` |
 | `make generate-check` | `sqlc diff` plus a templ regenerate-and-compare, failing if committed sqlc or templ output is stale | `make check` |
 | `make check` | all of the above plus the version-bump check | before every push |
 

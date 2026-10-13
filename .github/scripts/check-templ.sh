@@ -9,7 +9,8 @@
 set -euo pipefail
 
 snap="$(mktemp -d)"
-list() { find . -name '*_templ.go' -not -path '*/node_modules/*' -not -path './.git/*' -not -path './.claude/*' | sort; }
+# The file set comes from the Makefile so it matches what templ generates.
+list() { make --no-print-directory -s templ-files | sort; }
 
 restore() {
   list | while read -r f; do rm -f "$f"; done
@@ -20,8 +21,10 @@ trap restore EXIT
 
 list | tar cf - -T - | tar xf - -C "$snap"
 
-make --no-print-directory generate-templ >/dev/null
+make --no-print-directory generate-templ >/dev/null || { echo "templ generation failed; cannot check staleness"; exit 1; }
 
+# templ also deletes output whose .templ is gone, so an orphan shows up here as a
+# changed file too.
 stale=0
 before="$(cd "$snap" && find . -type f)"
 for f in $( (echo "$before"; list) | sort -u); do
