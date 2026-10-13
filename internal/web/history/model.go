@@ -2,10 +2,8 @@ package history
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
@@ -116,23 +114,14 @@ func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion 
 		Servings: doc.Servings.String(),
 		Yield:    strings.TrimSpace(doc.Yield.Qty.String() + " " + doc.Yield.Unit),
 	}
-	fillTimes(&v, doc)
-	total, err := doc.TotalTime()
+	times, err := display.BuildTimes(doc)
 	if err != nil {
-		return versionView{}, fmt.Errorf("total time: %w", err)
+		return versionView{}, err
 	}
-	v.Total = display.FormatDuration(total.Duration)
-	// These strings duplicate internal/web/recipeview; both move into
-	// internal/recipe/display once issue #111 lands, because history may not
-	// import recipeview (ADR-00012).
-	switch total.Source {
-	case recipe.TotalStored:
-		v.TotalNote = "as stated by the source"
-	case recipe.TotalCriticalPath:
-		v.TotalNote = "from the longest chain of steps"
-	case recipe.TotalSum:
-		v.TotalNote = "prep, cook and waiting times added"
+	for _, r := range times.Rows {
+		v.Times = append(v.Times, timeRow{Label: r.Label, Text: r.Text})
 	}
+	v.Total, v.TotalNote = times.Total, times.TotalNote
 
 	number := display.StepNumbers(doc)
 	lines := display.NewLineBuilder(cat, display.Default())
@@ -173,19 +162,6 @@ func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion 
 		v.Equipment = append(v.Equipment, text)
 	}
 	return v, nil
-}
-
-func fillTimes(v *versionView, doc recipe.Recipe) {
-	add := func(label string, d time.Duration) {
-		if d > 0 {
-			v.Times = append(v.Times, timeRow{Label: label, Text: display.FormatDuration(d)})
-		}
-	}
-	add("Prep", doc.Times.Prep)
-	add("Cook", doc.Times.Cook)
-	for _, s := range doc.Times.Special {
-		add(s.Label, s.Duration)
-	}
 }
 
 func joinSteps(nums []string) string { return strings.Join(nums, ", ") }
