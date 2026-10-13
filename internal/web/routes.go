@@ -4,14 +4,17 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
 	"github.com/kaecyra/gobbler/internal/web/cook"
 	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/history"
+	webhousehold "github.com/kaecyra/gobbler/internal/web/household"
 	webingest "github.com/kaecyra/gobbler/internal/web/ingest"
 	"github.com/kaecyra/gobbler/internal/web/journal"
+	"github.com/kaecyra/gobbler/internal/web/operator"
 	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
 	"github.com/kaecyra/gobbler/internal/web/settings"
@@ -36,6 +39,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
 	mountCatalog(r, d)
+	mountHouseholds(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -57,4 +61,13 @@ func mountCatalog(r chi.Router, d Deps) {
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
 	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Lists: shop, Recipes: rec, Catalog: cat, Logger: d.Logger}))
+}
+
+// mountHouseholds mounts the members page, invitation acceptance (reachable by
+// a verified non-member) and the operator's invitation page (ADR-00018).
+func mountHouseholds(r chi.Router, d Deps) {
+	hs := household.New(d.DB)
+	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs}))
+	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
+	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
 }

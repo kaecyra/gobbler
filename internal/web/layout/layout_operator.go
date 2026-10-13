@@ -10,7 +10,7 @@ import (
 // link to one from everyone else, so both read this one list: a new operator
 // page is added here and nothing can drift. Paths are written out, not
 // imported, for the same reason navItems' are (ADR-00012).
-var OperatorPaths = []string{"/settings"}
+var OperatorPaths = []string{"/settings", "/operator"}
 
 type operatorKey struct{}
 

@@ -1,0 +1,26 @@
+package household
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+import domain "github.com/kaecyra/gobbler/internal/household"
+
+templ acceptPage(v acceptView) {
+	@layout.Page("Invitation") {
+		<h1>Invitation</h1>
+		<p data-testid="invitation-email">Signed in as <strong>{ v.Self }</strong>.</p>
+		if v.Member {
+			<p role="alert" data-testid="invitation-member">You already belong to a household. Leave it first, then open this invitation again.</p>
+			<p><a href="/household">Your household</a></p>
+		} else if v.Kind == domain.KindJoin {
+			<p data-testid="invitation-join">{ v.IssuedBy } invited you to join <strong>{ v.Household }</strong>. The invitation expires { v.Expires }.</p>
+			<form method="post" action={ templ.SafeURL(acceptPath(v.ID)) }>
+				<button type="submit">Join { v.Household }</button>
+			</form>
+		} else {
+			<p data-testid="invitation-new">You are invited to start a household. The invitation expires { v.Expires }.</p>
+			<form method="post" action={ templ.SafeURL(acceptPath(v.ID)) }>
+				<label>Household name <input type="text" name="name" required/></label>
+				<button type="submit">Start the household</button>
+			</form>
+		}
+	}
+}

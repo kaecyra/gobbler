@@ -12,6 +12,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/backup"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/web/operator"
 	"github.com/kaecyra/gobbler/internal/web/settings"
 )
 
@@ -100,10 +101,10 @@ func TestNonMemberCanOpenHealthThePageAssetsAndInvitations(t *testing.T) {
 	if rec := do(h, http.MethodGet, "/static/app.css", strangerEmail); rec.Code != http.StatusOK {
 		t.Errorf("stylesheet = %d, want 200", rec.Code)
 	}
-	// Acceptance is another node's route. Until it exists the path is simply
-	// unrouted; what matters here is that the lock does not turn it away.
+	// The lock does not turn the invitation path away: a missing invitation is
+	// a 404 page, not the not-a-member page.
 	rec = do(h, http.MethodGet, InvitationsPrefix+"1", strangerEmail)
-	if strings.Contains(rec.Body.String(), notAMemberText) {
+	if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), notAMemberText) {
 		t.Errorf("invitation path was refused as a non-member: %d", rec.Code)
 	}
 }
@@ -236,5 +237,11 @@ func TestNavShowsSettingsToOperatorsOnly(t *testing.T) {
 func TestSettingsIsAnOperatorPath(t *testing.T) {
 	if !slices.Contains(operatorPaths, settings.Pattern) {
 		t.Errorf("operatorPaths %v lacks the settings pattern %q", operatorPaths, settings.Pattern)
+	}
+}
+
+func TestOperatorPagesAreOperatorPaths(t *testing.T) {
+	if !slices.Contains(operatorPaths, operator.Pattern) {
+		t.Errorf("operatorPaths %v lacks the operator pattern %q", operatorPaths, operator.Pattern)
 	}
 }

@@ -23,7 +23,7 @@ import (
 const InvitationsPrefix = "/invitations/"
 
 // operatorPaths are the operator's pages (ADR-00018, Invitations): deployment
-// settings now, and later the household invitations and the review of overlay
+// settings and the household invitations now, and later the review of overlay
 // entries suggested for central. A path under one of them is open to an
 // operator email, member or not, and closed to everyone else. The list is the
 // layout's, which also hides the nav link to each from everyone else, so a new
