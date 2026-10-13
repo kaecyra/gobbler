@@ -1438,7 +1438,7 @@
       "wave": 8,
       "track": "foundation",
       "issue": 78,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         ".github/workflows/**",
@@ -2021,6 +2021,15 @@
       "adrs": [
         "00018"
       ]
+    },
+    {
+      "id": "g-image-check",
+      "title": "CI check that the image has no Node runtime and no e2e/ content",
+      "merged": "26de55f",
+      "adrs": [
+        "00013"
+      ],
+      "note": "ADR-00013 obligation 1. A CI job (not a Makefile target, so it never collides with g-templ-gate) builds the image and asserts command -v node fails and no e2e/ path exists."
     }
   ],
   "adr_sequence": {
