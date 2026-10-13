@@ -82,6 +82,8 @@ VERSION on main is 0.43.4. The next schema number is 00009.
 - **NIT:** widen l-invitations onto `e2e/layout/layout.spec.ts` and `internal/web/layout/layout_test.go`, in case it adds nav links.
 - **Branch:** `chore/39-parallel-invitations`. Rebuild it on main with `git checkout -B ... origin/main` and cherry-pick, because main's `graph.json` has moved.
 
+**Worker brief rule (new, 2026-10-13):** workers must never spawn their own subagents. The t-household-core worker left a helper ("Proving dot-segment guard fails") running and burning tokens after its PR had merged. Say so in every worker prompt.
+
 **Ordering rule (owner, 2026-10-13):** serialize only for real file overlap, or where one node's code needs another's. Never for main's state between merges. See `.memory/project-never-deployed.md`.
 
 **Next to dispatch, after #155 merges, all in one round (afterburners):**
