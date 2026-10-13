@@ -81,8 +81,8 @@ func TestEncodeQtyRejectsNegative(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, q := range []Quantity{Exact(Int(-1)), neg} {
-		if _, _, err := EncodeQty(q); !errors.Is(err, ErrNegativeStored) {
-			t.Errorf("EncodeQty(%v) error = %v, want ErrNegativeStored", q, err)
+		if _, _, err := EncodeQty(q); !errors.Is(err, errNegativeStored) {
+			t.Errorf("EncodeQty(%v) error = %v, want errNegativeStored", q, err)
 		}
 	}
 }
@@ -93,7 +93,10 @@ func TestDecodeQtyAlternateForms(t *testing.T) {
 		if err != nil {
 			t.Fatalf("DecodeQty(%q): %v", in, err)
 		}
-		enc, _, _ := EncodeQty(got)
+		enc, _, err := EncodeQty(got)
+		if err != nil {
+			t.Fatalf("EncodeQty(%v): %v", got, err)
+		}
 		if enc != want {
 			t.Errorf("DecodeQty(%q) re-encodes to %q, want %q", in, enc, want)
 		}
@@ -146,15 +149,15 @@ func TestUnitTableZeroUnitIsID0(t *testing.T) {
 
 func TestUnitTableUnknown(t *testing.T) {
 	tbl := codecUnits()
-	if _, err := tbl.ID(OtherUnit("smidge")); !errors.Is(err, ErrUnknownUnit) {
-		t.Errorf("ID(unknown) error = %v, want ErrUnknownUnit", err)
+	if _, err := tbl.ID(OtherUnit("smidge")); !errors.Is(err, errUnknownUnit) {
+		t.Errorf("ID(unknown) error = %v, want errUnknownUnit", err)
 	}
-	if _, err := tbl.Unit(99); !errors.Is(err, ErrUnknownUnit) {
-		t.Errorf("Unit(99) error = %v, want ErrUnknownUnit", err)
+	if _, err := tbl.Unit(99); !errors.Is(err, errUnknownUnit) {
+		t.Errorf("Unit(99) error = %v, want errUnknownUnit", err)
 	}
 }
 
-// TestUnitTableSharesMaps lets a caller that already holds the id maps view
+// TestUnitTableOver lets a caller that already holds the id maps view
 // them as a table without copying.
 func TestUnitTableOver(t *testing.T) {
 	ids := map[string]int64{"g": 7}

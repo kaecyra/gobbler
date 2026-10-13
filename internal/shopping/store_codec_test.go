@@ -85,7 +85,10 @@ func TestQtyDecodesAlternateForms(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodeQty(%q): %v", in, err)
 		}
-		enc, _ := encodeQty(got)
+		enc, err := encodeQty(got)
+		if err != nil {
+			t.Fatalf("encodeQty(%v): %v", got, err)
+		}
 		if enc.String != want {
 			t.Errorf("decodeQty(%q) re-encodes to %q, want %q", in, enc.String, want)
 		}
@@ -100,13 +103,7 @@ func TestQtyDecodeRejectsMalformedAsCorrupt(t *testing.T) {
 	}
 }
 
-func TestMultiplierText(t *testing.T) {
-	if got := ratText(mustRat(t, "1 1/2")); got != "3/2" {
-		t.Errorf("ratText = %q, want 3/2", got)
-	}
-	if got := ratText(quantity.Int(2)); got != "2/1" {
-		t.Errorf("ratText = %q, want 2/1", got)
-	}
+func TestMultiplier(t *testing.T) {
 	if r, err := decodeMultiplier("3/2"); err != nil || !r.Equal(mustRat(t, "3/2")) {
 		t.Errorf("decodeMultiplier = %v, %v", r, err)
 	}
@@ -154,7 +151,10 @@ func TestAmountColumns(t *testing.T) {
 			}
 		})
 	}
-	c, _ := tbl.encodeAmount(pkg)
+	c, err := tbl.encodeAmount(pkg)
+	if err != nil {
+		t.Fatalf("encodeAmount: %v", err)
+	}
 	if c.qty != nstr("1/1..2/1") || c.unit != (sql.NullInt64{Int64: 3, Valid: true}) ||
 		c.hasPackage != 1 || c.pkgQty != nstr("14/1") || c.pkgUnit != (sql.NullInt64{Int64: 1, Valid: true}) {
 		t.Fatalf("package columns = %+v", c)

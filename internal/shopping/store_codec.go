@@ -12,8 +12,6 @@ import (
 // quantity's codec: a quantity is NULL for none, "n/d" for an exact value and
 // "n/d..n/d" for a range; a unit is a reference to units(id).
 
-func ratText(r quantity.Rat) string { return quantity.EncodeRat(r) }
-
 func encodeQty(q quantity.Quantity) (sql.NullString, error) {
 	s, ok, err := quantity.EncodeQty(q)
 	if err != nil {

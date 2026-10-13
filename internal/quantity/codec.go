@@ -18,12 +18,12 @@ import (
 // rangeSep separates the bounds of a stored range.
 const rangeSep = ".."
 
-// ErrNegativeStored is returned by EncodeQty for a negative bound, which
+// errNegativeStored is returned by EncodeQty for a negative bound, which
 // could not be read back.
-var ErrNegativeStored = errors.New("negative quantity")
+var errNegativeStored = errors.New("negative quantity")
 
-// ErrUnknownUnit is returned by a UnitTable for a unit or id it does not hold.
-var ErrUnknownUnit = errors.New("unknown unit")
+// errUnknownUnit is returned by a UnitTable for a unit or id it does not hold.
+var errUnknownUnit = errors.New("unknown unit")
 
 // EncodeRat returns r as the exact reduced fraction "n/d", which ParseRat
 // reads back without loss.
@@ -33,14 +33,14 @@ func EncodeRat(r Rat) string {
 
 // EncodeQty returns the stored text of q and whether there is any: none for an
 // absent quantity, "n/d" for an exact value, "n/d..n/d" for a range. A
-// negative bound is refused with ErrNegativeStored rather than failing at the
+// negative bound is refused with errNegativeStored rather than failing at the
 // next read.
 func EncodeQty(q Quantity) (string, bool, error) {
 	if q.IsAbsent() {
 		return "", false, nil
 	}
 	if q.Min().Sign() < 0 || q.Max().Sign() < 0 {
-		return "", false, fmt.Errorf("%w %s", ErrNegativeStored, q)
+		return "", false, fmt.Errorf("%w %s", errNegativeStored, q)
 	}
 	s := EncodeRat(q.Min())
 	if q.IsRange() {
@@ -94,7 +94,7 @@ func (t *UnitTable) Add(id int64, u Unit) {
 	t.units[id] = u
 }
 
-// ID returns the id stored for u: 0 for the zero Unit, ErrUnknownUnit when u
+// ID returns the id stored for u: 0 for the zero Unit, errUnknownUnit when u
 // is not in the table.
 func (t *UnitTable) ID(u Unit) (int64, error) {
 	if u.IsZero() {
@@ -102,12 +102,12 @@ func (t *UnitTable) ID(u Unit) (int64, error) {
 	}
 	id, ok := t.ids[u.Name]
 	if !ok {
-		return 0, fmt.Errorf("unit %q: %w", u.Name, ErrUnknownUnit)
+		return 0, fmt.Errorf("unit %q: %w", u.Name, errUnknownUnit)
 	}
 	return id, nil
 }
 
-// Unit resolves a stored id: the zero Unit for 0, ErrUnknownUnit when the id
+// Unit resolves a stored id: the zero Unit for 0, errUnknownUnit when the id
 // is not in the table.
 func (t *UnitTable) Unit(id int64) (Unit, error) {
 	if id == 0 {
@@ -115,7 +115,7 @@ func (t *UnitTable) Unit(id int64) (Unit, error) {
 	}
 	u, ok := t.units[id]
 	if !ok {
-		return Unit{}, fmt.Errorf("unit id %d: %w", id, ErrUnknownUnit)
+		return Unit{}, fmt.Errorf("unit id %d: %w", id, errUnknownUnit)
 	}
 	return u, nil
 }

@@ -87,7 +87,10 @@ func TestQtyDecodesAlternateForms(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodeQty(%q): %v", in, err)
 		}
-		enc, _ := encodeQty(got)
+		enc, err := encodeQty(got)
+		if err != nil {
+			t.Fatalf("encodeQty(%v): %v", got, err)
+		}
 		if deref(enc) != want {
 			t.Errorf("decodeQty(%q) re-encodes to %q, want %q", in, deref(enc), want)
 		}
@@ -115,7 +118,10 @@ func testUnitTable() *unitTable {
 func TestUnitRefs(t *testing.T) {
 	tbl := testUnitTable()
 	for _, name := range []string{"g", "cup", "can"} {
-		u, _ := tbl.units[tbl.ids[name]], 0
+		u, ok := tbl.units[tbl.ids[name]]
+		if !ok {
+			t.Fatalf("test table has no unit %q", name)
+		}
 		id, err := tbl.id(u)
 		if err != nil || !id.Valid || id.Int64 != tbl.ids[name] {
 			t.Fatalf("id(%s) = %v, %v", name, id, err)
