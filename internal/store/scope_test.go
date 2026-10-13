@@ -221,6 +221,7 @@ func TestNoHouseholdOnContextFailsEveryCall(t *testing.T) {
 		"ListSnapshotKinds": func() error { _, err := s.ListSnapshotKinds(bare, id); return err },
 		"Search":            func() error { _, err := s.Search(bare, SearchQuery{}); return err },
 		"Search text":       func() error { _, err := s.Search(bare, SearchQuery{Text: "x"}); return err },
+		"Search punct only": func() error { _, err := s.Search(bare, SearchQuery{Text: "!!!"}); return err },
 		"Tags":              func() error { _, err := s.Tags(bare); return err },
 	}
 	for name, call := range calls {

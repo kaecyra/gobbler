@@ -47,16 +47,16 @@ type TagCount struct {
 // q has no text. No match is an empty slice, not an error. Characters that mean
 // something to FTS5 are ordinary punctuation here, so no input is a syntax error.
 func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
 	text := strings.TrimSpace(q.Text)
 	expr, hasWords := matchExpression(text)
 	if text != "" && !hasWords {
 		return []Summary{}, nil
 	}
 	tags := cleanTags(q.Tags)
-	hid, err := scope(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	var out []Summary
 	err = db.WithReadTx(ctx, s.db, s.q, func(qs *storedb.Queries, tx *sql.Tx) error {
