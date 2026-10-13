@@ -1301,7 +1301,8 @@
       "issue": 136,
       "status": "todo",
       "depends_on": [
-        "t-scope-recipes"
+        "t-scope-recipes",
+        "e2e-seed-helper"
       ],
       "owns": [
         "internal/shopping/**",
@@ -1322,7 +1323,8 @@
       "issue": 137,
       "status": "todo",
       "depends_on": [
-        "t-scope-shopping"
+        "t-scope-shopping",
+        "w2-proposed-dedup"
       ],
       "owns": [
         "internal/catalog/**",
@@ -1352,7 +1354,8 @@
       "issue": 138,
       "status": "todo",
       "depends_on": [
-        "t-catalog-overlay"
+        "t-catalog-overlay",
+        "w3-recipeview-links"
       ],
       "owns": [
         "internal/sharing/**",
@@ -1410,6 +1413,147 @@
         "00018"
       ],
       "note": "ADR-00018: operator pages are operator-only. The membership middleware sets an operator flag on the request context for every operator request, member or not, through a helper in internal/web/layout/layout_operator.go; the layout renders operator-only links (Settings today) only when the flag is set. The server-side check stays the lock; this is presentation only."
+    },
+    {
+      "id": "g-templ-gate",
+      "title": "Fail make check when committed templ output is stale",
+      "wave": 8,
+      "track": "foundation",
+      "issue": 112,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "Makefile",
+        ".github/scripts/check-templ*",
+        ".claude/rules/code-style.md"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "make generate also runs templ generate; generate-check fails on any diff in tracked *_templ.go; a test-scripts case proves it. code-style.md says templ output is checked like sqlc's."
+    },
+    {
+      "id": "g-image-check",
+      "title": "CI check that the image has no Node runtime and no e2e/ content",
+      "wave": 8,
+      "track": "foundation",
+      "issue": 78,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        ".github/workflows/**",
+        ".github/scripts/check-image*"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00013"
+      ],
+      "note": "ADR-00013 obligation 1. A CI job (not a Makefile target, so it never collides with g-templ-gate) builds the image and asserts command -v node fails and no e2e/ path exists."
+    },
+    {
+      "id": "w3-display-times",
+      "title": "Extract document time rows and total-source note into internal/recipe/display",
+      "wave": 8,
+      "track": "domain",
+      "issue": 111,
+      "status": "todo",
+      "depends_on": [
+        "t-scope-recipes"
+      ],
+      "owns": [
+        "internal/recipe/display/**",
+        "internal/web/history/model*.go",
+        "internal/web/recipeview/model*.go",
+        "internal/web/cook/model*.go"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00004"
+      ],
+      "note": "ADR-00004 Times. One table-tested builder in internal/recipe/display; recipeview, history and cook call it."
+    },
+    {
+      "id": "e2e-seed-helper",
+      "title": "Shared e2e seed helper (identity, household, store setup)",
+      "wave": 8,
+      "track": "ui",
+      "issue": 99,
+      "status": "todo",
+      "depends_on": [
+        "t-scope-recipes"
+      ],
+      "owns": [
+        "e2e/seedutil/**",
+        "e2e/*/seed/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00013"
+      ],
+      "note": "ADR-00013 allows Go helpers under e2e/. After t-scope-recipes every seed also seeds the dev household; extract that with the identity context and open/migrate/store setup, and migrate every seed."
+    },
+    {
+      "id": "w3-recipeview-links",
+      "title": "Recipe page: embed journal, link history and clone, show clone origin",
+      "wave": 8,
+      "track": "ui",
+      "issue": 98,
+      "status": "todo",
+      "depends_on": [
+        "t-scope-recipes",
+        "w3-display-times",
+        "e2e-seed-helper"
+      ],
+      "owns": [
+        "internal/web/recipeview/**",
+        "e2e/recipeview/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00012"
+      ],
+      "note": "ADR-00012: include by URL, no cross-feature import."
+    },
+    {
+      "id": "w2-proposed-dedup",
+      "title": "Export proposed-ingredient recompute from internal/ingest; delete the web copy",
+      "wave": 8,
+      "track": "ingestion",
+      "issue": 88,
+      "status": "todo",
+      "depends_on": [
+        "t-scope-recipes"
+      ],
+      "owns": [
+        "internal/ingest/assemble*.go",
+        "internal/web/ingest/edit*.go"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00008"
+      ],
+      "note": "ADR-00008 obligation 3. One exported function used by the assembler and the review screen; behaviour unchanged."
+    },
+    {
+      "id": "w3-equipment-size",
+      "title": "Equipment size, so the scaled view can hint a larger pan",
+      "wave": 9,
+      "track": "ui",
+      "issue": 85,
+      "status": "todo",
+      "depends_on": [
+        "w3-recipeview-links",
+        "t-catalog-overlay",
+        "t-recipe-sharing"
+      ],
+      "owns": [
+        "internal/web/recipeview/**",
+        "internal/catalog/equipment*"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00005"
+      ],
+      "blocked": "Needs an owner decision: how equipment gets a size (a sized flag set on review, or a size parsed from the line), ADR-00005 Scaling"
     }
   ],
   "shared_files": [
