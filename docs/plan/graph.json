@@ -1350,7 +1350,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 138,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "t-catalog-overlay",
         "w3-recipeview-links"
@@ -2248,6 +2248,14 @@
       "id": "r-operator-promotions-link",
       "title": "Link /operator/promotions from the operator pages",
       "merged": "f3eddc0dac565124bf98177564541995903a7894"
+    },
+    {
+      "id": "t-recipe-sharing",
+      "title": "Send a recipe copy to another household",
+      "merged": "bb0d82edf986672f8e3e1d6fd77b44ddbc3adf4a",
+      "adrs": [
+        "00018"
+      ]
     }
   ],
   "adr_sequence": {
