@@ -18,6 +18,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/household"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/parse"
@@ -115,6 +116,23 @@ func sampleDraft() ingestcore.Draft {
 	}
 }
 
+// Two households, as the membership middleware would resolve them. A fixture
+// acts as householdA; the tests of draft ownership also act as householdB.
+var (
+	householdA = household.Household{ID: 1, Name: "A"}
+	householdB = household.Household{ID: 2, Name: "B"}
+)
+
+// asMember puts h on every request, as the membership middleware does for a
+// member.
+func asMember(h household.Household) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+		})
+	}
+}
+
 type fixture struct {
 	h       *handler
 	srv     http.Handler
@@ -133,7 +151,7 @@ func newFixture(t *testing.T) *fixture {
 		pending: newPendingDrafts(time.Now),
 		log:     slog.New(slog.NewJSONHandler(io.Discard, nil)),
 	}
-	return &fixture{h: h, srv: h.routes(), drafter: d, store: st}
+	return &fixture{h: h, srv: asMember(householdA)(h.routes()), drafter: d, store: st}
 }
 
 func (f *fixture) do(method, target string, form url.Values) *httptest.ResponseRecorder {
@@ -574,18 +592,18 @@ func TestEditedItemIsNoLongerFlagged(t *testing.T) {
 func TestPendingExpiresAndIsBounded(t *testing.T) {
 	now := time.Now()
 	p := newPendingDrafts(func() time.Time { return now })
-	first, err := p.add(sampleDraft())
+	first, err := p.add(householdA.ID, sampleDraft())
 	if err != nil {
 		t.Fatal(err)
 	}
 	now = now.Add(pendingTTL + time.Second)
-	if _, ok := p.get(first); ok {
+	if _, ok := p.get(householdA.ID, first); ok {
 		t.Error("an expired draft is still available")
 	}
 	var tokens []string
 	for i := 0; i < pendingMax+3; i++ {
 		now = now.Add(time.Second)
-		tok, err := p.add(sampleDraft())
+		tok, err := p.add(householdA.ID, sampleDraft())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -594,10 +612,10 @@ func TestPendingExpiresAndIsBounded(t *testing.T) {
 	if len(p.entries) != pendingMax {
 		t.Errorf("entries = %d, want the bound %d", len(p.entries), pendingMax)
 	}
-	if _, ok := p.get(tokens[0]); ok {
+	if _, ok := p.get(householdA.ID, tokens[0]); ok {
 		t.Error("the oldest draft was kept over newer ones")
 	}
-	if _, ok := p.get(tokens[len(tokens)-1]); !ok {
+	if _, ok := p.get(householdA.ID, tokens[len(tokens)-1]); !ok {
 		t.Error("the newest draft was dropped")
 	}
 }

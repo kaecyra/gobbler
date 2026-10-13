@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/household"
+
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/auth"
@@ -36,6 +38,7 @@ type fixture struct {
 	shop  *domain.Store
 	h     *handler
 	srv   http.Handler
+	ctx   context.Context // the dev identity and household
 	flour int64
 	milk  int64
 	salt  int64
@@ -56,11 +59,12 @@ func newFixture(t *testing.T) *fixture {
 	}
 	cat, rec := catalog.New(d), store.New(d)
 	shop := domain.New(d, rec, cat)
-	f := &fixture{t: t, d: d, cat: cat, rec: rec, shop: shop}
+	f := &fixture{t: t, d: d, cat: cat, rec: rec, shop: shop, ctx: identityContext(t, d)}
 	deps := Deps{Lists: shop, Recipes: rec, Catalog: cat}
 	f.h = newHandler(deps)
 	shop.OnChange(f.h.hub.notify)
 	root := chi.NewRouter()
+	root.Use(asMember(devHousehold(t, d)))
 	root.Mount(Pattern, f.h.routes())
 	f.srv = root
 
@@ -91,7 +95,7 @@ func (f *fixture) line(ing int64, n int64, unit quantity.Unit, optional bool) re
 
 func (f *fixture) recipe(name string, lines ...recipe.IngredientLine) int64 {
 	f.t.Helper()
-	id, err := f.rec.Create(identityContext(f.t), recipe.Recipe{
+	id, err := f.rec.Create(identityContext(f.t, f.d), recipe.Recipe{
 		Name:       name,
 		Components: []recipe.Component{{Lines: lines, Steps: []recipe.Step{{ID: "s1", Text: "Do it."}}}},
 	})
@@ -101,7 +105,7 @@ func (f *fixture) recipe(name string, lines ...recipe.IngredientLine) int64 {
 	return id
 }
 
-func identityContext(t *testing.T) context.Context {
+func identityContext(t *testing.T, d *sql.DB) context.Context {
 	t.Helper()
 	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DataDir: t.TempDir(), DevAuthBypass: true}})
 	if err != nil {
@@ -113,7 +117,7 @@ func identityContext(t *testing.T) context.Context {
 	if got == nil {
 		t.Fatal("auth middleware did not pass the request on")
 	}
-	return got
+	return household.WithContext(got, devHousehold(t, d))
 }
 
 func (f *fixture) do(method, path string, form url.Values, hdr ...string) *httptest.ResponseRecorder {
@@ -136,7 +140,7 @@ func (f *fixture) do(method, path string, form url.Values, hdr ...string) *httpt
 
 func (f *fixture) newList(name string) int64 {
 	f.t.Helper()
-	info, err := f.shop.CreateList(context.Background(), name)
+	info, err := f.shop.CreateList(f.ctx, name)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -216,7 +220,7 @@ func TestMultiplierScalesAndInvalidOnesAreInline(t *testing.T) {
 		wantStatus(t, rec, http.StatusBadRequest)
 		wantBody(t, rec, msgMultiplier)
 	}
-	view, err := f.shop.Load(context.Background(), list)
+	view, err := f.shop.Load(f.ctx, list)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +250,7 @@ func TestRemoveRecipe(t *testing.T) {
 	f := newFixture(t)
 	list := f.newList("Week")
 	f.addRecipe(list, f.cakes, "1")
-	view, _ := f.shop.Load(context.Background(), list)
+	view, _ := f.shop.Load(f.ctx, list)
 	rec := f.do(http.MethodPost, fmt.Sprintf("/%d/recipes/%d/remove", list, view.Entries[0].ID), url.Values{})
 	wantStatus(t, rec, http.StatusSeeOther)
 	wantBody(t, f.do(http.MethodGet, "/"+id(list), nil), "Nothing on this list yet.")
@@ -256,10 +260,10 @@ func TestEntryOfAnotherListIsNotFound(t *testing.T) {
 	f := newFixture(t)
 	a, b := f.newList("A"), f.newList("B")
 	f.addRecipe(a, f.cakes, "1")
-	view, _ := f.shop.Load(context.Background(), a)
+	view, _ := f.shop.Load(f.ctx, a)
 	rec := f.do(http.MethodPost, fmt.Sprintf("/%d/recipes/%d/remove", b, view.Entries[0].ID), url.Values{})
 	wantStatus(t, rec, http.StatusNotFound)
-	if v, _ := f.shop.Load(context.Background(), a); len(v.Entries) != 1 {
+	if v, _ := f.shop.Load(f.ctx, a); len(v.Entries) != 1 {
 		t.Fatal("a URL naming list B removed list A's entry")
 	}
 }
@@ -287,10 +291,10 @@ func TestManualItems(t *testing.T) {
 		})
 	}
 
-	view, _ := f.shop.Load(context.Background(), list)
+	view, _ := f.shop.Load(f.ctx, list)
 	rec = f.do(http.MethodPost, fmt.Sprintf("/%d/manual/%d/remove", list, view.Manual[0].ID), url.Values{})
 	wantStatus(t, rec, http.StatusSeeOther)
-	if v, _ := f.shop.Load(context.Background(), list); len(v.Manual) != 1 {
+	if v, _ := f.shop.Load(f.ctx, list); len(v.Manual) != 1 {
 		t.Fatalf("manual items after remove = %d, want 1", len(v.Manual))
 	}
 }
@@ -397,7 +401,7 @@ func TestExportIsPlainTextGroupedByAisle(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/plain") {
 		t.Errorf("Content-Type = %q", ct)
 	}
-	view, _ := f.shop.Load(context.Background(), list)
+	view, _ := f.shop.Load(f.ctx, list)
 	want, err := view.Generated().Text()
 	if err != nil {
 		t.Fatal(err)
@@ -417,7 +421,7 @@ func TestCheckTogglesThroughTheStore(t *testing.T) {
 
 	rec := f.do(http.MethodPost, "/"+id(list)+"/check", checkForm(key, "1"), "X-Requested-With", "fetch")
 	wantStatus(t, rec, http.StatusNoContent)
-	view, _ := f.shop.Load(context.Background(), list)
+	view, _ := f.shop.Load(f.ctx, list)
 	if !view.Aisles[0].Items[0].Checked {
 		t.Fatal("item not checked in the store")
 	}
@@ -426,7 +430,7 @@ func TestCheckTogglesThroughTheStore(t *testing.T) {
 	// Without the script header the answer is a redirect back to the view.
 	rec = f.do(http.MethodPost, "/"+id(list)+"/check", checkForm(key, "0"))
 	wantStatus(t, rec, http.StatusSeeOther)
-	if v, _ := f.shop.Load(context.Background(), list); v.Aisles[0].Items[0].Checked {
+	if v, _ := f.shop.Load(f.ctx, list); v.Aisles[0].Items[0].Checked {
 		t.Fatal("item still checked after unchecking")
 	}
 
@@ -445,7 +449,7 @@ func TestChecksSurviveRegeneration(t *testing.T) {
 
 	// Changing a multiplier changes flour's amount; removing the pancakes removes
 	// milk. Flour stays checked, milk's check goes with it.
-	view, _ := f.shop.Load(context.Background(), list)
+	view, _ := f.shop.Load(f.ctx, list)
 	for _, e := range view.Entries {
 		switch e.RecipeID {
 		case f.waffl:
@@ -593,7 +597,7 @@ func TestEventsSendFullStateThenEveryCheck(t *testing.T) {
 		t.Fatalf("first event = %q", first)
 	}
 
-	if err := f.shop.SetChecked(context.Background(), list, domain.ItemKey("i:"+id(f.flour)), true); err != nil {
+	if err := f.shop.SetChecked(f.ctx, list, domain.ItemKey("i:"+id(f.flour)), true); err != nil {
 		t.Fatal(err)
 	}
 	if got := c.next(5 * time.Second); !strings.Contains(got, `data-checked="true"`) {
@@ -617,7 +621,7 @@ func TestEventsOnlyForTheWatchedList(t *testing.T) {
 	srv := f.streamServer(0)
 	c := openStream(t, srv.URL, a)
 	c.next(5 * time.Second)
-	if err := f.shop.SetChecked(context.Background(), b, domain.ItemKey("i:"+id(f.flour)), true); err != nil {
+	if err := f.shop.SetChecked(f.ctx, b, domain.ItemKey("i:"+id(f.flour)), true); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -677,7 +681,7 @@ func TestEventStreamSurvivesTheServerWriteTimeout(t *testing.T) {
 	c := openStream(t, srv.URL, list)
 	c.next(5 * time.Second)
 	time.Sleep(900 * time.Millisecond) // three times the write timeout
-	if err := f.shop.SetChecked(context.Background(), list, domain.ItemKey("i:"+id(f.flour)), true); err != nil {
+	if err := f.shop.SetChecked(f.ctx, list, domain.ItemKey("i:"+id(f.flour)), true); err != nil {
 		t.Fatal(err)
 	}
 	if got := c.next(5 * time.Second); !strings.Contains(got, `data-checked="true"`) {
@@ -703,7 +707,7 @@ func TestEventStreamTellsViewersWhenTheListIsDeleted(t *testing.T) {
 	srv := f.streamServer(0)
 	c := openStream(t, srv.URL, list)
 	c.next(5 * time.Second)
-	if err := f.shop.DeleteList(context.Background(), list); err != nil {
+	if err := f.shop.DeleteList(f.ctx, list); err != nil {
 		t.Fatal(err)
 	}
 	if got := c.next(5 * time.Second); !strings.HasPrefix(got, "event: gone") {
@@ -889,7 +893,7 @@ func TestCancelEndsAStreamBlockedMidWrite(t *testing.T) {
 	}
 	waitFor("the first list", func() bool { return w.writeCount() >= 1 })
 	// A change makes the handler write again, and that write blocks.
-	if err := f.shop.SetChecked(context.Background(), list, domain.ItemKey("t:x"), true); err != nil {
+	if err := f.shop.SetChecked(f.ctx, list, domain.ItemKey("t:x"), true); err != nil {
 		t.Fatal(err)
 	}
 	waitFor("a blocked write", func() bool { return w.writeCount() >= 2 })
@@ -925,5 +929,30 @@ func TestCarriageReturnInAnItemDoesNotBreakTheStream(t *testing.T) {
 	}
 	if !strings.Contains(first, "line one") || !strings.Contains(first, "line two") {
 		t.Fatalf("item text lost: %q", first)
+	}
+}
+
+// devHousehold returns the household the membership middleware resolves for
+// the dev identity, creating it in d the way the dev bypass does.
+func devHousehold(t *testing.T, d *sql.DB) household.Household {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(context.Background(), "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(context.Background(), auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return h
+}
+
+// asMember puts h on every request, as the membership middleware does for a
+// member.
+func asMember(h household.Household) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+		})
 	}
 }

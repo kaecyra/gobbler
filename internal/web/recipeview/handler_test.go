@@ -2,6 +2,7 @@ package recipeview
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/household"
 
 	"github.com/go-chi/chi/v5"
 
@@ -386,7 +389,7 @@ func storeEnv(t *testing.T) (context.Context, *store.Store, *catalog.Store) {
 	if authed == nil {
 		t.Fatal("auth middleware did not call the handler")
 	}
-	return authed, store.New(d), catalog.New(d)
+	return household.WithContext(authed, devHousehold(t, d)), store.New(d), catalog.New(d)
 }
 
 func TestScalingAndUnitModesDoNotChangeTheStoredRecipe(t *testing.T) {
@@ -478,4 +481,19 @@ func TestViewLinksToTheEditor(t *testing.T) {
 	// The editor has no display state, so scaling does not leak into its URL.
 	_, body = serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=2&units=metric")
 	mustContain(t, body, `href="/recipes/7/edit"`)
+}
+
+// devHousehold returns the household the membership middleware resolves for
+// the dev identity, creating it in d the way the dev bypass does.
+func devHousehold(t *testing.T, d *sql.DB) household.Household {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(context.Background(), "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(context.Background(), auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return h
 }

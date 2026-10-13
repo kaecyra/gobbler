@@ -14,8 +14,8 @@ import (
 
 // loadDocument reads the recipe document with the given id. Empty collections
 // come back nil. A missing recipe is ErrNotFound.
-func loadDocument(ctx context.Context, q *storedb.Queries, id int64, units *unitTable) (recipe.Recipe, error) {
-	row, err := q.GetRecipeDocument(ctx, id)
+func loadDocument(ctx context.Context, q *storedb.Queries, hid, id int64, units *unitTable) (recipe.Recipe, error) {
+	row, err := q.GetRecipeDocument(ctx, storedb.GetRecipeDocumentParams{ID: id, HouseholdID: hid})
 	if errors.Is(err, sql.ErrNoRows) {
 		return recipe.Recipe{}, fmt.Errorf("%w: recipe %d", ErrNotFound, id)
 	}
@@ -33,31 +33,31 @@ func loadDocument(ctx context.Context, q *storedb.Queries, id int64, units *unit
 	r.CaloriesPerServing, r.Rating = intPtr(row.CaloriesPerServing), intPtr(row.Rating)
 	r.Times = recipe.Times{Prep: time.Duration(row.PrepNs), Cook: time.Duration(row.CookNs), Total: time.Duration(row.TotalNs)}
 
-	if r.Tags, err = loadTags(ctx, q, id); err != nil {
+	if r.Tags, err = loadTags(ctx, q, hid, id); err != nil {
 		return recipe.Recipe{}, err
 	}
-	if r.Times.Special, err = loadSpecialTimes(ctx, q, id); err != nil {
+	if r.Times.Special, err = loadSpecialTimes(ctx, q, hid, id); err != nil {
 		return recipe.Recipe{}, err
 	}
-	if r.Components, err = loadComponents(ctx, q, id, units); err != nil {
+	if r.Components, err = loadComponents(ctx, q, hid, id, units); err != nil {
 		return recipe.Recipe{}, err
 	}
-	if r.Equipment, err = loadEquipment(ctx, q, id); err != nil {
+	if r.Equipment, err = loadEquipment(ctx, q, hid, id); err != nil {
 		return recipe.Recipe{}, err
 	}
 	return r, nil
 }
 
-func loadTags(ctx context.Context, q *storedb.Queries, id int64) ([]string, error) {
-	tags, err := q.ListRecipeTags(ctx, id)
+func loadTags(ctx context.Context, q *storedb.Queries, hid, id int64) ([]string, error) {
+	tags, err := q.ListRecipeTags(ctx, storedb.ListRecipeTagsParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("tags", err)
 	}
 	return tags, nil
 }
 
-func loadSpecialTimes(ctx context.Context, q *storedb.Queries, id int64) ([]recipe.SpecialTime, error) {
-	rows, err := q.ListSpecialTimes(ctx, id)
+func loadSpecialTimes(ctx context.Context, q *storedb.Queries, hid, id int64) ([]recipe.SpecialTime, error) {
+	rows, err := q.ListSpecialTimes(ctx, storedb.ListSpecialTimesParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("special times", err)
 	}
@@ -68,8 +68,8 @@ func loadSpecialTimes(ctx context.Context, q *storedb.Queries, id int64) ([]reci
 	return out, nil
 }
 
-func loadComponents(ctx context.Context, q *storedb.Queries, id int64, units *unitTable) ([]recipe.Component, error) {
-	compRows, err := q.ListComponents(ctx, id)
+func loadComponents(ctx context.Context, q *storedb.Queries, hid, id int64, units *unitTable) ([]recipe.Component, error) {
+	compRows, err := q.ListComponents(ctx, storedb.ListComponentsParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("components", err)
 	}
@@ -80,7 +80,7 @@ func loadComponents(ctx context.Context, q *storedb.Queries, id int64, units *un
 		comps = append(comps, recipe.Component{Name: r.Name})
 	}
 
-	lineRows, err := q.ListIngredientLines(ctx, id)
+	lineRows, err := q.ListIngredientLines(ctx, storedb.ListIngredientLinesParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("ingredient lines", err)
 	}
@@ -98,7 +98,7 @@ func loadComponents(ctx context.Context, q *storedb.Queries, id int64, units *un
 		comps[ci].Lines = append(comps[ci].Lines, l)
 	}
 
-	qualRows, err := q.ListLineQualifiers(ctx, id)
+	qualRows, err := q.ListLineQualifiers(ctx, storedb.ListLineQualifiersParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("line qualifiers", err)
 	}
@@ -111,7 +111,7 @@ func loadComponents(ctx context.Context, q *storedb.Queries, id int64, units *un
 		line.Qualifiers = append(line.Qualifiers, recipe.Qualifier{Kind: recipe.QualifierKind(r.Kind), Text: r.Text})
 	}
 
-	stepRows, err := q.ListSteps(ctx, id)
+	stepRows, err := q.ListSteps(ctx, storedb.ListStepsParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("steps", err)
 	}
@@ -128,7 +128,7 @@ func loadComponents(ctx context.Context, q *storedb.Queries, id int64, units *un
 		comps[ci].Steps = append(comps[ci].Steps, s)
 	}
 
-	depRows, err := q.ListStepDependencies(ctx, id)
+	depRows, err := q.ListStepDependencies(ctx, storedb.ListStepDependenciesParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("step dependencies", err)
 	}
@@ -172,8 +172,8 @@ func lineFrom(r storedb.ListIngredientLinesRow, units *unitTable) (recipe.Ingred
 	return l, nil
 }
 
-func loadEquipment(ctx context.Context, q *storedb.Queries, id int64) ([]recipe.EquipmentLink, error) {
-	eqRows, err := q.ListRecipeEquipment(ctx, id)
+func loadEquipment(ctx context.Context, q *storedb.Queries, hid, id int64) ([]recipe.EquipmentLink, error) {
+	eqRows, err := q.ListRecipeEquipment(ctx, storedb.ListRecipeEquipmentParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("equipment", err)
 	}
@@ -187,7 +187,7 @@ func loadEquipment(ctx context.Context, q *storedb.Queries, id int64) ([]recipe.
 		rowIdx[r.ID] = len(out)
 		out = append(out, recipe.EquipmentLink{Equipment: recipe.EquipmentID(r.EquipmentID), Qty: qty})
 	}
-	stepRows, err := q.ListEquipmentSteps(ctx, id)
+	stepRows, err := q.ListEquipmentSteps(ctx, storedb.ListEquipmentStepsParams{RecipeID: id, HouseholdID: hid})
 	if err != nil {
 		return nil, readErr("equipment steps", err)
 	}

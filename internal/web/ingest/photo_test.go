@@ -59,7 +59,7 @@ func newPhotoFixture(t *testing.T, reader *fakeReader) *photoFixture {
 	d := &textDrafter{draft: sampleDraft()}
 	f.h.photos = d
 	f.h.ocr = reader
-	return &photoFixture{fixture: f, reader: reader, drafter: d, srv: f.h.routes()}
+	return &photoFixture{fixture: f, reader: reader, drafter: d, srv: asMember(householdA)(f.h.routes())}
 }
 
 func (f *photoFixture) upload(t *testing.T, filename string, content []byte) *httptest.ResponseRecorder {

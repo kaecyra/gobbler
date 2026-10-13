@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/kaecyra/gobbler/internal/db"
-	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
 // Deleting a recipe that a list uses is refused, and the list is untouched. The
@@ -118,7 +117,7 @@ func TestMigrationOnExistingData(t *testing.T) {
 	f := newFixture(t)
 	// A second database stopped before the first shopping migration; every
 	// later one alters its tables.
-	older, all := migrationsBefore(t, "00005"), db.Migrations()
+	older := migrationsBefore(t, "00005")
 	d2 := openRaw(t)
 	if err := db.Migrate(f.ctx, d2, older); err != nil {
 		t.Fatalf("migrate without shopping: %v", err)
@@ -128,23 +127,18 @@ func TestMigrationOnExistingData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rid, err := f.recipesOn(d2).Create(f.ctx, recipeOf("Old", line(recipe.IngredientID(id.ID), amt(t, 1, 1, "cup"))))
-	if err != nil {
-		t.Fatal(err)
-	}
+	rid := oldRecipe(t, d2, "Old", oldLine{ingredient: id.ID})
 
-	if err := db.Migrate(f.ctx, d2, all); err != nil {
-		t.Fatalf("migrate with shopping on existing data: %v", err)
-	}
-	if _, err := f.recipesOn(d2).Get(f.ctx, rid); err != nil {
+	ctx := migrateOverOldData(f.ctx, t, d2)
+	if _, err := f.recipesOn(d2).Get(ctx, rid); err != nil {
 		t.Errorf("recipe after migration: %v", err)
 	}
 	s2 := New(d2, f.recipesOn(d2), ing)
-	l, err := s2.CreateList(f.ctx, "L")
+	l, err := s2.CreateList(ctx, "L")
 	if err != nil {
 		t.Fatalf("CreateList after migration: %v", err)
 	}
-	if _, err := s2.AddEntry(f.ctx, l.ID, rid, quantity3(t)); err != nil {
+	if _, err := s2.AddEntry(ctx, l.ID, rid, quantity3(t)); err != nil {
 		t.Errorf("AddEntry of an existing recipe: %v", err)
 	}
 }

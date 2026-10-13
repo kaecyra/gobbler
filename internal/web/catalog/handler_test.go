@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kaecyra/gobbler/internal/household"
+
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/auth"
@@ -68,12 +70,12 @@ func (f *fixture) recipeUsing(name string, ids ...int64) {
 		lines = append(lines, recipe.IngredientLine{Ingredient: recipe.IngredientID(id), Rule: quantity.RuleLinear, Raw: "one thing"})
 	}
 	r := recipe.Recipe{Name: name, Components: []recipe.Component{{Lines: lines, Steps: []recipe.Step{{ID: "s1", Text: "Do it."}}}}}
-	if _, err := f.rec.Create(identityContext(f.t), r); err != nil {
+	if _, err := f.rec.Create(identityContext(f.t, f.d), r); err != nil {
 		f.t.Fatal(err)
 	}
 }
 
-func identityContext(t *testing.T) context.Context {
+func identityContext(t *testing.T, d *sql.DB) context.Context {
 	t.Helper()
 	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DataDir: t.TempDir(), DevAuthBypass: true}})
 	if err != nil {
@@ -85,7 +87,7 @@ func identityContext(t *testing.T) context.Context {
 	if got == nil {
 		t.Fatal("auth middleware did not pass the request on")
 	}
-	return got
+	return household.WithContext(got, devHousehold(t, d))
 }
 
 func (f *fixture) do(method, target string, form url.Values) *httptest.ResponseRecorder {
@@ -361,4 +363,19 @@ func TestFilter(t *testing.T) {
 			t.Errorf("filter(%q) = %v, want %v", q, got, want)
 		}
 	}
+}
+
+// devHousehold returns the household the membership middleware resolves for
+// the dev identity, creating it in d the way the dev bypass does.
+func devHousehold(t *testing.T, d *sql.DB) household.Household {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(context.Background(), "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(context.Background(), auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return h
 }

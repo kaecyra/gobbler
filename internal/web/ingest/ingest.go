@@ -25,6 +25,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/household"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
@@ -121,7 +122,7 @@ func Routes(d Deps) http.Handler {
 
 func (h *handler) routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(h.requireReady)
+	r.Use(h.requireReady, requireHousehold)
 	r.Get("/", h.form)
 	r.Post("/", h.submit)
 	r.Get("/photo", h.photoForm)
@@ -143,6 +144,27 @@ func (h *handler) requireReady(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// requireHousehold refuses a request that carries no household with a 500,
+// before any draft is created or looked up: pending drafts belong to a
+// household (ADR-00018), and a route reached outside the membership middleware
+// is a wiring error, never a request to serve unscoped.
+func requireHousehold(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := household.FromContext(r.Context()); !ok {
+			layout.WriteError(w, r, fmt.Errorf("ingest: %w", store.ErrNoHousehold))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// householdID is the id of the request's household. requireHousehold has
+// already refused a request without one, so no handler sees zero.
+func householdID(r *http.Request) int64 {
+	h, _ := household.FromContext(r.Context())
+	return h.ID
 }
 
 // formView is what the ingest form renders.
@@ -210,7 +232,7 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		layout.Render(w, r, status, formPage(v))
 		return
 	}
-	token, err := h.pending.add(draft)
+	token, err := h.pending.add(householdID(r), draft)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -238,7 +260,7 @@ func isWebURL(s string) bool {
 
 func (h *handler) review(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	d, ok := h.pending.get(token)
+	d, ok := h.pending.get(householdID(r), token)
 	if !ok {
 		layout.WriteError(w, r, errGone)
 		return
@@ -260,19 +282,19 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("read form: %w", layout.ErrInvalid))
 		return
 	}
-	d, ok := h.pending.take(token)
+	d, ok := h.pending.take(householdID(r), token)
 	if !ok {
 		layout.WriteError(w, r, errGone)
 		return
 	}
 	retry := func(status int, problems []string) {
-		h.pending.put(token, d)
+		h.pending.put(householdID(r), token, d)
 		view := h.reviewView(token, d)
 		view.Problems = problems
 		layout.Render(w, r, status, reviewPage(view))
 	}
 	fail := func(err error) {
-		h.pending.put(token, d)
+		h.pending.put(householdID(r), token, d)
 		layout.WriteError(w, r, err)
 	}
 
@@ -343,6 +365,6 @@ func leaves(err error) []error {
 
 // cancel discards the draft. Nothing was saved, so there is nothing to undo.
 func (h *handler) cancel(w http.ResponseWriter, r *http.Request) {
-	h.pending.discard(chi.URLParam(r, "token"))
+	h.pending.discard(householdID(r), chi.URLParam(r, "token"))
 	http.Redirect(w, r, "/ingest", http.StatusSeeOther)
 }

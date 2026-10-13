@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"io/fs"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
@@ -23,7 +26,7 @@ func names(ss []Summary) []string {
 
 func mustSearch(t *testing.T, s *Store, text string, tags ...string) []Summary {
 	t.Helper()
-	got, err := s.Search(context.Background(), SearchQuery{Text: text, Tags: tags})
+	got, err := s.Search(authedCtx(t), SearchQuery{Text: text, Tags: tags})
 	if err != nil {
 		t.Fatalf("Search(%q, %v): %v", text, tags, err)
 	}
@@ -307,52 +310,67 @@ func TestTagFilter(t *testing.T) {
 
 func TestTagsEmptyLibrary(t *testing.T) {
 	s, _ := newTestStore(t)
-	tags, err := s.Tags(context.Background())
+	tags, err := s.Tags(authedCtx(t))
 	if err != nil || tags == nil || len(tags) != 0 {
 		t.Fatalf("Tags = %#v, %v", tags, err)
 	}
 }
 
-// TestMigrationIndexesExistingRecipes applies the schema without the search
-// migration, writes recipes, then applies it: rows that predate it are found.
-func TestMigrationIndexesExistingRecipes(t *testing.T) {
-	ctx := authedCtx(t)
-	d := openRaw(t)
+// migrationsBelow returns the embedded migrations numbered below prefix, as
+// the database stood before that migration. Migrations above it are left out
+// too: applying a later one first would put prefix out of order, and goose
+// refuses that. The README sorts after the numbered files, so it is left out.
+func migrationsBelow(t *testing.T, prefix string) fstest.MapFS {
+	t.Helper()
 	all := db.Migrations()
-	before := fstest.MapFS{}
+	out := fstest.MapFS{}
 	entries, err := fs.ReadDir(all, ".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		// Leave out 00004 and everything above it: a later migration applied
-		// first would put 00004 out of order, and goose refuses that. The
-		// README sorts after the numbered files, so it is left out too.
-		if e.Name() >= "00004" {
+		if e.Name() >= prefix || !strings.HasSuffix(e.Name(), ".sql") {
 			continue
 		}
 		b, err := fs.ReadFile(all, e.Name())
 		if err != nil {
 			t.Fatal(err)
 		}
-		before[e.Name()] = &fstest.MapFile{Data: b}
+		out[e.Name()] = &fstest.MapFile{Data: b}
 	}
-	if err := db.Migrate(ctx, d, before); err != nil {
+	return out
+}
+
+// TestMigrationIndexesExistingRecipes applies the schema without the search
+// migration, writes recipes, then applies it: rows that predate it are found.
+// The recipes are written with SQL because the store writes the current shape,
+// and the household they end up in is created before the migration that needs
+// one (00008).
+func TestMigrationIndexesExistingRecipes(t *testing.T) {
+	ctx := authedCtx(t)
+	d := openRaw(t)
+	if err := db.Migrate(ctx, d, migrationsBelow(t, "00004")); err != nil {
 		t.Fatal(err)
 	}
-	s := New(d)
-	r := simpleRecipe("Old Stew")
-	r.Tags = []string{"winter"}
-	id, err := s.Create(ctx, r)
-	if err != nil {
-		t.Fatal(err)
+	for _, q := range []string{
+		`INSERT INTO recipes (id, name, created_at, created_by, updated_at, updated_by) VALUES (1, 'Old Stew', 't', 'a', 't', 'a')`,
+		`INSERT INTO recipe_tags (recipe_id, position, tag) VALUES (1, 0, 'winter')`,
+		`INSERT INTO notes (recipe_id, body, created_at, created_by) VALUES (1, 'needs thyme', 't', 'a')`,
+	} {
+		if _, err := d.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if _, err := s.AddNote(ctx, id, "needs thyme"); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Migrate(ctx, d, all); err != nil {
+	if err := db.Migrate(ctx, d, migrationsBelow(t, "00008")); err != nil {
 		t.Fatalf("apply search migration over existing data: %v", err)
 	}
+	if _, err := household.New(d).Create(ctx, "Home", auth.DevEmail); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("apply household migration over existing data: %v", err)
+	}
+	s := New(d)
 	for _, text := range []string{"stew", "winter", "thyme"} {
 		wantNames(t, mustSearch(t, s, text), "Old Stew")
 	}

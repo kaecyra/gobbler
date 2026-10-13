@@ -115,7 +115,7 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("ingest photo text: %w", err))
 		return
 	}
-	token, err := h.pending.add(draft)
+	token, err := h.pending.add(householdID(r), draft)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return

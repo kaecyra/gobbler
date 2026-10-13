@@ -11,21 +11,23 @@ import (
 )
 
 const insertMadeIt = `-- name: InsertMadeIt :one
-INSERT INTO made_it (recipe_id, made_on, rating, comment, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO made_it (household_id, recipe_id, made_on, rating, comment, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
 type InsertMadeItParams struct {
-	RecipeID  int64
-	MadeOn    string
-	Rating    sql.NullInt64
-	Comment   string
-	CreatedAt string
-	CreatedBy string
+	HouseholdID int64
+	RecipeID    int64
+	MadeOn      string
+	Rating      sql.NullInt64
+	Comment     string
+	CreatedAt   string
+	CreatedBy   string
 }
 
 func (q *Queries) InsertMadeIt(ctx context.Context, arg InsertMadeItParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, insertMadeIt,
+		arg.HouseholdID,
 		arg.RecipeID,
 		arg.MadeOn,
 		arg.Rating,
@@ -39,19 +41,24 @@ func (q *Queries) InsertMadeIt(ctx context.Context, arg InsertMadeItParams) (int
 }
 
 const insertNote = `-- name: InsertNote :one
-INSERT INTO notes (recipe_id, body, created_at, created_by) VALUES (?, ?, ?, ?)
+
+INSERT INTO notes (household_id, recipe_id, body, created_at, created_by) VALUES (?, ?, ?, ?, ?)
 RETURNING id
 `
 
 type InsertNoteParams struct {
-	RecipeID  int64
-	Body      string
-	CreatedAt string
-	CreatedBy string
+	HouseholdID int64
+	RecipeID    int64
+	Body        string
+	CreatedAt   string
+	CreatedBy   string
 }
 
+// Every query takes the household and filters on it: a recipe id from another
+// household finds nothing (ADR-00018).
 func (q *Queries) InsertNote(ctx context.Context, arg InsertNoteParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, insertNote,
+		arg.HouseholdID,
 		arg.RecipeID,
 		arg.Body,
 		arg.CreatedAt,
@@ -64,8 +71,13 @@ func (q *Queries) InsertNote(ctx context.Context, arg InsertNoteParams) (int64, 
 
 const listMadeIt = `-- name: ListMadeIt :many
 SELECT id, made_on, rating, comment, created_at, created_by FROM made_it
-WHERE recipe_id = ? ORDER BY made_on, id
+WHERE recipe_id = ?1 AND household_id = ?2 ORDER BY made_on, id
 `
+
+type ListMadeItParams struct {
+	RecipeID    int64
+	HouseholdID int64
+}
 
 type ListMadeItRow struct {
 	ID        int64
@@ -76,8 +88,8 @@ type ListMadeItRow struct {
 	CreatedBy string
 }
 
-func (q *Queries) ListMadeIt(ctx context.Context, recipeID int64) ([]ListMadeItRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMadeIt, recipeID)
+func (q *Queries) ListMadeIt(ctx context.Context, arg ListMadeItParams) ([]ListMadeItRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMadeIt, arg.RecipeID, arg.HouseholdID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +119,14 @@ func (q *Queries) ListMadeIt(ctx context.Context, recipeID int64) ([]ListMadeItR
 }
 
 const listNotes = `-- name: ListNotes :many
-SELECT id, body, created_at, created_by FROM notes WHERE recipe_id = ? ORDER BY id
+SELECT id, body, created_at, created_by FROM notes
+WHERE recipe_id = ?1 AND household_id = ?2 ORDER BY id
 `
+
+type ListNotesParams struct {
+	RecipeID    int64
+	HouseholdID int64
+}
 
 type ListNotesRow struct {
 	ID        int64
@@ -117,8 +135,8 @@ type ListNotesRow struct {
 	CreatedBy string
 }
 
-func (q *Queries) ListNotes(ctx context.Context, recipeID int64) ([]ListNotesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listNotes, recipeID)
+func (q *Queries) ListNotes(ctx context.Context, arg ListNotesParams) ([]ListNotesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listNotes, arg.RecipeID, arg.HouseholdID)
 	if err != nil {
 		return nil, err
 	}

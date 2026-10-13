@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
@@ -29,7 +31,30 @@ func newTestDB(t *testing.T) *sql.DB {
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatalf("db.Migrate: %v", err)
 	}
+	seedHouseholds(t, d)
 	return d
+}
+
+// The two households every test database starts with. authedCtx acts in the
+// first and otherCtx in the second; they are created in this order on an empty
+// database, so their ids are fixed.
+const (
+	testHouseholdID  = 1
+	otherHouseholdID = 2
+)
+
+func seedHouseholds(t *testing.T, d *sql.DB) {
+	t.Helper()
+	hs := household.New(d)
+	for i, email := range []string{auth.DevEmail, auth.DevOtherEmail} {
+		h, err := hs.Create(context.Background(), fmt.Sprintf("Household %d", i+1), email)
+		if err != nil {
+			t.Fatalf("create household %d: %v", i+1, err)
+		}
+		if want := int64(i + 1); h.ID != want {
+			t.Fatalf("household %d has id %d", want, h.ID)
+		}
+	}
 }
 
 // newTestStore returns a store over a fresh database, with a clock that
@@ -47,8 +72,24 @@ func newTestStore(t *testing.T) (*Store, *sql.DB) {
 }
 
 // authedCtx returns a context carrying the identity the real auth middleware
-// stores (dev bypass, which is the only way to obtain one outside package auth).
+// stores (dev bypass, which is the only way to obtain one outside package auth)
+// and the first test household, as the membership middleware would.
 func authedCtx(t *testing.T) context.Context {
+	t.Helper()
+	return household.WithContext(identityCtx(t), household.Household{ID: testHouseholdID, Name: "Household 1"})
+}
+
+// otherCtx is authedCtx for a member of the second test household.
+func otherCtx(t *testing.T) context.Context {
+	t.Helper()
+	return household.WithContext(identityCtx(t), household.Household{ID: otherHouseholdID, Name: "Household 2"})
+}
+
+// noHouseholdCtx carries an identity and no household: a request that bypassed
+// the membership middleware.
+func noHouseholdCtx(t *testing.T) context.Context { return identityCtx(t) }
+
+func identityCtx(t *testing.T) context.Context {
 	t.Helper()
 	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:8080", DevAuthBypass: true}})
 	if err != nil {

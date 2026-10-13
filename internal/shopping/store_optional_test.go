@@ -8,7 +8,6 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/db"
-	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
 // optionalCake is flour (required) and butter (optional).
@@ -144,6 +143,7 @@ func TestIncludeOptionalMigrationOnExistingLists(t *testing.T) {
 		t.Fatalf("migrate to the shopping tables: %v", err)
 	}
 	cat, rec := f.catalogOn(d2), f.recipesOn(d2)
+	ctx := f.ctx
 	flour, err := cat.CreateIngredient(f.ctx, catalog.Ingredient{Name: "zz old flour", Aisle: "baking"})
 	if err != nil {
 		t.Fatal(err)
@@ -152,12 +152,7 @@ func TestIncludeOptionalMigrationOnExistingLists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opt := line(recipe.IngredientID(butter.ID), amt(t, 1, 1, "tbsp"))
-	opt.Optional = true
-	rid, err := rec.Create(f.ctx, recipeOf("Old", line(recipe.IngredientID(flour.ID), amt(t, 1, 1, "cup")), opt))
-	if err != nil {
-		t.Fatal(err)
-	}
+	rid := oldRecipe(t, d2, "Old", oldLine{ingredient: flour.ID}, oldLine{ingredient: butter.ID, optional: true})
 	for _, q := range []string{
 		`INSERT INTO shopping_lists (id, name, created_at) VALUES (7, 'Old list', '2026-01-01T00:00:00Z')`,
 	} {
@@ -169,11 +164,9 @@ func TestIncludeOptionalMigrationOnExistingLists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := db.Migrate(f.ctx, d2, db.Migrations()); err != nil {
-		t.Fatalf("migrate with the include_optional column on existing lists: %v", err)
-	}
+	ctx = migrateOverOldData(ctx, t, d2)
 	s2 := New(d2, rec, cat)
-	v, err := s2.Load(f.ctx, 7)
+	v, err := s2.Load(ctx, 7)
 	if err != nil {
 		t.Fatalf("Load of a list that predates the flag: %v", err)
 	}

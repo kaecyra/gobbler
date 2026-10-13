@@ -12,6 +12,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -43,7 +44,7 @@ func newFixture(t *testing.T) *fixture {
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatalf("db.Migrate: %v", err)
 	}
-	f := &fixture{t: t, d: d, ctx: authedCtx(t), catalog: catalog.New(d), recipes: store.New(d)}
+	f := &fixture{t: t, d: d, ctx: inDevHousehold(authedCtx(t), t, d), catalog: catalog.New(d), recipes: store.New(d)}
 	f.s = New(d, f.recipes, f.catalog)
 	f.flour, f.butter = f.ingredient("zz test flour", "baking"), f.ingredient("zz test butter", "dairy")
 	f.egg, f.salt = f.ingredient("zz test egg", "dairy"), f.ingredient("zz test salt", "spices")
@@ -57,6 +58,21 @@ func (f *fixture) ingredient(name, aisle string) int64 {
 		f.t.Fatalf("CreateIngredient(%q): %v", name, err)
 	}
 	return in.ID
+}
+
+// inDevHousehold returns ctx carrying the dev household of d, seeded if need
+// be, as the membership middleware would put it on a member's request.
+func inDevHousehold(ctx context.Context, t *testing.T, d *sql.DB) context.Context {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(ctx, "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(ctx, auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return household.WithContext(ctx, h)
 }
 
 // authedCtx returns a context carrying the identity the real auth middleware
@@ -195,4 +211,63 @@ func (f *fixture) recipesOn(d *sql.DB) *store.Store   { return store.New(d) }
 
 func catalogIngredient(name string) catalog.Ingredient {
 	return catalog.Ingredient{Name: name, Aisle: "test"}
+}
+
+// oldLine is one 1-cup line of a recipe written with oldRecipe.
+type oldLine struct {
+	ingredient int64
+	optional   bool
+}
+
+// oldRecipe writes a recipe of 1-cup lines into d with SQL, in the shape
+// schemas before 00008 have: the store writes only the current shape, and the
+// migration tests need data that predates later migrations. It returns the id.
+func oldRecipe(t *testing.T, d *sql.DB, name string, lines ...oldLine) int64 {
+	t.Helper()
+	res, err := d.Exec(`INSERT INTO recipes (name, created_at, created_by, updated_at, updated_by) VALUES (?, 't', 'a', 't', 'a')`, name)
+	if err != nil {
+		t.Fatalf("insert old recipe: %v", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err = d.Exec(`INSERT INTO components (recipe_id, position) VALUES (?, 0)`, id)
+	if err != nil {
+		t.Fatalf("insert old component: %v", err)
+	}
+	comp, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, l := range lines {
+		_, err := d.Exec(`INSERT INTO ingredient_lines (component_id, position, qty, unit_id, ingredient_id, optional, rule, raw)
+			VALUES (?, ?, '1/1', (SELECT id FROM units WHERE name = 'cup'), ?, ?, 'linear', 'x')`, comp, i, l.ingredient, boolInt(l.optional))
+		if err != nil {
+			t.Fatalf("insert old line: %v", err)
+		}
+	}
+	return id
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// migrateOverOldData applies every migration to d, which holds data written at
+// an older schema: up to just before 00008 first, then a household for the
+// rows 00008 assigns, then the rest. It returns ctx carrying that household.
+func migrateOverOldData(ctx context.Context, t *testing.T, d *sql.DB) context.Context {
+	t.Helper()
+	if err := db.Migrate(ctx, d, migrationsBefore(t, "00008")); err != nil {
+		t.Fatalf("migrate to just before 00008: %v", err)
+	}
+	ctx = inDevHousehold(ctx, t, d)
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("migrate over existing data: %v", err)
+	}
+	return ctx
 }

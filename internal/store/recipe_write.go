@@ -32,15 +32,15 @@ func documentColumns(r recipe.Recipe) (storedb.UpdateRecipeDocumentParams, error
 // insertChildren writes everything below the recipes row: tags, special times,
 // components with their lines and steps, step dependencies and equipment. The
 // row must exist and own no children.
-func insertChildren(ctx context.Context, q *storedb.Queries, id int64, r recipe.Recipe, units *unitTable) error {
+func insertChildren(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe.Recipe, units *unitTable) error {
 	for i, tag := range r.Tags {
-		if err := q.InsertRecipeTag(ctx, storedb.InsertRecipeTagParams{RecipeID: id, Position: int64(i), Tag: tag}); err != nil {
+		if err := q.InsertRecipeTag(ctx, storedb.InsertRecipeTagParams{HouseholdID: hid, RecipeID: id, Position: int64(i), Tag: tag}); err != nil {
 			return wrapWrite(fmt.Sprintf("write tag %q", tag), err)
 		}
 	}
 	for i, st := range r.Times.Special {
 		err := q.InsertSpecialTime(ctx, storedb.InsertSpecialTimeParams{
-			RecipeID: id, Position: int64(i), Label: st.Label, DurationNs: int64(st.Duration),
+			HouseholdID: hid, RecipeID: id, Position: int64(i), Label: st.Label, DurationNs: int64(st.Duration),
 		})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("write special time %q", st.Label), err)
@@ -49,18 +49,18 @@ func insertChildren(ctx context.Context, q *storedb.Queries, id int64, r recipe.
 
 	stepRows := make(map[recipe.StepID]int64)
 	for ci, c := range r.Components {
-		compID, err := q.InsertComponent(ctx, storedb.InsertComponentParams{RecipeID: id, Position: int64(ci), Name: c.Name})
+		compID, err := q.InsertComponent(ctx, storedb.InsertComponentParams{HouseholdID: hid, RecipeID: id, Position: int64(ci), Name: c.Name})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("write component %d", ci+1), err)
 		}
 		for li, l := range c.Lines {
-			if err := insertLine(ctx, q, compID, li, l, units); err != nil {
+			if err := insertLine(ctx, q, hid, compID, li, l, units); err != nil {
 				return fmt.Errorf("component %d line %d: %w", ci+1, li+1, err)
 			}
 		}
 		for si, s := range c.Steps {
 			stepRows[s.ID], err = q.InsertStep(ctx, storedb.InsertStepParams{
-				RecipeID: id, ComponentID: compID, Position: int64(si), StepKey: string(s.ID), Text: s.Text,
+				HouseholdID: hid, RecipeID: id, ComponentID: compID, Position: int64(si), StepKey: string(s.ID), Text: s.Text,
 				DurationNs: int64(s.Duration), Passive: boolInt(s.Passive),
 			})
 			if err != nil {
@@ -73,7 +73,7 @@ func insertChildren(ctx context.Context, q *storedb.Queries, id int64, r recipe.
 		for _, s := range c.Steps {
 			for di, dep := range s.DependsOn {
 				err := q.InsertStepDependency(ctx, storedb.InsertStepDependencyParams{
-					StepID: stepRows[s.ID], Position: int64(di), DependsOnStepID: stepRows[dep],
+					HouseholdID: hid, StepID: stepRows[s.ID], Position: int64(di), DependsOnStepID: stepRows[dep],
 				})
 				if err != nil {
 					return wrapWrite(fmt.Sprintf("write dependency of step %s on %s", s.ID, dep), err)
@@ -88,14 +88,14 @@ func insertChildren(ctx context.Context, q *storedb.Queries, id int64, r recipe.
 			return fmt.Errorf("equipment %d: %w", ei+1, err)
 		}
 		linkID, err := q.InsertRecipeEquipment(ctx, storedb.InsertRecipeEquipmentParams{
-			RecipeID: id, Position: int64(ei), EquipmentID: int64(e.Equipment), Qty: nullString(qty),
+			HouseholdID: hid, RecipeID: id, Position: int64(ei), EquipmentID: int64(e.Equipment), Qty: nullString(qty),
 		})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("write equipment %d (id %d)", ei+1, e.Equipment), err)
 		}
 		for si, stepID := range e.Steps {
 			err := q.InsertEquipmentStep(ctx, storedb.InsertEquipmentStepParams{
-				RecipeEquipmentID: linkID, Position: int64(si), StepID: stepRows[stepID],
+				HouseholdID: hid, RecipeEquipmentID: linkID, Position: int64(si), StepID: stepRows[stepID],
 			})
 			if err != nil {
 				return wrapWrite(fmt.Sprintf("write equipment %d step %s", ei+1, stepID), err)
@@ -105,7 +105,7 @@ func insertChildren(ctx context.Context, q *storedb.Queries, id int64, r recipe.
 	return nil
 }
 
-func insertLine(ctx context.Context, q *storedb.Queries, compID int64, pos int, l recipe.IngredientLine, units *unitTable) error {
+func insertLine(ctx context.Context, q *storedb.Queries, hid, compID int64, pos int, l recipe.IngredientLine, units *unitTable) error {
 	qty, err := encodeQty(l.Amount.Qty)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func insertLine(ctx context.Context, q *storedb.Queries, compID int64, pos int, 
 		ingredient = sql.NullInt64{Int64: int64(l.Ingredient), Valid: true}
 	}
 	lineID, err := q.InsertIngredientLine(ctx, storedb.InsertIngredientLineParams{
-		ComponentID: compID, Position: int64(pos), Qty: nullString(qty), UnitID: unitID,
+		HouseholdID: hid, ComponentID: compID, Position: int64(pos), Qty: nullString(qty), UnitID: unitID,
 		HasPackage: boolInt(l.Amount.HasPackage), PackageQty: nullString(pkgQty), PackageUnitID: pkgUnit,
 		IngredientID: ingredient, Optional: boolInt(l.Optional), Rule: string(l.Rule), Raw: l.Raw,
 	})
@@ -138,7 +138,7 @@ func insertLine(ctx context.Context, q *storedb.Queries, compID int64, pos int, 
 	}
 	for qi, ql := range l.Qualifiers {
 		err := q.InsertLineQualifier(ctx, storedb.InsertLineQualifierParams{
-			LineID: lineID, Position: int64(qi), Kind: string(ql.Kind), Text: ql.Text,
+			HouseholdID: hid, LineID: lineID, Position: int64(qi), Kind: string(ql.Kind), Text: ql.Text,
 		})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("write qualifier %q", ql.Text), err)
@@ -149,14 +149,22 @@ func insertLine(ctx context.Context, q *storedb.Queries, compID int64, pos int, 
 
 // clearChildren removes everything insertChildren wrote. Components cascade to
 // lines, qualifiers and steps; steps cascade to dependencies.
-func clearChildren(ctx context.Context, q *storedb.Queries, id int64) error {
-	for _, del := range []func(context.Context, int64) error{
-		q.DeleteRecipeTags,
-		q.DeleteRecipeSpecialTimes,
-		q.DeleteRecipeEquipment,
-		q.DeleteRecipeComponents,
+func clearChildren(ctx context.Context, q *storedb.Queries, hid, id int64) error {
+	for _, del := range []func() error{
+		func() error {
+			return q.DeleteRecipeTags(ctx, storedb.DeleteRecipeTagsParams{RecipeID: id, HouseholdID: hid})
+		},
+		func() error {
+			return q.DeleteRecipeSpecialTimes(ctx, storedb.DeleteRecipeSpecialTimesParams{RecipeID: id, HouseholdID: hid})
+		},
+		func() error {
+			return q.DeleteRecipeEquipment(ctx, storedb.DeleteRecipeEquipmentParams{RecipeID: id, HouseholdID: hid})
+		},
+		func() error {
+			return q.DeleteRecipeComponents(ctx, storedb.DeleteRecipeComponentsParams{RecipeID: id, HouseholdID: hid})
+		},
 	} {
-		if err := del(ctx, id); err != nil {
+		if err := del(); err != nil {
 			return fmt.Errorf("clear recipe %d: %w", id, err)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 )
 
 const listAllRecipeTags = `-- name: ListAllRecipeTags :many
-SELECT recipe_id, tag FROM recipe_tags ORDER BY recipe_id, position
+SELECT recipe_id, tag FROM recipe_tags WHERE household_id = ? ORDER BY recipe_id, position
 `
 
 type ListAllRecipeTagsRow struct {
@@ -20,8 +20,8 @@ type ListAllRecipeTagsRow struct {
 	Tag      string
 }
 
-func (q *Queries) ListAllRecipeTags(ctx context.Context) ([]ListAllRecipeTagsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAllRecipeTags)
+func (q *Queries) ListAllRecipeTags(ctx context.Context, householdID int64) ([]ListAllRecipeTagsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllRecipeTags, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -46,14 +46,15 @@ func (q *Queries) ListAllRecipeTags(ctx context.Context) ([]ListAllRecipeTagsRow
 const listRecipeIDsWithAllTags = `-- name: ListRecipeIDsWithAllTags :many
 
 SELECT recipe_id FROM recipe_tags
-WHERE tag IN (/*SLICE:tags*/?)
+WHERE tag IN (/*SLICE:tags*/?) AND household_id = ?
 GROUP BY recipe_id
 HAVING COUNT(DISTINCT tag) = CAST(? AS INTEGER)
 `
 
 type ListRecipeIDsWithAllTagsParams struct {
-	Tags    []string
-	Column2 int64
+	Tags        []string
+	HouseholdID int64
+	Column3     int64
 }
 
 // The full-text query itself is hand-written in search.go: sqlc cannot resolve
@@ -70,7 +71,8 @@ func (q *Queries) ListRecipeIDsWithAllTags(ctx context.Context, arg ListRecipeID
 	} else {
 		query = strings.Replace(query, "/*SLICE:tags*/?", "NULL", 1)
 	}
-	queryParams = append(queryParams, arg.Column2)
+	queryParams = append(queryParams, arg.HouseholdID)
+	queryParams = append(queryParams, arg.Column3)
 	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
@@ -96,7 +98,7 @@ func (q *Queries) ListRecipeIDsWithAllTags(ctx context.Context, arg ListRecipeID
 const listRecipeSummaries = `-- name: ListRecipeSummaries :many
 
 SELECT id, name, description, rating, prep_ns, cook_ns, total_ns
-FROM recipes ORDER BY lower(name), id
+FROM recipes WHERE household_id = ? ORDER BY lower(name), id
 `
 
 type ListRecipeSummariesRow struct {
@@ -109,10 +111,11 @@ type ListRecipeSummariesRow struct {
 	TotalNs     int64
 }
 
-// Recipe list and search. The FTS5 index (recipe_search, migration 00004) is
-// kept in step by triggers; these queries only read it.
-func (q *Queries) ListRecipeSummaries(ctx context.Context) ([]ListRecipeSummariesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRecipeSummaries)
+// Recipe list and search, scoped to the household. The FTS5 index
+// (recipe_search, migrations 00004 and 00008) is kept in step by triggers;
+// these queries only read it.
+func (q *Queries) ListRecipeSummaries(ctx context.Context, householdID int64) ([]ListRecipeSummariesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRecipeSummaries, householdID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +147,7 @@ func (q *Queries) ListRecipeSummaries(ctx context.Context) ([]ListRecipeSummarie
 
 const listTagCounts = `-- name: ListTagCounts :many
 SELECT tag, COUNT(DISTINCT recipe_id) AS recipes FROM recipe_tags
-GROUP BY tag ORDER BY lower(tag), tag
+WHERE household_id = ? GROUP BY tag ORDER BY lower(tag), tag
 `
 
 type ListTagCountsRow struct {
@@ -152,8 +155,8 @@ type ListTagCountsRow struct {
 	Recipes int64
 }
 
-func (q *Queries) ListTagCounts(ctx context.Context) ([]ListTagCountsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTagCounts)
+func (q *Queries) ListTagCounts(ctx context.Context, householdID int64) ([]ListTagCountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTagCounts, householdID)
 	if err != nil {
 		return nil, err
 	}

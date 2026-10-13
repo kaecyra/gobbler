@@ -58,14 +58,18 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 	if err != nil {
 		return err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	if !kind.Valid() {
 		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
 	}
 	return s.withTx(ctx, func(q *storedb.Queries) error {
-		if err := lockRecipe(ctx, q, id); err != nil {
+		if err := lockRecipe(ctx, q, hid, id); err != nil {
 			return err
 		}
-		return s.insertSnapshot(ctx, q, id, kind, content, who)
+		return s.insertSnapshot(ctx, q, hid, id, kind, content, who)
 	})
 }
 
@@ -73,11 +77,11 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 // caller holds the write lock on the recipe, which makes the existence check
 // and the insert atomic, so no concurrent writer can slip a duplicate in
 // between; the UNIQUE constraint is the backstop.
-func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, id int64, kind SnapshotKind, content []byte, who string) error {
+func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, kind SnapshotKind, content []byte, who string) error {
 	if !kind.Valid() {
 		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
 	}
-	existing, err := q.CountSnapshots(ctx, storedb.CountSnapshotsParams{RecipeID: id, Kind: string(kind)})
+	existing, err := q.CountSnapshots(ctx, storedb.CountSnapshotsParams{RecipeID: id, Kind: string(kind), HouseholdID: hid})
 	if err != nil {
 		return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)
 	}
@@ -86,7 +90,7 @@ func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, id int64
 	}
 	sum := sha256.Sum256(content)
 	err = q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
-		RecipeID: id, Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
+		HouseholdID: hid, RecipeID: id, Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
 		CreatedAt: s.stamp(), CreatedBy: who,
 	})
 	if err != nil {
@@ -97,7 +101,11 @@ func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, id int64
 
 // GetSnapshot returns the stored input of the given kind, or ErrNotFound.
 func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (Snapshot, error) {
-	row, err := s.q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: id, Kind: string(kind)})
+	hid, err := scope(ctx)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	row, err := s.q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: id, Kind: string(kind), HouseholdID: hid})
 	if errors.Is(err, sql.ErrNoRows) {
 		return Snapshot{}, fmt.Errorf("%w: %s snapshot of recipe %d", ErrNotFound, kind, id)
 	}
@@ -114,12 +122,16 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 // ListSnapshotKinds returns the kinds of snapshot stored for recipe id. A
 // missing recipe is ErrNotFound.
 func (s *Store) ListSnapshotKinds(ctx context.Context, id int64) ([]SnapshotKind, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out []SnapshotKind
-	err := s.read(ctx, func(q *storedb.Queries) error {
-		if _, err := loadInfo(ctx, q, id); err != nil {
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		if _, err := loadInfo(ctx, q, hid, id); err != nil {
 			return err
 		}
-		kinds, err := q.ListSnapshotKinds(ctx, id)
+		kinds, err := q.ListSnapshotKinds(ctx, storedb.ListSnapshotKindsParams{RecipeID: id, HouseholdID: hid})
 		if err != nil {
 			return readErr("snapshot kinds", err)
 		}

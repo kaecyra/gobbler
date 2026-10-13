@@ -11,28 +11,31 @@ import (
 )
 
 const getRevisionDocument = `-- name: GetRevisionDocument :one
-SELECT document FROM revisions WHERE recipe_id = ? AND version = ?
+SELECT document FROM revisions
+WHERE recipe_id = ?1 AND version = ?2 AND household_id = ?3
 `
 
 type GetRevisionDocumentParams struct {
-	RecipeID int64
-	Version  int64
+	RecipeID    int64
+	Version     int64
+	HouseholdID int64
 }
 
 func (q *Queries) GetRevisionDocument(ctx context.Context, arg GetRevisionDocumentParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getRevisionDocument, arg.RecipeID, arg.Version)
+	row := q.db.QueryRowContext(ctx, getRevisionDocument, arg.RecipeID, arg.Version, arg.HouseholdID)
 	var document string
 	err := row.Scan(&document)
 	return document, err
 }
 
 const insertRevision = `-- name: InsertRevision :one
-INSERT INTO revisions (recipe_id, version, document, change_kind, restored_version, created_at, created_by)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO revisions (household_id, recipe_id, version, document, change_kind, restored_version, created_at, created_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
 type InsertRevisionParams struct {
+	HouseholdID     int64
 	RecipeID        int64
 	Version         int64
 	Document        string
@@ -44,6 +47,7 @@ type InsertRevisionParams struct {
 
 func (q *Queries) InsertRevision(ctx context.Context, arg InsertRevisionParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, insertRevision,
+		arg.HouseholdID,
 		arg.RecipeID,
 		arg.Version,
 		arg.Document,
@@ -58,22 +62,29 @@ func (q *Queries) InsertRevision(ctx context.Context, arg InsertRevisionParams) 
 }
 
 const insertRevisionIngredient = `-- name: InsertRevisionIngredient :exec
-INSERT INTO revision_ingredients (revision_id, ingredient_id) VALUES (?, ?)
+INSERT INTO revision_ingredients (household_id, revision_id, ingredient_id) VALUES (?, ?, ?)
 `
 
 type InsertRevisionIngredientParams struct {
+	HouseholdID  int64
 	RevisionID   int64
 	IngredientID int64
 }
 
 func (q *Queries) InsertRevisionIngredient(ctx context.Context, arg InsertRevisionIngredientParams) error {
-	_, err := q.db.ExecContext(ctx, insertRevisionIngredient, arg.RevisionID, arg.IngredientID)
+	_, err := q.db.ExecContext(ctx, insertRevisionIngredient, arg.HouseholdID, arg.RevisionID, arg.IngredientID)
 	return err
 }
 
 const listRevisions = `-- name: ListRevisions :many
-SELECT version, created_at, created_by, restored_version FROM revisions WHERE recipe_id = ? ORDER BY version
+SELECT version, created_at, created_by, restored_version FROM revisions
+WHERE recipe_id = ?1 AND household_id = ?2 ORDER BY version
 `
+
+type ListRevisionsParams struct {
+	RecipeID    int64
+	HouseholdID int64
+}
 
 type ListRevisionsRow struct {
 	Version         int64
@@ -82,8 +93,8 @@ type ListRevisionsRow struct {
 	RestoredVersion sql.NullInt64
 }
 
-func (q *Queries) ListRevisions(ctx context.Context, recipeID int64) ([]ListRevisionsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRevisions, recipeID)
+func (q *Queries) ListRevisions(ctx context.Context, arg ListRevisionsParams) ([]ListRevisionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRevisions, arg.RecipeID, arg.HouseholdID)
 	if err != nil {
 		return nil, err
 	}

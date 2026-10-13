@@ -13,6 +13,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/kaecyra/gobbler/e2e/recipeview/seed/devhousehold"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
@@ -48,6 +49,10 @@ func run(dir string) error {
 		}
 	}()
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		return err
+	}
+	ctx, err = devhousehold.Context(ctx, d)
+	if err != nil {
 		return err
 	}
 	st := store.New(d)
