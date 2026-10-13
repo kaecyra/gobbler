@@ -13,6 +13,7 @@ import (
 // relies on.
 func TestDeletingAHouseholdRemovesItsShoppingRows(t *testing.T) {
 	f := newFixture(t)
+	f.makeCentral(f.flour, f.salt) // household B uses them too
 	b := f.otherHousehold()
 
 	// A second household's rows must survive the first one's deletion.

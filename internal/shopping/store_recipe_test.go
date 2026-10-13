@@ -123,11 +123,8 @@ func TestMigrationOnExistingData(t *testing.T) {
 		t.Fatalf("migrate without shopping: %v", err)
 	}
 	ing := f.catalogOn(d2)
-	id, err := ing.CreateIngredient(f.ctx, catalogIngredient("zz test existing"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	rid := oldRecipe(t, d2, "Old", oldLine{ingredient: id.ID})
+	id := rawIngredient(t, d2, "zz test existing", "test")
+	rid := oldRecipe(t, d2, "Old", oldLine{ingredient: id})
 
 	ctx := migrateOverOldData(f.ctx, t, d2)
 	if _, err := f.recipesOn(d2).Get(ctx, rid); err != nil {

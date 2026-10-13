@@ -15,6 +15,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web"
 )
 
@@ -42,6 +43,16 @@ func TestCatalogMergeRepointsShoppingRows(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The ingredients are the dev household's own, as the router resolves it
+	// for the dev identity: a household merges only its own entries.
+	if err := household.New(d).Seed(ctx, "Dev household", auth.DevEmail); err != nil {
+		t.Fatal(err)
+	}
+	dev, err := household.New(d).ForEmail(ctx, auth.DevEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx = household.WithContext(ctx, dev)
 	cat := catalog.New(d)
 	loser, err := cat.CreateIngredient(ctx, catalog.Ingredient{Name: "zz scallion", Aisle: "produce"})
 	if err != nil {

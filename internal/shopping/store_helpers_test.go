@@ -209,10 +209,6 @@ func openRaw(t *testing.T) *sql.DB {
 func (f *fixture) catalogOn(d *sql.DB) *catalog.Store { return catalog.New(d) }
 func (f *fixture) recipesOn(d *sql.DB) *store.Store   { return store.New(d) }
 
-func catalogIngredient(name string) catalog.Ingredient {
-	return catalog.Ingredient{Name: name, Aisle: "test"}
-}
-
 // oldLine is one 1-cup line of a recipe written with oldRecipe.
 type oldLine struct {
 	ingredient int64
@@ -270,4 +266,32 @@ func migrateOverOldData(ctx context.Context, t *testing.T, d *sql.DB) context.Co
 		t.Fatalf("migrate over existing data: %v", err)
 	}
 	return ctx
+}
+
+// makeCentral moves fixture ingredients into the central catalog, where every
+// household reads them. The fixture creates its ingredients in the overlay of
+// the household on f.ctx; a test that puts them in two households' recipes
+// needs them central.
+func (f *fixture) makeCentral(ids ...int64) {
+	f.t.Helper()
+	for _, id := range ids {
+		if _, err := f.d.Exec(`UPDATE ingredients SET household_id = NULL WHERE id = ?`, id); err != nil {
+			f.t.Fatal(err)
+		}
+	}
+}
+
+// rawIngredient inserts a catalog ingredient with SQL, for a database held at
+// an older schema than the catalog store is written for.
+func rawIngredient(t *testing.T, d *sql.DB, name, aisle string) int64 {
+	t.Helper()
+	res, err := d.Exec(`INSERT INTO ingredients (name, aisle) VALUES (?, ?)`, name, aisle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

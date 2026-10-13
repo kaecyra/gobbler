@@ -103,6 +103,7 @@ func TestOtherHouseholdCannotReachAnotherHouseholdsShopping(t *testing.T) {
 // The pantry of a household decides what its own lists show and nobody else's.
 func TestPantryIsPerHousehold(t *testing.T) {
 	f := newFixture(t)
+	f.makeCentral(f.flour) // household B uses it too
 	b := f.otherHousehold()
 	r := f.createRecipe("Cake", f.ing(f.flour, 1, 1, "cup"))
 	if err := f.s.AddToPantry(f.ctx, recipeID(f.flour)); err != nil {
