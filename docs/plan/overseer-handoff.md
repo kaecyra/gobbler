@@ -67,19 +67,24 @@ VERSION on main is 0.43.4. The next schema number is 00009.
 | PR | Node | State |
 |---|---|---|
 | #153 | w3-display-times (#111) | Approved; its NIT is fixed. A worker in wt-111 was rebasing to VERSION 0.43.5. If that worker is gone, rebase in a fresh worker, push, and merge on green. |
-| #155 | graph: parallel invitations, drop Todoist | **CHANGES_REQUESTED, 1 MUST.** Fix it before merging (details below). |
+| #155 | graph: parallel invitations, drop Todoist | CHANGES_REQUESTED. Fix the SHOULDs and decline the MUST (below), then merge. |
 
 **#155 fix:**
-- **MUST (correct):** household deletion (#39's "no rows remain") needs every table scoped and cascading, and on main `shopping_entries.recipe_id` does not cascade.
-  - Fix: split household deletion out of l-invitations into a new node (for example `t-household-delete`) that depends on t-catalog-overlay. l-invitations keeps invite, accept, revoke, members, remove and leave, and can then run beside t-scope-shopping.
-  - Update #39's body to match.
+- **MUST (household deletion before shopping is scoped): decline it, citing the owner ruling of 2026-10-13.** No deploy happens partway through a track ("we are pre-building. dont serialize just in case of a hypothetical midpoint deploy that wont happen"). l-invitations stays parallel and is not split.
+  - Instead, add an end-state obligation to t-cross-household-gate's note and to #139: deleting a household leaves no rows anywhere.
+  - Make sure t-scope-shopping's migration cascades `shopping_entries` from households.
+  - Reply to the thread with this reasoning, resolve it, and post a fresh review on the fixed head.
 - **SHOULD:**
   - Actually narrow l-invitations' `internal/web/operator/**` and `e2e/operator/**` so they exclude `promot*`.
-  - Fix the `householddb` shared-file note: single writer per round means the two nodes merge in sequence, with a rebase and `make generate`; it does not mean "two writers in a round". Check this against graph note line 18.
+  - Fix the `householddb` shared-file note: the two writers merge in sequence, with a rebase and `make generate`. Check this against graph note line 18.
   - Remove the stale Todoist mention in graph note line 18.
-- **NIT:** if l-invitations adds nav links, `e2e/layout/layout.spec.ts` and `layout_test.go` need updating. Widen its lane onto them.
+  - Update #39's body: it no longer waits on the overlay.
+- **NIT:** widen l-invitations onto `e2e/layout/layout.spec.ts` and `internal/web/layout/layout_test.go`, in case it adds nav links.
+- **Branch:** `chore/39-parallel-invitations`. Rebuild it on main with `git checkout -B ... origin/main` and cherry-pick, because main's `graph.json` has moved.
 
-**Next to dispatch, after #155 merges:**
+**Ordering rule (owner, 2026-10-13):** serialize only for real file overlap, or where one node's code needs another's. Never for main's state between merges. See `.memory/project-never-deployed.md`.
+
+**Next to dispatch, after #155 merges, all in one round (afterburners):**
 - **t-scope-shopping** (#136): draw schema 00009 with `node.ts migration`.
 - **l-invitations** (#39), reduced as above.
 - **w3-recipeview-links** (#98), after #153 merges.
