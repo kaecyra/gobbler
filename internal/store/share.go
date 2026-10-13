@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
@@ -49,8 +50,8 @@ type ShareOffer struct {
 	SenderName string
 	SentAt     time.Time
 	RecipeName string
-	// Ingredients are the names, in reading order and without repeats, that the
-	// recipient's catalog must resolve for AcceptShare: the ingredients that
+	// Ingredients are the names, in reading order and without repeats, that
+	// AcceptShare resolves in the recipient's catalog: the ingredients that
 	// were entries of the sender's overlay.
 	Ingredients []string
 }
@@ -245,16 +246,24 @@ func offerOf(id int64, document, sender, created string) (ShareOffer, error) {
 	return o, nil
 }
 
+// ResolveIngredient finds or creates, in the accepting household's catalog, the
+// ingredient a shared line names, and returns its id. AcceptShare calls it on
+// the accept transaction tx, after the share is claimed, so anything it writes
+// is rolled back with the accept.
+type ResolveIngredient func(ctx context.Context, tx *sql.Tx, name string) (int64, error)
+
 // AcceptShare turns share id into a recipe of the request's household and
 // returns its id. The recipe is independent of the sender's: the document and
 // the source snapshots as sent, a new version 1, no notes, revisions, made-it
 // log or rating, and one note recording the sending household's name and the
-// date. ingredients maps each name in ShareOffer.Ingredients to the id of the
-// ingredient in this household's catalog (central or its own overlay); a name
-// missing from it, or an id the household cannot see, fails the call and
-// changes nothing. A share that is not pending for this household is
-// ErrNotFound, so it can be accepted only once.
-func (s *Store) AcceptShare(ctx context.Context, id int64, ingredients map[string]int64) (int64, error) {
+// date. Each name in ShareOffer.Ingredients is resolved through resolve to an
+// ingredient of this household's catalog (central or its own overlay); an id
+// the household cannot see, or a resolve error, fails the call. Everything
+// happens in one transaction that starts by claiming the share, so a share that
+// is not pending for this household is ErrNotFound before resolve runs, it can
+// be accepted only once, and a failed accept changes nothing, catalog entries
+// included.
+func (s *Store) AcceptShare(ctx context.Context, id int64, resolve ResolveIngredient) (int64, error) {
 	who, err := identity(ctx)
 	if err != nil {
 		return 0, err
@@ -264,7 +273,7 @@ func (s *Store) AcceptShare(ctx context.Context, id int64, ingredients map[strin
 		return 0, err
 	}
 	var recipeID int64
-	err = s.withTx(ctx, func(q *storedb.Queries) error {
+	err = db.WithTx(ctx, s.db, s.q, func(q *storedb.Queries, tx *sql.Tx) error {
 		// The claim is the first statement: it takes the write lock, and only one
 		// of two concurrent accepts affects the row.
 		now := s.stamp()
@@ -279,15 +288,22 @@ func (s *Store) AcceptShare(ctx context.Context, id int64, ingredients map[strin
 		if err := json.Unmarshal([]byte(row.RecipeDocument), &doc); err != nil {
 			return fmt.Errorf("%w: share %d document: %w", ErrCorrupt, id, err)
 		}
+		resolved := map[string]int64{}
 		for ci := range doc.Recipe.Components {
 			for li := range doc.Recipe.Components[ci].Lines {
 				name, ok := doc.Names[lineKey(ci, li)]
 				if !ok {
 					continue
 				}
-				ing, ok := ingredients[name]
-				if !ok || ing == 0 {
-					return fmt.Errorf("accept share %d: no ingredient given for %q: %w", id, name, ErrUnknownReference)
+				ing, ok := resolved[name]
+				if !ok {
+					if ing, err = resolve(ctx, tx, name); err != nil {
+						return fmt.Errorf("accept share %d: resolve ingredient %q: %w", id, name, err)
+					}
+					resolved[name] = ing
+				}
+				if ing == 0 {
+					return fmt.Errorf("accept share %d: no ingredient for %q: %w", id, name, ErrUnknownReference)
 				}
 				doc.Recipe.Components[ci].Lines[li].Ingredient = ing
 			}

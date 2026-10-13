@@ -77,23 +77,53 @@ func (s *Store) CreateIngredient(ctx context.Context, in Ingredient) (Ingredient
 		return Ingredient{}, err
 	}
 	scope := scopeOf(ctx)
-	err := s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) (err error) {
-		if err := checkFreeIngredient(ctx, q, scope, 0, in.Name, in.Aliases); err != nil {
-			return err
-		}
-		in.ID, err = q.CreateIngredient(ctx, catalogdb.CreateIngredientParams{
-			HouseholdID: owner(scope), Name: in.Name, Aisle: in.Aisle, DensityGPerMl: nullFloat(in.DensityGPerML),
-			UsdaFdcID: nullInt(in.USDAID), Reviewed: boolInt(in.Reviewed),
-		})
-		if err != nil {
-			return wrapWrite("create ingredient "+in.Name, err)
-		}
-		return replaceIngredientAliases(ctx, q, owner(scope), in.ID, in.Aliases)
+	err := s.withTx(ctx, func(q *catalogdb.Queries, _ *sql.Tx) error {
+		return createIngredient(ctx, q, scope, &in)
 	})
 	if err != nil {
 		return Ingredient{}, err
 	}
+	return in, nil
+}
+
+// createIngredient writes the prepared in on q and sets its ID and Central.
+func createIngredient(ctx context.Context, q *catalogdb.Queries, scope int64, in *Ingredient) (err error) {
+	if err := checkFreeIngredient(ctx, q, scope, 0, in.Name, in.Aliases); err != nil {
+		return err
+	}
+	in.ID, err = q.CreateIngredient(ctx, catalogdb.CreateIngredientParams{
+		HouseholdID: owner(scope), Name: in.Name, Aisle: in.Aisle, DensityGPerMl: nullFloat(in.DensityGPerML),
+		UsdaFdcID: nullInt(in.USDAID), Reviewed: boolInt(in.Reviewed),
+	})
+	if err != nil {
+		return wrapWrite("create ingredient "+in.Name, err)
+	}
+	if err := replaceIngredientAliases(ctx, q, owner(scope), in.ID, in.Aliases); err != nil {
+		return err
+	}
 	in.Central = scope == 0
+	return nil
+}
+
+// ResolveInTx returns the ingredient the household on the context knows by
+// name, its own overlay first and the central layer second, or creates it in
+// that household's overlay as unreviewed with the given aisle when neither
+// matches. It runs on tx, the caller's open write transaction, so the entry it
+// may create commits or rolls back with the caller's other writes. tx must come
+// from db.WithTx over the same database.
+func (s *Store) ResolveInTx(ctx context.Context, tx *sql.Tx, name, aisle string) (Ingredient, error) {
+	q := s.q.WithTx(tx)
+	scope := scopeOf(ctx)
+	if in, ok, err := matchIngredient(ctx, q, scope, name); err != nil || ok {
+		return in, err
+	}
+	in := Ingredient{Name: name, Aisle: aisle, Reviewed: false}
+	if err := in.prepare(); err != nil {
+		return Ingredient{}, err
+	}
+	if err := createIngredient(ctx, q, scope, &in); err != nil {
+		return Ingredient{}, err
+	}
 	return in, nil
 }
 
@@ -285,16 +315,20 @@ func (s *Store) withIngredientAliases(ctx context.Context, scope int64, rows []c
 // not an error, and nothing is created. This is the method internal/parse
 // consumes through an interface it declares itself.
 func (s *Store) MatchIngredient(ctx context.Context, term string) (Ingredient, bool, error) {
-	scope := scopeOf(ctx)
+	return matchIngredient(ctx, s.q, scopeOf(ctx), term)
+}
+
+// matchIngredient is MatchIngredient on any queries handle.
+func matchIngredient(ctx context.Context, q *catalogdb.Queries, scope int64, term string) (Ingredient, bool, error) {
 	for _, cand := range inflections(normalize(term)) {
-		id, ok, err := findIngredient(ctx, s.q, scope, cand)
+		id, ok, err := findIngredient(ctx, q, scope, cand)
 		if err != nil {
 			return Ingredient{}, false, err
 		}
 		if !ok {
 			continue
 		}
-		i, err := getIngredient(ctx, s.q, scope, id)
+		i, err := getIngredient(ctx, q, scope, id)
 		if err != nil {
 			return Ingredient{}, false, err
 		}

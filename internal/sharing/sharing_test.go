@@ -246,3 +246,29 @@ func TestOnlyTheRecipientHouseholdCanActOnAShare(t *testing.T) {
 		t.Errorf("sender's recipes = %v (%v), want only its own", recipes, err)
 	}
 }
+
+func TestAcceptOfADeclinedShareAddsNothingToTheRecipientsCatalog(t *testing.T) {
+	w := newWorld(t)
+	if err := w.svc.Send(w.alpha, w.recipe, betaMember); err != nil {
+		t.Fatal(err)
+	}
+	offers, err := w.svc.Inbox(w.beta)
+	if err != nil || len(offers) != 1 {
+		t.Fatal(offers, err)
+	}
+	if err := w.svc.Decline(w.beta, offers[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.svc.Accept(w.beta, offers[0].ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("accept after decline = %v, want store.ErrNotFound", err)
+	}
+	all, err := w.cat.ListIngredients(w.beta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, in := range all {
+		if in.Name == senderOnly {
+			t.Errorf("the declining household kept an entry named from the sender's overlay: %+v", in)
+		}
+	}
+}

@@ -13,6 +13,7 @@ package sharing
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -28,7 +29,7 @@ type Recipes interface {
 	SendShare(ctx context.Context, id, recipientID int64) (int64, error)
 	PendingShares(ctx context.Context) ([]store.ShareOffer, error)
 	PendingShare(ctx context.Context, id int64) (store.ShareOffer, error)
-	AcceptShare(ctx context.Context, id int64, ingredients map[string]int64) (int64, error)
+	AcceptShare(ctx context.Context, id int64, resolve store.ResolveIngredient) (int64, error)
 	DeclineShare(ctx context.Context, id int64) error
 }
 
@@ -40,8 +41,7 @@ type Households interface {
 // Catalog is what Service calls on the ingredient catalog, in the scope of the
 // household on the context; *catalog.Store satisfies it.
 type Catalog interface {
-	MatchIngredient(ctx context.Context, term string) (catalog.Ingredient, bool, error)
-	CreateIngredient(ctx context.Context, in catalog.Ingredient) (catalog.Ingredient, error)
+	ResolveInTx(ctx context.Context, tx *sql.Tx, name, aisle string) (catalog.Ingredient, error)
 }
 
 // Service sends, lists, accepts and declines recipe shares. It acts for the
@@ -100,27 +100,17 @@ func (s *Service) Inbox(ctx context.Context) ([]store.ShareOffer, error) {
 // matched against this household's catalog, its own overlay first and the
 // central layer second; one that matches neither is added to this household's
 // overlay as unreviewed. The sender's entry itself, its aliases and its aisle
-// go nowhere. The catalog entries are created before the recipe, as ingestion
-// does, and stay if the recipe cannot be stored.
+// go nowhere. The matching and the new entries happen inside the transaction
+// that claims the share and stores the recipe, so a share that was declined, or
+// an accept that fails, leaves the catalog as it was.
 func (s *Service) Accept(ctx context.Context, id int64) (int64, error) {
-	offer, err := s.recipes.PendingShare(ctx, id)
-	if err != nil {
-		return 0, err
-	}
-	ids := make(map[string]int64, len(offer.Ingredients))
-	for _, name := range offer.Ingredients {
-		ing, ok, err := s.catalog.MatchIngredient(ctx, name)
+	return s.recipes.AcceptShare(ctx, id, func(ctx context.Context, tx *sql.Tx, name string) (int64, error) {
+		ing, err := s.catalog.ResolveInTx(ctx, tx, name, shopping.Uncategorised)
 		if err != nil {
-			return 0, fmt.Errorf("match shared ingredient %q: %w", name, err)
+			return 0, err
 		}
-		if !ok {
-			if ing, err = s.catalog.CreateIngredient(ctx, catalog.Ingredient{Name: name, Aisle: shopping.Uncategorised, Reviewed: false}); err != nil {
-				return 0, fmt.Errorf("add shared ingredient %q to the catalog: %w", name, err)
-			}
-		}
-		ids[name] = ing.ID
-	}
-	return s.recipes.AcceptShare(ctx, id, ids)
+		return ing.ID, nil
+	})
 }
 
 // Decline declines share id; nothing enters the household's recipes.

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -123,7 +124,7 @@ func TestAcceptedShareIsAnIndependentCopyWithoutTheSendersPrivateData(t *testing
 	id := f.send(t)
 	fruit := f.bFruit(t)
 
-	copyID, err := f.s.AcceptShare(f.b, id, map[string]int64{ownName: fruit})
+	copyID, err := f.s.AcceptShare(f.b, id, fixed(map[string]int64{ownName: fruit}))
 	if err != nil {
 		t.Fatalf("AcceptShare: %v", err)
 	}
@@ -200,7 +201,7 @@ func TestShareIsTheRecipeAsSentNotAsItBecomes(t *testing.T) {
 	if err := f.s.Update(f.a, f.recipe, r); err != nil {
 		t.Fatal(err)
 	}
-	copyID, err := f.s.AcceptShare(f.b, id, map[string]int64{ownName: f.bFruit(t)})
+	copyID, err := f.s.AcceptShare(f.b, id, fixed(map[string]int64{ownName: f.bFruit(t)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,10 +216,10 @@ func TestShareCanBeAcceptedOrDeclinedOnce(t *testing.T) {
 	names := map[string]int64{ownName: fruit}
 
 	id := f.send(t)
-	if _, err := f.s.AcceptShare(f.b, id, names); err != nil {
+	if _, err := f.s.AcceptShare(f.b, id, fixed(names)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.s.AcceptShare(f.b, id, names); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.AcceptShare(f.b, id, fixed(names)); !errors.Is(err, ErrNotFound) {
 		t.Errorf("second accept = %v, want ErrNotFound", err)
 	}
 	if err := f.s.DeclineShare(f.b, id); !errors.Is(err, ErrNotFound) {
@@ -236,7 +237,7 @@ func TestShareCanBeAcceptedOrDeclinedOnce(t *testing.T) {
 	if err := f.s.DeclineShare(f.b, second); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.s.AcceptShare(f.b, second, names); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.AcceptShare(f.b, second, fixed(names)); !errors.Is(err, ErrNotFound) {
 		t.Errorf("accept after decline = %v, want ErrNotFound", err)
 	}
 	if _, err := f.s.PendingShare(f.b, second); !errors.Is(err, ErrNotFound) {
@@ -259,7 +260,7 @@ func TestAcceptNeedsEveryNameResolvedInTheRecipientsOwnCatalog(t *testing.T) {
 		"the sender's own overlay entry":   {ownName: f.own},
 		"an id that does not exist at all": {ownName: 999999},
 	} {
-		if _, err := f.s.AcceptShare(f.b, id, ids); !errors.Is(err, ErrUnknownReference) {
+		if _, err := f.s.AcceptShare(f.b, id, fixed(ids)); !errors.Is(err, ErrUnknownReference) {
 			t.Errorf("%s: accept = %v, want ErrUnknownReference", name, err)
 		}
 	}
@@ -287,7 +288,7 @@ func TestAnotherHouseholdCannotSeeAcceptOrDeclineAShare(t *testing.T) {
 	if _, err := f.s.PendingShare(c, id); !errors.Is(err, ErrNotFound) {
 		t.Errorf("PendingShare = %v, want ErrNotFound", err)
 	}
-	if _, err := f.s.AcceptShare(c, id, map[string]int64{ownName: f.central}); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.AcceptShare(c, id, fixed(map[string]int64{ownName: f.central})); !errors.Is(err, ErrNotFound) {
 		t.Errorf("AcceptShare = %v, want ErrNotFound", err)
 	}
 	if err := f.s.DeclineShare(c, id); !errors.Is(err, ErrNotFound) {
@@ -341,5 +342,85 @@ func TestStoredShareHoldsNoSenderOverlayIdOrAlias(t *testing.T) {
 	}
 	if d.Recipe.Rating != nil {
 		t.Errorf("the share carries the sender's rating")
+	}
+}
+
+// fixed resolves each name to the id the map gives it, and to 0 (no ingredient)
+// for a name it does not list.
+func fixed(ids map[string]int64) ResolveIngredient {
+	return func(_ context.Context, _ *sql.Tx, name string) (int64, error) { return ids[name], nil }
+}
+
+func (f shareFixture) overlayNamed(t *testing.T, name string) bool {
+	t.Helper()
+	all, err := f.cat.ListIngredients(f.b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, in := range all {
+		if in.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// The ingredients are resolved inside the accept transaction and after the
+// claim: the resolver sees the share already accepted, and a share that was
+// declined (or lost any other way) is refused before the resolver runs, so the
+// declining household keeps no entry named from the sender's overlay.
+func TestResolveRunsAfterTheClaimAndAResolvedShareCreatesNoEntry(t *testing.T) {
+	f := newShareFixture(t)
+	id := f.send(t)
+	var sawStatus string
+	resolve := func(ctx context.Context, tx *sql.Tx, name string) (int64, error) {
+		if err := tx.QueryRowContext(ctx, `SELECT status FROM recipe_shares WHERE id = ?`, id).Scan(&sawStatus); err != nil {
+			return 0, err
+		}
+		in, err := f.cat.ResolveInTx(ctx, tx, name, "test")
+		return in.ID, err
+	}
+
+	if err := f.s.DeclineShare(f.b, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.AcceptShare(f.b, id, resolve); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("accept of a declined share = %v, want ErrNotFound", err)
+	}
+	if sawStatus != "" || f.overlayNamed(t, ownName) {
+		t.Fatalf("the resolver ran for a declined share (saw %q); recipient's catalog has the sender's name: %v", sawStatus, f.overlayNamed(t, ownName))
+	}
+
+	live := f.send(t)
+	id = live
+	if _, err := f.s.AcceptShare(f.b, live, resolve); err != nil {
+		t.Fatal(err)
+	}
+	if sawStatus != "accepted" {
+		t.Errorf("the resolver saw the share as %q, want it already claimed", sawStatus)
+	}
+	if !f.overlayNamed(t, ownName) {
+		t.Errorf("the accepted share added no entry to the recipient's overlay")
+	}
+}
+
+func TestFailedAcceptLeavesNoCatalogEntryAndTheShareStaysPending(t *testing.T) {
+	f := newShareFixture(t)
+	id := f.send(t)
+	boom := errors.New("resolve failed after creating")
+	resolve := func(ctx context.Context, tx *sql.Tx, name string) (int64, error) {
+		if _, err := f.cat.ResolveInTx(ctx, tx, name, "test"); err != nil {
+			return 0, err
+		}
+		return 0, boom
+	}
+	if _, err := f.s.AcceptShare(f.b, id, resolve); !errors.Is(err, boom) {
+		t.Fatalf("accept = %v, want the resolver's error", err)
+	}
+	if f.overlayNamed(t, ownName) {
+		t.Error("a failed accept left an entry in the recipient's overlay")
+	}
+	if _, err := f.s.PendingShare(f.b, id); err != nil {
+		t.Errorf("a failed accept consumed the share: %v", err)
 	}
 }
