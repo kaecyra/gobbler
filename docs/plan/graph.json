@@ -1636,7 +1636,7 @@
       "wave": 8,
       "track": null,
       "issue": 171,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/household/delete_test.go",
@@ -2208,6 +2208,11 @@
       "adrs": [
         "00018"
       ]
+    },
+    {
+      "id": "r-tenancy-test-gaps",
+      "title": "Household delete and migration 00010 tests cover overlay tables and every refs branch",
+      "merged": "4fb3e603a4d8eae65b3f4d821dfdbe472d8a7835"
     }
   ],
   "adr_sequence": {
