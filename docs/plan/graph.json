@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00007",
+      "last_used": "00008",
       "contiguous": true
     }
   },
@@ -1254,7 +1254,7 @@
       "wave": 8,
       "track": "persistence",
       "issue": 135,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "t-household-core",
         "w5-codec"
