@@ -56,12 +56,12 @@ func newEnv(t *testing.T) *env {
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatalf("db.Migrate: %v", err)
 	}
-	return &env{db: d, catalog: catalog.New(d), store: store.New(d), ctx: inDevHousehold(t, d, authedCtx(t)), spy: &providerSpy{}}
+	return &env{db: d, catalog: catalog.New(d), store: store.New(d), ctx: inDevHousehold(authedCtx(t), t, d), spy: &providerSpy{}}
 }
 
 // inDevHousehold returns ctx carrying the dev household of d, seeded if need
 // be, as the membership middleware would put it on a member's request.
-func inDevHousehold(t *testing.T, d *sql.DB, ctx context.Context) context.Context {
+func inDevHousehold(ctx context.Context, t *testing.T, d *sql.DB) context.Context {
 	t.Helper()
 	hs := household.New(d)
 	if err := hs.Seed(ctx, "Dev household", auth.DevEmail); err != nil {

@@ -44,7 +44,7 @@ func newFixture(t *testing.T) *fixture {
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatalf("db.Migrate: %v", err)
 	}
-	f := &fixture{t: t, d: d, ctx: inDevHousehold(t, d, authedCtx(t)), catalog: catalog.New(d), recipes: store.New(d)}
+	f := &fixture{t: t, d: d, ctx: inDevHousehold(authedCtx(t), t, d), catalog: catalog.New(d), recipes: store.New(d)}
 	f.s = New(d, f.recipes, f.catalog)
 	f.flour, f.butter = f.ingredient("zz test flour", "baking"), f.ingredient("zz test butter", "dairy")
 	f.egg, f.salt = f.ingredient("zz test egg", "dairy"), f.ingredient("zz test salt", "spices")
@@ -62,7 +62,7 @@ func (f *fixture) ingredient(name, aisle string) int64 {
 
 // inDevHousehold returns ctx carrying the dev household of d, seeded if need
 // be, as the membership middleware would put it on a member's request.
-func inDevHousehold(t *testing.T, d *sql.DB, ctx context.Context) context.Context {
+func inDevHousehold(ctx context.Context, t *testing.T, d *sql.DB) context.Context {
 	t.Helper()
 	hs := household.New(d)
 	if err := hs.Seed(ctx, "Dev household", auth.DevEmail); err != nil {
@@ -260,12 +260,12 @@ func boolInt(b bool) int {
 // migrateOverOldData applies every migration to d, which holds data written at
 // an older schema: up to just before 00008 first, then a household for the
 // rows 00008 assigns, then the rest. It returns ctx carrying that household.
-func migrateOverOldData(t *testing.T, ctx context.Context, d *sql.DB) context.Context {
+func migrateOverOldData(ctx context.Context, t *testing.T, d *sql.DB) context.Context {
 	t.Helper()
 	if err := db.Migrate(ctx, d, migrationsBefore(t, "00008")); err != nil {
 		t.Fatalf("migrate to just before 00008: %v", err)
 	}
-	ctx = inDevHousehold(t, d, ctx)
+	ctx = inDevHousehold(ctx, t, d)
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatalf("migrate over existing data: %v", err)
 	}

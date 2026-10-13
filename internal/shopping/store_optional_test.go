@@ -164,7 +164,7 @@ func TestIncludeOptionalMigrationOnExistingLists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx = migrateOverOldData(t, ctx, d2)
+	ctx = migrateOverOldData(ctx, t, d2)
 	s2 := New(d2, rec, cat)
 	v, err := s2.Load(ctx, 7)
 	if err != nil {

@@ -129,7 +129,7 @@ func TestMigrationOnExistingData(t *testing.T) {
 	}
 	rid := oldRecipe(t, d2, "Old", oldLine{ingredient: id.ID})
 
-	ctx := migrateOverOldData(t, f.ctx, d2)
+	ctx := migrateOverOldData(f.ctx, t, d2)
 	if _, err := f.recipesOn(d2).Get(ctx, rid); err != nil {
 		t.Errorf("recipe after migration: %v", err)
 	}
