@@ -95,12 +95,6 @@ func (s *Service) Inbox(ctx context.Context) ([]store.ShareOffer, error) {
 	return s.recipes.PendingShares(ctx)
 }
 
-// Offer returns one pending share of the request's household, or
-// store.ErrNotFound.
-func (s *Service) Offer(ctx context.Context, id int64) (store.ShareOffer, error) {
-	return s.recipes.PendingShare(ctx, id)
-}
-
 // Accept makes share id a recipe of the request's household and returns the
 // recipe's id. Each ingredient that was an entry of the sender's overlay is
 // matched against this household's catalog, its own overlay first and the

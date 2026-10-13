@@ -235,7 +235,6 @@ func TestOnlyTheRecipientHouseholdCanActOnAShare(t *testing.T) {
 		t.Fatal(offers, err)
 	}
 	for name, fn := range map[string]func() error{
-		"offer":   func() error { _, err := w.svc.Offer(w.alpha, offers[0].ID); return err },
 		"accept":  func() error { _, err := w.svc.Accept(w.alpha, offers[0].ID); return err },
 		"decline": func() error { return w.svc.Decline(w.alpha, offers[0].ID) },
 	} {
