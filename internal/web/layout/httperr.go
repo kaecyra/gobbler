@@ -11,6 +11,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/household"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/parse"
@@ -47,6 +48,15 @@ var statusTable = []struct {
 	{store.ErrNotFound, http.StatusNotFound},
 	{display.ErrInvalid, http.StatusBadRequest},
 	{store.ErrStaleVersion, http.StatusConflict},
+	{household.ErrNotFound, http.StatusNotFound},
+	{household.ErrInvalid, http.StatusBadRequest},
+	{household.ErrConfirmation, http.StatusBadRequest},
+	{household.ErrAlreadyMember, http.StatusConflict},
+	{household.ErrLastMember, http.StatusConflict},
+	{household.ErrNotLastMember, http.StatusConflict},
+	{household.ErrExpired, http.StatusGone},
+	{household.ErrUsed, http.StatusGone},
+	{household.ErrRevoked, http.StatusGone},
 }
 
 // classify returns the table row err matches. ok is false for an unmapped

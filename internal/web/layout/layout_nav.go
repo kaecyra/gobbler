@@ -20,6 +20,8 @@ var navItems = []navItem{
 	{"Add recipe", "/ingest"},
 	{"Catalog", "/catalog"},
 	{"Shopping", "/shopping"},
+	{"Household", "/household"},
+	{"Invitations", "/operator"},
 	{"Settings", "/settings"},
 }
 

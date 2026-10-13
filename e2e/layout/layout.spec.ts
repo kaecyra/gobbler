@@ -10,6 +10,8 @@ const pages = [
   { name: 'Add recipe', path: '/ingest' },
   { name: 'Catalog', path: '/catalog' },
   { name: 'Shopping', path: '/shopping' },
+  { name: 'Household', path: '/household' },
+  { name: 'Invitations', path: '/operator' },
   { name: 'Settings', path: '/settings' },
 ];
 
@@ -34,7 +36,7 @@ for (const p of pages) {
   });
 }
 
-// Settings is an operator page. DEV is a member and an operator (the default
+// Settings and Invitations are operator pages. DEV is a member and an operator (the default
 // identity, as stated at the top of this file); OTHER is a member who is not. The server refuses OTHER
 // either way, so this is about what the nav offers.
 test.describe('a member who is not an operator', () => {
@@ -45,6 +47,8 @@ test.describe('a member who is not an operator', () => {
     const nav = page.getByRole('navigation', { name: 'Primary' });
     await expect(nav.getByRole('link', { name: 'Recipes' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Settings' })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Invitations' })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Household' })).toHaveAttribute('href', '/household');
   });
 });
 
@@ -55,5 +59,6 @@ test.describe('an operator who belongs to no household', () => {
     await page.goto('/settings');
     const nav = page.getByRole('navigation', { name: 'Primary' });
     await expect(nav.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+    await expect(nav.getByRole('link', { name: 'Invitations' })).toHaveAttribute('href', '/operator');
   });
 });

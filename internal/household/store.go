@@ -211,22 +211,27 @@ func (s *Store) Invite(ctx context.Context, in Invite) (int64, error) {
 	case ttl == 0:
 		ttl = DefaultInvitationTTL
 	}
-	var household sql.NullInt64
+	now := s.now().UTC()
+	created, expires := now.Format(timeLayout), now.Add(ttl).Format(timeLayout)
 	switch in.Kind {
 	case KindJoin:
 		if in.HouseholdID == 0 {
 			return 0, fmt.Errorf("%w: a join invitation names a household", ErrInvalid)
 		}
-		mine, err := lookup(ctx, s.q, issuer)
-		if err != nil && !errors.Is(err, ErrNotFound) {
-			return 0, err
-		}
-		if err != nil || mine.ID != in.HouseholdID {
-			// Only a member can invite into a household; say so without
-			// revealing whether the household exists.
+		// Membership is checked by the INSERT itself, so the issuer cannot be
+		// removed between the check and the write. Only a member can invite
+		// into a household; say so without revealing whether it exists.
+		id, err := s.q.InsertJoinInvitation(ctx, householddb.InsertJoinInvitationParams{
+			Email: e, HouseholdID: sql.NullInt64{Int64: in.HouseholdID, Valid: true}, IssuedBy: issuer,
+			CreatedAt: created, ExpiresAt: expires,
+		})
+		if errors.Is(err, sql.ErrNoRows) {
 			return 0, fmt.Errorf("%w: %s is not a member of household %d", ErrNotFound, issuer, in.HouseholdID)
 		}
-		household = sql.NullInt64{Int64: in.HouseholdID, Valid: true}
+		if err != nil {
+			return 0, fmt.Errorf("insert invitation: %w", err)
+		}
+		return id, nil
 	case KindHousehold:
 		if in.HouseholdID != 0 {
 			return 0, fmt.Errorf("%w: a household invitation names no household", ErrInvalid)
@@ -234,14 +239,8 @@ func (s *Store) Invite(ctx context.Context, in Invite) (int64, error) {
 	default:
 		return 0, fmt.Errorf("%w: unknown invitation kind %q", ErrInvalid, in.Kind)
 	}
-	now := s.now().UTC()
 	id, err := s.q.InsertInvitation(ctx, householddb.InsertInvitationParams{
-		Kind:        string(in.Kind),
-		Email:       e,
-		HouseholdID: household,
-		IssuedBy:    issuer,
-		CreatedAt:   now.Format(timeLayout),
-		ExpiresAt:   now.Add(ttl).Format(timeLayout),
+		Kind: string(in.Kind), Email: e, IssuedBy: issuer, CreatedAt: created, ExpiresAt: expires,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("insert invitation: %w", err)

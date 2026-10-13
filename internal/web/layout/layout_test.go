@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/household"
 )
 
 func TestPageRendersTitleNavAndContentSlot(t *testing.T) {
@@ -58,6 +59,15 @@ func TestWriteErrorMapsStatusAndHidesInternals(t *testing.T) {
 		{"catalog conflict", catalog.ErrConflict, http.StatusConflict, "already in use", ""},
 		{"wrapped keeps sentinel text only", fmt.Errorf("recipe 7: %w", ErrNotFound), http.StatusNotFound, "not found", "recipe 7"},
 		{"driver text under a conflict", fmt.Errorf("insert ingredient: %w: constraint failed: UNIQUE constraint failed: ingredient.name (2067)", catalog.ErrConflict), http.StatusConflict, "catalog name or alias already in use", "UNIQUE constraint"},
+		{"household not found", fmt.Errorf("invitation 3: %w", household.ErrNotFound), http.StatusNotFound, "not found", "invitation 3"},
+		{"household invalid", household.ErrInvalid, http.StatusBadRequest, "invalid input", ""},
+		{"wrong confirmation", household.ErrConfirmation, http.StatusBadRequest, "does not match", ""},
+		{"already a member", household.ErrAlreadyMember, http.StatusConflict, "leave the current household first", ""},
+		{"last member", household.ErrLastMember, http.StatusConflict, "delete the household", ""},
+		{"not the last member", household.ErrNotLastMember, http.StatusConflict, "only the last member", ""},
+		{"expired invitation", household.ErrExpired, http.StatusGone, "expired", ""},
+		{"used invitation", household.ErrUsed, http.StatusGone, "already been used", ""},
+		{"revoked invitation", household.ErrRevoked, http.StatusGone, "revoked", ""},
 		{"unknown", errors.New("db password is hunter2"), http.StatusInternalServerError, "Something went wrong", "hunter2"},
 	}
 	for _, tc := range cases {
@@ -126,7 +136,7 @@ func renderAtAs(t *testing.T, path string, operator bool) string {
 	}
 	r := chi.NewRouter()
 	r.Get("/", page)
-	for _, pattern := range []string{"/recipes", "/recipes/{id}/cook", "/ingest", "/catalog", "/shopping", "/settings"} {
+	for _, pattern := range []string{"/recipes", "/recipes/{id}/cook", "/ingest", "/catalog", "/shopping", "/household", "/operator", "/settings"} {
 		sub := chi.NewRouter()
 		sub.Get("/", page)
 		sub.Get("/*", page)
@@ -142,7 +152,7 @@ func renderAtAs(t *testing.T, path string, operator bool) string {
 
 func TestNavLinksEveryTopLevelPage(t *testing.T) {
 	got := renderAtAs(t, "/", true)
-	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/settings"} {
+	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/household", "/operator", "/settings"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("nav missing link to %s in:\n%s", href, got)
 		}
@@ -160,6 +170,8 @@ func TestNavMarksOnlyTheCurrentSection(t *testing.T) {
 		{"/ingest/photo", "/ingest"},
 		{"/catalog", "/catalog"},
 		{"/shopping/3", "/shopping"},
+		{"/household", "/household"},
+		{"/operator", "/operator"},
 		{"/settings", "/settings"},
 	}
 	for _, tc := range cases {
@@ -195,7 +207,7 @@ func TestNavHidesOperatorLinksFromEveryoneElse(t *testing.T) {
 		}
 	}
 	got := renderAtAs(t, "/", false)
-	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping"} {
+	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/household"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("non-operator nav lost %s:\n%s", href, got)
 		}
