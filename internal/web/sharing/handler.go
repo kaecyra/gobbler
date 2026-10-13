@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -69,7 +68,7 @@ func idParam(r *http.Request, name string) (int64, error) {
 func (h *handler) inbox(w http.ResponseWriter, r *http.Request) {
 	offers, err := h.Shares.Inbox(r.Context())
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	layout.Render(w, r, http.StatusOK, inboxPage(newInboxView(offers)))
@@ -78,12 +77,12 @@ func (h *handler) inbox(w http.ResponseWriter, r *http.Request) {
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r, "recipeID")
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	rec, err := h.Recipes.Get(r.Context(), id)
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	layout.Render(w, r, http.StatusOK, sendPage(sendView{RecipeID: id, RecipeName: rec.Name}))
@@ -95,11 +94,11 @@ func (h *handler) form(w http.ResponseWriter, r *http.Request) {
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r, "recipeID")
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	if err := h.Shares.Send(r.Context(), id, r.PostFormValue("email")); err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, Pattern+"/sent", http.StatusSeeOther)
@@ -112,12 +111,12 @@ func (h *handler) sent(w http.ResponseWriter, r *http.Request) {
 func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r, "id")
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	recipeID, err := h.Shares.Accept(r.Context(), id)
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(recipeID, 10), http.StatusSeeOther)
@@ -126,25 +125,14 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 func (h *handler) decline(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r, "id")
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	if err := h.Shares.Decline(r.Context(), id); err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, Pattern, http.StatusSeeOther)
-}
-
-// fail writes err as an error page. Input the household package refused, such
-// as a mistyped email, shows its own reason; any other error goes through
-// layout.WriteError.
-func fail(w http.ResponseWriter, r *http.Request, err error) {
-	if reason, ok := household.InvalidReason(err); ok {
-		layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest, reason))
-		return
-	}
-	layout.WriteError(w, r, err)
 }
 
 // timeLayout is how a date is shown; UTC, so the page does not depend on the
