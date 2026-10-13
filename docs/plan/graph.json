@@ -1546,7 +1546,7 @@
         "00005",
         "00019"
       ],
-      "note": "ADR-00019: a hand-set sized flag on catalog equipment (migration), set on the catalog review page, drives the scaled-view larger-pan hint. Waits on t-catalog-overlay because both edit catalog equipment and the catalog page."
+      "note": "ADR-00019: a hand-set sized flag on catalog equipment (migration), set by the operator during catalog review, drives the scaled-view larger-pan hint. No equipment review surface exists yet; if t-catalog-overlay moves central curation under internal/web/operator, re-derive this lane before dispatch. Waits on t-catalog-overlay because both edit catalog equipment and the catalog page. Remove the recipeview model comment saying the schema has no size yet (#85)."
     }
   ],
   "shared_files": [

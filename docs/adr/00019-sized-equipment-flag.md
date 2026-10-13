@@ -19,10 +19,8 @@ Two ways to know that a piece of equipment has a size were considered:
   the hint. It costs one decision per catalog row. Chosen.
 - **A size parsed from the ingested equipment line** ("9-inch round pan",
   "20 cm tin"). It would carry an actual dimension and could later say how much
-  larger. It was not chosen: recipe sites state sizes inconsistently or not at
-  all, so the parse is guesswork, and a useful hint needs pan-area arithmetic
-  nobody has asked for. Nothing in this decision prevents adding it on top of
-  the flag later.
+  larger. It was not chosen: the parse is guesswork, and a useful hint needs
+  pan-area arithmetic. It can be built on top of the flag later.
 
 The owner chose the flag on 2026-10-13 (issue #85).
 
@@ -30,15 +28,13 @@ The owner chose the flag on 2026-10-13 (issue #85).
 
 - Catalog equipment gains a boolean `sized`, default false. It is a property of
   the equipment row, not of a recipe's use of it.
-- `sized` is set and cleared by hand on the catalog review page, alongside
-  `reviewed`. Ingestion never sets it.
-- A scaled recipe view (any multiplier other than 1) shows the larger-pan hint
+- `sized` is set and cleared by hand during catalog review. Ingestion never
+  sets it. Equipment lives in the central catalog layer, whose only curator is
+  the operator ([ADR-00018](00018-households-as-tenants.md), Catalog), so the
+  operator sets it.
+- A scaled recipe view shows the larger-pan hint
   on an equipment line exactly when that line's catalog equipment is `sized`.
   An unscaled view never shows it. Equipment that is not `sized` never shows it.
-- Once the per-household catalog overlay exists
-  ([ADR-00018](00018-households-as-tenants.md)), the flag lives on whichever
-  equipment row the recipe resolves to, central or overlay, and promotion
-  carries it with the row.
 
 ## Consequences
 
@@ -49,7 +45,9 @@ ADR-00005's "equipment with a size" now means equipment whose catalog row is
 
 1. A `schema` migration adds `sized INTEGER NOT NULL DEFAULT 0 CHECK (sized IN
    (0, 1))` to catalog equipment.
-2. The catalog review page lists equipment and lets whoever may review that
-   row (ADR-00018) set and clear `sized`, covered by an e2e test.
+2. The operator's catalog review surface lists equipment and lets the operator
+   set and clear `sized`; a non-operator member cannot. Both are covered by e2e
+   tests. No such surface exists for equipment yet, so the node implementing
+   this adds it.
 3. The recipe view's scaled rendering shows the hint on `sized` equipment only,
    with tests for a sized and an unsized line, each scaled and unscaled.
