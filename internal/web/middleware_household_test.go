@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/backup"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/web/settings"
 )
 
 const (
@@ -205,5 +207,34 @@ func TestDotSegmentsNeverReachAnOperatorChild(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+const settingsLink = `href="/settings"`
+
+func TestNavShowsSettingsToOperatorsOnly(t *testing.T) {
+	h := tenantRouter(t)
+	cases := []struct {
+		name, email, path string
+		want              bool
+	}{
+		{"non-operator member", auth.DevEmail, "/recipes", false},
+		{"operator who is a member", auth.DevOtherEmail, "/recipes", true},
+		{"operator with no household, on the operator page", operatorEmail, "/settings", true},
+	}
+	for _, c := range cases {
+		rec := do(h, http.MethodGet, c.path, c.email)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: GET %s = %d", c.name, c.path, rec.Code)
+		}
+		if got := strings.Contains(rec.Body.String(), settingsLink); got != c.want {
+			t.Errorf("%s: nav has Settings link = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestSettingsIsAnOperatorPath(t *testing.T) {
+	if !slices.Contains(operatorPaths, settings.Pattern) {
+		t.Errorf("operatorPaths %v lacks the settings pattern %q", operatorPaths, settings.Pattern)
 	}
 }

@@ -112,7 +112,16 @@ func TestRenderWritesStatusAndBody(t *testing.T) {
 // way package web mounts features, so the layout sees real chi route state.
 func renderAt(t *testing.T, path string) string {
 	t.Helper()
+	return renderAtAs(t, path, true)
+}
+
+// renderAtAs is renderAt for a request that is, or is not, an operator's.
+func renderAtAs(t *testing.T, path string, operator bool) string {
+	t.Helper()
 	page := func(w http.ResponseWriter, r *http.Request) {
+		if operator {
+			r = r.WithContext(WithOperator(r.Context()))
+		}
 		Render(w, r, http.StatusOK, Page("Probe"))
 	}
 	r := chi.NewRouter()
@@ -132,7 +141,7 @@ func renderAt(t *testing.T, path string) string {
 }
 
 func TestNavLinksEveryTopLevelPage(t *testing.T) {
-	got := renderAt(t, "/")
+	got := renderAtAs(t, "/", true)
 	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/settings"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("nav missing link to %s in:\n%s", href, got)
@@ -173,5 +182,22 @@ func TestNavWithoutRouterMarksNothing(t *testing.T) {
 	}
 	if strings.Contains(b.String(), "aria-current") {
 		t.Errorf("no request context, yet a link is current:\n%s", b.String())
+	}
+}
+
+func TestNavHidesOperatorLinksFromEveryoneElse(t *testing.T) {
+	for _, op := range OperatorPaths {
+		if got := renderAtAs(t, "/", false); strings.Contains(got, `href="`+op+`"`) {
+			t.Errorf("non-operator nav links operator page %s:\n%s", op, got)
+		}
+		if got := renderAtAs(t, "/", true); !strings.Contains(got, `href="`+op+`"`) {
+			t.Errorf("operator nav missing operator page %s:\n%s", op, got)
+		}
+	}
+	got := renderAtAs(t, "/", false)
+	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping"} {
+		if !strings.Contains(got, `href="`+href+`"`) {
+			t.Errorf("non-operator nav lost %s:\n%s", href, got)
+		}
 	}
 }

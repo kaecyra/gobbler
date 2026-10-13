@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { OPERATOR, OTHER, asIdentity } from '../fixtures/identity';
 
 // Every top-level page is reachable from the primary nav, and the nav marks the
 // page the reader is on.
@@ -30,3 +31,27 @@ for (const p of pages) {
     await expect(current).toHaveText(p.name);
   });
 }
+
+// Settings is an operator page. DEV is a member and an operator (the default
+// identity above); OTHER is a member who is not. The server refuses OTHER
+// either way, so this is about what the nav offers.
+test.describe('a member who is not an operator', () => {
+  test.use(asIdentity(OTHER));
+
+  test('has no Settings link in the nav', async ({ page }) => {
+    await page.goto('/');
+    const nav = page.getByRole('navigation', { name: 'Primary' });
+    await expect(nav.getByRole('link', { name: 'Recipes' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Settings' })).toHaveCount(0);
+  });
+});
+
+test.describe('an operator who belongs to no household', () => {
+  test.use(asIdentity(OPERATOR));
+
+  test('sees Settings in the nav on the operator page', async ({ page }) => {
+    await page.goto('/settings');
+    const nav = page.getByRole('navigation', { name: 'Primary' });
+    await expect(nav.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+  });
+});
