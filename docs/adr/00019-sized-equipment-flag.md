@@ -32,9 +32,12 @@ The owner chose the flag on 2026-10-13 (issue #85).
   sets it. Equipment lives in the central catalog layer, whose only curator is
   the operator ([ADR-00018](00018-households-as-tenants.md), Catalog), so the
   operator sets it.
-- A scaled recipe view shows the larger-pan hint on an equipment line exactly
-  when that line's catalog equipment is `sized`. An unscaled view never shows
-  it. Equipment that is not `sized` never shows it.
+- A recipe view scaled up (a multiplier above 1) shows the larger-pan hint on
+  an equipment line exactly when that line's catalog equipment is `sized`. An
+  unscaled or scaled-down view never shows it. Equipment that is not `sized`
+  never shows it. *(Corrected 2026-10-13, before the first deploy: the hint was
+  "when scaled", which would suggest a larger pan at half quantities. Owner
+  ruling on #85.)*
 
 ## Consequences
 
@@ -48,5 +51,6 @@ ADR-00005's "equipment with a size" now means equipment whose catalog row is
 2. An operator-only equipment review surface lists catalog equipment and lets
    the operator set and clear `sized`; a non-operator member cannot reach it.
    Both are covered by e2e tests.
-3. The recipe view's scaled rendering shows the hint on `sized` equipment only,
-   with tests for a sized and an unsized line, each scaled and unscaled.
+3. The recipe view shows the hint on `sized` equipment only when scaled up,
+   with tests for a sized and an unsized line, each unscaled, scaled up and
+   scaled down.

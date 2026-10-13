@@ -34,6 +34,7 @@ index below in the same commit.
 | [00017](00017-cloudflared-on-the-guest.md) | cloudflared runs on the VM guest; Compose publishes gobbler on loopback only | Accepted |
 | [00018](00018-households-as-tenants.md) | Households are tenants; a household has several members | Accepted |
 | [00019](00019-sized-equipment-flag.md) | Equipment carries a hand-set `sized` flag that drives the scaled view's larger-pan hint | Accepted |
+| [00020](00020-ingest-step-graph-gap-fill-review.md) | Ingest infers the step graph by rules then LLM, the LLM fills only gaps, and review reuses the editor | Accepted |
 
 ## What needs one
 

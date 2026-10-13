@@ -50,6 +50,10 @@ Options considered:
    draft, asking for the same structure. For photos, the fallback may send the
    image itself to a vision-capable model. The review screen also offers a
    manual "retry with LLM" for any draft.
+
+   *Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md): the
+   fallback sends only the below-threshold lines and fields and replaces only
+   those.*
 6. **Review.** The draft, rule-based or LLM-assisted, is shown on a review
    screen with low-confidence items highlighted and LLM-supplied values marked.
    Nothing is saved until the user confirms.

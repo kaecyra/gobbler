@@ -1733,7 +1733,8 @@
       "status": "todo",
       "depends_on": [
         "i-plugin-extractors",
-        "w3-equipment-size"
+        "w3-equipment-size",
+        "i-fallback-no-call-test"
       ],
       "owns": [
         "internal/ingest/draft*.go",
@@ -1742,8 +1743,11 @@
         "internal/ingest/structured*.go",
         "internal/ingest/assemble*.go",
         "internal/llm/**",
-        "internal/catalog/equipment_match*.go",
-        "internal/web/ingest/**"
+        "internal/web/ingest/**",
+        "internal/ingest/resolve*.go",
+        "internal/ingest/extract/**",
+        "internal/ingest/fallback_test.go",
+        "internal/ingest/*_test.go"
       ],
       "needs_migration": null,
       "adrs": []
@@ -1790,15 +1794,23 @@
       "issue": 190,
       "status": "todo",
       "depends_on": [
-        "i-parser-version"
+        "i-parser-version",
+        "i-llm-gap-fill"
       ],
       "owns": [
         "internal/ingest/steps*.go",
-        "internal/ingest/save*.go"
+        "internal/ingest/save*.go",
+        "internal/ingest/fallback.go",
+        "internal/ingest/structured*.go",
+        "internal/llm/**",
+        "internal/parse/testdata/**",
+        "internal/ingest/*_test.go"
       ],
       "needs_migration": null,
-      "adrs": [],
-      "blocked": "Owner decision needed: how ingest builds the step graph (rules / LLM / editor only / rules then LLM); see #190"
+      "adrs": [
+        "00020"
+      ],
+      "note": "ADR-00020 decision 1: rules build the graph (linear default, passive vocabulary, 'meanwhile' breaks the chain); the LLM fallback may supply dependencies and passive flags for the steps it is asked about."
     },
     {
       "id": "i-llm-gap-fill",
@@ -1808,15 +1820,18 @@
       "issue": 191,
       "status": "todo",
       "depends_on": [
-        "i-equipment-extract"
+        "i-equipment-extract",
+        "i-parser-version"
       ],
       "owns": [
         "internal/ingest/fallback.go",
-        "internal/llm/**"
+        "internal/llm/**",
+        "internal/ingest/structured*.go",
+        "internal/ingest/*_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
-      "blocked": "Owner decision needed: LLM fallback replaces the whole draft (today) or fills only low-confidence gaps; see #191"
+      "note": "ADR-00020 decision 2: the fallback sends only below-threshold lines and fields and replaces only those; retry runs the same gap-filling call."
     },
     {
       "id": "i-review-edit",
@@ -1827,14 +1842,18 @@
       "status": "todo",
       "depends_on": [
         "i-equipment-extract",
-        "i-parser-version"
+        "i-parser-version",
+        "t-cross-household-gate"
       ],
       "owns": [
-        "internal/web/ingest/**"
+        "internal/web/ingest/**",
+        "internal/web/editor/**",
+        "e2e/ingest/**",
+        "e2e/editor/**"
       ],
       "needs_migration": null,
       "adrs": [],
-      "blocked": "Owner decision needed: review screen edit scope (full editor / save-then-edit / common fixes only); see #192"
+      "note": "ADR-00020 decision 3: the review screen is the recipe editor operating on the unsaved draft (same components, form handling, validation; confirm in place of save). No second implementation of an editor control."
     },
     {
       "id": "i-site-extractors",
@@ -1844,7 +1863,8 @@
       "issue": 193,
       "status": "todo",
       "depends_on": [
-        "i-plugin-extractors"
+        "i-plugin-extractors",
+        "i-equipment-extract"
       ],
       "owns": [
         "internal/ingest/extract/sites/**"
@@ -2466,7 +2486,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00019",
+    "last_used": "00020",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
   }
 }
