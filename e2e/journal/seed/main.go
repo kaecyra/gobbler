@@ -5,17 +5,11 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 
-	"github.com/kaecyra/gobbler/e2e/recipeview/seed/devhousehold"
-	"github.com/kaecyra/gobbler/internal/auth"
-	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/e2e/seedutil"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -32,27 +26,11 @@ func main() {
 }
 
 func run(dir string) error {
-	cfg := config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DataDir: dir, DevAuthBypass: true}}
-	ctx, err := identityContext(cfg)
+	ctx, d, closeDB, err := seedutil.Open(dir)
 	if err != nil {
 		return err
 	}
-	d, err := db.Open(ctx, cfg)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := d.Close(); err != nil {
-			fmt.Fprintln(os.Stderr, "seed: close database:", err)
-		}
-	}()
-	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
-		return err
-	}
-	ctx, err = devhousehold.Context(ctx, d)
-	if err != nil {
-		return err
-	}
+	defer closeDB()
 	id, err := store.New(d).Create(ctx, recipe.Recipe{
 		Name:       "E2E Journal Loaf",
 		Components: []recipe.Component{{Steps: []recipe.Step{{ID: "bake", Text: "Bake the loaf."}}}},
@@ -61,21 +39,4 @@ func run(dir string) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id})
-}
-
-// identityContext returns a context carrying the verified identity the store
-// requires on writes. Only the auth middleware can mint one, so the seed runs
-// a request through it in dev-bypass mode.
-func identityContext(cfg config.Config) (context.Context, error) {
-	a, err := auth.New(cfg)
-	if err != nil {
-		return nil, err
-	}
-	var got context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
-		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
-	if got == nil {
-		return nil, fmt.Errorf("auth middleware did not pass the request on")
-	}
-	return got, nil
 }
