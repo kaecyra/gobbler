@@ -61,7 +61,7 @@ copies="$(awk '
       if (t[i] == "" || toupper(t[i]) == "COPY" || toupper(t[i]) == "ADD") continue
       if (t[i] ~ /^--from=/) { skip = 1; continue }
       if (t[i] ~ /^--/) continue
-      if (t[i] ~ /^\[/) {
+      if (cnt == 0 && t[i] ~ /^\[/) {
         # JSON (exec) form: the rest of the line is one array of quoted strings.
         rest = buf; sub(/^[ \t]*[A-Za-z]+[ \t]+/, "", rest)
         while (rest ~ /^--[^ \t]*[ \t]+/) sub(/^--[^ \t]*[ \t]+/, "", rest)

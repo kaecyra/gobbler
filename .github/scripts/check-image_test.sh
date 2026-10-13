@@ -71,6 +71,12 @@ expect "JSON form with flag, e2e among several sources fails" 1 "copies './e2e/f
 new_case; echo 'COPY ["cmd", "internal", "/app/"]' >> "$tmp/Dockerfile"
 expect "JSON form not copying e2e passes" 0 ""
 
+new_case; echo 'COPY e2e/ [x]/' >> "$tmp/Dockerfile"
+expect "bracket token after a shell-form source keeps the earlier source" 1 "copies 'e2e/'"
+
+new_case; printf 'COPY ["cmd", \\\n  "e2e/", "/app/"]\n' >> "$tmp/Dockerfile"
+expect "backslash-continued JSON form copying e2e fails" 1 "copies 'e2e/'"
+
 new_case; echo 'COPY --from=build ["/e2e", "/app/e2e"]' >> "$tmp/Dockerfile"
 expect "JSON form stage copy is skipped" 0 ""
 
