@@ -60,9 +60,10 @@ dependencies.
 | `ingest` | Acquire → extract → parse → score → fallback pipeline; JSON-LD, microdata, site extractors, OCR | `parse`, `recipe`, LLM interface |
 | `llm/claude`, `llm/gemini` | Provider implementations ([ADR-00007](adr/00007-llm-provider-interface.md)) | provider SDKs |
 | `shopping` | List generation, merging, pantry, check state, text export | `quantity`, `recipe`, `catalog` |
+| `sharing` | Sending a copy of a recipe to another household and accepting or declining the offers received ([ADR-00018](adr/00018-households-as-tenants.md)) | `household`, `catalog`, `shopping`, `store` |
 | `todoist` | One-way push of a shopping list; deferred ([ADR-00018](adr/00018-households-as-tenants.md)) | `shopping` |
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
-| `web` | Server, chi router, middleware, health check, static assets; `web/layout` shared templ layout; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
+| `web` | Server, chi router, middleware, health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
 
 ## Configuration
 

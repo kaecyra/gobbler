@@ -136,7 +136,7 @@ func renderAtAs(t *testing.T, path string, operator bool) string {
 	}
 	r := chi.NewRouter()
 	r.Get("/", page)
-	for _, pattern := range []string{"/recipes", "/recipes/{id}/cook", "/ingest", "/catalog", "/shopping", "/household", "/operator", "/settings"} {
+	for _, pattern := range []string{"/recipes", "/recipes/{id}/cook", "/ingest", "/catalog", "/shopping", "/shares", "/household", "/operator", "/settings"} {
 		sub := chi.NewRouter()
 		sub.Get("/", page)
 		sub.Get("/*", page)
@@ -152,7 +152,7 @@ func renderAtAs(t *testing.T, path string, operator bool) string {
 
 func TestNavLinksEveryTopLevelPage(t *testing.T) {
 	got := renderAtAs(t, "/", true)
-	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/household", "/operator", "/settings"} {
+	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/shares", "/household", "/operator", "/settings"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("nav missing link to %s in:\n%s", href, got)
 		}
@@ -170,6 +170,8 @@ func TestNavMarksOnlyTheCurrentSection(t *testing.T) {
 		{"/ingest/photo", "/ingest"},
 		{"/catalog", "/catalog"},
 		{"/shopping/3", "/shopping"},
+		{"/shares", "/shares"},
+		{"/shares/new/7", "/shares"},
 		{"/household", "/household"},
 		{"/operator", "/operator"},
 		{"/settings", "/settings"},
@@ -207,7 +209,7 @@ func TestNavHidesOperatorLinksFromEveryoneElse(t *testing.T) {
 		}
 	}
 	got := renderAtAs(t, "/", false)
-	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/household"} {
+	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/shares", "/household"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("non-operator nav lost %s:\n%s", href, got)
 		}
