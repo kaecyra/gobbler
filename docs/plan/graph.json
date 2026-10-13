@@ -1003,14 +1003,17 @@
       "issue": 39,
       "status": "todo",
       "depends_on": [
-        "t-catalog-overlay"
+        "t-catalog-overlay",
+        "t-operator-nav"
       ],
       "owns": [
         "internal/household/**",
         "internal/web/household/**",
         "internal/web/operator/**",
         "e2e/household/**",
-        "e2e/operator/**"
+        "e2e/operator/**",
+        "internal/web/middleware_household*.go",
+        "internal/web/layout/layout_nav*.go"
       ],
       "needs_migration": null,
       "adrs": [
@@ -1354,7 +1357,8 @@
       "depends_on": [
         "l-invitations",
         "t-recipe-sharing",
-        "w7-nav"
+        "w7-nav",
+        "t-operator-nav"
       ],
       "owns": [
         "e2e/fixtures/route-coverage*.mjs",
@@ -1365,6 +1369,28 @@
       "adrs": [
         "00018"
       ]
+    },
+    {
+      "id": "t-operator-nav",
+      "title": "Show operator-only nav links to operators only",
+      "wave": 8,
+      "track": "tenancy",
+      "issue": 141,
+      "status": "todo",
+      "depends_on": [
+        "t-household-core",
+        "w7-nav"
+      ],
+      "owns": [
+        "internal/web/layout/layout*",
+        "e2e/layout/**",
+        "internal/web/middleware_household*.go"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00018"
+      ],
+      "note": "ADR-00018: operator pages are operator-only. The membership middleware sets an operator flag on the request context for every operator request, member or not, through a helper in internal/web/layout/layout_operator.go; the layout renders operator-only links (Settings today) only when the flag is set. The server-side check stays the lock; this is presentation only."
     }
   ],
   "shared_files": [
