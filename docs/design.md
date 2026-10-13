@@ -28,7 +28,6 @@ browser ──► Cloudflare Access ──► cloudflared ──► gobbler (Go 
                                                       ├──► recipe sites (URL ingest)
                                                       ├──► tesseract (local OCR)
                                                       ├──► Claude / Gemini APIs (fallback only)
-                                                      ├──► Todoist API (deferred)
                                                       └──► S3-compatible storage (backups)
 ```
 
@@ -61,7 +60,6 @@ dependencies.
 | `llm/claude`, `llm/gemini` | Provider implementations ([ADR-00007](adr/00007-llm-provider-interface.md)) | provider SDKs |
 | `shopping` | List generation, merging, pantry, check state, text export | `quantity`, `recipe`, `catalog` |
 | `sharing` | Sending a copy of a recipe to another household and accepting or declining the offers received ([ADR-00018](adr/00018-households-as-tenants.md)) | `household`, `catalog`, `shopping`, `store` |
-| `todoist` | One-way push of a shopping list; deferred ([ADR-00018](adr/00018-households-as-tenants.md)) | `shopping` |
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
 | `web` | Server, chi router, middleware, health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
 
@@ -76,7 +74,6 @@ Secrets are never in the repository.
 | Access | team domain, application AUD tag |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | LLM | provider, text model, vision model, per-provider API key, timeout |
-| Todoist | API token, target project (deferred, [ADR-00018](adr/00018-households-as-tenants.md)) |
 | Backup | schedule, local retention, S3 endpoint, region, bucket, prefix, credentials, remote retention |
 
 ## Testing
@@ -84,7 +81,7 @@ Secrets are never in the repository.
 Pure packages (`quantity`, `recipe`, `parse`, `shopping` merging) are
 table-tested. `parse` has a golden-file corpus of real ingredient lines and
 whole recipes. `store`, `catalog`, `ingest` and `backup` have integration tests
-against a real SQLite file, with HTTP, LLM, Todoist and S3 mocked at the
+against a real SQLite file, with HTTP, LLM and S3 mocked at the
 boundary. Every route has a Playwright e2e test under `e2e/`
 ([ADR-00013](adr/00013-playwright-e2e-in-node.md)). Gates are in
 [git-workflow](../.claude/rules/git-workflow.md#gates).
