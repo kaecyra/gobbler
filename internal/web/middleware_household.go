@@ -15,7 +15,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
-	"github.com/kaecyra/gobbler/internal/web/settings"
 )
 
 // InvitationsPrefix is where invitation acceptance lives. A verified non-member
@@ -26,9 +25,10 @@ const InvitationsPrefix = "/invitations/"
 // operatorPaths are the operator's pages (ADR-00018, Invitations): deployment
 // settings now, and later the household invitations and the review of overlay
 // entries suggested for central. A path under one of them is open to an
-// operator email, member or not, and closed to everyone else. A new operator
-// page is added here.
-var operatorPaths = []string{settings.Pattern}
+// operator email, member or not, and closed to everyone else. The list is the
+// layout's, which also hides the nav link to each from everyone else, so a new
+// operator page is added in layout.OperatorPaths.
+var operatorPaths = layout.OperatorPaths
 
 // memberLookup finds the household of a verified email. *household.Store
 // satisfies it.
@@ -69,6 +69,11 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 			}
 			operator := ops.IsOperator(email)
 			onOperatorPage := isOperatorPath(r)
+			if operator {
+				// Presentation only: the nav shows operator links. The checks
+				// below stay the lock.
+				r = r.WithContext(layout.WithOperator(r.Context()))
+			}
 
 			h, err := members.ForEmail(r.Context(), email)
 			switch {
