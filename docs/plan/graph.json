@@ -1374,7 +1374,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 139,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "l-invitations",
         "t-recipe-sharing",
