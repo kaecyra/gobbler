@@ -1478,7 +1478,7 @@
       "wave": 8,
       "track": "ui",
       "issue": 99,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "t-scope-recipes"
       ],
@@ -2045,6 +2045,15 @@
         "00008"
       ],
       "note": "ADR-00008 obligation 3. One exported function used by the assembler and the review screen; behaviour unchanged."
+    },
+    {
+      "id": "e2e-seed-helper",
+      "title": "Shared e2e seed helper (identity, household, store setup)",
+      "merged": "29944a4",
+      "adrs": [
+        "00013"
+      ],
+      "note": "ADR-00013 allows Go helpers under e2e/. After t-scope-recipes every seed also seeds the dev household; extract that with the identity context and open/migrate/store setup, and migrate every seed."
     }
   ],
   "adr_sequence": {
