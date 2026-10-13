@@ -85,6 +85,13 @@ test('the Edit link opens the editor form for that recipe', async ({ page }) => 
   await expect(page.locator('form#editor')).toBeVisible();
 });
 
+test('the Share link opens the send form for that recipe', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await page.getByTestId('share-link').click();
+  await expect(page).toHaveURL(new RegExp(`/shares/new/${id}$`));
+  await expect(page.getByTestId('recipe-name')).toBeVisible();
+});
+
 test('a passive step shows the work that can be done meanwhile', async ({ page }) => {
   await page.goto(`/recipes/${meanwhileId}`);
   const guidance = page.getByTestId('meanwhile');

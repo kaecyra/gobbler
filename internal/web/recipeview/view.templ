@@ -56,6 +56,12 @@ func editHref(id int64) string {
 	return recipePath(id) + "/edit"
 }
 
+// shareHref is the form that sends a copy of this recipe to another household.
+// Sharing is its own feature package (ADR-00012), so only its URL is known here.
+func shareHref(id int64) string {
+	return "/shares/new/" + strconv.FormatInt(id, 10)
+}
+
 func presetActive(v view, param string) bool {
 	if v.Opts.Servings != "" {
 		return false
@@ -116,7 +122,7 @@ templ recipeBody(v view) {
 				<span>Makes <strong data-testid="yield">{ v.Yield }</strong></span>
 			}
 		</p>
-		<p><a href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">Cook mode</a> <a href={ templ.SafeURL(editHref(v.ID)) } data-testid="edit-link">Edit</a></p>
+		<p><a href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">Cook mode</a> <a href={ templ.SafeURL(editHref(v.ID)) } data-testid="edit-link">Edit</a> <a href={ templ.SafeURL(shareHref(v.ID)) } data-testid="share-link">Share</a></p>
 		@controls(v)
 		if v.Notice != "" {
 			<p role="alert" class="recipe-error" data-testid="view-error">{ v.Notice }</p>

@@ -10,6 +10,7 @@ const pages = [
   { name: 'Add recipe', path: '/ingest' },
   { name: 'Catalog', path: '/catalog' },
   { name: 'Shopping', path: '/shopping' },
+  { name: 'Shared', path: '/shares' },
   { name: 'Household', path: '/household' },
   { name: 'Invitations', path: '/operator' },
   { name: 'Settings', path: '/settings' },
