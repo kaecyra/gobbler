@@ -157,6 +157,67 @@ func TestOverlayMigrationSplitsReviewedFromUnreviewed(t *testing.T) {
 	noViolations(t, d, "after the migration")
 }
 
+// Each branch of the migration's reference lookup counts as a reference on its
+// own: an unreviewed ingredient that only a revision's ingredient index, or only
+// a manual shopping item, names goes to that household; one that two such
+// references from different households name stays central.
+func TestOverlayMigrationCountsRevisionIndexAndManualItems(t *testing.T) {
+	ctx, d := migrationDB(t)
+	hs := household.New(d)
+	first, err := hs.Create(ctx, "First", "first@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := hs.Create(ctx, "Second", "second@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal := func(name string) int64 {
+		return mustExec(t, d, `INSERT INTO ingredients (name, aisle, reviewed) VALUES (?, 'x', 0)`, name)
+	}
+	revision := func(h household.Household) int64 {
+		recipeID := mustExec(t, d, `INSERT INTO recipes (household_id, name, created_at, created_by, updated_at, updated_by)
+			VALUES (?, 'Old', '2026-01-01T00:00:00Z', 'a', '2026-01-01T00:00:00Z', 'a')`, h.ID)
+		return mustExec(t, d, `INSERT INTO revisions (household_id, recipe_id, version, document, change_kind, created_at, created_by)
+			VALUES (?, ?, 1, '{}', 'edit', '2026-01-01T00:00:00Z', 'a')`, h.ID, recipeID)
+	}
+	manual := func(h household.Household, ingredient int64) {
+		list := mustExec(t, d, `INSERT INTO shopping_lists (household_id, name, created_at) VALUES (?, 'Weekly', 'x')`, h.ID)
+		mustExec(t, d, `INSERT INTO shopping_manual_items (household_id, list_id, text, ingredient_id) VALUES (?, ?, 'item', ?)`,
+			h.ID, list, ingredient)
+	}
+
+	revisionOnly := proposal("zz revision only")
+	mustExec(t, d, `INSERT INTO revision_ingredients (household_id, revision_id, ingredient_id) VALUES (?, ?, ?)`,
+		first.ID, revision(first), revisionOnly)
+	manualOnly := proposal("zz manual only")
+	manual(second, manualOnly)
+	split := proposal("zz revision and manual")
+	mustExec(t, d, `INSERT INTO revision_ingredients (household_id, revision_id, ingredient_id) VALUES (?, ?, ?)`,
+		first.ID, revision(first), split)
+	manual(second, split)
+
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("migrate to the overlay: %v", err)
+	}
+	for _, c := range []struct {
+		id    int64
+		owner any
+		what  string
+	}{{revisionOnly, first.ID, "unreviewed entry only a revision's index names"},
+		{manualOnly, second.ID, "unreviewed entry only a manual item names"},
+		{split, nil, "unreviewed entry a revision index and another household's manual item name"}} {
+		var got sql.NullInt64
+		if err := d.QueryRow(`SELECT household_id FROM ingredients WHERE id = ?`, c.id).Scan(&got); err != nil {
+			t.Fatalf("%s lost its id: %v", c.what, err)
+		}
+		if (c.owner == nil) == got.Valid || (c.owner != nil && got.Int64 != c.owner.(int64)) {
+			t.Errorf("%s: household_id = %v, want %v", c.what, got, c.owner)
+		}
+	}
+	noViolations(t, d, "after the migration")
+}
+
 // With no household there is nobody to own a proposal, so it stays central.
 func TestOverlayMigrationWithoutAHouseholdKeepsEverythingCentral(t *testing.T) {
 	ctx, d := migrationDB(t)
