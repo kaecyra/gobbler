@@ -22,6 +22,7 @@ let dataDir = '';
 let server: ChildProcess | undefined;
 let id = 0;
 let meanwhileId = 0;
+let cloneId = 0;
 
 test.use({ baseURL: origin });
 // One server per file: fullyParallel would otherwise run beforeAll in every worker.
@@ -33,7 +34,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId } = JSON.parse(out));
   server = spawn(bin, ['serve'], {
     env: {
       PATH: process.env.PATH ?? '',
@@ -162,4 +163,42 @@ test('a scale that cannot be shown is a 400 page', async ({ page }) => {
 test('the recipe is refused without an Access identity', async ({ request }) => {
   const res = await request.get(`${accessURL}/recipes/${id}`);
   expect(res.status()).toBe(403);
+});
+
+test('the journal loads into the recipe page', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await expect(page.locator('#journal')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Journal', level: 2 })).toBeVisible();
+});
+
+test('the journal survives scaling', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await page.getByLabel('Add a note').fill('half typed');
+  await page.getByRole('link', { name: '2×' }).click();
+  await expect(page.getByText('2/3 cup e2e sugar')).toBeVisible();
+  await expect(page.getByLabel('Add a note')).toHaveValue('half typed');
+});
+
+test('the History link opens the history of that recipe', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await page.getByTestId('history-link').click();
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}/history$`));
+  await expect(page.getByTestId('current-version')).toBeVisible();
+});
+
+test('a clone shows where it came from, and the original does not', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await expect(page.getByTestId('origin')).toHaveCount(0);
+  await page.goto(`/recipes/${cloneId}`);
+  await expect(page.getByTestId('origin')).toContainText(`recipe ${id}`);
+  await page.getByTestId('origin').getByRole('link', { name: /^recipe / }).click();
+  await expect(page).toHaveURL(`/recipes/${id}`);
+});
+
+test('the Clone button makes a new recipe that points back at this one', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await page.getByTestId('clone-button').click();
+  await expect(page).not.toHaveURL(`/recipes/${id}`);
+  await expect(page).toHaveURL(/\/recipes\/\d+$/);
+  await expect(page.getByTestId('origin')).toContainText(`recipe ${id}`);
 });

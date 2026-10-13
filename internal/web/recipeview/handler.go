@@ -18,6 +18,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -28,6 +29,7 @@ const Pattern = "/recipes/{id}"
 // Recipes is what the view reads from the recipe store.
 type Recipes interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
+	Info(ctx context.Context, id int64) (store.Info, error)
 }
 
 // Catalog is what the view reads from the ingredient and equipment catalog.
@@ -61,6 +63,11 @@ func handle(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
+		info, err := d.Recipes.Info(r.Context(), id)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load info of recipe %d: %w", id, err))
+			return
+		}
 		q := r.URL.Query()
 		opts, err := display.ParseOptions(q.Get(display.ParamScale), q.Get(display.ParamServings), q.Get(display.ParamUnits), rec)
 		notice := ""
@@ -86,6 +93,9 @@ func handle(d Deps) http.HandlerFunc {
 			return
 		}
 		v.Notice = notice
+		if info.ClonedFrom != nil {
+			v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
+		}
 		layout.Render(w, r, http.StatusOK, recipePage(v))
 	}
 }

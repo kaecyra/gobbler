@@ -1,5 +1,5 @@
 // Command seed fills a fresh data directory with the recipe the recipe-view
-// e2e spec reads, and a second one with meanwhile guidance, then prints their ids as JSON. It is test tooling (ADR-00013):
+// e2e spec reads, a second one with meanwhile guidance and a clone of the first, then prints their ids as JSON. It is test tooling (ADR-00013):
 // it goes through the real store and catalog packages, so the spec exercises
 // the same read path as production. Usage: seed <data-dir>.
 package main
@@ -105,7 +105,11 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID})
+	cloneID, err := store.New(d).Clone(ctx, id)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID})
 }
 
 func line(qty, unit string, ingredient int64, rule quantity.Rule) recipe.IngredientLine {
