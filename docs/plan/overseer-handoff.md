@@ -62,11 +62,21 @@ VERSION on main is 0.43.4. The next schema number is 00009.
   - Recorded as ADR-00019 in #159, which also re-derives the w3-equipment-size lane and unblocks it.
 
 **Round 9 (2026-10-13, resumed session):**
-- #153 w3-display-times merged at 377f838 (VERSION 0.43.5), recorded on main.
-- #155 rebuilt on main (head e6b2e4b). MUST declined and resolved (no midpoint deploy); SHOULDs and NIT fixed and resolved; #39 body rewritten, #136 and #139 bodies gain a "Household deletion" section. A fresh /sdlc-review-pr is running on it. Its re-review SHOULD (storedb and catalogdb notes still said single-writer) is fixed at 1bd6f6b.
-- **In flight:** t-scope-shopping (#136, schema 00009 promised; write it with `node.ts migration` on main once #155 merges, since a main commit forces #155 to be rebuilt again) in `.claude/worktrees/wt-136`, ports 41100+; w3-recipeview-links (#98) in `.claude/worktrees/wt-98`, ports 41200+.
-- **Next:** l-invitations (#39) once #155 merges.
-- The worker brief tail is in the session scratchpad as `common.md` and `prompt-<issue>.md`.
+
+| PR | What | SHA |
+|---|---|---|
+| #153 | w3-display-times | 377f838 |
+| #155 | graph: l-invitations parallel, Todoist dropped, one sqlc writer rule | 441094d |
+| #156 | graph: t-scope-shopping lane gains `internal/store/migration_test.go` | d89c27b |
+| #157 | w3-recipeview-links | d6fe731 |
+| #159 | ADR-00019 sized equipment flag; w3-equipment-size unblocked | 016033c |
+| #158 | t-scope-shopping (schema 00009) | 814f195 |
+
+VERSION on main is 0.45.0. The next schema number is 00010; the next ADR is 00020.
+
+**Open:** #160 l-invitations (#39). The review raised a MUST (VERSION), a SHOULD and a NIT. The SHOULD: a member who leaves or is removed keeps pending join invitations, so revoke them in the same transaction. Dispatcher's call, flagged to the owner. The NIT is to show the specific ErrInvalid reason. The worker in `.claude/worktrees/wt-39` (ports 41300+) is fixing both; then it rebases onto main and bumps to 0.46.0, and the PR gets a fresh review.
+
+**Next:** once #160 merges, t-catalog-overlay (#137, draw schema 00010) and t-recipe-sharing (#138) become dispatchable. Check whether they can share a round: only the overlay has a migration. After the overlay merges, w3-equipment-size (#85) follows; re-derive its lane first if the overlay moved central curation under `internal/web/operator`.
 
 **Worker brief rule (new, 2026-10-13):** workers must never spawn their own subagents. The t-household-core worker left a helper ("Proving dot-segment guard fails") running and burning tokens after its PR had merged. Say so in every worker prompt.
 
