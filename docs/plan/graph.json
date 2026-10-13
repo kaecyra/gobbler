@@ -1602,7 +1602,7 @@
       "wave": 8,
       "track": null,
       "issue": 169,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/household/**",
@@ -2237,6 +2237,11 @@
       "id": "r-tenancy-test-gaps",
       "title": "Household delete and migration 00010 tests cover overlay tables and every refs branch",
       "merged": "4fb3e603a4d8eae65b3f4d821dfdbe472d8a7835"
+    },
+    {
+      "id": "r-web-household-operator-shared",
+      "title": "Share fail, time layout and pending view between household and operator pages",
+      "merged": "4f48c9ca07496f746f2915956c27fc89473966ee"
     }
   ],
   "adr_sequence": {
