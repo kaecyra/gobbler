@@ -87,16 +87,24 @@ VERSION on main is 0.47.0. The next free schema number is 00011; the next ADR is
 - #168 migration 00010: an unreviewed ingredient referenced by exactly one household moves to that household's overlay; anything else stays central.
 - #168 also adds store-level checks that refuse an ingredient id outside central or the writer's overlay (shopping manual items, pantry, recipe lines).
 
-**Round 10 (2026-10-13), in progress.**
+**Round 10 (2026-10-13), in progress. VERSION on main is 0.49.1; the next schema number after 00011 is 00012; the next ADR is 00020.**
+
+Merged: #174 r-tenancy-test-gaps, #173 r-web-household-operator-shared, #179 r-operator-promotions-link, #175 t-recipe-sharing, #182 t-sharing-entry-points, #183 r-drop-todoist-config (owner: Todoist dropped). Graph PRs #172, #177, #178, #181.
 
 | Node | Issue | Worktree / branch | State |
 |---|---|---|---|
-| t-recipe-sharing | #138 | `wt-138`, `feat/138-recipe-sharing` | worker running (e2e ports 41100) |
-| r-web-household-operator-shared | #169 | `wt-169`, `refactor/169-web-shared-helpers` | worker running (ports 41200) |
-| r-tenancy-test-gaps | #171 | `wt-171`, `test/171-tenancy-test-gaps` | worker running (ports 41300) |
+| t-cross-household-gate | #139 | `wt-139`, `feat/139-cross-household-gate` | PR #184 in review (VERSION 0.49.2) |
+| w3-equipment-size | #85 | `wt-85`, `feat/85-equipment-size` | worker running, schema 00011, ports 41100 |
 
-- #172 (graph: nodes for #169, #170, #171, all wave 8; t-cross-household-gate now waits on r-operator-promotions-link) merged at 51e0df0 under standing authority. The two NITs were recorded, not fixed: there is no verb to attach an existing ADR.
-- r-operator-promotions-link (#170) waits on #169.
+After both merge, only l-meal-planning (#38, deferred, needs an ADR) is left.
+
+**For the owner to check (calls made under ADR text):**
+- #175: provenance of a shared recipe is a note on the copy (no column, no migration); a member can edit or delete it.
+- #175: a sender-overlay ingredient's name reaches the recipient as a new recipient-owned unreviewed entry (ADR-00018 Sharing requires the line to land there); #138's literal acceptance line said no such name reaches the recipient.
+- #184: route rules where ADR-00018 is silent (operator/settings 403 for both identities; /healthz and /static 200; /not-a-member 200 / 303; foreign invitation 404).
+- graph-node has no verb to attach an existing ADR to a node; review SHOULDs asking for it were declined (#172, #177).
+
+**Small leftovers, no node yet:** journal and sharing e2e specs both default to port 38451; `.claude/rules/git-workflow.md` "every route has a test" now also means a cross-household test.
 
 **Next, one at a time (all large):**
 1. **t-recipe-sharing (#138):** dispatchable now. No migration. Read #168's overlay model first, because shared recipes re-match lines against the recipient's catalog (ADR-00018 Sharing).
