@@ -1598,12 +1598,12 @@
     {
       "path": "internal/store/storedb/**",
       "mode": "open",
-      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root (queries/ and every migration feed it). Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges. Two nodes that each add a migration still never share a round (graph notes)."
     },
     {
       "path": "internal/catalog/catalogdb/**",
       "mode": "open",
-      "note": "SINGLE-WRITER PER ROUND by convention: sqlc output regenerated from the package's queries/. Only one node per round may regenerate a given package; the dispatcher never co-schedules two nodes that regenerate the same one. mode is open because overseer graph-core counts single_writer_per_round as outside every lane, which would fail record-done."
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root (queries/ and every migration feed it). Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges. Two nodes that each add a migration still never share a round (graph notes)."
     },
     {
       "path": "internal/web/**/*_templ.go",
