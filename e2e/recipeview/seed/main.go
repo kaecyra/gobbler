@@ -53,7 +53,11 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	pan, err := cat.CreateEquipment(ctx, catalog.Equipment{Name: "e2e 9x13 pan"})
+	pan, err := cat.CreateEquipment(ctx, catalog.Equipment{Name: "e2e 9x13 pan", Sized: true})
+	if err != nil {
+		return err
+	}
+	whisk, err := cat.CreateEquipment(ctx, catalog.Equipment{Name: "e2e whisk"})
 	if err != nil {
 		return err
 	}
@@ -76,7 +80,7 @@ func run(dir string) error {
 				{ID: "bake", Text: "Bake until golden.", Duration: 45 * time.Minute, Passive: true, DependsOn: []recipe.StepID{"mix"}},
 			},
 		}},
-		Equipment: []recipe.EquipmentLink{{Equipment: recipe.EquipmentID(pan.ID)}},
+		Equipment: []recipe.EquipmentLink{{Equipment: recipe.EquipmentID(pan.ID)}, {Equipment: recipe.EquipmentID(whisk.ID)}},
 	}
 	id, err := store.New(d).Create(ctx, r)
 	if err != nil {

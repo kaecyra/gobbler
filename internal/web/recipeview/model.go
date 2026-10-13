@@ -13,6 +13,20 @@ import (
 // times are not scaled, so the page says they may need attention.
 const hintTime = "time may change"
 
+// hintLargerPan is shown on sized equipment of a scaled view (ADR-00005,
+// ADR-00019): equipment is not scaled, so the page says the pan may not hold
+// the new amount.
+const hintLargerPan = "may need a larger pan"
+
+// equipmentHint is the hint beside one equipment line: the larger-pan hint on
+// sized catalog equipment of a scaled view, and nothing otherwise.
+func equipmentHint(scaled, sized bool) string {
+	if scaled && sized {
+		return hintLargerPan
+	}
+	return ""
+}
+
 // view is everything the template shows, already formatted. All quantity
 // arithmetic happened in package quantity before it was built.
 type view struct {
@@ -82,6 +96,7 @@ type stepView struct {
 
 type equipmentView struct {
 	Text string
+	Hint string
 }
 
 // buildView resolves catalog references and applies opts to every line.
@@ -138,14 +153,18 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		v.Components = append(v.Components, cv)
 	}
 
-	// No equipment hint ("may need a larger pan", ADR-00005): it applies only to
-	// equipment with a size and the schema has none yet (issue #85).
 	for _, link := range r.Equipment {
 		text, err := display.EquipmentText(ctx, cat, link)
 		if err != nil {
 			return view{}, err
 		}
-		v.Equipment = append(v.Equipment, equipmentView{Text: text})
+		// The text helper does not return the row, and the hint needs its sized
+		// flag; a second primary-key read keeps one formatter for the line.
+		eq, err := cat.GetEquipment(ctx, int64(link.Equipment))
+		if err != nil {
+			return view{}, display.Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
+		}
+		v.Equipment = append(v.Equipment, equipmentView{Text: text, Hint: equipmentHint(v.Scaled, eq.Sized)})
 	}
 	return v, nil
 }

@@ -209,3 +209,19 @@ test('the Clone button makes a new recipe that points back at this one', async (
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
   await expect(page.getByTestId('origin')).toContainText(`recipe ${id}`);
 });
+
+// ADR-00019: the larger-pan hint is on sized equipment of a scaled view only.
+// The seed's pan is sized and its whisk is not.
+test('a scaled view hints at a larger pan on sized equipment only', async ({ page }) => {
+  await page.goto(`/recipes/${id}?scale=2`);
+  const items = page.getByTestId('equipment-item');
+  await expect(items).toHaveCount(2);
+  await expect(items.filter({ hasText: 'e2e 9x13 pan' })).toContainText('may need a larger pan');
+  await expect(items.filter({ hasText: 'e2e whisk' })).not.toContainText('larger pan');
+});
+
+test('an unscaled view has no larger-pan hint', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await expect(page.getByTestId('equipment-item')).toHaveCount(2);
+  await expect(page.getByTestId('equipment-hint')).toHaveCount(0);
+});

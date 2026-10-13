@@ -136,8 +136,11 @@ templ recipeBody(v view) {
 				<h2 id="equipment-h">Equipment</h2>
 				<ul data-testid="equipment">
 					for _, e := range v.Equipment {
-						<li>
+						<li data-testid="equipment-item">
 							{ e.Text }
+							if e.Hint != "" {
+								<span class="muted" data-testid="equipment-hint"> ({ e.Hint })</span>
+							}
 						</li>
 					}
 				</ul>
