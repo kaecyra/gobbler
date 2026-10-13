@@ -1178,7 +1178,7 @@
       "wave": 7,
       "track": "ui",
       "issue": 130,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "w4-shopping-ui"
       ],
