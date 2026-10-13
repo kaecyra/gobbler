@@ -1654,7 +1654,7 @@
       "wave": 8,
       "track": null,
       "issue": 176,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "t-recipe-sharing",
         "r-operator-promotions-link"
