@@ -124,7 +124,7 @@ func TestRetryOfferedForAnyDraftWhenConfigured(t *testing.T) {
 		t.Error("the review screen offers no retry action")
 	}
 	// Also for a draft the rules were confident about.
-	f.h.pending.put(token, func() ingestcore.Draft { d := sampleDraft(); d.BelowThreshold = false; return d }())
+	f.h.pending.put(householdA.ID, token, func() ingestcore.Draft { d := sampleDraft(); d.BelowThreshold = false; return d }())
 	if body := f.do(http.MethodGet, "/"+token, nil).Body.String(); !strings.Contains(body, "Retry with LLM") {
 		t.Error("no retry for a high-confidence draft")
 	}
@@ -215,7 +215,7 @@ func TestRetryCatalogFailureIsAPipelineError(t *testing.T) {
 func TestFailedRetryOfAnLLMDraftDoesNotCallItRuleBased(t *testing.T) {
 	r := &fakeRetrier{configured: true, err: fmt.Errorf("%w: timed out", ingestcore.ErrLLMFailed)}
 	f, token := withRetrier(t, r)
-	f.h.pending.put(token, llmDraft())
+	f.h.pending.put(householdA.ID, token, llmDraft())
 	body := f.do(http.MethodPost, "/"+token+"/retry", nil).Body.String()
 	if strings.Contains(body, "rule-based") {
 		t.Error("the alert calls an LLM-filled draft rule-based")

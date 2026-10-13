@@ -53,7 +53,7 @@ func providerFactories() map[string]ingestcore.ProviderFactory {
 // (ADR-00007).
 func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	d, ok := h.pending.get(token)
+	d, ok := h.pending.get(householdID(r), token)
 	if !ok {
 		layout.WriteError(w, r, errGone)
 		return
@@ -82,7 +82,7 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadGateway, "The LLM could not read this recipe: "+err.Error())
 		return
 	}
-	h.pending.put(token, out)
+	h.pending.put(householdID(r), token, out)
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
 }
 

@@ -2,6 +2,7 @@ package journal
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/household"
 
 	"github.com/go-chi/chi/v5"
 
@@ -53,6 +56,8 @@ func newEnv(t *testing.T) *env {
 	if authed == nil {
 		t.Fatal("auth middleware did not call the handler")
 	}
+	hh := devHousehold(t, d)
+	authed = household.WithContext(authed, hh)
 	s := store.New(d)
 	id, err := s.Create(authed, recipe.Recipe{
 		Name:       "Journal <Cake>",
@@ -63,7 +68,7 @@ func newEnv(t *testing.T) *env {
 	}
 	r := chi.NewRouter()
 	// The real router authenticates before the features; do the same.
-	r.Use(a.Middleware())
+	r.Use(a.Middleware(), asMember(hh))
 	r.Mount(Pattern, Routes(Deps{Journal: s}))
 	return &env{t: t, ctx: authed, store: s, h: r, id: id}
 }
@@ -350,5 +355,30 @@ func TestOversizedFormIsRefused(t *testing.T) {
 	}
 	if notes := e.notes(); len(notes) != 0 {
 		t.Errorf("saved %d notes", len(notes))
+	}
+}
+
+// devHousehold returns the household the membership middleware resolves for
+// the dev identity, creating it in d the way the dev bypass does.
+func devHousehold(t *testing.T, d *sql.DB) household.Household {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(context.Background(), "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(context.Background(), auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return h
+}
+
+// asMember puts h on every request, as the membership middleware does for a
+// member.
+func asMember(h household.Household) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+		})
 	}
 }

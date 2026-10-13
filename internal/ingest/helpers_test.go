@@ -16,6 +16,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
@@ -55,7 +56,22 @@ func newEnv(t *testing.T) *env {
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatalf("db.Migrate: %v", err)
 	}
-	return &env{db: d, catalog: catalog.New(d), store: store.New(d), ctx: authedCtx(t), spy: &providerSpy{}}
+	return &env{db: d, catalog: catalog.New(d), store: store.New(d), ctx: inDevHousehold(t, d, authedCtx(t)), spy: &providerSpy{}}
+}
+
+// inDevHousehold returns ctx carrying the dev household of d, seeded if need
+// be, as the membership middleware would put it on a member's request.
+func inDevHousehold(t *testing.T, d *sql.DB, ctx context.Context) context.Context {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(ctx, "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(ctx, auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return household.WithContext(ctx, h)
 }
 
 // authedCtx returns a context carrying the identity the real auth middleware

@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/household"
 
 	"github.com/go-chi/chi/v5"
 
@@ -55,6 +58,8 @@ func newEnv(t *testing.T) *env {
 	if authed == nil {
 		t.Fatal("auth middleware did not call the handler")
 	}
+	hh := devHousehold(t, d)
+	authed = household.WithContext(authed, hh)
 	s, c := store.New(d), catalog.New(d)
 	e := &env{t: t, ctx: authed, store: s, cat: c}
 	e.id, err = s.CreateWithSnapshots(authed, e.fixture(), store.SnapshotInput{Kind: store.SnapshotText, Content: []byte("the original source")})
@@ -62,7 +67,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("create recipe: %v", err)
 	}
 	r := chi.NewRouter()
-	r.Use(a.Middleware())
+	r.Use(a.Middleware(), asMember(hh))
 	r.Mount(Pattern, Routes(Deps{Recipes: s, Catalog: c}))
 	e.h = r
 	return e
@@ -682,5 +687,30 @@ func TestStaleSaveWithAProposalCreatesNoCatalogEntry(t *testing.T) {
 	}
 	if e.hasEquipment("zzyzx grinder") {
 		t.Error("a stale save created the proposed equipment")
+	}
+}
+
+// devHousehold returns the household the membership middleware resolves for
+// the dev identity, creating it in d the way the dev bypass does.
+func devHousehold(t *testing.T, d *sql.DB) household.Household {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(context.Background(), "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(context.Background(), auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return h
+}
+
+// asMember puts h on every request, as the membership middleware does for a
+// member.
+func asMember(h household.Household) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+		})
 	}
 }

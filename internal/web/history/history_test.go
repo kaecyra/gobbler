@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"database/sql"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/household"
 
 	"github.com/go-chi/chi/v5"
 
@@ -59,6 +62,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatal("auth middleware did not pass the request on")
 	}
 
+	authed = household.WithContext(authed, devHousehold(t, d))
 	s, cat := store.New(d), catalog.New(d)
 	flour, err := cat.CreateIngredient(authed, catalog.Ingredient{Name: "test flour", Aisle: "baking"})
 	if err != nil {
@@ -450,4 +454,19 @@ func TestRoutesNeverTouchSourceSnapshots(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("routes = %v, want %v", got, want)
 	}
+}
+
+// devHousehold returns the household the membership middleware resolves for
+// the dev identity, creating it in d the way the dev bypass does.
+func devHousehold(t *testing.T, d *sql.DB) household.Household {
+	t.Helper()
+	hs := household.New(d)
+	if err := hs.Seed(context.Background(), "Dev household", auth.DevEmail); err != nil {
+		t.Fatalf("seed household: %v", err)
+	}
+	h, err := hs.ForEmail(context.Background(), auth.DevEmail)
+	if err != nil {
+		t.Fatalf("household of %s: %v", auth.DevEmail, err)
+	}
+	return h
 }
