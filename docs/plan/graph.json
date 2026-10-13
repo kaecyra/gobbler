@@ -1376,7 +1376,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 141,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "t-household-core",
         "w7-nav"
