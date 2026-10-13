@@ -35,9 +35,7 @@ The owner chose the flag on 2026-10-13 (issue #85).
 - A recipe view scaled up (a multiplier above 1) shows the larger-pan hint on
   an equipment line exactly when that line's catalog equipment is `sized`. An
   unscaled or scaled-down view never shows it. Equipment that is not `sized`
-  never shows it. *(Corrected 2026-10-13, before the first deploy: the hint was
-  "when scaled", which would suggest a larger pan at half quantities. Owner
-  ruling on #85.)*
+  never shows it.
 
 ## Consequences
 

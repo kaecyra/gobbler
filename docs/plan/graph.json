@@ -1555,7 +1555,8 @@
         "e2e/recipeview/recipeview.spec.ts",
         "e2e/catalog/seed/*.go",
         "e2e/recipeview/seed/*.go",
-        "internal/catalog/store_test.go"
+        "internal/catalog/store_test.go",
+        "e2e/tenancy/tenancy.tenancy.spec.ts"
       ],
       "needs_migration": "schema",
       "adrs": [

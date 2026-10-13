@@ -1,6 +1,6 @@
 # ADR-00006: Rule-first ingestion with confidence-gated LLM fallback and mandatory review
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md)
 
 **Date:** 2026-10-06
 
@@ -51,9 +51,9 @@ Options considered:
    image itself to a vision-capable model. The review screen also offers a
    manual "retry with LLM" for any draft.
 
-   *Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md): the
-   fallback sends only the below-threshold lines and fields and replaces only
-   those.*
+   > Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md): the
+   > fallback sends only the below-threshold lines and fields and replaces only
+   > those.
 6. **Review.** The draft, rule-based or LLM-assisted, is shown on a review
    screen with low-confidence items highlighted and LLM-supplied values marked.
    Nothing is saved until the user confirms.

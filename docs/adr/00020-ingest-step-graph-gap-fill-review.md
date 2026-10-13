@@ -28,9 +28,11 @@ found three behaviours no record decides:
   amounts, units, qualifiers, durations, components, equipment and whole lines
   can be changed only after saving, in the recipe editor. Options considered: a
   separate full editor on the review screen (rejected: a second implementation
-  of the editor), a "save, then open in the editor" path (fixes happen only
-  after the recipe exists), or only the commonest fixes. The owner's ruling is
-  that review reuses the editor itself.
+  of the editor), a "save, then open in the editor" path (rejected: a recipe
+  with wrong amounts or units is saved and enters search and shopping lists
+  before it is fixed), or only the commonest fixes (rejected: each further fix
+  would be built twice, once here and once in the editor). The owner's ruling
+  is that review reuses the editor itself.
 
 ## Decision
 
@@ -38,9 +40,11 @@ found three behaviours no record decides:
    linear chain in reading order by default; steps marked `passive` by a fixed
    vocabulary (bake, rise, prove, rest, chill, marinate, simmer and similar);
    the chain broken where a step's text says it runs alongside another
-   ("meanwhile", "while the …"). When the LLM fallback runs, its answer may
-   supply dependencies and passive flags for the steps it is asked about. Both
-   are shown on review.
+   ("meanwhile", "while the …"). A step's graph is *cue-backed* when a rule
+   matched for it (a passive-vocabulary word or a parallel cue) and *default*
+   otherwise. When the LLM fallback runs, it is asked for the dependencies and
+   passive flags of every default step, and its answer replaces those only;
+   cue-backed steps keep the rule result. Both are shown on review.
 2. **The fallback fills gaps.** The LLM is sent the source and only the
    low-confidence lines and missing or low-confidence fields, and its answer
    replaces exactly those. Every rule-based value that met the threshold is
@@ -61,8 +65,9 @@ same versioned corpus.
 
 1. Ingest sets step dependencies and passive flags by rule, covered by corpus
    cases for a linear recipe, a "meanwhile" recipe and a passive step (#190).
-2. The LLM structured schema carries step dependencies and passive flags, and
-   the fallback merges them only for the steps it was asked about (#190).
+2. The LLM structured schema carries step dependencies and passive flags; a
+   test shows a fallback answer changes the graph of a default step and leaves
+   a cue-backed step's graph unchanged (#190).
 3. The fallback request contains only the below-threshold lines and fields; a
    test shows a high-confidence rule-based line is unchanged after a fallback
    whose answer differs for it (#191).
