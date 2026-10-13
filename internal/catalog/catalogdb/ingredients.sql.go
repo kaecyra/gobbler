@@ -165,6 +165,17 @@ func (q *Queries) GetIngredient(ctx context.Context, arg GetIngredientParams) (I
 	return i, err
 }
 
+const getIngredientOwner = `-- name: GetIngredientOwner :one
+SELECT household_id FROM ingredients WHERE id = ?
+`
+
+func (q *Queries) GetIngredientOwner(ctx context.Context, id int64) (sql.NullInt64, error) {
+	row := q.db.QueryRowContext(ctx, getIngredientOwner, id)
+	var household_id sql.NullInt64
+	err := row.Scan(&household_id)
+	return household_id, err
+}
+
 const getOverlayIngredient = `-- name: GetOverlayIngredient :one
 SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
 FROM ingredients WHERE id = ? AND household_id IS NOT NULL
@@ -483,12 +494,15 @@ func (q *Queries) ListSuggestedIngredients(ctx context.Context) ([]Ingredient, e
 const listUnreviewedIngredients = `-- name: ListUnreviewedIngredients :many
 SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
 FROM ingredients
-WHERE reviewed = 0 AND (household_id IS NULL OR household_id = ?1)
+WHERE reviewed = 0 AND household_id IS ?1
 ORDER BY name
 `
 
-func (q *Queries) ListUnreviewedIngredients(ctx context.Context, scope sql.NullInt64) ([]Ingredient, error) {
-	rows, err := q.db.QueryContext(ctx, listUnreviewedIngredients, scope)
+// ListUnreviewedIngredients is the layer's own review queue: a household's
+// overlay entries, or with no household the central ones. Central entries are
+// the operator's to curate, so a household never sees them here.
+func (q *Queries) ListUnreviewedIngredients(ctx context.Context, owner sql.NullInt64) ([]Ingredient, error) {
+	rows, err := q.db.QueryContext(ctx, listUnreviewedIngredients, owner)
 	if err != nil {
 		return nil, err
 	}

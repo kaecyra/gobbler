@@ -414,14 +414,48 @@ func TestDeletingAHouseholdRemovesItsOverlay(t *testing.T) {
 	}
 }
 
-func TestAliasOutsideItsScopeIsRefusedByTheSchema(t *testing.T) {
+// The store keeps an alias in its scope: nothing it writes puts a household's
+// alias on another household's entry, or a central alias on an overlay entry.
+func TestAliasStaysInItsScope(t *testing.T) {
 	s, d, alpha, beta := twoHouseholds(t)
 	mine := mustIngredientIn(alpha, t, s, Ingredient{Name: "zz ghee", Aisle: "dairy"})
-	h, _ := household.FromContext(beta)
-	if _, err := d.Exec(`INSERT INTO ingredient_aliases (household_id, alias, ingredient_id) VALUES (?, 'zz sneaky', ?)`, h.ID, mine.ID); err == nil {
-		t.Error("beta put an alias on alpha's overlay entry")
+	hb, _ := household.FromContext(beta)
+	ha, _ := household.FromContext(alpha)
+	onion, _, _ := s.MatchIngredient(context.Background(), "onion")
+
+	if err := replaceIngredientAliases(beta, s.q, owner(hb.ID), mine.ID, []string{"zz sneaky"}); !errors.Is(err, ErrInvalid) {
+		t.Errorf("beta's alias on alpha's entry = %v, want ErrInvalid", err)
 	}
-	if _, err := d.Exec(`INSERT INTO ingredient_aliases (household_id, alias, ingredient_id) VALUES (NULL, 'zz central sneaky', ?)`, mine.ID); err == nil {
-		t.Error("a central alias was put on an overlay entry")
+	if err := replaceIngredientAliases(beta, s.q, owner(0), mine.ID, []string{"zz central sneaky"}); !errors.Is(err, ErrInvalid) {
+		t.Errorf("a central alias on an overlay entry = %v, want ErrInvalid", err)
+	}
+	if err := addIngredientAlias(beta, s.q, owner(hb.ID), "zz sneaky", mine.ID); !errors.Is(err, ErrInvalid) {
+		t.Errorf("addIngredientAlias across households = %v, want ErrInvalid", err)
+	}
+	// What is allowed: an owner's alias on its entry, and a household's on a central one.
+	if err := replaceIngredientAliases(alpha, s.q, owner(ha.ID), mine.ID, []string{"zz fine"}); err != nil {
+		t.Errorf("owner alias: %v", err)
+	}
+	if err := addIngredientAlias(alpha, s.q, owner(ha.ID), "zz bulb", onion.ID); err != nil {
+		t.Errorf("household alias on a central entry: %v", err)
+	}
+	if n := count(t, d, `SELECT count(*) FROM ingredient_aliases WHERE alias LIKE 'zz %sneaky'`); n != 0 {
+		t.Errorf("%d out-of-scope aliases were written", n)
+	}
+}
+
+func TestNeedsReviewListsOnlyTheScopesOwnEntries(t *testing.T) {
+	s, d, alpha, _ := twoHouseholds(t)
+	if _, err := d.Exec(`UPDATE ingredients SET reviewed = 0 WHERE name = 'onion'`); err != nil {
+		t.Fatal(err)
+	}
+	mustIngredientIn(alpha, t, s, Ingredient{Name: "zz proposed", Aisle: "x"})
+	got, err := s.ListUnreviewedIngredients(alpha)
+	if err != nil || len(got) != 1 || got[0].Name != "zz proposed" {
+		t.Errorf("household needs-review = %+v, err %v; want only its own entry", got, err)
+	}
+	got, err = s.ListUnreviewedIngredients(context.Background())
+	if err != nil || len(got) != 1 || got[0].Name != "onion" {
+		t.Errorf("central needs-review = %+v, err %v; want only the central entry", got, err)
 	}
 }

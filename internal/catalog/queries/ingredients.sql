@@ -25,10 +25,13 @@ FROM ingredients
 WHERE household_id IS NULL OR household_id = sqlc.arg(scope)
 ORDER BY name;
 
+-- ListUnreviewedIngredients is the layer's own review queue: a household's
+-- overlay entries, or with no household the central ones. Central entries are
+-- the operator's to curate, so a household never sees them here.
 -- name: ListUnreviewedIngredients :many
 SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
 FROM ingredients
-WHERE reviewed = 0 AND (household_id IS NULL OR household_id = sqlc.arg(scope))
+WHERE reviewed = 0 AND household_id IS sqlc.narg(owner)
 ORDER BY name;
 
 -- LookupOverlayIngredientID finds a term among the household's own entries and
@@ -158,3 +161,6 @@ WHERE ingredient_aliases.household_id = sqlc.arg(owner) AND ingredient_aliases.i
   AND (ingredient_aliases.alias = (SELECT name FROM ingredients WHERE id = sqlc.arg(ingredient_id))
        OR ingredient_aliases.alias IN (SELECT c.alias FROM ingredient_aliases c
                     WHERE c.household_id IS NULL AND c.ingredient_id = sqlc.arg(ingredient_id)));
+
+-- name: GetIngredientOwner :one
+SELECT household_id FROM ingredients WHERE id = ?;

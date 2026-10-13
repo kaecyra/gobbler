@@ -11,6 +11,8 @@
 -- entry, a household's id for an alias of one of its overlay entries or its own
 -- alias for a central entry. ingredient_aisle_overrides is a household's own
 -- aisle for a central entry. Deleting a household cascades through all three.
+-- The catalog store keeps an alias in its scope (a central alias on a central
+-- entry, a household alias on a central entry or one of its own).
 -- suggested_at marks an overlay entry its household flagged for promotion.
 --
 -- SQLite cannot drop the old global UNIQUE (name) constraints, so ingredients
@@ -19,7 +21,13 @@
 -- rebuild runs with foreign keys deferred: the drop counts those rows as
 -- violations and re-inserting the same ids clears them before the commit.
 -- Dropping ingredients also drops the trigger on it, which is recreated below.
--- Every existing row becomes central.
+--
+-- Existing rows: a reviewed ingredient (the whole seed is reviewed) becomes
+-- central. An unreviewed one is an ingestion proposal nobody has checked, so it
+-- lands in the overlay (ADR-00018), of the household with the lowest id, as
+-- migrations 00008 and 00009 assigned the existing recipes and lists, together
+-- with its aliases. With no household it stays central, because the overlay
+-- needs an owner and nothing is invented.
 
 PRAGMA defer_foreign_keys = ON;
 
@@ -53,8 +61,10 @@ CREATE TABLE ingredients (
     suggested_at     TEXT,
     CHECK (suggested_at IS NULL OR household_id IS NOT NULL)
 );
-INSERT INTO ingredients (id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed)
-SELECT id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed FROM ingredients_keep;
+INSERT INTO ingredients (id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed)
+SELECT id, CASE WHEN reviewed = 0 THEN (SELECT min(id) FROM households) END,
+       name, aisle, density_g_per_ml, usda_fdc_id, reviewed
+FROM ingredients_keep;
 
 CREATE UNIQUE INDEX ingredients_central_name ON ingredients (name) WHERE household_id IS NULL;
 CREATE UNIQUE INDEX ingredients_household_name ON ingredients (household_id, name) WHERE household_id IS NOT NULL;
@@ -70,7 +80,9 @@ CREATE TABLE ingredient_aliases (
     alias         TEXT NOT NULL CHECK (alias <> ''),
     ingredient_id INTEGER NOT NULL REFERENCES ingredients (id) ON DELETE CASCADE
 );
-INSERT INTO ingredient_aliases (alias, ingredient_id) SELECT alias, ingredient_id FROM ingredient_aliases_keep;
+INSERT INTO ingredient_aliases (household_id, alias, ingredient_id)
+SELECT i.household_id, k.alias, k.ingredient_id
+FROM ingredient_aliases_keep k JOIN ingredients i ON i.id = k.ingredient_id;
 
 CREATE UNIQUE INDEX ingredient_aliases_central ON ingredient_aliases (alias) WHERE household_id IS NULL;
 CREATE UNIQUE INDEX ingredient_aliases_household ON ingredient_aliases (household_id, alias) WHERE household_id IS NOT NULL;
@@ -78,17 +90,6 @@ CREATE INDEX ingredient_aliases_ingredient_id ON ingredient_aliases (ingredient_
 
 DROP TABLE ingredient_aliases_keep;
 DROP TABLE ingredients_keep;
-
--- An alias is central only on a central entry, and a household's alias sits on
--- a central entry or one of that household's own, never another's.
--- +goose StatementBegin
-CREATE TRIGGER ingredient_aliases_scope_bi BEFORE INSERT ON ingredient_aliases
-WHEN NOT EXISTS (SELECT 1 FROM ingredients i WHERE i.id = NEW.ingredient_id
-                  AND (i.household_id IS NULL OR i.household_id = NEW.household_id))
-BEGIN
-    SELECT RAISE(ABORT, 'ingredient alias names an ingredient outside its scope');
-END;
--- +goose StatementEnd
 
 CREATE TABLE ingredient_aisle_overrides (
     household_id  INTEGER NOT NULL REFERENCES households (id) ON DELETE CASCADE,

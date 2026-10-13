@@ -98,8 +98,8 @@ func (s *Store) fold(ctx context.Context, q *catalogdb.Queries, tx *sql.Tx, winn
 	if err := q.MoveIngredientAliases(ctx, catalogdb.MoveIngredientAliasesParams{WinnerID: winnerID, LoserID: loser.ID}); err != nil {
 		return fmt.Errorf("move aliases of ingredient %d: %w", loser.ID, err)
 	}
-	if err := q.AddIngredientAlias(ctx, catalogdb.AddIngredientAliasParams{HouseholdID: house, Alias: loser.Name, IngredientID: winnerID}); err != nil {
-		return wrapWrite(fmt.Sprintf("keep name %q of merged ingredient as an alias", loser.Name), err)
+	if err := addIngredientAlias(ctx, q, house, loser.Name, winnerID); err != nil {
+		return fmt.Errorf("keep name %q of merged ingredient as an alias: %w", loser.Name, err)
 	}
 	if intoCentral {
 		// A name or alias the central entry already answers to is redundant.

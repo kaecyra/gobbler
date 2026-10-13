@@ -146,6 +146,12 @@ func (h *handler) markReviewed(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
+	if in.Central {
+		// The operator curates the central catalog (ADR-00018); say so rather
+		// than redirect as though it had worked.
+		layout.WriteError(w, r, fmt.Errorf("mark ingredient %d reviewed: %w: %w", id, layout.ErrInvalid, domain.ErrCentral))
+		return
+	}
 	in.Reviewed = true
 	if err := h.Catalog.UpdateIngredient(r.Context(), in); err != nil {
 		layout.WriteError(w, r, fmt.Errorf("mark ingredient %d reviewed: %w", id, err))

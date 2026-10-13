@@ -232,11 +232,12 @@ func (s *Store) ListIngredients(ctx context.Context) ([]Ingredient, error) {
 	return s.withIngredientAliases(ctx, scope, rows, err)
 }
 
-// ListUnreviewedIngredients returns the ingredients awaiting review, ordered
-// by name, for the catalog cleanup page.
+// ListUnreviewedIngredients returns the household's own ingredients awaiting
+// review, ordered by name, for the catalog cleanup page. Central entries are
+// the operator's, so they are not listed (with no household, only they are).
 func (s *Store) ListUnreviewedIngredients(ctx context.Context) ([]Ingredient, error) {
 	scope := scopeOf(ctx)
-	rows, err := s.q.ListUnreviewedIngredients(ctx, readScope(scope))
+	rows, err := s.q.ListUnreviewedIngredients(ctx, owner(scope))
 	return s.withIngredientAliases(ctx, scope, rows, err)
 }
 
@@ -344,13 +345,45 @@ func checkFreeIngredient(ctx context.Context, q *catalogdb.Queries, scope, selfI
 // replaceIngredientAliases sets the aliases of one layer of id: the central
 // ones when layer is NULL, otherwise that household's.
 func replaceIngredientAliases(ctx context.Context, q *catalogdb.Queries, layer sql.NullInt64, id int64, aliases []string) error {
+	if err := checkAliasScope(ctx, q, layer, id); err != nil {
+		return err
+	}
 	if err := q.DeleteIngredientAliases(ctx, catalogdb.DeleteIngredientAliasesParams{IngredientID: id, HouseholdID: layer}); err != nil {
 		return fmt.Errorf("clear ingredient aliases: %w", err)
 	}
 	for _, a := range aliases {
-		if err := q.AddIngredientAlias(ctx, catalogdb.AddIngredientAliasParams{HouseholdID: layer, Alias: a, IngredientID: id}); err != nil {
-			return wrapWrite(fmt.Sprintf("add ingredient alias %q", a), err)
+		if err := addIngredientAlias(ctx, q, layer, a, id); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// addIngredientAlias adds one alias to a layer of id, after checking the scope.
+func addIngredientAlias(ctx context.Context, q *catalogdb.Queries, layer sql.NullInt64, alias string, id int64) error {
+	if err := checkAliasScope(ctx, q, layer, id); err != nil {
+		return err
+	}
+	if err := q.AddIngredientAlias(ctx, catalogdb.AddIngredientAliasParams{HouseholdID: layer, Alias: alias, IngredientID: id}); err != nil {
+		return wrapWrite(fmt.Sprintf("add ingredient alias %q", alias), err)
+	}
+	return nil
+}
+
+// checkAliasScope enforces that an alias stays in its scope (ADR-00018): a
+// central alias belongs to a central entry, and a household's alias to a central
+// entry or one of that household's own, never another's. The store is the only
+// writer of aliases, so the rule lives here and not in the schema.
+func checkAliasScope(ctx context.Context, q *catalogdb.Queries, layer sql.NullInt64, id int64) error {
+	entry, err := q.GetIngredientOwner(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("%w: ingredient %d", ErrNotFound, id)
+	}
+	if err != nil {
+		return fmt.Errorf("read owner of ingredient %d: %w", id, err)
+	}
+	if entry.Valid && (!layer.Valid || layer.Int64 != entry.Int64) {
+		return fmt.Errorf("%w: an alias must stay in the scope of ingredient %d", ErrInvalid, id)
 	}
 	return nil
 }

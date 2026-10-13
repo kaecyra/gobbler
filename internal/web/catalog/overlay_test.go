@@ -92,3 +92,29 @@ func TestListMarksCentralEntries(t *testing.T) {
 		t.Error("an overlay entry is marked central")
 	}
 }
+
+// Central entries are the operator's (ADR-00018): a household's "Needs review"
+// list holds only its own entries, and marking a central one reviewed is
+// refused, not quietly redirected.
+func TestNeedsReviewHoldsOnlyTheHouseholdsOwnEntries(t *testing.T) {
+	f := newFixture(t)
+	onion := f.central("onion")
+	if _, err := f.d.Exec(`UPDATE ingredients SET reviewed = 0 WHERE id = ?`, onion.ID); err != nil {
+		t.Fatal(err)
+	}
+	f.ingredient("zz proposed", "x", false)
+
+	body := wantStatus(t, f.do("GET", "/catalog/", nil), 200)
+	unrev := strings.Index(body, `data-testid="unreviewed"`)
+	all := strings.Index(body, `data-testid="all"`)
+	section := body[unrev:all]
+	if !strings.Contains(section, "zz proposed") || strings.Contains(section, ">onion<") {
+		t.Errorf("needs-review section = %s", section)
+	}
+
+	w := f.do("POST", "/catalog/"+idStr(onion)+"/reviewed", url.Values{})
+	wantStatus(t, w, 400)
+	if n := f.count(`SELECT COUNT(*) FROM ingredients WHERE id = ? AND reviewed = 0`, onion.ID); n != 1 {
+		t.Error("the central entry's reviewed flag changed")
+	}
+}
