@@ -1378,7 +1378,8 @@
         "l-invitations",
         "t-recipe-sharing",
         "w7-nav",
-        "t-operator-nav"
+        "t-operator-nav",
+        "r-operator-promotions-link"
       ],
       "owns": [
         "e2e/fixtures/route-coverage*.mjs",
@@ -1590,6 +1591,56 @@
       ],
       "owns": [
         ".github/scripts/check-image*"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "r-web-household-operator-shared",
+      "title": "Share fail, time layout and pending view between household and operator pages",
+      "wave": 8,
+      "track": null,
+      "issue": 169,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/household/**",
+        "internal/web/operator/**",
+        "internal/web/layout/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "r-operator-promotions-link",
+      "title": "Link /operator/promotions from the operator pages",
+      "wave": 8,
+      "track": null,
+      "issue": 170,
+      "status": "todo",
+      "depends_on": [
+        "r-web-household-operator-shared"
+      ],
+      "owns": [
+        "internal/web/layout/**",
+        "internal/web/operator/**",
+        "e2e/operator/**",
+        "e2e/layout/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "r-tenancy-test-gaps",
+      "title": "Household delete and migration 00010 tests cover overlay tables and every refs branch",
+      "wave": 8,
+      "track": null,
+      "issue": 171,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/household/delete_test.go",
+        "internal/catalog/overlay_migration_test.go"
       ],
       "needs_migration": null,
       "adrs": []
