@@ -951,7 +951,7 @@
       "adrs": [
         "00009"
       ],
-      "blocked": "Deferred by ADR-00018 until per-household Todoist configuration is decided"
+      "blocked": "Deferred by ADR-00018; returns with its own ADR"
     },
     {
       "id": "w7-ops-doc",

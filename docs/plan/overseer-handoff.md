@@ -106,7 +106,7 @@ All three are dispatchable now. Their lanes don't overlap, and only t-household-
 
 After that the tenancy chain (ADR-00018) runs one node at a time, because every link adds a migration and all the sqlc packages share one schema: t-scope-recipes (#135, also waits on w5-codec), then t-scope-shopping (#136), then t-catalog-overlay (#137). After the overlay, l-invitations (#39) and t-recipe-sharing (#138) can run in parallel; neither adds a migration. t-cross-household-gate (#139) is last.
 
-**Deferred:** w7-todoist (#36) moved to wave 9 and is blocked by ADR-00018 until per-household Todoist configuration is decided. l-meal-planning (#38) still needs its own ADR.
+**Deferred:** w7-todoist (#36) is in wave 9, deferred by ADR-00018, and returns only with its own ADR. l-meal-planning (#38) is in wave 9 too and still needs its own ADR.
 
 ## Lessons from this round (for the next dispatcher)
 

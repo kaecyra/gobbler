@@ -51,7 +51,7 @@ keeps check state for items that still exist.
   one-way; checks made in Todoist are not read back.
 
   > Amended by [ADR-00018](00018-households-as-tenants.md): Todoist push is
-  > deferred until per-household configuration is decided.
+  > deferred, and returns with its own ADR.
 
 ## Consequences
 
