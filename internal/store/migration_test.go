@@ -32,6 +32,12 @@ func seedPre00008(t *testing.T, d *sql.DB) {
 		`INSERT INTO made_it (recipe_id, made_on, created_at, created_by) VALUES (7, '2026-01-01', 't', 'a')`,
 		`INSERT INTO revisions (id, recipe_id, version, document, change_kind, created_at, created_by) VALUES (9, 7, 1, '{}', 'edit', 't', 'a')`,
 		`INSERT INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (7, 'text', x'6162', 'h', 't', 'a')`,
+		`INSERT INTO recipe_special_times (recipe_id, position, label, duration_ns) VALUES (7, 0, 'rest', 60)`,
+		`INSERT INTO equipment (id, name) VALUES (900, 'zz migration pan')`,
+		`INSERT INTO recipe_equipment (id, recipe_id, position, equipment_id) VALUES (11, 7, 0, 900)`,
+		`INSERT INTO recipe_equipment_steps (recipe_equipment_id, position, step_id) VALUES (11, 0, 5)`,
+		`INSERT INTO ingredients (id, name, aisle) VALUES (901, 'zz migration salt', 'test')`,
+		`INSERT INTO revision_ingredients (revision_id, ingredient_id) VALUES (9, 901)`,
 		`INSERT INTO shopping_lists (id, name, created_at) VALUES (1, 'Week', 't')`,
 		`INSERT INTO shopping_entries (list_id, recipe_id, multiplier) VALUES (1, 7, '1/1')`,
 	} {
@@ -69,7 +75,8 @@ func TestMigration00008AssignsExistingRecipesToTheFirstHousehold(t *testing.T) {
 	}
 	for table, want := range map[string]int{
 		"recipes": 2, "recipe_tags": 1, "components": 1, "ingredient_lines": 1, "line_qualifiers": 1,
-		"steps": 2, "step_dependencies": 1, "notes": 1, "made_it": 1, "revisions": 1, "source_snapshots": 1,
+		"steps": 2, "step_dependencies": 1, "recipe_special_times": 1, "recipe_equipment": 1,
+		"recipe_equipment_steps": 1, "revision_ingredients": 1, "notes": 1, "made_it": 1, "revisions": 1, "source_snapshots": 1,
 		"recipe_search": 2, "shopping_entries": 1,
 	} {
 		if n := count(t, d, `SELECT COUNT(*) FROM `+table); n != want {
