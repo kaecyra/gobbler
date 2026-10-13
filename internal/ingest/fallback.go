@@ -227,7 +227,7 @@ func (f *Fallback) fromStructured(ctx context.Context, rule Draft, s Structured)
 		return Draft{}, fmt.Errorf("read catalog while drafting: %w", a.rs.err)
 	}
 
-	d.Proposed = proposedIngredients(d.Components)
+	d.Proposed = ProposedFor(d.Components, nil)
 	d.score(a.requiredStructure())
 	return d, nil
 }

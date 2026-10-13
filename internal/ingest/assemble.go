@@ -233,13 +233,6 @@ func ProposedFor(comps []Component, prior []ProposedIngredient) []ProposedIngred
 	return out
 }
 
-// proposedIngredients is ProposedFor with no prior list, for the fallback path
-// in fallback.go, which sits outside this node's lane; fold it into a direct
-// ProposedFor call there.
-func proposedIngredients(comps []Component) []ProposedIngredient {
-	return ProposedFor(comps, nil)
-}
-
 // normalizeName is the catalog's stored form of a name: trimmed, lower-case,
 // single spaces.
 func normalizeName(s string) string {
