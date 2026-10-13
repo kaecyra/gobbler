@@ -1257,7 +1257,7 @@
       "wave": 8,
       "track": "persistence",
       "issue": 135,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "t-household-core",
         "w5-codec"
@@ -1456,7 +1456,7 @@
       "wave": 8,
       "track": "domain",
       "issue": 111,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "t-scope-recipes"
       ],
@@ -1478,7 +1478,7 @@
       "wave": 8,
       "track": "ui",
       "issue": 99,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "t-scope-recipes"
       ],
@@ -1520,7 +1520,7 @@
       "wave": 8,
       "track": "ingestion",
       "issue": 88,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "t-scope-recipes"
       ],
@@ -2013,6 +2013,14 @@
         "00018"
       ],
       "note": "ADR-00018: operator pages are operator-only. The membership middleware sets an operator flag on the request context for every operator request, member or not, through a helper in internal/web/layout/layout_operator.go; the layout renders operator-only links (Settings today) only when the flag is set. The server-side check stays the lock; this is presentation only."
+    },
+    {
+      "id": "t-scope-recipes",
+      "title": "Scope recipe data to the household",
+      "merged": "f979813",
+      "adrs": [
+        "00018"
+      ]
     }
   ],
   "adr_sequence": {
