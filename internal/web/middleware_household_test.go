@@ -12,6 +12,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/backup"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/operator"
 	"github.com/kaecyra/gobbler/internal/web/settings"
 )
@@ -243,5 +244,11 @@ func TestSettingsIsAnOperatorPath(t *testing.T) {
 func TestOperatorPagesAreOperatorPaths(t *testing.T) {
 	if !slices.Contains(operatorPaths, operator.Pattern) {
 		t.Errorf("operatorPaths %v lacks the operator pattern %q", operatorPaths, operator.Pattern)
+	}
+}
+
+func TestInvitationsPrefixIsTheInvitationsPath(t *testing.T) {
+	if InvitationsPrefix != layout.InvitationsPath+"/" {
+		t.Errorf("InvitationsPrefix = %q, want %q", InvitationsPrefix, layout.InvitationsPath+"/")
 	}
 }

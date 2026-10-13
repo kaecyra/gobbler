@@ -20,7 +20,7 @@ import (
 // InvitationsPrefix is where invitation acceptance lives. A verified non-member
 // can reach it, and nothing else but the health check, the not-a-member page
 // and the embedded assets that page is drawn with (ADR-00018, Admission).
-const InvitationsPrefix = "/invitations/"
+const InvitationsPrefix = layout.InvitationsPath + "/"
 
 // operatorPaths are the operator's pages (ADR-00018, Invitations): deployment
 // settings and the household invitations now, and later the review of overlay

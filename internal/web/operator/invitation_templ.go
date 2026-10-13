@@ -45,7 +45,7 @@ func invitationsPage(v invitationsView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Household invitations</h1><p>Nobody starts a household without an invitation. Invite an email address to start one; accepting it creates the household with that person as its first member. This page shows no household's data.</p><form method=\"post\" action=\"/operator/invitations\"><label>Email address <input type=\"email\" name=\"email\" required></label> <button type=\"submit\">Invite</button></form><section aria-labelledby=\"pending-h\" data-testid=\"pending\"><h2 id=\"pending-h\">Pending invitations</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Household invitations</h1><p>Nobody starts a household without an invitation. Invite an email address to start one; accepting it creates the household with that person as its first member. This page shows no household's data.</p><form method=\"post\" action=\"/operator/invitations\"><label>Email address <input type=\"email\" name=\"email\" required></label> <button type=\"submit\">Invite</button></form><p><a href=\"/operator/promotions\">Suggested ingredients</a> households would like every household to use.</p><section aria-labelledby=\"pending-h\" data-testid=\"pending\"><h2 id=\"pending-h\">Pending invitations</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -67,7 +67,7 @@ func invitationsPage(v invitationsView) templ.Component {
 					var templ_7745c5c3_Var3 string
 					templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.Email)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 21, Col: 16}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 22, Col: 16}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 					if templ_7745c5c3_Err != nil {
@@ -80,7 +80,7 @@ func invitationsPage(v invitationsView) templ.Component {
 					var templ_7745c5c3_Var4 templ.SafeURL
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(p.Path))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 21, Col: 51}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 22, Col: 51}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -93,7 +93,7 @@ func invitationsPage(v invitationsView) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Path)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 21, Col: 62}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 22, Col: 62}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -106,7 +106,7 @@ func invitationsPage(v invitationsView) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(p.Expires)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 22, Col: 47}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 23, Col: 47}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -119,7 +119,7 @@ func invitationsPage(v invitationsView) templ.Component {
 					var templ_7745c5c3_Var7 templ.SafeURL
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(revokePath(p.ID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 23, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 24, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -132,7 +132,7 @@ func invitationsPage(v invitationsView) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("Revoke the invitation of " + p.Email)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 24, Col: 80}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 25, Col: 80}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 					if templ_7745c5c3_Err != nil {

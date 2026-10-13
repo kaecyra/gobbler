@@ -10,6 +10,7 @@ templ invitationsPage(v invitationsView) {
 			<label>Email address <input type="email" name="email" required/></label>
 			<button type="submit">Invite</button>
 		</form>
+		<p><a href="/operator/promotions">Suggested ingredients</a> households would like every household to use.</p>
 		<section aria-labelledby="pending-h" data-testid="pending">
 			<h2 id="pending-h">Pending invitations</h2>
 			if len(v.Pending) == 0 {
