@@ -1619,7 +1619,7 @@
       "wave": 8,
       "track": null,
       "issue": 170,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "r-web-household-operator-shared"
       ],
@@ -2243,6 +2243,11 @@
       "id": "r-web-household-operator-shared",
       "title": "Share fail, time layout and pending view between household and operator pages",
       "merged": "4f48c9ca07496f746f2915956c27fc89473966ee"
+    },
+    {
+      "id": "r-operator-promotions-link",
+      "title": "Link /operator/promotions from the operator pages",
+      "merged": "f3eddc0dac565124bf98177564541995903a7894"
     }
   ],
   "adr_sequence": {
