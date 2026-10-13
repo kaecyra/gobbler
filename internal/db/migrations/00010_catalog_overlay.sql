@@ -24,10 +24,11 @@
 --
 -- Existing rows: a reviewed ingredient (the whole seed is reviewed) becomes
 -- central. An unreviewed one is an ingestion proposal nobody has checked, so it
--- lands in the overlay (ADR-00018), of the household with the lowest id, as
--- migrations 00008 and 00009 assigned the existing recipes and lists, together
--- with its aliases. With no household it stays central, because the overlay
--- needs an owner and nothing is invented.
+-- lands in the overlay (ADR-00018), with its aliases, of the household that
+-- uses it: the one household whose recipe lines, revision index, manual items
+-- or pantry reference it. One that no household references, or that several do,
+-- has no single owner and stays central; handing it to any one household would
+-- leave the others referencing an entry they cannot see.
 
 PRAGMA defer_foreign_keys = ON;
 
@@ -61,10 +62,18 @@ CREATE TABLE ingredients (
     suggested_at     TEXT,
     CHECK (suggested_at IS NULL OR household_id IS NOT NULL)
 );
+WITH refs (ingredient_id, household_id) AS (
+    SELECT ingredient_id, household_id FROM ingredient_lines WHERE ingredient_id IS NOT NULL
+    UNION SELECT ingredient_id, household_id FROM revision_ingredients
+    UNION SELECT ingredient_id, household_id FROM shopping_manual_items WHERE ingredient_id IS NOT NULL
+    UNION SELECT ingredient_id, household_id FROM shopping_pantry
+)
 INSERT INTO ingredients (id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed)
-SELECT id, CASE WHEN reviewed = 0 THEN (SELECT min(id) FROM households) END,
-       name, aisle, density_g_per_ml, usda_fdc_id, reviewed
-FROM ingredients_keep;
+SELECT k.id,
+       CASE WHEN k.reviewed = 0 AND (SELECT count(*) FROM refs r WHERE r.ingredient_id = k.id) = 1
+            THEN (SELECT r.household_id FROM refs r WHERE r.ingredient_id = k.id) END,
+       k.name, k.aisle, k.density_g_per_ml, k.usda_fdc_id, k.reviewed
+FROM ingredients_keep k;
 
 CREATE UNIQUE INDEX ingredients_central_name ON ingredients (name) WHERE household_id IS NULL;
 CREATE UNIQUE INDEX ingredients_household_name ON ingredients (household_id, name) WHERE household_id IS NOT NULL;
@@ -114,10 +123,11 @@ END;
 -- +goose StatementEnd
 
 -- +goose Down
--- Back to one global catalog. Overlay entries become ordinary entries, so a
--- name or alias held by two households fails the copy on the old UNIQUE
--- constraint and the migration aborts rather than merging them silently.
--- Household aisle overrides and suggestions are dropped.
+-- Back to one global catalog. Overlay entries become ordinary entries, with
+-- their own aliases, so a name or alias held by two households fails the copy
+-- on the old UNIQUE constraint and the migration aborts rather than merging
+-- them silently. A household's alias on a central entry, the aisle overrides
+-- and the suggestions are dropped.
 PRAGMA defer_foreign_keys = ON;
 
 CREATE TABLE ingredients_keep (

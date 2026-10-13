@@ -77,9 +77,10 @@ func noViolations(t *testing.T, d *sql.DB, when string) {
 }
 
 // The overlay migration rebuilds ingredients and ingredient_aliases while other
-// tables reference them. A reviewed ingredient (the seed) stays central and an
-// unreviewed one goes, with its aliases, to the overlay of the household with
-// the lowest id; every id survives and nothing that pointed at them is orphaned.
+// tables reference them. A reviewed ingredient (the seed) stays central. An
+// unreviewed one goes, with its aliases, to the overlay of the one household
+// that references it, and stays central when none or several do. Every id
+// survives and nothing that pointed at them is orphaned.
 func TestOverlayMigrationSplitsReviewedFromUnreviewed(t *testing.T) {
 	ctx, d := migrationDB(t)
 	hs := household.New(d)
@@ -87,7 +88,8 @@ func TestOverlayMigrationSplitsReviewedFromUnreviewed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := hs.Create(ctx, "Second", "second@example.com"); err != nil {
+	second, err := hs.Create(ctx, "Second", "second@example.com")
+	if err != nil {
 		t.Fatal(err)
 	}
 	var onion int64
@@ -98,6 +100,14 @@ func TestOverlayMigrationSplitsReviewedFromUnreviewed(t *testing.T) {
 	proposed := mustExec(t, d, `INSERT INTO ingredients (name, aisle, reviewed) VALUES ('zz proposed', 'x', 0)`)
 	mustExec(t, d, `INSERT INTO ingredient_aliases (alias, ingredient_id) VALUES ('zz proposed alias', ?)`, proposed)
 	mustExec(t, d, `INSERT INTO shopping_pantry (household_id, ingredient_id) VALUES (?, ?)`, first.ID, onion)
+	// Used by the second household alone, by both, and by neither.
+	secondOnly := mustExec(t, d, `INSERT INTO ingredients (name, aisle, reviewed) VALUES ('zz second only', 'x', 0)`)
+	mustExec(t, d, `INSERT INTO ingredient_aliases (alias, ingredient_id) VALUES ('zz second alias', ?)`, secondOnly)
+	mustExec(t, d, `INSERT INTO shopping_pantry (household_id, ingredient_id) VALUES (?, ?)`, second.ID, secondOnly)
+	shared := mustExec(t, d, `INSERT INTO ingredients (name, aisle, reviewed) VALUES ('zz shared', 'x', 0)`)
+	mustExec(t, d, `INSERT INTO shopping_pantry (household_id, ingredient_id) VALUES (?, ?)`, first.ID, shared)
+	mustExec(t, d, `INSERT INTO shopping_pantry (household_id, ingredient_id) VALUES (?, ?)`, second.ID, shared)
+	orphan := mustExec(t, d, `INSERT INTO ingredients (name, aisle, reviewed) VALUES ('zz orphan', 'x', 0)`)
 	recipeID := mustExec(t, d, `INSERT INTO recipes (household_id, name, created_at, created_by, updated_at, updated_by)
 		VALUES (?, 'Old', '2026-01-01T00:00:00Z', 'a', '2026-01-01T00:00:00Z', 'a')`, first.ID)
 	comp := mustExec(t, d, `INSERT INTO components (household_id, recipe_id, position) VALUES (?, ?, 0)`, first.ID, recipeID)
@@ -116,20 +126,25 @@ func TestOverlayMigrationSplitsReviewedFromUnreviewed(t *testing.T) {
 		id    int64
 		owner any
 		what  string
-	}{{onion, nil, "seed onion"}, {reviewed, nil, "reviewed entry"}, {proposed, first.ID, "unreviewed entry"}} {
+	}{{onion, nil, "seed onion"}, {reviewed, nil, "reviewed entry"}, {proposed, first.ID, "unreviewed entry used by one household"},
+		{secondOnly, second.ID, "unreviewed entry used by the second household alone"},
+		{shared, nil, "unreviewed entry used by two households"}, {orphan, nil, "unreferenced unreviewed entry"}} {
 		var got sql.NullInt64
 		if err := d.QueryRow(`SELECT household_id FROM ingredients WHERE id = ?`, c.id).Scan(&got); err != nil {
 			t.Fatalf("%s lost its id: %v", c.what, err)
 		}
-		if (c.owner == nil) == got.Valid || (c.owner != nil && got.Int64 != first.ID) {
+		if (c.owner == nil) == got.Valid || (c.owner != nil && got.Int64 != c.owner.(int64)) {
 			t.Errorf("%s: household_id = %v, want %v", c.what, got, c.owner)
 		}
 	}
 	if n := count(t, d, `SELECT count(*) FROM ingredient_aliases WHERE alias = 'zz proposed alias' AND household_id = ?`, first.ID); n != 1 {
 		t.Error("the unreviewed entry's alias did not go with it")
 	}
-	if n := count(t, d, `SELECT count(*) FROM ingredient_aliases WHERE household_id IS NULL`); n != aliasesBefore-1 {
-		t.Errorf("%d central aliases, want every alias but the proposed entry's (%d)", n, aliasesBefore-1)
+	if n := count(t, d, `SELECT count(*) FROM ingredient_aliases WHERE alias = 'zz second alias' AND household_id = ?`, second.ID); n != 1 {
+		t.Error("the second household's entry's alias did not go with it")
+	}
+	if n := count(t, d, `SELECT count(*) FROM ingredient_aliases WHERE household_id IS NULL`); n != aliasesBefore-2 {
+		t.Errorf("%d central aliases, want every alias but the two overlay entries' (%d)", n, aliasesBefore-2)
 	}
 	for line, ing := range lines {
 		if n := count(t, d, `SELECT count(*) FROM ingredient_lines WHERE id = ? AND ingredient_id = ?`, line, ing); n != 1 {
