@@ -1217,7 +1217,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 134,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "w7-settings",
         "w7-ops-doc"
