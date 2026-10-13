@@ -1195,7 +1195,7 @@
       "wave": 5,
       "track": "persistence",
       "issue": 123,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "w4-shopping-ui"
       ],
@@ -1796,6 +1796,11 @@
       "id": "w7-nav",
       "title": "Primary navigation links in the layout",
       "merged": "78b7af9"
+    },
+    {
+      "id": "w5-codec",
+      "title": "Share the quantity/unit DB codec between store and shopping",
+      "merged": "c9fae2e"
     }
   ],
   "adr_sequence": {
