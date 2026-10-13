@@ -8,14 +8,14 @@
     "rules": ".claude/rules/"
   },
   "notes": [
-    "Greenfield: every glob names a path that does not exist yet. Waves follow docs/design.md (W0-W7, Later = wave 8).",
     "internal/config is written whole by w0-config from the design.md configuration table, so later nodes do not edit it. A node that needs a new setting is a lane widening, not a silent edit.",
     "Migrations are goose files in internal/db/migrations, numbered from the 'schema' sequence at dispatch. Workers never pick a number.",
     "VERSION is bumped by every source PR (git-workflow rule): every merge invalidates every open branch's VERSION line. Expect a one-line rebase per merge; do not sequence around it.",
-    "Wave 8 nodes (meal planning, invitations) are deferred by ADR-00011 and need their own ADR before dispatch; they are recorded blocked.",
     "internal/web is a server/router package plus one subpackage per feature area (internal/web/<area>/**), shared templ layout in internal/web/layout: ADR-00012.",
     "E2E runs @playwright/test from e2e/, test-only and never shipped: ADR-00013.",
-    "Generated sqlc packages are single-writer per round (shared_files notes). Nodes that regenerate storedb: w3-search-list, w3-store-atomic-ingest, w3-catalog-page. catalogdb: w3-unit-owner. Each node's note says which it regenerates; never dispatch two writers of the same package in one round."
+    "Generated sqlc packages are single-writer per round (shared_files notes). Nodes that regenerate storedb: w3-search-list, w3-store-atomic-ingest, w3-catalog-page. catalogdb: w3-unit-owner. Each node's note says which it regenerates; never dispatch two writers of the same package in one round.",
+    "Greenfield: every glob names a path that does not exist yet. Waves follow docs/design.md (W0-W7, W8 = households per ADR-00018, Later = wave 9).",
+    "Wave 9 nodes are deferred and recorded blocked until their own ADR: meal planning by ADR-00011, Todoist push by ADR-00018."
   ],
   "gates": {
     "always": [
@@ -936,7 +936,7 @@
       "id": "w7-todoist",
       "title": "One-way idempotent Todoist push of a shopping list",
       "wave": 9,
-      "track": "later",
+      "track": "shopping",
       "issue": 36,
       "status": "todo",
       "depends_on": [
@@ -976,7 +976,7 @@
     {
       "id": "l-meal-planning",
       "title": "Meal planning feeding the shopping list (needs an ADR first)",
-      "wave": 8,
+      "wave": 9,
       "track": "later",
       "issue": 38,
       "status": "todo",
@@ -1012,7 +1012,7 @@
         "e2e/household/**",
         "e2e/operator/**"
       ],
-      "needs_migration": "schema",
+      "needs_migration": null,
       "adrs": [
         "00011",
         "00003",
@@ -1243,7 +1243,9 @@
         "internal/shopping/shoppingdb/**"
       ],
       "needs_migration": "schema",
-      "adrs": [],
+      "adrs": [
+        "00018"
+      ],
       "keystone": true
     },
     {
@@ -1265,7 +1267,9 @@
         "internal/household/householddb/**"
       ],
       "needs_migration": "schema",
-      "adrs": []
+      "adrs": [
+        "00018"
+      ]
     },
     {
       "id": "t-scope-shopping",
@@ -1284,7 +1288,9 @@
         "internal/household/householddb/**"
       ],
       "needs_migration": "schema",
-      "adrs": []
+      "adrs": [
+        "00018"
+      ]
     },
     {
       "id": "t-catalog-overlay",
@@ -1312,7 +1318,9 @@
         "internal/household/householddb/**"
       ],
       "needs_migration": "schema",
-      "adrs": []
+      "adrs": [
+        "00018"
+      ]
     },
     {
       "id": "t-recipe-sharing",
@@ -1332,7 +1340,9 @@
         "internal/web/recipeview/share*"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [
+        "00018"
+      ]
     },
     {
       "id": "t-cross-household-gate",
@@ -1352,7 +1362,9 @@
         "e2e/**/*.tenancy.spec.ts"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [
+        "00018"
+      ]
     }
   ],
   "shared_files": [

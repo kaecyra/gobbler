@@ -28,7 +28,7 @@ browser ──► Cloudflare Access ──► cloudflared ──► gobbler (Go 
                                                       ├──► recipe sites (URL ingest)
                                                       ├──► tesseract (local OCR)
                                                       ├──► Claude / Gemini APIs (fallback only)
-                                                      ├──► Todoist API
+                                                      ├──► Todoist API (deferred)
                                                       └──► S3-compatible storage (backups)
 ```
 
@@ -60,7 +60,7 @@ dependencies.
 | `ingest` | Acquire → extract → parse → score → fallback pipeline; JSON-LD, microdata, site extractors, OCR | `parse`, `recipe`, LLM interface |
 | `llm/claude`, `llm/gemini` | Provider implementations ([ADR-00007](adr/00007-llm-provider-interface.md)) | provider SDKs |
 | `shopping` | List generation, merging, pantry, check state, text export | `quantity`, `recipe`, `catalog` |
-| `todoist` | One-way push of a shopping list | `shopping` |
+| `todoist` | One-way push of a shopping list; deferred ([ADR-00018](adr/00018-households-as-tenants.md)) | `shopping` |
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
 | `web` | Server, chi router, middleware, health check, static assets; `web/layout` shared templ layout; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
 
@@ -75,7 +75,7 @@ Secrets are never in the repository.
 | Access | team domain, application AUD tag |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | LLM | provider, text model, vision model, per-provider API key, timeout |
-| Todoist | API token, target project |
+| Todoist | API token, target project (deferred, [ADR-00018](adr/00018-households-as-tenants.md)) |
 | Backup | schedule, local retention, S3 endpoint, region, bucket, prefix, credentials, remote retention |
 
 ## Testing
