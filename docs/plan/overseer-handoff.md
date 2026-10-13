@@ -33,7 +33,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## In flight
 
-Nothing. No worktrees on disk and no open PRs from this fleet. The session handed off at about 450k context, before the next dispatch.
+No worker is in flight, and there are no worktrees on disk. **PR #140** (this tenancy split) is open and waiting for the owner. Merge it before dispatching anything, because the dispatch order below depends on it.
 
 Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands. #128 and #129 widened lanes for that.
 
@@ -77,7 +77,9 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 
 - Settled with the owner on 2026-10-12. Multiple users means households as tenants. A household has several members, and an email belongs to at most one household. Every member has the same powers. Access admits any email that authenticates, and the app's membership check is the only lock. Nobody joins without an invitation. Only recipes are shared, and only as a copy sent to another household. The catalog is a central layer plus a per-household overlay. Only the operator promotes, and promotion merges exact duplicates automatically. Meal plans are household data.
 - ADR-00003 and ADR-00011 are amended. `AGENTS.md` and `README.md` no longer say single-user.
-- The graph attaches 00018 to `l-invitations`, and the ADR sequence's `last_used` is `00018`. The node is still `blocked`. Clearing that block, and splitting the tenancy work into nodes, is the next planning step. Obligations 4 to 6 in the ADR fall to those nodes.
+- The graph attaches 00018 to `l-invitations`, and the ADR sequence's `last_used` is `00018`. The tenancy work is split into the `tenancy` track: t-household-core, t-scope-recipes, t-scope-shopping, t-catalog-overlay, l-invitations, t-recipe-sharing and t-cross-household-gate (issues #134 to #139, plus #39). Obligations 4 and 6 fall to t-household-core, and obligation 5 to t-cross-household-gate.
+- Owner rulings while splitting: `/settings` is operator-only, and Todoist push is deferred. Both are recorded in ADR-00018, which also amends ADR-00009. The owner deferred Todoist partly to hold scope: nobody has asked for it, and whatever integration returns may not be Todoist.
+- `node.ts` has no verb to attach an existing ADR to a node or to clear `needs_migration`. The owner approved hand-editing those two fields on #140 (tenancy `adrs` gain `00018`; l-invitations `needs_migration` is null).
 - No deployment holds data, so tenancy needs no backfill.
 
 ## Things a fresh dispatcher must know
@@ -96,15 +98,15 @@ Every open branch bumps VERSION over main, so the second PR to merge always re-b
 
 ## Next to dispatch, and why
 
-All three are dispatchable now. Their lanes don't overlap, and none has a migration. Dispatch them in one message:
+All three are dispatchable now. Their lanes don't overlap, and only t-household-core has a migration. Dispatch them in one message:
 
-1. **w7-todoist (#36):** one-way, idempotent Todoist push of a shopping list. Lane: `internal/todoist/**` and `internal/web/shopping/todoist*`. Config keys `GOBBLER_TODOIST_TOKEN` and `GOBBLER_TODOIST_PROJECT` already exist in `compose.yaml`. Check how it mounts. Its lane has no `routes.go` entry, but `routes.go` is append-only shared, so it can add one.
-2. **w7-nav (#130):** fill the empty layout nav (`internal/web/layout/layout*`, `e2e/layout/**`). This is what makes `/recipes`, `/catalog`, `/shopping` and the other pages reachable from the home page.
-3. **w5-codec (#123):** move the quantity/unit DB codec into `internal/quantity`, shared by store and shopping. Its lane includes the callers. Decoding must stay byte-compatible with what is already stored.
+1. **t-household-core (#134), keystone:** household, membership, invitation and share tables (draw `schema` 00007 with `node.ts migration`). Membership middleware, the not-a-member page, operator emails in config, `/settings` made operator-only, and switchable dev/e2e identity.
+2. **w7-nav (#130):** fill the empty layout nav (`internal/web/layout/layout*`, `e2e/layout/**`).
+3. **w5-codec (#123):** move the quantity/unit DB codec into `internal/quantity`. Decoding must stay byte-compatible with what is already stored.
 
-Every one bumps VERSION. Whichever merges second and third re-bumps after rebasing.
+After that the tenancy chain (ADR-00018) runs one node at a time, because every link adds a migration and all the sqlc packages share one schema: t-scope-recipes (#135, also waits on w5-codec), then t-scope-shopping (#136), then t-catalog-overlay (#137). After the overlay, l-invitations (#39) and t-recipe-sharing (#138) can run in parallel; neither adds a migration. t-cross-household-gate (#139) is last.
 
-The `later` nodes, `l-meal-planning` (#38) and `l-invitations` (#39), each need an ADR first. That is the owner's call.
+**Deferred:** w7-todoist (#36) is in wave 9, deferred by ADR-00018, and returns only with its own ADR. l-meal-planning (#38) is in wave 9 too and still needs its own ADR.
 
 ## Lessons from this round (for the next dispatcher)
 

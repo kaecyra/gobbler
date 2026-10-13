@@ -23,7 +23,7 @@ index below in the same commit.
 | [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Accepted |
 | [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Accepted |
 | [00008](00008-ingredient-catalog.md) | Canonical ingredient catalog: curated seed plus USDA FoodData Central | Accepted |
-| [00009](00009-shopping-list.md) | Shopping list aggregation, pantry, live view, Todoist push | Accepted |
+| [00009](00009-shopping-list.md) | Shopping list aggregation, pantry, live view, Todoist push | Amended by [00018](00018-households-as-tenants.md) |
 | [00010](00010-backups.md) | Nightly SQLite snapshot to S3-compatible storage | Accepted |
 | [00011](00011-v1-scope-and-deferrals.md) | Scope and deferrals | Amended by [00018](00018-households-as-tenants.md) |
 | [00012](00012-web-subpackage-per-feature.md) | Web layer as a server package plus one subpackage per feature area | Accepted |

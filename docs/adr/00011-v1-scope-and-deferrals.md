@@ -22,6 +22,9 @@ export and Todoist push (ADR-00009); full-text search and tags; a cook mode
 that steps through the recipe one step at a time, keeps the screen awake and
 runs step timers; and nightly backups (ADR-00010).
 
+> Amended by [ADR-00018](00018-households-as-tenants.md): Todoist push is
+> deferred and is no longer in scope.
+
 The work is delivered in waves: foundation, domain core, rule-based ingestion,
 recipe UI, shopping, LLM and photo ingestion, cooking, and operations and
 integrations. The plan graph holds the detail.

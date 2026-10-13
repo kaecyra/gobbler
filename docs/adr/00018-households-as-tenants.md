@@ -230,7 +230,10 @@ app and decided by the app.
 A verified email that is neither a member of a household nor named by a
 pending invitation sees a "not a member" page and nothing else. No household
 data, no catalog data and no counts are shown to it, and no route is reachable
-by it except the health check, that page, and accepting an invitation.
+by it except the health check, that page, and accepting an invitation. An
+operator email is the one exception: it also reaches the operator's pages, so
+the operator can issue the first household invitation before any household
+exists.
 
 Because the membership check is the only lock, every route carries a test made
 as an authenticated non-member and as a member of a different household. Each
@@ -254,8 +257,33 @@ it can revoke it before it is accepted.
 
 The **operator** is defined in configuration (a list of emails), never in the
 database, so operator status cannot be granted from inside the app. The
-operator page offers only issuing and revoking household invitations. It shows
-no household's data.
+operator's pages offer only three things: issuing and revoking household
+invitations, reviewing overlay entries suggested for central, and the
+deployment settings (backup, storage and health). None of them shows a
+household's data. Members who are not operators cannot reach them.
+
+The deployment settings are operator-only because backup, storage and health
+belong to the whole deployment, not to any household. Showing them to every
+member was rejected: a member of one household would see, and could change,
+state that affects every other household.
+
+### Todoist
+
+Todoist push (ADR-00009) is deferred, for two reasons. As built it uses one
+token and one project for the whole deployment, so every household's list
+would land in one account, which breaks the isolation this ADR rests on. And
+nobody has yet asked for it: the scope was growing, and an integration with no
+known user is where the line was drawn. The integration that eventually
+returns may not be Todoist.
+
+Two options were rejected:
+
+- **Keep the one deployment-wide token.** Rejected because it sends one
+  household's list into an account another household may own.
+- **Add a per-household token now.** Rejected because it builds per-household
+  secret storage, which no ADR covers, for a feature nobody has asked for.
+
+It returns with its own ADR.
 
 ## Consequences
 
@@ -264,7 +292,9 @@ This reverses the single-user premise:
 - **ADR-00003.** Access still authenticates, but the app now authorises: it
   maps the verified email to household membership and scopes every query to it.
 - **ADR-00011.** "Invitations and multiple users" stops being a feature on top
-  of existing data. It becomes a tenancy change to the schema.
+  of existing data. It becomes a tenancy change to the schema. Todoist push
+  leaves "In scope".
+- **ADR-00009.** Todoist push is deferred (see Todoist above).
 
 No deployment holds data yet, so the schema gains tenancy with nothing to
 move. The first household is created like any other: the operator issues a
@@ -284,3 +314,6 @@ household invitation to themselves.
 6. The configuration key for operator emails is added to `internal/config`,
    `.env.example`, `compose.yaml` and the settings table in
    `docs/operations.md`.
+7. Amend ADR-00009's Todoist push bullet and ADR-00011's "In scope" paragraph
+   with a note naming this ADR. Set ADR-00009's Status to "Amended by
+   ADR-00018" and update its index row.

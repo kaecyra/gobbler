@@ -8,14 +8,14 @@
     "rules": ".claude/rules/"
   },
   "notes": [
-    "Greenfield: every glob names a path that does not exist yet. Waves follow docs/design.md (W0-W7, Later = wave 8).",
     "internal/config is written whole by w0-config from the design.md configuration table, so later nodes do not edit it. A node that needs a new setting is a lane widening, not a silent edit.",
     "Migrations are goose files in internal/db/migrations, numbered from the 'schema' sequence at dispatch. Workers never pick a number.",
     "VERSION is bumped by every source PR (git-workflow rule): every merge invalidates every open branch's VERSION line. Expect a one-line rebase per merge; do not sequence around it.",
-    "Wave 8 nodes (meal planning, invitations) are deferred by ADR-00011 and need their own ADR before dispatch; they are recorded blocked.",
     "internal/web is a server/router package plus one subpackage per feature area (internal/web/<area>/**), shared templ layout in internal/web/layout: ADR-00012.",
     "E2E runs @playwright/test from e2e/, test-only and never shipped: ADR-00013.",
-    "Generated sqlc packages are single-writer per round (shared_files notes). Nodes that regenerate storedb: w3-search-list, w3-store-atomic-ingest, w3-catalog-page. catalogdb: w3-unit-owner. Each node's note says which it regenerates; never dispatch two writers of the same package in one round."
+    "Generated sqlc packages are single-writer per round (shared_files notes). Nodes that regenerate storedb: w3-search-list, w3-store-atomic-ingest, w3-catalog-page. catalogdb: w3-unit-owner. Each node's note says which it regenerates; never dispatch two writers of the same package in one round.",
+    "Greenfield: every glob names a path that does not exist yet. Waves follow docs/design.md (W0-W7, W8 = households per ADR-00018, Later = wave 9).",
+    "Wave 9 nodes are deferred and recorded blocked until their own ADR: meal planning by ADR-00011, Todoist push by ADR-00018."
   ],
   "gates": {
     "always": [
@@ -128,9 +128,20 @@
       "name": "Deferred features (ADR-00011)",
       "owns": [
         "internal/mealplan/**",
-        "internal/web/mealplan/**",
-        "internal/users/**"
+        "internal/web/mealplan/**"
       ]
+    },
+    "tenancy": {
+      "name": "Households",
+      "owns": [
+        "internal/household/**",
+        "internal/sharing/**",
+        "internal/web/household/**",
+        "internal/web/operator/**",
+        "internal/web/sharing/**",
+        "internal/web/nonmember/**"
+      ],
+      "note": "ADR-00018. The schema nodes form one chain because the sqlc packages share one schema."
     }
   },
   "nodes": [
@@ -924,12 +935,13 @@
     {
       "id": "w7-todoist",
       "title": "One-way idempotent Todoist push of a shopping list",
-      "wave": 7,
+      "wave": 9,
       "track": "shopping",
       "issue": 36,
       "status": "todo",
       "depends_on": [
-        "w4-shopping-ui"
+        "w4-shopping-ui",
+        "t-scope-shopping"
       ],
       "owns": [
         "internal/todoist/**",
@@ -938,7 +950,8 @@
       "needs_migration": null,
       "adrs": [
         "00009"
-      ]
+      ],
+      "blocked": "Deferred by ADR-00018; returns with its own ADR"
     },
     {
       "id": "w7-ops-doc",
@@ -963,14 +976,14 @@
     {
       "id": "l-meal-planning",
       "title": "Meal planning feeding the shopping list (needs an ADR first)",
-      "wave": 8,
+      "wave": 9,
       "track": "later",
       "issue": 38,
       "status": "todo",
       "depends_on": [
-        "w7-todoist",
         "w7-settings",
-        "w7-ops-doc"
+        "w7-ops-doc",
+        "t-scope-shopping"
       ],
       "owns": [
         "internal/mealplan/**",
@@ -984,26 +997,27 @@
     },
     {
       "id": "l-invitations",
-      "title": "Invitations and multiple users (needs an ADR first)",
+      "title": "Invitations, members and the operator's household-invitation page",
       "wave": 8,
-      "track": "later",
+      "track": "tenancy",
       "issue": 39,
       "status": "todo",
       "depends_on": [
-        "w7-todoist",
-        "w7-settings",
-        "w7-ops-doc"
+        "t-catalog-overlay"
       ],
       "owns": [
-        "internal/users/**"
+        "internal/household/**",
+        "internal/web/household/**",
+        "internal/web/operator/**",
+        "e2e/household/**",
+        "e2e/operator/**"
       ],
-      "needs_migration": "schema",
+      "needs_migration": null,
       "adrs": [
         "00011",
         "00003",
         "00018"
-      ],
-      "blocked": "Deferred by ADR-00011; needs its own ADR before dispatch"
+      ]
     },
     {
       "id": "w2-sqlc",
@@ -1196,6 +1210,161 @@
       ],
       "needs_migration": null,
       "adrs": []
+    },
+    {
+      "id": "t-household-core",
+      "title": "Households, membership and admission",
+      "wave": 8,
+      "track": "tenancy",
+      "issue": 134,
+      "status": "todo",
+      "depends_on": [
+        "w7-settings",
+        "w7-ops-doc"
+      ],
+      "owns": [
+        "internal/household/**",
+        "internal/auth/**",
+        "internal/config/**",
+        "internal/web/middleware*.go",
+        "internal/web/web.go",
+        "internal/web/web_test.go",
+        "internal/web/server_test.go",
+        "internal/web/settings/**",
+        "e2e/settings/**",
+        "internal/web/nonmember/**",
+        "e2e/nonmember/**",
+        "e2e/fixtures/serve.mjs",
+        "e2e/fixtures/identity*",
+        "e2e/playwright.config.ts",
+        "docs/operations.md",
+        ".env.example",
+        "compose.yaml",
+        "internal/shopping/shoppingdb/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00018"
+      ],
+      "keystone": true
+    },
+    {
+      "id": "t-scope-recipes",
+      "title": "Scope recipe data to the household",
+      "wave": 8,
+      "track": "persistence",
+      "issue": 135,
+      "status": "todo",
+      "depends_on": [
+        "t-household-core",
+        "w5-codec"
+      ],
+      "owns": [
+        "internal/store/**",
+        "internal/web/ingest/pending*.go",
+        "e2e/ingest/**",
+        "internal/shopping/shoppingdb/**",
+        "internal/household/householddb/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00018"
+      ]
+    },
+    {
+      "id": "t-scope-shopping",
+      "title": "Scope shopping data and the pantry to the household",
+      "wave": 8,
+      "track": "shopping",
+      "issue": 136,
+      "status": "todo",
+      "depends_on": [
+        "t-scope-recipes"
+      ],
+      "owns": [
+        "internal/shopping/**",
+        "internal/web/shopping/**",
+        "e2e/shopping/**",
+        "internal/household/householddb/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00018"
+      ]
+    },
+    {
+      "id": "t-catalog-overlay",
+      "title": "Central catalog plus per-household overlay",
+      "wave": 8,
+      "track": "persistence",
+      "issue": 137,
+      "status": "todo",
+      "depends_on": [
+        "t-scope-shopping"
+      ],
+      "owns": [
+        "internal/catalog/**",
+        "internal/web/catalog/**",
+        "e2e/catalog/**",
+        "internal/store/store_merge*.go",
+        "internal/shopping/store_merge*.go",
+        "internal/ingest/resolve*.go",
+        "internal/ingest/save*.go",
+        "internal/web/editor/build*.go",
+        "internal/web/ingest/edit*.go",
+        "internal/web/operator/promot*",
+        "e2e/operator/promot*",
+        "internal/shopping/shoppingdb/**",
+        "internal/household/householddb/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00018"
+      ]
+    },
+    {
+      "id": "t-recipe-sharing",
+      "title": "Send a recipe copy to another household",
+      "wave": 8,
+      "track": "tenancy",
+      "issue": 138,
+      "status": "todo",
+      "depends_on": [
+        "t-catalog-overlay"
+      ],
+      "owns": [
+        "internal/sharing/**",
+        "internal/web/sharing/**",
+        "e2e/sharing/**",
+        "internal/store/share*.go",
+        "internal/web/recipeview/share*"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00018"
+      ]
+    },
+    {
+      "id": "t-cross-household-gate",
+      "title": "Cross-household tests on every route, enforced by the gate",
+      "wave": 8,
+      "track": "tenancy",
+      "issue": 139,
+      "status": "todo",
+      "depends_on": [
+        "l-invitations",
+        "t-recipe-sharing",
+        "w7-nav"
+      ],
+      "owns": [
+        "e2e/fixtures/route-coverage*.mjs",
+        "e2e/fixtures/routes/**",
+        "e2e/**/*.tenancy.spec.ts"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00018"
+      ]
     }
   ],
   "shared_files": [
