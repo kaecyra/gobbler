@@ -32,9 +32,9 @@ The owner chose the flag on 2026-10-13 (issue #85).
   sets it. Equipment lives in the central catalog layer, whose only curator is
   the operator ([ADR-00018](00018-households-as-tenants.md), Catalog), so the
   operator sets it.
-- A scaled recipe view shows the larger-pan hint
-  on an equipment line exactly when that line's catalog equipment is `sized`.
-  An unscaled view never shows it. Equipment that is not `sized` never shows it.
+- A scaled recipe view shows the larger-pan hint on an equipment line exactly
+  when that line's catalog equipment is `sized`. An unscaled view never shows
+  it. Equipment that is not `sized` never shows it.
 
 ## Consequences
 
@@ -43,11 +43,10 @@ ADR-00005's "equipment with a size" now means equipment whose catalog row is
 
 **Obligations:**
 
-1. A `schema` migration adds `sized INTEGER NOT NULL DEFAULT 0 CHECK (sized IN
+1. A numbered SQL migration adds `sized INTEGER NOT NULL DEFAULT 0 CHECK (sized IN
    (0, 1))` to catalog equipment.
-2. The operator's catalog review surface lists equipment and lets the operator
-   set and clear `sized`; a non-operator member cannot. Both are covered by e2e
-   tests. No such surface exists for equipment yet, so the node implementing
-   this adds it.
+2. An operator-only equipment review surface lists catalog equipment and lets
+   the operator set and clear `sized`; a non-operator member cannot reach it.
+   Both are covered by e2e tests.
 3. The recipe view's scaled rendering shows the hint on `sized` equipment only,
    with tests for a sized and an unsized line, each scaled and unscaled.
