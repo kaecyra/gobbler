@@ -1425,7 +1425,8 @@
       "owns": [
         "Makefile",
         ".github/scripts/check-templ*",
-        ".claude/rules/code-style.md"
+        ".claude/rules/code-style.md",
+        ".claude/rules/git-workflow.md"
       ],
       "needs_migration": null,
       "adrs": [],
