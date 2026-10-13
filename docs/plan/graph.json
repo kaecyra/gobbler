@@ -1485,7 +1485,7 @@
       "wave": 8,
       "track": "ui",
       "issue": 98,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "t-scope-recipes",
         "w3-display-times",
@@ -2055,6 +2055,15 @@
         "00004"
       ],
       "note": "ADR-00004 Times. One table-tested builder in internal/recipe/display; recipeview, history and cook call it."
+    },
+    {
+      "id": "w3-recipeview-links",
+      "title": "Recipe page: embed journal, link history and clone, show clone origin",
+      "merged": "d6fe73172b69602cc9ba57f139db863b9f75c075",
+      "adrs": [
+        "00012"
+      ],
+      "note": "ADR-00012: include by URL, no cross-feature import."
     }
   ],
   "adr_sequence": {
