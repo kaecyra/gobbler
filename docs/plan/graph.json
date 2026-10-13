@@ -1520,7 +1520,7 @@
       "wave": 8,
       "track": "ingestion",
       "issue": 88,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "t-scope-recipes"
       ],
@@ -2036,6 +2036,15 @@
       "title": "Fail make check when committed templ output is stale",
       "merged": "396d7c1",
       "note": "make generate runs templ and then goimports (matching make fmt). generate-check regenerates and compares every tracked *_templ.go, and a test-scripts case proves it. Regenerating from the repository root fixes the files whose FileName was written from inside a package directory. code-style.md and the git-workflow.md gates table say templ output is checked like sqlc's."
+    },
+    {
+      "id": "w2-proposed-dedup",
+      "title": "Export proposed-ingredient recompute from internal/ingest; delete the web copy",
+      "merged": "57686f7",
+      "adrs": [
+        "00008"
+      ],
+      "note": "ADR-00008 obligation 3. One exported function used by the assembler and the review screen; behaviour unchanged."
     }
   ],
   "adr_sequence": {
