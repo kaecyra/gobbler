@@ -1548,6 +1548,39 @@
         "00019"
       ],
       "note": "ADR-00019: a hand-set sized flag on catalog equipment (migration), set by the operator during catalog review, drives the scaled-view larger-pan hint. No equipment review surface exists yet; if t-catalog-overlay moves central curation under internal/web/operator, re-derive this lane before dispatch. Waits on t-catalog-overlay because both edit catalog equipment and the catalog page. Remove the recipeview model comment saying the schema has no size yet (#85)."
+    },
+    {
+      "id": "r-proposed-wrapper",
+      "title": "Fold the proposedIngredients wrapper into ProposedFor",
+      "wave": 8,
+      "track": "ingestion",
+      "issue": 161,
+      "status": "todo",
+      "depends_on": [
+        "w2-proposed-dedup"
+      ],
+      "owns": [
+        "internal/ingest/assemble*.go",
+        "internal/ingest/fallback*.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "g-image-check-json",
+      "title": "check-image.sh recognises the JSON form of COPY and ADD",
+      "wave": 8,
+      "track": "foundation",
+      "issue": 162,
+      "status": "todo",
+      "depends_on": [
+        "g-image-check"
+      ],
+      "owns": [
+        ".github/scripts/check-image*"
+      ],
+      "needs_migration": null,
+      "adrs": []
     }
   ],
   "shared_files": [
