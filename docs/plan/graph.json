@@ -1360,7 +1360,8 @@
         "internal/web/sharing/**",
         "e2e/sharing/**",
         "internal/store/share*.go",
-        "internal/web/recipeview/share*"
+        "internal/web/recipeview/share*",
+        "internal/catalog/ingredient*.go"
       ],
       "needs_migration": null,
       "adrs": [
