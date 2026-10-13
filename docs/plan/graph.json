@@ -1350,7 +1350,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 138,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "t-catalog-overlay",
         "w3-recipeview-links"
@@ -1619,7 +1619,7 @@
       "wave": 8,
       "track": null,
       "issue": 170,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "r-web-household-operator-shared"
       ],
