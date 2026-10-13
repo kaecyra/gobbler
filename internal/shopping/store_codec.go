@@ -1,59 +1,34 @@
-// Copy of internal/store's codec; see issue #123.
-
 package shopping
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 )
 
-// The stored forms match the recipe lines' (migration 00002): a quantity is
-// NULL for none, "n/d" for an exact value and "n/d..n/d" for a range, with n/d
-// the exact reduced fraction; a unit is a reference to units(id).
+// The stored forms match the recipe lines' (migration 00002) and come from
+// quantity's codec: a quantity is NULL for none, "n/d" for an exact value and
+// "n/d..n/d" for a range; a unit is a reference to units(id).
 
-const rangeSep = ".."
-
-func ratText(r quantity.Rat) string {
-	return r.Num().String() + "/" + r.Denom().String()
-}
+func ratText(r quantity.Rat) string { return quantity.EncodeRat(r) }
 
 func encodeQty(q quantity.Quantity) (sql.NullString, error) {
-	if q.IsAbsent() {
-		return sql.NullString{}, nil
+	s, ok, err := quantity.EncodeQty(q)
+	if err != nil {
+		return sql.NullString{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
-	if q.Min().Sign() < 0 || q.Max().Sign() < 0 {
-		return sql.NullString{}, fmt.Errorf("%w: negative quantity %s", ErrInvalid, q)
-	}
-	s := ratText(q.Min())
-	if q.IsRange() {
-		s += rangeSep + ratText(q.Max())
-	}
-	return sql.NullString{String: s, Valid: true}, nil
+	return sql.NullString{String: s, Valid: ok}, nil
 }
 
 func decodeQty(n sql.NullString) (quantity.Quantity, error) {
 	if !n.Valid {
 		return quantity.Absent(), nil
 	}
-	lo, hi, isRange := strings.Cut(n.String, rangeSep)
-	loR, err := quantity.ParseRat(lo)
+	q, err := quantity.DecodeQty(n.String)
 	if err != nil {
-		return quantity.Quantity{}, fmt.Errorf("%w: quantity %q: %w", ErrCorrupt, n.String, err)
-	}
-	if !isRange {
-		return quantity.Exact(loR), nil
-	}
-	hiR, err := quantity.ParseRat(hi)
-	if err != nil {
-		return quantity.Quantity{}, fmt.Errorf("%w: quantity %q: %w", ErrCorrupt, n.String, err)
-	}
-	q, err := quantity.NewRange(loR, hiR)
-	if err != nil {
-		return quantity.Quantity{}, fmt.Errorf("%w: quantity %q: %w", ErrCorrupt, n.String, err)
+		return quantity.Quantity{}, fmt.Errorf("%w: %w", ErrCorrupt, err)
 	}
 	return q, nil
 }
@@ -68,42 +43,35 @@ func decodeMultiplier(s string) (quantity.Rat, error) {
 
 // unitTable is the catalog's units, loaded once per operation: manual amounts
 // hold full quantity.Units, the database a reference by id.
-type unitTable struct {
-	ids   map[string]int64
-	units map[int64]quantity.Unit
-}
+type unitTable struct{ *quantity.UnitTable }
 
 func (s *Store) loadUnits(ctx context.Context) (*unitTable, error) {
 	all, err := s.catalog.ListUnits(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("load units: %w", err)
 	}
-	t := &unitTable{ids: make(map[string]int64, len(all)), units: make(map[int64]quantity.Unit, len(all))}
+	t := quantity.NewUnitTable()
 	for _, u := range all {
-		t.ids[u.Unit.Name] = u.ID
-		t.units[u.ID] = u.Unit
+		t.Add(u.ID, u.Unit)
 	}
-	return t, nil
+	return &unitTable{t}, nil
 }
 
 func (t *unitTable) id(u quantity.Unit) (sql.NullInt64, error) {
-	if u.IsZero() {
-		return sql.NullInt64{}, nil
+	id, err := t.ID(u)
+	if err != nil {
+		return sql.NullInt64{}, fmt.Errorf("%w: %w", ErrUnknownReference, err)
 	}
-	id, ok := t.ids[u.Name]
-	if !ok {
-		return sql.NullInt64{}, fmt.Errorf("%w: unit %q", ErrUnknownReference, u.Name)
-	}
-	return sql.NullInt64{Int64: id, Valid: true}, nil
+	return sql.NullInt64{Int64: id, Valid: id != 0}, nil
 }
 
 func (t *unitTable) unit(id sql.NullInt64) (quantity.Unit, error) {
 	if !id.Valid {
 		return quantity.Unit{}, nil
 	}
-	u, ok := t.units[id.Int64]
-	if !ok {
-		return quantity.Unit{}, fmt.Errorf("%w: unit id %d", ErrCorrupt, id.Int64)
+	u, err := t.Unit(id.Int64)
+	if err != nil {
+		return quantity.Unit{}, fmt.Errorf("%w: %w", ErrCorrupt, err)
 	}
 	return u, nil
 }

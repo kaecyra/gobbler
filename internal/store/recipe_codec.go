@@ -4,34 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
-// rangeSep separates the bounds of a stored range.
-const rangeSep = ".."
-
-// ratText is the exact reduced fraction "n/d", which quantity.ParseRat reads
-// back without loss.
-func ratText(r quantity.Rat) string {
-	return r.Num().String() + "/" + r.Denom().String()
-}
-
 // encodeQty returns the stored text of q: nil for none, "n/d" for an exact
-// value, "n/d..n/d" for a range. A negative bound could not be read back, so
-// it is refused here rather than at the next read.
+// value, "n/d..n/d" for a range (quantity.EncodeQty).
 func encodeQty(q quantity.Quantity) (*string, error) {
-	if q.IsAbsent() {
+	s, ok, err := quantity.EncodeQty(q)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	if !ok {
 		return nil, nil //nolint:nilnil // nil text is the stored form of "no quantity"
-	}
-	if q.Min().Sign() < 0 || q.Max().Sign() < 0 {
-		return nil, fmt.Errorf("%w: negative quantity %s", ErrInvalid, q)
-	}
-	s := ratText(q.Min())
-	if q.IsRange() {
-		s += rangeSep + ratText(q.Max())
 	}
 	return &s, nil
 }
@@ -41,21 +27,9 @@ func decodeQty(s *string) (quantity.Quantity, error) {
 	if s == nil {
 		return quantity.Absent(), nil
 	}
-	lo, hi, isRange := strings.Cut(*s, rangeSep)
-	loR, err := quantity.ParseRat(lo)
+	q, err := quantity.DecodeQty(*s)
 	if err != nil {
-		return quantity.Quantity{}, fmt.Errorf("stored quantity %q: %w", *s, err)
-	}
-	if !isRange {
-		return quantity.Exact(loR), nil
-	}
-	hiR, err := quantity.ParseRat(hi)
-	if err != nil {
-		return quantity.Quantity{}, fmt.Errorf("stored quantity %q: %w", *s, err)
-	}
-	q, err := quantity.NewRange(loR, hiR)
-	if err != nil {
-		return quantity.Quantity{}, fmt.Errorf("stored quantity %q: %w", *s, err)
+		return quantity.Quantity{}, fmt.Errorf("stored %w", err)
 	}
 	return q, nil
 }
@@ -115,16 +89,16 @@ func loadUnits(ctx context.Context, q *storedb.Queries) (*unitTable, error) {
 	return t, nil
 }
 
+// table views the maps as the shared quantity.UnitTable.
+func (t *unitTable) table() *quantity.UnitTable { return quantity.UnitTableOver(t.ids, t.units) }
+
 // id returns the reference stored for u; the zero unit is NULL.
 func (t *unitTable) id(u quantity.Unit) (sql.NullInt64, error) {
-	if u.IsZero() {
-		return sql.NullInt64{}, nil
+	id, err := t.table().ID(u)
+	if err != nil {
+		return sql.NullInt64{}, fmt.Errorf("%w: %w", ErrUnknownReference, err)
 	}
-	id, ok := t.ids[u.Name]
-	if !ok {
-		return sql.NullInt64{}, fmt.Errorf("%w: unit %q", ErrUnknownReference, u.Name)
-	}
-	return sql.NullInt64{Int64: id, Valid: true}, nil
+	return sql.NullInt64{Int64: id, Valid: id != 0}, nil
 }
 
 // unit resolves a stored reference.
@@ -132,9 +106,9 @@ func (t *unitTable) unit(id sql.NullInt64) (quantity.Unit, error) {
 	if !id.Valid {
 		return quantity.Unit{}, nil
 	}
-	u, ok := t.units[id.Int64]
-	if !ok {
-		return quantity.Unit{}, fmt.Errorf("%w: unit id %d", ErrUnknownReference, id.Int64)
+	u, err := t.table().Unit(id.Int64)
+	if err != nil {
+		return quantity.Unit{}, fmt.Errorf("%w: %w", ErrUnknownReference, err)
 	}
 	return u, nil
 }
