@@ -1195,7 +1195,7 @@
       "wave": 5,
       "track": "persistence",
       "issue": 123,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "w4-shopping-ui"
       ],
