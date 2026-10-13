@@ -5,6 +5,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/sharing"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
@@ -18,6 +19,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
 	"github.com/kaecyra/gobbler/internal/web/settings"
+	websharing "github.com/kaecyra/gobbler/internal/web/sharing"
 	webshopping "github.com/kaecyra/gobbler/internal/web/shopping"
 )
 
@@ -41,6 +43,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountCatalog(r, d)
 	mountHouseholds(r, d)
 	mountPromotion(r, d)
+	mountSharing(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -82,4 +85,12 @@ func mountPromotion(r chi.Router, d Deps) {
 	store.New(d.DB).RegisterMergeHooks(cat)
 	shopping.New(d.DB, store.New(d.DB), cat).RegisterMergeHooks(cat)
 	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: cat}))
+}
+
+// mountSharing mounts the pages that send a recipe copy to another household
+// and accept or decline one sent to this household (ADR-00018, Sharing).
+func mountSharing(r chi.Router, d Deps) {
+	rec := store.New(d.DB)
+	svc := sharing.New(rec, household.New(d.DB), catalog.New(d.DB))
+	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: rec}))
 }

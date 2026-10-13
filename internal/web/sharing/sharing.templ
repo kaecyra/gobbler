@@ -1,0 +1,46 @@
+package sharing
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+templ inboxPage(v inboxView) {
+	@layout.Page("Shared with you") {
+		<h1>Shared with you</h1>
+		if len(v.Offers) == 0 {
+			<p data-testid="no-shares">Nothing is waiting. Another household can send you a copy of a recipe; it arrives here and joins your recipes only if you accept it.</p>
+		} else {
+			<ul data-testid="shares">
+				for _, o := range v.Offers {
+					<li data-testid="share">
+						<strong>{ o.RecipeName }</strong>
+						<span class="muted"> from { o.Sender }, { o.Sent }</span>
+						<form method="post" action={ templ.SafeURL(o.AcceptPath) } style="display:inline">
+							<button type="submit" aria-label={ "Accept " + o.RecipeName }>Accept</button>
+						</form>
+						<form method="post" action={ templ.SafeURL(o.DeclinePath) } style="display:inline">
+							<button type="submit" aria-label={ "Decline " + o.RecipeName }>Decline</button>
+						</form>
+					</li>
+				}
+			</ul>
+		}
+	}
+}
+
+templ sendPage(v sendView) {
+	@layout.Page("Share a recipe") {
+		<h1>Share <span data-testid="recipe-name">{ v.RecipeName }</span></h1>
+		<p>Name a member of the household to send it to. They get a copy to accept or decline; later edits on either side stay on that side. Your notes, history and rating are not sent.</p>
+		<form method="post" action={ templ.SafeURL(v.Action()) }>
+			<label>Email address <input type="email" name="email" required/></label>
+			<button type="submit">Send a copy</button>
+		</form>
+	}
+}
+
+templ sentPage() {
+	@layout.Page("Recipe sent") {
+		<h1>Sent</h1>
+		<p data-testid="sent">If that address belongs to a member of a household, the recipe is now waiting for them to accept it.</p>
+		<p><a href="/recipes">Back to recipes</a></p>
+	}
+}
