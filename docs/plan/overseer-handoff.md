@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-10-13, round 10 in progress
+# Overseer handoff: 2026-10-13, round 10 close
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
 
@@ -87,29 +87,34 @@ VERSION on main is 0.47.0. The next free schema number is 00011; the next ADR is
 - #168 migration 00010: an unreviewed ingredient referenced by exactly one household moves to that household's overlay; anything else stays central.
 - #168 also adds store-level checks that refuse an ingredient id outside central or the writer's overlay (shopping manual items, pantry, recipe lines).
 
-**Round 10 (2026-10-13), in progress. VERSION on main is 0.49.1; the next schema number after 00011 is 00012; the next ADR is 00020.**
+**Round 10 (2026-10-13), closed at the context ceiling. Nothing is in flight: no worktrees, no open PRs. VERSION on main is 0.50.0. The next schema number is 00012; the next ADR is 00021.**
 
-Merged: #174 r-tenancy-test-gaps, #173 r-web-household-operator-shared, #179 r-operator-promotions-link, #175 t-recipe-sharing, #182 t-sharing-entry-points, #183 r-drop-todoist-config (owner: Todoist dropped). Graph PRs #172, #177, #178, #181.
+Merged this round: #174 r-tenancy-test-gaps, #173 r-web-household-operator-shared, #179 r-operator-promotions-link, #175 t-recipe-sharing, #182 t-sharing-entry-points, #183 r-drop-todoist-config (owner: Todoist dropped), #184 t-cross-household-gate, #196 w3-equipment-size (schema 00011). Graph/ADR PRs #172, #177, #178, #181, #194, #195.
 
-| Node | Issue | Worktree / branch | State |
-|---|---|---|---|
-| t-cross-household-gate | #139 | `wt-139`, `feat/139-cross-household-gate` | PR #184 in review (VERSION 0.49.2) |
-| w3-equipment-size | #85 | `wt-85`, `feat/85-equipment-size` | worker running, schema 00011, ports 41100 |
+**Owner decisions this round:**
+- Todoist is gone (config, compose, .env.example, operations.md, design.md). Two design.md lines still cite ADR-00018's deferral; dropping them needs an ADR.
+- ADR-00020 (#194): ingest builds the step graph by rules then LLM (default vs cue-backed steps); the LLM fallback fills only gaps (amends ADR-00006 step 5); the review screen reuses the recipe editor on the draft.
+- ADR-00019 corrected in place (pre-deploy window): the larger-pan hint shows only when scaled up.
 
-After both merge, only l-meal-planning (#38, deferred, needs an ADR) is left.
+**Next to dispatch (ingest track, from #194; all wave 9):**
+1. **i-text-meta (#185)** and **i-fallback-no-call-test (#188)**: dispatchable now, disjoint lanes. Dispatch both in one message.
+2. Then the chain: i-plugin-extractors (#186) → i-equipment-extract (#187) → i-parser-version (#189, draws schema 00012) → i-llm-gap-fill (#191) → i-step-graph (#190); i-review-edit (#192) after i-parser-version. Read each node's note (ADR-00020) and #191's last comment before dispatch.
+- **Blocked:** i-site-extractors (#193) waits on the owner naming the sites that ingest badly. l-meal-planning (#38) is deferred and needs an ADR.
+
+**Filed, not yet a node:** #197: a shopping check from another household returns 303 instead of 404 when the key is already checked (leaks checked state). Add a node (lane `internal/shopping/**check*`, `internal/web/shopping/**`, `e2e/tenancy/tenancy.tenancy.spec.ts`) through a graph PR, then dispatch; the tenancy spec's comment steering around it goes with the fix.
+
+**Small leftovers, no issue yet:** journal and sharing e2e specs both default to port 38451; `.claude/rules/git-workflow.md` "every route has a test" now also means a cross-household test (route-coverage gate, #184); `/operator/equipment` has no nav link.
 
 **For the owner to check (calls made under ADR text):**
-- #175: provenance of a shared recipe is a note on the copy (no column, no migration); a member can edit or delete it.
-- #175: a sender-overlay ingredient's name reaches the recipient as a new recipient-owned unreviewed entry (ADR-00018 Sharing requires the line to land there); #138's literal acceptance line said no such name reaches the recipient.
-- #184: route rules where ADR-00018 is silent (operator/settings 403 for both identities; /healthz and /static 200; /not-a-member 200 / 303; foreign invitation 404).
-- graph-node has no verb to attach an existing ADR to a node; review SHOULDs asking for it were declined (#172, #177).
+- #175: shared-recipe provenance is a note on the copy (no column); a member can edit or delete it.
+- #175: a sender-overlay ingredient's name reaches the recipient as a new recipient-owned unreviewed entry (ADR-00018 Sharing), against #138's literal acceptance line.
+- #184: route rules where ADR-00018 is silent: operator/settings 403 for both identities; /healthz and /static 200; /not-a-member 200/303; foreign invitation 404.
+- graph-node has no verb to attach an existing ADR to a node; SHOULDs asking for it were declined (#172, #177).
 
-**Small leftovers, no node yet:** journal and sharing e2e specs both default to port 38451; `.claude/rules/git-workflow.md` "every route has a test" now also means a cross-household test.
-
-**Next, one at a time (all large):**
-1. **t-recipe-sharing (#138):** dispatchable now. No migration. Read #168's overlay model first, because shared recipes re-match lines against the recipient's catalog (ADR-00018 Sharing).
-2. **w3-equipment-size (#85):** waits on #138. Its equipment review surface must be operator-only (ADR-00019). #168 did not move central curation, so the lane stands.
-3. **t-cross-household-gate (#139):** last.
+**Process notes from this round:**
+- Name dispatcher graph branches without an issue number (`docs/plan-<slug>`): the board maps `<prefix>/<N>-…` branches to node N.
+- Two PRs that each bump VERSION conflict on merge; the worker rebases and re-bumps (main+1), then pushes once itself.
+- A new route now needs probes in `e2e/tenancy/tenancy.tenancy.spec.ts`; give the node that file in its lane (only merged nodes own it).
 
 **Follow-ups from #160 and #168 reviews (now nodes #169, #170, #171):**
 - `fail`, the time layout and the pending view are duplicated between `internal/web/household` and `internal/web/operator`; a shared helper belongs in `internal/web/layout`.
