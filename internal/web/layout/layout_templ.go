@@ -5,12 +5,10 @@ package layout
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import (
-	"strconv"
+import "github.com/a-h/templ"
+import templruntime "github.com/a-h/templ/runtime"
 
-	"github.com/a-h/templ"
-	templruntime "github.com/a-h/templ/runtime"
-)
+import "strconv"
 
 // Asset URLs served from the embedded static directory by package web.
 const (
@@ -92,7 +90,7 @@ func Page(title string) templ.Component {
 			var templ_7745c5c3_Var5 templ.SafeURL
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.Path))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 28, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 29, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -115,7 +113,7 @@ func Page(title string) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 30, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 33, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -183,7 +181,7 @@ func ErrorPage(status int, message string) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(status))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 44, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 47, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -196,7 +194,7 @@ func ErrorPage(status int, message string) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(statusText(status))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 44, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 47, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -209,7 +207,7 @@ func ErrorPage(status int, message string) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 45, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/layout.templ`, Line: 48, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
