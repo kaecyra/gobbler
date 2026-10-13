@@ -1307,7 +1307,7 @@
       "wave": 8,
       "track": "persistence",
       "issue": 137,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "t-scope-shopping",
         "w2-proposed-dedup",
@@ -2149,6 +2149,14 @@
       "id": "g-image-check-json",
       "title": "check-image.sh recognises the JSON form of COPY and ADD",
       "merged": "f953e76e468a8b33ad20750ecef42f6bd41d1e73"
+    },
+    {
+      "id": "t-catalog-overlay",
+      "title": "Central catalog plus per-household overlay",
+      "merged": "e3cdd65bec1f379424f905ab6eda65d5b5ab68bc",
+      "adrs": [
+        "00018"
+      ]
     }
   ],
   "adr_sequence": {
