@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { OPERATOR, OTHER, asIdentity } from '../fixtures/identity';
 
-// Every top-level page is reachable from the primary nav, and the nav marks the
-// page the reader is on.
+// The tests below, up to the identity blocks, run as the default identity DEV,
+// which the shared e2e server (e2e/fixtures/serve.mjs) makes an operator. For an
+// operator every top-level page is reachable from the primary nav, and the nav
+// marks the page the reader is on.
 const pages = [
   { name: 'Recipes', path: '/recipes' },
   { name: 'Add recipe', path: '/ingest' },
@@ -33,7 +35,7 @@ for (const p of pages) {
 }
 
 // Settings is an operator page. DEV is a member and an operator (the default
-// identity above); OTHER is a member who is not. The server refuses OTHER
+// identity, as stated at the top of this file); OTHER is a member who is not. The server refuses OTHER
 // either way, so this is about what the nav offers.
 test.describe('a member who is not an operator', () => {
   test.use(asIdentity(OTHER));
