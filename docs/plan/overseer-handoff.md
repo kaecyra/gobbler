@@ -33,17 +33,22 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## In flight
 
-Round 8 merged so far: #140 (tenancy split, ea28f9b), #142 w7-nav (78b7af9), #143 w5-codec (c9fae2e), #144 t-household-core (55c2c71, schema 00007), #145 graph node t-operator-nav (ab21550).
+Round 8 merged so far: #140 (tenancy split, ea28f9b), #142 w7-nav (78b7af9), #143 w5-codec (c9fae2e), #144 t-household-core (55c2c71, schema 00007), #145 graph node t-operator-nav (ab21550), #146 t-operator-nav (3ba7487). VERSION on main is 0.42.0.
 
 | Node | Issue | Branch / worktree | Migration | e2e port block |
 |---|---|---|---|---|
 | t-scope-recipes | #135 | feat/135-scope-recipes, wt-135 | schema 00008 | 41400-41499 |
-| t-operator-nav | #141 | feat/141-operator-nav, wt-141 | none | 41500-41599 |
 
-- Both bump VERSION minor; whichever merges second re-bumps.
-- t-scope-recipes was told it may edit existing `internal/store/queries/**` because it owns `internal/store/**`.
-- The shared e2e server makes `dev@localhost` an operator (`e2e/fixtures/serve.mjs`); `other@localhost` is a member who is not an operator.
-- #144 refuses any path with a dot segment (404) before admission. New operator pages are added to `operatorPaths` in `internal/web/middleware_household.go`; l-invitations' lane was widened for that (#145).
+- **t-scope-recipes:**
+  - It came back partial: callers outside its lane had no household on the context.
+  - Graph PR **#147** widens its lane onto test helpers in 8 packages, the e2e seed programs, and `internal/web/ingest/{ingest,photo,retry}*.go`. It is in review.
+  - The worker is finishing those caller fixes now. Rebuild #147 on main before merging, because bookkeeping commits touch `graph.json`.
+  - It was told it may edit existing `internal/store/queries/**`, because it owns `internal/store/**`.
+- **Shared e2e server:** `dev@localhost` is an operator there (`e2e/fixtures/serve.mjs`). `other@localhost` is a member who is not an operator.
+- **Dot segments:** #144 refuses any path with a dot segment (404) before admission.
+- **Operator pages:**
+  - They are listed in `layout.OperatorPaths` (`internal/web/layout/layout_operator.go`). The middleware's lock and the nav both read that list (#146).
+  - **Before dispatching l-invitations, widen its lane onto `internal/web/layout/layout_operator.go`.** #145 gave it `layout_nav*.go` and the household middleware, but its operator pages are registered in `layout_operator.go`.
 
 ## Side task: mockup mascots (owner request), done
 
