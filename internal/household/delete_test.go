@@ -92,6 +92,32 @@ func fill(t *testing.T, d *sql.DB, h household.Household, name string) {
 	if _, err := s.AddMadeIt(ctx, id, store.MadeIt{Comment: "great"}); err != nil {
 		t.Fatal(err)
 	}
+	shop(t, d, h, id)
+}
+
+// shop gives the household a shopping list holding an entry for its recipe, a
+// manual item, a checked item and a pantry row, so the shopping cascades are
+// exercised and not only the recipe ones.
+func shop(t *testing.T, d *sql.DB, h household.Household, recipeID int64) {
+	t.Helper()
+	var ingredient int64
+	if err := d.QueryRow(`SELECT id FROM ingredients ORDER BY id LIMIT 1`).Scan(&ingredient); err != nil {
+		t.Fatalf("the catalog has no ingredient to put in a pantry: %v", err)
+	}
+	var list int64
+	if err := d.QueryRow(`INSERT INTO shopping_lists (household_id, name, created_at) VALUES (?, 'Weekly', 'x') RETURNING id`, h.ID).Scan(&list); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO shopping_entries (household_id, list_id, recipe_id, multiplier) VALUES (?1, ?2, ?3, '1')`,
+		`INSERT INTO shopping_manual_items (household_id, list_id, text) VALUES (?1, ?2, 'paper towels')`,
+		`INSERT INTO shopping_checks (household_id, list_id, item_key, checked_at) VALUES (?1, ?2, 'k', 'x')`,
+		`INSERT INTO shopping_pantry (household_id, ingredient_id) VALUES (?1, ?4)`,
+	} {
+		if _, err := d.Exec(q, h.ID, list, recipeID, ingredient); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
 }
 
 func rowCounts(t *testing.T, d *sql.DB) map[string]int {
@@ -136,8 +162,11 @@ func TestDeleteLeavesNothingOfTheHousehold(t *testing.T) {
 	want := rowCounts(t, without)
 
 	with, alpha := deletionDB(t, true)
-	if rowCounts(t, with)["recipes"] != want["recipes"]+1 {
-		t.Fatalf("the fixture did not add a recipe for Alpha")
+	have := rowCounts(t, with)
+	for _, table := range []string{"recipes", "shopping_lists", "shopping_entries", "shopping_manual_items", "shopping_checks", "shopping_pantry"} {
+		if have[table] != want[table]+1 {
+			t.Fatalf("the fixture did not add a row to %s for Alpha: %d rows, %d without Alpha", table, have[table], want[table])
+		}
 	}
 	if err := household.New(with).Delete(ctx, alpha.ID, "ann@example.com", "Alpha"); err != nil {
 		t.Fatalf("Delete: %v", err)
