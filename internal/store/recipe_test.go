@@ -550,7 +550,7 @@ func TestReadsSeeOneSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	notes := func(q *storedb.Queries) int {
-		rows, err := q.ListNotes(ctx, id)
+		rows, err := q.ListNotes(ctx, storedb.ListNotesParams{RecipeID: id, HouseholdID: testHouseholdID})
 		if err != nil {
 			t.Fatal(err)
 		}

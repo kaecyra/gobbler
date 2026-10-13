@@ -10,28 +10,32 @@ import (
 )
 
 const countSnapshots = `-- name: CountSnapshots :one
-SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = ? AND kind = ?
+SELECT COUNT(*) FROM source_snapshots
+WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3
 `
 
 type CountSnapshotsParams struct {
-	RecipeID int64
-	Kind     string
+	RecipeID    int64
+	Kind        string
+	HouseholdID int64
 }
 
 func (q *Queries) CountSnapshots(ctx context.Context, arg CountSnapshotsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countSnapshots, arg.RecipeID, arg.Kind)
+	row := q.db.QueryRowContext(ctx, countSnapshots, arg.RecipeID, arg.Kind, arg.HouseholdID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const getSnapshot = `-- name: GetSnapshot :one
-SELECT kind, content, sha256, created_at, created_by FROM source_snapshots WHERE recipe_id = ? AND kind = ?
+SELECT kind, content, sha256, created_at, created_by FROM source_snapshots
+WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3
 `
 
 type GetSnapshotParams struct {
-	RecipeID int64
-	Kind     string
+	RecipeID    int64
+	Kind        string
+	HouseholdID int64
 }
 
 type GetSnapshotRow struct {
@@ -43,7 +47,7 @@ type GetSnapshotRow struct {
 }
 
 func (q *Queries) GetSnapshot(ctx context.Context, arg GetSnapshotParams) (GetSnapshotRow, error) {
-	row := q.db.QueryRowContext(ctx, getSnapshot, arg.RecipeID, arg.Kind)
+	row := q.db.QueryRowContext(ctx, getSnapshot, arg.RecipeID, arg.Kind, arg.HouseholdID)
 	var i GetSnapshotRow
 	err := row.Scan(
 		&i.Kind,
@@ -56,20 +60,22 @@ func (q *Queries) GetSnapshot(ctx context.Context, arg GetSnapshotParams) (GetSn
 }
 
 const insertSnapshot = `-- name: InsertSnapshot :exec
-INSERT INTO source_snapshots (recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO source_snapshots (household_id, recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertSnapshotParams struct {
-	RecipeID  int64
-	Kind      string
-	Content   []byte
-	Sha256    string
-	CreatedAt string
-	CreatedBy string
+	HouseholdID int64
+	RecipeID    int64
+	Kind        string
+	Content     []byte
+	Sha256      string
+	CreatedAt   string
+	CreatedBy   string
 }
 
 func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) error {
 	_, err := q.db.ExecContext(ctx, insertSnapshot,
+		arg.HouseholdID,
 		arg.RecipeID,
 		arg.Kind,
 		arg.Content,
@@ -81,11 +87,17 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 }
 
 const listSnapshotKinds = `-- name: ListSnapshotKinds :many
-SELECT kind FROM source_snapshots WHERE recipe_id = ? ORDER BY id
+SELECT kind FROM source_snapshots
+WHERE recipe_id = ?1 AND household_id = ?2 ORDER BY id
 `
 
-func (q *Queries) ListSnapshotKinds(ctx context.Context, recipeID int64) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listSnapshotKinds, recipeID)
+type ListSnapshotKindsParams struct {
+	RecipeID    int64
+	HouseholdID int64
+}
+
+func (q *Queries) ListSnapshotKinds(ctx context.Context, arg ListSnapshotKindsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listSnapshotKinds, arg.RecipeID, arg.HouseholdID)
 	if err != nil {
 		return nil, err
 	}

@@ -224,6 +224,7 @@ func TestDeleteWaitsForWriteQueueInsteadOfFailingBusy(t *testing.T) {
 	if err := db.Migrate(ctx, setup, db.Migrations()); err != nil {
 		t.Fatal(err)
 	}
+	seedHouseholds(t, setup)
 	s := New(openShortBusy(t, dir))
 	actx := authedCtx(t)
 	victim, err := s.Create(actx, simpleRecipe("victim"))

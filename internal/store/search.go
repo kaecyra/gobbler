@@ -53,15 +53,19 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 		return []Summary{}, nil
 	}
 	tags := cleanTags(q.Tags)
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	var out []Summary
-	err := db.WithReadTx(ctx, s.db, s.q, func(qs *storedb.Queries, tx *sql.Tx) error {
-		rows, err := s.summaryRows(ctx, tx, qs, expr)
+	err = db.WithReadTx(ctx, s.db, s.q, func(qs *storedb.Queries, tx *sql.Tx) error {
+		rows, err := s.summaryRows(ctx, tx, qs, hid, expr)
 		if err != nil {
 			return err
 		}
 		if len(tags) > 0 {
-			ids, err := qs.ListRecipeIDsWithAllTags(ctx, storedb.ListRecipeIDsWithAllTagsParams{Tags: tags, Column2: int64(len(tags))})
+			ids, err := qs.ListRecipeIDsWithAllTags(ctx, storedb.ListRecipeIDsWithAllTagsParams{Tags: tags, HouseholdID: hid, Column3: int64(len(tags))})
 			if err != nil {
 				return readErr("recipes by tag", err)
 			}
@@ -71,7 +75,7 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 			}
 			rows = filterRows(rows, keep)
 		}
-		tagRows, err := qs.ListAllRecipeTags(ctx)
+		tagRows, err := qs.ListAllRecipeTags(ctx, hid)
 		if err != nil {
 			return readErr("tags", err)
 		}
@@ -93,9 +97,13 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 
 // Tags returns every tag in use with its recipe count, alphabetically.
 func (s *Store) Tags(ctx context.Context) ([]TagCount, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
 	out := []TagCount{}
-	err := s.read(ctx, func(q *storedb.Queries) error {
-		rows, err := q.ListTagCounts(ctx)
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		rows, err := q.ListTagCounts(ctx, hid)
 		if err != nil {
 			return readErr("tag counts", err)
 		}
@@ -142,19 +150,19 @@ func filterRows(rows []summaryRow, keep map[int64]bool) []summaryRow {
 // searchSQL is hand-written because sqlc cannot resolve the `recipe_search
 // MATCH ?` form FTS5 requires (queries/search.sql names the rest). The bm25
 // weights follow the index columns (name, description, ingredients, tags,
-// notes): a hit in the name counts most, then tags, ingredients, description
+// notes, household_id): a hit in the name counts most, then tags, ingredients, description
 // and notes.
 const searchSQL = `
 SELECT r.id, r.name, r.description, r.rating, r.prep_ns, r.cook_ns, r.total_ns
 FROM recipe_search s JOIN recipes r ON r.id = s.rowid
-WHERE recipe_search MATCH ?
-ORDER BY bm25(recipe_search, 10.0, 2.0, 3.0, 5.0, 1.0), lower(r.name), r.id`
+WHERE recipe_search MATCH ? AND s.household_id = ? AND r.household_id = ?
+ORDER BY bm25(recipe_search, 10.0, 2.0, 3.0, 5.0, 1.0, 0.0), lower(r.name), r.id`
 
-// summaryRows returns every recipe (expr empty, by name) or the recipes
+// summaryRows returns every recipe of household hid (expr empty, by name) or the recipes
 // matching expr (best first).
-func (s *Store) summaryRows(ctx context.Context, tx *sql.Tx, qs *storedb.Queries, expr string) ([]summaryRow, error) {
+func (s *Store) summaryRows(ctx context.Context, tx *sql.Tx, qs *storedb.Queries, hid int64, expr string) ([]summaryRow, error) {
 	if expr == "" {
-		rows, err := qs.ListRecipeSummaries(ctx)
+		rows, err := qs.ListRecipeSummaries(ctx, hid)
 		if err != nil {
 			return nil, readErr("recipes", err)
 		}
@@ -164,7 +172,7 @@ func (s *Store) summaryRows(ctx context.Context, tx *sql.Tx, qs *storedb.Queries
 		}
 		return out, nil
 	}
-	rs, err := tx.QueryContext(ctx, searchSQL, expr)
+	rs, err := tx.QueryContext(ctx, searchSQL, expr, hid, hid)
 	if err != nil {
 		return nil, readErr("search", err)
 	}

@@ -28,7 +28,7 @@ type Revision struct {
 	Restored  *int64
 }
 
-func insertRevision(ctx context.Context, q *storedb.Queries, recipeID, version int64, doc recipe.Recipe, units *unitTable, change string, restored *int64, now, who string) error {
+func insertRevision(ctx context.Context, q *storedb.Queries, hid, recipeID, version int64, doc recipe.Recipe, units *unitTable, change string, restored *int64, now, who string) error {
 	body, err := encodeDocument(doc, units)
 	if err != nil {
 		return fmt.Errorf("revision of recipe %d: %w", recipeID, err)
@@ -38,7 +38,7 @@ func insertRevision(ctx context.Context, q *storedb.Queries, recipeID, version i
 		restoredVersion = sql.NullInt64{Int64: *restored, Valid: true}
 	}
 	revID, err := q.InsertRevision(ctx, storedb.InsertRevisionParams{
-		RecipeID: recipeID, Version: version, Document: string(body), ChangeKind: change,
+		HouseholdID: hid, RecipeID: recipeID, Version: version, Document: string(body), ChangeKind: change,
 		RestoredVersion: restoredVersion, CreatedAt: now, CreatedBy: who,
 	})
 	if err != nil {
@@ -49,7 +49,7 @@ func insertRevision(ctx context.Context, q *storedb.Queries, recipeID, version i
 		return err
 	}
 	for _, ing := range d.ingredientIDs() {
-		err := q.InsertRevisionIngredient(ctx, storedb.InsertRevisionIngredientParams{RevisionID: revID, IngredientID: ing})
+		err := q.InsertRevisionIngredient(ctx, storedb.InsertRevisionIngredientParams{HouseholdID: hid, RevisionID: revID, IngredientID: ing})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("index ingredient %d of revision %d", ing, version), err)
 		}
@@ -61,12 +61,16 @@ func insertRevision(ctx context.Context, q *storedb.Queries, recipeID, version i
 // The current version is not among them; it is the recipe itself. A recipe
 // never edited has none; a missing recipe is ErrNotFound.
 func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out []Revision
-	err := s.read(ctx, func(q *storedb.Queries) error {
-		if _, err := loadInfo(ctx, q, id); err != nil {
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		if _, err := loadInfo(ctx, q, hid, id); err != nil {
 			return err
 		}
-		rows, err := q.ListRevisions(ctx, id)
+		rows, err := q.ListRevisions(ctx, storedb.ListRevisionsParams{RecipeID: id, HouseholdID: hid})
 		if err != nil {
 			return readErr("revisions", err)
 		}
@@ -92,13 +96,17 @@ func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error)
 // revision of that version, or the live document when version is current.
 // An unknown recipe or version is ErrNotFound.
 func (s *Store) GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return recipe.Recipe{}, err
+	}
 	var r recipe.Recipe
-	err := s.read(ctx, func(q *storedb.Queries) error {
+	err = s.read(ctx, func(q *storedb.Queries) error {
 		units, err := loadUnits(ctx, q)
 		if err != nil {
 			return err
 		}
-		r, err = loadVersion(ctx, q, id, version, units)
+		r, err = loadVersion(ctx, q, hid, id, version, units)
 		return err
 	})
 	if err != nil {
@@ -107,15 +115,15 @@ func (s *Store) GetVersion(ctx context.Context, id, version int64) (recipe.Recip
 	return r, nil
 }
 
-func loadVersion(ctx context.Context, q *storedb.Queries, id, version int64, units *unitTable) (recipe.Recipe, error) {
-	cur, err := loadInfo(ctx, q, id)
+func loadVersion(ctx context.Context, q *storedb.Queries, hid, id, version int64, units *unitTable) (recipe.Recipe, error) {
+	cur, err := loadInfo(ctx, q, hid, id)
 	if err != nil {
 		return recipe.Recipe{}, err
 	}
 	if version == cur.Version {
-		return loadDocument(ctx, q, id, units)
+		return loadDocument(ctx, q, hid, id, units)
 	}
-	body, err := q.GetRevisionDocument(ctx, storedb.GetRevisionDocumentParams{RecipeID: id, Version: version})
+	body, err := q.GetRevisionDocument(ctx, storedb.GetRevisionDocumentParams{RecipeID: id, Version: version, HouseholdID: hid})
 	if errors.Is(err, sql.ErrNoRows) {
 		return recipe.Recipe{}, fmt.Errorf("%w: version %d of recipe %d", ErrNotFound, version, id)
 	}
@@ -144,21 +152,25 @@ func (s *Store) Restore(ctx context.Context, id, version int64) error {
 	if err != nil {
 		return err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
 	return s.withTx(ctx, func(q *storedb.Queries) error {
-		if err := lockRecipe(ctx, q, id); err != nil {
+		if err := lockRecipe(ctx, q, hid, id); err != nil {
 			return err
 		}
 		units, err := loadUnits(ctx, q)
 		if err != nil {
 			return err
 		}
-		target, err := loadVersion(ctx, q, id, version, units)
+		target, err := loadVersion(ctx, q, hid, id, version, units)
 		if err != nil {
 			return err
 		}
 		if err := target.Validate(); err != nil {
 			return fmt.Errorf("validate version %d of recipe %d: %w", version, id, err)
 		}
-		return s.replace(ctx, q, id, target, who, changeRestore, &version)
+		return s.replace(ctx, q, hid, id, target, who, changeRestore, &version)
 	})
 }

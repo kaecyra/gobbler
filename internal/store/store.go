@@ -6,9 +6,11 @@
 // storedb by sqlc (ADR-00014).
 //
 // Every write records the verified identity found on the request context
-// (ADR-00003) and fails with ErrNoIdentity when there is none; data is not
-// partitioned by user. Every edit writes a revision of the document it
-// replaces in the same transaction.
+// (ADR-00003) and fails with ErrNoIdentity when there is none. Every call,
+// read or write, is scoped to the household on the request context
+// (household.FromContext, ADR-00018) and fails with ErrNoHousehold when there
+// is none; a recipe of another household is ErrNotFound, never found. Every
+// edit writes a revision of the document it replaces in the same transaction.
 package store
 
 import (
@@ -20,6 +22,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
@@ -38,6 +41,11 @@ var ErrUnknownReference = errors.New("reference to an unknown catalog entry")
 // ErrNoIdentity is returned by a write whose context carries no verified
 // identity. Writes are never anonymous.
 var ErrNoIdentity = errors.New("no verified identity on the request context")
+
+// ErrNoHousehold is returned by any call whose context carries no household.
+// It is a programming error (a route outside the membership middleware, or a
+// job that never set one), and the store never falls back to unscoped data.
+var ErrNoHousehold = errors.New("no household on the request context")
 
 // ErrCorrupt is returned when stored rows disagree with each other, such as a
 // step dependency naming a step that does not exist. It means the database is
@@ -70,6 +78,16 @@ func identity(ctx context.Context) (string, error) {
 		return "", ErrNoIdentity
 	}
 	return email, nil
+}
+
+// scope returns the id of the household on the request context, the tenant
+// every query is filtered by.
+func scope(ctx context.Context) (int64, error) {
+	h, ok := household.FromContext(ctx)
+	if !ok {
+		return 0, ErrNoHousehold
+	}
+	return h.ID, nil
 }
 
 // stamp returns the current time in the stored form.

@@ -9,10 +9,11 @@ import (
 )
 
 type Component struct {
-	ID       int64
-	RecipeID int64
-	Position int64
-	Name     string
+	ID          int64
+	HouseholdID int64
+	RecipeID    int64
+	Position    int64
+	Name        string
 }
 
 type Equipment struct {
@@ -55,6 +56,7 @@ type IngredientAlias struct {
 
 type IngredientLine struct {
 	ID            int64
+	HouseholdID   int64
 	ComponentID   int64
 	Position      int64
 	Qty           sql.NullString
@@ -81,32 +83,36 @@ type Invitation struct {
 }
 
 type LineQualifier struct {
-	LineID   int64
-	Position int64
-	Kind     string
-	Text     string
+	HouseholdID int64
+	LineID      int64
+	Position    int64
+	Kind        string
+	Text        string
 }
 
 type MadeIt struct {
-	ID        int64
-	RecipeID  int64
-	MadeOn    string
-	Rating    sql.NullInt64
-	Comment   string
-	CreatedAt string
-	CreatedBy string
+	ID          int64
+	HouseholdID int64
+	RecipeID    int64
+	MadeOn      string
+	Rating      sql.NullInt64
+	Comment     string
+	CreatedAt   string
+	CreatedBy   string
 }
 
 type Note struct {
-	ID        int64
-	RecipeID  int64
-	Body      string
-	CreatedAt string
-	CreatedBy string
+	ID          int64
+	HouseholdID int64
+	RecipeID    int64
+	Body        string
+	CreatedAt   string
+	CreatedBy   string
 }
 
 type Recipe struct {
 	ID                 int64
+	HouseholdID        int64
 	Name               string
 	Description        string
 	SourceUrl          string
@@ -130,6 +136,7 @@ type Recipe struct {
 
 type RecipeEquipment struct {
 	ID          int64
+	HouseholdID int64
 	RecipeID    int64
 	Position    int64
 	EquipmentID int64
@@ -137,6 +144,7 @@ type RecipeEquipment struct {
 }
 
 type RecipeEquipmentStep struct {
+	HouseholdID       int64
 	RecipeEquipmentID int64
 	Position          int64
 	StepID            int64
@@ -148,6 +156,7 @@ type RecipeSearch struct {
 	Ingredients string
 	Tags        string
 	Notes       string
+	HouseholdID string
 }
 
 type RecipeSearchSource struct {
@@ -157,6 +166,7 @@ type RecipeSearchSource struct {
 	Ingredients interface{}
 	Tags        interface{}
 	Notes       interface{}
+	HouseholdID int64
 }
 
 type RecipeShare struct {
@@ -172,20 +182,23 @@ type RecipeShare struct {
 }
 
 type RecipeSpecialTime struct {
-	RecipeID   int64
-	Position   int64
-	Label      string
-	DurationNs int64
+	HouseholdID int64
+	RecipeID    int64
+	Position    int64
+	Label       string
+	DurationNs  int64
 }
 
 type RecipeTag struct {
-	RecipeID int64
-	Position int64
-	Tag      string
+	HouseholdID int64
+	RecipeID    int64
+	Position    int64
+	Tag         string
 }
 
 type Revision struct {
 	ID              int64
+	HouseholdID     int64
 	RecipeID        int64
 	Version         int64
 	Document        string
@@ -196,6 +209,7 @@ type Revision struct {
 }
 
 type RevisionIngredient struct {
+	HouseholdID  int64
 	RevisionID   int64
 	IngredientID int64
 }
@@ -237,17 +251,19 @@ type ShoppingPantry struct {
 }
 
 type SourceSnapshot struct {
-	ID        int64
-	RecipeID  int64
-	Kind      string
-	Content   []byte
-	Sha256    string
-	CreatedAt string
-	CreatedBy string
+	ID          int64
+	HouseholdID int64
+	RecipeID    int64
+	Kind        string
+	Content     []byte
+	Sha256      string
+	CreatedAt   string
+	CreatedBy   string
 }
 
 type Step struct {
 	ID          int64
+	HouseholdID int64
 	RecipeID    int64
 	ComponentID int64
 	Position    int64
@@ -258,6 +274,7 @@ type Step struct {
 }
 
 type StepDependency struct {
+	HouseholdID     int64
 	StepID          int64
 	Position        int64
 	DependsOnStepID int64

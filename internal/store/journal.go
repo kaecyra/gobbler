@@ -41,16 +41,20 @@ func (s *Store) AddNote(ctx context.Context, id int64, body string) (Note, error
 	if err != nil {
 		return Note{}, err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return Note{}, err
+	}
 	if strings.TrimSpace(body) == "" {
 		return Note{}, fmt.Errorf("%w: note is empty", ErrInvalid)
 	}
 	n := Note{RecipeID: id, Body: body, CreatedBy: who}
 	now := s.now().UTC()
 	err = s.withTx(ctx, func(q *storedb.Queries) (err error) {
-		if err := lockRecipe(ctx, q, id); err != nil {
+		if err := lockRecipe(ctx, q, hid, id); err != nil {
 			return err
 		}
-		n.ID, err = q.InsertNote(ctx, storedb.InsertNoteParams{RecipeID: id, Body: body, CreatedAt: formatTime(now), CreatedBy: who})
+		n.ID, err = q.InsertNote(ctx, storedb.InsertNoteParams{HouseholdID: hid, RecipeID: id, Body: body, CreatedAt: formatTime(now), CreatedBy: who})
 		if err != nil {
 			return fmt.Errorf("write note on recipe %d: %w", id, err)
 		}
@@ -66,12 +70,16 @@ func (s *Store) AddNote(ctx context.Context, id int64, body string) (Note, error
 // ListNotes returns the notes on recipe id, oldest first. A missing recipe is
 // ErrNotFound.
 func (s *Store) ListNotes(ctx context.Context, id int64) ([]Note, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out []Note
-	err := s.read(ctx, func(q *storedb.Queries) error {
-		if _, err := loadInfo(ctx, q, id); err != nil {
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		if _, err := loadInfo(ctx, q, hid, id); err != nil {
 			return err
 		}
-		rows, err := q.ListNotes(ctx, id)
+		rows, err := q.ListNotes(ctx, storedb.ListNotesParams{RecipeID: id, HouseholdID: hid})
 		if err != nil {
 			return readErr("notes", err)
 		}
@@ -97,6 +105,10 @@ func (s *Store) AddMadeIt(ctx context.Context, id int64, e MadeIt) (MadeIt, erro
 	if err != nil {
 		return MadeIt{}, err
 	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return MadeIt{}, err
+	}
 	now := s.now().UTC()
 	if e.On.IsZero() {
 		e.On = now
@@ -107,11 +119,11 @@ func (s *Store) AddMadeIt(ctx context.Context, id int64, e MadeIt) (MadeIt, erro
 		return MadeIt{}, fmt.Errorf("made-it date: %w", err)
 	}
 	err = s.withTx(ctx, func(q *storedb.Queries) (err error) {
-		if err := lockRecipe(ctx, q, id); err != nil {
+		if err := lockRecipe(ctx, q, hid, id); err != nil {
 			return err
 		}
 		out.ID, err = q.InsertMadeIt(ctx, storedb.InsertMadeItParams{
-			RecipeID: id, MadeOn: out.On.Format(dateLayout), Rating: nullInt(e.Rating),
+			HouseholdID: hid, RecipeID: id, MadeOn: out.On.Format(dateLayout), Rating: nullInt(e.Rating),
 			Comment: e.Comment, CreatedAt: formatTime(now), CreatedBy: who,
 		})
 		if err != nil {
@@ -128,12 +140,16 @@ func (s *Store) AddMadeIt(ctx context.Context, id int64, e MadeIt) (MadeIt, erro
 // ListMadeIt returns the made-it log of recipe id, oldest date first. A
 // missing recipe is ErrNotFound.
 func (s *Store) ListMadeIt(ctx context.Context, id int64) ([]MadeIt, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out []MadeIt
-	err := s.read(ctx, func(q *storedb.Queries) error {
-		if _, err := loadInfo(ctx, q, id); err != nil {
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		if _, err := loadInfo(ctx, q, hid, id); err != nil {
 			return err
 		}
-		rows, err := q.ListMadeIt(ctx, id)
+		rows, err := q.ListMadeIt(ctx, storedb.ListMadeItParams{RecipeID: id, HouseholdID: hid})
 		if err != nil {
 			return readErr("made-it log", err)
 		}
