@@ -7,6 +7,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 )
 
 // newTestDB opens a real SQLite file in a temp directory and applies every
@@ -43,6 +44,27 @@ func count(t *testing.T, d *sql.DB, query string, args ...any) int {
 func mustIngredient(t *testing.T, s *Store, in Ingredient) Ingredient {
 	t.Helper()
 	got, err := s.CreateIngredient(context.Background(), in)
+	if err != nil {
+		t.Fatalf("CreateIngredient(%q): %v", in.Name, err)
+	}
+	return got
+}
+
+// householdCtx creates a household called name and returns a context that
+// carries it, as a member's request does. The catalog acts in its scope.
+func householdCtx(t *testing.T, d *sql.DB, name string) context.Context {
+	t.Helper()
+	h, err := household.New(d).Create(context.Background(), name, name+"@example.com")
+	if err != nil {
+		t.Fatalf("create household %q: %v", name, err)
+	}
+	return household.WithContext(context.Background(), h)
+}
+
+// mustIngredientIn creates an ingredient in the scope of ctx or fails the test.
+func mustIngredientIn(ctx context.Context, t *testing.T, s *Store, in Ingredient) Ingredient {
+	t.Helper()
+	got, err := s.CreateIngredient(ctx, in)
 	if err != nil {
 		t.Fatalf("CreateIngredient(%q): %v", in.Name, err)
 	}

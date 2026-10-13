@@ -11,16 +11,18 @@ import (
 )
 
 const addIngredientAlias = `-- name: AddIngredientAlias :exec
-INSERT INTO ingredient_aliases (alias, ingredient_id) VALUES (?, ?)
+INSERT INTO ingredient_aliases (household_id, alias, ingredient_id)
+VALUES (?1, ?2, ?3)
 `
 
 type AddIngredientAliasParams struct {
+	HouseholdID  sql.NullInt64
 	Alias        string
 	IngredientID int64
 }
 
 func (q *Queries) AddIngredientAlias(ctx context.Context, arg AddIngredientAliasParams) error {
-	_, err := q.db.ExecContext(ctx, addIngredientAlias, arg.Alias, arg.IngredientID)
+	_, err := q.db.ExecContext(ctx, addIngredientAlias, arg.HouseholdID, arg.Alias, arg.IngredientID)
 	return err
 }
 
@@ -43,12 +45,14 @@ func (q *Queries) CarryIngredientData(ctx context.Context, arg CarryIngredientDa
 }
 
 const createIngredient = `-- name: CreateIngredient :one
-INSERT INTO ingredients (name, aisle, density_g_per_ml, usda_fdc_id, reviewed)
-VALUES (?, ?, ?, ?, ?)
+
+INSERT INTO ingredients (household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6)
 RETURNING id
 `
 
 type CreateIngredientParams struct {
+	HouseholdID   sql.NullInt64
 	Name          string
 	Aisle         string
 	DensityGPerMl sql.NullFloat64
@@ -56,8 +60,13 @@ type CreateIngredientParams struct {
 	Reviewed      int64
 }
 
+// Ingredients come in two layers (ADR-00018): central rows have a NULL
+// household_id, a household's overlay rows carry its id. A query that takes
+// sqlc.arg(scope) reads the central layer plus the overlay of that household;
+// scope 0 matches no household, so it reads the central layer alone.
 func (q *Queries) CreateIngredient(ctx context.Context, arg CreateIngredientParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, createIngredient,
+		arg.HouseholdID,
 		arg.Name,
 		arg.Aisle,
 		arg.DensityGPerMl,
@@ -67,6 +76,20 @@ func (q *Queries) CreateIngredient(ctx context.Context, arg CreateIngredientPara
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteAisleOverride = `-- name: DeleteAisleOverride :exec
+DELETE FROM ingredient_aisle_overrides WHERE household_id = ? AND ingredient_id = ?
+`
+
+type DeleteAisleOverrideParams struct {
+	HouseholdID  int64
+	IngredientID int64
+}
+
+func (q *Queries) DeleteAisleOverride(ctx context.Context, arg DeleteAisleOverrideParams) error {
+	_, err := q.db.ExecContext(ctx, deleteAisleOverride, arg.HouseholdID, arg.IngredientID)
+	return err
 }
 
 const deleteIngredient = `-- name: DeleteIngredient :execrows
@@ -82,35 +105,136 @@ func (q *Queries) DeleteIngredient(ctx context.Context, id int64) (int64, error)
 }
 
 const deleteIngredientAliases = `-- name: DeleteIngredientAliases :exec
-DELETE FROM ingredient_aliases WHERE ingredient_id = ?
+DELETE FROM ingredient_aliases
+WHERE ingredient_id = ?1 AND household_id IS ?2
 `
 
-func (q *Queries) DeleteIngredientAliases(ctx context.Context, ingredientID int64) error {
-	_, err := q.db.ExecContext(ctx, deleteIngredientAliases, ingredientID)
+type DeleteIngredientAliasesParams struct {
+	IngredientID int64
+	HouseholdID  sql.NullInt64
+}
+
+// DeleteIngredientAliases clears the aliases of one layer of an entry: the
+// central ones when household_id is NULL, otherwise that household's.
+func (q *Queries) DeleteIngredientAliases(ctx context.Context, arg DeleteIngredientAliasesParams) error {
+	_, err := q.db.ExecContext(ctx, deleteIngredientAliases, arg.IngredientID, arg.HouseholdID)
 	return err
 }
 
-const getIngredient = `-- name: GetIngredient :one
-SELECT id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed
-FROM ingredients WHERE id = ?
+const getAisleOverride = `-- name: GetAisleOverride :one
+SELECT aisle FROM ingredient_aisle_overrides
+WHERE household_id = ? AND ingredient_id = ?
 `
 
-func (q *Queries) GetIngredient(ctx context.Context, id int64) (Ingredient, error) {
-	row := q.db.QueryRowContext(ctx, getIngredient, id)
+type GetAisleOverrideParams struct {
+	HouseholdID  int64
+	IngredientID int64
+}
+
+func (q *Queries) GetAisleOverride(ctx context.Context, arg GetAisleOverrideParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getAisleOverride, arg.HouseholdID, arg.IngredientID)
+	var aisle string
+	err := row.Scan(&aisle)
+	return aisle, err
+}
+
+const getIngredient = `-- name: GetIngredient :one
+SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
+FROM ingredients
+WHERE id = ?1 AND (household_id IS NULL OR household_id = ?2)
+`
+
+type GetIngredientParams struct {
+	ID    int64
+	Scope sql.NullInt64
+}
+
+func (q *Queries) GetIngredient(ctx context.Context, arg GetIngredientParams) (Ingredient, error) {
+	row := q.db.QueryRowContext(ctx, getIngredient, arg.ID, arg.Scope)
 	var i Ingredient
 	err := row.Scan(
 		&i.ID,
+		&i.HouseholdID,
 		&i.Name,
 		&i.Aisle,
 		&i.DensityGPerMl,
 		&i.UsdaFdcID,
 		&i.Reviewed,
+		&i.SuggestedAt,
 	)
 	return i, err
 }
 
+const getIngredientOwner = `-- name: GetIngredientOwner :one
+SELECT household_id FROM ingredients WHERE id = ?
+`
+
+func (q *Queries) GetIngredientOwner(ctx context.Context, id int64) (sql.NullInt64, error) {
+	row := q.db.QueryRowContext(ctx, getIngredientOwner, id)
+	var household_id sql.NullInt64
+	err := row.Scan(&household_id)
+	return household_id, err
+}
+
+const getOverlayIngredient = `-- name: GetOverlayIngredient :one
+SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
+FROM ingredients WHERE id = ? AND household_id IS NOT NULL
+`
+
+// GetOverlayIngredient reads an overlay entry whichever household holds it.
+// Only the operator's promotion uses it.
+func (q *Queries) GetOverlayIngredient(ctx context.Context, id int64) (Ingredient, error) {
+	row := q.db.QueryRowContext(ctx, getOverlayIngredient, id)
+	var i Ingredient
+	err := row.Scan(
+		&i.ID,
+		&i.HouseholdID,
+		&i.Name,
+		&i.Aisle,
+		&i.DensityGPerMl,
+		&i.UsdaFdcID,
+		&i.Reviewed,
+		&i.SuggestedAt,
+	)
+	return i, err
+}
+
+const listAisleOverrides = `-- name: ListAisleOverrides :many
+SELECT ingredient_id, aisle FROM ingredient_aisle_overrides WHERE household_id = ?
+`
+
+type ListAisleOverridesRow struct {
+	IngredientID int64
+	Aisle        string
+}
+
+func (q *Queries) ListAisleOverrides(ctx context.Context, householdID int64) ([]ListAisleOverridesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAisleOverrides, householdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAisleOverridesRow
+	for rows.Next() {
+		var i ListAisleOverridesRow
+		if err := rows.Scan(&i.IngredientID, &i.Aisle); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAllIngredientAliases = `-- name: ListAllIngredientAliases :many
-SELECT ingredient_id, alias FROM ingredient_aliases ORDER BY alias
+SELECT ingredient_id, alias FROM ingredient_aliases
+WHERE household_id IS NULL OR household_id = ?1
+ORDER BY alias
 `
 
 type ListAllIngredientAliasesRow struct {
@@ -118,8 +242,8 @@ type ListAllIngredientAliasesRow struct {
 	Alias        string
 }
 
-func (q *Queries) ListAllIngredientAliases(ctx context.Context) ([]ListAllIngredientAliasesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAllIngredientAliases)
+func (q *Queries) ListAllIngredientAliases(ctx context.Context, scope sql.NullInt64) ([]ListAllIngredientAliasesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllIngredientAliases, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +266,18 @@ func (q *Queries) ListAllIngredientAliases(ctx context.Context) ([]ListAllIngred
 }
 
 const listIngredientAliases = `-- name: ListIngredientAliases :many
-SELECT alias FROM ingredient_aliases WHERE ingredient_id = ? ORDER BY alias
+SELECT alias FROM ingredient_aliases
+WHERE ingredient_id = ?1 AND (household_id IS NULL OR household_id = ?2)
+ORDER BY alias
 `
 
-func (q *Queries) ListIngredientAliases(ctx context.Context, ingredientID int64) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listIngredientAliases, ingredientID)
+type ListIngredientAliasesParams struct {
+	IngredientID int64
+	Scope        sql.NullInt64
+}
+
+func (q *Queries) ListIngredientAliases(ctx context.Context, arg ListIngredientAliasesParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listIngredientAliases, arg.IngredientID, arg.Scope)
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +300,14 @@ func (q *Queries) ListIngredientAliases(ctx context.Context, ingredientID int64)
 }
 
 const listIngredients = `-- name: ListIngredients :many
-SELECT id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed
-FROM ingredients ORDER BY name
+SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
+FROM ingredients
+WHERE household_id IS NULL OR household_id = ?1
+ORDER BY name
 `
 
-func (q *Queries) ListIngredients(ctx context.Context) ([]Ingredient, error) {
-	rows, err := q.db.QueryContext(ctx, listIngredients)
+func (q *Queries) ListIngredients(ctx context.Context, scope sql.NullInt64) ([]Ingredient, error) {
+	rows, err := q.db.QueryContext(ctx, listIngredients, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -184,11 +317,166 @@ func (q *Queries) ListIngredients(ctx context.Context) ([]Ingredient, error) {
 		var i Ingredient
 		if err := rows.Scan(
 			&i.ID,
+			&i.HouseholdID,
 			&i.Name,
 			&i.Aisle,
 			&i.DensityGPerMl,
 			&i.UsdaFdcID,
 			&i.Reviewed,
+			&i.SuggestedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOverlayIngredientAliases = `-- name: ListOverlayIngredientAliases :many
+SELECT alias FROM ingredient_aliases WHERE ingredient_id = ? AND household_id IS NOT NULL ORDER BY alias
+`
+
+func (q *Queries) ListOverlayIngredientAliases(ctx context.Context, ingredientID int64) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listOverlayIngredientAliases, ingredientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var alias string
+		if err := rows.Scan(&alias); err != nil {
+			return nil, err
+		}
+		items = append(items, alias)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPromotionDuplicates = `-- name: ListPromotionDuplicates :many
+SELECT d.id, d.household_id, d.name, d.aisle FROM ingredients d
+WHERE d.household_id IS NOT NULL AND d.id <> ?1 AND (
+    d.name IN (SELECT e.name FROM ingredients e WHERE e.id = ?1
+               UNION SELECT a.alias FROM ingredient_aliases a WHERE a.ingredient_id = ?1)
+    OR d.id IN (SELECT da.ingredient_id FROM ingredient_aliases da
+                WHERE da.household_id = d.household_id AND da.ingredient_id = d.id AND da.alias IN
+                    (SELECT e.name FROM ingredients e WHERE e.id = ?1
+                     UNION SELECT a.alias FROM ingredient_aliases a WHERE a.ingredient_id = ?1)))
+ORDER BY d.id
+`
+
+type ListPromotionDuplicatesRow struct {
+	ID          int64
+	HouseholdID sql.NullInt64
+	Name        string
+	Aisle       string
+}
+
+// ListPromotionDuplicates returns the overlay entries, of any household, that
+// duplicate ingredient id: the entry's normalised name or one of its own
+// aliases equals its name or one of its aliases (ADR-00018).
+func (q *Queries) ListPromotionDuplicates(ctx context.Context, id int64) ([]ListPromotionDuplicatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPromotionDuplicates, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPromotionDuplicatesRow
+	for rows.Next() {
+		var i ListPromotionDuplicatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.HouseholdID,
+			&i.Name,
+			&i.Aisle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSuggestedIngredientAliases = `-- name: ListSuggestedIngredientAliases :many
+SELECT a.ingredient_id, a.alias FROM ingredient_aliases a
+JOIN ingredients i ON i.id = a.ingredient_id
+WHERE i.suggested_at IS NOT NULL AND i.household_id IS NOT NULL AND a.household_id = i.household_id
+ORDER BY a.alias
+`
+
+type ListSuggestedIngredientAliasesRow struct {
+	IngredientID int64
+	Alias        string
+}
+
+func (q *Queries) ListSuggestedIngredientAliases(ctx context.Context) ([]ListSuggestedIngredientAliasesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSuggestedIngredientAliases)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSuggestedIngredientAliasesRow
+	for rows.Next() {
+		var i ListSuggestedIngredientAliasesRow
+		if err := rows.Scan(&i.IngredientID, &i.Alias); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSuggestedIngredients = `-- name: ListSuggestedIngredients :many
+SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
+FROM ingredients
+WHERE suggested_at IS NOT NULL AND household_id IS NOT NULL
+ORDER BY suggested_at, name
+`
+
+// ListSuggestedIngredients is the operator's review queue. It selects no
+// household: the operator sees what is suggested, not who suggested it.
+func (q *Queries) ListSuggestedIngredients(ctx context.Context) ([]Ingredient, error) {
+	rows, err := q.db.QueryContext(ctx, listSuggestedIngredients)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Ingredient
+	for rows.Next() {
+		var i Ingredient
+		if err := rows.Scan(
+			&i.ID,
+			&i.HouseholdID,
+			&i.Name,
+			&i.Aisle,
+			&i.DensityGPerMl,
+			&i.UsdaFdcID,
+			&i.Reviewed,
+			&i.SuggestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -204,12 +492,17 @@ func (q *Queries) ListIngredients(ctx context.Context) ([]Ingredient, error) {
 }
 
 const listUnreviewedIngredients = `-- name: ListUnreviewedIngredients :many
-SELECT id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed
-FROM ingredients WHERE reviewed = 0 ORDER BY name
+SELECT id, household_id, name, aisle, density_g_per_ml, usda_fdc_id, reviewed, suggested_at
+FROM ingredients
+WHERE reviewed = 0 AND household_id IS ?1
+ORDER BY name
 `
 
-func (q *Queries) ListUnreviewedIngredients(ctx context.Context) ([]Ingredient, error) {
-	rows, err := q.db.QueryContext(ctx, listUnreviewedIngredients)
+// ListUnreviewedIngredients is the layer's own review queue: a household's
+// overlay entries, or with no household the central ones. Central entries are
+// the operator's to curate, so a household never sees them here.
+func (q *Queries) ListUnreviewedIngredients(ctx context.Context, owner sql.NullInt64) ([]Ingredient, error) {
+	rows, err := q.db.QueryContext(ctx, listUnreviewedIngredients, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -219,11 +512,13 @@ func (q *Queries) ListUnreviewedIngredients(ctx context.Context) ([]Ingredient, 
 		var i Ingredient
 		if err := rows.Scan(
 			&i.ID,
+			&i.HouseholdID,
 			&i.Name,
 			&i.Aisle,
 			&i.DensityGPerMl,
 			&i.UsdaFdcID,
 			&i.Reviewed,
+			&i.SuggestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -252,15 +547,36 @@ func (q *Queries) LockIngredient(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected()
 }
 
-const lookupIngredientID = `-- name: LookupIngredientID :one
-SELECT id FROM ingredients WHERE name = ?1
+const lookupCentralIngredientID = `-- name: LookupCentralIngredientID :one
+SELECT id FROM ingredients WHERE household_id IS NULL AND name = ?1
 UNION ALL
-SELECT ingredient_id FROM ingredient_aliases WHERE alias = ?1
+SELECT ingredient_id FROM ingredient_aliases WHERE household_id IS NULL AND alias = ?1
 ORDER BY 1 LIMIT 1
 `
 
-func (q *Queries) LookupIngredientID(ctx context.Context, term string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, lookupIngredientID, term)
+func (q *Queries) LookupCentralIngredientID(ctx context.Context, term string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, lookupCentralIngredientID, term)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const lookupOverlayIngredientID = `-- name: LookupOverlayIngredientID :one
+SELECT i.id FROM ingredients i WHERE i.household_id = ?1 AND i.name = ?2
+UNION ALL
+SELECT a.ingredient_id FROM ingredient_aliases a WHERE a.household_id = ?1 AND a.alias = ?2
+ORDER BY 1 LIMIT 1
+`
+
+type LookupOverlayIngredientIDParams struct {
+	Owner sql.NullInt64
+	Term  string
+}
+
+// LookupOverlayIngredientID finds a term among the household's own entries and
+// its own aliases, including its aliases for central entries.
+func (q *Queries) LookupOverlayIngredientID(ctx context.Context, arg LookupOverlayIngredientIDParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, lookupOverlayIngredientID, arg.Owner, arg.Term)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
@@ -282,10 +598,106 @@ func (q *Queries) MoveIngredientAliases(ctx context.Context, arg MoveIngredientA
 	return err
 }
 
+const promoteIngredient = `-- name: PromoteIngredient :execrows
+UPDATE ingredients SET household_id = NULL, suggested_at = NULL, reviewed = 1
+WHERE id = ? AND household_id IS NOT NULL
+`
+
+func (q *Queries) PromoteIngredient(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, promoteIngredient, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const promoteIngredientAliases = `-- name: PromoteIngredientAliases :exec
+UPDATE ingredient_aliases SET household_id = NULL WHERE ingredient_id = ?
+`
+
+func (q *Queries) PromoteIngredientAliases(ctx context.Context, ingredientID int64) error {
+	_, err := q.db.ExecContext(ctx, promoteIngredientAliases, ingredientID)
+	return err
+}
+
+const pruneRedundantAliases = `-- name: PruneRedundantAliases :exec
+DELETE FROM ingredient_aliases
+WHERE ingredient_aliases.household_id = ?1 AND ingredient_aliases.ingredient_id = ?2
+  AND (ingredient_aliases.alias = (SELECT name FROM ingredients WHERE id = ?2)
+       OR ingredient_aliases.alias IN (SELECT c.alias FROM ingredient_aliases c
+                    WHERE c.household_id IS NULL AND c.ingredient_id = ?2))
+`
+
+type PruneRedundantAliasesParams struct {
+	Owner        sql.NullInt64
+	IngredientID int64
+}
+
+// PruneRedundantAliases drops a household's aliases on an entry that the
+// entry's own name or central aliases already cover.
+func (q *Queries) PruneRedundantAliases(ctx context.Context, arg PruneRedundantAliasesParams) error {
+	_, err := q.db.ExecContext(ctx, pruneRedundantAliases, arg.Owner, arg.IngredientID)
+	return err
+}
+
+const setAisleOverride = `-- name: SetAisleOverride :exec
+INSERT INTO ingredient_aisle_overrides (household_id, ingredient_id, aisle) VALUES (?, ?, ?)
+ON CONFLICT (household_id, ingredient_id) DO UPDATE SET aisle = excluded.aisle
+`
+
+type SetAisleOverrideParams struct {
+	HouseholdID  int64
+	IngredientID int64
+	Aisle        string
+}
+
+func (q *Queries) SetAisleOverride(ctx context.Context, arg SetAisleOverrideParams) error {
+	_, err := q.db.ExecContext(ctx, setAisleOverride, arg.HouseholdID, arg.IngredientID, arg.Aisle)
+	return err
+}
+
+const suggestIngredient = `-- name: SuggestIngredient :execrows
+UPDATE ingredients SET suggested_at = ?1
+WHERE id = ?2 AND household_id = ?3
+`
+
+type SuggestIngredientParams struct {
+	SuggestedAt sql.NullString
+	ID          int64
+	Owner       sql.NullInt64
+}
+
+func (q *Queries) SuggestIngredient(ctx context.Context, arg SuggestIngredientParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, suggestIngredient, arg.SuggestedAt, arg.ID, arg.Owner)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const unsuggestIngredient = `-- name: UnsuggestIngredient :execrows
+UPDATE ingredients SET suggested_at = NULL
+WHERE id = ?1 AND household_id = ?2
+`
+
+type UnsuggestIngredientParams struct {
+	ID    int64
+	Owner sql.NullInt64
+}
+
+func (q *Queries) UnsuggestIngredient(ctx context.Context, arg UnsuggestIngredientParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, unsuggestIngredient, arg.ID, arg.Owner)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateIngredient = `-- name: UpdateIngredient :execrows
 UPDATE ingredients
-SET name = ?, aisle = ?, density_g_per_ml = ?, usda_fdc_id = ?, reviewed = ?
-WHERE id = ?
+SET name = ?1, aisle = ?2, density_g_per_ml = ?3,
+    usda_fdc_id = ?4, reviewed = ?5
+WHERE id = ?6 AND household_id IS ?7
 `
 
 type UpdateIngredientParams struct {
@@ -295,6 +707,7 @@ type UpdateIngredientParams struct {
 	UsdaFdcID     sql.NullInt64
 	Reviewed      int64
 	ID            int64
+	HouseholdID   sql.NullInt64
 }
 
 func (q *Queries) UpdateIngredient(ctx context.Context, arg UpdateIngredientParams) (int64, error) {
@@ -305,6 +718,7 @@ func (q *Queries) UpdateIngredient(ctx context.Context, arg UpdateIngredientPara
 		arg.UsdaFdcID,
 		arg.Reviewed,
 		arg.ID,
+		arg.HouseholdID,
 	)
 	if err != nil {
 		return 0, err

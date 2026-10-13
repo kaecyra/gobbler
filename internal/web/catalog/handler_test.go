@@ -49,13 +49,20 @@ func newFixture(t *testing.T) *fixture {
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
 	root := chi.NewRouter()
+	// The membership middleware's work: the page acts in the dev household.
+	h := devHousehold(t, d)
+	root.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+		})
+	})
 	root.Mount(Pattern, Routes(Deps{Catalog: cat, Usage: usage}))
 	return &fixture{t: t, d: d, cat: cat, rec: rec, srv: root}
 }
 
 func (f *fixture) ingredient(name, aisle string, reviewed bool, aliases ...string) domain.Ingredient {
 	f.t.Helper()
-	in, err := f.cat.CreateIngredient(context.Background(), domain.Ingredient{Name: name, Aisle: aisle, Aliases: aliases, Reviewed: reviewed})
+	in, err := f.cat.CreateIngredient(identityContext(f.t, f.d), domain.Ingredient{Name: name, Aisle: aisle, Aliases: aliases, Reviewed: reviewed})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -181,7 +188,7 @@ func TestEditSavesEveryFieldAndReviewedLeavesTheUnreviewedList(t *testing.T) {
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d\n%s", w.Code, w.Body)
 	}
-	got, err := f.cat.GetIngredient(context.Background(), in.ID)
+	got, err := f.cat.GetIngredient(identityContext(f.t, f.d), in.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +209,7 @@ func TestMarkReviewedChangesOnlyTheFlag(t *testing.T) {
 	if w := f.do("POST", "/catalog/"+idStr(in)+"/reviewed", url.Values{}); w.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d", w.Code)
 	}
-	got, err := f.cat.GetIngredient(context.Background(), in.ID)
+	got, err := f.cat.GetIngredient(identityContext(f.t, f.d), in.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +225,7 @@ func TestEditRejectsBadInputInlineAndSavesNothing(t *testing.T) {
 	withUSDA := f.ingredient("zz usda owner", "produce", true)
 	withUSDA.USDAID = new(int64)
 	*withUSDA.USDAID = 424242
-	if err := f.cat.UpdateIngredient(context.Background(), withUSDA); err != nil {
+	if err := f.cat.UpdateIngredient(identityContext(f.t, f.d), withUSDA); err != nil {
 		t.Fatal(err)
 	}
 
@@ -241,7 +248,7 @@ func TestEditRejectsBadInputInlineAndSavesNothing(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			body := wantStatus(t, f.do("POST", "/catalog/"+idStr(in), c.form), c.status)
 			wantContains(t, body, c.want)
-			got, err := f.cat.GetIngredient(context.Background(), in.ID)
+			got, err := f.cat.GetIngredient(identityContext(f.t, f.d), in.ID)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -128,6 +128,18 @@ func insertLine(ctx context.Context, q *storedb.Queries, hid, compID int64, pos 
 	if l.Ingredient != 0 {
 		ingredient = sql.NullInt64{Int64: int64(l.Ingredient), Valid: true}
 	}
+	if ingredient.Valid {
+		// Inside the write's transaction: a line may name a central ingredient
+		// or one of the household's own, never another household's overlay
+		// entry (ADR-00018). The answer is the one a missing id gets.
+		ok, err := q.IngredientVisible(ctx, storedb.IngredientVisibleParams{ID: ingredient.Int64, Scope: sql.NullInt64{Int64: hid, Valid: true}})
+		if err != nil {
+			return readErr(fmt.Sprintf("ingredient %d", l.Ingredient), err)
+		}
+		if !ok {
+			return fmt.Errorf("write line (ingredient id %d): %w", l.Ingredient, ErrUnknownReference)
+		}
+	}
 	lineID, err := q.InsertIngredientLine(ctx, storedb.InsertIngredientLineParams{
 		HouseholdID: hid, ComponentID: compID, Position: int64(pos), Qty: nullString(qty), UnitID: unitID,
 		HasPackage: boolInt(l.Amount.HasPackage), PackageQty: nullString(pkgQty), PackageUnitID: pkgUnit,

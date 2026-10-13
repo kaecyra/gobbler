@@ -6,7 +6,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/db"
 )
 
@@ -144,15 +143,8 @@ func TestIncludeOptionalMigrationOnExistingLists(t *testing.T) {
 	}
 	cat, rec := f.catalogOn(d2), f.recipesOn(d2)
 	ctx := f.ctx
-	flour, err := cat.CreateIngredient(f.ctx, catalog.Ingredient{Name: "zz old flour", Aisle: "baking"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	butter, err := cat.CreateIngredient(f.ctx, catalog.Ingredient{Name: "zz old butter", Aisle: "dairy"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	rid := oldRecipe(t, d2, "Old", oldLine{ingredient: flour.ID}, oldLine{ingredient: butter.ID, optional: true})
+	flour, butter := rawIngredient(t, d2, "zz old flour", "baking"), rawIngredient(t, d2, "zz old butter", "dairy")
+	rid := oldRecipe(t, d2, "Old", oldLine{ingredient: flour}, oldLine{ingredient: butter, optional: true})
 	for _, q := range []string{
 		`INSERT INTO shopping_lists (id, name, created_at) VALUES (7, 'Old list', '2026-01-01T00:00:00Z')`,
 	} {

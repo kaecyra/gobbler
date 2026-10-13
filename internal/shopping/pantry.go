@@ -16,6 +16,9 @@ import (
 // ingredient not in the catalog.
 func (s *Store) AddToPantry(ctx context.Context, ingredient recipe.IngredientID) error {
 	return s.changePantry(ctx, func(q *shoppingdb.Queries, hid int64) (int64, error) {
+		if err := requireVisible(ctx, q, hid, ingredient); err != nil {
+			return 0, err
+		}
 		n, err := q.AddPantryIngredient(ctx, shoppingdb.AddPantryIngredientParams{HouseholdID: hid, IngredientID: int64(ingredient)})
 		return n, wrapWrite(fmt.Sprintf("add ingredient %d to the pantry", ingredient), err)
 	})

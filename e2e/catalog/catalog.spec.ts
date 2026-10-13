@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { OTHER, asIdentity } from '../fixtures/identity';
 
 // The catalog page needs unreviewed ingredients and a recipe that uses one,
 // which the shared server of the suite does not have. This spec seeds its own
@@ -134,4 +135,52 @@ test('merging an ingredient into itself is rejected', async ({ page }) => {
   await expect(page.getByTestId('merge-error')).toContainText('cannot be merged into itself');
   const missing = await page.goto(`/catalog/merge?source=${ids.target}&target=987654`);
   expect(missing?.status()).toBe(404);
+});
+
+// The overlay (ADR-00018): the ingredients above are the dev household's own;
+// the seeded catalog is central, which a household reads and customises.
+
+test('a central ingredient is read-only apart from the household\'s own aliases and aisle', async ({ page }) => {
+  await page.goto('/catalog?q=onion');
+  await expect(page.getByTestId('central-badge').first()).toBeVisible();
+  await page.getByRole('link', { name: 'onion', exact: true }).click();
+  await expect(page.getByTestId('central-note')).toBeVisible();
+  await expect(page.getByLabel('Name')).toHaveAttribute('readonly', '');
+  await expect(page.getByTestId('suggest-form')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Merge this ingredient into another' })).toHaveCount(0);
+
+  const aliases = page.getByLabel('Aliases');
+  await aliases.fill((await aliases.inputValue()) + '\ne2e bulb');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page).toHaveURL(/\/catalog$/);
+  await page.goto('/catalog?q=e2e+bulb');
+  await expect(page.getByTestId('all-row')).toHaveCount(1);
+  await expect(page.getByTestId('all-row')).toContainText('onion');
+});
+
+test('suggesting an own ingredient for the central catalog can be withdrawn', async ({ page }) => {
+  await page.goto(`/catalog/${ids.edit}`);
+  const suggested = page.waitForResponse((r) => r.url().endsWith(`/catalog/${ids.edit}/suggest`) && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Suggest for the central catalog' }).click();
+  expect((await suggested).status()).toBe(303);
+  await expect(page.getByTestId('unsuggest-form')).toBeVisible();
+
+  const withdrawn = page.waitForResponse((r) => r.url().endsWith(`/catalog/${ids.edit}/unsuggest`) && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Withdraw suggestion' }).click();
+  expect((await withdrawn).status()).toBe(303);
+  await expect(page.getByTestId('suggest-form')).toBeVisible();
+});
+
+test('another household sees nothing of an ingredient it does not own', async ({ browser }) => {
+  const other = await browser.newContext({ baseURL: origin, ...asIdentity(OTHER) });
+  try {
+    expect((await other.request.get(`/catalog/${ids.edit}`)).status()).toBe(404);
+    expect((await other.request.post(`/catalog/${ids.edit}/suggest`)).status()).toBe(404);
+    expect((await other.request.post(`/catalog/${ids.edit}/unsuggest`)).status()).toBe(404);
+    expect((await other.request.post(`/catalog/${ids.edit}`, { form: { name: 'e2e hijack', aisle: 'x' } })).status()).toBe(404);
+    const list = await other.request.get('/catalog');
+    expect(await list.text()).not.toContain('e2e dill');
+  } finally {
+    await other.close();
+  }
 });

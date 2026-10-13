@@ -42,14 +42,24 @@ type HouseholdMember struct {
 
 type Ingredient struct {
 	ID            int64
+	HouseholdID   sql.NullInt64
 	Name          string
 	Aisle         string
 	DensityGPerMl sql.NullFloat64
 	UsdaFdcID     sql.NullInt64
 	Reviewed      int64
+	SuggestedAt   sql.NullString
+}
+
+type IngredientAisleOverride struct {
+	HouseholdID  int64
+	IngredientID int64
+	Aisle        string
 }
 
 type IngredientAlias struct {
+	ID           int64
+	HouseholdID  sql.NullInt64
 	Alias        string
 	IngredientID int64
 }

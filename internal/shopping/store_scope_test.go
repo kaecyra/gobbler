@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/quantity"
+	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // otherHousehold returns a context for a second household (B) in the fixture's
@@ -26,6 +28,7 @@ func (f *fixture) otherHousehold() context.Context {
 // and sees none of it (ADR-00018).
 func TestOtherHouseholdCannotReachAnotherHouseholdsShopping(t *testing.T) {
 	f := newFixture(t)
+	f.makeCentral(f.salt) // B puts it in its own pantry
 	b := f.otherHousehold()
 	l := f.newList("Week")
 	r := f.createRecipe("Cake", f.ing(f.flour, 1, 1, "cup"))
@@ -103,6 +106,7 @@ func TestOtherHouseholdCannotReachAnotherHouseholdsShopping(t *testing.T) {
 // The pantry of a household decides what its own lists show and nobody else's.
 func TestPantryIsPerHousehold(t *testing.T) {
 	f := newFixture(t)
+	f.makeCentral(f.flour) // household B uses it too
 	b := f.otherHousehold()
 	r := f.createRecipe("Cake", f.ing(f.flour, 1, 1, "cup"))
 	if err := f.s.AddToPantry(f.ctx, recipeID(f.flour)); err != nil {
@@ -166,5 +170,56 @@ func TestNoHouseholdIsRefused(t *testing.T) {
 		if err := call(); !errors.Is(err, ErrNoHousehold) {
 			t.Errorf("%s with no household = %v, want ErrNoHousehold", name, err)
 		}
+	}
+}
+
+// An ingredient of household A's overlay is not visible to household B
+// (ADR-00018), so B cannot save a reference to it: not on a manual item, in
+// the pantry or on a recipe line. The refusal is the one a missing id gets, and
+// nothing of B's now names A's entry, so A's household can still be deleted.
+func TestOtherHouseholdCannotReferenceAnotherHouseholdsIngredient(t *testing.T) {
+	f := newFixture(t)
+	b := f.otherHousehold()
+	bl := f.listIn(b, "B")
+	own, err := f.catalog.CreateIngredient(b, catalog.Ingredient{Name: "zz b only", Aisle: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mine := f.flour // A's overlay entry
+
+	if _, err := f.s.AddManualItem(b, bl.ID, ManualItem{Ingredient: recipeID(mine)}); !errors.Is(err, ErrUnknownReference) {
+		t.Errorf("manual item naming A's ingredient = %v, want ErrUnknownReference", err)
+	}
+	ok, err := f.s.AddManualItem(b, bl.ID, ManualItem{Ingredient: recipeID(own.ID)})
+	if err != nil {
+		t.Fatalf("manual item naming B's own ingredient: %v", err)
+	}
+	if err := f.s.EditManualItem(b, ok, ManualItem{Ingredient: recipeID(mine)}); !errors.Is(err, ErrUnknownReference) {
+		t.Errorf("editing a manual item to A's ingredient = %v, want ErrUnknownReference", err)
+	}
+	if err := f.s.AddToPantry(b, recipeID(mine)); !errors.Is(err, ErrUnknownReference) {
+		t.Errorf("pantry add of A's ingredient = %v, want ErrUnknownReference", err)
+	}
+	if err := f.s.AddToPantry(b, recipeID(own.ID)); err != nil {
+		t.Errorf("pantry add of B's own ingredient: %v", err)
+	}
+	rec := recipeOf("Bread", f.ing(mine, 1, 1, "cup"))
+	if _, err := f.recipes.Create(b, rec); !errors.Is(err, store.ErrUnknownReference) {
+		t.Errorf("recipe line naming A's ingredient = %v, want store.ErrUnknownReference", err)
+	}
+	good, err := f.recipes.Create(b, recipeOf("Bread", f.ing(own.ID, 1, 1, "cup")))
+	if err != nil {
+		t.Fatalf("recipe line naming B's own ingredient: %v", err)
+	}
+	if err := f.recipes.Update(b, good, rec); !errors.Is(err, store.ErrUnknownReference) {
+		t.Errorf("updating a recipe to name A's ingredient = %v, want store.ErrUnknownReference", err)
+	}
+
+	var aid int64
+	if err := f.d.QueryRow(`SELECT household_id FROM ingredients WHERE id = ?`, mine).Scan(&aid); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.d.Exec(`DELETE FROM households WHERE id = ?`, aid); err != nil {
+		t.Errorf("deleting A's household after B tried to reference its ingredient: %v", err)
 	}
 }

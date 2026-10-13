@@ -45,6 +45,10 @@ type row struct {
 	Aisle    string
 	Aliases  string
 	Reviewed bool
+	// Central marks an entry of the central catalog, which the household
+	// reads and customises but does not own.
+	Central   bool
+	Suggested bool
 }
 
 func newListView(query string, unreviewed, all []domain.Ingredient) listView {
@@ -76,7 +80,7 @@ func filter(in []domain.Ingredient, query string) []domain.Ingredient {
 func rowsOf(in []domain.Ingredient) []row {
 	out := make([]row, len(in))
 	for n, i := range in {
-		out[n] = row{ID: i.ID, Name: i.Name, Aisle: i.Aisle, Aliases: strings.Join(i.Aliases, ", "), Reviewed: i.Reviewed}
+		out[n] = row{ID: i.ID, Name: i.Name, Aisle: i.Aisle, Aliases: strings.Join(i.Aliases, ", "), Reviewed: i.Reviewed, Central: i.Central, Suggested: i.Suggested}
 	}
 	return out
 }
@@ -91,13 +95,19 @@ type formView struct {
 	Density  string
 	USDAID   string
 	Reviewed bool
-	Problems map[string]string
+	// Central: the entry belongs to the central catalog, so only its aliases
+	// and aisle can be changed here. Suggested: the household has flagged its
+	// own entry for the operator to promote.
+	Central   bool
+	Suggested bool
+	Problems  map[string]string
 	// Aisles are the aisles already in use, offered as suggestions.
 	Aisles []string
 }
 
 func formFrom(in domain.Ingredient) formView {
-	f := formView{ID: in.ID, Name: in.Name, Aisle: in.Aisle, Aliases: strings.Join(in.Aliases, "\n"), Reviewed: in.Reviewed}
+	f := formView{ID: in.ID, Name: in.Name, Aisle: in.Aisle, Aliases: strings.Join(in.Aliases, "\n"), Reviewed: in.Reviewed,
+		Central: in.Central, Suggested: in.Suggested}
 	if in.DensityGPerML != nil {
 		f.Density = strconv.FormatFloat(*in.DensityGPerML, 'g', -1, 64)
 	}

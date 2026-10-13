@@ -6,12 +6,31 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
+// overlayCatalog is seedCatalog with the four ingredients created in the
+// overlay of the household authedCtx names, which is where a merge can reach
+// them: a household never merges a central entry away (ADR-00018).
+func overlayCatalog(t *testing.T, d *sql.DB) (*catalog.Store, catalogIDs) {
+	t.Helper()
+	c, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	ing := func(name string) int64 {
+		in, err := c.CreateIngredient(ctx, catalog.Ingredient{Name: name, Aisle: "test"})
+		if err != nil {
+			t.Fatalf("CreateIngredient(%q): %v", name, err)
+		}
+		return in.ID
+	}
+	ids.flour, ids.butter, ids.egg, ids.salt = ing("zz overlay flour"), ing("zz overlay butter"), ing("zz overlay egg"), ing("zz overlay salt")
+	return c, ids
+}
+
 func TestMergeWithoutHooksFailsOnTheForeignKey(t *testing.T) {
 	s, d := newTestStore(t)
-	c, ids := seedCatalog(t, d)
+	c, ids := overlayCatalog(t, d)
 	ctx := authedCtx(t)
 	if _, err := s.Create(ctx, fullRecipe(t, ids)); err != nil {
 		t.Fatal(err)
@@ -23,7 +42,7 @@ func TestMergeWithoutHooksFailsOnTheForeignKey(t *testing.T) {
 
 func TestMergeRepointsLinesAndRevisions(t *testing.T) {
 	s, d := newTestStore(t)
-	c, ids := seedCatalog(t, d)
+	c, ids := overlayCatalog(t, d)
 	s.RegisterMergeHooks(c)
 	ctx := authedCtx(t)
 
@@ -81,7 +100,7 @@ func TestMergeRepointsLinesAndRevisions(t *testing.T) {
 
 func TestMergeRollsBackWithHooks(t *testing.T) {
 	s, d := newTestStore(t)
-	c, ids := seedCatalog(t, d)
+	c, ids := overlayCatalog(t, d)
 	s.RegisterMergeHooks(c)
 	boom := errors.New("later hook fails")
 	c.OnIngredientMerge(func(context.Context, *sql.Tx, int64, int64) error { return boom })
@@ -103,7 +122,7 @@ func TestMergeRollsBackWithHooks(t *testing.T) {
 
 func TestMergeRepointsLiveLines(t *testing.T) {
 	s, d := newTestStore(t)
-	c, ids := seedCatalog(t, d)
+	c, ids := overlayCatalog(t, d)
 	s.RegisterMergeHooks(c)
 	ctx := authedCtx(t)
 	id, err := s.Create(ctx, fullRecipe(t, ids))

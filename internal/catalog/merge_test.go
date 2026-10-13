@@ -23,11 +23,11 @@ func repoint(table string) MergeHook {
 	}
 }
 
-func mergeFixture(t *testing.T) (*Store, *sql.DB, Ingredient, Ingredient) {
+func mergeFixture(t *testing.T) (*Store, *sql.DB, Ingredient, Ingredient, context.Context) {
 	t.Helper()
 	d := newTestDB(t)
 	s := New(d)
-	ctx := context.Background()
+	ctx := householdCtx(t, d, "Merge")
 	winner, err := s.CreateIngredient(ctx, Ingredient{Name: "zz test butter", Aisle: "dairy", Aliases: []string{"zz test sweet butter"}, Reviewed: true})
 	if err != nil {
 		t.Fatal(err)
@@ -50,12 +50,11 @@ func mergeFixture(t *testing.T) (*Store, *sql.DB, Ingredient, Ingredient) {
 	}
 	s.OnIngredientMerge(repoint("zz_lines"))
 	s.OnIngredientMerge(repoint("zz_pantry"))
-	return s, d, winner, loser
+	return s, d, winner, loser, ctx
 }
 
 func TestMergeIngredientsRepointsEverything(t *testing.T) {
-	s, d, winner, loser := mergeFixture(t)
-	ctx := context.Background()
+	s, d, winner, loser, ctx := mergeFixture(t)
 
 	merged, err := s.MergeIngredients(ctx, winner.ID, loser.ID)
 	if err != nil {
@@ -87,10 +86,11 @@ func TestMergeIngredientsRepointsEverything(t *testing.T) {
 }
 
 func TestMergeKeepsWinnerValues(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-	w := mustIngredient(t, s, Ingredient{Name: "zz test w", Aisle: "a", DensityGPerML: f64(1.5), USDAID: i64(5)})
-	l := mustIngredient(t, s, Ingredient{Name: "zz test l", Aisle: "b", DensityGPerML: f64(2.5), USDAID: i64(6)})
+	d := newTestDB(t)
+	s := New(d)
+	ctx := householdCtx(t, d, "Merge")
+	w := mustIngredientIn(ctx, t, s, Ingredient{Name: "zz test w", Aisle: "a", DensityGPerML: f64(1.5), USDAID: i64(5)})
+	l := mustIngredientIn(ctx, t, s, Ingredient{Name: "zz test l", Aisle: "b", DensityGPerML: f64(2.5), USDAID: i64(6)})
 	merged, err := s.MergeIngredients(ctx, w.ID, l.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -101,8 +101,7 @@ func TestMergeKeepsWinnerValues(t *testing.T) {
 }
 
 func TestMergeFailureMidwayChangesNothing(t *testing.T) {
-	s, d, winner, loser := mergeFixture(t)
-	ctx := context.Background()
+	s, d, winner, loser, ctx := mergeFixture(t)
 	boom := errors.New("boom")
 	// Registered after the working hooks, so it fails once they and the alias
 	// moves have been applied inside the transaction. The delete and the
@@ -135,8 +134,7 @@ func TestMergeFailureMidwayChangesNothing(t *testing.T) {
 }
 
 func TestMergeFailureAfterDeleteChangesNothing(t *testing.T) {
-	s, d, winner, loser := mergeFixture(t)
-	ctx := context.Background()
+	s, d, winner, loser, ctx := mergeFixture(t)
 	// The carry-over UPDATE of the winner runs after the loser row has been
 	// deleted; a trigger that aborts every ingredient update makes it fail.
 	if _, err := d.Exec(`CREATE TRIGGER zz_block BEFORE UPDATE ON ingredients BEGIN SELECT RAISE(ABORT, 'blocked'); END`); err != nil {
@@ -165,8 +163,7 @@ func TestMergeFailureAfterDeleteChangesNothing(t *testing.T) {
 }
 
 func TestMergeErrors(t *testing.T) {
-	s, _, winner, _ := mergeFixture(t)
-	ctx := context.Background()
+	s, _, winner, _, ctx := mergeFixture(t)
 	if _, err := s.MergeIngredients(ctx, winner.ID, winner.ID); !errors.Is(err, ErrInvalid) {
 		t.Errorf("merge into itself: %v, want ErrInvalid", err)
 	}
@@ -183,9 +180,9 @@ func TestMergeWithoutHookIsBlockedByReferences(t *testing.T) {
 	// than orphan its rows: the foreign key refuses the delete.
 	d := newTestDB(t)
 	s := New(d)
-	ctx := context.Background()
-	w := mustIngredient(t, s, Ingredient{Name: "zz test w", Aisle: "a"})
-	l := mustIngredient(t, s, Ingredient{Name: "zz test l", Aisle: "a"})
+	ctx := householdCtx(t, d, "Merge")
+	w := mustIngredientIn(ctx, t, s, Ingredient{Name: "zz test w", Aisle: "a"})
+	l := mustIngredientIn(ctx, t, s, Ingredient{Name: "zz test l", Aisle: "a"})
 	refTable(t, d, "zz_unhooked")
 	if _, err := d.Exec(`INSERT INTO zz_unhooked (ingredient_id) VALUES (?)`, l.ID); err != nil {
 		t.Fatal(err)

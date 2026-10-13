@@ -40,6 +40,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
 	mountCatalog(r, d)
 	mountHouseholds(r, d)
+	mountPromotion(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -70,4 +71,15 @@ func mountHouseholds(r chi.Router, d Deps) {
 	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
+}
+
+// mountPromotion mounts the operator's review of overlay entries suggested for
+// the central catalog (ADR-00018). Its catalog store has the merge hooks of the
+// stores that hold ingredient references, because promoting merges other
+// households' duplicates into the promoted entry and re-points their rows.
+func mountPromotion(r chi.Router, d Deps) {
+	cat := catalog.New(d.DB)
+	store.New(d.DB).RegisterMergeHooks(cat)
+	shopping.New(d.DB, store.New(d.DB), cat).RegisterMergeHooks(cat)
+	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: cat}))
 }

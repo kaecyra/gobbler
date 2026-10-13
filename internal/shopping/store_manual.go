@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/shopping/shoppingdb"
 )
 
@@ -49,6 +50,9 @@ func (s *Store) AddManualItem(ctx context.Context, listID int64, m ManualItem) (
 			return err
 		}
 		var err error
+		if err := requireVisible(ctx, q, hid, m.Ingredient); err != nil {
+			return err
+		}
 		id, err = q.InsertManualItem(ctx, shoppingdb.InsertManualItemParams{
 			HouseholdID: hid, ListID: listID, Text: m.Text, IngredientID: ingredientCol(m),
 			Qty: cols.qty, UnitID: cols.unit, HasPackage: cols.hasPackage, PackageQty: cols.pkgQty, PackageUnitID: cols.pkgUnit,
@@ -84,6 +88,9 @@ func (s *Store) EditManualItem(ctx context.Context, id int64, m ManualItem) erro
 	var listID int64
 	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
+		if err := requireVisible(ctx, q, hid, m.Ingredient); err != nil {
+			return err
+		}
 		listID, err = q.UpdateManualItem(ctx, shoppingdb.UpdateManualItemParams{
 			Text: m.Text, IngredientID: ingredientCol(m),
 			Qty: cols.qty, UnitID: cols.unit, HasPackage: cols.hasPackage, PackageQty: cols.pkgQty, PackageUnitID: cols.pkgUnit,
@@ -117,5 +124,24 @@ func (s *Store) RemoveManualItem(ctx context.Context, id int64) error {
 		return err
 	}
 	s.notify(listID)
+	return nil
+}
+
+// requireVisible refuses an ingredient the household may not reference: one
+// that is neither central nor in its own overlay (ADR-00018). It runs in the
+// write's transaction and answers as a missing id does, ErrUnknownReference, so
+// the response says nothing about other households. The zero id (a free-text
+// item) is nothing to check.
+func requireVisible(ctx context.Context, q *shoppingdb.Queries, hid int64, ingredient recipe.IngredientID) error {
+	if ingredient == 0 {
+		return nil
+	}
+	ok, err := q.IngredientVisible(ctx, shoppingdb.IngredientVisibleParams{ID: int64(ingredient), Scope: sql.NullInt64{Int64: hid, Valid: true}})
+	if err != nil {
+		return fmt.Errorf("read ingredient %d: %w", ingredient, err)
+	}
+	if !ok {
+		return fmt.Errorf("ingredient %d: %w", ingredient, ErrUnknownReference)
+	}
 	return nil
 }

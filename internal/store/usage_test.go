@@ -8,7 +8,7 @@ import (
 
 func TestUsageCountsRecipeLinesAndMatchesWhatAMergeRepoints(t *testing.T) {
 	s, d := newTestStore(t)
-	c, ids := seedCatalog(t, d)
+	c, ids := overlayCatalog(t, d)
 	s.RegisterMergeHooks(c)
 	u := catalog.NewUsage(c)
 	s.RegisterUsageCounters(u)
