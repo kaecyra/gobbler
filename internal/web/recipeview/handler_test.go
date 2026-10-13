@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -245,9 +246,78 @@ func TestUnitModeAppliesAfterScaling(t *testing.T) {
 	mustContain(t, body, "630 ml flour")
 }
 
-func TestScaledViewHasNoEquipmentHint(t *testing.T) {
-	// ADR-00005 limits the pan hint to equipment with a size, and the schema
-	// has no equipment size (issue #85), so no equipment gets one.
+// sizedKitchen is a recipe that uses a sized pan and an unsized whisk
+// (ADR-00019), over a catalog that says which is which.
+func sizedKitchen(t *testing.T) (fakeRecipes, fakeCatalog) {
+	t.Helper()
+	r := testRecipe(t)
+	r.Equipment = []recipe.EquipmentLink{{Equipment: 1}, {Equipment: 2}}
+	c := testCatalog()
+	c.equipment = map[int64]catalog.Equipment{
+		1: {ID: 1, Name: "9x13 pan", Sized: true},
+		2: {ID: 2, Name: "whisk"},
+	}
+	return fakeRecipes{7: r}, c
+}
+
+// equipmentItems returns the inner HTML of each equipment list item, by name.
+func equipmentItems(t *testing.T, body string) map[string]string {
+	t.Helper()
+	items := map[string]string{}
+	for _, m := range regexp.MustCompile(`(?s)<li data-testid="equipment-item">(.*?)</li>`).FindAllStringSubmatch(body, -1) {
+		for _, name := range []string{"9x13 pan", "whisk"} {
+			if strings.Contains(m[1], name) {
+				items[name] = m[1]
+			}
+		}
+	}
+	return items
+}
+
+func TestLargerPanHintIsOnSizedEquipmentOfAViewScaledUp(t *testing.T) {
+	for _, c := range []struct {
+		name, path string
+		pan, whisk bool // whether the line carries the hint
+	}{
+		{"unscaled", "/recipes/7", false, false},
+		{"scaled up", "/recipes/7?scale=3", true, false},
+		{"scaled up by servings", "/recipes/7?servings=8", true, false},
+		{"scaled down", "/recipes/7?scale=1/2", false, false},
+		{"scaled down by servings", "/recipes/7?servings=2", false, false},
+	} {
+		recipes, cat := sizedKitchen(t)
+		rec := serveRequest(t, recipes, cat, httptest.NewRequest(http.MethodGet, c.path, nil))
+		items := equipmentItems(t, rec.Body.String())
+		if len(items) != 2 {
+			t.Fatalf("%s: equipment items = %v, want the pan and the whisk", c.name, items)
+		}
+		if got := strings.Contains(items["9x13 pan"], hintLargerPan); got != c.pan {
+			t.Errorf("%s: sized pan has the hint = %v, want %v", c.name, got, c.pan)
+		}
+		if got := strings.Contains(items["whisk"], hintLargerPan); got != c.whisk {
+			t.Errorf("%s: unsized whisk has the hint = %v, want %v", c.name, got, c.whisk)
+		}
+	}
+}
+
+func TestEquipmentHint(t *testing.T) {
+	for _, c := range []struct {
+		scaledUp, sized bool
+		want            string
+	}{
+		{true, true, hintLargerPan},
+		{true, false, ""},
+		{false, true, ""},
+		{false, false, ""},
+	} {
+		if got := equipmentHint(c.scaledUp, c.sized); got != c.want {
+			t.Errorf("equipmentHint(scaledUp=%v, sized=%v) = %q, want %q", c.scaledUp, c.sized, got, c.want)
+		}
+	}
+}
+
+func TestUnsizedEquipmentNeverGetsTheHint(t *testing.T) {
+	// testCatalog's pan is not sized, so even a scaled view says nothing.
 	for _, path := range []string{"/recipes/7?scale=3", "/recipes/7?scale=1/2"} {
 		_, body := serve(t, fakeRecipes{7: testRecipe(t)}, path)
 		mustContain(t, body, "9x13 pan")

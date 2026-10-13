@@ -44,6 +44,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountHouseholds(r, d)
 	mountPromotion(r, d)
 	mountSharing(r, d)
+	mountEquipment(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -93,4 +94,11 @@ func mountSharing(r chi.Router, d Deps) {
 	rec := store.New(d.DB)
 	svc := sharing.New(rec, household.New(d.DB), catalog.New(d.DB))
 	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: rec}))
+}
+
+// mountEquipment mounts the operator's review of catalog equipment, where the
+// sized flag behind the scaled view's larger-pan hint is set (ADR-00019). It
+// sits under /operator, so the membership middleware admits only an operator.
+func mountEquipment(r chi.Router, d Deps) {
+	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: catalog.New(d.DB)}))
 }

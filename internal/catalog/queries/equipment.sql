@@ -1,18 +1,18 @@
 -- name: CreateEquipment :one
-INSERT INTO equipment (name, reviewed) VALUES (?, ?)
+INSERT INTO equipment (name, reviewed, sized) VALUES (?, ?, ?)
 RETURNING id;
 
 -- name: UpdateEquipment :execrows
-UPDATE equipment SET name = ?, reviewed = ? WHERE id = ?;
+UPDATE equipment SET name = ?, reviewed = ?, sized = ? WHERE id = ?;
 
 -- name: GetEquipment :one
-SELECT id, name, reviewed FROM equipment WHERE id = ?;
+SELECT id, name, reviewed, sized FROM equipment WHERE id = ?;
 
 -- name: ListEquipment :many
-SELECT id, name, reviewed FROM equipment ORDER BY name;
+SELECT id, name, reviewed, sized FROM equipment ORDER BY name;
 
 -- name: ListUnreviewedEquipment :many
-SELECT id, name, reviewed FROM equipment WHERE reviewed = 0 ORDER BY name;
+SELECT id, name, reviewed, sized FROM equipment WHERE reviewed = 0 ORDER BY name;
 
 -- name: LookupEquipmentID :one
 SELECT id FROM equipment WHERE name = sqlc.arg(term)

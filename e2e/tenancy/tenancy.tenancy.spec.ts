@@ -125,6 +125,8 @@ const PROBES: Probe[] = [
   refusedToBoth('GET', () => '/operator/promotions'),
   refusedToBoth('GET', (i) => `/operator/promotions/${i.promotion}`),
   refusedToBoth('POST', (i) => `/operator/promotions/${i.promotion}`),
+  refusedToBoth('GET', () => '/operator/equipment'),
+  refusedToBoth('POST', () => '/operator/equipment/1/sized'),
   refusedToBoth('POST', () => '/operator/invitations'),
   refusedToBoth('POST', (i) => `/operator/invitations/${i.operatorInvitation}/revoke`),
 

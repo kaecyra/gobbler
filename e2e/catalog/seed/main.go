@@ -52,12 +52,20 @@ func run(dir string) error {
 	line := func(id int64) recipe.IngredientLine {
 		return recipe.IngredientLine{Ingredient: recipe.IngredientID(id), Rule: quantity.RuleLinear, Raw: "some dill"}
 	}
+	// A pan the operator can mark sized (ADR-00019), used by the recipe so the
+	// spec can see the larger-pan hint appear and go.
+	tin, err := c.CreateEquipment(ctx, catalog.Equipment{Name: "e2e roasting tin", Reviewed: true})
+	if err != nil {
+		return err
+	}
+	out["tin"] = tin.ID
 	out["recipe"], err = store.New(d).Create(ctx, recipe.Recipe{
 		Name: "E2E Dill Dip",
 		Components: []recipe.Component{{
 			Lines: []recipe.IngredientLine{line(out["source"]), line(out["source"])},
 			Steps: []recipe.Step{{ID: "mix", Text: "Mix."}},
 		}},
+		Equipment: []recipe.EquipmentLink{{Equipment: recipe.EquipmentID(tin.ID)}},
 	})
 	if err != nil {
 		return err

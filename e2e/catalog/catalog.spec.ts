@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OTHER, asIdentity } from '../fixtures/identity';
+import { OPERATOR, OTHER, asIdentity } from '../fixtures/identity';
 
 // The catalog page needs unreviewed ingredients and a recipe that uses one,
 // which the shared server of the suite does not have. This spec seeds its own
@@ -20,7 +20,7 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 let dataDir = '';
 let server: ChildProcess | undefined;
-let ids: { edit: number; source: number; target: number; recipe: number };
+let ids: { edit: number; source: number; target: number; recipe: number; tin: number };
 
 test.use({ baseURL: origin });
 // One server per file, and the tests build on each other's data.
@@ -38,6 +38,7 @@ test.beforeAll(async () => {
       GOBBLER_DATA_DIR: dataDir,
       GOBBLER_LOG_LEVEL: 'warn',
       GOBBLER_DEV_AUTH_BYPASS: 'true',
+      GOBBLER_OPERATOR_EMAILS: OPERATOR,
     },
     stdio: 'inherit',
   });
@@ -183,4 +184,65 @@ test('another household sees nothing of an ingredient it does not own', async ({
   } finally {
     await other.close();
   }
+});
+
+// The sized flag (ADR-00019): the operator sets it on catalog equipment, and a
+// scaled recipe view then hints at a larger pan on that equipment only when scaled up.
+test.describe('equipment sized flag', () => {
+  const hint = 'may need a larger pan';
+
+  test('a household member cannot reach the equipment review or set the flag', async ({ browser }) => {
+    const ctx = await browser.newContext({ baseURL: origin, ...asIdentity(OTHER) });
+    try {
+      expect((await ctx.request.get('/operator/equipment')).status()).toBe(403);
+      expect((await ctx.request.post(`/operator/equipment/${ids.tin}/sized`, { form: { sized: '1' } })).status()).toBe(403);
+    } finally {
+      await ctx.close();
+    }
+    const dev = await browser.newContext({ baseURL: origin });
+    try {
+      expect((await dev.request.get('/operator/equipment')).status()).toBe(403);
+      // The refused attempts changed nothing: the scaled view still has no hint.
+      const view = await dev.request.get(`/recipes/${ids.recipe}?scale=2`);
+      expect(await view.text()).not.toContain(hint);
+    } finally {
+      await dev.close();
+    }
+  });
+
+  test('the operator sets the flag and the scaled view hints, then clears it', async ({ browser }) => {
+    const op = await browser.newContext({ baseURL: origin, ...asIdentity(OPERATOR) });
+    const member = await browser.newContext({ baseURL: origin });
+    try {
+      const page = await op.newPage();
+      await page.goto('/operator/equipment');
+      await expect(page.getByRole('heading', { name: 'Equipment catalog', level: 1 })).toBeVisible();
+      const row = page.getByTestId('equipment-row').filter({ hasText: 'e2e roasting tin' });
+      await expect(row.getByTestId('sized-state')).toHaveText('Not sized');
+      await row.getByRole('button', { name: 'Mark e2e roasting tin sized' }).click();
+      await expect(page).toHaveURL(/\/operator\/equipment$/);
+      await expect(page.getByTestId('equipment-row').filter({ hasText: 'e2e roasting tin' }).getByTestId('sized-state')).toHaveText('Sized');
+
+      const memberPage = await member.newPage();
+      await memberPage.goto(`/recipes/${ids.recipe}?scale=2`);
+      await expect(memberPage.getByTestId('equipment-hint')).toHaveText(`(${hint})`);
+      // Unscaled, the same sized equipment has no hint.
+      await memberPage.goto(`/recipes/${ids.recipe}`);
+      await expect(memberPage.getByTestId('equipment')).toContainText('e2e roasting tin');
+      await expect(memberPage.getByTestId('equipment-hint')).toHaveCount(0);
+      // Scaled down, there is no larger pan to hint at either.
+      await memberPage.goto(`/recipes/${ids.recipe}?scale=1/2`);
+      await expect(memberPage.getByTestId('equipment')).toContainText('e2e roasting tin');
+      await expect(memberPage.getByTestId('equipment-hint')).toHaveCount(0);
+
+      await page.getByTestId('equipment-row').filter({ hasText: 'e2e roasting tin' }).getByRole('button', { name: 'Clear sized on e2e roasting tin' }).click();
+      await expect(page.getByTestId('equipment-row').filter({ hasText: 'e2e roasting tin' }).getByTestId('sized-state')).toHaveText('Not sized');
+      await memberPage.goto(`/recipes/${ids.recipe}?scale=2`);
+      await expect(memberPage.getByTestId('equipment')).toContainText('e2e roasting tin');
+      await expect(memberPage.getByTestId('equipment-hint')).toHaveCount(0);
+    } finally {
+      await op.close();
+      await member.close();
+    }
+  });
 });

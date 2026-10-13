@@ -20,6 +20,7 @@ type Equipment struct {
 	ID       int64
 	Name     string
 	Reviewed int64
+	Sized    int64
 }
 
 type EquipmentAlias struct {
