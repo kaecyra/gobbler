@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-10-12, round 7
+# Overseer handoff: 2026-10-13, round 8
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
 
@@ -33,9 +33,17 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## In flight
 
-No worker is in flight, and there are no worktrees on disk. **PR #140** (this tenancy split) is open and waiting for the owner. Merge it before dispatching anything, because the dispatch order below depends on it.
+PR #140 (tenancy split) merged at ea28f9b. Round 8 dispatched at dc2f902, worktrees under `.claude/worktrees/`, provisioned:
 
-Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands. #128 and #129 widened lanes for that.
+| Node | Issue | Branch / worktree | Migration | e2e port block |
+|---|---|---|---|---|
+| t-household-core | #134 | feat/134-household-core, wt-134 | schema 00007 | 41100-41199 |
+| w7-nav | #130 | feat/130-nav, wt-130 | none | 41200-41299 |
+| w5-codec | #123 | feat/123-codec, wt-123 | none | 41300-41399 |
+
+#134 gained a spec comment: an operator email reaches `/settings` without membership (ADR-00018 Admission). #141 filed: hide operator-only nav links from non-operators; it needs a graph node after #130 and #134.
+
+Every open branch bumps VERSION over main, so the second PR to merge always re-bumps. A migration test that leaves out "the latest" migration breaks when a newer one lands.
 
 ## Side task: mockup mascots (owner request), done
 
