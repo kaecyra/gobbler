@@ -1373,7 +1373,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 139,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "l-invitations",
         "t-recipe-sharing",
@@ -2290,6 +2290,15 @@
       "id": "r-drop-todoist-config",
       "title": "Drop the Todoist settings",
       "merged": "ece09e5e3f807b048f3eb4a82479ce147b3447f0"
+    },
+    {
+      "id": "t-cross-household-gate",
+      "title": "Cross-household tests on every route, enforced by the gate",
+      "merged": "ad14b66dcb595501f4cf0411a4c3b50a907adf54",
+      "adrs": [
+        "00018"
+      ],
+      "note": "End-state obligation (ADR-00018): deleting a household leaves no rows anywhere. The gate deletes a seeded household and asserts that no household-scoped table still holds its rows."
     }
   ],
   "adr_sequence": {
