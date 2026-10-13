@@ -51,7 +51,7 @@ func (h *promotionHandler) list(w http.ResponseWriter, r *http.Request) {
 	}
 	suggested, err := h.Catalog.ListSuggestedIngredients(r.Context())
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	layout.Render(w, r, http.StatusOK, promotionsPage(newPromotionsView(suggested)))
@@ -67,7 +67,7 @@ func (h *promotionHandler) review(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := h.Catalog.PreviewPromotion(r.Context(), id)
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	layout.Render(w, r, http.StatusOK, reviewPage(newReviewView(p)))
@@ -82,7 +82,7 @@ func (h *promotionHandler) promote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Catalog.PromoteIngredient(r.Context(), id); err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, PromotionPattern, http.StatusSeeOther)
@@ -92,7 +92,7 @@ func promotionID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	raw := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
 	if err != nil || id <= 0 {
-		fail(w, r, fmt.Errorf("ingredient id %q: %w", raw, layout.ErrInvalid))
+		layout.Fail(w, r, fmt.Errorf("ingredient id %q: %w", raw, layout.ErrInvalid))
 		return 0, false
 	}
 	return id, true

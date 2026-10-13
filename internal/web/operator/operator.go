@@ -61,10 +61,10 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 	}
 	pending, err := h.Households.PendingHouseholdInvitations(r.Context(), email)
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
-	layout.Render(w, r, http.StatusOK, invitationsPage(newInvitationsView(pending)))
+	layout.Render(w, r, http.StatusOK, invitationsPage(invitationsView{Pending: layout.NewPendingInvitations(email, pending)}))
 }
 
 func (h *handler) invite(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil || id <= 0 {
-		fail(w, r, fmt.Errorf("invitation id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
+		layout.Fail(w, r, fmt.Errorf("invitation id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
 		return
 	}
 	redirect(w, r, h.Households.Revoke(r.Context(), id, email))
@@ -93,19 +93,8 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 
 func redirect(w http.ResponseWriter, r *http.Request, err error) {
 	if err != nil {
-		fail(w, r, err)
+		layout.Fail(w, r, err)
 		return
 	}
 	http.Redirect(w, r, Pattern, http.StatusSeeOther)
-}
-
-// fail writes err as an error page. Input the store refused shows its own
-// reason, so a mistyped email says so; any other error goes through
-// layout.WriteError, which shows only the mapped status text.
-func fail(w http.ResponseWriter, r *http.Request, err error) {
-	if reason, ok := household.InvalidReason(err); ok {
-		layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest, reason))
-		return
-	}
-	layout.WriteError(w, r, err)
 }
