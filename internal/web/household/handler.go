@@ -16,7 +16,7 @@ import (
 // Patterns where the router mounts MemberRoutes and InvitationRoutes.
 const (
 	Pattern            = "/household"
-	InvitationsPattern = "/invitations"
+	InvitationsPattern = layout.InvitationsPath
 )
 
 // Store is what the pages use from the household store. *household.Store

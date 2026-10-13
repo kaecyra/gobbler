@@ -1,7 +1,6 @@
 package layout
 
 import (
-	"net/http"
 	"strconv"
 	"time"
 
@@ -43,15 +42,4 @@ func NewPendingInvitations(self string, in []household.Invitation) []PendingInvi
 		})
 	}
 	return out
-}
-
-// Fail writes err as an error page. Input the household store refused shows its
-// own reason, so a mistyped email says so; any other error goes through
-// WriteError, which shows only the mapped status text.
-func Fail(w http.ResponseWriter, r *http.Request, err error) {
-	if reason, ok := household.InvalidReason(err); ok {
-		Render(w, r, http.StatusBadRequest, ErrorPage(http.StatusBadRequest, reason))
-		return
-	}
-	WriteError(w, r, err)
 }

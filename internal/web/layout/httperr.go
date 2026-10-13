@@ -138,3 +138,15 @@ func writeHTML(ctx context.Context, w http.ResponseWriter, status int, body []by
 }
 
 func statusText(status int) string { return http.StatusText(status) }
+
+// Fail writes err as an error page for the household and operator pages. Input
+// the household store refused shows its own reason, so a mistyped email says
+// so; any other error goes through WriteError, which shows only the mapped
+// status text.
+func Fail(w http.ResponseWriter, r *http.Request, err error) {
+	if reason, ok := household.InvalidReason(err); ok {
+		Render(w, r, http.StatusBadRequest, ErrorPage(http.StatusBadRequest, reason))
+		return
+	}
+	WriteError(w, r, err)
+}
