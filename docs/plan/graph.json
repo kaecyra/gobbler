@@ -1688,6 +1688,170 @@
       ],
       "needs_migration": null,
       "adrs": []
+    },
+    {
+      "id": "i-text-meta",
+      "title": "read prep, cook and total time, yield and calories from pasted and OCR text",
+      "wave": 9,
+      "track": null,
+      "issue": 185,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/parse/section*.go",
+        "internal/parse/meta*.go",
+        "internal/ingest/assemble*.go",
+        "internal/parse/testdata/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "i-plugin-extractors",
+      "title": "recover ingredient groups from recipe-plugin markup",
+      "wave": 9,
+      "track": null,
+      "issue": 186,
+      "status": "todo",
+      "depends_on": [
+        "i-text-meta"
+      ],
+      "owns": [
+        "internal/ingest/extract/**",
+        "internal/ingest/assemble*.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "i-equipment-extract",
+      "title": "extract equipment",
+      "wave": 9,
+      "track": null,
+      "issue": 187,
+      "status": "todo",
+      "depends_on": [
+        "i-plugin-extractors",
+        "w3-equipment-size"
+      ],
+      "owns": [
+        "internal/ingest/draft*.go",
+        "internal/ingest/save*.go",
+        "internal/ingest/fallback.go",
+        "internal/ingest/structured*.go",
+        "internal/ingest/assemble*.go",
+        "internal/llm/**",
+        "internal/catalog/equipment_match*.go",
+        "internal/web/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "i-fallback-no-call-test",
+      "title": "a high-scoring draft at the default threshold makes no provider call",
+      "wave": 9,
+      "track": null,
+      "issue": 188,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/ingest/fallback_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "i-parser-version",
+      "title": "record the parser version on the saved recipe",
+      "wave": 9,
+      "track": null,
+      "issue": 189,
+      "status": "todo",
+      "depends_on": [
+        "i-equipment-extract",
+        "w3-equipment-size"
+      ],
+      "owns": [
+        "internal/ingest/save*.go",
+        "internal/store/recipe*.go",
+        "internal/store/snapshot*.go",
+        "internal/web/ingest/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": []
+    },
+    {
+      "id": "i-step-graph",
+      "title": "infer step dependencies and passive steps",
+      "wave": 9,
+      "track": null,
+      "issue": 190,
+      "status": "todo",
+      "depends_on": [
+        "i-parser-version"
+      ],
+      "owns": [
+        "internal/ingest/steps*.go",
+        "internal/ingest/save*.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "Owner decision needed: how ingest builds the step graph (rules / LLM / editor only / rules then LLM); see #190"
+    },
+    {
+      "id": "i-llm-gap-fill",
+      "title": "decide whether the LLM fallback fills gaps or replaces the draft",
+      "wave": 9,
+      "track": null,
+      "issue": 191,
+      "status": "todo",
+      "depends_on": [
+        "i-equipment-extract"
+      ],
+      "owns": [
+        "internal/ingest/fallback.go",
+        "internal/llm/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "Owner decision needed: LLM fallback replaces the whole draft (today) or fills only low-confidence gaps; see #191"
+    },
+    {
+      "id": "i-review-edit",
+      "title": "decide what the review screen can edit",
+      "wave": 9,
+      "track": null,
+      "issue": 192,
+      "status": "todo",
+      "depends_on": [
+        "i-equipment-extract",
+        "i-parser-version"
+      ],
+      "owns": [
+        "internal/web/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "Owner decision needed: review screen edit scope (full editor / save-then-edit / common fixes only); see #192"
+    },
+    {
+      "id": "i-site-extractors",
+      "title": "site extractors for sites with no structured data",
+      "wave": 9,
+      "track": null,
+      "issue": 193,
+      "status": "todo",
+      "depends_on": [
+        "i-plugin-extractors"
+      ],
+      "owns": [
+        "internal/ingest/extract/sites/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "Owner decision needed: which sites get extractors; see #193"
     }
   ],
   "shared_files": [
