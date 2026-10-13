@@ -1332,7 +1332,12 @@
         "internal/shopping/store_recipe_test.go",
         "internal/store/usage_test.go",
         "internal/web/shopping/wiring_test.go",
-        "docs/design.md"
+        "docs/design.md",
+        "internal/shopping/store_household_delete_test.go",
+        "internal/shopping/store_scope_test.go",
+        "internal/shopping/store_manual*.go",
+        "internal/shopping/pantry*.go",
+        "internal/store/recipe*.go"
       ],
       "needs_migration": "schema",
       "adrs": [
