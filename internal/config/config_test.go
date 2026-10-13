@@ -41,7 +41,7 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Ingestion.ConfidenceThreshold != 0.7 || c.Ingestion.FetchTimeout != 15*time.Second || c.Ingestion.UserAgent == "" {
 		t.Errorf("ingestion defaults: %+v", c.Ingestion)
 	}
-	if c.LLM.Configured() || c.Todoist.Configured() || c.Backup.S3.Configured() {
+	if c.LLM.Configured() || c.Backup.S3.Configured() {
 		t.Error("optional groups must default to unconfigured")
 	}
 	if c.LLM.TextModel != "" || c.LLM.VisionModel != "" {
@@ -59,7 +59,6 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 		EnvConfidenceThreshold: "0.55", EnvFetchTimeout: "20s", EnvUserAgent: "ua",
 		EnvLLMProvider: "gemini", EnvLLMTextModel: "tm", EnvLLMVisionModel: "vm", EnvLLMTimeout: "90s",
 		EnvGeminiAPIKey: "gk", EnvAnthropicAPIKey: "ak",
-		EnvTodoistToken: "tok", EnvTodoistProject: "Groceries",
 		EnvBackupSchedule: "04:30", EnvBackupLocalKeep: "3", EnvBackupRemoteKeep: "10",
 		EnvS3Endpoint: "https://s3.example.com", EnvS3Region: "r", EnvS3Bucket: "b", EnvS3Prefix: "p/",
 		EnvS3AccessKeyID: "id", EnvS3SecretAccessKey: "sk",
@@ -79,9 +78,6 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 	if c.LLM.Provider != ProviderGemini || c.LLM.TextModel != "tm" || c.LLM.VisionModel != "vm" ||
 		c.LLM.Timeout != 90*time.Second || c.LLM.APIKey.Reveal() != "gk" {
 		t.Errorf("llm: %+v", c.LLM)
-	}
-	if !c.Todoist.Configured() || c.Todoist.Token.Reveal() != "tok" || c.Todoist.Project != "Groceries" {
-		t.Errorf("todoist: %+v", c.Todoist)
 	}
 	b := c.Backup
 	if b.Schedule != "04:30" || b.LocalRetention != 3 || b.RemoteRetention != 10 || !b.S3.Configured() ||
@@ -126,7 +122,6 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"provider without vision model", with(EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvAnthropicAPIKey, "k"), EnvLLMVisionModel},
 		{"key without provider", with(EnvAnthropicAPIKey, "k"), EnvAnthropicAPIKey},
 		{"model without provider", with(EnvLLMTextModel, "m"), EnvLLMTextModel},
-		{"todoist project without token", with(EnvTodoistProject, "p"), EnvTodoistToken},
 		{"bad schedule", with(EnvBackupSchedule, "25:00"), EnvBackupSchedule},
 		{"schedule not a time", with(EnvBackupSchedule, "nightly"), EnvBackupSchedule},
 		{"local retention zero", with(EnvBackupLocalKeep, "0"), EnvBackupLocalKeep},
@@ -228,17 +223,15 @@ func TestIsLoopbackAddr(t *testing.T) {
 }
 
 const (
-	secretLLM  = "sk-ant-LLMSECRET"
-	secretTodo = "TODOISTSECRET"
-	secretID   = "S3IDSECRET"
-	secretKey  = "S3KEYSECRET"
+	secretLLM = "sk-ant-LLMSECRET"
+	secretID  = "S3IDSECRET"
+	secretKey = "S3KEYSECRET"
 )
 
 func secretConfig(t *testing.T) Config {
 	t.Helper()
 	c, err := loadFrom(env(with(
 		EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v", EnvAnthropicAPIKey, secretLLM,
-		EnvTodoistToken, secretTodo,
 		EnvS3Endpoint, "e", EnvS3Region, "r", EnvS3Bucket, "b", EnvS3AccessKeyID, secretID, EnvS3SecretAccessKey, secretKey,
 	)))
 	if err != nil {
@@ -249,7 +242,7 @@ func secretConfig(t *testing.T) Config {
 
 func assertNoSecrets(t *testing.T, how, out string) {
 	t.Helper()
-	for _, s := range []string{secretLLM, secretTodo, secretID, secretKey} {
+	for _, s := range []string{secretLLM, secretID, secretKey} {
 		if strings.Contains(out, s) {
 			t.Errorf("%s leaks %q: %s", how, s, out)
 		}
@@ -267,9 +260,9 @@ func TestSecretsRedacted(t *testing.T) {
 		if verb == "%T" || verb == "%p" {
 			continue
 		}
-		for _, v := range []any{c, &c, c.LLM, c.Todoist, c.Backup.S3, c.LLM.APIKey, &c.LLM.APIKey} {
+		for _, v := range []any{c, &c, c.LLM, c.Backup.S3, c.LLM.APIKey, &c.LLM.APIKey} {
 			out := fmt.Sprintf(verb, v)
-			for _, s := range []string{secretLLM, secretTodo, secretID, secretKey} {
+			for _, s := range []string{secretLLM, secretID, secretKey} {
 				if strings.Contains(out, s) {
 					t.Errorf("%s of %T leaks %q: %s", verb, v, s, out)
 				}
@@ -305,7 +298,7 @@ func TestSecretRevealAndEmpty(t *testing.T) {
 }
 
 func TestErrorsDoNotContainSecrets(t *testing.T) {
-	_, err := loadFrom(env(with(EnvLLMProvider, "bogus", EnvAnthropicAPIKey, secretLLM, EnvTodoistProject, "p")))
+	_, err := loadFrom(env(with(EnvLLMProvider, "bogus", EnvAnthropicAPIKey, secretLLM)))
 	if err == nil {
 		t.Fatal("expected error")
 	}
