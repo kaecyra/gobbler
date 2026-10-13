@@ -1376,7 +1376,7 @@
       "wave": 8,
       "track": "tenancy",
       "issue": 141,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "t-household-core",
         "w7-nav"
@@ -1835,6 +1835,15 @@
       "adrs": [
         "00018"
       ]
+    },
+    {
+      "id": "t-operator-nav",
+      "title": "Show operator-only nav links to operators only",
+      "merged": "3ba7487",
+      "adrs": [
+        "00018"
+      ],
+      "note": "ADR-00018: operator pages are operator-only. The membership middleware sets an operator flag on the request context for every operator request, member or not, through a helper in internal/web/layout/layout_operator.go; the layout renders operator-only links (Settings today) only when the flag is set. The server-side check stays the lock; this is presentation only."
     }
   ],
   "adr_sequence": {
