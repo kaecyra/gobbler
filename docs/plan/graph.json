@@ -1555,7 +1555,7 @@
       "wave": 8,
       "track": "ingestion",
       "issue": 161,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "w2-proposed-dedup"
       ],
@@ -2122,6 +2122,11 @@
         "00003",
         "00018"
       ]
+    },
+    {
+      "id": "r-proposed-wrapper",
+      "title": "Fold the proposedIngredients wrapper into ProposedFor",
+      "merged": "a5260c1fbc6ff8c76c9da3c727e8d6734027380d"
     }
   ],
   "adr_sequence": {
