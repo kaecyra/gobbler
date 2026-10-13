@@ -9,7 +9,10 @@
 // (ADR-00003) and fails with ErrNoIdentity when there is none. Every call,
 // read or write, is scoped to the household on the request context
 // (household.FromContext, ADR-00018) and fails with ErrNoHousehold when there
-// is none; a recipe of another household is ErrNotFound, never found. Every
+// is none; a recipe of another household is ErrNotFound, never found. The
+// catalog merge hooks (RegisterMergeHooks) and the usage counter
+// (RegisterUsageCounters, CountIngredientLines) are the exceptions: they act on
+// every household's rows until t-catalog-overlay (#137). Every
 // edit writes a revision of the document it replaces in the same transaction.
 package store
 
