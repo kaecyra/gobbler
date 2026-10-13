@@ -139,8 +139,6 @@ the container runs in UTC.
 | `GOBBLER_LLM_TIMEOUT` | `60s` | no | Go duration, positive. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
-| `GOBBLER_TODOIST_TOKEN` | none | yes | Required when `GOBBLER_TODOIST_PROJECT` is set. |
-| `GOBBLER_TODOIST_PROJECT` | none | no | |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |
 | `GOBBLER_BACKUP_LOCAL_RETENTION` | `7` | no | Snapshots kept locally; minimum 1. |
 | `GOBBLER_BACKUP_REMOTE_RETENTION` | `30` | no | Snapshots kept in S3; minimum 1. |
@@ -285,8 +283,3 @@ docker compose exec gobbler wget -q -O - http://127.0.0.1:8080/healthz
 Migrations apply at start-up, so a snapshot older than the current schema is
 brought forward automatically. Then open the app and confirm a recent recipe is
 there. The next scheduled run takes a fresh snapshot of the restored database.
-
-## Not covered here
-
-- The Todoist settings are read and validated, but this document does not
-  describe the push feature.

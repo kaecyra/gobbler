@@ -8,7 +8,7 @@
 // pantry membership) arrive as plain values in Input rather than through a
 // store. The persistence half (Store in store*.go, list*.go and pantry*.go)
 // keeps the rows in SQLite and calls Generate to build a list; it adds no merge
-// logic. The live view and the Todoist push live elsewhere.
+// logic. The live view lives elsewhere.
 //
 // Lists, entries, manual items, check state and the pantry belong to a
 // household (ADR-00018): every Store call is scoped to the household on the

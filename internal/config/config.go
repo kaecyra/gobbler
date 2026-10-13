@@ -34,8 +34,6 @@ const (
 	EnvLLMTimeout          = "GOBBLER_LLM_TIMEOUT"
 	EnvAnthropicAPIKey     = "GOBBLER_ANTHROPIC_API_KEY"
 	EnvGeminiAPIKey        = "GOBBLER_GEMINI_API_KEY"
-	EnvTodoistToken        = "GOBBLER_TODOIST_TOKEN"
-	EnvTodoistProject      = "GOBBLER_TODOIST_PROJECT"
 	EnvBackupSchedule      = "GOBBLER_BACKUP_SCHEDULE"
 	EnvBackupLocalKeep     = "GOBBLER_BACKUP_LOCAL_RETENTION"
 	EnvBackupRemoteKeep    = "GOBBLER_BACKUP_REMOTE_RETENTION"
@@ -78,7 +76,6 @@ type Config struct {
 	Operator  Operator
 	Ingestion Ingestion
 	LLM       LLM
-	Todoist   Todoist
 	Backup    Backup
 }
 
@@ -134,15 +131,6 @@ type LLM struct {
 
 // Configured reports whether an LLM provider is selected.
 func (l LLM) Configured() bool { return l.Provider != "" }
-
-// Todoist holds Todoist push settings. Token is empty when unconfigured.
-type Todoist struct {
-	Token   Secret
-	Project string
-}
-
-// Configured reports whether a Todoist token is set.
-func (t Todoist) Configured() bool { return t.Token.IsSet() }
 
 // Backup holds backup settings (ADR-00010).
 type Backup struct {
@@ -201,12 +189,6 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Ingestion.UserAgent = r.str(EnvUserAgent, defaultUserAgent)
 
 	r.llm(&c.LLM)
-
-	c.Todoist.Token = Secret{r.str(EnvTodoistToken, "")}
-	c.Todoist.Project = r.str(EnvTodoistProject, "")
-	if c.Todoist.Project != "" {
-		r.require(EnvTodoistToken, c.Todoist.Token.value, "required when "+EnvTodoistProject+" is set")
-	}
 
 	r.backup(&c.Backup)
 
