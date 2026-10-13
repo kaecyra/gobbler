@@ -8,32 +8,19 @@ import (
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
-// TestBuildVersionNamesWhereTheTotalCameFrom covers each total source of
-// ADR-00004: the version page must show which rule produced the total.
-func TestBuildVersionNamesWhereTheTotalCameFrom(t *testing.T) {
-	steps := []recipe.Component{{Steps: []recipe.Step{
-		{ID: "a", Text: "A.", Duration: 10 * time.Minute},
-		{ID: "b", Text: "B.", Duration: 20 * time.Minute, DependsOn: []recipe.StepID{"a"}},
-	}}}
-	tests := []struct {
-		name     string
-		doc      recipe.Recipe
-		wantNote string
-	}{
-		{"stored", recipe.Recipe{Times: recipe.Times{Total: time.Hour}, Components: steps}, "as stated by the source"},
-		{"critical path", recipe.Recipe{Components: steps}, "from the longest chain of steps"},
-		{"sum", recipe.Recipe{Times: recipe.Times{Prep: 5 * time.Minute, Cook: 10 * time.Minute}}, "prep, cook and waiting times added"},
-		{"unknown", recipe.Recipe{}, ""},
+// TestBuildVersionShowsTimesAndTotalNote is a wiring check: the version view
+// carries the rows, total and total-source note from display.BuildTimes. The
+// per-TotalSource cases live in that package's tests.
+func TestBuildVersionShowsTimesAndTotalNote(t *testing.T) {
+	doc := recipe.Recipe{Times: recipe.Times{Prep: 5 * time.Minute, Cook: 10 * time.Minute}}
+	v, err := buildVersion(context.Background(), nil, 1, 1, 1, doc)
+	if err != nil {
+		t.Fatalf("buildVersion: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			v, err := buildVersion(context.Background(), nil, 1, 1, 1, tt.doc)
-			if err != nil {
-				t.Fatalf("buildVersion: %v", err)
-			}
-			if v.TotalNote != tt.wantNote {
-				t.Errorf("TotalNote = %q, want %q", v.TotalNote, tt.wantNote)
-			}
-		})
+	if len(v.Times) != 2 || v.Times[0].Label != "Prep" || v.Times[1].Text != "10 min" {
+		t.Errorf("Times = %+v, want Prep and Cook rows", v.Times)
+	}
+	if v.Total != "15 min" || v.TotalNote != "prep, cook and waiting times added" {
+		t.Errorf("Total, note = %q, %q", v.Total, v.TotalNote)
 	}
 }
