@@ -46,6 +46,7 @@ fi
 
 # Static check: no COPY/ADD source from the build context is e2e or under it.
 # Stage copies (--from=) read another stage, not the context, and are skipped.
+# Both the shell form and the JSON form (COPY ["src", "dest"]) are read.
 if [ ! -f "$dockerfile" ]; then
   echo "image check: Dockerfile $dockerfile not found" >&2
   exit 1
@@ -60,6 +61,16 @@ copies="$(awk '
       if (t[i] == "" || toupper(t[i]) == "COPY" || toupper(t[i]) == "ADD") continue
       if (t[i] ~ /^--from=/) { skip = 1; continue }
       if (t[i] ~ /^--/) continue
+      if (t[i] ~ /^\[/) {
+        # JSON (exec) form: the rest of the line is one array of quoted strings.
+        rest = buf; sub(/^[ \t]*[A-Za-z]+[ \t]+/, "", rest)
+        while (rest ~ /^--[^ \t]*[ \t]+/) sub(/^--[^ \t]*[ \t]+/, "", rest)
+        while (match(rest, /"[^"]*"/)) {
+          arg[++cnt] = substr(rest, RSTART + 1, RLENGTH - 2)
+          rest = substr(rest, RSTART + RLENGTH)
+        }
+        break
+      }
       arg[++cnt] = t[i]
     }
     if (!skip) for (i = 1; i < cnt; i++) print arg[i]
