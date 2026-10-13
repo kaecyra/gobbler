@@ -24,17 +24,18 @@ func (q *Queries) AddEquipmentAlias(ctx context.Context, arg AddEquipmentAliasPa
 }
 
 const createEquipment = `-- name: CreateEquipment :one
-INSERT INTO equipment (name, reviewed) VALUES (?, ?)
+INSERT INTO equipment (name, reviewed, sized) VALUES (?, ?, ?)
 RETURNING id
 `
 
 type CreateEquipmentParams struct {
 	Name     string
 	Reviewed int64
+	Sized    int64
 }
 
 func (q *Queries) CreateEquipment(ctx context.Context, arg CreateEquipmentParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, createEquipment, arg.Name, arg.Reviewed)
+	row := q.db.QueryRowContext(ctx, createEquipment, arg.Name, arg.Reviewed, arg.Sized)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
@@ -62,13 +63,18 @@ func (q *Queries) DeleteEquipmentAliases(ctx context.Context, equipmentID int64)
 }
 
 const getEquipment = `-- name: GetEquipment :one
-SELECT id, name, reviewed FROM equipment WHERE id = ?
+SELECT id, name, reviewed, sized FROM equipment WHERE id = ?
 `
 
 func (q *Queries) GetEquipment(ctx context.Context, id int64) (Equipment, error) {
 	row := q.db.QueryRowContext(ctx, getEquipment, id)
 	var i Equipment
-	err := row.Scan(&i.ID, &i.Name, &i.Reviewed)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Reviewed,
+		&i.Sized,
+	)
 	return i, err
 }
 
@@ -105,7 +111,7 @@ func (q *Queries) ListAllEquipmentAliases(ctx context.Context) ([]ListAllEquipme
 }
 
 const listEquipment = `-- name: ListEquipment :many
-SELECT id, name, reviewed FROM equipment ORDER BY name
+SELECT id, name, reviewed, sized FROM equipment ORDER BY name
 `
 
 func (q *Queries) ListEquipment(ctx context.Context) ([]Equipment, error) {
@@ -117,7 +123,12 @@ func (q *Queries) ListEquipment(ctx context.Context) ([]Equipment, error) {
 	var items []Equipment
 	for rows.Next() {
 		var i Equipment
-		if err := rows.Scan(&i.ID, &i.Name, &i.Reviewed); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Reviewed,
+			&i.Sized,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -159,7 +170,7 @@ func (q *Queries) ListEquipmentAliases(ctx context.Context, equipmentID int64) (
 }
 
 const listUnreviewedEquipment = `-- name: ListUnreviewedEquipment :many
-SELECT id, name, reviewed FROM equipment WHERE reviewed = 0 ORDER BY name
+SELECT id, name, reviewed, sized FROM equipment WHERE reviewed = 0 ORDER BY name
 `
 
 func (q *Queries) ListUnreviewedEquipment(ctx context.Context) ([]Equipment, error) {
@@ -171,7 +182,12 @@ func (q *Queries) ListUnreviewedEquipment(ctx context.Context) ([]Equipment, err
 	var items []Equipment
 	for rows.Next() {
 		var i Equipment
-		if err := rows.Scan(&i.ID, &i.Name, &i.Reviewed); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Reviewed,
+			&i.Sized,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -200,17 +216,23 @@ func (q *Queries) LookupEquipmentID(ctx context.Context, term string) (int64, er
 }
 
 const updateEquipment = `-- name: UpdateEquipment :execrows
-UPDATE equipment SET name = ?, reviewed = ? WHERE id = ?
+UPDATE equipment SET name = ?, reviewed = ?, sized = ? WHERE id = ?
 `
 
 type UpdateEquipmentParams struct {
 	Name     string
 	Reviewed int64
+	Sized    int64
 	ID       int64
 }
 
 func (q *Queries) UpdateEquipment(ctx context.Context, arg UpdateEquipmentParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateEquipment, arg.Name, arg.Reviewed, arg.ID)
+	result, err := q.db.ExecContext(ctx, updateEquipment,
+		arg.Name,
+		arg.Reviewed,
+		arg.Sized,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}

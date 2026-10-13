@@ -190,6 +190,59 @@ func TestUnitErrors(t *testing.T) {
 	}
 }
 
+// Equipment is not sized unless the operator says so (ADR-00019): neither
+// creation nor a seeded row sets it, and an update sets and clears it.
+func TestEquipmentSizedFlag(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	got, err := s.CreateEquipment(ctx, Equipment{Name: "zz test tin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Sized {
+		t.Fatal("new equipment is sized by default")
+	}
+	skillet, ok, err := s.MatchEquipment(ctx, "skillet")
+	if err != nil || !ok || skillet.Sized {
+		t.Fatalf("seeded skillet = %+v ok=%v err=%v, want unsized", skillet, ok, err)
+	}
+	got.Sized = true
+	if err := s.UpdateEquipment(ctx, got); err != nil {
+		t.Fatal(err)
+	}
+	read, err := s.GetEquipment(ctx, got.ID)
+	if err != nil || !read.Sized {
+		t.Fatalf("after set: %+v err %v, want sized", read, err)
+	}
+	all, err := s.ListEquipment(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var listed bool
+	for _, e := range all {
+		if e.ID == got.ID {
+			listed = e.Sized
+		}
+	}
+	if !listed {
+		t.Error("ListEquipment does not report the sized flag")
+	}
+	read.Sized = false
+	if err := s.UpdateEquipment(ctx, read); err != nil {
+		t.Fatal(err)
+	}
+	if read, err = s.GetEquipment(ctx, got.ID); err != nil || read.Sized {
+		t.Fatalf("after clear: %+v err %v, want unsized", read, err)
+	}
+	made, err := s.CreateEquipment(ctx, Equipment{Name: "zz test dish", Sized: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if read, err = s.GetEquipment(ctx, made.ID); err != nil || !read.Sized {
+		t.Fatalf("created sized: %+v err %v", read, err)
+	}
+}
+
 func TestEquipmentCRUD(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()

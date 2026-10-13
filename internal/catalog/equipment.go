@@ -16,6 +16,10 @@ type Equipment struct {
 	Name     string
 	Aliases  []string
 	Reviewed bool
+	// Sized marks equipment with a size (pans, tins, dishes, pots). The
+	// operator sets it by hand during catalog review and ingestion never does;
+	// a scaled recipe view shows the larger-pan hint on it (ADR-00019).
+	Sized bool
 }
 
 func (e *Equipment) prepare() error {
@@ -28,7 +32,7 @@ func (e *Equipment) prepare() error {
 }
 
 func equipmentFrom(r catalogdb.Equipment) Equipment {
-	return Equipment{ID: r.ID, Name: r.Name, Reviewed: r.Reviewed != 0}
+	return Equipment{ID: r.ID, Name: r.Name, Reviewed: r.Reviewed != 0, Sized: r.Sized != 0}
 }
 
 // CreateEquipment stores new equipment and returns it with its id.
@@ -40,7 +44,7 @@ func (s *Store) CreateEquipment(ctx context.Context, in Equipment) (Equipment, e
 		if err := kindEquipment.checkFree(ctx, q, 0, in.Name, in.Aliases); err != nil {
 			return err
 		}
-		in.ID, err = q.CreateEquipment(ctx, catalogdb.CreateEquipmentParams{Name: in.Name, Reviewed: boolInt(in.Reviewed)})
+		in.ID, err = q.CreateEquipment(ctx, catalogdb.CreateEquipmentParams{Name: in.Name, Reviewed: boolInt(in.Reviewed), Sized: boolInt(in.Sized)})
 		if err != nil {
 			return wrapWrite("create equipment "+in.Name, err)
 		}
@@ -61,7 +65,7 @@ func (s *Store) UpdateEquipment(ctx context.Context, in Equipment) error {
 		if err := kindEquipment.checkFree(ctx, q, in.ID, in.Name, in.Aliases); err != nil {
 			return err
 		}
-		n, err := q.UpdateEquipment(ctx, catalogdb.UpdateEquipmentParams{Name: in.Name, Reviewed: boolInt(in.Reviewed), ID: in.ID})
+		n, err := q.UpdateEquipment(ctx, catalogdb.UpdateEquipmentParams{Name: in.Name, Reviewed: boolInt(in.Reviewed), Sized: boolInt(in.Sized), ID: in.ID})
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("update equipment %d", in.ID), err)
 		}

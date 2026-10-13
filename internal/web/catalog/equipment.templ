@@ -1,0 +1,50 @@
+package catalog
+
+import (
+	"fmt"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+func sizedAction(id int64) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("%s/%d/sized", EquipmentPattern, id))
+}
+
+templ equipmentPage(v equipmentView) {
+	@layout.Page("Equipment catalog") {
+		<h1>Equipment catalog</h1>
+		<p class="muted">
+			Mark the pans, tins, dishes and pots whose size matters. A scaled recipe shows "may need a larger pan" on them and on nothing else.
+		</p>
+		<table data-testid="equipment-table">
+			<thead>
+				<tr>
+					<th scope="col">Name</th>
+					<th scope="col">Also called</th>
+					<th scope="col">Sized</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, r := range v.Rows {
+					<tr data-testid="equipment-row">
+						<td>{ r.Name }</td>
+						<td>{ r.Aliases }</td>
+						<td>
+							<form method="post" action={ sizedAction(r.ID) }>
+								if r.Sized {
+									<span data-testid="sized-state">Sized</span>
+									<input type="hidden" name="sized" value="0"/>
+									<button type="submit">Clear sized on { r.Name }</button>
+								} else {
+									<span class="muted" data-testid="sized-state">Not sized</span>
+									<input type="hidden" name="sized" value="1"/>
+									<button type="submit">Mark { r.Name } sized</button>
+								}
+							</form>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
