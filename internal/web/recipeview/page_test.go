@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/recipe/display"
+
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -223,4 +225,44 @@ func TestPageOfARecipeWithNothingToShowStillRenders(t *testing.T) {
 	body := page(t, fakeRecipes{1: r}, "/recipes/1")
 	mustContain(t, body, "<h1>Bare</h1>", `data-testid="rating-new"`)
 	mustNotContain(t, body, "Ingredients", "Equipment", "Ready in about", `data-testid="tip"`, "step-title")
+}
+
+// failingWriter accepts writes until the nth call, then fails every one.
+type failingWriter struct{ n, calls int }
+
+func (f *failingWriter) Write(p []byte) (int, error) {
+	f.calls++
+	if f.calls >= f.n {
+		return 0, errors.New("broken pipe")
+	}
+	return len(p), nil
+}
+
+// A write that fails part-way through the page must reach the caller, so the
+// handler can log it; a page silently cut short would look complete. The
+// padding moves the point where the output buffer fills across the page, so
+// the failure lands in different components.
+func TestAFailedWriteIsReportedWhereverItLands(t *testing.T) {
+	r := testRecipe(t)
+	r.VideoID = "dQw4w9WgXcQ"
+	r.MealType, r.SpiceLevel, r.Rating = recipe.MealMain, intp(2), intp(3)
+	for pad := 0; pad < 9000; pad += 61 {
+		r.Description = strings.Repeat("x", pad)
+		v, err := buildView(context.Background(), testCatalog(), 7, r, display.Default())
+		if err != nil {
+			t.Fatal(err)
+		}
+		v.Tips = []string{"A tip."}
+		v.Notice = "Careful."
+		v.Scaled = true
+		v.Origin = &originView{RecipeID: 3, Version: 2}
+		v.HasThumbnail = true
+		for n := 1; n <= 8; n++ {
+			w := &failingWriter{n: n}
+			err := recipePage(v).Render(context.Background(), w)
+			if w.calls >= n && err == nil {
+				t.Fatalf("write %d failed with description of %d bytes and Render returned nil", n, pad)
+			}
+		}
+	}
 }

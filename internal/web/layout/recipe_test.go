@@ -2,6 +2,7 @@ package layout
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -186,6 +187,59 @@ func TestRecipeStylesAreInlineAndUseOnlyTokens(t *testing.T) {
 	for _, bad := range []string{"#fff", "#000", "rgb(", "rgba(", "hsl("} {
 		if strings.Contains(css, bad) {
 			t.Errorf("recipe.css has the literal colour %q; use a token", bad)
+		}
+	}
+}
+
+// failingWriter accepts writes until the nth call, then fails every one.
+type failingWriter struct{ n, calls int }
+
+func (f *failingWriter) Write(p []byte) (int, error) {
+	f.calls++
+	if f.calls >= f.n {
+		return 0, errors.New("broken pipe")
+	}
+	return len(p), nil
+}
+
+// A write that fails part-way through a part must reach the caller. The
+// padding moves the point where the output buffer fills across the part.
+func TestAFailedWriteInARecipePartIsReported(t *testing.T) {
+	cal := 300
+	for pad := 0; pad < 9000; pad += 37 {
+		text := strings.Repeat("x", pad)
+		parts := map[string]templ.Component{
+			"meta": RecipeMetaRow(RecipeMeta{
+				MealType: recipe.MealMain, Meal: "Main", Spice: 2, Spoons: 3, Made: 2, Author: text,
+				Calories: &cal, SourceURL: "https://x.test/", SourceHost: "x.test",
+			}),
+			"step": RecipeStep(RecipeStepView{
+				Title: "T", Text: text, Passive: true, Note: "1 h, passive", After: []int{1, 2},
+				Meanwhile: []display.MeanwhileItem{{Number: 3, Text: "Do it."}},
+			}, "2"),
+		}
+		for name, c := range parts {
+			for n := 1; n <= 6; n++ {
+				w := &failingWriter{n: n}
+				err := c.Render(context.Background(), w)
+				if w.calls >= n && err == nil {
+					t.Fatalf("%s: write %d failed with %d bytes of text and Render returned nil", name, n, pad)
+				}
+			}
+		}
+	}
+}
+
+func TestRenderOfACancelledContextStops(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	for name, c := range map[string]templ.Component{
+		"meta": RecipeMetaRow(RecipeMeta{}),
+		"step": RecipeStep(RecipeStepView{Text: "x", Meanwhile: []display.MeanwhileItem{{Number: 1, Text: "y"}}}, "1"),
+	} {
+		var b strings.Builder
+		if err := c.Render(ctx, &b); err == nil {
+			t.Errorf("%s: a cancelled request rendered anyway", name)
 		}
 	}
 }

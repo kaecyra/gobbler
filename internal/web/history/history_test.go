@@ -37,6 +37,7 @@ type env struct {
 	t      *testing.T
 	ctx    context.Context
 	store  *store.Store
+	cat    *catalog.Store
 	router chi.Router
 	flour  int64
 	pan    int64
@@ -77,7 +78,7 @@ func newEnv(t *testing.T) *env {
 	}
 
 	thumbs := &stubThumbs{}
-	e := &env{t: t, ctx: authed, store: s, flour: flour.ID, pan: pan.ID, thumbs: thumbs}
+	e := &env{t: t, ctx: authed, store: s, cat: cat, flour: flour.ID, pan: pan.ID, thumbs: thumbs}
 	e.router = e.routerFor(Deps{Recipes: s, Catalog: cat, Thumbnails: thumbs})
 	return e
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
@@ -170,4 +171,64 @@ func (e *env) doOn(router chi.Router, path string) *httptest.ResponseRecorder {
 	defer slog.SetDefault(prev)
 	router.ServeHTTP(rec, req)
 	return rec
+}
+
+// failingWriter accepts writes until the nth call, then fails every one.
+type failingWriter struct{ n, calls int }
+
+func (f *failingWriter) Write(p []byte) (int, error) {
+	f.calls++
+	if f.calls >= f.n {
+		return 0, errors.New("broken pipe")
+	}
+	return len(p), nil
+}
+
+// A write that fails part-way through a page must reach the caller, so the
+// handler can log it; a page cut short would look complete. The padding moves
+// the point where the output buffer fills across the page.
+func TestAFailedWriteIsReportedWhereverItLands(t *testing.T) {
+	e := newEnv(t)
+	spice, rating := 2, 4
+	r := e.doc("Loaf v1", "3")
+	r.MealType, r.SpiceLevel, r.Rating = recipe.MealMain, &spice, &rating
+	id := e.create(r)
+	e.update(id, e.doc("Loaf v2", "4"))
+	e.update(id, e.doc("Loaf v3", "5"))
+	info, err := e.store.Info(e.ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revs, err := e.store.ListRevisions(e.ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored := int64(1)
+	revs[len(revs)-1].Restored = &restored
+
+	for pad := 0; pad < 9000; pad += 61 {
+		doc, err := e.store.GetVersion(e.ctx, id, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.Description = strings.Repeat("x", pad)
+		vv, err := buildVersion(e.ctx, e.cat, id, 1, info.Version, doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lv := buildList(id, doc.Name, info, revs)
+		lv.Origin = &originView{RecipeID: 3, Version: 2}
+		for _, page := range map[string]func() templ.Component{
+			"list":    func() templ.Component { return listPage(lv) },
+			"version": func() templ.Component { return versionPage(vv) },
+		} {
+			for n := 1; n <= 8; n++ {
+				w := &failingWriter{n: n}
+				err := page().Render(e.ctx, w)
+				if w.calls >= n && err == nil {
+					t.Fatalf("write %d failed with description of %d bytes and Render returned nil", n, pad)
+				}
+			}
+		}
+	}
 }
