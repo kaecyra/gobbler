@@ -258,7 +258,7 @@ func TestGapsDescribeAndEmpty(t *testing.T) {
 	if !(Gaps{}).Empty() {
 		t.Error("zero Gaps must be Empty")
 	}
-	g := Gaps{Prep: true, Steps: []GapStep{{Text: "Mix."}}}
+	g := Gaps{Prep: true, Steps: []GapStep{{Number: 1, Text: "Mix."}}, StepTexts: []string{"Mix."}}
 	if g.Empty() {
 		t.Error("Gaps with a field or a step is not Empty")
 	}

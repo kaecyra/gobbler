@@ -15,8 +15,9 @@ var ErrInvalidStructured = errors.New("does not match the ingestion schema")
 
 // DecodeStructured is the one strict reading of a provider's answer
 // (ADR-00006, ADR-00007): exactly one JSON object, no unknown fields, a
-// non-blank name, no blank equipment name, at least one component, and an
-// ingredients key on every component. Anything else is an error wrapping
+// non-blank name, no blank equipment name, at least one component, an
+// ingredients key on every component, and a step_graph that names each step
+// once with dependencies on earlier steps only. Anything else is an error wrapping
 // ErrInvalidStructured, never a partial Structured. Every provider calls it; none keeps its own copy.
 func DecodeStructured(raw []byte) (Structured, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
@@ -37,6 +38,21 @@ func DecodeStructured(raw []byte) (Structured, error) {
 	for i, name := range s.Equipment {
 		if strings.TrimSpace(name) == "" {
 			return Structured{}, fmt.Errorf("%w: equipment %d is blank", ErrInvalidStructured, i)
+		}
+	}
+	seen := map[int]bool{}
+	for i, a := range s.StepGraph {
+		switch {
+		case a.Step < 1:
+			return Structured{}, fmt.Errorf("%w: step_graph entry %d names step %d", ErrInvalidStructured, i, a.Step)
+		case a.DependsOn == nil:
+			return Structured{}, fmt.Errorf("%w: step_graph entry %d has no depends_on", ErrInvalidStructured, i)
+		case seen[a.Step]:
+			return Structured{}, fmt.Errorf("%w: step_graph answers step %d twice", ErrInvalidStructured, a.Step)
+		}
+		seen[a.Step] = true
+		if err := checkDependsOn(a.Step, a.DependsOn); err != nil {
+			return Structured{}, fmt.Errorf("%w: step_graph %w", ErrInvalidStructured, err)
 		}
 	}
 	for i, c := range s.Components {

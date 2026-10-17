@@ -58,3 +58,22 @@ func TestDecodeStructured(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeStructuredReadsAndChecksTheStepGraph(t *testing.T) {
+	const base = `{"name":"Bread","components":[{"ingredients":[]}],"step_graph":`
+	if s, err := ingest.DecodeStructured([]byte(base + `[{"step":2,"passive":true,"depends_on":[1]}]}`)); err != nil ||
+		len(s.StepGraph) != 1 || !s.StepGraph[0].Passive || s.StepGraph[0].DependsOn[0] != 1 {
+		t.Fatalf("valid graph: %+v, %v", s, err)
+	}
+	for name, entries := range map[string]string{
+		"step zero":        `[{"step":0,"passive":false,"depends_on":[]}]`,
+		"no depends_on":    `[{"step":2,"passive":false}]`,
+		"dep not earlier":  `[{"step":2,"passive":false,"depends_on":[2]}]`,
+		"dep below one":    `[{"step":2,"passive":false,"depends_on":[0]}]`,
+		"unknown property": `[{"step":2,"passive":false,"depends_on":[],"x":1}]`,
+	} {
+		if _, err := ingest.DecodeStructured([]byte(base + entries + `}`)); !errors.Is(err, ingest.ErrInvalidStructured) {
+			t.Errorf("%s: err = %v, want ingest.ErrInvalidStructured", name, err)
+		}
+	}
+}

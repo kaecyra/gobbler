@@ -143,8 +143,9 @@ func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 // findGaps lists what the rules left weak in d against threshold: a scalar
 // field with no value or below the threshold, equipment when none was found,
 // every ingredient line below the threshold, and the components when there is
-// no ingredient line to replace. A value at or above the threshold is never a
-// gap, so the steps of a draft with no lines that met it are kept.
+// no ingredient line to replace, and the steps whose graph is the default. A
+// value at or above the threshold is never a gap, so the steps of a draft with
+// no lines that met it are kept.
 func findGaps(d Draft, threshold float64) Gaps {
 	weak := func(confidence float64) bool { return confidence == 0 || confidence < threshold }
 	g := Gaps{
@@ -167,6 +168,11 @@ func findGaps(d Draft, threshold float64) Gaps {
 		}
 	}
 	g.Components = lines == 0
+	if !g.Components {
+		// With the components replaced the steps are renumbered, so the graph is
+		// built by the rules over the result instead (see fillGaps).
+		g.Steps, g.StepTexts = stepGaps(d.Components)
+	}
 	return g
 }
 
@@ -238,6 +244,7 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 	d.Components = make([]Component, len(rule.Components))
 	for i, c := range rule.Components {
 		c.Lines = append([]Line(nil), c.Lines...)
+		c.Steps = append([]Step(nil), c.Steps...)
 		d.Components[i] = c
 	}
 	a := &assembler{rs: newResolver(ctx, f.deps.Catalog), d: &d}
@@ -292,6 +299,14 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 				}
 			}
 			d.Components = append(d.Components, c)
+		}
+		// Kept and supplied steps alike go through the rules, so the graph is
+		// the same one a rule-based draft of these steps would have.
+		inferGraph(d.Components)
+	}
+	if len(gaps.Steps) > 0 {
+		if err := applyStepGraph(d.Components, gaps.Steps, s.StepGraph); err != nil {
+			return Draft{}, fmt.Errorf("%w: answer %w", ErrLLMFailed, err)
 		}
 	}
 	for i, g := range gaps.Lines {

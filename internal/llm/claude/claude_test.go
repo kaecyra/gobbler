@@ -220,6 +220,26 @@ func TestGapFillSendsOnlyTheGaps(t *testing.T) { // ADR-00020 decision 2
 	}
 }
 
+func TestStepGraphGapIsSentWithTheSchemaToAnswerIt(t *testing.T) { // ADR-00020 decision 1
+	seen := &captured{}
+	srv := serve(t, wire(llmtest.Scenario{Behavior: llmtest.Respond, Payload: []byte(minimalPayload)}, seen).ServeHTTP)
+	p := newProvider(t, srv, "k", time.Second, slog.New(slog.DiscardHandler))
+	req := ingest.Request{Text: "x", Gaps: ingest.Gaps{
+		Steps:     []ingest.GapStep{{Number: 2, Text: "STEP-TWO-MARKER"}},
+		StepTexts: []string{"STEP-ONE-MARKER", "STEP-TWO-MARKER"},
+	}}
+	if _, err := p.Structure(context.Background(), req); err != nil {
+		t.Fatalf("Structure: %v", err)
+	}
+	_, body := seen.get()
+	raw, _ := json.Marshal(body)
+	for _, want := range []string{"STEP-ONE-MARKER", "STEP-TWO-MARKER", "step_graph", "depends_on", "passive"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("%q not sent: %s", want, raw)
+		}
+	}
+}
+
 func TestUnusableResponsesAreErrors(t *testing.T) {
 	tests := []struct {
 		name string
