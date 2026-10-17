@@ -2217,7 +2217,10 @@
         "internal/ingest/*_test.go",
         "internal/web/ingest/**",
         "e2e/ingest/**",
-        "internal/web/editor/**"
+        "internal/web/editor/**",
+        "internal/ingest/extract/extract*.go",
+        "internal/ingest/extract/microdata*.go",
+        "internal/ingest/ingest.go"
       ],
       "needs_migration": null,
       "adrs": [],
