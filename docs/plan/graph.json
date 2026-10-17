@@ -1911,7 +1911,7 @@
       "wave": 9,
       "track": null,
       "issue": 198,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-parser-version",
         "t-shopping-check-leak",
@@ -2714,6 +2714,15 @@
       "id": "i-parser-version",
       "title": "record the parser version on the saved recipe",
       "merged": "49c4cf7c5cbf3f0ba54bcdb542db631568516e65"
+    },
+    {
+      "id": "r-recipe-video",
+      "title": "optional YouTube video on a recipe, click-to-play at the top of the recipe page",
+      "merged": "6c71fce163bdfd196b103c174865e3457c2cff44",
+      "adrs": [
+        "00021"
+      ],
+      "note": "ADR-00021. Nothing from a YouTube origin loads before the play click; the thumbnail is a BLOB row per video ID, served per recipe behind the household check."
     }
   ],
   "adr_sequence": {
