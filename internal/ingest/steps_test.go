@@ -102,6 +102,8 @@ func TestStepCuesNeedTheWordInTheRightPlace(t *testing.T) {
 		{"Let the soup cool to room temperature.", true, false},
 		{"Stir the sauce, then simmer the soup.", true, false},
 		{"Add the flour and bake until golden.", true, false},
+		{"Bring to a boil, then simmer 20 minutes.", true, false},
+		{"Cover and bake 25 minutes.", true, false},
 		{"Let the jelly set overnight.", true, false},
 		// Parallel only at the start of the step.
 		{"Whisk the eggs. Meanwhile, heat the pan.", false, false},

@@ -23,7 +23,7 @@ var (
 	// instructions. The -s and -ing forms are left out on purpose: "while it
 	// simmers" inside an active step must not make that step passive.
 	passiveVerbRE = regexp.MustCompile(`(?i)(^|[.;:!]\s+)(\w+ly\s+)?` + passiveVerbs + `(\s|[.,;:!]|$)` +
-		`|(,\s+|\b(and|then|to)\s+)(\w+ly\s+)?` + passiveVerbs + `(\s+(the|it|them|this|these|for|until|overnight|at|in|on|to|about|\d)\b|[.,;:!]|$)`)
+		`|(,\s+|\b(and|then|to)\s+)(\w+ly\s+)?` + passiveVerbs + `(\s+(the|it|them|this|these|for|until|overnight|at|in|on|to|about|\d+)\b|[.,;:!]|$)`)
 	// passiveStartRE matches "rest", "rise" and "cool" only as the instruction
 	// that opens a sentence.
 	passiveStartRE = regexp.MustCompile(`(?i)(^|[.;!]\s+)(rest|rise|cool)\b`)
