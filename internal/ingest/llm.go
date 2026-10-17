@@ -75,8 +75,8 @@ type GapStep struct {
 
 // Empty reports whether there is nothing to fill.
 func (g Gaps) Empty() bool {
-	return !(g.Name || g.Author || g.Description || g.Yield || g.Prep || g.Cook || g.Total ||
-		g.Equipment || g.Components || len(g.Lines) > 0 || len(g.Steps) > 0)
+	scalars := g.Name || g.Author || g.Description || g.Yield || g.Prep || g.Cook || g.Total
+	return !scalars && !g.Equipment && !g.Components && len(g.Lines) == 0 && len(g.Steps) == 0
 }
 
 // Describe renders the gaps as the plain text both providers put in the
