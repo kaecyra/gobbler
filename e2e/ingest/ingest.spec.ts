@@ -182,6 +182,16 @@ test('the review controls are at least 44px tall', async ({ page }) => {
   await expectTall(page, '.srcbox-wrap summary');
 });
 
+test('a bad URL left in the hidden Link field does not block submit silently', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Recipe URL').fill('not a url');
+  await page.locator('label[for=src-text]').click();
+  await page.getByLabel('Recipe text').fill(PANCAKES);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  // The browser does not stop the submit on the hidden field; the server answers with a message.
+  await expect(page.getByRole('alert')).toContainText('not both');
+});
+
 test('a low-confidence line is marked in grain with a dot, never a left border', async ({ page }) => {
   await page.goto('/ingest');
   await pasteText(page, MESSY);
@@ -217,6 +227,11 @@ test('a low-confidence line is marked in grain with a dot, never a left border',
   expect(low.dot).toBe(probe.grain);
   const ok = await style('li.line:not([data-low])');
   expect(ok.dot).toBe(probe.ok);
+  // Equipment items carry no confidence dot.
+  await page.getByRole('button', { name: 'Add equipment' }).first().click();
+  const equipment = page.locator('li.item.equipment');
+  await expect(equipment.first()).toBeVisible();
+  expect(await equipment.first().evaluate((el) => getComputedStyle(el, '::before').content)).toBe('none');
 });
 
 test('empty and malformed input is refused with a message', async ({ page }) => {

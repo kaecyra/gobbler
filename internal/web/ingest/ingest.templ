@@ -59,12 +59,12 @@ templ styles() {
 		   review screen, with higher specificity than its own rules. */
 		.review-body .editor .low { border-left: 0; padding-left: 0; background: var(--grain-soft); border-radius: var(--r); }
 		.review-body .editor li.item { position: relative; padding: 0.5rem 0.75rem 0.5rem 2rem; border-radius: var(--r); }
-		.review-body .editor li.item::before {
+		.review-body .editor li.item.line::before {
 			content: ""; position: absolute; left: 0.8rem; top: 1.05rem; width: 10px; height: 10px;
 			border-radius: 50%; background: var(--ok);
 		}
 		.review-body .editor li.item.low { border-top-color: transparent; }
-		.review-body .editor li.item.low::before { background: var(--grain); }
+		.review-body .editor li.item.line.low::before { background: var(--grain); }
 		.review-body .editor button {
 			display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); padding: 8px 18px;
 			border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink);
@@ -77,7 +77,7 @@ templ styles() {
 	</style>
 }
 
-// sourceLink is the Photo entry of the source toggle: a link, because the
+// photoTab is the Photo entry of the source toggle: a link, because the
 // photo form is its own page.
 templ photoTab(active bool) {
 	if active {
@@ -109,7 +109,7 @@ templ formPage(v formView) {
 					@photoTab(false)
 				</div>
 			</div>
-			<form class="ingest-form" method="post" action="/ingest">
+			<form class="ingest-form" method="post" action="/ingest" novalidate>
 				<div class="field pane-link">
 					<label class="field-label" for="ingest-url">Recipe URL</label>
 					<input id="ingest-url" type="url" name="url" value={ v.URL } placeholder="https://"/>
