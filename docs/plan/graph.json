@@ -2463,7 +2463,10 @@
         "u-library"
       ],
       "owns": [
-        "internal/store/search*.go"
+        "internal/store/search*.go",
+        "internal/store/queries/search.sql",
+        "internal/store/storedb/search.sql.go",
+        "internal/store/scope_test.go"
       ],
       "needs_migration": null,
       "adrs": []
