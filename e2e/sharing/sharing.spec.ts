@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEV, OTHER, STRANGER, OPERATOR } from '../fixtures/identity';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { as, startHousehold, uniqueEmail } from '../household/support';
+import { as, expectTapTargets, startHousehold, uniqueEmail } from '../household/support';
 
 // Sending a recipe copy to another household (ADR-00018, Sharing). The sender
 // recipe needs data the shared server does not have, so this spec seeds its own
@@ -225,4 +225,22 @@ test.describe('the sharing routes, as a non-member and as a member of another ho
     await ctx.close();
     await dev.close();
   });
+});
+
+test('the sharing pages keep every control at least 44px tall', async ({ browser, baseURL }) => {
+  const dev = await as(browser, baseURL, DEV);
+  const other = await as(browser, baseURL, OTHER);
+  const send = await dev.newPage();
+  await send.goto(`/shares/new/${recipeId}`);
+  expect(await expectTapTargets(send)).toBeGreaterThan(1);
+  await send.getByLabel('Email address').fill(OTHER);
+  await send.getByRole('button', { name: 'Send a copy' }).click();
+  await expect(send).toHaveURL(/\/shares\/sent$/);
+  expect(await expectTapTargets(send)).toBeGreaterThan(0);
+  const inbox = await other.newPage();
+  await inbox.goto('/shares');
+  await expect(inbox.getByTestId('share').first()).toBeVisible();
+  expect(await expectTapTargets(inbox)).toBeGreaterThan(1);
+  await dev.close();
+  await other.close();
 });

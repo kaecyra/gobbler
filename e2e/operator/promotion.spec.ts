@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
 import { portFromEnv } from '../fixtures/ports.mjs';
+import { expectTapTargets } from '../household/support';
 
 // Promotion (ADR-00018, Catalog): the operator reviews the overlay entries
 // households suggested for the central catalog and promotes one, which merges
@@ -106,6 +107,13 @@ test.describe('the operator', () => {
     const res = await page.goto(`/operator/promotions/${ids.private}`);
     expect(res?.status()).toBe(404);
     await expect(page.locator('body')).not.toContainText('e2e private sauce');
+  });
+
+  test('the promotion pages keep every control at least 44px tall', async ({ page }) => {
+    await page.goto('/operator/promotions');
+    expect(await expectTapTargets(page)).toBeGreaterThan(1);
+    await page.goto(`/operator/promotions/${ids.ghee}`);
+    expect(await expectTapTargets(page)).toBeGreaterThan(1);
   });
 
   test('promotes it: every household reads it, and the duplicate is merged', async ({ page, browser }) => {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -21,13 +22,15 @@ func mergeURL(id int64) templ.SafeURL {
 
 templ listPage(v listView) {
 	@layout.Page("Ingredient catalog") {
-		<h1>Ingredient catalog</h1>
-		<form method="get" action="/catalog" role="search" data-testid="catalog-filter">
-			<label for="q">Filter ingredients</label>
-			<input type="search" id="q" name="q" value={ v.Query }/>
-			<button type="submit">Filter</button>
-		</form>
-		<section aria-labelledby="unreviewed-h" data-testid="unreviewed">
+		@household.PageStyle()
+		<div class="pg wide">
+			<div class="screen-h"><h1>Ingredient catalog</h1></div>
+			<form class="fields find panel" method="get" action="/catalog" role="search" data-testid="catalog-filter">
+				<label for="q">Filter ingredients</label>
+				<input type="search" id="q" name="q" value={ v.Query }/>
+				<button type="submit" class="btn primary">Filter</button>
+			</form>
+		<section class="panel" aria-labelledby="unreviewed-h" data-testid="unreviewed">
 			<h2 id="unreviewed-h">Needs review</h2>
 			if len(v.Unreviewed) == 0 {
 				<p class="muted" data-testid="unreviewed-empty">
@@ -38,13 +41,12 @@ templ listPage(v listView) {
 					}
 				</p>
 			} else {
-				<ul>
+				<ul class="list">
 					for _, r := range v.Unreviewed {
 						<li data-testid="unreviewed-row">
-							<a href={ editURL(r.ID) }>{ r.Name }</a>
-							<span class="muted">{ r.Aisle }</span>
-							<form method="post" action={ templ.SafeURL(postURL(r.ID, "/reviewed")) }>
-								<button type="submit" aria-label={ "Mark " + r.Name + " reviewed" }>Mark reviewed</button>
+							<span class="grow"><a href={ editURL(r.ID) }>{ r.Name }</a> <span class="muted">{ r.Aisle }</span></span>
+							<form class="row-form" method="post" action={ templ.SafeURL(postURL(r.ID, "/reviewed")) }>
+								<button type="submit" class="btn" aria-label={ "Mark " + r.Name + " reviewed" }>Mark reviewed</button>
 							</form>
 							<a href={ mergeURL(r.ID) }>Merge into another</a>
 						</li>
@@ -52,7 +54,7 @@ templ listPage(v listView) {
 				</ul>
 			}
 		</section>
-		<section aria-labelledby="all-h" data-testid="all">
+		<section class="panel" aria-labelledby="all-h" data-testid="all">
 			<h2 id="all-h">All ingredients</h2>
 			if len(v.All) == 0 {
 				<p class="muted" data-testid="all-empty">
@@ -63,6 +65,7 @@ templ listPage(v listView) {
 					}
 				</p>
 			} else {
+				<div class="table-wrap">
 				<table>
 					<thead>
 						<tr>
@@ -94,8 +97,10 @@ templ listPage(v listView) {
 						}
 					</tbody>
 				</table>
+				</div>
 			}
 		</section>
+		</div>
 	}
 }
 
@@ -107,25 +112,27 @@ templ fieldProblem(msg string, id string) {
 
 templ editPage(f formView) {
 	@layout.Page("Edit " + f.Name) {
-		<h1>Edit ingredient</h1>
-		<p><a href="/catalog">Back to the catalog</a></p>
+		@household.PageStyle()
+		<div class="pg">
+		<div class="screen-h"><h1>Edit ingredient</h1></div>
+		<p><a class="link" href="/catalog">Back to the catalog</a></p>
 		@fieldProblem(f.Problem(fieldForm), fieldForm+"-error")
 		if f.Central {
 			<p class="muted" data-testid="central-note">
 				This ingredient is part of the central catalog. You can add your own aliases and choose the aisle your lists use; the rest is curated by the operator.
 			</p>
 		}
-		<form method="post" action={ templ.SafeURL(postURL(f.ID, "")) } data-testid="edit-form">
+		<form class="panel stack" method="post" action={ templ.SafeURL(postURL(f.ID, "")) } data-testid="edit-form">
 			<p>
 				<label for="name">Name</label>
 				<input type="text" id="name" name="name" value={ f.Name } required readonly?={ f.Central }/>
-				<span class="muted">The bare name, without preparation: "butter", not "melted butter".</span>
+				<span class="hint">The bare name, without preparation: "butter", not "melted butter".</span>
 			</p>
 			@fieldProblem(f.Problem(fieldName), fieldName+"-error")
 			<p>
 				<label for="aliases">Aliases</label>
 				<textarea id="aliases" name="aliases" rows="4">{ f.Aliases }</textarea>
-				<span class="muted">One per line: plurals and synonyms.</span>
+				<span class="hint">One per line: plurals and synonyms.</span>
 			</p>
 			<p>
 				<label for="aisle">Aisle</label>
@@ -149,37 +156,40 @@ templ editPage(f formView) {
 			@fieldProblem(f.Problem(fieldUSDA), fieldUSDA+"-error")
 			if !f.Central {
 				<p>
-					<label>
+					<label class="check">
 						<input type="checkbox" name="reviewed" value="1" checked?={ f.Reviewed }/>
 						Reviewed
 					</label>
 				</p>
 			}
-			<button type="submit">Save</button>
+			<button type="submit" class="btn primary">Save</button>
 		</form>
 		if !f.Central {
-			<p><a href={ mergeURL(f.ID) }>Merge this ingredient into another</a></p>
+			<p><a class="link" href={ mergeURL(f.ID) }>Merge this ingredient into another</a></p>
 			if f.Suggested {
-				<form method="post" action={ templ.SafeURL(postURL(f.ID, "/unsuggest")) } data-testid="unsuggest-form">
+				<form method="post" action={ templ.SafeURL(postURL(f.ID, "/unsuggest")) } class="panel" data-testid="unsuggest-form">
 					<p class="muted">You suggested this ingredient for the central catalog. The operator reviews suggestions, and the name becomes visible to every household if it is promoted.</p>
-					<button type="submit">Withdraw suggestion</button>
+					<button type="submit" class="btn">Withdraw suggestion</button>
 				</form>
 			} else {
-				<form method="post" action={ templ.SafeURL(postURL(f.ID, "/suggest")) } data-testid="suggest-form">
+				<form method="post" action={ templ.SafeURL(postURL(f.ID, "/suggest")) } class="panel" data-testid="suggest-form">
 					<p class="muted">Suggest this ingredient for the central catalog, where every household can use it. The operator reviews suggestions, and the name becomes visible to every household if it is promoted.</p>
-					<button type="submit">Suggest for the central catalog</button>
+					<button type="submit" class="btn">Suggest for the central catalog</button>
 				</form>
 			}
 		}
+		</div>
 	}
 }
 
 templ chooserPage(v chooserView) {
 	@layout.Page("Merge " + v.Source.Name) {
-		<h1>Merge { v.Source.Name }</h1>
+		@household.PageStyle()
+		<div class="pg">
+		<div class="screen-h"><h1>Merge { v.Source.Name }</h1></div>
 		@fieldProblem(v.Problem, "merge-error")
 		<p>Choose the ingredient to keep. { v.Source.Name } is removed and its name becomes an alias of the one you keep.</p>
-		<form method="get" action="/catalog/merge" data-testid="merge-chooser">
+		<form class="panel stack" method="get" action="/catalog/merge" data-testid="merge-chooser">
 			<input type="hidden" name="source" value={ strconv.FormatInt(v.Source.ID, 10) }/>
 			<label for="target">Keep</label>
 			<select id="target" name="target" required>
@@ -188,15 +198,18 @@ templ chooserPage(v chooserView) {
 					<option value={ strconv.FormatInt(t.ID, 10) }>{ t.Name }</option>
 				}
 			</select>
-			<button type="submit">Review the merge</button>
+			<button type="submit" class="btn primary">Review the merge</button>
 		</form>
-		<p><a href="/catalog">Cancel</a></p>
+		<p><a class="link" href="/catalog">Cancel</a></p>
+		</div>
 	}
 }
 
 templ confirmPage(v confirmView) {
 	@layout.Page("Confirm merge") {
-		<h1>Confirm merge</h1>
+		@household.PageStyle()
+		<div class="pg">
+		<div class="screen-h"><h1>Confirm merge</h1></div>
 		<p data-testid="merge-summary">
 			Merge <strong>{ v.Source.Name }</strong> into <strong>{ v.Target.Name }</strong>.
 			Recipe lines and shopping entries that use { v.Source.Name }:
@@ -204,11 +217,12 @@ templ confirmPage(v confirmView) {
 			They will be re-pointed to { v.Target.Name }.
 			{ v.Source.Name } will be removed and kept as an alias of { v.Target.Name }.
 		</p>
-		<form method="post" action="/catalog/merge" data-testid="merge-confirm">
+		<form class="panel" method="post" action="/catalog/merge" data-testid="merge-confirm">
 			<input type="hidden" name="source" value={ strconv.FormatInt(v.Source.ID, 10) }/>
 			<input type="hidden" name="target" value={ strconv.FormatInt(v.Target.ID, 10) }/>
-			<button type="submit">Merge</button>
+			<button type="submit" class="btn accent">Merge</button>
 		</form>
-		<p><a href="/catalog">Cancel</a></p>
+		<p><a class="link" href="/catalog">Cancel</a></p>
+		</div>
 	}
 }

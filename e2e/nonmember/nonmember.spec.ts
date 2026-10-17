@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
+import { expectTapTargets } from '../household/support';
 
 // Admission (ADR-00018): Access admits any email that authenticates, so the
 // app's membership check is the only lock. The dev-auth server seeds DEV and
@@ -63,5 +64,15 @@ test.describe('the operator without a household', () => {
     const recipes = await page.goto('/recipes');
     expect(recipes?.status()).toBe(403);
     await expect(page.getByRole('heading', { name: NOT_A_MEMBER })).toBeVisible();
+  });
+});
+
+test.describe('the not-a-member page', () => {
+  test.use(asIdentity(STRANGER));
+
+  test('is drawn in the design system, with no control under 44px', async ({ page }) => {
+    await page.goto('/not-a-member');
+    await expect(page.locator('main img')).toBeVisible();
+    await expectTapTargets(page);
   });
 });

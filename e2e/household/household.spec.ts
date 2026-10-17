@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { OTHER, STRANGER } from '../fixtures/identity';
-import { as, linkFor, startHousehold, uniqueEmail } from './support';
+import { as, expectTapTargets, linkFor, startHousehold, uniqueEmail } from './support';
 
 // The members page and the invitations into a household (ADR-00018). Every test
 // makes its own household through the operator, so none disturbs the seeded
@@ -216,4 +216,22 @@ test.describe('the members routes, as a non-member and as a member of another ho
     await mine.ctx.close();
     await theirs.ctx.close();
   });
+});
+
+test('the members and invitation pages keep every control at least 44px tall', async ({ browser, baseURL }) => {
+  const { ctx } = await startHousehold(browser, baseURL, 'Tappers');
+  const guest = uniqueEmail('guest');
+  const page = await ctx.newPage();
+  await page.goto('/household');
+  await page.getByLabel('Email address').fill(guest);
+  await page.getByRole('button', { name: 'Invite' }).click();
+  const link = await linkFor(page, guest);
+  // Links, the invite field and button, a pending row's link and Revoke, and Leave or Delete.
+  expect(await expectTapTargets(page)).toBeGreaterThan(4);
+  const guestCtx = await as(browser, baseURL, guest);
+  const guestPage = await guestCtx.newPage();
+  await guestPage.goto(link);
+  expect(await expectTapTargets(guestPage)).toBeGreaterThan(0);
+  await ctx.close();
+  await guestCtx.close();
 });

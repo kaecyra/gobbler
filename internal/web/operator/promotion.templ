@@ -3,58 +3,71 @@ package operator
 import (
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 templ promotionsPage(v promotionsView) {
 	@layout.Page("Suggested ingredients") {
-		<h1>Suggested ingredients</h1>
-		<p>Households flag ingredients they would like every household to use. Promoting one makes its name visible to every household. This page shows no household's data.</p>
-		<section aria-labelledby="suggested-h" data-testid="suggested">
-			<h2 id="suggested-h">Waiting for review</h2>
-			if len(v.Entries) == 0 {
-				<p class="muted" data-testid="none-suggested">No ingredient is waiting for review.</p>
-			} else {
-				<ul>
-					for _, e := range v.Entries {
-						<li data-testid="suggested-ingredient">
-							<a href={ templ.SafeURL(e.Path) }>{ e.Name }</a>
-							<span class="muted">{ e.Aisle }</span>
-							if e.Aliases != "" {
-								<span class="muted">also called { e.Aliases }</span>
-							}
-						</li>
-					}
-				</ul>
-			}
-		</section>
-		<p><a href="/operator">Household invitations</a></p>
+		@household.PageStyle()
+		<div class="pg">
+			<div class="screen-h">
+				<div>
+					<h1>Suggested ingredients</h1>
+					<p>Households flag ingredients they would like every household to use. Promoting one makes its name visible to every household. This page shows no household's data.</p>
+				</div>
+			</div>
+			<section class="panel" aria-labelledby="suggested-h" data-testid="suggested">
+				<h2 id="suggested-h">Waiting for review</h2>
+				if len(v.Entries) == 0 {
+					<p class="muted" data-testid="none-suggested">No ingredient is waiting for review.</p>
+				} else {
+					<ul class="list">
+						for _, e := range v.Entries {
+							<li data-testid="suggested-ingredient">
+								<a class="link" href={ templ.SafeURL(e.Path) }>{ e.Name }</a>
+								<span class="muted">{ e.Aisle }</span>
+								if e.Aliases != "" {
+									<span class="muted">also called { e.Aliases }</span>
+								}
+							</li>
+						}
+					</ul>
+				}
+			</section>
+			<p><a class="link" href="/operator">Household invitations</a></p>
+		</div>
 	}
 }
 
 templ reviewPage(v reviewView) {
 	@layout.Page("Review " + v.Name) {
-		<h1>Review { v.Name }</h1>
-		<p><a href="/operator/promotions">Back to the suggestions</a></p>
-		<dl data-testid="suggested-detail">
-			<dt>Name</dt>
-			<dd data-testid="suggested-name">{ v.Name }</dd>
-			<dt>Aisle</dt>
-			<dd>{ v.Aisle }</dd>
-			<dt>Also called</dt>
-			<dd>{ v.Aliases }</dd>
-		</dl>
-		<p data-testid="duplicate-summary">
-			Promoting merges <span data-testid="duplicate-count">{ strconv.Itoa(v.Duplicates) }</span> duplicate
-			if v.Duplicates == 1 {
-				entry
-			} else {
-				entries
-			}
-			from other households into it. Their aliases and aisles stay with them.
-		</p>
-		<form method="post" action={ templ.SafeURL(v.Path) } data-testid="promote-form">
-			<button type="submit">Promote to the central catalog</button>
-		</form>
+		@household.PageStyle()
+		<div class="pg">
+			<div class="screen-h"><h1>Review { v.Name }</h1></div>
+			<p><a class="link" href="/operator/promotions">Back to the suggestions</a></p>
+			<section class="panel">
+				<dl data-testid="suggested-detail">
+					<dt>Name</dt>
+					<dd data-testid="suggested-name">{ v.Name }</dd>
+					<dt>Aisle</dt>
+					<dd>{ v.Aisle }</dd>
+					<dt>Also called</dt>
+					<dd>{ v.Aliases }</dd>
+				</dl>
+				<p data-testid="duplicate-summary">
+					Promoting merges <span data-testid="duplicate-count">{ strconv.Itoa(v.Duplicates) }</span> duplicate
+					if v.Duplicates == 1 {
+						entry
+					} else {
+						entries
+					}
+					from other households into it. Their aliases and aisles stay with them.
+				</p>
+				<form method="post" action={ templ.SafeURL(v.Path) } data-testid="promote-form">
+					<button type="submit" class="btn accent">Promote to the central catalog</button>
+				</form>
+			</section>
+		</div>
 	}
 }

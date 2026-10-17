@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
-import { as, issueHouseholdInvitation, linkFor, uniqueEmail } from '../household/support';
+import { as, expectTapTargets, issueHouseholdInvitation, linkFor, uniqueEmail } from '../household/support';
 
 // The operator's household-invitation page (ADR-00018, Invitations). The shared
 // dev-auth server lists OPERATOR (a member of no household) and DEV as
@@ -91,4 +91,15 @@ test.describe('a member who is not an operator, and a non-member', () => {
       await ctx.close();
     });
   }
+});
+
+test('the invitation page keeps every control at least 44px tall', async ({ browser, baseURL }) => {
+  const ctx = await as(browser, baseURL, OPERATOR);
+  const page = await ctx.newPage();
+  await page.goto('/operator');
+  await page.getByLabel('Email address').fill(uniqueEmail('founder'));
+  await page.getByRole('button', { name: 'Invite' }).click();
+  await expect(page.getByTestId('pending-invitation').first()).toBeVisible();
+  expect(await expectTapTargets(page)).toBeGreaterThan(3);
+  await ctx.close();
 });

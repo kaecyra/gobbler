@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
+import { expectTapTargets } from '../household/support';
 
 // The settings page shows the live backup job, whose state depends on how the
 // server is configured, so this spec starts its own gobbler per state on a
@@ -146,5 +147,15 @@ test.describe('failing upload', () => {
     for (const leak of ['127.0.0.1:1', 'e2e-secret-key', 'e2e-key-id', 'upload', 'backups']) {
       expect(text).not.toContain(leak);
     }
+  });
+});
+
+test.describe('tap targets', () => {
+  test.beforeAll(() => start({}));
+  test.afterAll(stop);
+
+  test('the settings page keeps every control at least 44px tall', async ({ page }) => {
+    await page.goto('/settings');
+    expect(await expectTapTargets(page)).toBeGreaterThan(0);
   });
 });
