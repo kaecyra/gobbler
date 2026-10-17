@@ -117,12 +117,10 @@ func TestRecipeWithNoTimedStepHasNoRibbon(t *testing.T) {
 	mustNotContain(t, body, "rib-big", "Ready in about")
 }
 
-
 func TestStepShowsWhatItWaitsFor(t *testing.T) {
 	body := page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
 	mustContain(t, body, "after step 1")
 }
-
 
 func TestPageCarriesItsStylesheet(t *testing.T) {
 	body := page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")

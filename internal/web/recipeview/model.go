@@ -79,9 +79,9 @@ type view struct {
 	// has a duration.
 	Ribbon ribbon.Ribbon
 	// Tips are the pinned notes, shown above the steps.
-	Tips []string
-	Servings     string
-	Yield        string
+	Tips     []string
+	Servings string
+	Yield    string
 
 	// Times lists prep, cook and the special times that are set, in that
 	// order; Total is the derived total.

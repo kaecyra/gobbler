@@ -183,7 +183,7 @@ func seedStyled(ctx context.Context, d *sql.DB) (int64, error) {
 		Rating:      &rating,
 		Servings:    quantity.Exact(mustRat("4")),
 		Components: []recipe.Component{{
-			Name: "Ribs",
+			Name:  "Ribs",
 			Lines: []recipe.IngredientLine{line("2", "lb", ribs.ID, quantity.RuleLinear)},
 			Steps: []recipe.Step{
 				{ID: "brown", Title: "Brown the ribs", Text: "Brown the ribs in two batches.", Duration: 20 * time.Minute, Kind: recipe.StagePrep},
