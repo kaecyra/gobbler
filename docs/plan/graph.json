@@ -2376,7 +2376,8 @@
         "e2e/catalog/**",
         "e2e/operator/**",
         "e2e/nonmember/**",
-        "internal/web/static/app.css"
+        "internal/web/static/app.css",
+        "e2e/fixtures/tap*"
       ],
       "needs_migration": null,
       "adrs": [],
