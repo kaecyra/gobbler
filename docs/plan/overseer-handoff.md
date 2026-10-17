@@ -1,8 +1,19 @@
-# Overseer handoff: 2026-10-17, round 11
+# Overseer handoff: 2026-10-17, round 14
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 14 (2026-10-17), in flight
+
+**In flight (worktrees on disk, workers dispatched):**
+- r-shopping-by-recipe (#276): `.claude/worktrees/wt-276`, `feat/276-shopping-by-recipe`, e2e ports 41100+. No migration: lines derive from `shopping_entries` at generation time.
+- r-remove-tags (#278): `.claude/worktrees/wt-278`, `refactor/278-remove-tags`, ports 41200+. First pass done (removed `Tags`, `TagCount`, `ListTagCounts`; VERSION 0.71.1). The issue named the wrong query: `ListAllRecipeTags` is live (card tags). Sent back to also remove the dead tag-filter path (`SearchQuery.Tags`, `ListRecipeIDsWithAllTags`, `cleanTags`), per ADR-00022.
+- r-one-icon-set (#279): `.claude/worktrees/wt-279`, `refactor/279-one-icon-set`, ports 41300+.
+
+**Merged:** graph PR #281 (facaa2c), widening r-remove-tags' lane onto its query, generated code and scope test.
+
+**Next:** r-recipe-one-tap (#277) after #276. The worker brief is `.cc-scratch/worker-common.md` (plus `.cc-scratch/worker-ui-notes.md` for UI nodes), both gitignored.
 
 ## Round 13 (2026-10-17), closed: the UI track
 
