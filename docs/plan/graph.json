@@ -2021,7 +2021,7 @@
       "wave": 9,
       "track": null,
       "issue": 212,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/household/store*.go",
@@ -2691,6 +2691,12 @@
       "id": "i-equipment-extract",
       "title": "extract equipment",
       "merged": "b962842af9086fe8cb72b110a4901a345cffbe76"
+    },
+    {
+      "id": "r-write-queue-cleanup",
+      "title": "every write goes through db.WithTx; comments stop claiming a write must come first",
+      "merged": "c5790f9ac5c90e30c3ea23837950c0589085a094",
+      "note": "Route the three autocommit writes in internal/household/store.go through db.WithTx. With write transactions beginning IMMEDIATE (#213), reword the comments at lockRecipe (internal/store/store.go), lockList (internal/shopping/store.go) and the ClaimInvitation query doc that say a write must be the first statement. Keep the guards themselves: removing them touches call sites outside this lane."
     }
   ],
   "adr_sequence": {
