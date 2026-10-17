@@ -1967,7 +1967,9 @@
         "internal/ingest/assemble*.go",
         "internal/ingest/*_test.go",
         "internal/web/ingest/**",
-        "e2e/ingest/**"
+        "e2e/ingest/**",
+        "internal/web/editor/**",
+        "internal/ingest/ingest.go"
       ],
       "needs_migration": null,
       "adrs": [],
