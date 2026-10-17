@@ -531,6 +531,11 @@ func TestJSONLDVideo(t *testing.T) {
 		"name is not a link":    {`{"name":"https://youtu.be/` + id + `"}`, ""},
 		"not a video id":        {`{"embedUrl":"https://www.youtube.com/embed/short"}`, ""},
 		"empty":                 {`{}`, ""},
+		"bare text of ID shape": {`"Dinner-Idea"`, ""},
+		"bare ID value":         {`"` + id + `"`, ""},
+		"embedUrl over content": {`{"contentUrl":"https://youtu.be/bbbbbbbbbbb","embedUrl":"https://youtu.be/aaaaaaaaaaa","url":"https://youtu.be/ccccccccccc"}`, "aaaaaaaaaaa"},
+		"contentUrl over url":   {`{"url":"https://youtu.be/ccccccccccc","contentUrl":"https://youtu.be/bbbbbbbbbbb"}`, "bbbbbbbbbbb"},
+		"first video wins":      {`[{"embedUrl":"https://youtu.be/aaaaaaaaaaa"},{"embedUrl":"https://youtu.be/bbbbbbbbbbb"}]`, "aaaaaaaaaaa"},
 		"thumbnail is not link": {`{"thumbnailUrl":"https://i.ytimg.com/vi/` + id + `/hqdefault.jpg"}`, ""},
 	} {
 		t.Run(name, func(t *testing.T) {

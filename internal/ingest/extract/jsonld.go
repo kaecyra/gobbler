@@ -144,9 +144,13 @@ func recipeFromJSONLD(m map[string]any) Raw {
 
 // youTubeID reads the schema.org "video" property (a VideoObject, a link, or a
 // list of either) into the ID of the first YouTube video it names, or "".
+// Within a VideoObject the order is embedUrl, contentUrl, url.
 // Only the address properties of a VideoObject count, never its name or
 // thumbnail, and the link is read by video.ParseID, the one parser of YouTube
-// links; a video on any other host is ignored (ADR-00021 decision 5).
+// links; a video on any other host is ignored (ADR-00021 decision 5). A bare
+// string is read only as a link: video.ParseID would take any 11 characters of
+// letters, digits, "-" and "_" as a bare ID, so free text such as "Dinner-Idea"
+// would become a video that does not exist.
 func youTubeID(v any) string {
 	switch t := v.(type) {
 	case string:
