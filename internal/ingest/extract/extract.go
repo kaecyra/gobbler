@@ -55,6 +55,9 @@ const (
 type InstructionStep struct {
 	Section string `json:"section,omitempty"`
 	Text    string `json:"text"`
+	// Title is the step's own name (schema.org HowToStep "name") when it adds
+	// something to Text; empty otherwise.
+	Title string `json:"title,omitempty"`
 }
 
 // Raw is a recipe as the page states it. Ingredient lines are the page's own
@@ -82,9 +85,12 @@ type Raw struct {
 	Instructions     []InstructionStep `json:"instructions,omitempty"`
 	// Tools are the equipment names the page states (schema.org "tool"), as
 	// written; matching them to the catalog is the assembler's job.
-	Tools    []string `json:"tools,omitempty"`
-	Calories string   `json:"calories,omitempty"`
-	ImageURL string   `json:"image_url,omitempty"`
+	Tools []string `json:"tools,omitempty"`
+	// Categories are the page's recipeCategory values as written, one per
+	// entry; mapping them to a meal type is the assembler's job.
+	Categories []string `json:"categories,omitempty"`
+	Calories   string   `json:"calories,omitempty"`
+	ImageURL   string   `json:"image_url,omitempty"`
 	// VideoID is the 11-character ID of a YouTube video the page names in its
 	// schema.org "video" property (ADR-00021 decision 5); empty when there is
 	// none or it is on another host. Only the JSON-LD rule reads it.

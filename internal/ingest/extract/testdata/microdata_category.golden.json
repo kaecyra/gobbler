@@ -1,0 +1,22 @@
+{
+  "method": "microdata",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Iced Tea",
+    "ingredients": [
+      "4 tea bags"
+    ],
+    "instructions": [
+      {
+        "text": "Steep the tea bags in hot water.",
+        "title": "Brew"
+      },
+      {
+        "text": "chill the tea"
+      }
+    ],
+    "categories": [
+      "Beverage"
+    ]
+  }
+}

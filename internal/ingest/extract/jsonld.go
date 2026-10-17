@@ -3,6 +3,7 @@ package extract
 import (
 	"encoding/json"
 	"html"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -134,6 +135,7 @@ func recipeFromJSONLD(m map[string]any) Raw {
 		r.Ingredients = jsonStrings(m["ingredients"])
 	}
 	r.Tools = jsonStrings(m["tool"])
+	r.Categories = jsonStrings(m["recipeCategory"])
 	r.VideoID = youTubeID(m["video"])
 	if n, ok := m["nutrition"].(map[string]any); ok {
 		r.Calories = jsonString(n["calories"])
@@ -275,7 +277,26 @@ func jsonInstructions(v any, section string) []InstructionStep {
 		if cleanText(raw) == "" {
 			raw = rawText(t["name"])
 		}
-		out = append(out, stepsFromText(raw, section)...)
+		steps := stepsFromText(raw, section)
+		if len(steps) == 1 {
+			steps[0].Title = stepTitle(jsonString(t["name"]), steps[0].Text)
+		}
+		out = append(out, steps...)
 	}
 	return out
+}
+
+// bareStepRE matches a name that only numbers the step ("Step 3"), which is
+// no title.
+var bareStepRE = regexp.MustCompile(`(?i)^step\s*\d+\.?$`)
+
+// stepTitle is a HowToStep's name as its title, or "" when the name is empty,
+// only numbers the step, or repeats the text (ignoring case and spacing),
+// which is also how a step with a name and no text reads.
+func stepTitle(name, text string) string {
+	name = collapse(name)
+	if name == "" || bareStepRE.MatchString(name) || strings.EqualFold(name, collapse(text)) {
+		return ""
+	}
+	return name
 }
