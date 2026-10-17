@@ -1,0 +1,63 @@
+package ribbon
+
+import "github.com/a-h/templ"
+
+// Card is the compact ribbon pinned to the bottom of a recipe card. It renders
+// nothing when no step has a duration.
+templ Card(r Ribbon) {
+	if !r.Empty() {
+		@ribbon(r, "rib rib-card")
+	}
+}
+
+// Large is the ribbon on the recipe page, under "Ready in about...". It
+// renders nothing when no step has a duration.
+templ Large(r Ribbon) {
+	if !r.Empty() {
+		@ribbon(r, "rib rib-big")
+	}
+}
+
+// ribbon prints both levels. Level 0 is shown until the script finds it does
+// not fit and sets data-level.
+templ ribbon(r Ribbon, class string) {
+	<div class={ class } data-rib data-level="0" role="img" aria-label={ r.Label }>
+		@level("rib-lv rib-full", r.Full)
+		if r.Merges() {
+			@level("rib-lv rib-merged", r.Merged)
+		}
+	</div>
+}
+
+templ level(class string, segs []Segment) {
+	<div class={ class } aria-hidden="true">
+		for _, s := range segs {
+			<span class={ "rib-seg rib-" + string(s.Family) } style={ segmentStyle(s) } title={ s.Title }>
+				if s.Active {
+					@iconHand()
+				} else {
+					@iconClock()
+				}
+				{ s.Text }
+			</span>
+		}
+	</div>
+}
+
+// segmentStyle sets the growth and, for a segment of several families, the
+// gradient. Every value comes from Build, never from input.
+func segmentStyle(s Segment) templ.SafeCSS {
+	css := "flex-grow:" + s.Flex + ";"
+	if s.Background != "" {
+		css += "background:" + s.Background + ";"
+	}
+	return templ.SafeCSS(css)
+}
+
+templ iconHand() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 10.5V4.5a1.5 1.5 0 0 1 3 0v6M14 10.5V6a1.5 1.5 0 0 1 3 0v8a6.5 6.5 0 0 1-6.5 6.5h-.3a6 6 0 0 1-4.7-2.3l-2.3-3a1.5 1.5 0 0 1 2.3-1.9L8 15"></path></svg>
+}
+
+templ iconClock() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+}

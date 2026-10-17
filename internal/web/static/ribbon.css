@@ -1,0 +1,48 @@
+/* Time ribbon (docs/ui/design.md, Time ribbon). Stage colours come from the
+   --st-* tokens in app.css. The markup holds two levels of segments; the
+   script sets data-level on the ribbon and these rules show the one that fits.
+   Without the script, level 0 shows: every step, unmerged. */
+.rib { height: 30px; overflow: hidden; }
+.rib-lv { display: flex; gap: 3px; height: 100%; }
+.rib-merged { display: none; }
+.rib[data-level="1"] .rib-full, .rib[data-level="2"] .rib-full { display: none; }
+.rib[data-level="1"] .rib-merged, .rib[data-level="2"] .rib-merged { display: flex; }
+
+.rib-seg {
+  flex: 1 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rib-seg svg { display: block; flex: none; width: 14px; height: 14px; }
+.rib-seg.rib-active { font-weight: 750; }
+.rib[data-level="2"] .rib-seg { padding: 0 5px; gap: 3px; }
+
+.rib-active  { border-color: var(--st-active-b);  color: var(--st-active-i);  background: color-mix(in srgb, var(--st-active-b) var(--st-active-a), transparent); }
+.rib-sky     { border-color: var(--st-sky-b);     color: var(--st-sky-i);     background: color-mix(in srgb, var(--st-sky-b) var(--st-sky-a), transparent); }
+.rib-mint    { border-color: var(--st-mint-b);    color: var(--st-mint-i);    background: color-mix(in srgb, var(--st-mint-b) var(--st-mint-a), transparent); }
+.rib-ice     { border-color: var(--st-ice-b);     color: var(--st-ice-i);     background: color-mix(in srgb, var(--st-ice-b) var(--st-ice-a), transparent); }
+.rib-apricot { border-color: var(--st-apricot-b); color: var(--st-apricot-i); background: color-mix(in srgb, var(--st-apricot-b) var(--st-apricot-a), transparent); }
+.rib-butter  { border-color: var(--st-butter-b);  color: var(--st-butter-i);  background: color-mix(in srgb, var(--st-butter-b) var(--st-butter-a), transparent); }
+.rib-slate   { border-color: var(--slate);        color: var(--ink-2);        background: color-mix(in srgb, var(--slate) 22%, transparent); }
+
+/* On a card the ribbon is chrome along its bottom edge: square blocks, no outer
+   border. The card sets the negative side margins that make it full width. */
+.rib-card { height: 34px; }
+.rib-card .rib-lv { gap: 2px; }
+.rib-card .rib-seg { border-radius: 0; border-bottom-width: 0; }
+.rib-card .rib-seg:first-child { border-left-width: 0; }
+.rib-card .rib-seg:last-child { border-right-width: 0; }
+
+.rib-big { height: 40px; }
+.rib-big .rib-lv { gap: 4px; }
+.rib-big .rib-seg { font-size: 15px; padding: 0 12px; gap: 8px; }
+.rib-big svg { width: 18px; height: 18px; }
+.rib-big[data-level="2"] .rib-seg { padding: 0 5px; gap: 3px; }
