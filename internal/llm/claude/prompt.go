@@ -19,10 +19,11 @@ Rules:
 - Split into named components only when the source does (for example "For the sauce"); otherwise use a single component with no name.
 - List the equipment the recipe uses (for example "Dutch oven", "9-inch springform pan") in the equipment list, one per entry, only when the source names it. Name the equipment alone, without quantities or notes.
 - Use only what the source states. Leave a field out rather than guessing.
-- A rule-based reading of the source may be supplied. It can be wrong or incomplete; the source is authoritative.`
+- A rule-based reading of the source may be supplied. It can be wrong or incomplete; the source is authoritative.
+- Instead of a reading you may be given a list of gaps. Answer only for those gaps, exactly as the list asks; everything else is already settled and is ignored.`
 
 // userBlocks builds the user turn: the image when there is one, then the source
-// text and the rule-based draft as context.
+// text and, as context, the rule-based draft or the gaps to fill.
 func userBlocks(req ingest.Request) []anthropic.ContentBlockParamUnion {
 	var blocks []anthropic.ContentBlockParamUnion
 	var text strings.Builder
@@ -33,7 +34,11 @@ func userBlocks(req ingest.Request) []anthropic.ContentBlockParamUnion {
 	if req.Text != "" {
 		fmt.Fprintf(&text, "Source text:\n%s\n\n", req.Text)
 	}
-	text.WriteString(describeDraft(req.RuleDraft))
+	if req.Gaps.Empty() {
+		text.WriteString(describeDraft(req.RuleDraft))
+	} else {
+		text.WriteString(req.Gaps.Describe())
+	}
 	text.WriteString("Record the recipe with the " + toolName + " tool.")
 	return append(blocks, anthropic.NewTextBlock(text.String()))
 }

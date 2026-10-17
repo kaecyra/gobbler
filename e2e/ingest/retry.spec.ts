@@ -6,7 +6,8 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// The LLM fallback (ADR-00006, ADR-00007). This spec starts its own gobbler
+// The LLM fallback (ADR-00006, ADR-00007), which fills gaps and never replaces
+// the rule-based draft (ADR-00020 decision 2). This spec starts its own gobbler
 // configured for the Claude provider and points the provider at a local fake
 // Messages API through the SDK's base-URL variable, so no real API is called
 // and no real key is used. Loopback only, throwaway data.
@@ -39,12 +40,15 @@ Instructions:
 Stir it all together and simmer until it looks right.
 `;
 
+// The answer to a gap-fill: one ingredient entry for MESSY's single weak line.
+// For PANCAKES there is no weak line, so the provider's ingredients, name and
+// steps are ignored and the rule-based reading stays.
 const LLM_RECIPE = {
   name: 'LLM Pancakes',
   components: [
     {
-      ingredients: ['2 cups all-purpose flour', '1 tsp dragonfruit zest'],
-      steps: ['Whisk it all together.', 'Cook on a griddle.'],
+      ingredients: ['1 tsp dragonfruit zest'],
+      steps: ['Whisk it all together.'],
     },
   ],
 };
@@ -151,19 +155,18 @@ test('a confident input never calls the provider', async ({ page }) => {
   await expect(page.locator('.llm-mark')).toHaveCount(0);
 });
 
-test('retry succeeds: the LLM draft replaces the rule draft, marked, and nothing is saved', async ({ page }) => {
+test('retry fills gaps only: the rule values are kept, unmarked, and nothing is saved', async ({ page }) => {
   await ingest(page, PANCAKES);
   await page.getByRole('button', { name: 'Retry with LLM' }).click();
 
   await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   expect(calls).toBe(1);
-  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('LLM Pancakes');
-  await expect(page.locator('#f-name').locator('..').locator('.llm-mark')).toBeVisible();
-  await expect(page.locator('.lines li[data-llm]')).toHaveCount(2);
-  await expect(page.locator('.steps li[data-llm]')).toHaveCount(2);
-  // An ingredient the LLM named that the catalog lacks is a proposal.
-  const proposals = page.getByRole('region', { name: 'New ingredients' });
-  await expect(proposals).toContainText('dragonfruit zest');
+  // Every line and field the rules read well is kept, whatever the answer says.
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
+  await expect(page.locator('#f-name').locator('..').locator('.llm-mark')).toHaveCount(0);
+  await expect(page.locator('.lines li[data-llm]')).toHaveCount(0);
+  await expect(page.locator('.steps li[data-llm]')).toHaveCount(0);
+  await expect(page.getByText('dragonfruit zest')).toHaveCount(0);
   // Still on the review screen: saving needs the confirm button.
   await expect(page.getByRole('button', { name: 'Confirm and save' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm and save' }).click();
@@ -190,7 +193,10 @@ test('a failing provider shows the error and keeps the rule-based draft saveable
 test('a below-threshold input calls the provider once on its own', async ({ page }) => {
   await ingest(page, MESSY);
   expect(calls).toBe(1);
-  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('LLM Pancakes');
+  // The weak line is replaced and marked; the name the rules read is kept.
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Mystery Stew');
+  await expect(page.locator('.lines li[data-llm]')).toHaveCount(1);
+  await expect(page.getByRole('region', { name: 'New ingredients' })).toContainText('dragonfruit zest');
   await expect(page.getByText('The LLM supplied this draft')).toBeVisible();
 });
 

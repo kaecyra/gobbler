@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -86,15 +87,16 @@ func TestBelowThresholdInputCallsProviderOnceAndDraftReflectsAnswer(t *testing.T
 	if req.Text != messyText {
 		t.Errorf("request text = %q, want the source text", req.Text)
 	}
-	if !req.RuleDraft.BelowThreshold || req.RuleDraft.Source.SHA256 != d.Source.SHA256 {
-		t.Errorf("request must carry the rule-based draft of the same source: %+v", req.RuleDraft.Source)
+	if req.Gaps.Empty() || !reflect.DeepEqual(req.RuleDraft, Draft{}) {
+		t.Errorf("request must carry the gaps and not the whole rule-based draft: %+v", req)
 	}
-	if !d.UsedLLM || d.Name.Value != "Glorp Stew" || !d.Name.FromLLM {
-		t.Errorf("name = %+v, used LLM = %v; want the LLM name marked", d.Name, d.UsedLLM)
+	if !d.UsedLLM || d.Name.Value != "stew" || d.Name.FromLLM {
+		t.Errorf("name = %+v, used LLM = %v; want the rule name kept, it met the threshold", d.Name, d.UsedLLM)
 	}
 	if !d.Author.FromLLM || !d.Prep.FromLLM || d.Prep.Value == 0 || !d.Yield.FromLLM {
 		t.Errorf("author/prep/yield not marked or read: %+v %+v %+v", d.Author, d.Prep, d.Yield)
 	}
+	// The rules read no ingredient line, so the LLM supplies the components.
 	if len(d.Components) != 1 || len(d.Components[0].Lines) != 2 || len(d.Components[0].Steps) != 2 {
 		t.Fatalf("components = %+v", d.Components)
 	}

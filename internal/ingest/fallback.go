@@ -110,26 +110,64 @@ func (p *Pipeline) Fallback() *Fallback { return &Fallback{cfg: p.cfg, deps: p.d
 // Configured reports whether a provider is available.
 func (f *Fallback) Configured() bool { return f.deps.Provider != nil }
 
-// Retry asks the provider to structure d's source, whatever d scored
-// (the user asked). On success it returns a new draft built from the answer
-// with the same Source and every LLM-supplied value marked FromLLM. On any
-// failure (no provider, a timeout, an answer that does not match the schema)
-// it returns an error and no draft; the caller keeps d. Provider and schema
-// failures wrap ErrLLMFailed; a catalog read failure does not. Nothing is saved.
+// Retry asks the provider to fill the gaps in d's rule-based reading, whatever
+// d scored (the user asked): the lines and fields below the confidence
+// threshold or missing (ADR-00020 decision 2). It returns a new draft in which
+// exactly those are replaced by the answer and marked FromLLM; every other value
+// is the rule-based one. With nothing to fill it returns d unchanged and makes
+// no call. On any failure (no provider, a timeout, an answer that does not match
+// the schema or the gaps) it returns an error and no draft; the caller keeps d.
+// Provider and schema failures wrap ErrLLMFailed; a catalog read failure does
+// not. Nothing is saved.
 func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 	if f.deps.Provider == nil {
 		return Draft{}, ErrNoProvider
+	}
+	gaps := findGaps(d, f.cfg.ConfidenceThreshold)
+	if gaps.Empty() {
+		f.log().InfoContext(ctx, "llm fallback skipped, the rule-based draft has no gaps")
+		return d, nil
 	}
 	text, err := llmSourceText(d.Source)
 	if err != nil {
 		return Draft{}, err
 	}
 	image, imageMIME := f.visionImage(ctx, d.Source)
-	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, Image: image, ImageMIME: imageMIME, RuleDraft: d})
+	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, Image: image, ImageMIME: imageMIME, Gaps: gaps})
 	if err != nil {
 		return Draft{}, fmt.Errorf("%w: %w", ErrLLMFailed, err)
 	}
-	return f.fromStructured(ctx, d, s)
+	return f.fillGaps(ctx, d, gaps, s)
+}
+
+// findGaps lists what the rules left weak in d against threshold: a scalar
+// field with no value or below the threshold, equipment when none was found,
+// every ingredient line below the threshold, and the components when there is
+// no ingredient line to replace. A value at or above the threshold is never a
+// gap, so the steps of a draft with no lines that met it are kept.
+func findGaps(d Draft, threshold float64) Gaps {
+	weak := func(confidence float64) bool { return confidence == 0 || confidence < threshold }
+	g := Gaps{
+		Name:        weak(d.Name.Confidence),
+		Author:      weak(d.Author.Confidence),
+		Description: weak(d.Description.Confidence),
+		Yield:       weak(d.Yield.Confidence),
+		Prep:        weak(d.Prep.Confidence),
+		Cook:        weak(d.Cook.Confidence),
+		Total:       weak(d.Total.Confidence),
+		Equipment:   len(d.Equipment) == 0,
+	}
+	var lines int
+	for ci, c := range d.Components {
+		for li, l := range c.Lines {
+			lines++
+			if l.Confidence < threshold {
+				g.Lines = append(g.Lines, GapLine{Component: ci, Line: li, Raw: l.Raw})
+			}
+		}
+	}
+	g.Components = lines == 0
+	return g
 }
 
 // maxVisionImageBytes is the largest photo attached to a provider request.
@@ -175,62 +213,105 @@ func llmSourceText(src Source) (string, error) {
 	return string(src.Content), nil
 }
 
-// fromStructured reads a provider's answer through the same line parser,
-// catalog resolution and scoring as any other input. Fields the answer leaves
-// empty keep the rule-based value, unmarked.
-func (f *Fallback) fromStructured(ctx context.Context, rule Draft, s Structured) (Draft, error) {
+// fillGaps merges a provider's answer into the rule-based draft, replacing
+// only what gaps names; the rest of the answer is ignored. Replacements go
+// through the same line parser, catalog resolution and scoring as any other
+// input. rule is not modified.
+func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Structured) (Draft, error) {
 	if strings.TrimSpace(s.Name) == "" || len(s.Components) == 0 {
 		return Draft{}, fmt.Errorf("%w: answer %w", ErrLLMFailed, ErrInvalidStructured)
 	}
-	d := Draft{
-		ParserVersion: ParserVersion,
-		Source:        rule.Source,
-		Method:        rule.Method,
-		Threshold:     f.cfg.ConfidenceThreshold,
-		UsedLLM:       true,
+	var answered []string
+	for _, sc := range s.Components {
+		answered = append(answered, sc.Ingredients...)
+	}
+	if len(gaps.Lines) > 0 && len(answered) != len(gaps.Lines) {
+		return Draft{}, fmt.Errorf("%w: answer %w: %d ingredient lines for %d gaps",
+			ErrLLMFailed, ErrInvalidStructured, len(answered), len(gaps.Lines))
+	}
+
+	d := rule
+	d.ParserVersion = ParserVersion
+	d.Threshold = f.cfg.ConfidenceThreshold
+	d.UsedLLM = true
+	d.Issues = nil
+	d.Components = make([]Component, len(rule.Components))
+	for i, c := range rule.Components {
+		c.Lines = append([]Line(nil), c.Lines...)
+		d.Components[i] = c
 	}
 	a := &assembler{rs: newResolver(ctx, f.deps.Catalog), d: &d}
 
-	d.Name = fromLLM(stated(s.Name, llmFieldConfidence))
-	d.Author = orRule(fromLLM(stated(s.Author, llmFieldConfidence)), rule.Author)
-	d.Description = orRule(fromLLM(stated(s.Description, llmFieldConfidence)), rule.Description)
-	a.yield([]string{s.Yield})
-	if d.Yield.Value.Unit == "" {
-		d.Yield, d.Servings = rule.Yield, rule.Servings
-	} else {
-		d.Yield.FromLLM = true
-		d.Servings.FromLLM = !d.Servings.Value.IsAbsent()
+	if gaps.Name {
+		d.Name = orRule(fromLLM(stated(s.Name, llmFieldConfidence)), rule.Name)
 	}
-	d.Calories = rule.Calories
-	d.Prep = orRule(llmDuration(s.PrepTime), rule.Prep)
-	d.Cook = orRule(llmDuration(s.CookTime), rule.Cook)
-	d.Total = orRule(llmDuration(s.TotalTime), rule.Total)
+	if gaps.Author {
+		d.Author = orRule(fromLLM(stated(s.Author, llmFieldConfidence)), rule.Author)
+	}
+	if gaps.Description {
+		d.Description = orRule(fromLLM(stated(s.Description, llmFieldConfidence)), rule.Description)
+	}
+	if gaps.Yield {
+		answer := Draft{}
+		(&assembler{rs: a.rs, d: &answer}).yield([]string{s.Yield})
+		if answer.Yield.Value.Unit != "" {
+			d.Yield, d.Servings = answer.Yield, answer.Servings
+			d.Yield.FromLLM = true
+			d.Servings.FromLLM = !d.Servings.Value.IsAbsent()
+		}
+	}
+	if gaps.Prep {
+		d.Prep = orRule(llmDuration(s.PrepTime), rule.Prep)
+	}
+	if gaps.Cook {
+		d.Cook = orRule(llmDuration(s.CookTime), rule.Cook)
+	}
+	if gaps.Total {
+		d.Total = orRule(llmDuration(s.TotalTime), rule.Total)
+	}
 
-	for _, sc := range s.Components {
-		c := Component{Name: strings.TrimSpace(sc.Name), FromLLM: true}
-		for _, raw := range sc.Ingredients {
-			if l, ok := a.line(raw); ok {
-				l.FromLLM = true
-				c.Lines = append(c.Lines, l)
+	if gaps.Components {
+		d.Components = nil
+		kept := keptSteps(rule, s, f.cfg.ConfidenceThreshold)
+		for i, sc := range s.Components {
+			c := Component{Name: strings.TrimSpace(sc.Name), FromLLM: true}
+			for _, raw := range sc.Ingredients {
+				if l, ok := a.line(raw); ok {
+					l.FromLLM = true
+					c.Lines = append(c.Lines, l)
+				}
 			}
-		}
-		for _, text := range sc.Steps {
-			if text = strings.TrimSpace(text); text != "" {
-				st := step(text, llmFieldConfidence)
-				st.FromLLM = true
-				c.Steps = append(c.Steps, st)
+			c.Steps = kept[i]
+			if len(c.Steps) == 0 {
+				for _, text := range sc.Steps {
+					if text = strings.TrimSpace(text); text != "" {
+						st := step(text, llmFieldConfidence)
+						st.FromLLM = true
+						c.Steps = append(c.Steps, st)
+					}
+				}
 			}
+			d.Components = append(d.Components, c)
 		}
-		d.Components = append(d.Components, c)
 	}
-	// Equipment: the LLM's list, then what the rule-based reading found (the
-	// page's own tool list among it), then catalog names in the LLM's text.
+	for i, g := range gaps.Lines {
+		// A blank replacement is the provider declining; the rule line stays.
+		if l, ok := a.line(answered[i]); ok {
+			l.FromLLM = true
+			d.Components[g.Component].Lines[g.Line] = l
+		}
+	}
+
+	// Equipment: what the rules found, then the LLM's list when there was none,
+	// then catalog names in any text the LLM supplied.
 	set := newEquipmentSet()
-	for _, name := range s.Equipment {
-		a.named(set, name, true)
-	}
 	for _, e := range rule.Equipment {
 		set.add(e)
+	}
+	if gaps.Equipment {
+		for _, name := range s.Equipment {
+			a.named(set, name, true)
+		}
 	}
 	a.scanEquipment(set)
 	d.Equipment = set.items
@@ -241,6 +322,28 @@ func (f *Fallback) fromStructured(ctx context.Context, rule Draft, s Structured)
 	d.Proposed = ProposedFor(d.Components, nil)
 	d.score(a.requiredStructure())
 	return d, nil
+}
+
+// keptSteps are the rule steps that met the threshold, placed under the
+// answer's components: by index when the answer has as many components as the
+// rules found, else all in the first (the answer's grouping is the weaker
+// evidence of where a step belongs). Indexed by answer component.
+func keptSteps(rule Draft, s Structured, threshold float64) map[int][]Step {
+	out := map[int][]Step{}
+	byIndex := len(s.Components) == len(rule.Components)
+	for i, c := range rule.Components {
+		for _, st := range c.Steps {
+			if st.Confidence < threshold {
+				continue
+			}
+			if byIndex {
+				out[i] = append(out[i], st)
+			} else {
+				out[0] = append(out[0], st)
+			}
+		}
+	}
+	return out
 }
 
 func fromLLM[T any](f Field[T]) Field[T] {

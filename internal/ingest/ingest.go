@@ -37,7 +37,7 @@ import (
 // ParserVersion identifies the rules that produce a Draft. Bump it with any
 // change to extraction, parsing or scoring that can change a draft, so a draft
 // can be told apart from one made by older rules.
-const ParserVersion = "3"
+const ParserVersion = "4"
 
 // Deps are the collaborators a Pipeline needs. Each is an interface sized to
 // what this package calls, so tests substitute at the boundary.
@@ -81,8 +81,8 @@ func New(cfg config.Ingestion, d Deps) (*Pipeline, error) {
 }
 
 // draftWithFallback assembles the rule-based draft and, only when it scored
-// below the threshold and a provider is configured, asks the LLM to improve it
-// (ADR-00006).
+// below the threshold and a provider is configured, asks the LLM to fill its gaps
+// (ADR-00006, ADR-00020).
 func (p *Pipeline) draftWithFallback(ctx context.Context, src Source, res extract.Result) (Draft, error) {
 	d, err := p.assemble(ctx, src, res)
 	if err != nil {
