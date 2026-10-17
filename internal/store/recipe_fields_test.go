@@ -150,3 +150,33 @@ func TestRecipeFieldColumnsRefuseValuesOutsideTheirSets(t *testing.T) {
 		}
 	}
 }
+
+// A revision document written before migration 00014 has none of the new keys.
+// Reading it, and restoring it, gives the fields empty, not an error.
+func TestRevisionDocumentFromBefore00014DecodesWithTheFieldsEmpty(t *testing.T) {
+	s, d := newTestStore(t)
+	a := authedCtx(t)
+	id, err := s.Create(a, withFields("Cake", recipe.MealMain, ptr(3), recipe.StageBake, "Bake it"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Update(a, id, withFields("Cake", recipe.MealMain, ptr(3), recipe.StageBake, "Bake it")); err != nil {
+		t.Fatal(err)
+	}
+	const old = `{"name":"Cake","components":[{"lines":[{"rule":"linear","raw":"water"}],"steps":[{"id":"s1","text":"Do it.","passive":true}]}]}`
+	if _, err := d.Exec(`UPDATE revisions SET document = ? WHERE recipe_id = ? AND version = 1`, old, id); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := s.GetVersion(a, id, 1)
+	if err != nil {
+		t.Fatalf("GetVersion of an old document: %v", err)
+	}
+	if r.MealType != "" || r.SpiceLevel != nil || r.Components[0].Steps[0].Kind != "" || r.Components[0].Steps[0].Title != "" {
+		t.Errorf("old document decoded with meal %q spice %v step %+v, want all empty", r.MealType, r.SpiceLevel, r.Components[0].Steps[0])
+	}
+	if err := s.Restore(a, id, 1); err != nil {
+		t.Fatal(err)
+	}
+	checkFields(t, "after restoring the old revision", readFields(a, t, s, id), fieldsOf{})
+}
