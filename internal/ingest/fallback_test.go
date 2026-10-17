@@ -144,6 +144,27 @@ func TestThresholdFromConfigurationDecidesTheCall(t *testing.T) {
 	}
 }
 
+func TestHighScoringDraftAtDefaultThresholdMakesNoProviderCall(t *testing.T) { // ADR-00006
+	e := newEnv(t)
+	good := string(readFixture(t, "garlic_spaghetti.txt"))
+	cfg := testConfig() // the default threshold, 0.7
+	fp := &fakeProvider{resp: llmAnswer()}
+
+	d, err := e.pipelineWith(t, cfg, fp).FromText(e.ctx, good)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Overall < cfg.ConfidenceThreshold || d.BelowThreshold {
+		t.Fatalf("precondition: draft scored %v against threshold %v (below=%v), want at or above", d.Overall, cfg.ConfidenceThreshold, d.BelowThreshold)
+	}
+	if fp.count() != 0 {
+		t.Errorf("provider calls = %d, want 0 for a draft above the threshold", fp.count())
+	}
+	if d.UsedLLM || d.LLMError != "" || d.Name.FromLLM {
+		t.Errorf("draft must be purely rule-based: used LLM = %v, error = %q, name = %+v", d.UsedLLM, d.LLMError, d.Name)
+	}
+}
+
 func TestProviderFailureKeepsRuleDraftAndRecordsTheError(t *testing.T) {
 	e := newEnv(t)
 	rule, err := e.pipelineWith(t, testConfig(), nil).FromText(e.ctx, messyText)
