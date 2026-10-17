@@ -2016,7 +2016,7 @@
     },
     {
       "id": "r-write-queue-cleanup",
-      "title": "every write goes through db.WithTx; drop the read-before-write guards IMMEDIATE made redundant",
+      "title": "every write goes through db.WithTx; comments stop claiming a write must come first",
       "wave": 9,
       "track": null,
       "issue": 212,
@@ -2030,7 +2030,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Route the three autocommit writes in internal/household/store.go through db.WithTx. With write transactions beginning IMMEDIATE (#213), remove lockRecipe/lockList guards and the comments claiming a write must come first, where nothing else relies on them."
+      "note": "Route the three autocommit writes in internal/household/store.go through db.WithTx. With write transactions beginning IMMEDIATE (#213), reword the comments at lockRecipe (internal/store/store.go), lockList (internal/shopping/store.go) and the ClaimInvitation query doc that say a write must be the first statement. Keep the guards themselves: removing them touches call sites outside this lane."
     }
   ],
   "shared_files": [
