@@ -1,8 +1,36 @@
-# Overseer handoff: 2026-10-13, round 10 close
+# Overseer handoff: 2026-10-17, round 11
 
-This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. `VERSION` on main is **0.39.0**.
+This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 11 (2026-10-17)
+
+**Merged:** #200 ADR-00021 (YouTube video on a recipe) and nodes; #201 i-text-meta (#185); #202 i-fallback-no-call-test (#188); #207 t-shopping-check-leak (#197); #208 i-plugin-extractors (#186); #210 g-e2e-flakes (#204, tenancy port collision); #213 r-sqlite-busy (#209, write transactions begin IMMEDIATE); #214 i-equipment-extract (#187); #218 r-write-queue-cleanup (#212); #220 r-issue-code-spelling (#205); #222 i-parser-version (#189, schema 00012). Graph PRs #203, #206, #211, #215, #216, #217, #219.
+
+**In flight at handoff (workers dispatched by the previous session; a fresh session cannot receive their reports):**
+- `i-llm-gap-fill` (#191): worktree `.claude/worktrees/wt-191`, branch `feat/191-llm-gap-fill`, e2e ports 42300–42399.
+- `r-recipe-video` (#198): schema **00013** drawn; worktree `.claude/worktrees/wt-198`, branch `feat/198-recipe-video`, e2e ports 42400–42499.
+
+If a worktree has commits but no PR, verify it as a returned branch (lane check, gates on the host, diff) and open the PR. If it has no commits, the worker died: re-dispatch into the same worktree.
+
+**Next after those:** i-step-graph (#190) after #191; i-review-edit (#192) after #198; i-video-extract (#199) last. #221 (three stale "takes the write lock" comments: shopping queries, store/share.go, catalog/merge.go) needs a node.
+
+**Owner decisions this round:**
+- #193 parked: waits for a URL that still ingests badly after #186 and #191.
+- YouTube video (ADR-00021): click-to-play from youtube-nocookie; thumbnail downloaded into its own SQLite BLOB table keyed by video ID (not MinIO, not files); ingest reads schema.org `video`.
+- Mechanical graph PRs (lane widenings, nodes from issues, edges) merge on validator + CI with no review agent; batch graph changes; grep for tests and comments asserting old behaviour before writing a lane (`.memory/feedback-mechanical-graph-prs.md`). The owner wants speed.
+
+**Unresolved:**
+- #209's plain `database is locked (5)` in CI was not explained; #213 fixed the BUSY_SNAPSHOT path. Reopen if confirm 500s recur.
+- `.claude/rules/git-workflow.md` names bumps only for feat/fix/refactor, but `check-version-bump.sh` also requires one for a test-only change. Workers follow the gate.
+- i-plugin-extractors' plugin selectors were written from memory, unverified against live WPRM/Tasty/Create pages (stated in `plugins.go`).
+- Other e2e specs and `fixtures/serve.mjs` still default to fixed 38xxx ports in the ephemeral range (#204 comment).
+
+**Process notes:**
+- Worker VERSION bumps collide on every merge: whoever merges second rebases and re-bumps. Merge the cheapest first.
+- `version-check` only sees committed changes; workers who run it before committing report a false pass. Re-run gates after the final commit.
+- Concurrent git commands on the primary checkout hit `index.lock`; a failed graph-branch commit then leaks the graph edit onto main. Check `git status docs/plan` after any failed graph write.
 
 ## Merged this round (squash SHA, PR)
 
