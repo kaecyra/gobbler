@@ -78,11 +78,12 @@ type RecipeStore interface {
 }
 
 // CatalogWriter is what Save calls on the catalog: the reads of CatalogReader
-// plus creating the ingredients a draft proposed.
+// plus creating the ingredients and equipment a draft proposed.
 // *catalog.Store satisfies it.
 type CatalogWriter interface {
 	CatalogReader
 	CreateIngredient(ctx context.Context, in catalog.Ingredient) (catalog.Ingredient, error)
+	CreateEquipment(ctx context.Context, in catalog.Equipment) (catalog.Equipment, error)
 }
 
 // Saver writes confirmed drafts.
@@ -99,12 +100,15 @@ type Saved struct {
 	RecipeID int64
 	// NewIngredients were created, unreviewed, for this recipe.
 	NewIngredients []catalog.Ingredient
+	// NewEquipment were created, unreviewed, for this recipe.
+	NewEquipment []catalog.Equipment
 }
 
 // Save stores a confirmed draft as a recipe with its source snapshot, byte for
 // byte as ingested. Ingredients the draft proposed that the catalog still
 // lacks are created with reviewed false, since only a confirmed save may create
-// them (ADR-00008); ones that exist by now are reused. Units are never created
+// them (ADR-00008); ones that exist by now are reused. Proposed equipment is
+// treated the same way. Units are never created
 // here: the catalog owns them, so a unit it does not know is an error.
 //
 // The recipe and its snapshot are one store call and one transaction. If the
@@ -146,8 +150,12 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 		}
 	}
 	linkSteps(comps, d.Components)
+	links, err := s.equipment(ctx, d.Equipment, &out)
+	if err != nil {
+		return Saved{}, err
+	}
 
-	id, err := s.recipes.CreateWithSnapshots(ctx, toRecipe(d, comps),
+	id, err := s.recipes.CreateWithSnapshots(ctx, toRecipe(d, comps, links),
 		store.SnapshotInput{Kind: d.Source.Kind, Content: d.Source.Content})
 	if err != nil {
 		return Saved{}, fmt.Errorf("save recipe %q with its %s snapshot, recipe not stored: %w", d.Name.Value, d.Source.Kind, err)
@@ -178,6 +186,55 @@ func (s *Saver) ingredient(ctx context.Context, l Line, seen map[string]recipe.I
 	}
 	out.NewIngredients = append(out.NewIngredients, ing)
 	seen[name] = recipe.IngredientID(ing.ID)
+	return seen[name], nil
+}
+
+// equipment returns the recipe's equipment links, once per catalog entry,
+// creating the proposed equipment the catalog still lacks (unreviewed, never
+// sized: only the operator sets that, ADR-00019).
+func (s *Saver) equipment(ctx context.Context, items []Equipment, out *Saved) ([]recipe.EquipmentLink, error) {
+	var links []recipe.EquipmentLink
+	have := map[recipe.EquipmentID]bool{}
+	byName := map[string]recipe.EquipmentID{}
+	for _, it := range items {
+		id := it.Equipment
+		if id == 0 {
+			name := normalizeName(it.Name)
+			if name == "" {
+				continue
+			}
+			var err error
+			if id, err = s.equipmentID(ctx, name, byName, out); err != nil {
+				return nil, err
+			}
+		}
+		if have[id] {
+			continue
+		}
+		have[id] = true
+		links = append(links, recipe.EquipmentLink{Equipment: id})
+	}
+	return links, nil
+}
+
+// equipmentID returns the catalog id for a proposed name, creating it when
+// the catalog still lacks it.
+func (s *Saver) equipmentID(ctx context.Context, name string, seen map[string]recipe.EquipmentID, out *Saved) (recipe.EquipmentID, error) {
+	if id, ok := seen[name]; ok {
+		return id, nil
+	}
+	if eq, ok, err := s.catalog.MatchEquipment(ctx, name); err != nil {
+		return 0, fmt.Errorf("look up equipment %q: %w", name, err)
+	} else if ok {
+		seen[name] = recipe.EquipmentID(eq.ID)
+		return seen[name], nil
+	}
+	eq, err := s.catalog.CreateEquipment(ctx, catalog.Equipment{Name: name, Reviewed: false})
+	if err != nil {
+		return 0, fmt.Errorf("create proposed equipment %q: %w", name, err)
+	}
+	out.NewEquipment = append(out.NewEquipment, eq)
+	seen[name] = recipe.EquipmentID(eq.ID)
 	return seen[name], nil
 }
 
@@ -215,7 +272,7 @@ func linkSteps(comps []recipe.Component, from []Component) {
 	}
 }
 
-func toRecipe(d Draft, comps []recipe.Component) recipe.Recipe {
+func toRecipe(d Draft, comps []recipe.Component, links []recipe.EquipmentLink) recipe.Recipe {
 	r := recipe.Recipe{
 		Name:        strings.TrimSpace(d.Name.Value),
 		Description: d.Description.Value,
@@ -225,6 +282,7 @@ func toRecipe(d Draft, comps []recipe.Component) recipe.Recipe {
 		Servings:    d.Servings.Value,
 		Times:       recipe.Times{Prep: d.Prep.Value, Cook: d.Cook.Value, Total: d.Total.Value},
 		Components:  comps,
+		Equipment:   links,
 	}
 	if d.Calories.Value > 0 {
 		n := d.Calories.Value

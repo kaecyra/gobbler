@@ -156,7 +156,7 @@ func (f fakeProvider) respond() (ingest.Structured, error) {
 }
 
 // decodeStrict is the reference schema check: one JSON object, a string name,
-// and at least one component.
+// no blank equipment name and at least one component.
 func decodeStrict(payload []byte) (ingest.Structured, error) {
 	dec := json.NewDecoder(bytes.NewReader(payload))
 	var s ingest.Structured
@@ -168,6 +168,11 @@ func decodeStrict(payload []byte) (ingest.Structured, error) {
 	}
 	if strings.TrimSpace(s.Name) == "" {
 		return ingest.Structured{}, errors.New("recipe has no name")
+	}
+	for _, name := range s.Equipment {
+		if strings.TrimSpace(name) == "" {
+			return ingest.Structured{}, errors.New("recipe has a blank equipment name")
+		}
 	}
 	if len(s.Components) == 0 {
 		return ingest.Structured{}, errors.New("recipe has no components")

@@ -331,7 +331,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.log.InfoContext(r.Context(), "recipe ingested", "recipe_id", saved.RecipeID,
-		"new_ingredients", len(saved.NewIngredients))
+		"new_ingredients", len(saved.NewIngredients), "new_equipment", len(saved.NewEquipment))
 	http.Redirect(w, r, recipePath(saved.RecipeID), http.StatusSeeOther)
 }
 

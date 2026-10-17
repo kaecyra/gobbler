@@ -14,6 +14,8 @@ import (
 type CatalogReader interface {
 	MatchIngredient(ctx context.Context, term string) (catalog.Ingredient, bool, error)
 	MatchUnit(ctx context.Context, term string) (catalog.Unit, bool, error)
+	MatchEquipment(ctx context.Context, term string) (catalog.Equipment, bool, error)
+	ListEquipment(ctx context.Context) ([]catalog.Equipment, error)
 }
 
 // resolver answers catalog lookups for one ingest. The line parser is pure and
@@ -25,7 +27,16 @@ type resolver struct {
 	cat         CatalogReader
 	ingredients map[string]ingredientHit
 	units       map[string]unitHit
-	err         error
+	equipment   map[string]equipmentHit
+	// allEquipment is the whole equipment catalog, read once on first use.
+	allEquipment []catalog.Equipment
+	allRead      bool
+	err          error
+}
+
+type equipmentHit struct {
+	eq catalog.Equipment
+	ok bool
 }
 
 type ingredientHit struct {
@@ -39,7 +50,7 @@ type unitHit struct {
 }
 
 func newResolver(ctx context.Context, cat CatalogReader) *resolver {
-	return &resolver{ctx: ctx, cat: cat, ingredients: map[string]ingredientHit{}, units: map[string]unitHit{}}
+	return &resolver{ctx: ctx, cat: cat, ingredients: map[string]ingredientHit{}, units: map[string]unitHit{}, equipment: map[string]equipmentHit{}}
 }
 
 // MatchIngredient implements parse.IngredientMatcher.
@@ -91,4 +102,40 @@ func pick(h unitHit, orig quantity.Unit) (quantity.Unit, bool) {
 		return h.unit, true
 	}
 	return orig, false
+}
+
+// matchEquipment returns the catalog equipment called term, answering from a
+// per-ingest cache. found is false for a name the catalog lacks, or after a
+// catalog failure (r.err, which the caller checks).
+func (r *resolver) matchEquipment(term string) (catalog.Equipment, bool) {
+	if r.err != nil {
+		return catalog.Equipment{}, false
+	}
+	key := normalizeName(term)
+	if h, ok := r.equipment[key]; ok {
+		return h.eq, h.ok
+	}
+	eq, ok, err := r.cat.MatchEquipment(r.ctx, key)
+	if err != nil {
+		r.err = err
+		return catalog.Equipment{}, false
+	}
+	r.equipment[key] = equipmentHit{eq: eq, ok: ok}
+	return eq, ok
+}
+
+// catalogEquipment is every piece of equipment in the catalog, read once.
+func (r *resolver) catalogEquipment() []catalog.Equipment {
+	if r.err != nil {
+		return nil
+	}
+	if !r.allRead {
+		all, err := r.cat.ListEquipment(r.ctx)
+		if err != nil {
+			r.err = err
+			return nil
+		}
+		r.allEquipment, r.allRead = all, true
+	}
+	return r.allEquipment
 }

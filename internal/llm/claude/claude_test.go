@@ -277,3 +277,42 @@ func TestNewRejectsIncompleteConfig(t *testing.T) {
 		t.Fatalf("good configuration rejected: %v", err)
 	}
 }
+
+// The schema offers an optional equipment list, and the rule-based reading's
+// equipment is sent as context like its ingredients.
+func TestEquipmentInSchemaAndContext(t *testing.T) {
+	seen := &captured{}
+	srv := serve(t, wire(llmtest.Scenario{Behavior: llmtest.Respond, Payload: []byte(minimalPayload)}, seen).ServeHTTP)
+	p := newProvider(t, srv, "k", time.Second, slog.New(slog.DiscardHandler))
+	req := ingest.Request{Text: "x", RuleDraft: ingest.Draft{
+		Name:      ingest.Field[string]{Value: "Rule Name"},
+		Equipment: []ingest.Equipment{{Name: "rule dutch oven"}},
+	}}
+	if _, err := p.Structure(context.Background(), req); err != nil {
+		t.Fatalf("Structure: %v", err)
+	}
+	_, body := seen.get()
+	tools, _ := body["tools"].([]any)
+	schema, _ := tools[0].(map[string]any)["input_schema"].(map[string]any)
+	props, _ := schema["properties"].(map[string]any)
+	eq, _ := props["equipment"].(map[string]any)
+	if eq["type"] != "array" {
+		t.Fatalf("schema has no equipment array: %v", props)
+	}
+	if items, _ := eq["items"].(map[string]any); items["type"] != "string" {
+		t.Errorf("equipment items = %v, want strings", eq["items"])
+	}
+	for _, r := range schema["required"].([]any) {
+		if r == "equipment" {
+			t.Error("equipment is required: a source may name none")
+		}
+	}
+	raw, _ := json.Marshal(body)
+	if !strings.Contains(string(raw), "rule dutch oven") {
+		t.Error("the rule-based reading's equipment was not sent")
+	}
+	sys, _ := json.Marshal(body["system"])
+	if !strings.Contains(string(sys), "equipment") {
+		t.Errorf("the system prompt does not mention equipment: %s", sys)
+	}
+}

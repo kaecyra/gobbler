@@ -79,8 +79,11 @@ type Raw struct {
 	// groups hold exactly Ingredients, in order; nil otherwise.
 	IngredientGroups []IngredientGroup `json:"ingredient_groups,omitempty"`
 	Instructions     []InstructionStep `json:"instructions,omitempty"`
-	Calories         string            `json:"calories,omitempty"`
-	ImageURL         string            `json:"image_url,omitempty"`
+	// Tools are the equipment names the page states (schema.org "tool"), as
+	// written; matching them to the catalog is the assembler's job.
+	Tools    []string `json:"tools,omitempty"`
+	Calories string   `json:"calories,omitempty"`
+	ImageURL string   `json:"image_url,omitempty"`
 }
 
 // usable reports whether r holds enough to be worth reviewing: a name plus

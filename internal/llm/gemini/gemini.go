@@ -33,6 +33,7 @@ Return only the recipe the source contains; never invent ingredients, quantities
 Keep each ingredient line exactly as written, with its quantity and qualifiers.
 Put each separately headed part of the recipe (for example "For the sauce") in its own component, naming it; use one unnamed component when there are no parts.
 Keep times and yield as written in the source.
+List the equipment the recipe uses (for example "Dutch oven") in the equipment list, only when the source names it, naming the equipment alone without quantities or notes.
 A rule-based reading of the source is included as a draft: use it where it is right and correct it where it is wrong.`
 
 // Provider calls the Gemini API. It is safe for concurrent use.
@@ -166,6 +167,7 @@ func userContent(req ingest.Request) *genai.Content {
 
 type draftView struct {
 	Name       string          `json:"name,omitempty"`
+	Equipment  []string        `json:"equipment,omitempty"`
 	Components []componentView `json:"components,omitempty"`
 	Issues     []string        `json:"issues,omitempty"`
 }
@@ -178,6 +180,9 @@ type componentView struct {
 
 func draftSummary(d ingest.Draft) string {
 	v := draftView{Name: d.Name.Value, Issues: d.Issues}
+	for _, e := range d.Equipment {
+		v.Equipment = append(v.Equipment, e.Name)
+	}
 	for _, c := range d.Components {
 		cv := componentView{Name: c.Name}
 		for _, l := range c.Lines {
@@ -214,6 +219,7 @@ func responseSchema() *genai.Schema {
 			"prep_time":   str("Preparation time as written."),
 			"cook_time":   str("Cooking time as written."),
 			"total_time":  str("Total time as written."),
+			"equipment":   list("Equipment the recipe uses, named alone; omit when the source names none."),
 			"components": {
 				Type:        genai.TypeArray,
 				Description: "Separately headed parts of the recipe; one unnamed component when there are none.",

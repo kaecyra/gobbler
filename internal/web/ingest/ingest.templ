@@ -63,6 +63,7 @@ templ reviewPage(v reviewView) {
 			</div>
 		}
 		@proposed(v.Draft)
+		@equipment(v.Draft)
 		if v.CanRetry {
 			<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
 				<button type="submit">Retry with LLM</button>
@@ -162,6 +163,30 @@ templ proposed(d ingestcore.Draft) {
 			<ul>
 				for _, p := range d.Proposed {
 					<li data-proposed={ p.Name }><strong>{ p.Name }</strong> <span class="muted">aisle: { p.Aisle }</span></li>
+				}
+			</ul>
+		</section>
+	}
+}
+
+// equipment lists what the draft found. Equipment is not edited here: it can be
+// changed after saving, in the recipe editor (ADR-00020). Equipment the catalog
+// does not have is created, unreviewed, only when the draft is confirmed
+// (ADR-00008).
+templ equipment(d ingestcore.Draft) {
+	if len(d.Equipment) > 0 {
+		<section class="equipment" aria-label="Equipment">
+			<h2>Equipment</h2>
+			<p class="muted">Equipment the catalog does not have is added, unreviewed, when you confirm. Change the list in the recipe editor after saving.</p>
+			<ul>
+				for _, e := range d.Equipment {
+					<li data-equipment={ e.Name } class={ markClass(false, e.FromLLM) }>
+						@llmMark(e.FromLLM)
+						<strong>{ e.Name }</strong>
+						if e.Equipment == 0 {
+							<span class="muted" data-proposed-equipment={ e.Name }>new</span>
+						}
+					</li>
 				}
 			</ul>
 		</section>

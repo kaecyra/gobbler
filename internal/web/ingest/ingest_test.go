@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -54,6 +55,8 @@ type fakeStore struct {
 	snapshots int
 	created   []string
 	known     map[string]catalog.Ingredient
+	// createdEquipment are the names of equipment a save created.
+	createdEquipment []string
 }
 
 func newFakeStore() *fakeStore {
@@ -79,6 +82,25 @@ func (s *fakeStore) MatchIngredient(_ context.Context, term string) (catalog.Ing
 
 func (s *fakeStore) MatchUnit(context.Context, string) (catalog.Unit, bool, error) {
 	return catalog.Unit{}, false, nil
+}
+
+func (s *fakeStore) MatchEquipment(_ context.Context, term string) (catalog.Equipment, bool, error) {
+	if strings.EqualFold(term, "dutch oven") {
+		return catalog.Equipment{ID: 5, Name: "dutch oven"}, true, nil
+	}
+	return catalog.Equipment{}, false, nil
+}
+
+func (s *fakeStore) ListEquipment(context.Context) ([]catalog.Equipment, error) {
+	return []catalog.Equipment{{ID: 5, Name: "dutch oven"}}, nil
+}
+
+func (s *fakeStore) CreateEquipment(_ context.Context, in catalog.Equipment) (catalog.Equipment, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	in.ID = int64(200 + len(s.createdEquipment))
+	s.createdEquipment = append(s.createdEquipment, in.Name)
+	return in, nil
 }
 
 func (s *fakeStore) CreateIngredient(_ context.Context, in catalog.Ingredient) (catalog.Ingredient, error) {
@@ -113,6 +135,11 @@ func sampleDraft() ingestcore.Draft {
 		BelowThreshold: true,
 		Issues:         []string{"no_steps"},
 		Proposed:       []ingestcore.ProposedIngredient{{Name: "dragonfruit zest", Aisle: "uncategorised"}},
+		Equipment: []ingestcore.Equipment{
+			{Name: "dutch oven", Equipment: 5},
+			{Name: "mandoline slicer"},
+			{Name: "whisk", Equipment: 6},
+		},
 	}
 }
 
@@ -332,6 +359,56 @@ func TestReviewListsProposedIngredientsWithChoice(t *testing.T) {
 	}
 	if strings.Contains(body, lineNameField(0, 0)) {
 		t.Error("a matched line offers a new-ingredient choice")
+	}
+}
+
+func TestReviewListsEquipmentAndMarksNewAndLLMOnes(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft.Equipment[2].FromLLM = true
+	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
+	section := between(t, body, `aria-label="Equipment"`, "</section>")
+	for _, want := range []string{`data-equipment="dutch oven"`, `data-equipment="whisk"`, `data-equipment="mandoline slicer"`} {
+		if !strings.Contains(section, want) {
+			t.Errorf("equipment section lacks %s: %s", want, section)
+		}
+	}
+	proposed := between(t, section, `data-proposed-equipment="`, `"`)
+	if proposed != "mandoline slicer" {
+		t.Errorf("proposed equipment = %q, want the mandoline", proposed)
+	}
+	if strings.Count(section, "data-proposed-equipment") != 1 {
+		t.Errorf("only unmatched equipment is proposed: %s", section)
+	}
+	if !strings.Contains(section, "llm-mark") || !strings.Contains(section, "unreviewed") {
+		t.Errorf("section does not mark LLM equipment or say new equipment is added unreviewed: %s", section)
+	}
+}
+
+func TestReviewWithoutEquipmentHasNoEquipmentSection(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft.Equipment = nil
+	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
+	if strings.Contains(body, `aria-label="Equipment"`) {
+		t.Error("an empty equipment list still renders a section")
+	}
+}
+
+func TestConfirmSavesEquipmentAndCreatesTheProposedOne(t *testing.T) {
+	f := newFixture(t)
+	token := f.ingestText(t)
+	rec := f.do(http.MethodPost, "/"+token+"/confirm", reviewForm())
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+	}
+	if len(f.store.createdEquipment) != 1 || f.store.createdEquipment[0] != "mandoline slicer" {
+		t.Errorf("created equipment = %v, want the proposed one", f.store.createdEquipment)
+	}
+	var ids []recipe.EquipmentID
+	for _, l := range f.store.recipes[0].Equipment {
+		ids = append(ids, l.Equipment)
+	}
+	if want := []recipe.EquipmentID{5, 200, 6}; !reflect.DeepEqual(ids, want) {
+		t.Errorf("saved equipment ids = %v, want %v", ids, want)
 	}
 }
 

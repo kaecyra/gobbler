@@ -131,6 +131,7 @@ func recipeFromJSONLD(m map[string]any) Raw {
 	if len(r.Ingredients) == 0 {
 		r.Ingredients = jsonStrings(m["ingredients"])
 	}
+	r.Tools = jsonStrings(m["tool"])
 	if n, ok := m["nutrition"].(map[string]any); ok {
 		r.Calories = jsonString(n["calories"])
 	}

@@ -15,9 +15,9 @@ var ErrInvalidStructured = errors.New("does not match the ingestion schema")
 
 // DecodeStructured is the one strict reading of a provider's answer
 // (ADR-00006, ADR-00007): exactly one JSON object, no unknown fields, a
-// non-blank name, at least one component, and an ingredients key on every
-// component. Anything else is an error wrapping ErrInvalidStructured, never a
-// partial Structured. Every provider calls it; none keeps its own copy.
+// non-blank name, no blank equipment name, at least one component, and an
+// ingredients key on every component. Anything else is an error wrapping
+// ErrInvalidStructured, never a partial Structured. Every provider calls it; none keeps its own copy.
 func DecodeStructured(raw []byte) (Structured, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
@@ -33,6 +33,11 @@ func DecodeStructured(raw []byte) (Structured, error) {
 	}
 	if len(s.Components) == 0 {
 		return Structured{}, fmt.Errorf("%w: recipe has no components", ErrInvalidStructured)
+	}
+	for i, name := range s.Equipment {
+		if strings.TrimSpace(name) == "" {
+			return Structured{}, fmt.Errorf("%w: equipment %d is blank", ErrInvalidStructured, i)
+		}
 	}
 	for i, c := range s.Components {
 		// The schema requires the key; absent or null is a violation.
