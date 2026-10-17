@@ -105,11 +105,12 @@ type Saved struct {
 }
 
 // Save stores a confirmed draft as a recipe with its source snapshot, byte for
-// byte as ingested, and the parser version that produced the draft. Ingredients the draft proposed that the catalog still
-// lacks are created with reviewed false, since only a confirmed save may create
-// them (ADR-00008); ones that exist by now are reused. Proposed equipment is
-// treated the same way. Units are never created
-// here: the catalog owns them, so a unit it does not know is an error.
+// byte as ingested, and the parser version that produced the draft.
+// Ingredients the draft proposed that the catalog still lacks are created with
+// reviewed false, since only a confirmed save may create them (ADR-00008); ones
+// that exist by now are reused. Proposed equipment is treated the same way.
+// Units are never created here: the catalog owns them, so a unit it does not
+// know is an error.
 //
 // The recipe and its snapshot are one store call and one transaction. If the
 // snapshot cannot be written nothing is, so a recipe never exists without its

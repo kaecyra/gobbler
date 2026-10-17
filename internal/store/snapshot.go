@@ -82,10 +82,10 @@ func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, hid, id 
 	return s.insertVersionedSnapshot(ctx, q, hid, id, SnapshotInput{Kind: kind, Content: content}, who)
 }
 
-// insertVersionedSnapshot writes one snapshot inside the transaction q is bound to. The
-// caller holds the write lock on the recipe, which makes the existence check
-// and the insert atomic, so no concurrent writer can slip a duplicate in
-// between; the UNIQUE constraint is the backstop.
+// insertVersionedSnapshot writes one snapshot inside the transaction q is
+// bound to. The caller holds the write lock on the recipe, which makes the
+// existence check and the insert atomic, so no concurrent writer can slip a
+// duplicate in between; the UNIQUE constraint is the backstop.
 func (s *Store) insertVersionedSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, in SnapshotInput, who string) error {
 	kind, content := in.Kind, in.Content
 	if !kind.Valid() {
