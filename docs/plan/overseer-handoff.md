@@ -4,11 +4,15 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
-## Round 12 (2026-10-17, in progress)
+## Round 12 (2026-10-17), closed
 
-**Merged:** #229 graph (nodes r-write-lock-comments #221, r-thumbnail-everywhere #226, i-review-steps #230; i-step-graph lane widened); #231 r-write-lock-comments (c6f5b11); #232 i-step-graph (60fa063); #233 i-review-edit, also closed #228 (23f4929); #234 i-review-steps (8d54a9b); #238 r-thumbnail-everywhere (5c7736d). Graph PRs #235, #236 (i-review-steps lane), #237 (i-video-extract after thumbnail), #239 (i-video-extract lane gains `internal/web/editor/**`, `internal/ingest/ingest.go`). VERSION on main 0.59.1.
+**Merged:** #231 r-write-lock-comments (c6f5b11); #232 i-step-graph (60fa063); #233 i-review-edit, also closed #228 (23f4929); #234 i-review-steps (8d54a9b); #238 r-thumbnail-everywhere (5c7736d); #241 i-video-extract (fb35b78); #244 g-thumbnail-fixture, #242 (46fd2b6). Graph PRs #229, #235, #236, #237, #239, #240, #243, #245. VERSION on main 0.61.0.
 
-**In flight:** i-video-extract (#199), worktree `wt-199`, worker dispatched; bumps 0.60.0. It is the last dispatchable node: after it only #193 (parked) and #38 (needs an ADR) remain.
+**Nothing is in flight:** no open PRs, no worktrees. Every dispatchable node is merged. Only two remain, both waiting on the owner:
+- **i-site-extractors (#193):** parked until a URL still ingests badly after #186 and #191; that URL becomes the first extractor.
+- **l-meal-planning (#38):** deferred; needs its own ADR first.
+
+**Leftovers, no issue yet:** e2e specs that spawn their own server (e.g. editor, history) do not set `GOBBLER_VIDEO_THUMBNAIL_HOST`; none saves a video today. `.env.example` and `compose.yaml` do not list the new optional variable.
 
 **Process note:** the #230 worker edited `internal/ingest/fallback.go` outside its lane before asking; the lane was widened after the fact (#236) since only merged nodes owned it.
 
