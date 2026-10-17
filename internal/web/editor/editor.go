@@ -22,6 +22,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -37,6 +38,9 @@ type Recipes interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, id int64) (store.Info, error)
 	UpdateIfVersion(ctx context.Context, id, expectedVersion int64, r recipe.Recipe) error
+	// HasThumbnail and SaveThumbnail keep the preview image of a recipe's video
+	// (ADR-00021).
+	video.ThumbnailStore
 }
 
 // Catalog is what the editor needs from the catalog: matching what the user
@@ -56,6 +60,9 @@ type Catalog interface {
 type Deps struct {
 	Recipes Recipes
 	Catalog Catalog
+	// Thumbnails downloads the preview image of a recipe's video when the
+	// recipe is saved; nil means YouTube's image host.
+	Thumbnails video.ThumbnailSource
 }
 
 // Routes returns the routes of the editor, relative to Pattern.
@@ -183,6 +190,7 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		layout.WriteError(w, r, fmt.Errorf("save recipe %d: %w", id, err))
 		return
 	}
+	h.keepThumbnail(ctx, id, rec.VideoID)
 	to := recipePath(id)
 	if fromHTMX(r) {
 		w.Header().Set("HX-Redirect", to)
@@ -190,6 +198,23 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		return
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
+// keepThumbnail downloads the preview image of the saved recipe's video when
+// none is stored for it yet (ADR-00021 decision 3). The recipe is already
+// saved, so a failure is logged and the page shows the placeholder; the next
+// save of a recipe with this video tries again.
+func (h *handler) keepThumbnail(ctx context.Context, id int64, videoID string) {
+	if videoID == "" {
+		return
+	}
+	var src video.ThumbnailSource = video.NewFetcher()
+	if h.Thumbnails != nil {
+		src = h.Thumbnails
+	}
+	if err := video.EnsureThumbnail(ctx, h.Recipes, src, videoID); err != nil {
+		slog.WarnContext(ctx, "recipe saved without a video thumbnail", "recipe_id", id, "video_id", videoID, "error", err.Error())
+	}
 }
 
 // stale shows the form again with the stale-save message.

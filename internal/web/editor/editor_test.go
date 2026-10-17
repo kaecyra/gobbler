@@ -35,6 +35,8 @@ type env struct {
 	cat   *catalog.Store
 	h     http.Handler
 	id    int64
+	// thumbs stands in for YouTube's image host; no test reaches the network.
+	thumbs *stubThumbs
 }
 
 func newEnv(t *testing.T) *env {
@@ -61,14 +63,14 @@ func newEnv(t *testing.T) *env {
 	hh := devHousehold(t, d)
 	authed = household.WithContext(authed, hh)
 	s, c := store.New(d), catalog.New(d)
-	e := &env{t: t, ctx: authed, store: s, cat: c}
+	e := &env{t: t, ctx: authed, store: s, cat: c, thumbs: &stubThumbs{}}
 	e.id, err = s.CreateWithSnapshots(authed, e.fixture(), store.SnapshotInput{Kind: store.SnapshotText, Content: []byte("the original source")})
 	if err != nil {
 		t.Fatalf("create recipe: %v", err)
 	}
 	r := chi.NewRouter()
 	r.Use(a.Middleware(), asMember(hh))
-	r.Mount(Pattern, Routes(Deps{Recipes: s, Catalog: c}))
+	r.Mount(Pattern, Routes(Deps{Recipes: s, Catalog: c, Thumbnails: e.thumbs}))
 	e.h = r
 	return e
 }
@@ -229,7 +231,7 @@ func encode(d draft) url.Values {
 	f := url.Values{}
 	f.Set(fieldVersion, strconv.FormatInt(d.Version, 10))
 	for k, v := range map[string]string{
-		"name": d.Name, "description": d.Description, "source_url": d.SourceURL, "author": d.Author,
+		"name": d.Name, "description": d.Description, "source_url": d.SourceURL, "author": d.Author, "video": d.Video,
 		"yield_qty": d.YieldQty, "yield_unit": d.YieldUnit, "servings": d.Servings, "calories": d.Calories,
 		"tags": d.Tags, "prep": d.Prep, "cook": d.Cook, "total": d.Total,
 	} {

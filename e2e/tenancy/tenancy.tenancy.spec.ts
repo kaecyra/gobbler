@@ -1,4 +1,9 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DEV, OTHER, OPERATOR, STRANGER } from '../fixtures/identity';
 import {
   DEV_HOUSEHOLD,
@@ -53,6 +58,8 @@ import {
 const routesPort = Number(process.env.GOBBLER_E2E_TENANCY_PORT ?? 38541);
 const deletePort = Number(process.env.GOBBLER_E2E_TENANCY_DELETE_PORT ?? 38542);
 const baselinePort = Number(process.env.GOBBLER_E2E_TENANCY_BASELINE_PORT ?? 38543);
+const videoPort = Number(process.env.GOBBLER_E2E_TENANCY_VIDEO_PORT ?? 38544);
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 interface Probe {
   method: 'GET' | 'POST';
@@ -141,6 +148,8 @@ const PROBES: Probe[] = [
   hidden('GET', (i) => `/recipes/${i.recipe}/edit`),
   hidden('POST', (i) => `/recipes/${i.recipe}/edit`, () => ({ version: '1', name: 'Hijacked' })),
   hidden('POST', (i) => `/recipes/${i.recipe}/clone`),
+  // This recipe has no video, so DEV gets 404 here too; the video suite below proves it with a stored thumbnail.
+  hidden('GET', (i) => `/recipes/${i.recipe}/video/thumbnail`),
   hidden('GET', (i) => `/recipes/${i.recipe}/history`),
   hidden('GET', (i) => `/recipes/${i.recipe}/history/1`),
   hidden('POST', (i) => `/recipes/${i.recipe}/history/1/restore`, () => ({ confirm: 'yes' })),
@@ -273,5 +282,53 @@ test.describe('deleting a household leaves no rows anywhere', () => {
   test('the rows of a deleted household are gone from every table', async ({ playwright }) => {
     deleteWork = makeWorkdir();
     await expectHouseholdDeletionClean(playwright, deleteWork, { rich: deletePort, baseline: baselinePort });
+  });
+});
+
+// ADR-00021 obligation 4. A thumbnail is reached through its recipe, behind the
+// household check. The main server's recipe has no video, so this suite starts a
+// server on the recipe-view seed, whose first recipe names a video with a stored
+// thumbnail, and asks for that image as its household and as the two other
+// identities. The seed is built here and the server is started by the shared
+// helper, which takes the recipe id from the seed's "recipe" key.
+const THUMBNAIL_PROBE = hidden('GET', (i) => `/recipes/${i.recipe}/video/thumbnail`);
+
+test.describe('a recipe thumbnail is served only to the household that owns the recipe', () => {
+  test.describe.configure({ mode: 'serial', timeout: SETUP_TIMEOUT_MS });
+
+  let videoWork: Workdir | undefined;
+  let videoServer: Server | undefined;
+  const ctxs: APIRequestContext[] = [];
+
+  test.beforeAll(async ({ playwright }) => {
+    test.setTimeout(SETUP_TIMEOUT_MS);
+    const dir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-tenancy-video-'));
+    const seed = join(dir, 'seed');
+    execFileSync('go', ['build', '-o', seed, './e2e/recipeview/seed'], { cwd: repoRoot, stdio: 'inherit' });
+    videoWork = { dir, seed };
+    videoServer = await startServer(videoWork, videoPort, true);
+    for (const who of [DEV, OTHER, STRANGER]) ctxs.push(await as(playwright, videoServer, who));
+  });
+
+  test.afterAll(async () => {
+    await Promise.all(ctxs.map((c) => c.dispose()));
+    await stopServer(videoServer);
+    removeWorkdir(videoWork);
+  });
+
+  test('the owner gets the image, another household gets 404 and a non-member 403', async () => {
+    const ids = { recipe: videoServer!.recipe } as Ids;
+    const path = THUMBNAIL_PROBE.path(ids);
+    const [dev, other, stranger] = ctxs;
+    const own = await send(dev, THUMBNAIL_PROBE.method, path);
+    expect(own.status(), 'the owning household').toBe(200);
+    expect(own.headers()['content-type']).toBe('image/png');
+    expect((await own.body()).length, 'the image body').toBeGreaterThan(0);
+
+    const foreign = await send(other, THUMBNAIL_PROBE.method, path);
+    expect(foreign.status(), 'another household').toBe(THUMBNAIL_PROBE.other);
+    expect(foreign.headers()['content-type'] ?? '').not.toMatch(/^image\//);
+    const outsider = await send(stranger, THUMBNAIL_PROBE.method, path);
+    expect(outsider.status(), 'a non-member').toBe(THUMBNAIL_PROBE.stranger);
   });
 });

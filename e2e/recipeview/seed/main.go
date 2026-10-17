@@ -1,10 +1,13 @@
 // Command seed fills a fresh data directory with the recipe the recipe-view
-// e2e spec reads, a second one with meanwhile guidance and a clone of the first, then prints their ids as JSON. It is test tooling (ADR-00013):
+// e2e spec reads, a second one with meanwhile guidance and a clone of the first,
+// and two recipes with a YouTube video (one with a stored thumbnail, one
+// without), then prints their ids as JSON. It is test tooling (ADR-00013):
 // it goes through the real store and catalog packages, so the spec exercises
 // the same read path as production. Usage: seed <data-dir>.
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,6 +19,15 @@ import (
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
 )
+
+// The video IDs the recipe-view spec expects (11 characters each).
+const (
+	VideoWithThumbnail    = "dQw4w9WgXcQ"
+	VideoWithoutThumbnail = "9bZkp7q19f0"
+)
+
+// onePixelPNG is a 1x1 PNG, the stored thumbnail.
+const onePixelPNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 
 func main() {
 	if len(os.Args) != 2 {
@@ -82,7 +94,26 @@ func run(dir string) error {
 		}},
 		Equipment: []recipe.EquipmentLink{{Equipment: recipe.EquipmentID(pan.ID)}, {Equipment: recipe.EquipmentID(whisk.ID)}},
 	}
+	// The first recipe carries a video whose thumbnail is stored, so the page
+	// shows the thumbnail without the server ever reaching YouTube.
+	r.VideoID = VideoWithThumbnail
 	id, err := store.New(d).Create(ctx, r)
+	if err != nil {
+		return err
+	}
+	png, err := base64.StdEncoding.DecodeString(onePixelPNG)
+	if err != nil {
+		return err
+	}
+	if err := store.New(d).SaveThumbnail(ctx, VideoWithThumbnail, png, "image/png"); err != nil {
+		return err
+	}
+	// The second has a video and no thumbnail, as after a failed download.
+	bare := recipe.Recipe{
+		Name: "E2E Video Placeholder", VideoID: VideoWithoutThumbnail,
+		Components: []recipe.Component{{Steps: []recipe.Step{{ID: "watch", Text: "Watch the video."}}}},
+	}
+	bareID, err := store.New(d).Create(ctx, bare)
 	if err != nil {
 		return err
 	}
@@ -113,7 +144,7 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID})
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID})
 }
 
 func line(qty, unit string, ingredient int64, rule quantity.Rule) recipe.IngredientLine {

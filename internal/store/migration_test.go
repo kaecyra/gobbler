@@ -206,3 +206,45 @@ func TestMigration00012KeepsOldSnapshotsWithUnknownParserVersion(t *testing.T) {
 		t.Errorf("old snapshot rows matching = %d, want 1 with an empty parser_version", n)
 	}
 }
+
+// Recipes stored before 00013 read as having no video, and rolling the
+// migration back removes the column and the thumbnail table.
+func TestMigration00013GivesOldRecipesNoVideoAndRollsBack(t *testing.T) {
+	ctx := context.Background()
+	d := openRaw(t)
+	if err := db.Migrate(ctx, d, migrationsBelow(t, "00013")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`INSERT INTO recipes (id, household_id, name, created_at, created_by, updated_at, updated_by) VALUES (7, 1, 'Stew', 't', 'a', 't', 'a')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM recipes WHERE id = 7 AND video_id = ''`); n != 1 {
+		t.Errorf("old recipe rows with an empty video_id = %d, want 1", n)
+	}
+	if _, err := d.Exec(`INSERT INTO video_thumbnails (video_id, content, content_type, fetched_at) VALUES ('short', x'61', 'image/jpeg', 't')`); err == nil {
+		t.Error("a thumbnail row with a video ID that is not 11 characters was accepted")
+	}
+
+	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.DownTo(ctx, 12); err != nil {
+		t.Fatalf("rolling back 00013: %v", err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM pragma_table_info('recipes') WHERE name = 'video_id'`); n != 0 {
+		t.Error("video_id survived the rollback")
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM sqlite_master WHERE name = 'video_thumbnails'`); n != 0 {
+		t.Error("video_thumbnails survived the rollback")
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM recipes`); n != 1 {
+		t.Errorf("recipes after the rollback = %d, want 1 kept", n)
+	}
+}

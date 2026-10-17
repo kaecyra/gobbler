@@ -143,6 +143,7 @@ type Recipe struct {
 	CreatedBy          string
 	UpdatedAt          string
 	UpdatedBy          string
+	VideoID            string
 }
 
 type RecipeEquipment struct {
@@ -309,4 +310,11 @@ type Unit struct {
 type UnitAlias struct {
 	Alias  string
 	UnitID int64
+}
+
+type VideoThumbnail struct {
+	VideoID     string
+	Content     []byte
+	ContentType string
+	FetchedAt   string
 }

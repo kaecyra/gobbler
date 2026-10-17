@@ -96,6 +96,21 @@ test('an invalid quantity is rejected inline, keeps the input and saves nothing'
   await expect(page.getByRole('heading', { name: 'E2E Editor Loaf' })).toBeVisible();
 });
 
+test('the video field takes a YouTube link or ID; anything else is rejected inline and saves nothing', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('[name="video"]')).toHaveValue('');
+  await page.locator('[name="name"]').fill('Never Saved Either');
+  await page.locator('[name="video"]').fill('https://vimeo.com/12345');
+  await save(page);
+  await expect(page.getByRole('alert').filter({ hasText: 'is not a YouTube video' })).toBeVisible();
+  await expect(page.locator('[name="video"]')).toHaveValue('https://vimeo.com/12345');
+  await expect(page.locator('[name="name"]')).toHaveValue('Never Saved Either');
+  expect(await revisions(page)).toBe(0);
+  await page.goto(`/recipes/${id}`);
+  await expect(page.getByRole('heading', { name: 'E2E Editor Loaf' })).toBeVisible();
+  await expect(page.getByTestId('video')).toHaveCount(0);
+});
+
 test('a step dependency cycle is rejected naming the steps and saves nothing', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
   // mix would depend on glaze, which depends on rest, which depends on mix.
