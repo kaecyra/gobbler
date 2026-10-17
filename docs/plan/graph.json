@@ -2295,7 +2295,7 @@
       "wave": 9,
       "track": null,
       "issue": 252,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-shell",
         "u-recipe-fields"
@@ -3183,6 +3183,12 @@
       "title": "map recipeCategory to meal type and propose step stage kinds in rule-based ingest",
       "merged": "90466b5652c46159bd78e67bff83ad24e15b4b64",
       "note": "ADR-00022; design in docs/ui/design.md. u-recipe-fields hides the new fields on a draft under review (groupRecipeFields, left off by carries) because ingest.Draft does not carry them yet: this node adds them to ingest.Draft, maps them in the editor's fromIngest/toIngest and switches the group on in internal/web/editor/view.go."
+    },
+    {
+      "id": "u-cook",
+      "title": "cook mode in the mockup design",
+      "merged": "56dfb71635424ad003b7b122f4a55144118f8249",
+      "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
   "adr_sequence": {
