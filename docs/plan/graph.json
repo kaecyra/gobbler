@@ -1808,13 +1808,17 @@
         "internal/ingest/structured*.go",
         "internal/llm/**",
         "internal/parse/testdata/**",
-        "internal/ingest/*_test.go"
+        "internal/ingest/*_test.go",
+        "internal/ingest/draft.go",
+        "internal/ingest/assemble*.go",
+        "internal/ingest/llm.go",
+        "internal/ingest/ingest.go"
       ],
       "needs_migration": null,
       "adrs": [
         "00020"
       ],
-      "note": "ADR-00020 decision 1: rules build the graph (linear default, passive vocabulary, 'meanwhile' breaks the chain); the LLM fallback may supply dependencies and passive flags for the steps it is asked about."
+      "note": "ADR-00020 decision 1: rules build the graph (linear default, passive vocabulary, 'meanwhile' breaks the chain); the LLM fallback may supply dependencies and passive flags for the steps it is asked about. Also rewords the UsedLLM doc comment in draft.go (#228)."
     },
     {
       "id": "i-llm-gap-fill",
@@ -1864,7 +1868,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00020 decision 3: the review screen is the recipe editor operating on the unsaved draft (same components, form handling, validation; confirm in place of save). No second implementation of an editor control."
+      "note": "ADR-00020 decision 3: the review screen is the recipe editor operating on the unsaved draft (same components, form handling, validation; confirm in place of save). No second implementation of an editor control. Also closes #228's review-banner wording; the UsedLLM doc comment in draft.go goes to i-step-graph."
     },
     {
       "id": "i-site-extractors",
@@ -1951,7 +1955,8 @@
         "i-review-edit",
         "i-plugin-extractors",
         "i-equipment-extract",
-        "i-step-graph"
+        "i-step-graph",
+        "i-review-steps"
       ],
       "owns": [
         "internal/ingest/extract/jsonld*.go",
@@ -2038,6 +2043,70 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Route the three autocommit writes in internal/household/store.go through db.WithTx. With write transactions beginning IMMEDIATE (#213), reword the comments at lockRecipe (internal/store/store.go), lockList (internal/shopping/store.go) and the ClaimInvitation query doc that say a write must be the first statement. Keep the guards themselves: removing them touches call sites outside this lane."
+    },
+    {
+      "id": "r-write-lock-comments",
+      "title": "Three comments still say a guard takes the write lock",
+      "wave": 9,
+      "track": null,
+      "issue": 221,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/shopping/queries/shopping.sql",
+        "internal/shopping/shoppingdb/shopping.sql.go",
+        "internal/store/share.go",
+        "internal/catalog/merge.go",
+        "internal/catalog/queries/ingredients.sql",
+        "internal/catalog/catalogdb/ingredients.sql.go",
+        "internal/catalog/promote.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Comment-only. Since #213 write transactions begin IMMEDIATE; reword the reason each guard gives. Regenerate shoppingdb with make generate."
+    },
+    {
+      "id": "r-thumbnail-everywhere",
+      "title": "Download the video thumbnail on every save that sets a video",
+      "wave": 9,
+      "track": null,
+      "issue": 226,
+      "status": "todo",
+      "depends_on": [
+        "i-review-edit",
+        "i-review-steps"
+      ],
+      "owns": [
+        "internal/video/**",
+        "internal/web/history/**",
+        "internal/web/sharing/**",
+        "internal/web/editor/editor.go",
+        "internal/web/editor/editor_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00021 decision 3. Move the editor's keepThumbnail (default fetcher plus a logged failure) into internal/video and call it from editor save, history restore and share accept. Runs after i-review-edit, which owns internal/web/editor/**."
+    },
+    {
+      "id": "i-review-steps",
+      "title": "Edit step dependencies and passive flags on the review screen",
+      "wave": 9,
+      "track": null,
+      "issue": 230,
+      "status": "todo",
+      "depends_on": [
+        "i-review-edit",
+        "i-step-graph"
+      ],
+      "owns": [
+        "internal/web/ingest/**",
+        "internal/web/editor/**",
+        "e2e/ingest/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00020 decision 3, obligation 4: the dependency-edit-before-confirm test lands here, once i-step-graph's step fields exist."
     }
   ],
   "shared_files": [
