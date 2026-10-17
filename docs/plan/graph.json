@@ -1996,6 +1996,21 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Alias extract.IssueUnparsedDuration to parse.IssueUnparsedDuration (extract already imports parse)."
+    },
+    {
+      "id": "r-sqlite-busy",
+      "title": "a confirmed save must not fail with SQLITE_BUSY",
+      "wave": 9,
+      "track": null,
+      "issue": 209,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/db/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Find the writer that holds the lock past busy_timeout or bypasses WithTx; fix at the db layer. A cause in another package is out of lane: stop and report it with file:line."
     }
   ],
   "shared_files": [
