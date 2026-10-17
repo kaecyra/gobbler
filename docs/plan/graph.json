@@ -2477,7 +2477,7 @@
       "wave": 9,
       "track": null,
       "issue": 279,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-library",
         "u-recipe-view"
@@ -3294,6 +3294,11 @@
       "title": "recipe page, journal and history in the mockup design",
       "merged": "dda973c8351d83e2b396b1eb5f6c2eca52c15be0",
       "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "r-one-icon-set",
+      "title": "one set of meal-type, chili and spoon components in layout",
+      "merged": "81f57ef"
     }
   ],
   "adr_sequence": {
