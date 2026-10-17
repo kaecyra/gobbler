@@ -1714,7 +1714,7 @@
       "wave": 9,
       "track": null,
       "issue": 186,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-text-meta"
       ],
@@ -2633,6 +2633,11 @@
       "title": "a cross-household shopping check returns 303 instead of 404 when the key is already checked",
       "merged": "a7a450677603aaa68ca43672d9c12cb5f89ef456",
       "note": "ADR-00018: the cross-household lookup fails with ErrNotFound before the already-checked short-circuit. The tenancy spec probes a checked key and its steering comment goes."
+    },
+    {
+      "id": "i-plugin-extractors",
+      "title": "recover ingredient groups from recipe-plugin markup",
+      "merged": "dfbbf76712d7d84e7864c15afd5d6f7c71466ea8"
     }
   ],
   "adr_sequence": {
