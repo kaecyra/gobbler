@@ -1844,7 +1844,8 @@
       "depends_on": [
         "i-equipment-extract",
         "i-parser-version",
-        "t-cross-household-gate"
+        "t-cross-household-gate",
+        "r-recipe-video"
       ],
       "owns": [
         "internal/web/ingest/**",
@@ -1872,7 +1873,87 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "blocked": "Owner decision needed: which sites get extractors; see #193"
+      "blocked": "parked (owner, 2026-10-17): waits for a URL that still ingests badly after i-plugin-extractors and i-llm-gap-fill; that URL becomes the first extractor"
+    },
+    {
+      "id": "t-shopping-check-leak",
+      "title": "a cross-household shopping check returns 404 even when the key is already checked",
+      "wave": 9,
+      "track": "tenancy",
+      "issue": 197,
+      "status": "todo",
+      "depends_on": [
+        "t-cross-household-gate"
+      ],
+      "owns": [
+        "internal/shopping/**check*",
+        "internal/web/shopping/**",
+        "e2e/tenancy/tenancy.tenancy.spec.ts"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00018: the cross-household lookup fails with ErrNotFound before the already-checked short-circuit. The tenancy spec probes a checked key and its steering comment goes."
+    },
+    {
+      "id": "r-recipe-video",
+      "title": "optional YouTube video on a recipe, click-to-play at the top of the recipe page",
+      "wave": 9,
+      "track": null,
+      "issue": 198,
+      "status": "todo",
+      "depends_on": [
+        "i-parser-version",
+        "t-shopping-check-leak"
+      ],
+      "owns": [
+        "internal/video/**",
+        "internal/recipe/model*.go",
+        "internal/store/recipe*.go",
+        "internal/store/revision*.go",
+        "internal/store/share*.go",
+        "internal/store/video*.go",
+        "internal/store/migration_test.go",
+        "internal/web/recipeview/**",
+        "internal/web/editor/**",
+        "internal/web/static/video*",
+        "e2e/recipeview/**",
+        "e2e/editor/**",
+        "e2e/tenancy/tenancy.tenancy.spec.ts",
+        "docs/design.md"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00021"
+      ],
+      "note": "ADR-00021. Nothing from a YouTube origin loads before the play click; the thumbnail is a BLOB row per video ID, served per recipe behind the household check."
+    },
+    {
+      "id": "i-video-extract",
+      "title": "read a YouTube video from schema.org Recipe markup into the draft",
+      "wave": 9,
+      "track": null,
+      "issue": 199,
+      "status": "todo",
+      "depends_on": [
+        "r-recipe-video",
+        "i-review-edit",
+        "i-plugin-extractors",
+        "i-equipment-extract",
+        "i-step-graph"
+      ],
+      "owns": [
+        "internal/ingest/extract/jsonld*.go",
+        "internal/ingest/extract/testdata/**",
+        "internal/ingest/draft*.go",
+        "internal/ingest/save*.go",
+        "internal/ingest/assemble*.go",
+        "internal/ingest/*_test.go",
+        "internal/web/ingest/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00021 obligation 5; shown and editable on review (ADR-00006)."
     }
   ],
   "shared_files": [
@@ -2497,7 +2578,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00020",
+    "last_used": "00021",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
   }
 }
