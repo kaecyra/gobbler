@@ -1834,7 +1834,8 @@
         "internal/ingest/*_test.go",
         "internal/ingest/llm.go",
         "internal/ingest/ingest.go",
-        "docs/adr/00006-rule-first-ingestion.md"
+        "docs/adr/00006-rule-first-ingestion.md",
+        "e2e/ingest/retry.spec.ts"
       ],
       "needs_migration": null,
       "adrs": [],
@@ -1852,7 +1853,8 @@
         "i-parser-version",
         "t-cross-household-gate",
         "r-recipe-video",
-        "g-e2e-flakes"
+        "g-e2e-flakes",
+        "i-llm-gap-fill"
       ],
       "owns": [
         "internal/web/ingest/**",
