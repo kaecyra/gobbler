@@ -15,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/kaecyra/gobbler/internal/video"
 )
 
 // Environment variable names.
@@ -140,8 +138,8 @@ func (l LLM) Configured() bool { return l.Provider != "" }
 // Video holds recipe video settings (ADR-00021).
 type Video struct {
 	// ThumbnailHost is the origin thumbnails are downloaded from at save, with
-	// no trailing slash. It is YouTube's image host unless overridden, which
-	// only the e2e suite does.
+	// no trailing slash. Empty means YouTube's image host (video.NewFetcherAt
+	// knows it); only the e2e suite sets it.
 	ThumbnailHost string
 }
 
@@ -203,7 +201,7 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 
 	r.llm(&c.LLM)
 
-	c.Video.ThumbnailHost = r.httpOrigin(EnvVideoThumbnailHost, video.DefaultThumbnailHost)
+	c.Video.ThumbnailHost = r.httpOrigin(EnvVideoThumbnailHost)
 
 	r.backup(&c.Backup)
 
@@ -327,18 +325,18 @@ func (r *reader) emails(env string) []string {
 }
 
 // httpOrigin returns the value as an http or https origin without a trailing
-// slash. A path, query, fragment or credentials, or any other scheme, is an
+// slash, or "" when unset. A path, query, fragment or credentials, or any other scheme, is an
 // error.
-func (r *reader) httpOrigin(env, def string) string {
+func (r *reader) httpOrigin(env string) string {
 	v := r.str(env, "")
 	if v == "" {
-		return def
+		return ""
 	}
 	u, err := url.Parse(v)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
 		u.User != nil || strings.Trim(u.Path, "/") != "" || u.RawQuery != "" || u.Fragment != "" {
 		r.fail(env, "invalid origin %q (want http:// or https:// and a host, with no path)", v)
-		return def
+		return ""
 	}
 	return u.Scheme + "://" + u.Host
 }

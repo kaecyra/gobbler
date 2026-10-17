@@ -41,8 +41,8 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Ingestion.ConfidenceThreshold != 0.7 || c.Ingestion.FetchTimeout != 15*time.Second || c.Ingestion.UserAgent == "" {
 		t.Errorf("ingestion defaults: %+v", c.Ingestion)
 	}
-	if c.Video.ThumbnailHost != "https://i.ytimg.com" {
-		t.Errorf("thumbnail host default = %q", c.Video.ThumbnailHost)
+	if c.Video.ThumbnailHost != "" {
+		t.Errorf("thumbnail host default = %q, want empty (YouTube's, chosen by the fetcher)", c.Video.ThumbnailHost)
 	}
 	if c.LLM.Configured() || c.Backup.S3.Configured() {
 		t.Error("optional groups must default to unconfigured")
@@ -130,6 +130,8 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"thumbnail host wrong scheme", with(EnvVideoThumbnailHost, "ftp://i.ytimg.com"), EnvVideoThumbnailHost},
 		{"thumbnail host with path", with(EnvVideoThumbnailHost, "https://example.com/vi"), EnvVideoThumbnailHost},
 		{"thumbnail host with credentials", with(EnvVideoThumbnailHost, "https://u:p@example.com"), EnvVideoThumbnailHost},
+		{"thumbnail host with query", with(EnvVideoThumbnailHost, "https://example.com?x=1"), EnvVideoThumbnailHost},
+		{"thumbnail host with fragment", with(EnvVideoThumbnailHost, "https://example.com#top"), EnvVideoThumbnailHost},
 		{"bad schedule", with(EnvBackupSchedule, "25:00"), EnvBackupSchedule},
 		{"schedule not a time", with(EnvBackupSchedule, "nightly"), EnvBackupSchedule},
 		{"local retention zero", with(EnvBackupLocalKeep, "0"), EnvBackupLocalKeep},

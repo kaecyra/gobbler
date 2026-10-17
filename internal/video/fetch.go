@@ -44,8 +44,8 @@ type Fetcher struct {
 func NewFetcher() *Fetcher { return &Fetcher{} }
 
 // NewFetcherAt returns a Fetcher for the image host at base, the configured
-// thumbnail host (GOBBLER_VIDEO_THUMBNAIL_HOST). Production leaves it at
-// YouTube's; the e2e suite points it at a local fixture.
+// thumbnail host (GOBBLER_VIDEO_THUMBNAIL_HOST); empty means YouTube's.
+// Production leaves it unset; the e2e suite points it at a local fixture.
 func NewFetcherAt(base string) *Fetcher { return &Fetcher{BaseURL: strings.TrimRight(base, "/")} }
 
 // Fetch downloads the hqdefault thumbnail of video id. Any answer but an image

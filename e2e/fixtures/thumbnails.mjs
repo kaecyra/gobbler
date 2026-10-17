@@ -1,6 +1,6 @@
 // A local stand-in for YouTube's image host (i.ytimg.com), so no e2e server
 // downloads a thumbnail from the real internet. A server under test is pointed
-// at it with GOBBLER_VIDEO_THUMBNAIL_HOST (see thumbnailEnv). It answers
+// at it with GOBBLER_VIDEO_THUMBNAIL_HOST (see THUMBNAIL_HOST_ENV). It answers
 // /vi/<id>/hqdefault.jpg for any 11-character video ID with a small JPEG and
 // everything else with 404, the shape the real host has. Loopback only.
 import { createServer } from 'node:http';

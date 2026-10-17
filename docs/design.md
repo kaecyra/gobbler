@@ -77,6 +77,7 @@ Secrets are never in the repository.
 | Server | listen address, data directory, log level, dev-auth bypass flag |
 | Access | team domain, application AUD tag |
 | Ingestion | confidence threshold, fetch timeout, user agent |
+| Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
 | LLM | provider, text model, vision model, per-provider API key, timeout |
 | Backup | schedule, local retention, S3 endpoint, region, bucket, prefix, credentials, remote retention |
 
