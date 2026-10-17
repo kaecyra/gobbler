@@ -1,0 +1,29 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Rice Pudding",
+    "ingredients": [
+      "1 cup rice"
+    ],
+    "instructions": [
+      {
+        "text": "Simmer the rice in milk for 30 minutes.",
+        "title": "Cook the rice"
+      },
+      {
+        "text": "serve it"
+      },
+      {
+        "text": "Stir in the sugar."
+      },
+      {
+        "text": "Chill"
+      }
+    ],
+    "categories": [
+      "Dessert",
+      "Dinner"
+    ]
+  }
+}

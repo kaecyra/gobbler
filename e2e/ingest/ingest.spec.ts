@@ -81,6 +81,17 @@ const pageWithVideo = (embedUrl: string) =>
   RECIPE_PAGE.replace('"name":"Fixture Toast",', `"name":"Fixture Toast","video":{"@type":"VideoObject","name":"How","embedUrl":"${embedUrl}"},`);
 const YOUTUBE_ID = 'dQw4w9WgXcQ';
 
+// A page with an unambiguous recipeCategory, a HowToStep name that adds to its
+// text, and steps whose wording names a stage kind (ADR-00022).
+const FIELDS_PAGE = `<html><head><script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Recipe","name":"Fixture Sweet Loaf","recipeCategory":["Dessert"],
+ "recipeIngredient":["2 cups flour","1 cup water"],
+ "recipeInstructions":[
+  {"@type":"HowToStep","name":"Make the dough","text":"Mix the flour and water."},
+  {"@type":"HowToStep","text":"Let the dough rise for 1 hour."},
+  {"@type":"HowToStep","text":"Bake for 30 minutes."}]}
+</script></head><body><h1>Fixture Sweet Loaf</h1></body></html>`;
+
 let fixture: Server;
 let fixtureURL: string;
 
@@ -89,6 +100,9 @@ test.beforeAll(async () => {
     if (req.url === '/toast') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(RECIPE_PAGE);
+    } else if (req.url === '/sweet-loaf') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(FIELDS_PAGE);
     } else if (req.url === '/toast-youtube' || req.url === '/toast-vimeo') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(pageWithVideo(req.url === '/toast-youtube' ? `https://www.youtube.com/embed/${YOUTUBE_ID}` : 'https://player.vimeo.com/video/1'));
@@ -348,4 +362,34 @@ test('a page with no video leaves the review video field empty', async ({ page }
   await page.getByLabel('Recipe URL').fill(`${fixtureURL}/toast`);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByLabel('YouTube video (link or ID, optional)')).toHaveValue('');
+});
+
+test('meal type, stage kinds and step titles from the page reach review and are saved on confirm', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Recipe URL').fill(`${fixtureURL}/sweet-loaf`);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+
+  // The rules' reading is on the review screen: the category maps to a meal
+  // type, the wording to a stage kind, the step name to a title; spice is never
+  // set by ingest and a step the rules cannot place has no kind.
+  await expect(page.locator('[name="meal_type"]')).toHaveValue('dessert');
+  await expect(page.locator('[name="spice"]')).toHaveValue('');
+  await expect(page.locator('[name="c.0.s.0.title"]')).toHaveValue('Make the dough');
+  await expect(page.locator('[name="c.0.s.0.kind"]')).toHaveValue('');
+  await expect(page.locator('[name="c.0.s.1.kind"]')).toHaveValue('rise');
+  await expect(page.locator('[name="c.0.s.2.kind"]')).toHaveValue('bake');
+
+  // Each can be changed or cleared before anything is saved.
+  await page.locator('[name="c.0.s.2.kind"]').selectOption('roast');
+  await page.locator('[name="c.0.s.1.kind"]').selectOption('');
+
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await expect(page).toHaveURL(/\/recipes\/(\d+)$/);
+  const id = page.url().match(/\/recipes\/(\d+)$/)![1];
+
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('[name="meal_type"]')).toHaveValue('dessert');
+  await expect(page.locator('[name="c.0.s.0.title"]')).toHaveValue('Make the dough');
+  await expect(page.locator('[name="c.0.s.1.kind"]')).toHaveValue('');
+  await expect(page.locator('[name="c.0.s.2.kind"]')).toHaveValue('roast');
 });

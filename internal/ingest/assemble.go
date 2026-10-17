@@ -104,6 +104,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 	d.Cook = duration(raw.CookDuration)
 	d.Total = duration(raw.TotalDuration)
 	d.VideoID = raw.VideoID
+	d.MealType = mealTypeFor(raw.Categories)
 
 	// A raw recipe lists ingredients once: in the groups a recipe plugin
 	// printed when extract found them, else in the first, unnamed component.
@@ -150,7 +151,9 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 				byName[strings.ToLower(name)] = i
 			}
 		}
-		comps[i].Steps = append(comps[i].Steps, step(text, 1))
+		st := step(text, 1)
+		st.Title = strings.TrimSpace(s.Title)
+		comps[i].Steps = append(comps[i].Steps, st)
 	}
 	if len(comps) > 1 && len(comps[0].Lines) == 0 && len(comps[0].Steps) == 0 {
 		comps = comps[1:]
@@ -308,7 +311,7 @@ func step(text string, confidence float64) Step {
 	for _, f := range parse.FindDurations(text) {
 		total += f.Max
 	}
-	return Step{Text: text, Duration: total, Confidence: confidence}
+	return Step{Text: text, Duration: total, Confidence: confidence, Kind: stageKind(text)}
 }
 
 func calories(s string) Field[int] {
@@ -347,4 +350,39 @@ func (a *assembler) yield(texts []string) {
 	if stated {
 		a.d.Issues = append(a.d.Issues, IssueUnreadableYield)
 	}
+}
+
+// mealTypeByCategory maps a lower-case recipeCategory value to the one meal
+// type it names. Values that fit none or several ("lunch", "appetizer") are
+// left out on purpose: an empty meal type is unknown, a wrong one files the
+// recipe under the wrong heading.
+var mealTypeByCategory = map[string]recipe.MealType{
+	"breakfast": recipe.MealBreakfast, "brunch": recipe.MealBreakfast,
+	"dessert": recipe.MealDessert, "desserts": recipe.MealDessert,
+	"main": recipe.MealMain, "main course": recipe.MealMain, "main dish": recipe.MealMain,
+	"mains": recipe.MealMain, "dinner": recipe.MealMain, "entree": recipe.MealMain, "entrée": recipe.MealMain,
+	"side": recipe.MealSide, "side dish": recipe.MealSide, "side dishes": recipe.MealSide, "sides": recipe.MealSide,
+	"snack": recipe.MealSnack, "snacks": recipe.MealSnack,
+	"drink": recipe.MealDrink, "drinks": recipe.MealDrink, "beverage": recipe.MealDrink, "beverages": recipe.MealDrink,
+}
+
+// mealTypeFor reads schema.org recipeCategory values (each may list several,
+// comma separated) as a meal type. It returns one only when every category it
+// knows names the same meal type; categories it does not know are ignored, and
+// categories that disagree give "" (ADR-00006: the user decides).
+func mealTypeFor(categories []string) recipe.MealType {
+	var found recipe.MealType
+	for _, c := range categories {
+		for _, part := range strings.Split(c, ",") {
+			m, ok := mealTypeByCategory[normalizeName(part)]
+			switch {
+			case !ok:
+			case found == "":
+				found = m
+			case found != m:
+				return ""
+			}
+		}
+	}
+	return found
 }

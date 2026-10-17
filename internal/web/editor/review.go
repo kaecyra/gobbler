@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -111,11 +112,14 @@ func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Dr
 func fromIngest(d ingestcore.Draft, names lookups) draft {
 	low := func(conf float64) bool { return conf < d.Threshold }
 	ed := draft{
-		Video: d.VideoID,
-		Name:  d.Name.Value, Author: d.Author.Value, Description: d.Description.Value,
+		Video: d.VideoID, MealType: string(d.MealType),
+		Name: d.Name.Value, Author: d.Author.Value, Description: d.Description.Value,
 		YieldQty: qtyText(d.Yield.Value.Qty), YieldUnit: d.Yield.Value.Unit, Servings: qtyText(d.Servings.Value),
 		Prep: durationText(d.Prep.Value), Cook: durationText(d.Cook.Value), Total: durationText(d.Total.Value),
 		Marks: map[string]mark{},
+	}
+	if d.SpiceLevel != nil {
+		ed.Spice = strconv.Itoa(*d.SpiceLevel)
 	}
 	if d.Calories.Value > 0 {
 		ed.Calories = fmt.Sprint(d.Calories.Value)
@@ -162,7 +166,7 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 		for _, s := range c.Steps {
 			n++
 			sd := stepDraft{
-				ID: stepID(n), Text: s.Text, Duration: durationText(s.Duration), To: ci,
+				ID: stepID(n), Text: s.Text, Duration: durationText(s.Duration), To: ci, Kind: string(s.Kind), Title: s.Title,
 				Mark: mark{Low: low(s.Confidence), LLM: s.FromLLM}, Passive: s.Passive,
 				Graph: graphMark{Cue: s.GraphCue, LLM: s.GraphFromLLM, User: s.GraphByUser},
 			}
@@ -206,6 +210,7 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 	out.Name.Value, out.Author.Value, out.Description.Value = rec.Name, rec.Author, rec.Description
 	out.Yield.Value, out.Servings.Value = rec.Yield, rec.Servings
 	out.VideoID = rec.VideoID
+	out.MealType, out.SpiceLevel = rec.MealType, rec.SpiceLevel
 	out.Calories.Value = 0
 	if rec.CaloriesPerServing != nil {
 		out.Calories.Value = *rec.CaloriesPerServing
@@ -256,6 +261,7 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 			dc.Steps = append(dc.Steps, ingestcore.Step{
 				Text: s.Text, Duration: s.Duration,
 				Confidence: confidence(fs.Mark, base.Threshold), FromLLM: fs.Mark.LLM,
+				Kind: s.Kind, Title: s.Title,
 				Passive: s.Passive, DependsOn: dependsOn(s, numbers), GraphCue: g.Cue, GraphFromLLM: g.LLM, GraphByUser: g.User,
 			})
 		}

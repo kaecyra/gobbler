@@ -32,8 +32,8 @@ func (v view) carries(g controlGroup) bool {
 		return true
 	}
 	switch g {
-	case groupPlacement, groupStepGraph, groupVideo:
-		return true // groupRecipeFields is not here: see its comment
+	case groupPlacement, groupStepGraph, groupVideo, groupRecipeFields:
+		return true
 	}
 	return false
 }
@@ -59,9 +59,7 @@ const (
 	// groupEquipmentLinks: an equipment quantity and the steps that use it.
 	groupEquipmentLinks
 	// groupRecipeFields: the meal type and spice level of a recipe, and the
-	// stage kind and title of a step (ADR-00022). ingest.Draft does not carry
-	// them yet, so a draft under review hides them rather than drop them on
-	// confirm; switch the group on in carries when it does.
+	// stage kind and title of a step (ADR-00022); a draft carries them too.
 	groupRecipeFields
 )
 

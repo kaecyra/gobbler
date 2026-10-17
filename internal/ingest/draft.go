@@ -92,6 +92,12 @@ type Step struct {
 	GraphCue bool
 	// GraphFromLLM marks a step whose Passive and DependsOn the LLM supplied.
 	GraphFromLLM bool
+	// Kind is what the step is doing, for the time ribbon (ADR-00022): proposed
+	// by rule from the text where the text is unambiguous, else empty. Empty is
+	// unknown, never an error (ADR-00006).
+	Kind recipe.StageKind
+	// Title is a short heading the source gave the step, empty when it had none.
+	Title string
 	// GraphByUser marks a step whose Passive and DependsOn the user set on the
 	// review screen. It is settled: a retry with the LLM does not ask about it.
 	GraphByUser bool
@@ -163,6 +169,12 @@ type Draft struct {
 	// it is on another host. Only the rules read it, so it carries no
 	// confidence: the review screen shows it and the user may change it.
 	VideoID string
+
+	// MealType is the recipe's meal type when the source's category names one
+	// unambiguously, else empty. SpiceLevel is nil: ingest never sets it, but
+	// the review screen may, and a confirmed draft keeps it (ADR-00022).
+	MealType   recipe.MealType
+	SpiceLevel *int
 
 	Components []Component
 

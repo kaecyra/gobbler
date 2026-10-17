@@ -102,6 +102,10 @@ func recipeFromMicrodata(item *html.Node) Raw {
 			if v != "" {
 				r.Ingredients = append(r.Ingredients, v)
 			}
+		case "recipeCategory":
+			if v != "" {
+				r.Categories = append(r.Categories, v)
+			}
 		case "tool":
 			if v != "" {
 				r.Tools = append(r.Tools, v)
@@ -161,7 +165,7 @@ func nestedProp(item *html.Node, name string) string {
 func microdataSteps(n *html.Node) []InstructionStep {
 	if hasAttr(n, "itemscope") {
 		if t := firstNonEmpty(nestedProp(n, "text"), propValue(n)); t != "" {
-			return []InstructionStep{{Text: t}}
+			return []InstructionStep{{Text: t, Title: stepTitle(nestedProp(n, "name"), t)}}
 		}
 		return nil
 	}
