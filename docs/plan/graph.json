@@ -2355,7 +2355,7 @@
       "wave": 9,
       "track": null,
       "issue": 255,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-shell",
         "u-recipe-fields",
@@ -3205,6 +3205,12 @@
       "title": "home hero search, library cards grouped by meal, side panels",
       "merged": "5da0df419aa7505380a6eabb94bf50fe3e8bac17",
       "note": "ADR-00022; design in docs/ui/design.md. Carries the ribbon e2e u-ribbon (#249) could not write without a page: level 0 shows, data-level moves to 1 or 2 as the card narrows, tooltip and aria-label present. Link ribbon.StylesheetPath and ribbon.ScriptPath."
+    },
+    {
+      "id": "u-other-pages",
+      "title": "editor, settings, household, sharing, catalog and operator pages in the design system",
+      "merged": "6cb6edec9adc0c31a9667e9c8821a9bd572cedb9",
+      "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
   "adr_sequence": {
