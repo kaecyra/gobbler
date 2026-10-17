@@ -2275,7 +2275,7 @@
       "wave": 9,
       "track": null,
       "issue": 251,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-ribbon"
       ],
@@ -3284,6 +3284,12 @@
       "id": "u-other-pages",
       "title": "editor, settings, household, sharing, catalog and operator pages in the design system",
       "merged": "6cb6edec9adc0c31a9667e9c8821a9bd572cedb9",
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-recipe-view",
+      "title": "recipe page, journal and history in the mockup design",
+      "merged": "dda973c8351d83e2b396b1eb5f6c2eca52c15be0",
       "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
