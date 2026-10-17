@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 )
 
 // env is a real store over a throwaway database, and a router with the
@@ -38,6 +40,7 @@ type env struct {
 	router chi.Router
 	flour  int64
 	pan    int64
+	thumbs *stubThumbs
 }
 
 func newEnv(t *testing.T) *env {
@@ -73,7 +76,8 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("create equipment: %v", err)
 	}
 
-	deps := Deps{Recipes: s, Catalog: cat}
+	thumbs := &stubThumbs{}
+	deps := Deps{Recipes: s, Catalog: cat, Thumbnails: thumbs}
 	r := chi.NewRouter()
 	// Stand in for the auth middleware, which gives every request an identity.
 	r.Use(func(next http.Handler) http.Handler {
@@ -83,7 +87,7 @@ func newEnv(t *testing.T) *env {
 	})
 	r.Mount(Pattern, Routes(deps))
 	r.Mount(ClonePattern, CloneRoutes(deps))
-	return &env{t: t, ctx: authed, store: s, router: r, flour: flour.ID, pan: pan.ID}
+	return &env{t: t, ctx: authed, store: s, router: r, flour: flour.ID, pan: pan.ID, thumbs: thumbs}
 }
 
 // withIdentity answers context values from the request first and falls back to
@@ -469,4 +473,52 @@ func devHousehold(t *testing.T, d *sql.DB) household.Household {
 		t.Fatalf("household of %s: %v", auth.DevEmail, err)
 	}
 	return h
+}
+
+// stubThumbs stands in for YouTube's image host; no test reaches the network.
+type stubThumbs struct {
+	asked []string
+	fail  error
+}
+
+func (s *stubThumbs) Fetch(_ context.Context, id string) (video.Thumbnail, error) {
+	s.asked = append(s.asked, id)
+	if s.fail != nil {
+		return video.Thumbnail{}, s.fail
+	}
+	return video.Thumbnail{Content: []byte("jpeg:" + id), ContentType: "image/jpeg"}, nil
+}
+
+func TestRestoringAVideoRevisionDownloadsItsThumbnail(t *testing.T) {
+	e := newEnv(t)
+	withVideo := e.doc("Loaf v1", "3")
+	withVideo.VideoID = "dQw4w9WgXcQ"
+	id := e.create(withVideo)
+	e.update(id, e.doc("Loaf v2", "4"))
+
+	rec := e.do(http.MethodPost, "/recipes/"+itoa(id)+"/history/1/restore", url.Values{confirmField: {confirmValue}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("restore = %d, want 303", rec.Code)
+	}
+	got, err := e.store.Thumbnail(e.ctx, id)
+	if err != nil || string(got.Content) != "jpeg:dQw4w9WgXcQ" {
+		t.Fatalf("Thumbnail after the restore = %q (%v), want the downloaded image", got.Content, err)
+	}
+}
+
+func TestAFailedThumbnailDownloadDoesNotFailTheRestore(t *testing.T) {
+	e := newEnv(t)
+	e.thumbs.fail = errors.New("youtube is unreachable")
+	withVideo := e.doc("Loaf v1", "3")
+	withVideo.VideoID = "dQw4w9WgXcQ"
+	id := e.create(withVideo)
+	e.update(id, e.doc("Loaf v2", "4"))
+
+	rec := e.do(http.MethodPost, "/recipes/"+itoa(id)+"/history/1/restore", url.Values{confirmField: {confirmValue}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("restore with a failing image host = %d, want 303", rec.Code)
+	}
+	if e.current(id).VideoID != "dQw4w9WgXcQ" {
+		t.Error("the restore was not applied")
+	}
 }

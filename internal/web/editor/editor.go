@@ -191,7 +191,7 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		layout.WriteError(w, r, fmt.Errorf("save recipe %d: %w", id, err))
 		return
 	}
-	h.keepThumbnail(ctx, id, rec.VideoID)
+	video.KeepThumbnail(ctx, h.Recipes, h.Thumbnails, id, rec.VideoID)
 	to := recipePath(id)
 	if FromHTMX(r) {
 		w.Header().Set("HX-Redirect", to)
@@ -199,23 +199,6 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		return
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
-}
-
-// keepThumbnail downloads the preview image of the saved recipe's video when
-// none is stored for it yet (ADR-00021 decision 3). The recipe is already
-// saved, so a failure is logged and the page shows the placeholder; the next
-// save of a recipe with this video tries again.
-func (h *handler) keepThumbnail(ctx context.Context, id int64, videoID string) {
-	if videoID == "" {
-		return
-	}
-	var src video.ThumbnailSource = video.NewFetcher()
-	if h.Thumbnails != nil {
-		src = h.Thumbnails
-	}
-	if err := video.EnsureThumbnail(ctx, h.Recipes, src, videoID); err != nil {
-		slog.WarnContext(ctx, "recipe saved without a video thumbnail", "recipe_id", id, "video_id", videoID, "error", err.Error())
-	}
 }
 
 // stale shows the form again with the stale-save message.

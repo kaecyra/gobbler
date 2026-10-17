@@ -6,6 +6,7 @@ package sharing
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -29,15 +31,20 @@ type Service interface {
 	Decline(ctx context.Context, id int64) error
 }
 
-// Recipes reads the recipe a send form is about; *store.Store satisfies it.
+// Recipes reads the recipe a send form is about and keeps the thumbnail of an
+// accepted copy's video (ADR-00021); *store.Store satisfies it.
 type Recipes interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
+	video.ThumbnailStore
 }
 
 // Deps is what the routes need.
 type Deps struct {
 	Shares  Service
 	Recipes Recipes
+	// Thumbnails downloads the preview image of an accepted recipe's video;
+	// nil means YouTube's image host.
+	Thumbnails video.ThumbnailSource
 }
 
 type handler struct{ Deps }
@@ -118,6 +125,13 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
+	}
+	// The copy can carry a video this household has no thumbnail for
+	// (ADR-00021 decision 3); the accept is already done.
+	if rec, err := h.Recipes.Get(r.Context(), recipeID); err != nil {
+		slog.WarnContext(r.Context(), "accepted recipe left without a video thumbnail check", "recipe_id", recipeID, "error", err.Error())
+	} else {
+		video.KeepThumbnail(r.Context(), h.Recipes, h.Thumbnails, recipeID, rec.VideoID)
 	}
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(recipeID, 10), http.StatusSeeOther)
 }

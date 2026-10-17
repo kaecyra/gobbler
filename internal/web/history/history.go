@@ -18,6 +18,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -42,6 +43,9 @@ type Recipes interface {
 	GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error)
 	Restore(ctx context.Context, id, version int64) error
 	Clone(ctx context.Context, id int64) (int64, error)
+	// HasThumbnail and SaveThumbnail keep the preview image of a recipe's video
+	// (ADR-00021).
+	video.ThumbnailStore
 }
 
 // Catalog is what a version's page reads from the ingredient and equipment
@@ -55,6 +59,9 @@ type Catalog interface {
 type Deps struct {
 	Recipes Recipes
 	Catalog Catalog
+	// Thumbnails downloads the preview image of a restored recipe's video;
+	// nil means YouTube's image host.
+	Thumbnails video.ThumbnailSource
 }
 
 // Routes returns the history routes, relative to Pattern.
@@ -193,6 +200,13 @@ func restore(d Deps) http.HandlerFunc {
 		if err := d.Recipes.Restore(r.Context(), id, version); err != nil {
 			layout.WriteError(w, r, fmt.Errorf("restore version %d of recipe %d: %w", version, id, err))
 			return
+		}
+		// The restored revision can carry a video the recipe has not had a
+		// thumbnail for (ADR-00021 decision 3); the restore is already done.
+		if restored, err := d.Recipes.GetVersion(r.Context(), id, version); err != nil {
+			slog.WarnContext(r.Context(), "restored recipe left without a video thumbnail check", "recipe_id", id, "version", version, "error", err.Error())
+		} else {
+			video.KeepThumbnail(r.Context(), d.Recipes, d.Thumbnails, id, restored.VideoID)
 		}
 		http.Redirect(w, r, historyPath(id), http.StatusSeeOther)
 	}

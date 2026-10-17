@@ -2,6 +2,7 @@ package sharing
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 )
 
 type fakeShares struct {
@@ -33,10 +35,56 @@ func (f *fakeShares) Accept(_ context.Context, id int64) (int64, error) {
 }
 func (f *fakeShares) Decline(_ context.Context, id int64) error { f.declined = id; return nil }
 
-type fakeRecipes struct{ err error }
+type fakeRecipes struct {
+	err     error
+	videoID string
+	saved   map[string][]byte
+}
 
 func (f fakeRecipes) Get(context.Context, int64) (recipe.Recipe, error) {
-	return recipe.Recipe{Name: "<b>Pie</b>"}, f.err
+	return recipe.Recipe{Name: "<b>Pie</b>", VideoID: f.videoID}, f.err
+}
+
+func (f fakeRecipes) HasThumbnail(_ context.Context, v string) (bool, error) {
+	_, ok := f.saved[v]
+	return ok, nil
+}
+
+func (f fakeRecipes) SaveThumbnail(_ context.Context, v string, c []byte, _ string) error {
+	f.saved[v] = c
+	return nil
+}
+
+// stubThumbs stands in for YouTube's image host; no test reaches the network.
+type stubThumbs struct {
+	asked []string
+	fail  error
+}
+
+func (s *stubThumbs) Fetch(_ context.Context, id string) (video.Thumbnail, error) {
+	s.asked = append(s.asked, id)
+	if s.fail != nil {
+		return video.Thumbnail{}, s.fail
+	}
+	return video.Thumbnail{Content: []byte("jpeg:" + id), ContentType: "image/jpeg"}, nil
+}
+
+func TestAcceptDownloadsTheThumbnailOfTheCopiesVideo(t *testing.T) {
+	recipes := fakeRecipes{videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
+	th := &stubThumbs{}
+	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
+	if rec.Code != http.StatusSeeOther || string(recipes.saved["dQw4w9WgXcQ"]) != "jpeg:dQw4w9WgXcQ" {
+		t.Errorf("accept = %d, stored %q, want 303 and the downloaded image", rec.Code, recipes.saved["dQw4w9WgXcQ"])
+	}
+}
+
+func TestAFailedThumbnailDownloadDoesNotFailTheAccept(t *testing.T) {
+	recipes := fakeRecipes{videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
+	th := &stubThumbs{fail: errors.New("youtube is unreachable")}
+	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/77" || len(th.asked) != 1 {
+		t.Errorf("accept = %d to %q after %v, want 303 to the recipe after one failed download", rec.Code, rec.Header().Get("Location"), th.asked)
+	}
 }
 
 func do(h http.Handler, method, path string, form url.Values) *httptest.ResponseRecorder {
