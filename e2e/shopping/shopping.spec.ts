@@ -230,6 +230,16 @@ test('a check in one browser appears in another without reload', async ({ browse
   }
 });
 
+test('the index and the pantry mark their own tab as the current page', async ({ page }) => {
+  const tabs = page.getByRole('navigation', { name: 'Shopping' });
+  await page.goto('/shopping');
+  await expect(tabs.getByRole('link', { name: 'All lists' })).toHaveAttribute('aria-current', 'page');
+  await expect(tabs.getByRole('link', { name: 'Pantry' })).not.toHaveAttribute('aria-current');
+  await page.goto('/shopping/pantry');
+  await expect(tabs.getByRole('link', { name: 'Pantry' })).toHaveAttribute('aria-current', 'page');
+  await expect(tabs.getByRole('link', { name: 'All lists' })).not.toHaveAttribute('aria-current');
+});
+
 test('the basket counts what is checked and says so when everything is', async ({ browser }) => {
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
   try {

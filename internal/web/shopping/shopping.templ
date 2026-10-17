@@ -72,8 +72,8 @@ templ problem(msg string) {
 
 templ shoppingNav(current string) {
 	<nav class="seg" aria-label="Shopping">
-		<a href="/shopping" aria-current?={ current == "lists" }>All lists</a>
-		<a href="/shopping/pantry" aria-current?={ current == "pantry" }>Pantry</a>
+		<a href="/shopping" if current == "lists" { aria-current="page" }>All lists</a>
+		<a href="/shopping/pantry" if current == "pantry" { aria-current="page" }>Pantry</a>
 	</nav>
 }
 

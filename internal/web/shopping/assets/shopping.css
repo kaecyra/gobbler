@@ -15,7 +15,7 @@
 /* Basket meter and the aisle cards. */
 .basket { margin-bottom: 14px; }
 .basket small { color: var(--ink-3); }
-.meter { height: 8px; background: var(--sunk); border-radius: 4px; overflow: hidden; margin: 0 0 4px; }
+.meter { height: 8px; background: var(--sunk); border-radius: var(--r-sm); overflow: hidden; margin: 0 0 4px; }
 .meter i { display: block; height: 100%; background: var(--ok); transition: width 0.25s; }
 .aisles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
 @media (max-width: 400px) { .aisles { grid-template-columns: minmax(0, 1fr); } }
@@ -34,7 +34,7 @@
 }
 button.item-toggle { cursor: pointer; }
 .box {
-  width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--slate);
+  width: 24px; height: 24px; border-radius: var(--r); border: 2px solid var(--slate);
   display: grid; place-items: center; transition: background 0.12s; color: var(--on-accent);
 }
 .box svg { width: 12px; height: 12px; opacity: 0; }
