@@ -1845,7 +1845,8 @@
         "i-equipment-extract",
         "i-parser-version",
         "t-cross-household-gate",
-        "r-recipe-video"
+        "r-recipe-video",
+        "g-e2e-flakes"
       ],
       "owns": [
         "internal/web/ingest/**",
@@ -1905,7 +1906,8 @@
       "status": "todo",
       "depends_on": [
         "i-parser-version",
-        "t-shopping-check-leak"
+        "t-shopping-check-leak",
+        "g-e2e-flakes"
       ],
       "owns": [
         "internal/video/**",
@@ -1956,6 +1958,44 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00021 obligation 5; shown and editable on review (ADR-00006)."
+    },
+    {
+      "id": "g-e2e-flakes",
+      "title": "make the household-deletion and paste-confirm e2e waits deterministic",
+      "wave": 9,
+      "track": null,
+      "issue": 204,
+      "status": "todo",
+      "depends_on": [
+        "t-shopping-check-leak",
+        "i-text-meta"
+      ],
+      "owns": [
+        "e2e/fixtures/routes/tenancy-support.ts",
+        "e2e/tenancy/tenancy.tenancy.spec.ts",
+        "e2e/ingest/ingest.spec.ts"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Find what each wait polls for and why it outlives the timeout on a CI runner; fix the wait, never lengthen it. A cause in server code is out of lane: stop and report."
+    },
+    {
+      "id": "r-issue-code-spelling",
+      "title": "one spelling of the shared ingest issue codes",
+      "wave": 9,
+      "track": null,
+      "issue": 205,
+      "status": "todo",
+      "depends_on": [
+        "i-plugin-extractors",
+        "i-equipment-extract"
+      ],
+      "owns": [
+        "internal/ingest/extract/extract.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Alias extract.IssueUnparsedDuration to parse.IssueUnparsedDuration (extract already imports parse)."
     }
   ],
   "shared_files": [
