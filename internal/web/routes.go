@@ -44,6 +44,8 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
 	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
+	// The home page: "/" is registered here and nowhere else.
+	r.Get("/", homeRoute(d))
 	mountCatalog(r, d)
 	mountHouseholds(r, d)
 	mountPromotion(r, d)

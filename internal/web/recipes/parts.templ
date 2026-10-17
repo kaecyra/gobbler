@@ -1,0 +1,146 @@
+package recipes
+
+import (
+	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/web/layout"
+	"github.com/kaecyra/gobbler/internal/web/ribbon"
+)
+
+// mealIcon draws a meal type's line icon on the 24px grid, in currentColor
+// (docs/ui/design.md, Meal type). An unset meal type draws nothing.
+templ mealIcon(m recipe.MealType) {
+	switch m {
+		case recipe.MealBreakfast:
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0M12 6.5V4M5.2 10.2 3.8 8.8M18.8 10.2l1.4-1.4M8 21h8"></path></svg>
+		case recipe.MealMain:
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18h18M5 18a7 7 0 0 1 14 0M12 11V9M10.5 8.5h3M4 21h16"></path></svg>
+		case recipe.MealSide:
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18a9 8 0 0 1-18 0zM10 12c-.5-3 1-5.5 4-6.5M14 12c.5-2 2-3.3 4-3.5"></path></svg>
+		case recipe.MealDessert:
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V11l18-3v12zM3 15l18-2.5M15 8.4V5.5M15 3.6v.1"></path></svg>
+		case recipe.MealSnack:
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><circle cx="9" cy="9.5" r=".9" fill="currentColor"></circle><circle cx="14.5" cy="10" r=".9" fill="currentColor"></circle><circle cx="10.5" cy="14.5" r=".9" fill="currentColor"></circle><circle cx="15" cy="15" r=".9" fill="currentColor"></circle></svg>
+		case recipe.MealDrink:
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12l-1.6 15.2a1 1 0 0 1-1 .8H8.6a1 1 0 0 1-1-.8zM6.6 9.5h10.8M15 4l2-2"></path></svg>
+	}
+}
+
+// mealType is the icon and label of a meal type, centred on each other.
+templ mealType(m recipe.MealType, label string) {
+	<span class="mtype" data-meal={ string(m) }>
+		@mealIcon(m)
+		<span class="lbl">{ label }</span>
+	</span>
+}
+
+// heat draws 1 to 3 chilis with a spoken label. Nothing is drawn for 0.
+templ heat(n int, label string) {
+	if n > 0 {
+		<span class="heat" role="img" aria-label={ label } title={ label }>
+			for range n {
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 8c-3.6.2-5.6 3-7.2 6.3S5.3 19.6 3.6 20.2c4.6 1.1 11.2-.9 13.3-5.9 1-2.4.4-4.9-1.3-6.3z" fill="currentColor"></path><path d="M15.6 8c.2-2 1.4-3.6 3.6-4.2" fill="none" stroke="var(--ok)" stroke-width="1.8" stroke-linecap="round"></path></svg>
+			}
+		</span>
+	}
+}
+
+// spoons draws a rating of 1 to 5 wooden spoons, never stars.
+templ spoons(n int, label string) {
+	<span class="spoons" role="img" aria-label={ label } title={ label }>
+		for i := 1; i <= 5; i++ {
+			<svg class={ "spoon", templ.KV("on", i <= n) } viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="7.5" cy="7.5" rx="3.4" ry="4.8" transform="rotate(-45 7.5 7.5)"></ellipse><path d="M10.4 10.4 20 20"></path></svg>
+		}
+	</span>
+}
+
+// searchBox is the big search field: an icon, the input and the "/" hint. The
+// input keeps its id across swaps, so htmx keeps the caret while results change.
+templ searchBox(value string) {
+	<label class="search" for="q">
+		<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+		<input id="q" type="search" name="q" value={ value } placeholder="Try &ldquo;chickpea&rdquo;, &ldquo;overnight&rdquo; or &ldquo;Sam liked it&rdquo;" autocomplete="off" aria-label="Search recipes"/>
+		<kbd aria-hidden="true">/</kbd>
+	</label>
+}
+
+// focusKey focuses the search box when "/" is pressed outside a text field. It
+// is guarded, because htmx runs the script again each time a page that holds it
+// is swapped in.
+templ focusKey() {
+	<script>
+		if (!window.gobblerSlashFocus) {
+			window.gobblerSlashFocus = true;
+			document.addEventListener('keydown', function (e) {
+				if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+				var t = e.target;
+				if (t && t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
+				var q = document.getElementById('q');
+				if (!q) return;
+				e.preventDefault();
+				q.focus();
+			});
+		}
+	</script>
+}
+
+// ribbonAssets links the ribbon's stylesheet and fit script.
+templ ribbonAssets() {
+	<link rel="stylesheet" href={ ribbon.StylesheetPath }/>
+	<script src={ ribbon.ScriptPath } defer></script>
+}
+
+// recipeCard is one library card: meal type and chilis, title and source,
+// components, key ingredients, rating and made-it line, and the time ribbon
+// pinned to the bottom. The title link is stretched over the whole card.
+templ recipeCard(c cardView) {
+	<article class="rcard">
+		<div class="ctop">
+			if c.Meal != "" {
+				@mealType(c.Meal, c.MealLabel)
+			} else {
+				<span></span>
+			}
+			@heat(c.Spice, c.SpiceLabel)
+		</div>
+		<div>
+			<h3><a href={ templ.SafeURL(c.Href) }>{ c.Name }</a></h3>
+			if c.Source != "" {
+				<div class="src">{ c.Source }</div>
+			}
+		</div>
+		if len(c.Components) > 0 {
+			<ul class="comps" aria-label="Parts">
+				for _, comp := range c.Components {
+					<li>{ comp }</li>
+				}
+			</ul>
+		}
+		if len(c.Key) > 0 {
+			<p class="key">
+				<em>{ c.Key[0] }</em>
+				if len(c.Key) > 1 {
+					{ ", " + join(c.Key[1:]) }
+				}
+			</p>
+		}
+		<div class="rfoot">
+			if c.Rating > 0 {
+				@spoons(c.Rating, c.RatingLabel)
+			} else {
+				<span>New</span>
+			}
+			<span>{ c.Made }</span>
+		</div>
+		@ribbon.Card(c.Ribbon)
+	</article>
+}
+
+// emptyLibrary is the empty state of a library with no recipes at all.
+templ emptyLibrary() {
+	<div class="empty" data-testid="empty-library">
+		<img src={ layout.MascotTasting } alt="" width="110"/>
+		<h3>No recipes yet</h3>
+		<p>Add one from a URL, pasted text or a photo, and it will show up here.</p>
+		<a class="btn accent" href="/ingest">Add a recipe</a>
+	</div>
+}
