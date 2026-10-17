@@ -2050,7 +2050,7 @@
       "wave": 9,
       "track": null,
       "issue": 221,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/shopping/queries/shopping.sql",
@@ -2798,6 +2798,12 @@
       "title": "decide whether the LLM fallback fills gaps or replaces the draft",
       "merged": "928b100e29b88b3cc32f740f7690a844da336845",
       "note": "ADR-00020 decision 2: the fallback sends only below-threshold lines and fields and replaces only those; retry runs the same gap-filling call."
+    },
+    {
+      "id": "r-write-lock-comments",
+      "title": "Three comments still say a guard takes the write lock",
+      "merged": "c6f5b118d7eabb1c955a5a47bf7a83b3e3f72178",
+      "note": "Comment-only. Since #213 write transactions begin IMMEDIATE; reword the reason each guard gives. Regenerate shoppingdb with make generate."
     }
   ],
   "adr_sequence": {
