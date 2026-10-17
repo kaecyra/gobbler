@@ -2,6 +2,7 @@ package shopping
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
@@ -98,4 +99,60 @@ func checkMultiplier(m quantity.Rat) error {
 		return fmt.Errorf("%w: %w: %s", ErrInvalid, ErrInvalidMultiplier, m)
 	}
 	return nil
+}
+
+// ShareItem is an item as one contributor gives it: the item (key, check state
+// and merged amounts as on the by-aisle list) with that contributor's share.
+// Checking it checks the item, wherever else it appears.
+type ShareItem struct {
+	ViewItem
+	Share Share
+}
+
+// RecipeGroup is the items one recipe contributes to the list, or the items
+// added by hand (Manual set, zero Source).
+type RecipeGroup struct {
+	Source Source
+	Manual bool
+	Items  []ShareItem
+}
+
+// ByRecipe regroups the view's items under the recipes that give them: one
+// group per recipe on the list, in entry order, then one for manual items. An
+// item several contributors give appears in each of their groups with that
+// contributor's share. A recipe that contributes nothing to the list (all its
+// lines are in the pantry or optional) has no group. Within a group items keep
+// the aisle order of the by-aisle list.
+func (v View) ByRecipe() []RecipeGroup {
+	byKey := map[Source]*RecipeGroup{} // the manual group is keyed by the zero Source
+	var groups []*RecipeGroup
+	for _, a := range v.Aisles {
+		for _, it := range a.Items {
+			for _, s := range it.Shares {
+				g, ok := byKey[s.Source]
+				if !ok {
+					g = &RecipeGroup{Source: s.Source, Manual: s.Manual}
+					byKey[s.Source] = g
+					groups = append(groups, g)
+				}
+				g.Items = append(g.Items, ShareItem{ViewItem: it, Share: s})
+			}
+		}
+	}
+	rank := map[int64]int{}
+	for i, e := range v.Entries {
+		rank[e.RecipeID] = i
+	}
+	sort.SliceStable(groups, func(i, j int) bool {
+		a, b := groups[i], groups[j]
+		if a.Manual != b.Manual {
+			return b.Manual
+		}
+		return rank[a.Source.RecipeID] < rank[b.Source.RecipeID]
+	})
+	out := make([]RecipeGroup, len(groups))
+	for i, g := range groups {
+		out[i] = *g
+	}
+	return out
 }

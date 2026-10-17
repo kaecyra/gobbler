@@ -516,8 +516,14 @@ type sseClient struct {
 
 func openStream(t *testing.T, base string, list int64) *sseClient {
 	t.Helper()
+	return openStreamAt(t, fmt.Sprintf("%s%s/%d/events", base, Pattern, list))
+}
+
+// openStreamAt follows the event stream at url, query string included.
+func openStreamAt(t *testing.T, url string) *sseClient {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s/%d/events", base, Pattern, list), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

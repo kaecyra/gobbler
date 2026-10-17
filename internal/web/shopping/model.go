@@ -31,6 +31,23 @@ type aisleView struct {
 	Items []itemView
 }
 
+// groupView is the items one recipe (or the hand-added items) contributes. Its
+// items carry that contributor's share of the amount, not the merged one.
+type groupView struct {
+	Name   string
+	Manual bool
+	Items  []itemView
+}
+
+// listing is the list as a page shows it, in one of the two groupings. Aisles
+// is always filled: the basket counts the list's items, not their appearances
+// under several recipes. Groups is filled only when ByRecipe.
+type listing struct {
+	ByRecipe bool
+	Aisles   []aisleView
+	Groups   []groupView
+}
+
 // droppedView is a pantry item set aside, with what the recipes asked for.
 type droppedView struct {
 	Ingredient int64
@@ -67,7 +84,7 @@ type buildView struct {
 	IncludeOptional bool
 	Entries         []entryView
 	Manual          []manualView
-	Aisles          []aisleView
+	List            listing
 	Dropped         []droppedView
 	Export          string
 	Recipes         []option
@@ -78,9 +95,9 @@ type buildView struct {
 
 // liveView is the phone view.
 type liveView struct {
-	ID     int64
-	Name   string
-	Aisles []aisleView
+	ID   int64
+	Name string
+	List listing
 }
 
 // roundedAmounts renders amounts at kitchen precision, joined with " + ", the
@@ -126,19 +143,50 @@ func newAisles(aisles []domain.ViewAisle) ([]aisleView, error) {
 			if err != nil {
 				return nil, fmt.Errorf("item %q: %w", it.Name, err)
 			}
-			next := "1"
-			if it.Checked {
-				next = "0"
-			}
-			av.Items = append(av.Items, itemView{
-				DOMID: fmt.Sprintf("item-%d-%d", ai, ii),
-				Key:   string(it.Key), Name: itemName(it.Item), Amounts: amounts,
-				Sources: sourcesText(it.Item), Checked: it.Checked, Next: next,
-			})
+			av.Items = append(av.Items, newItem(fmt.Sprintf("item-%d-%d", ai, ii), it, amounts, sourcesText(it.Item)))
 		}
 		out = append(out, av)
 	}
 	return out, nil
+}
+
+// newListing builds the list in the requested grouping.
+func newListing(view domain.View, group string) (listing, error) {
+	aisles, err := newAisles(view.Aisles)
+	if err != nil {
+		return listing{}, err
+	}
+	l := listing{Aisles: aisles}
+	if group != groupRecipe {
+		return l, nil
+	}
+	l.ByRecipe = true
+	for gi, g := range view.ByRecipe() {
+		gv := groupView{Name: g.Source.Name, Manual: g.Manual, Items: make([]itemView, 0, len(g.Items))}
+		if g.Manual {
+			gv.Name = manualGroupName
+		}
+		for ii, it := range g.Items {
+			amounts, err := roundedAmounts(it.Share.Amounts)
+			if err != nil {
+				return listing{}, fmt.Errorf("item %q in %q: %w", it.Name, gv.Name, err)
+			}
+			gv.Items = append(gv.Items, newItem(fmt.Sprintf("item-g%d-%d", gi, ii), it.ViewItem, amounts, ""))
+		}
+		l.Groups = append(l.Groups, gv)
+	}
+	return l, nil
+}
+
+func newItem(domID string, it domain.ViewItem, amounts, sources string) itemView {
+	next := "1"
+	if it.Checked {
+		next = "0"
+	}
+	return itemView{
+		DOMID: domID, Key: string(it.Key), Name: itemName(it.Item), Amounts: amounts,
+		Sources: sources, Checked: it.Checked, Next: next,
+	}
 }
 
 func newDropped(items []domain.Item) ([]droppedView, error) {

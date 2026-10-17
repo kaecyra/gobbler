@@ -76,6 +76,18 @@ type Source struct {
 	Name     string
 }
 
+// Share is one contributor's part of an item: a recipe's, or the manual
+// entries' (Manual set, zero Source). Amounts is that contributor's amounts
+// merged the way the item's are, and expressed in the item's terms: when the
+// item's volume was converted to mass, so is every share's. Added up (after unit
+// conversion) the shares equal the item's Amounts. Amounts is empty when the
+// contributor gave no number.
+type Share struct {
+	Source  Source
+	Manual  bool
+	Amounts []quantity.Amount
+}
+
 // Item is one line of the list: an ingredient or free text with its merged
 // amounts. Every consumer reads it the same way:
 //
@@ -94,6 +106,9 @@ type Item struct {
 	Name       string
 	Amounts    []quantity.Amount
 	Sources    []Source
+	// Shares says what each contributor gave, recipes in entry order and the
+	// manual entries last. It is empty for no item.
+	Shares []Share
 	// Manual reports whether a manual item contributed.
 	Manual bool
 	// Unresolved marks a recipe line with no resolved ingredient. Its text
@@ -131,7 +146,14 @@ type accum struct {
 	aisle   string
 	density quantity.Rat
 	amounts []quantity.Amount
+	shares  []*shareAcc
 	seq     int // creation order, for deterministic output
+}
+
+// shareAcc collects one contributor's amounts before they are merged.
+type shareAcc struct {
+	Share
+	raw []quantity.Amount
 }
 
 // Generate builds the list described in ADR-00009. See the package comment.
@@ -163,8 +185,10 @@ func Generate(in Input) (List, error) {
 					return List{}, fmt.Errorf("recipe %q line %q: %w", e.Recipe.Name, l.Raw, err)
 				}
 				acc.addSource(src)
+				sh := acc.shareOf(Share{Source: src})
 				if l.Ingredient != 0 {
 					acc.amounts = append(acc.amounts, a)
+					sh.raw = append(sh.raw, a)
 					continue
 				}
 				// The line's text already holds its amount: record the factor
@@ -191,6 +215,8 @@ func Generate(in Input) (List, error) {
 		}
 		acc.item.Manual = true
 		acc.amounts = append(acc.amounts, m.Amount)
+		sh := acc.shareOf(Share{Manual: true})
+		sh.raw = append(sh.raw, m.Amount)
 	}
 
 	var list List
@@ -201,11 +227,18 @@ func Generate(in Input) (List, error) {
 	}
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].seq < ordered[j].seq })
 	for _, acc := range ordered {
-		amounts, err := mergeAmounts(acc.amounts, acc.density)
+		amounts, converted, err := mergeAmounts(acc.amounts, acc.density, false)
 		if err != nil {
 			return List{}, fmt.Errorf("merge %q: %w", acc.item.Name, err)
 		}
 		acc.item.Amounts = amounts
+		for _, sh := range acc.shares {
+			sh.Amounts, _, err = mergeAmounts(sh.raw, acc.density, converted)
+			if err != nil {
+				return List{}, fmt.Errorf("merge %q share: %w", acc.item.Name, err)
+			}
+			acc.item.Shares = append(acc.item.Shares, sh.Share)
+		}
 		if acc.item.Ingredient != 0 && in.Pantry[acc.item.Ingredient] && !in.AddBack[acc.item.Ingredient] &&
 			!acc.item.Manual {
 			list.Pantry = append(list.Pantry, acc.item)
@@ -273,6 +306,19 @@ func (a *accum) addSource(s Source) {
 		}
 	}
 	a.item.Sources = append(a.item.Sources, s)
+}
+
+// shareOf returns the collector for contributor s, creating it. Recipes come
+// first in the order they were met, manual entries come after every recipe.
+func (a *accum) shareOf(s Share) *shareAcc {
+	for _, have := range a.shares {
+		if have.Source == s.Source && have.Manual == s.Manual {
+			return have
+		}
+	}
+	sh := &shareAcc{Share: s}
+	a.shares = append(a.shares, sh)
+	return sh
 }
 
 func sortItems(items []Item) {

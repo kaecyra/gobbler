@@ -91,3 +91,63 @@ func TestCheckMultiplier(t *testing.T) {
 		}
 	}
 }
+
+func TestViewByRecipeGroupsItemsUnderTheirRecipesWithTheirShares(t *testing.T) {
+	l := gen(t, Input{
+		Entries: []RecipeEntry{
+			entry(t, 2, "Zebra cake", 1, line(idButter, amt(t, 1, 1, "tbsp")), line(idSalt, amt(t, 1, 1, "tsp"))),
+			entry(t, 1, "Apple pie", 1, line(idButter, amt(t, 2, 1, "tbsp"))),
+		},
+		Manual: []ManualItem{{Ingredient: idButter, Amount: amt(t, 3, 1, "tbsp")}, {Text: "Paper towels"}},
+	})
+	v := View{
+		Entries: []EntryView{{RecipeID: 2, Name: "Zebra cake"}, {RecipeID: 1, Name: "Apple pie"}},
+		Aisles:  annotate(l, map[ItemKey]bool{"i:" + "1": true}),
+	}
+	groups := v.ByRecipe()
+
+	var names []string
+	for _, g := range groups {
+		if g.Manual {
+			names = append(names, "(by hand)")
+		} else {
+			names = append(names, g.Source.Name)
+		}
+	}
+	if want := []string{"Zebra cake", "Apple pie", "(by hand)"}; !reflect.DeepEqual(names, want) {
+		t.Fatalf("groups = %q, want entry order then the manual group %q", names, want)
+	}
+	butter := func(g RecipeGroup) ShareItem {
+		for _, it := range g.Items {
+			if it.Name == "butter" {
+				return it
+			}
+		}
+		t.Fatalf("group %q has no butter", g.Source.Name)
+		return ShareItem{}
+	}
+	if got := butter(groups[0]).Share.Amounts[0].String(); got != "1 tbsp" {
+		t.Errorf("Zebra cake butter share = %q, want 1 tbsp", got)
+	}
+	if got := butter(groups[1]).Share.Amounts[0].String(); got != "2 tbsp" {
+		t.Errorf("Apple pie butter share = %q, want 2 tbsp", got)
+	}
+	m := butter(groups[2])
+	if got := m.Share.Amounts[0].String(); got != "3 tbsp" || !m.Checked || m.Key != "i:1" {
+		t.Errorf("manual butter = %+v, want share 3 tbsp, the item's check and key", m)
+	}
+	if n := len(groups[2].Items); n != 2 {
+		t.Errorf("manual group has %d items, want butter and paper towels", n)
+	}
+}
+
+func TestViewByRecipeOmitsARecipeWithNothingOnTheList(t *testing.T) {
+	l := gen(t, Input{
+		Entries: []RecipeEntry{entry(t, 1, "Soup", 1, line(idSalt, amt(t, 1, 1, "tsp")))},
+		Pantry:  map[recipe.IngredientID]bool{idSalt: true},
+	})
+	v := View{Entries: []EntryView{{RecipeID: 1, Name: "Soup"}}, Aisles: annotate(l, nil)}
+	if g := v.ByRecipe(); len(g) != 0 {
+		t.Errorf("groups = %+v, want none", g)
+	}
+}

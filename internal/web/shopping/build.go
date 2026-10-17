@@ -95,7 +95,12 @@ func (h *handler) renderBuild(w http.ResponseWriter, r *http.Request, id int64, 
 		fail(w, r, fmt.Errorf("list recipes: %w", err))
 		return
 	}
-	aisles, err := newAisles(view.Aisles)
+	group, err := groupOf(r)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	list, err := newListing(view, group)
 	if err != nil {
 		fail(w, r, err)
 		return
@@ -117,7 +122,7 @@ func (h *handler) renderBuild(w http.ResponseWriter, r *http.Request, id int64, 
 	}
 	v := buildView{
 		ID: id, Name: view.List.Name, IncludeOptional: view.IncludeOptional, Entries: newEntries(view.Entries), Manual: manual,
-		Aisles: aisles, Dropped: dropped, Export: text,
+		List: list, Dropped: dropped, Export: text,
 		Ingredients: ingredientOptions(ingredients), Problem: problem,
 	}
 	for _, rs := range recipes {
@@ -166,7 +171,7 @@ func (h *handler) edited(w http.ResponseWriter, r *http.Request, id int64) {
 		fail(w, r, fmt.Errorf("regenerate list %d: %w", id, err))
 		return
 	}
-	http.Redirect(w, r, listURL(id), http.StatusSeeOther)
+	back(w, r, id, "")
 }
 
 // failedEdit answers a failed edit: inline when the user can fix it there, an
@@ -409,7 +414,7 @@ func (h *handler) setOptional(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, fmt.Errorf("set include optional on list %d: %w", id, err))
 		return
 	}
-	http.Redirect(w, r, listURL(id), http.StatusSeeOther)
+	back(w, r, id, "")
 }
 
 func (h *handler) regenerate(w http.ResponseWriter, r *http.Request) {

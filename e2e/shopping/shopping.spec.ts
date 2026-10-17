@@ -490,6 +490,101 @@ test('the phone view reconnects when the stream endpoint fails, instead of stayi
   }
 });
 
+const recipeGroup = (page: Page, name: string) =>
+  page.getByTestId('recipe-group').filter({ has: page.getByTestId('group-name').getByText(name, { exact: true }) });
+
+test('the list can be grouped by recipe, each recipe showing its own share', async ({ page }) => {
+  await page.goto(`/shopping/${listID}`);
+  // By aisle is the default.
+  await expect(page.getByTestId('aisle').first()).toBeVisible();
+  await expect(page.getByTestId('recipe-group')).toHaveCount(0);
+  await expect(page.getByTestId('group-aisle')).toHaveAttribute('aria-current', 'true');
+
+  await page.getByTestId('group-recipe').click();
+  await expect(page).toHaveURL(`${origin}/shopping/${listID}?group=recipe`);
+  await expect(page.getByTestId('group-recipe')).toHaveAttribute('aria-current', 'true');
+  await expect(page.getByTestId('aisle')).toHaveCount(0);
+  await expect(page.getByTestId('group-name')).toHaveText(['E2E Pancakes', 'E2E Waffles']);
+
+  // Flour sits under both recipes with each one's own amount (2 + 6 = the
+  // merged 8 cup of the by-aisle list); milk only under the recipe that uses it.
+  await expect(recipeGroup(page, 'E2E Pancakes').getByTestId('item').filter({ hasText: 'e2e flour' }).getByTestId('item-amount')).toHaveText(/^2\s*cup/);
+  await expect(recipeGroup(page, 'E2E Waffles').getByTestId('item').filter({ hasText: 'e2e flour' }).getByTestId('item-amount')).toHaveText(/^6\s*cup/);
+  await expect(recipeGroup(page, 'E2E Waffles').getByTestId('item').filter({ hasText: 'e2e salt' })).toHaveCount(0);
+  // The basket counts the list's items, not their appearances under recipes.
+  const aisleCount = await (async () => {
+    await page.goto(`/shopping/${listID}`);
+    return page.getByTestId('item').count();
+  })();
+  await page.goto(`/shopping/${listID}?group=recipe`);
+  await expect(page.getByTestId('basket-count')).toHaveText(new RegExp(`of ${aisleCount} in the basket$`));
+
+  // An edit made from this view lands back on it.
+  await page.getByRole('button', { name: 'Refresh the list' }).click();
+  await expect(page).toHaveURL(`${origin}/shopping/${listID}?group=recipe`);
+  await expect(page.getByTestId('recipe-group').first()).toBeVisible();
+  await page.getByTestId('group-aisle').click();
+  await expect(page).toHaveURL(`${origin}/shopping/${listID}`);
+  await expect(page.getByTestId('aisle').first()).toBeVisible();
+
+  expect((await page.request.get(`/shopping/${listID}?group=nope`)).status()).toBe(400);
+});
+
+test('the by-recipe phone view follows checks and multiplier edits live', async ({ browser }) => {
+  const phone = { viewport: { width: 390, height: 844 } };
+  const a = await browser.newContext(phone);
+  const b = await browser.newContext(phone);
+  const desk = await browser.newContext();
+  try {
+    const pa = await a.newPage();
+    const pb = await b.newPage();
+    await pa.goto(`/shopping/${listID}/live?group=recipe`);
+    await pb.goto(`/shopping/${listID}/live?group=recipe`);
+    await expect(pa.getByTestId('live-status')).toHaveText('Live');
+    await expect(pb.getByTestId('live-status')).toHaveText('Live');
+
+    // A check under one recipe is a check of the item, under every recipe, in every view.
+    const flourA = recipeGroup(pa, 'E2E Pancakes').getByRole('checkbox', { name: /e2e flour/ });
+    const flourB = recipeGroup(pb, 'E2E Waffles').getByRole('checkbox', { name: /e2e flour/ });
+    const before = await flourB.getAttribute('aria-checked');
+    await flourA.click();
+    await expect(flourB).not.toHaveAttribute('aria-checked', before ?? '');
+    await expect(flourA).toHaveAttribute('aria-checked', await flourB.getAttribute('aria-checked') ?? '');
+    expect(pb.url()).toBe(`${origin}/shopping/${listID}/live?group=recipe`);
+
+    // A multiplier edit on the build page changes that recipe's share, without a reload.
+    const build = await desk.newPage();
+    await build.goto(`/shopping/${listID}?group=recipe`);
+    const waffles = build.getByTestId('entry').filter({ hasText: 'E2E Waffles' });
+    await waffles.getByLabel('Multiplier').fill('4');
+    await waffles.getByRole('button', { name: 'Update' }).click();
+    await expect(build).toHaveURL(`${origin}/shopping/${listID}?group=recipe`);
+    await expect(flourB).toContainText(/8\s*cup/);
+    await expect(recipeGroup(pa, 'E2E Pancakes').getByRole('checkbox', { name: /e2e flour/ })).toContainText(/2\s*cup/);
+    await waffles.getByLabel('Multiplier').fill('3');
+    await waffles.getByRole('button', { name: 'Update' }).click();
+    await expect(flourB).toContainText(/6\s*cup/);
+  } finally {
+    await a.close();
+    await b.close();
+    await desk.close();
+  }
+});
+
+test('the group toggle and the by-recipe rows are at least 44px tall', async ({ page }) => {
+  for (const path of [`/shopping/${listID}`, `/shopping/${listID}?group=recipe`, `/shopping/${listID}/live?group=recipe`]) {
+    await page.goto(path);
+    for (const t of [page.getByTestId('group-aisle'), page.getByTestId('group-recipe')]) {
+      const box = await t.boundingBox();
+      expect(box, `${path}: toggle is on the page`).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+  await page.goto(`/shopping/${listID}/live?group=recipe`);
+  const row = await page.getByRole('checkbox').first().boundingBox();
+  expect(row!.height).toBeGreaterThanOrEqual(44);
+});
+
 test("another household cannot see or watch this household's list or pantry", async ({ page }) => {
   // The other household's member gets 404 for the list on every read route
   // (the event stream included), an index without it, and an empty pantry.
