@@ -31,8 +31,8 @@ UPDATE invitations SET revoked_at = sqlc.arg(now)
 WHERE issued_by = sqlc.arg(issued_by) AND household_id = sqlc.arg(household_id) AND kind = 'join'
   AND accepted_at IS NULL AND revoked_at IS NULL;
 
--- TouchHousehold is a no-op write that opens the write lock before the reads
--- that follow it (db.WithTx).
+-- TouchHousehold is a no-op write that fails fast on a missing household
+-- before the reads that follow it.
 -- name: TouchHousehold :execrows
 UPDATE households SET name = name WHERE id = ?;
 

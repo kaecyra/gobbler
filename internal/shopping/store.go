@@ -118,15 +118,16 @@ func scope(ctx context.Context) (int64, error) {
 func (s *Store) stamp() string { return s.now().UTC().Format(time.RFC3339Nano) }
 
 // withTx runs fn in one transaction (db.WithTx). A caller that reads before it
-// writes makes its first statement a write, such as lockList, so the
-// transaction takes the write lock up front instead of failing to upgrade a
-// stale read snapshot.
+// writes needs no write first: db.WithTx begins the transaction IMMEDIATE, so
+// it holds the write lock from the start. A guard such as lockList still has a
+// job, which is to fail early with ErrNotFound for a list that is missing or
+// belongs to another household.
 func (s *Store) withTx(ctx context.Context, fn func(q *shoppingdb.Queries) error) error {
 	return db.WithTx(ctx, s.db, s.q, func(q *shoppingdb.Queries, _ *sql.Tx) error { return fn(q) })
 }
 
-// lockList takes the write lock with a no-op write to list id of household
-// hid, and returns ErrNotFound when it does not exist there.
+// lockList checks, with a no-op write, that list id exists in household hid,
+// and returns ErrNotFound when it does not.
 func lockList(ctx context.Context, q *shoppingdb.Queries, hid, id int64) error {
 	n, err := q.LockList(ctx, shoppingdb.LockListParams{ID: id, HouseholdID: hid})
 	if err != nil {

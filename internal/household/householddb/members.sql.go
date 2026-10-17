@@ -290,8 +290,8 @@ const touchHousehold = `-- name: TouchHousehold :execrows
 UPDATE households SET name = name WHERE id = ?
 `
 
-// TouchHousehold is a no-op write that opens the write lock before the reads
-// that follow it (db.WithTx).
+// TouchHousehold is a no-op write that fails fast on a missing household
+// before the reads that follow it.
 func (q *Queries) TouchHousehold(ctx context.Context, id int64) (int64, error) {
 	result, err := q.db.ExecContext(ctx, touchHousehold, id)
 	if err != nil {

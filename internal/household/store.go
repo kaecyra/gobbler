@@ -221,9 +221,14 @@ func (s *Store) Invite(ctx context.Context, in Invite) (int64, error) {
 		// Membership is checked by the INSERT itself, so the issuer cannot be
 		// removed between the check and the write. Only a member can invite
 		// into a household; say so without revealing whether it exists.
-		id, err := s.q.InsertJoinInvitation(ctx, householddb.InsertJoinInvitationParams{
-			Email: e, HouseholdID: sql.NullInt64{Int64: in.HouseholdID, Valid: true}, IssuedBy: issuer,
-			CreatedAt: created, ExpiresAt: expires,
+		var id int64
+		err := db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+			var err error
+			id, err = q.InsertJoinInvitation(ctx, householddb.InsertJoinInvitationParams{
+				Email: e, HouseholdID: sql.NullInt64{Int64: in.HouseholdID, Valid: true}, IssuedBy: issuer,
+				CreatedAt: created, ExpiresAt: expires,
+			})
+			return err
 		})
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, fmt.Errorf("%w: %s is not a member of household %d", ErrNotFound, issuer, in.HouseholdID)
@@ -239,8 +244,13 @@ func (s *Store) Invite(ctx context.Context, in Invite) (int64, error) {
 	default:
 		return 0, fmt.Errorf("%w: unknown invitation kind %q", ErrInvalid, in.Kind)
 	}
-	id, err := s.q.InsertInvitation(ctx, householddb.InsertInvitationParams{
-		Kind: string(in.Kind), Email: e, IssuedBy: issuer, CreatedAt: created, ExpiresAt: expires,
+	var id int64
+	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+		var err error
+		id, err = q.InsertInvitation(ctx, householddb.InsertInvitationParams{
+			Kind: string(in.Kind), Email: e, IssuedBy: issuer, CreatedAt: created, ExpiresAt: expires,
+		})
+		return err
 	})
 	if err != nil {
 		return 0, fmt.Errorf("insert invitation: %w", err)
@@ -321,8 +331,13 @@ func (s *Store) Revoke(ctx context.Context, id int64, issuedBy string) error {
 	if err != nil {
 		return err
 	}
-	n, err := s.q.RevokeInvitation(ctx, householddb.RevokeInvitationParams{
-		Now: sql.NullString{String: s.stamp(), Valid: true}, ID: id, IssuedBy: issuer,
+	var n int64
+	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+		var err error
+		n, err = q.RevokeInvitation(ctx, householddb.RevokeInvitationParams{
+			Now: sql.NullString{String: s.stamp(), Valid: true}, ID: id, IssuedBy: issuer,
+		})
+		return err
 	})
 	if err != nil {
 		return fmt.Errorf("revoke invitation %d: %w", id, err)
