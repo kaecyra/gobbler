@@ -321,6 +321,15 @@ func TestReviewShowsDraftAndSavesNothing(t *testing.T) {
 	}
 }
 
+func TestReviewShowsTheParserVersion(t *testing.T) {
+	f := newFixture(t)
+	token := f.ingestText(t)
+	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
+	if want := "Parser version " + ingestcore.ParserVersion; !strings.Contains(body, want) {
+		t.Errorf("review lacks %q", want)
+	}
+}
+
 func TestReviewFlagsLowConfidenceWithTextNotColourAlone(t *testing.T) {
 	f := newFixture(t)
 	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()

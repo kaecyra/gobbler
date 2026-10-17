@@ -28,7 +28,7 @@ func (q *Queries) CountSnapshots(ctx context.Context, arg CountSnapshotsParams) 
 }
 
 const getSnapshot = `-- name: GetSnapshot :one
-SELECT kind, content, sha256, created_at, created_by FROM source_snapshots
+SELECT kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
 WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3
 `
 
@@ -39,11 +39,12 @@ type GetSnapshotParams struct {
 }
 
 type GetSnapshotRow struct {
-	Kind      string
-	Content   []byte
-	Sha256    string
-	CreatedAt string
-	CreatedBy string
+	Kind          string
+	Content       []byte
+	Sha256        string
+	CreatedAt     string
+	CreatedBy     string
+	ParserVersion string
 }
 
 func (q *Queries) GetSnapshot(ctx context.Context, arg GetSnapshotParams) (GetSnapshotRow, error) {
@@ -55,22 +56,24 @@ func (q *Queries) GetSnapshot(ctx context.Context, arg GetSnapshotParams) (GetSn
 		&i.Sha256,
 		&i.CreatedAt,
 		&i.CreatedBy,
+		&i.ParserVersion,
 	)
 	return i, err
 }
 
 const insertSnapshot = `-- name: InsertSnapshot :exec
-INSERT INTO source_snapshots (household_id, recipe_id, kind, content, sha256, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO source_snapshots (household_id, recipe_id, kind, content, sha256, created_at, created_by, parser_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertSnapshotParams struct {
-	HouseholdID int64
-	RecipeID    int64
-	Kind        string
-	Content     []byte
-	Sha256      string
-	CreatedAt   string
-	CreatedBy   string
+	HouseholdID   int64
+	RecipeID      int64
+	Kind          string
+	Content       []byte
+	Sha256        string
+	CreatedAt     string
+	CreatedBy     string
+	ParserVersion string
 }
 
 func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) error {
@@ -82,6 +85,7 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 		arg.Sha256,
 		arg.CreatedAt,
 		arg.CreatedBy,
+		arg.ParserVersion,
 	)
 	return err
 }

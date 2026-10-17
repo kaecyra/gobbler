@@ -105,7 +105,7 @@ type Saved struct {
 }
 
 // Save stores a confirmed draft as a recipe with its source snapshot, byte for
-// byte as ingested. Ingredients the draft proposed that the catalog still
+// byte as ingested, and the parser version that produced the draft. Ingredients the draft proposed that the catalog still
 // lacks are created with reviewed false, since only a confirmed save may create
 // them (ADR-00008); ones that exist by now are reused. Proposed equipment is
 // treated the same way. Units are never created
@@ -156,7 +156,7 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 	}
 
 	id, err := s.recipes.CreateWithSnapshots(ctx, toRecipe(d, comps, links),
-		store.SnapshotInput{Kind: d.Source.Kind, Content: d.Source.Content})
+		store.SnapshotInput{Kind: d.Source.Kind, Content: d.Source.Content, ParserVersion: d.ParserVersion})
 	if err != nil {
 		return Saved{}, fmt.Errorf("save recipe %q with its %s snapshot, recipe not stored: %w", d.Name.Value, d.Source.Kind, err)
 	}

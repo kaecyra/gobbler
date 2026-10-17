@@ -142,6 +142,9 @@ templ summary(d ingestcore.Draft) {
 		} else {
 			<p>Confidence { percent(d.Overall) }.</p>
 		}
+		if d.ParserVersion != "" {
+			<p class="muted">Parser version { d.ParserVersion }.</p>
+		}
 		if len(d.Issues) > 0 {
 			<ul>
 				for _, i := range d.Issues {

@@ -283,3 +283,23 @@ func TestSaveRefusesAUnitTheCatalogDoesNotKnow(t *testing.T) {
 		t.Errorf("unreviewed units = %+v, err %v; a refused save must not create units", unrev, err)
 	}
 }
+
+func TestSaveRecordsTheParserVersionOnTheSnapshot(t *testing.T) {
+	e := newEnv(t)
+	text := readFixture(t, "mystery_stew.txt")
+	d, err := e.pipeline(t, nil).FromText(e.ctx, string(text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := e.saver().Save(e.ctx, confirm(t, d))
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap, err := e.store.GetSnapshot(e.ctx, saved.RecipeID, d.Source.Kind)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.ParserVersion != ParserVersion {
+		t.Errorf("snapshot ParserVersion = %q, want %q", snap.ParserVersion, ParserVersion)
+	}
+}

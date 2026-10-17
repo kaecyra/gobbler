@@ -43,6 +43,9 @@ type Snapshot struct {
 	SHA256    string
 	CreatedAt time.Time
 	CreatedBy string
+	// ParserVersion is the ingest parser version that produced the recipe
+	// this snapshot was taken for; empty when unknown (ADR-00006).
+	ParserVersion string
 }
 
 // The store exposes snapshots for add and read only. Source snapshots are
@@ -73,11 +76,18 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 	})
 }
 
-// insertSnapshot writes one snapshot inside the transaction q is bound to. The
+// insertSnapshot writes one snapshot with no recorded parser version: what
+// AddSnapshot and a shared recipe's snapshots are.
+func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, kind SnapshotKind, content []byte, who string) error {
+	return s.insertVersionedSnapshot(ctx, q, hid, id, SnapshotInput{Kind: kind, Content: content}, who)
+}
+
+// insertVersionedSnapshot writes one snapshot inside the transaction q is bound to. The
 // caller holds the write lock on the recipe, which makes the existence check
 // and the insert atomic, so no concurrent writer can slip a duplicate in
 // between; the UNIQUE constraint is the backstop.
-func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, kind SnapshotKind, content []byte, who string) error {
+func (s *Store) insertVersionedSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, in SnapshotInput, who string) error {
+	kind, content := in.Kind, in.Content
 	if !kind.Valid() {
 		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
 	}
@@ -91,7 +101,7 @@ func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, hid, id 
 	sum := sha256.Sum256(content)
 	err = q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
 		HouseholdID: hid, RecipeID: id, Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
-		CreatedAt: s.stamp(), CreatedBy: who,
+		CreatedAt: s.stamp(), CreatedBy: who, ParserVersion: in.ParserVersion,
 	})
 	if err != nil {
 		return fmt.Errorf("write %s snapshot of recipe %d: %w", kind, id, err)
@@ -112,7 +122,7 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("read %s snapshot of recipe %d: %w", kind, id, err)
 	}
-	snap := Snapshot{Kind: SnapshotKind(row.Kind), Content: row.Content, SHA256: row.Sha256, CreatedBy: row.CreatedBy}
+	snap := Snapshot{Kind: SnapshotKind(row.Kind), Content: row.Content, SHA256: row.Sha256, CreatedBy: row.CreatedBy, ParserVersion: row.ParserVersion}
 	if snap.CreatedAt, err = parseTime(row.CreatedAt); err != nil {
 		return Snapshot{}, err
 	}
