@@ -28,6 +28,8 @@ func TestStageKindIsProposedFromTheInstruction(t *testing.T) {
 		{"Let the steak rest for 10 minutes.", recipe.StageRest},
 		{"Rest for 5 minutes.", recipe.StageRest},
 		{"Saute the onions until soft.", recipe.StageCook},
+		{"Sauté the onions until soft.", recipe.StageCook},
+		{"Sautéed onions are folded in.", ""},
 		{"Cook the pasta until al dente.", recipe.StageCook},
 		{"Chop the onions finely.", recipe.StagePrep},
 		{"Peel and dice the carrots.", recipe.StagePrep},

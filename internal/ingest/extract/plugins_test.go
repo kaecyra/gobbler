@@ -93,6 +93,17 @@ func TestPluginUnnamedGroupIgnored(t *testing.T) {
 	}
 }
 
+// The structured step's title survives the plugin naming its section.
+func TestPluginSectionsKeepStepTitles(t *testing.T) {
+	page := strings.Replace(fixture(t, "plugin_wprm"),
+		`{"@type":"HowToStep","text":"Mix the dough."}`,
+		`{"@type":"HowToStep","name":"Make the dough","text":"Mix the dough."}`, 1)
+	res := mustExtract(t, page, fixtureURL)
+	if got := res.Recipe.Instructions[0]; got.Section != "Dough" || got.Title != "Make the dough" {
+		t.Errorf("first step = %+v, want section Dough and title Make the dough", got)
+	}
+}
+
 func TestPluginDoesNotOverrideJSONLDSections(t *testing.T) {
 	page := strings.Replace(fixture(t, "plugin_wprm"),
 		`{"@type":"HowToStep","text":"Mix the dough."}`,

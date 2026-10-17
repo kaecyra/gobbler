@@ -199,7 +199,7 @@ func checkStepGraph(comps []Component) error {
 // for the time ribbon. Only the verbs that name one kind are here; "freeze",
 // "ferment" and "soak" are passive but fit no kind, and "cool" is not "chill".
 const (
-	cookVerbs = `(saut\w+|fry|stir-fry|boil|sear|grill|broil|cook|brown|poach|steam|toast)`
+	cookVerbs = `(saut(?:e|é)|fry|stir-fry|boil|sear|grill|broil|cook|brown|poach|steam|toast)`
 	prepVerbs = `(chop|dice|slice|mince|peel|grate|trim)`
 )
 

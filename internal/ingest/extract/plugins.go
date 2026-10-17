@@ -119,7 +119,8 @@ func mergeSteps(steps, flat []InstructionStep) ([]InstructionStep, bool) {
 		if wordKey(s.Text) != wordKey(flat[i].Text) {
 			return nil, false
 		}
-		out[i] = InstructionStep{Section: s.Section, Text: flat[i].Text}
+		out[i] = flat[i]
+		out[i].Section = s.Section
 	}
 	return out, true
 }
