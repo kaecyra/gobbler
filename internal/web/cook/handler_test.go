@@ -18,6 +18,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout/layouttest"
 )
 
 type fakeRecipes map[int64]recipe.Recipe
@@ -177,7 +178,7 @@ func TestTimersSitOutsideTheSwappedStepPanel(t *testing.T) {
 		t.Errorf("timer list must come after, not inside, the step panel (step %d, timers %d)", step, timers)
 	}
 	mustContain(t, body, `/static/cook-timers.js`, `/static/cook.js`, `/static/cook.css`, `id="cook-wake"`)
-	mustNotContain(t, body, "http://", "https://") // nothing from another origin
+	layouttest.AssertNoRemoteAssets(t, "cook page", body) // nothing from another origin
 }
 
 func TestPassiveStepShowsMeanwhileGuidance(t *testing.T) {
@@ -250,14 +251,15 @@ func TestBrokenStepGraphFailsLoudly(t *testing.T) {
 }
 
 // TestImportsNoOtherWebFeature enforces ADR-00012: a feature package does not
-// import another internal/web/<area> package. layout is the shared shell.
+// import another internal/web/<area> package. layout is the shared shell, and
+// layout/layouttest its shared test checks.
 func TestImportsNoOtherWebFeature(t *testing.T) {
 	out, err := exec.Command("go", "list", "-f", `{{join .Imports "\n"}}{{"\n"}}{{join .TestImports "\n"}}`, ".").Output()
 	if err != nil {
 		t.Fatalf("go list: %v", err)
 	}
 	for _, imp := range strings.Fields(string(out)) {
-		if strings.Contains(imp, "/internal/web/") && !strings.HasSuffix(imp, "/internal/web/layout") && !strings.HasSuffix(imp, "/internal/web/cook") {
+		if strings.Contains(imp, "/internal/web/") && !strings.HasSuffix(imp, "/internal/web/layout") && !strings.HasSuffix(imp, "/internal/web/layout/layouttest") && !strings.HasSuffix(imp, "/internal/web/cook") {
 			t.Errorf("imports %s: a web feature package may not import another (ADR-00012)", imp)
 		}
 	}

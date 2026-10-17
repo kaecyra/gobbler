@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/web/layout/layouttest"
 )
 
 func devConfig() config.Config {
@@ -181,31 +181,15 @@ func TestStaticAssetsServedFromEmbeddedFS(t *testing.T) {
 	}
 }
 
-var assetRef = regexp.MustCompile(`(?i)\b(?:src|href)="([^"]*)"`)
-
-// ADR-00002 obligation 3: no page names a script, stylesheet or font on
-// another origin.
+// ADR-00002 obligation 3: no page names a script, stylesheet, font or other
+// asset on another origin. A plain link to another site is navigation, not a
+// load, and is allowed.
 func TestPagesReferenceNoThirdPartyOrigin(t *testing.T) {
 	r := testRouter(t, devConfig(), Deps{})
 	for _, path := range []string{"/", "/nope"} {
-		body := get(r, path).Body.String()
-		refs := assetRef.FindAllStringSubmatch(body, -1)
-		if len(refs) == 0 {
-			t.Fatalf("%s: no src/href found; the check would pass vacuously", path)
-		}
-		for _, m := range refs {
-			if strings.Contains(m[1], "//") {
-				t.Errorf("%s references an absolute URL %q", path, m[1])
-			}
-		}
-		if strings.Contains(body, "@import") || strings.Contains(body, "fonts.googleapis") {
-			t.Errorf("%s pulls a remote stylesheet or font", path)
-		}
+		layouttest.AssertNoRemoteAssets(t, path, get(r, path).Body.String())
 	}
-	css := get(r, "/static/app.css").Body.String()
-	if strings.Contains(css, "http://") || strings.Contains(css, "https://") || strings.Contains(css, "@import") {
-		t.Error("app.css references a remote resource")
-	}
+	layouttest.AssertNoRemoteCSS(t, "app.css", get(r, "/static/app.css").Body.String())
 }
 
 func TestRequestLogOmitsCredentials(t *testing.T) {
