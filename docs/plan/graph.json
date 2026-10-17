@@ -2005,7 +2005,7 @@
       "wave": 9,
       "track": null,
       "issue": 209,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/db/**"
@@ -2661,6 +2661,12 @@
       "title": "make the household-deletion and paste-confirm e2e waits deterministic",
       "merged": "36783fb884dd580ce93e5f17e3ffdae79ec4d272",
       "note": "Find what each wait polls for and why it outlives the timeout on a CI runner; fix the wait, never lengthen it. A cause in server code is out of lane: stop and report."
+    },
+    {
+      "id": "r-sqlite-busy",
+      "title": "a confirmed save must not fail with SQLITE_BUSY",
+      "merged": "1a85c8b7310c7c01fa9dfdb25f64d922939deb8f",
+      "note": "Find the writer that holds the lock past busy_timeout or bypasses WithTx; fix at the db layer. A cause in another package is out of lane: stop and report it with file:line."
     }
   ],
   "adr_sequence": {
