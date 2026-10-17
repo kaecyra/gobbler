@@ -3,13 +3,11 @@ package operator
 import (
 	"strconv"
 
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 templ promotionsPage(v promotionsView) {
 	@layout.Page("Suggested ingredients") {
-		@household.PageStyle()
 		<div class="pg">
 			<div class="screen-h">
 				<div>
@@ -42,7 +40,6 @@ templ promotionsPage(v promotionsView) {
 
 templ reviewPage(v reviewView) {
 	@layout.Page("Review " + v.Name) {
-		@household.PageStyle()
 		<div class="pg">
 			<div class="screen-h"><h1>Review { v.Name }</h1></div>
 			<p><a class="link" href="/operator/promotions">Back to the suggestions</a></p>

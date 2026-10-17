@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -22,7 +21,6 @@ func mergeURL(id int64) templ.SafeURL {
 
 templ listPage(v listView) {
 	@layout.Page("Ingredient catalog") {
-		@household.PageStyle()
 		<div class="pg wide">
 			<div class="screen-h"><h1>Ingredient catalog</h1></div>
 			<form class="fields find panel" method="get" action="/catalog" role="search" data-testid="catalog-filter">
@@ -112,7 +110,6 @@ templ fieldProblem(msg string, id string) {
 
 templ editPage(f formView) {
 	@layout.Page("Edit " + f.Name) {
-		@household.PageStyle()
 		<div class="pg">
 		<div class="screen-h"><h1>Edit ingredient</h1></div>
 		<p><a class="link" href="/catalog">Back to the catalog</a></p>
@@ -184,7 +181,6 @@ templ editPage(f formView) {
 
 templ chooserPage(v chooserView) {
 	@layout.Page("Merge " + v.Source.Name) {
-		@household.PageStyle()
 		<div class="pg">
 		<div class="screen-h"><h1>Merge { v.Source.Name }</h1></div>
 		@fieldProblem(v.Problem, "merge-error")
@@ -207,7 +203,6 @@ templ chooserPage(v chooserView) {
 
 templ confirmPage(v confirmView) {
 	@layout.Page("Confirm merge") {
-		@household.PageStyle()
 		<div class="pg">
 		<div class="screen-h"><h1>Confirm merge</h1></div>
 		<p data-testid="merge-summary">

@@ -1,13 +1,11 @@
 package settings
 
 import (
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 templ settingsPage(v backupView) {
 	@layout.Page("Settings") {
-		@household.PageStyle()
 		<div class="pg">
 			<div class="screen-h"><h1>Settings</h1></div>
 			@backupSection(v)

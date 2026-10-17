@@ -9,7 +9,6 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -46,10 +45,6 @@ func inboxPage(v inboxView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = household.PageStyle().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\"><div class=\"screen-h\"><h1>Shared with you</h1></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -62,7 +57,7 @@ func inboxPage(v inboxView) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(layout.MascotHerbs)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 15, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 13, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -85,7 +80,7 @@ func inboxPage(v inboxView) templ.Component {
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(o.RecipeName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 24, Col: 31}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 22, Col: 31}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -98,7 +93,7 @@ func inboxPage(v inboxView) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(o.Sender)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 25, Col: 45}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 23, Col: 45}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -111,7 +106,7 @@ func inboxPage(v inboxView) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(o.Sent)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 25, Col: 57}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 23, Col: 57}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -124,7 +119,7 @@ func inboxPage(v inboxView) templ.Component {
 					var templ_7745c5c3_Var7 templ.SafeURL
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(o.AcceptPath))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 27, Col: 81}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 25, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -137,7 +132,7 @@ func inboxPage(v inboxView) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("Accept " + o.RecipeName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 28, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 26, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 					if templ_7745c5c3_Err != nil {
@@ -150,7 +145,7 @@ func inboxPage(v inboxView) templ.Component {
 					var templ_7745c5c3_Var9 templ.SafeURL
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(o.DeclinePath))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 30, Col: 82}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 28, Col: 82}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -163,7 +158,7 @@ func inboxPage(v inboxView) templ.Component {
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue("Decline " + o.RecipeName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 31, Col: 81}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 29, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 					if templ_7745c5c3_Err != nil {
@@ -226,10 +221,6 @@ func sendPage(v sendView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = household.PageStyle().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"pg\"><div class=\"screen-h\"><div><h1>Share <span data-testid=\"recipe-name\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -237,7 +228,7 @@ func sendPage(v sendView) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(v.RecipeName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 48, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 45, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -250,7 +241,7 @@ func sendPage(v sendView) templ.Component {
 			var templ_7745c5c3_Var14 templ.SafeURL
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(v.Action()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 53, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/sharing/sharing.templ`, Line: 50, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -303,10 +294,6 @@ func sentPage() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = household.PageStyle().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"pg\"><div class=\"screen-h\"><h1>Sent</h1></div><section class=\"panel\"><p data-testid=\"sent\">If that address belongs to a member of a household, the recipe is now waiting for them to accept it.</p><p><a class=\"link\" href=\"/recipes\">Back to recipes</a></p></section></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

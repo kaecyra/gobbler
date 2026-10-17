@@ -1,13 +1,11 @@
 package nonmember
 
 import (
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 templ page(email string) {
 	@layout.Page("Not a member") {
-		@household.PageStyle()
 		<div class="pg">
 			<div class="panel empty">
 				<img src={ layout.MascotTasting } alt="" width="110" height="110"/>

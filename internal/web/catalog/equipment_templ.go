@@ -11,7 +11,6 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -52,10 +51,6 @@ func equipmentPage(v equipmentView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = household.PageStyle().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><h1>Equipment catalog</h1></div><p class=\"muted\">Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows \"may need a larger pan\" on them and on nothing else.</p><div class=\"panel table-wrap\"><table data-testid=\"equipment-table\"><thead><tr><th scope=\"col\">Name</th><th scope=\"col\">Also called</th><th scope=\"col\">Sized</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -68,7 +63,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 34, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 32, Col: 18}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -81,7 +76,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(r.Aliases)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 35, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 33, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -94,7 +89,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(sizedAction(r.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 37, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 35, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -112,7 +107,7 @@ func equipmentPage(v equipmentView) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 41, Col: 66}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 39, Col: 66}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -130,7 +125,7 @@ func equipmentPage(v equipmentView) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 45, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 43, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {

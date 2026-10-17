@@ -11,7 +11,6 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -48,10 +47,6 @@ func promotionsPage(v promotionsView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = household.PageStyle().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\"><div class=\"screen-h\"><div><h1>Suggested ingredients</h1><p>Households flag ingredients they would like every household to use. Promoting one makes its name visible to every household. This page shows no household's data.</p></div></div><section class=\"panel\" aria-labelledby=\"suggested-h\" data-testid=\"suggested\"><h2 id=\"suggested-h\">Waiting for review</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -74,7 +69,7 @@ func promotionsPage(v promotionsView) templ.Component {
 					var templ_7745c5c3_Var3 templ.SafeURL
 					templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(e.Path))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 28, Col: 52}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 26, Col: 52}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 					if templ_7745c5c3_Err != nil {
@@ -87,7 +82,7 @@ func promotionsPage(v promotionsView) templ.Component {
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(e.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 28, Col: 63}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 26, Col: 63}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -100,7 +95,7 @@ func promotionsPage(v promotionsView) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(e.Aisle)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 29, Col: 37}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 27, Col: 37}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -118,7 +113,7 @@ func promotionsPage(v promotionsView) templ.Component {
 						var templ_7745c5c3_Var6 string
 						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(e.Aliases)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 31, Col: 52}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 29, Col: 52}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 						if templ_7745c5c3_Err != nil {
@@ -186,10 +181,6 @@ func reviewPage(v reviewView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = household.PageStyle().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"pg\"><div class=\"screen-h\"><h1>Review ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -197,7 +188,7 @@ func reviewPage(v reviewView) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(v.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 47, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 44, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -210,7 +201,7 @@ func reviewPage(v reviewView) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(v.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 52, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 49, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -223,7 +214,7 @@ func reviewPage(v reviewView) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(v.Aisle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 54, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 51, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -236,7 +227,7 @@ func reviewPage(v reviewView) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(v.Aliases)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 56, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 53, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -249,7 +240,7 @@ func reviewPage(v reviewView) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Duplicates))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 59, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 56, Col: 86}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -277,7 +268,7 @@ func reviewPage(v reviewView) templ.Component {
 			var templ_7745c5c3_Var14 templ.SafeURL
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(v.Path))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 67, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/promotion.templ`, Line: 64, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {

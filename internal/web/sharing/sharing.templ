@@ -1,13 +1,11 @@
 package sharing
 
 import (
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 templ inboxPage(v inboxView) {
 	@layout.Page("Shared with you") {
-		@household.PageStyle()
 		<div class="pg">
 			<div class="screen-h"><h1>Shared with you</h1></div>
 			if len(v.Offers) == 0 {
@@ -41,7 +39,6 @@ templ inboxPage(v inboxView) {
 
 templ sendPage(v sendView) {
 	@layout.Page("Share a recipe") {
-		@household.PageStyle()
 		<div class="pg">
 			<div class="screen-h">
 				<div>
@@ -61,7 +58,6 @@ templ sendPage(v sendView) {
 
 templ sentPage() {
 	@layout.Page("Recipe sent") {
-		@household.PageStyle()
 		<div class="pg">
 			<div class="screen-h"><h1>Sent</h1></div>
 			<section class="panel">

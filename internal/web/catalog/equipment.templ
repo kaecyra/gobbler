@@ -3,7 +3,6 @@ package catalog
 import (
 	"fmt"
 
-	"github.com/kaecyra/gobbler/internal/web/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -13,7 +12,6 @@ func sizedAction(id int64) templ.SafeURL {
 
 templ equipmentPage(v equipmentView) {
 	@layout.Page("Equipment catalog") {
-		@household.PageStyle()
 		<div class="pg wide">
 		<div class="screen-h"><h1>Equipment catalog</h1></div>
 		<p class="muted">
