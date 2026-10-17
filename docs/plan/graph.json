@@ -2123,7 +2123,7 @@
       "wave": 9,
       "track": null,
       "issue": 242,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/video/**",
@@ -2871,6 +2871,12 @@
       "title": "read a YouTube video from schema.org Recipe markup into the draft",
       "merged": "fb35b786d455484a3d2acf34e74dd6f7a7f8507d",
       "note": "ADR-00021 obligation 5; shown and editable on review (ADR-00006)."
+    },
+    {
+      "id": "g-thumbnail-fixture",
+      "title": "The e2e server downloads video thumbnails from a fixture, not i.ytimg.com",
+      "merged": "46fd2b60d622fe9d0b3caca854d6611ae9dfb73d",
+      "note": "Make the thumbnail host configurable (default https://i.ytimg.com) and point the e2e server at a serve.mjs fixture route. Granted: edit the existing Deps lines in internal/web/routes.go (otherwise append-only) to pass the configured source."
     }
   ],
   "adr_sequence": {
