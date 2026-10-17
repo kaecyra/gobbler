@@ -56,3 +56,19 @@ func TestKeepThumbnailLogsAFailureAndRetriesOnTheNextSave(t *testing.T) {
 		t.Errorf("saved %d after downloads %v, want the retry to store it", len(st.saved), src.asked)
 	}
 }
+
+func TestKeepThumbnailAfterSkipsTheCheckWhenTheReadFails(t *testing.T) {
+	st, src := &keepStore{saved: map[string][]byte{}}, &stubSource{}
+	// A failing read that still reports the video: ignoring the error would
+	// download it.
+	KeepThumbnailAfter(context.Background(), st, src, 1, func(context.Context) (string, error) {
+		return id, errors.New("database is locked")
+	})
+	if len(src.asked) != 0 || len(st.saved) != 0 {
+		t.Fatalf("downloaded %v and stored %d after a failed read", src.asked, len(st.saved))
+	}
+	KeepThumbnailAfter(context.Background(), st, src, 1, func(context.Context) (string, error) { return id, nil })
+	if len(st.saved) != 1 {
+		t.Error("a successful read did not store the thumbnail")
+	}
+}

@@ -530,15 +530,24 @@ func TestAFailedThumbnailDownloadDoesNotFailTheRestore(t *testing.T) {
 }
 
 // unreadable is a store whose read-back of a saved recipe fails, as a database
-// error right after the write would.
+// error right after the write would. It still returns the recipe, video
+// included, so ignoring the error would download the thumbnail.
 type unreadable struct{ *store.Store }
 
-func (unreadable) Get(context.Context, int64) (recipe.Recipe, error) {
-	return recipe.Recipe{}, errors.New("database is locked")
+func (u unreadable) Get(ctx context.Context, id int64) (recipe.Recipe, error) {
+	r, err := u.Store.Get(ctx, id)
+	if err != nil {
+		return r, err
+	}
+	return r, errors.New("database is locked")
 }
 
-func (unreadable) GetVersion(context.Context, int64, int64) (recipe.Recipe, error) {
-	return recipe.Recipe{}, errors.New("database is locked")
+func (u unreadable) GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error) {
+	r, err := u.Store.GetVersion(ctx, id, version)
+	if err != nil {
+		return r, err
+	}
+	return r, errors.New("database is locked")
 }
 
 func (e *env) post(router chi.Router, path string, form url.Values) *httptest.ResponseRecorder {
@@ -554,7 +563,9 @@ func (e *env) post(router chi.Router, path string, form url.Values) *httptest.Re
 
 func TestRestoreStillSucceedsWhenTheRestoredRecipeCannotBeReadBack(t *testing.T) {
 	e := newEnv(t)
-	id := e.create(e.doc("Loaf v1", "3"))
+	withVideo := e.doc("Loaf v1", "3")
+	withVideo.VideoID = "dQw4w9WgXcQ"
+	id := e.create(withVideo)
 	e.update(id, e.doc("Loaf v2", "4"))
 	router := e.routerFor(Deps{Recipes: unreadable{e.store}, Catalog: catalog.New(nil), Thumbnails: e.thumbs})
 
@@ -590,7 +601,9 @@ func TestCloningAVideoRecipeDownloadsItsThumbnail(t *testing.T) {
 
 func TestCloneStillSucceedsWhenTheCloneCannotBeReadBack(t *testing.T) {
 	e := newEnv(t)
-	id := e.create(e.doc("Loaf", "3"))
+	withVideo := e.doc("Loaf", "3")
+	withVideo.VideoID = "dQw4w9WgXcQ"
+	id := e.create(withVideo)
 	router := e.routerFor(Deps{Recipes: unreadable{e.store}, Catalog: catalog.New(nil), Thumbnails: e.thumbs})
 
 	rec := e.post(router, "/recipes/"+itoa(id)+"/clone", nil)

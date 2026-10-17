@@ -147,3 +147,16 @@ func KeepThumbnail(ctx context.Context, st ThumbnailStore, src ThumbnailSource, 
 		slog.WarnContext(ctx, "recipe saved without a video thumbnail", "recipe_id", recipeID, "video_id", videoID, "error", err.Error())
 	}
 }
+
+// KeepThumbnailAfter is KeepThumbnail for a handler that must read the saved
+// recipe back to learn its video ID: readVideoID does that read. A failed read
+// is logged and the thumbnail check skipped, since the revision is already
+// saved and the next save of the recipe tries again.
+func KeepThumbnailAfter(ctx context.Context, st ThumbnailStore, src ThumbnailSource, recipeID int64, readVideoID func(context.Context) (string, error)) {
+	videoID, err := readVideoID(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "saved recipe left without a video thumbnail check", "recipe_id", recipeID, "error", err.Error())
+		return
+	}
+	KeepThumbnail(ctx, st, src, recipeID, videoID)
+}

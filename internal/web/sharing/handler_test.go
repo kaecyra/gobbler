@@ -171,8 +171,11 @@ func TestInboxListsOffersByRecipeAndSenderNameOnly(t *testing.T) {
 }
 
 func TestAcceptStillRedirectsWhenTheAcceptedRecipeCannotBeRead(t *testing.T) {
+	// The failing read still returns the recipe, video included: ignoring the
+	// error would download it.
 	th := &stubThumbs{}
-	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: fakeRecipes{err: store.ErrNotFound}, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
+	recipes := fakeRecipes{err: errors.New("database is locked"), videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
+	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/77" || len(th.asked) != 0 {
 		t.Errorf("accept = %d to %q after %v, want 303 to the recipe and no download", rec.Code, rec.Header().Get("Location"), th.asked)
 	}

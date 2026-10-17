@@ -6,7 +6,6 @@ package sharing
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -128,11 +127,10 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 	}
 	// The copy can carry a video with no stored thumbnail yet
 	// (ADR-00021 decision 3); the accept is already done.
-	if rec, err := h.Recipes.Get(r.Context(), recipeID); err != nil {
-		slog.WarnContext(r.Context(), "accepted recipe left without a video thumbnail check", "recipe_id", recipeID, "error", err.Error())
-	} else {
-		video.KeepThumbnail(r.Context(), h.Recipes, h.Thumbnails, recipeID, rec.VideoID)
-	}
+	video.KeepThumbnailAfter(r.Context(), h.Recipes, h.Thumbnails, recipeID, func(ctx context.Context) (string, error) {
+		rec, err := h.Recipes.Get(ctx, recipeID)
+		return rec.VideoID, err
+	})
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(recipeID, 10), http.StatusSeeOther)
 }
 
