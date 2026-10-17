@@ -11,7 +11,8 @@ import (
 
 // Issues SplitSections reports for a labelled meta line it recognised but could
 // not read. The line is then left in Notes, so nothing is dropped. The first
-// two spell the same codes the assembler and extract use.
+// two are also spelled by package extract (IssueUnparsedDuration) and the
+// ingest assembler (IssueUnreadableYield); the assembler aliases these.
 const (
 	// IssueUnparsedDuration: a time field was not one clean duration.
 	IssueUnparsedDuration = "unparsed_duration"
@@ -75,7 +76,12 @@ func metaFieldOf(label string) metaField {
 // set. A segment with a colon after its label is stated meta, so an unreadable
 // value is reported in issues; without a colon ("Cook 20 minutes per side") it
 // is only taken when the value reads cleanly, since prose starts that way too.
-func metaLine(line string, m *Meta) (bool, []string) {
+//
+// inSteps narrows this for a line inside the steps section, where prose is
+// common: only a colon-labelled line that reads cleanly is taken ("Calories:
+// 280" is; "Serves 4" and "Cook 20 minutes" are not), and an unreadable one is
+// never reported, it stays a step.
+func metaLine(line string, m *Meta, inSteps bool) (bool, []string) {
 	next := *m
 	var issues []string
 	for _, seg := range metaSepRE.Split(line, -1) {
@@ -84,8 +90,14 @@ func metaLine(line string, m *Meta) (bool, []string) {
 			return false, issues
 		}
 		f, stated, val := metaFieldOf(match[1]), match[2] != "", strings.TrimSpace(match[3])
+		if inSteps && !stated {
+			return false, nil
+		}
 		ok, issue := next.set(f, val)
 		if !ok {
+			if inSteps {
+				return false, nil
+			}
 			if stated && issue != "" {
 				issues = append(issues, issue)
 			}

@@ -104,13 +104,13 @@ func TestSplitSectionsMeta(t *testing.T) {
 				t.Errorf("Notes = %q, want %q", got.Notes, tc.notes)
 			}
 			for _, is := range tc.issues {
-				if !containsString(got.Issues, is) {
+				if !slices.Contains(got.Issues, is) {
 					t.Errorf("Issues = %v, missing %q", got.Issues, is)
 				}
 			}
 			if len(tc.issues) == 0 {
 				for _, is := range []string{IssueUnparsedDuration, IssueUnreadableYield, IssueUnreadableCalories} {
-					if containsString(got.Issues, is) {
+					if slices.Contains(got.Issues, is) {
 						t.Errorf("Issues = %v, unexpected %q", got.Issues, is)
 					}
 				}
@@ -143,4 +143,37 @@ func TestSplitSectionsNoMetaLeavesNilMeta(t *testing.T) {
 	}
 }
 
-func containsString(ss []string, s string) bool { return slices.Contains(ss, s) }
+// A footer after the steps is read when it is colon-labelled and clean; the
+// same words as prose, or an unreadable value, stay steps with no issue.
+func TestSplitSectionsMetaFooterAfterSteps(t *testing.T) {
+	const head = "Soup\n\nIngredients\n1 onion\n\nDirections\n1. Dice the onion.\n2. Simmer.\n"
+	got, err := SplitSections(head + "Calories: 280\nPrep time: 10 min\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Meta == nil || got.Meta.Calories != 280 || got.Meta.Prep != 10*time.Minute {
+		t.Errorf("Meta = %+v, want calories 280 and prep 10m", got.Meta)
+	}
+	if want := []string{"Dice the onion.", "Simmer."}; !reflect.DeepEqual(got.Components[0].Steps, want) {
+		t.Errorf("steps = %q, want %q", got.Components[0].Steps, want)
+	}
+
+	got, err = SplitSections(head + "Cook 20 minutes\nServes 4\nCalories: lots\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Meta != nil {
+		t.Errorf("Meta = %+v, want none from prose or unreadable lines", got.Meta)
+	}
+	all := strings.Join(got.Components[0].Steps, " ")
+	for _, s := range []string{"Cook 20 minutes", "Serves 4", "Calories: lots"} {
+		if !strings.Contains(all, s) {
+			t.Errorf("steps = %q, want %q kept", got.Components[0].Steps, s)
+		}
+	}
+	for _, is := range []string{IssueUnparsedDuration, IssueUnreadableYield, IssueUnreadableCalories} {
+		if slices.Contains(got.Issues, is) {
+			t.Errorf("Issues = %v, unexpected %q inside steps", got.Issues, is)
+		}
+	}
+}

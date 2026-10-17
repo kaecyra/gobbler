@@ -18,7 +18,7 @@ import (
 // and parse report. Like theirs they are data about a less certain draft.
 const (
 	// IssueUnreadableYield: a yield was stated but could not be read.
-	IssueUnreadableYield = "unreadable_yield"
+	IssueUnreadableYield = parse.IssueUnreadableYield
 	// IssueNoName: the source gave no recipe name.
 	IssueNoName = "no_name"
 	// IssueNoIngredients: no ingredient lines were found.

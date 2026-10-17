@@ -142,7 +142,8 @@ func (b *sectionBuilder) addStepLine(s string, blankBefore bool) {
 
 // SplitSections splits pasted recipe text into a title and ordered components,
 // each with raw ingredient lines and raw step texts. It does not parse the
-// lines. It is pure and deterministic. Whitespace-only text returns
+// ingredient lines or steps, but it reads labelled time, yield and calorie
+// lines into Meta (see metaLine). It is pure and deterministic. Whitespace-only text returns
 // ErrEmptyText; any other text returns a result, with Confidence and Issues
 // reporting what could not be found.
 func SplitSections(text string) (Sections, error) {
@@ -199,14 +200,15 @@ func SplitSections(text string) (Sections, error) {
 		stripped := sectionStripDecor(line)
 		// Labelled times, yield and calories are read before the title and
 		// component rules, which would otherwise take them for either. Steps
-		// are prose: "Cook 20 minutes" there is an instruction.
-		if mode != sectionSteps {
+		// are prose, so there only a colon-labelled line that reads cleanly
+		// counts (a footer such as "Calories: 280"); see metaLine.
+		{
 			text := sectionStripDecor(sectionStripBullet(line))
 			var m Meta
 			if meta != nil {
 				m = *meta
 			}
-			ok, issues := metaLine(text, &m)
+			ok, issues := metaLine(text, &m, mode == sectionSteps)
 			switch {
 			case ok:
 				meta = &m
