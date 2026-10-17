@@ -2,6 +2,7 @@ package recipeview
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -155,4 +156,71 @@ func TestNoDerivableTotalStatesNoReadyInTime(t *testing.T) {
 	mustNotContain(t, body, "Ready in about", `data-testid="total"`)
 	// The ribbon still draws the one step that has a time.
 	mustContain(t, body, "rib rib-big")
+}
+
+// brokenJournal fails the journal reads the page uses for tips and the made
+// count. A recipe page without them would look complete and be wrong, so a
+// failure is a server error (error-handling rule).
+type brokenJournal struct {
+	fakeRecipes
+	notes, made, thumb bool
+}
+
+func (b brokenJournal) ListNotes(ctx context.Context, id int64) ([]store.Note, error) {
+	if b.notes {
+		return nil, errors.New("disk on fire")
+	}
+	return b.fakeRecipes.ListNotes(ctx, id)
+}
+
+func (b brokenJournal) ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error) {
+	if b.made {
+		return nil, errors.New("disk on fire")
+	}
+	return b.fakeRecipes.ListMadeIt(ctx, id)
+}
+
+func (b brokenJournal) HasThumbnail(ctx context.Context, videoID string) (bool, error) {
+	if b.thumb {
+		return false, errors.New("disk on fire")
+	}
+	return b.fakeRecipes.HasThumbnail(ctx, videoID)
+}
+
+func TestFailedReadsAreServerErrorsAndLeakNoCause(t *testing.T) {
+	withVideo := testRecipe(t)
+	withVideo.VideoID = "dQw4w9WgXcQ"
+	for name, r := range map[string]Recipes{
+		"notes":     brokenJournal{fakeRecipes: fakeRecipes{7: testRecipe(t)}, notes: true},
+		"made-it":   brokenJournal{fakeRecipes: fakeRecipes{7: testRecipe(t)}, made: true},
+		"thumbnail": brokenJournal{fakeRecipes: fakeRecipes{7: withVideo}, thumb: true},
+	} {
+		rec := serveRequest(t, r, testCatalog(), httptest.NewRequest(http.MethodGet, "/recipes/7", nil))
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("%s: status = %d, want 500", name, rec.Code)
+		}
+		if strings.Contains(rec.Body.String(), "disk on fire") {
+			t.Errorf("%s: the page leaks the cause", name)
+		}
+	}
+}
+
+func TestUnknownCatalogEntriesAreServerErrorsNotBlankLines(t *testing.T) {
+	missingIngredient := testRecipe(t)
+	missingIngredient.Components[0].Lines[0].Ingredient = 99
+	missingEquipment := testRecipe(t)
+	missingEquipment.Equipment = []recipe.EquipmentLink{{Equipment: 99}}
+	for name, r := range map[string]recipe.Recipe{"ingredient": missingIngredient, "equipment": missingEquipment} {
+		rec := serveRequest(t, fakeRecipes{7: r}, testCatalog(), httptest.NewRequest(http.MethodGet, "/recipes/7", nil))
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("%s: status = %d, want 500", name, rec.Code)
+		}
+	}
+}
+
+func TestPageOfARecipeWithNothingToShowStillRenders(t *testing.T) {
+	r := recipe.Recipe{Name: "Bare", Components: []recipe.Component{{}}}
+	body := page(t, fakeRecipes{1: r}, "/recipes/1")
+	mustContain(t, body, "<h1>Bare</h1>", `data-testid="rating-new"`)
+	mustNotContain(t, body, "Ingredients", "Equipment", "Ready in about", `data-testid="tip"`, "step-title")
 }
