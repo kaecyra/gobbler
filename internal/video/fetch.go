@@ -30,7 +30,8 @@ type Thumbnail struct {
 
 // Fetcher downloads thumbnails from YouTube's image host.
 type Fetcher struct {
-	// Client sends the request; nil means a client with a short timeout.
+	// Client sends the request; nil means a client with a short timeout that
+	// does not follow redirects.
 	Client *http.Client
 	// BaseURL replaces the image host; empty means YouTube's. It exists so a
 	// test can point the fetcher at a local server, the HTTP boundary.
@@ -52,7 +53,12 @@ func (f *Fetcher) Fetch(ctx context.Context, id string) (Thumbnail, error) {
 	}
 	client := f.Client
 	if client == nil {
-		client = &http.Client{Timeout: fetchTimeout}
+		// A redirect is not followed: the download stays pinned to the image
+		// host, and a redirect is a failed download (ADR-00021).
+		client = &http.Client{
+			Timeout:       fetchTimeout,
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+thumbnailPath(id), nil)
 	if err != nil {

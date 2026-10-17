@@ -71,3 +71,40 @@ func TestFetchRejectsAMalformedIDBeforeAnyRequest(t *testing.T) {
 		t.Fatalf("err = %v, request made = %v; want ErrInvalidID and no request", err, called)
 	}
 }
+
+// The download is pinned to the image host: a redirect is a failed download,
+// and nothing is stored.
+func TestFetchDoesNotFollowARedirect(t *testing.T) {
+	elsewhere := false
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		elsewhere = true
+		w.Header().Set("Content-Type", "image/jpeg")
+		_, _ = w.Write([]byte("other host bytes"))
+	}))
+	t.Cleanup(target.Close)
+	f := serve(t, func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, target.URL, http.StatusFound) })
+
+	if got, err := f.Fetch(context.Background(), id); err == nil {
+		t.Fatalf("Fetch followed a redirect and returned %q", got.Content)
+	}
+	if elsewhere {
+		t.Error("the redirect target was requested")
+	}
+
+	st := &memStore{}
+	if err := EnsureThumbnail(context.Background(), st, f, id); err == nil {
+		t.Error("EnsureThumbnail succeeded across a redirect")
+	}
+	if st.saved {
+		t.Error("a thumbnail was stored after a redirect")
+	}
+}
+
+type memStore struct{ saved bool }
+
+func (*memStore) HasThumbnail(context.Context, string) (bool, error) { return false, nil }
+
+func (m *memStore) SaveThumbnail(context.Context, string, []byte, string) error {
+	m.saved = true
+	return nil
+}
