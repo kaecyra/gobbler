@@ -26,7 +26,9 @@ glitch is cosmetic.
   output is never saved without the review screen**
   ([ADR-00006](./docs/adr/00006-rule-first-ingestion.md)).
 - **No third-party trackers, analytics, ads or remotely loaded scripts.**
-  Frontend assets are embedded in the binary.
+  Frontend assets are embedded in the binary. The one exception is a recipe's
+  YouTube player, loaded only when its play button is pressed
+  ([ADR-00021](./docs/adr/00021-youtube-video-on-a-recipe.md)).
 - **An ingested recipe's source snapshot is never modified.**
 - **No secrets in the repository.** API keys, tokens and S3 credentials come
   only from the environment.
