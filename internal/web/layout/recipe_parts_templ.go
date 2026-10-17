@@ -48,7 +48,7 @@ func RecipeMetaRow(m RecipeMeta) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = mealIcon(m.MealType).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = MealIcon(m.MealType).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -102,7 +102,7 @@ func RecipeMetaRow(m RecipeMeta) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for range chilis(m.Spice) {
-				templ_7745c5c3_Err = chili().Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = Chili().Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -144,7 +144,7 @@ func RecipeMetaRow(m RecipeMeta) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, on := range spoonsOn(m.Spoons) {
-				templ_7745c5c3_Err = spoon(on).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = Spoon(on).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -522,7 +522,10 @@ func meanwhile(items []display.MeanwhileItem) templ.Component {
 // The icons are drawn on the mockup's 24px grid, one line style, in
 // currentColor (docs/ui/design.md). They are decoration: the text beside each
 // one, or an aria-label on its wrapper, is the accessible name.
-func mealIcon(m recipe.MealType) templ.Component {
+
+// MealIcon draws a meal type's line icon; an unset or unknown type draws the
+// main-course icon, so callers guard on an empty type when nothing should show.
+func MealIcon(m recipe.MealType) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -579,8 +582,8 @@ func mealIcon(m recipe.MealType) templ.Component {
 	})
 }
 
-// chili is one pepper of the spice scale.
-func chili() templ.Component {
+// Chili is one pepper of the spice scale.
+func Chili() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -609,8 +612,8 @@ func chili() templ.Component {
 	})
 }
 
-// spoon is one wooden spoon of the rating; on fills it.
-func spoon(on bool) templ.Component {
+// Spoon is one wooden spoon of the rating; on fills it.
+func Spoon(on bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

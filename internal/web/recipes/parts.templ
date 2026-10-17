@@ -6,29 +6,10 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
 
-// mealIcon draws a meal type's line icon on the 24px grid, in currentColor
-// (docs/ui/design.md, Meal type). An unset meal type draws nothing.
-templ mealIcon(m recipe.MealType) {
-	switch m {
-		case recipe.MealBreakfast:
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0M12 6.5V4M5.2 10.2 3.8 8.8M18.8 10.2l1.4-1.4M8 21h8"></path></svg>
-		case recipe.MealMain:
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18h18M5 18a7 7 0 0 1 14 0M12 11V9M10.5 8.5h3M4 21h16"></path></svg>
-		case recipe.MealSide:
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18a9 8 0 0 1-18 0zM10 12c-.5-3 1-5.5 4-6.5M14 12c.5-2 2-3.3 4-3.5"></path></svg>
-		case recipe.MealDessert:
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V11l18-3v12zM3 15l18-2.5M15 8.4V5.5M15 3.6v.1"></path></svg>
-		case recipe.MealSnack:
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><circle cx="9" cy="9.5" r=".9" fill="currentColor"></circle><circle cx="14.5" cy="10" r=".9" fill="currentColor"></circle><circle cx="10.5" cy="14.5" r=".9" fill="currentColor"></circle><circle cx="15" cy="15" r=".9" fill="currentColor"></circle></svg>
-		case recipe.MealDrink:
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12l-1.6 15.2a1 1 0 0 1-1 .8H8.6a1 1 0 0 1-1-.8zM6.6 9.5h10.8M15 4l2-2"></path></svg>
-	}
-}
-
 // mealType is the icon and label of a meal type, centred on each other.
 templ mealType(m recipe.MealType, label string) {
 	<span class="mtype" data-meal={ string(m) }>
-		@mealIcon(m)
+		@layout.MealIcon(m)
 		<span class="lbl">{ label }</span>
 	</span>
 }
@@ -38,7 +19,7 @@ templ heat(n int, label string) {
 	if n > 0 {
 		<span class="heat" role="img" aria-label={ label } title={ label }>
 			for range n {
-				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 8c-3.6.2-5.6 3-7.2 6.3S5.3 19.6 3.6 20.2c4.6 1.1 11.2-.9 13.3-5.9 1-2.4.4-4.9-1.3-6.3z" fill="currentColor"></path><path d="M15.6 8c.2-2 1.4-3.6 3.6-4.2" fill="none" stroke="var(--ok)" stroke-width="1.8" stroke-linecap="round"></path></svg>
+				@layout.Chili()
 			}
 		</span>
 	}
@@ -48,7 +29,7 @@ templ heat(n int, label string) {
 templ spoons(n int, label string) {
 	<span class="spoons" role="img" aria-label={ label } title={ label }>
 		for i := 1; i <= 5; i++ {
-			<svg class={ "spoon", templ.KV("on", i <= n) } viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="7.5" cy="7.5" rx="3.4" ry="4.8" transform="rotate(-45 7.5 7.5)"></ellipse><path d="M10.4 10.4 20 20"></path></svg>
+			@layout.Spoon(i <= n)
 		}
 	</span>
 }
