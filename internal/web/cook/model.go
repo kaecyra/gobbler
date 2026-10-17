@@ -1,6 +1,7 @@
 package cook
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/url"
@@ -33,12 +34,22 @@ type page struct {
 	Lines     []display.Line
 	Equipment []string
 	Meanwhile []meanwhileLink
+	// UpNext is the step after this one, empty on the last step.
+	UpNext upNext
+}
+
+// upNext names the following step: its title when it has one, else its text.
+type upNext struct {
+	Label string
+	Href  string
 }
 
 type stepView struct {
 	Number int
 	Text   string
-	Note   string
+	// Title is the step's short heading, empty when it has none.
+	Title string
+	Note  string
 	// Seconds is the step's duration, 0 when unknown: no timer is offered.
 	Seconds int
 }
@@ -56,6 +67,8 @@ type listItem struct {
 	Text    string
 	Href    string
 	Current bool
+	// Done is true for the steps before the current one.
+	Done bool
 }
 
 // buildPage resolves the step to show and everything relevant to it. A step
@@ -76,7 +89,7 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	comp := r.Components[ref.ComponentIndex]
 	step := comp.Steps[ref.Position-1]
 
-	p.Step = stepView{Number: n, Text: step.Text, Note: display.StepNote(step), Seconds: int(step.Duration / time.Second)}
+	p.Step = stepView{Number: n, Text: step.Text, Title: step.Title, Note: display.StepNote(step), Seconds: int(step.Duration / time.Second)}
 	p.Component = comp.Name
 	if n > 1 {
 		p.PrevHref = stepHref(id, n-1, o)
@@ -86,7 +99,13 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	}
 	for i, rf := range refs {
 		s := r.Components[rf.ComponentIndex].Steps[rf.Position-1]
-		p.StepList = append(p.StepList, listItem{Number: i + 1, Text: s.Text, Href: stepHref(id, i+1, o), Current: i+1 == n})
+		p.StepList = append(p.StepList, listItem{Number: i + 1, Text: s.Text, Href: stepHref(id, i+1, o), Current: i+1 == n, Done: i+1 < n})
+	}
+
+	if n < p.Total {
+		next := refs[n]
+		ns := r.Components[next.ComponentIndex].Steps[next.Position-1]
+		p.UpNext = upNext{Label: cmp.Or(ns.Title, ns.Text), Href: stepHref(id, n+1, o)}
 	}
 
 	// Ingredients belong to components, not to steps, so the step shows its

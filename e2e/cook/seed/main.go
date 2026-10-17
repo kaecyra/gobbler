@@ -56,7 +56,7 @@ func run(dir string) error {
 		Servings: quantity.Exact(mustRat("4")),
 		Components: []recipe.Component{
 			{Name: "Dough", Lines: []recipe.IngredientLine{line("1 1/3", "cup", flour.ID)}, Steps: []recipe.Step{
-				{ID: "mix", Text: "Mix the dough.", Duration: 10 * time.Minute},
+				{ID: "mix", Text: "Mix the dough.", Title: "Make the dough", Duration: 10 * time.Minute},
 				{ID: "rise", Text: "Let the dough rise.", Duration: time.Hour, Passive: true, DependsOn: []recipe.StepID{"mix"}},
 				{ID: "bake", Text: "Bake the pizza.", DependsOn: []recipe.StepID{"rise"}},
 			}},

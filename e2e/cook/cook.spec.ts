@@ -150,6 +150,42 @@ test('shows one step at a time with its ingredients and equipment', async ({ pag
   await expect(page.getByTestId('step-text')).toHaveCount(1);
 });
 
+test('a step with a title shows it above the text, and up next names the following step', async ({ page }) => {
+  await page.goto(`/recipes/${pizza}/cook`);
+  await expect(page.getByTestId('step-title')).toHaveText('Make the dough');
+  await expect(page.getByTestId('up-next')).toContainText('Let the dough rise.');
+  await page.getByTestId('up-next').getByRole('link').click();
+  await expect(page.getByTestId('progress')).toContainText('Step 2 of 6');
+  // Steps with no title have no heading.
+  await expect(page.getByTestId('step-title')).toHaveCount(0);
+  await page.goto(`/recipes/${pizza}/cook?step=6`);
+  await expect(page.getByTestId('up-next')).toHaveCount(0);
+});
+
+test('every control on the cook page is at least 44px tall', async ({ page }) => {
+  await page.goto(`/recipes/${pizza}/cook?step=2`);
+  await page.getByTestId('timer-start').click();
+  await expect(page.getByTestId('timer')).toHaveCount(1);
+  const controls: Record<string, ReturnType<Page['locator']>> = {
+    'back to recipe': page.getByTestId('cook-exit'),
+    'timer start': page.getByTestId('timer-start'),
+    'timer dismiss': page.getByTestId('timer').getByRole('button', { name: 'Dismiss' }),
+    'meanwhile link': page.getByTestId('meanwhile').getByRole('link'),
+    'up next link': page.getByTestId('up-next').getByRole('link'),
+    'back': page.getByTestId('prev'),
+    'next': page.getByTestId('next'),
+    'all steps link': page.getByTestId('step-list').getByRole('link'),
+  };
+  for (const [name, loc] of Object.entries(controls)) {
+    const n = await loc.count();
+    expect(n, `${name} present`).toBeGreaterThan(0);
+    for (let i = 0; i < n; i++) {
+      const box = await loc.nth(i).boundingBox();
+      expect(box?.height ?? 0, `${name} #${i} height`).toBeGreaterThanOrEqual(44);
+    }
+  }
+});
+
 test('steps forward and back, and jumps from the step list', async ({ page }) => {
   await page.goto(`/recipes/${pizza}/cook`);
   await page.getByTestId('next').click();
