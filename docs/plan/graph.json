@@ -2458,7 +2458,7 @@
       "wave": 9,
       "track": null,
       "issue": 278,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-library"
       ],
@@ -3299,6 +3299,11 @@
       "id": "r-one-icon-set",
       "title": "one set of meal-type, chili and spoon components in layout",
       "merged": "81f57ef"
+    },
+    {
+      "id": "r-remove-tags",
+      "title": "remove store.Tags, unused since the library dropped tag filters",
+      "merged": "56dcec3"
     }
   ],
   "adr_sequence": {
