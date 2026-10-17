@@ -22,9 +22,10 @@ var unitModes = []struct{ Param, Label string }{
 // libraryPath is the library, the first step of the breadcrumb.
 const libraryPath = "/recipes"
 
-// shoppingPath is where the shopping lists are; "Add to shopping list" goes
-// there, since a list is chosen on its own page.
-const shoppingPath = "/shopping"
+// shoppingAddPath is where "Add to shopping list" posts: the shopping page puts
+// the recipe on the household's newest list, or sends the household to
+// /shopping to make one when it has none.
+const shoppingAddPath = "/shopping/add"
 
 // Paths of the player's own assets, embedded in the binary (ADR-00002).
 const (
@@ -371,7 +372,11 @@ templ controls(v view) {
 			}
 		</div>
 		<span class="grow"></span>
-		<a class="btn" href={ templ.SafeURL(shoppingPath) } data-testid="shopping-link">Add to shopping list</a>
+		<form method="post" action={ templ.SafeURL(shoppingAddPath) } data-testid="shopping-add-form">
+			<input type="hidden" name="recipe" value={ strconv.FormatInt(v.ID, 10) }/>
+			<input type="hidden" name="multiplier" value={ v.Multiplier }/>
+			<button type="submit" class="btn" data-testid="shopping-add">Add to shopping list</button>
+		</form>
 		<a class="btn accent cookbtn" href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">
 			@iconPot()
 			<span>Cook mode</span>

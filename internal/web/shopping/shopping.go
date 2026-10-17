@@ -68,6 +68,7 @@ type Lists interface {
 // it.
 type Recipes interface {
 	Search(ctx context.Context, q store.SearchQuery) ([]store.Summary, error)
+	Info(ctx context.Context, id int64) (store.Info, error)
 }
 
 // Catalog is what the routes use from the catalog store. *catalog.Store
@@ -104,6 +105,7 @@ func (h *handler) routes() chi.Router {
 	r.Post("/pantry/remove", h.pantryRemove)
 	r.Get("/shopping.js", asset("text/javascript; charset=utf-8", scriptJS))
 	r.Get("/shopping.css", asset("text/css; charset=utf-8", styleCSS))
+	r.Post("/add", h.quickAdd)
 	r.Get("/{id}", h.build)
 	r.Post("/{id}/recipes", h.addRecipe)
 	r.Post("/{id}/recipes/{entry}", h.setMultiplier)

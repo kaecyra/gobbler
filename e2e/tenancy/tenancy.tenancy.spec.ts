@@ -184,6 +184,7 @@ const PROBES: Probe[] = [
   hidden('POST', (i) => `/shopping/${i.list}/manual`, () => ({ text: 'hijacked item' })),
   hidden('POST', (i) => `/shopping/${i.list}/manual/${i.manual}/remove`),
   hidden('POST', (i) => `/shopping/${i.list}/optional`, () => ({ optional: '1' })),
+  hidden('POST', () => '/shopping/add', (i) => ({ recipe: String(i.recipe), multiplier: '1' })),
   hidden('POST', (i) => `/shopping/${i.list}/recipes`, (i) => ({ recipe: String(i.recipe), multiplier: '1' })),
   hidden('POST', (i) => `/shopping/${i.list}/recipes/${i.entry}`, () => ({ multiplier: '2' })),
   hidden('POST', (i) => `/shopping/${i.list}/recipes/${i.entry}/remove`),
