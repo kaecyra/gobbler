@@ -4,27 +4,35 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
-## Round 13 (2026-10-17), open: the UI track
+## Round 13 (2026-10-17), closed: the UI track
 
-**Why:** shown the running app, the owner found it nearly unstyled; the reviewed mockup was never adopted. ADR-00022 (#256, 867124c) adopts it, with `docs/ui/design.md` as the spec and `docs/ui/mockup.html` as the drawn reference. The owner accepted every recommendation ("just rock it, we'll tweak later").
+**Why:** shown the running app, the owner found it nearly unstyled; the reviewed mockup had never been adopted. ADR-00022 (#256) adopts it, with `docs/ui/design.md` as the spec and `docs/ui/mockup.html` as the drawn reference. The owner accepted every recommendation ("just rock it, we'll tweak later").
 
-**Nodes:** g-e2e-ports (#257) first, then u-shell (#246) and u-recipe-fields (#247, schema migration), then u-ingest-fields (#248), u-ribbon (#249), u-library (#250), u-recipe-view (#251), u-cook (#252), u-shopping (#253), u-ingest-look (#254), u-other-pages (#255).
+**Merged:** g-e2e-ports #259 (2e8627f); u-shell #261 (21fe01c); u-recipe-fields #263, schema 00014 (a9a0408); u-shopping #264 (d631326); u-cook #265 (56dfb71); u-ribbon #267 (513dd2c); u-ingest-fields #268, parser version 7 (90466b5); u-ingest-look #270 (21d07fa); u-library #273 (5da0df4); u-other-pages #274 (6cb6ede); u-recipe-view #271 (dda973c). Graph PRs #256, #258, #260, #262, #266, #269, #272, #275, #280. VERSION on main 0.71.0. Every u-* node is merged.
 
-**Merged so far:** graph #258, #260, #262, #266, #269; #259 g-e2e-ports (2e8627f); #261 u-shell (21fe01c); #263 u-recipe-fields, schema 00014 (a9a0408); #264 u-shopping (d631326); #267 u-ribbon (513dd2c); #268 u-ingest-fields, parser version 7 (90466b5). VERSION on main 0.66.0.
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
 
-**In flight:** #265 u-cook (wt-252) review-clean, rebased to 0.67.0, awaiting CI then merge. Dispatched, no PR yet: u-library (wt-250, carries the ribbon e2e), u-recipe-view (wt-251), u-ingest-look (wt-254), u-other-pages (wt-255). Each later PR re-bumps VERSION to one minor over main at merge. A fresh session cannot message these workers; re-dispatch a fresh one into the worktree with `.cc-scratch/ui/prompt-<node>.md` (gitignored, on the owner's disk).
+**Next (all dispatchable, wave 9):**
+- r-shopping-by-recipe (#276): the owner chose to build the shopping list's by-recipe view (inbox ib-d51936be9069). Needs per-recipe shares kept through the merge; may need a migration, declare it before dispatch.
+- r-recipe-one-tap (#277): one-tap add to a shopping list from the recipe page; after #276.
+- r-remove-tags (#278): `store.Tags` has no production caller.
+- r-one-icon-set (#279): meal-type, chili and spoon components exist in both `internal/web/recipes` and `internal/web/layout/recipe_parts.templ`.
+- Still parked: i-site-extractors (#193), l-meal-planning (#38).
 
-**Worker briefs:** `.cc-scratch/ui/common-notes.md` holds the recurring review findings (44px tap targets, tokens for every radius and colour, in-container lint). Every UI review so far raised at least one of these.
+**For the owner to look at (raised in PR bodies, no issue yet):**
+- u-cook: the timers mascot peeks over its card as drawn, but design.md says a mascot is never clipped. No timer pause button (timer behaviour was held unchanged).
+- u-recipe-view: mockup timer tags and the passive bar not built.
+- u-ingest-look: the review screen's two-column source-beside-lines layout is not built.
 
-**Screenshots** for PR bodies are pushed to the `pr-assets` branch (never merged) and linked with `?raw=true`.
+**Demo server** on the owner's Mac: `/tmp/gobbler-demo/gobbler serve` (dev bypass, `127.0.0.1:8080`, data `/tmp/gobbler-demo/data`), rebuilt from dac7d4c. Pending drafts live in memory and die on restart; six were re-ingested after the rebuild.
 
-**Open owner question:** inbox ib-d51936be9069, the shopping list's by-recipe toggle (recommended dropping it). Also for the owner: u-cook's mascot peeks over the timers card as drawn, though design.md says a mascot is never clipped; no timer pause button (timer behaviour was held unchanged).
-
-**Gate gap:** host `golangci-lint` is 2.13.2 against the pinned 2.14.0, so `make lint` fails on the host; v2.14.0 runs in the container. `make tools` on the host would fix it.
-
-**Process note:** concurrent review agents shared `.cc-scratch/conventions.md`, and one posted on the wrong PR (#267); reviewers now use `.cc-scratch/pr<N>/`.
-
-**Demo server** on the owner's Mac: `/tmp/gobbler-demo/gobbler serve`, dev auth bypass on `127.0.0.1:8080`, data in `/tmp/gobbler-demo/data`, built from 1b5fdfc. Six ingested drafts await review there. Rebuild it once the UI nodes land.
+**Process notes:**
+- Every UI review raised at least one of: a control under the 44px `--tap`, a literal colour or radius, missing screenshots. `.cc-scratch/ui/common-notes.md` (gitignored) holds the brief that heads these off; paste it into any UI worker prompt.
+- Screenshots for PR bodies go on the `pr-assets` branch (never merged), linked with `?raw=true`.
+- Host `golangci-lint` is 2.13.2 against the pinned 2.14.0, so `make lint` fails on the host; v2.14.0 runs in the container. `make tools` on the host would fix it.
+- Concurrent review agents shared `.cc-scratch/conventions.md` and one posted on the wrong PR (#267); reviewers must use `.cc-scratch/pr<N>/`.
+- Total coverage sits near the 70% floor: #271 dropped it to 68.7% after rebasing onto the other UI merges. Expect the next UI PR to need tests for its own templ output.
+- The dispatcher twice steered a worker against ADR-00012 (shared styles in `household`, shared recipe parts in `recipeview`); shared components go in `internal/web/layout`, shared styles in `app.css`.
 
 ## Round 12 (2026-10-17), closed
 
