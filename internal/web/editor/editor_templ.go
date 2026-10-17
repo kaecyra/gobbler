@@ -2397,7 +2397,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if v.carries(groupStepGraph) {
-			if !s.Graph.zero() {
+			if s.Graph.Read != "" {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 216, "<input type=\"hidden\" name=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

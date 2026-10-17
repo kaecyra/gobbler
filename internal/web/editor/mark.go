@@ -64,17 +64,16 @@ func parseMarks(f url.Values) map[string]mark {
 func (d draft) mark(field string) mark { return d.Marks[field] }
 
 // graphMark says where a step's passive flag and dependencies came from on the
-// review screen: a rule matched the step's text (Cue), or the LLM supplied the
-// reading (LLM). Read is the graph as it was read, so toIngest can tell a step
+// review screen: a rule matched the step's text (Cue), the LLM supplied the
+// reading (LLM), or the user set it (User). With none of them the step has the
+// default graph. Read is the graph as it was read, so toIngest can tell a step
 // whose graph the user left alone, which keeps its provenance, from one they
-// changed, which is then theirs. It rides in a hidden field so it follows the
+// changed, which becomes theirs. It rides in a hidden field so it follows the
 // step when it moves. A stored recipe's editor has none.
 type graphMark struct {
-	Cue, LLM bool
-	Read     string
+	Cue, LLM, User bool
+	Read           string
 }
-
-func (g graphMark) zero() bool { return !g.Cue && !g.LLM }
 
 // graphReading is the comparable form of a step's passive flag and dependency
 // ids, independent of the order the dependencies were ticked in.
@@ -93,6 +92,9 @@ func (g graphMark) String() string {
 	if g.LLM {
 		w = append(w, markLLM)
 	}
+	if g.User {
+		w = append(w, "user")
+	}
 	return strings.Join(w, " ") + ";" + g.Read
 }
 
@@ -105,16 +107,20 @@ func parseGraphMark(s string) graphMark {
 			g.Cue = true
 		case markLLM:
 			g.LLM = true
+		case "user":
+			g.User = true
 		}
 	}
 	return g
 }
 
-// current is g if the user left the step's graph as it was read, else nothing:
-// a changed graph is the user's reading, not the rules' or the LLM's.
+// current is the mark the step goes back with. If the user left the step's
+// graph as it was read, that is g. If they changed it, or the step is new (it
+// has no reading), the graph is the user's: only User is set, so a retry with
+// the LLM does not replace it.
 func (g graphMark) current(passive bool, deps []string) graphMark {
 	if g.Read != graphReading(passive, deps) {
-		return graphMark{}
+		return graphMark{User: true}
 	}
 	return g
 }

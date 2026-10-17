@@ -152,6 +152,37 @@ func TestFallbackAsksAboutDefaultStepsOnly(t *testing.T) { // ADR-00020 decision
 	}
 }
 
+// A step whose graph the user set on the review screen is settled: a retry
+// with the LLM does not ask about it or replace it.
+func TestFallbackLeavesAUserSetGraphAlone(t *testing.T) {
+	e := newEnv(t)
+	rule := ruleDraft(t, e, recipeWith("Mix the flour and water.", "Bake for 30 minutes.", "Slice and serve."))
+	rule.Components[0].Steps[0].GraphByUser = true
+	rule.Components[0].Steps[0].DependsOn = []int{}
+	fp := &fakeProvider{resp: graphAnswer(
+		StructuredStep{Step: 1, Passive: true, DependsOn: []int{}},
+		StructuredStep{Step: 3, Passive: true, DependsOn: []int{1}},
+	)}
+	got, err := e.pipelineWith(t, testConfig(), fp).Fallback().Retry(e.ctx, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var asked []int
+	for _, g := range fp.calls[0].Gaps.Steps {
+		asked = append(asked, g.Number)
+	}
+	if !reflect.DeepEqual(asked, []int{3}) {
+		t.Errorf("asked about steps %v, want only the default step 3", asked)
+	}
+	steps := flatSteps(got)
+	if s := steps[0]; s.Passive || s.GraphFromLLM || !s.GraphByUser {
+		t.Errorf("user-set step = %+v, want it unchanged", s)
+	}
+	if s := steps[2]; !s.Passive || !s.GraphFromLLM {
+		t.Errorf("default step = %+v, want the LLM's graph", s)
+	}
+}
+
 func TestFallbackChangesADefaultStepAndLeavesACueBackedOne(t *testing.T) { // ADR-00020 obligation 2
 	e := newEnv(t)
 	rule := ruleDraft(t, e, recipeWith("Mix the flour and water.", "Bake for 30 minutes.", "Slice and serve."))

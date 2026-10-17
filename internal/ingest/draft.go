@@ -87,10 +87,14 @@ type Step struct {
 	DependsOn []int
 	// GraphCue is true when a rule matched this step's text (a passive word or a
 	// parallel cue), so Passive and DependsOn are the rules' reading. A step
-	// without it has the default graph: a chain from the step before it.
+	// with none of GraphCue, GraphFromLLM and GraphByUser has the default
+	// graph: a chain from the step before it.
 	GraphCue bool
 	// GraphFromLLM marks a step whose Passive and DependsOn the LLM supplied.
 	GraphFromLLM bool
+	// GraphByUser marks a step whose Passive and DependsOn the user set on the
+	// review screen. It is settled: a retry with the LLM does not ask about it.
+	GraphByUser bool
 }
 
 // Component is an ordered part of a draft recipe; Name is empty for the single

@@ -69,7 +69,7 @@ func inferGraph(comps []Component) {
 			n++
 			st := &comps[ci].Steps[si]
 			passive, parallel := isPassive(st.Text), parallelRE.MatchString(st.Text)
-			st.Passive, st.GraphCue, st.GraphFromLLM = passive, passive || parallel, false
+			st.Passive, st.GraphCue, st.GraphFromLLM, st.GraphByUser = passive, passive || parallel, false, false
 			if parallel {
 				st.DependsOn = slices.Clone(prev)
 				tails = append(tails, n)
@@ -94,7 +94,7 @@ func stepCount(comps []Component) int {
 // stepGaps lists the steps whose graph the rules left at the default, for the
 // fallback to ask about, and the text of every step so a dependency can name
 // one. A recipe with one step has no graph to infer, and a step whose graph the
-// LLM already supplied is settled.
+// LLM supplied or the user set is settled.
 func stepGaps(comps []Component) ([]GapStep, []string) {
 	if stepCount(comps) < 2 {
 		return nil, nil
@@ -104,7 +104,7 @@ func stepGaps(comps []Component) ([]GapStep, []string) {
 	for ci, c := range comps {
 		for si, st := range c.Steps {
 			texts = append(texts, st.Text)
-			if !st.GraphCue && !st.GraphFromLLM {
+			if !st.GraphCue && !st.GraphFromLLM && !st.GraphByUser {
 				gaps = append(gaps, GapStep{Component: ci, Step: si, Number: len(texts), Text: st.Text})
 			}
 		}

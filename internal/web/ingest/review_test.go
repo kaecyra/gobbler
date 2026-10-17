@@ -460,6 +460,19 @@ func TestReviewShowsTheInferredStepGraph(t *testing.T) {
 	}
 }
 
+// The LLM's reading of a step's order is flagged in words on that step only.
+func TestReviewFlagsAnLLMSuppliedGraphInWords(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft = graphDraft()
+	steps := items(f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String(), "step")
+	if !strings.Contains(steps[2], "suggested this step's order") {
+		t.Errorf("the LLM-read step is not flagged in words: %s", steps[2])
+	}
+	if strings.Contains(steps[1], "suggested this step's order") || strings.Contains(steps[0], "suggested this step's order") {
+		t.Error("a rule-read or default step is flagged as the LLM's")
+	}
+}
+
 // An inferred graph the user did not touch is saved as inferred (#230).
 func TestConfirmSavesTheInferredGraphUnedited(t *testing.T) {
 	f := newFixture(t)

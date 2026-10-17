@@ -250,9 +250,7 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   await first.getByLabel('Quantity').fill('3');
   await first.getByLabel('Unit', { exact: true }).fill('tbsp');
 
-  // Step 3 follows step 1 instead of step 2, and step 2 is passive. The
-  // dependency list is closed on a step with none, so open it before use.
-  await page.locator('li.step').nth(2).locator('details.deps').evaluate((el) => ((el as HTMLDetailsElement).open = true));
+  // Step 3 follows step 1 instead of step 2, and step 2 is passive.
   await page.locator('[name="c.0.s.2.dep"][value="s2"]').uncheck();
   await page.locator('[name="c.0.s.2.dep"][value="s1"]').check();
   await page.locator('[name="c.0.s.1.passive"]').check();

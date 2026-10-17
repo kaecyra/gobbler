@@ -163,7 +163,7 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 			sd := stepDraft{
 				ID: stepID(n), Text: s.Text, Duration: durationText(s.Duration), To: ci,
 				Mark: mark{Low: low(s.Confidence), LLM: s.FromLLM}, Passive: s.Passive,
-				Graph: graphMark{Cue: s.GraphCue, LLM: s.GraphFromLLM},
+				Graph: graphMark{Cue: s.GraphCue, LLM: s.GraphFromLLM, User: s.GraphByUser},
 			}
 			for _, dep := range s.DependsOn {
 				sd.Deps = append(sd.Deps, stepID(dep))
@@ -195,10 +195,11 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 // only that (see view.carries), so nothing the user edited is lost.
 //
 // A step's passive flag and dependencies go back as the form has them, the
-// dependencies renumbered to the steps' places in the recipe. GraphCue and
-// GraphFromLLM say who read the graph, so they stay only for a step whose
-// graph the user left as it was read; a step whose flag or dependencies were
-// changed, or that the user added, has the user's reading and neither is set.
+// dependencies renumbered to the steps' places in the recipe. GraphCue,
+// GraphFromLLM and GraphByUser say who read the graph, so they stay only for a
+// step whose graph the user left as it was read; a step whose flag or
+// dependencies were changed, or that the user added, has the user's reading:
+// only GraphByUser is set, so a retry with the LLM leaves it alone.
 func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows kept, names lookups, ed draft) ingestcore.Draft {
 	out := base
 	out.Name.Value, out.Author.Value, out.Description.Value = rec.Name, rec.Author, rec.Description
@@ -253,7 +254,7 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 			dc.Steps = append(dc.Steps, ingestcore.Step{
 				Text: s.Text, Duration: s.Duration,
 				Confidence: confidence(fs.Mark, base.Threshold), FromLLM: fs.Mark.LLM,
-				Passive: s.Passive, DependsOn: dependsOn(s, numbers), GraphCue: g.Cue, GraphFromLLM: g.LLM,
+				Passive: s.Passive, DependsOn: dependsOn(s, numbers), GraphCue: g.Cue, GraphFromLLM: g.LLM, GraphByUser: g.User,
 			})
 		}
 		out.Components = append(out.Components, dc)

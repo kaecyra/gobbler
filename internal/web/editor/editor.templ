@@ -334,7 +334,7 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 			</div>
 		</div>
 		if v.carries(groupStepGraph) {
-			if !s.Graph.zero() {
+			if s.Graph.Read != "" {
 				<input type="hidden" name={ sField(ci, si, "graph") } value={ s.Graph.String() }/>
 			}
 			if s.Graph.LLM {

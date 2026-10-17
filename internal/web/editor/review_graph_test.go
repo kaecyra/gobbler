@@ -79,7 +79,7 @@ func TestGraphProvenanceSurvivesUntilTheUserEditsThatStep(t *testing.T) {
 	u := NewUnsaved(e.cat)
 
 	steps := submitGraph(t, e, u, postedGraphForm(t, e, u, graphBase()))
-	if !steps[1].GraphCue || !steps[2].GraphFromLLM || !steps[1].Passive || !slices.Equal(steps[2].DependsOn, []int{2}) {
+	if steps[0].GraphByUser || steps[1].GraphByUser || steps[2].GraphByUser || !steps[1].GraphCue || !steps[2].GraphFromLLM || !steps[1].Passive || !slices.Equal(steps[2].DependsOn, []int{2}) {
 		t.Errorf("unedited steps = %+v, want the inferred graph and its provenance", steps)
 	}
 
@@ -87,7 +87,8 @@ func TestGraphProvenanceSurvivesUntilTheUserEditsThatStep(t *testing.T) {
 	v.Del("c.0.s.1.passive")
 	v.Set("c.0.s.2.dep", "s1")
 	steps = submitGraph(t, e, u, v)
-	if steps[1].GraphCue || steps[2].GraphFromLLM || steps[1].Passive || !slices.Equal(steps[2].DependsOn, []int{1}) {
+	if steps[1].GraphCue || steps[2].GraphFromLLM || steps[1].Passive || !slices.Equal(steps[2].DependsOn, []int{1}) ||
+		!steps[1].GraphByUser || !steps[2].GraphByUser || steps[0].GraphByUser {
 		t.Errorf("edited steps = %+v, want the user's graph with no rule or LLM provenance", steps)
 	}
 
@@ -96,7 +97,21 @@ func TestGraphProvenanceSurvivesUntilTheUserEditsThatStep(t *testing.T) {
 	v.Set("c.0.s.3.to", "0")
 	v.Set("c.0.s.3.dep", "s3")
 	steps = submitGraph(t, e, u, v)
-	if len(steps) != 4 || steps[3].GraphCue || steps[3].GraphFromLLM || !slices.Equal(steps[3].DependsOn, []int{3}) {
+	if len(steps) != 4 || steps[3].GraphCue || steps[3].GraphFromLLM || !steps[3].GraphByUser || !slices.Equal(steps[3].DependsOn, []int{3}) {
 		t.Errorf("added step = %+v, want its own graph, not marked as inferred", steps)
+	}
+}
+
+// A graph the user set stays theirs when the draft goes round again (a failed
+// save puts it back) and the user leaves it alone.
+func TestUserSetGraphStaysTheirsAcrossARoundTrip(t *testing.T) {
+	e := newEnv(t)
+	u := NewUnsaved(e.cat)
+	base := graphBase()
+	base.Components[0].Steps[0].GraphByUser = true
+	base.Components[0].Steps[2].GraphFromLLM = false
+	steps := submitGraph(t, e, u, postedGraphForm(t, e, u, base))
+	if !steps[0].GraphByUser || steps[1].GraphByUser || steps[2].GraphByUser {
+		t.Errorf("GraphByUser = %v %v %v, want true false false", steps[0].GraphByUser, steps[1].GraphByUser, steps[2].GraphByUser)
 	}
 }
