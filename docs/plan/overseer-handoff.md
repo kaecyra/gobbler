@@ -8,13 +8,16 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Merged:** #200 ADR-00021 (YouTube video on a recipe) and nodes; #201 i-text-meta (#185); #202 i-fallback-no-call-test (#188); #207 t-shopping-check-leak (#197); #208 i-plugin-extractors (#186); #210 g-e2e-flakes (#204, tenancy port collision); #213 r-sqlite-busy (#209, write transactions begin IMMEDIATE); #214 i-equipment-extract (#187); #218 r-write-queue-cleanup (#212); #220 r-issue-code-spelling (#205); #222 i-parser-version (#189, schema 00012). Graph PRs #203, #206, #211, #215, #216, #217, #219.
 
-**In flight at handoff (workers dispatched by the previous session; a fresh session cannot receive their reports):**
-- `i-llm-gap-fill` (#191): worktree `.claude/worktrees/wt-191`, branch `feat/191-llm-gap-fill`, e2e ports 42300–42399.
-- `r-recipe-video` (#198): schema **00013** drawn; worktree `.claude/worktrees/wt-198`, branch `feat/198-recipe-video`, e2e ports 42400–42499.
+**In flight at handoff (check `gh pr list`; a fresh session cannot message the old workers, so re-dispatch a fresh worker into the existing worktree for any fix):**
+- **Merged late in the round:** #224 (graph, owner-approved: retry spec added to i-llm-gap-fill's lane) and #225 r-recipe-video (#198, schema 00013), recorded at 6c71fce. VERSION on main is 0.55.0.
+- **#227** i-llm-gap-fill (#191): reviewed APPROVED. The out-of-lane SHOULD is resolved and filed as #228. The worker was asked to fix the remaining two SHOULDs and the NIT:
+  - remove the duplicate ADR-00006 note
+  - keep rule steps that met the threshold when components are a gap
+  - rewrap the `findGaps` comment
+  
+  It was also asked to rebase to VERSION **0.56.0**. Worktree `wt-191`. If a commit with those fixes is on the branch, verify it, push, resolve threads 4301181644, 4301181656 and 4301181657, and merge on green CI. Otherwise dispatch a fresh worker into `wt-191` with those three items.
 
-If a worktree has commits but no PR, verify it as a returned branch (lane check, gates on the host, diff) and open the PR. If it has no commits, the worker died: re-dispatch into the same worktree.
-
-**Next after those:** i-step-graph (#190) after #191; i-review-edit (#192) after #198; i-video-extract (#199) last. #221 (three stale "takes the write lock" comments: shopping queries, store/share.go, catalog/merge.go) needs a node.
+**Next after those:** i-step-graph (#190) after #191; read #191's PR and fill `Gaps.Steps` and the merge point in `fillGaps`. i-review-edit (#192) after #191 and #198. i-video-extract (#199) last. Issues without nodes: #221 (three stale "takes the write lock" comments), #226 (thumbnail download on restore and share accept), #228 (review banner and `UsedLLM` doc overstate the LLM's role; fold into i-review-edit with a `draft.go` grant).
 
 **Owner decisions this round:**
 - #193 parked: waits for a URL that still ingests badly after #186 and #191.
