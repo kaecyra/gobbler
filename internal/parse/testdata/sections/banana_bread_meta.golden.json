@@ -1,0 +1,31 @@
+{
+  "title": "Banana Bread",
+  "components": [
+    {
+      "name": "",
+      "ingredients": [
+        "3 ripe bananas",
+        "2 cups all-purpose flour",
+        "1/2 cup butter"
+      ],
+      "steps": [
+        "Mash the bananas.",
+        "Stir in the flour and butter.",
+        "Bake for 1 hour."
+      ]
+    }
+  ],
+  "notes": [
+    "A moist loaf that uses up spotty bananas.",
+    "Keeps three days wrapped."
+  ],
+  "meta": {
+    "prep": 900000000000,
+    "cook": 3600000000000,
+    "total": 4500000000000,
+    "yield": "1 loaf",
+    "calories": 280
+  },
+  "confidence": 1,
+  "issues": []
+}
