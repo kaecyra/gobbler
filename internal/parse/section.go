@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -57,6 +58,9 @@ type Sections struct {
 	Title      string             `json:"title"`
 	Components []SectionComponent `json:"components"`
 	Notes      []string           `json:"notes"`
+	// Meta is what labelled lines stated (times, yield, calories); nil when
+	// none was. Those lines are not in Notes.
+	Meta *Meta `json:"meta,omitempty"`
 	// Confidence is 0 to 1; Issues says why it is below 1.
 	Confidence float64  `json:"confidence"`
 	Issues     []string `json:"issues"`
@@ -138,7 +142,8 @@ func (b *sectionBuilder) addStepLine(s string, blankBefore bool) {
 
 // SplitSections splits pasted recipe text into a title and ordered components,
 // each with raw ingredient lines and raw step texts. It does not parse the
-// lines. It is pure and deterministic. Whitespace-only text returns
+// ingredient lines or steps, but it reads labelled time, yield and calorie
+// lines into Meta (see metaLine). It is pure and deterministic. Whitespace-only text returns
 // ErrEmptyText; any other text returns a result, with Confidence and Issues
 // reporting what could not be found.
 func SplitSections(text string) (Sections, error) {
@@ -164,6 +169,8 @@ func SplitSections(text string) (Sections, error) {
 	blank := true
 	seenIngredient := false
 	firstLine := true
+	var meta *Meta
+	var metaIssues []string
 
 	for i, raw := range lines {
 		line := strings.TrimSpace(raw)
@@ -191,6 +198,32 @@ func SplitSections(text string) (Sections, error) {
 		}
 
 		stripped := sectionStripDecor(line)
+		// Labelled times, yield and calories are read before the title and
+		// component rules, which would otherwise take them for either. Steps
+		// are prose, so there only a colon-labelled line that reads cleanly
+		// counts (a footer such as "Calories: 280"); see metaLine.
+		{
+			text := sectionStripDecor(sectionStripBullet(line))
+			var m Meta
+			if meta != nil {
+				m = *meta
+			}
+			ok, issues := metaLine(text, &m, mode == sectionSteps)
+			switch {
+			case ok:
+				meta = &m
+				continue
+			case len(issues) > 0:
+				// Stated but unreadable: flag it and keep the text.
+				for _, is := range issues {
+					if !slices.Contains(metaIssues, is) {
+						metaIssues = append(metaIssues, is)
+					}
+				}
+				res.Notes = append(res.Notes, stripped)
+				continue
+			}
+		}
 		if mode == sectionPreamble && res.Title == "" && !seenIngredient && !sectionForHeadingRe.MatchString(strings.ToLower(stripped)) &&
 			!strings.HasSuffix(stripped, ":") && sectionTitleLike(stripped, explicit, wasFirst) {
 			res.Title = stripped
@@ -250,6 +283,8 @@ func SplitSections(text string) (Sections, error) {
 		}
 	}
 	sectionScore(&res, b.hasHeading, b.implicit)
+	res.Meta = meta
+	res.Issues = append(res.Issues, metaIssues...)
 	return res, nil
 }
 

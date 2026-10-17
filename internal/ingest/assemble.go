@@ -18,7 +18,7 @@ import (
 // and parse report. Like theirs they are data about a less certain draft.
 const (
 	// IssueUnreadableYield: a yield was stated but could not be read.
-	IssueUnreadableYield = "unreadable_yield"
+	IssueUnreadableYield = parse.IssueUnreadableYield
 	// IssueNoName: the source gave no recipe name.
 	IssueNoName = "no_name"
 	// IssueNoIngredients: no ingredient lines were found.
@@ -134,6 +134,16 @@ func (a *assembler) fromSections(sec parse.Sections) {
 	d.Issues = append(d.Issues, sec.Issues...)
 	d.Name = stated(sec.Title, textTitleConfidence)
 	d.Description = stated(strings.Join(sec.Notes, "\n"), textNotesConfidence)
+	if m := sec.Meta; m != nil {
+		// Labelled lines are as certain as structured data's fields: the
+		// label names the field. Unreadable ones never reach Meta; the
+		// split reported them in sec.Issues.
+		d.Prep, d.Cook, d.Total = duration(m.Prep), duration(m.Cook), duration(m.Total)
+		a.yield([]string{m.Yield})
+		if m.Calories > 0 {
+			d.Calories = Field[int]{Value: m.Calories, Confidence: 1}
+		}
+	}
 	for _, sc := range sec.Components {
 		c := Component{Name: sc.Name}
 		for _, raw := range sc.Ingredients {
@@ -292,7 +302,7 @@ func (a *assembler) yield(texts []string) {
 			continue
 		}
 		stated = true
-		qty, unit, ok := leadingQuantity(t)
+		qty, unit, ok := parse.LeadingQuantity(t)
 		if !ok {
 			continue
 		}
@@ -306,15 +316,4 @@ func (a *assembler) yield(texts []string) {
 	if stated {
 		a.d.Issues = append(a.d.Issues, IssueUnreadableYield)
 	}
-}
-
-// leadingQuantity splits "1 1/2 cups" into a quantity and the rest.
-func leadingQuantity(s string) (quantity.Quantity, string, bool) {
-	toks := strings.Fields(s)
-	for n := min(3, len(toks)); n >= 1; n-- {
-		if q, err := quantity.ParseQuantity(strings.Join(toks[:n], " ")); err == nil {
-			return q, strings.Join(toks[n:], " "), true
-		}
-	}
-	return quantity.Quantity{}, "", false
 }

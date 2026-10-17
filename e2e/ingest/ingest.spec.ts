@@ -122,6 +122,27 @@ test('pasted text goes to review, then confirm saves and redirects to the recipe
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
 });
 
+test('labelled times, yield and calories in pasted text show on review, not as notes', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Or paste the recipe text').fill(`Fluffy Pancakes
+Prep time: 20 min
+Cook time: 1 hr 10 min
+Makes 12 pancakes
+
+Ingredients:
+- 2 cups all-purpose flour
+
+Instructions:
+Cook on a hot greased griddle until golden on both sides.
+`);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+
+  await expect(page.getByText('Prep: 20 min')).toBeVisible();
+  await expect(page.getByText('Cook: 1 h 10 min')).toBeVisible();
+  await expect(page.getByText('Yield: 12 pancakes')).toBeVisible();
+  await expect(page.getByText('Prep time')).toHaveCount(0);
+});
+
 test('a low-confidence line is highlighted in words, a confident one is not', async ({ page }) => {
   await page.goto('/ingest');
   await page.getByLabel('Or paste the recipe text').fill(MESSY);
