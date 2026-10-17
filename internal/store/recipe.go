@@ -39,6 +39,9 @@ func (s *Store) Create(ctx context.Context, r recipe.Recipe) (int64, error) {
 type SnapshotInput struct {
 	Kind    SnapshotKind
 	Content []byte
+	// ParserVersion is the ingest parser version that produced the recipe;
+	// empty when unknown.
+	ParserVersion string
 }
 
 // CreateWithSnapshots is Create plus the source snapshots of what the recipe
@@ -72,7 +75,7 @@ func (s *Store) create(ctx context.Context, r recipe.Recipe, from *Origin, snaps
 				return fmt.Errorf("%w: kind %s given twice", ErrSnapshotExists, sn.Kind)
 			}
 			seen[sn.Kind] = true
-			if err := s.insertSnapshot(ctx, q, hid, id, sn.Kind, sn.Content, who); err != nil {
+			if err := s.insertVersionedSnapshot(ctx, q, hid, id, sn, who); err != nil {
 				return err
 			}
 		}
@@ -220,9 +223,10 @@ func (s *Store) update(ctx context.Context, id int64, r recipe.Recipe, expected 
 	})
 }
 
-// lockRecipe takes the write lock with a no-op write, so the reads that
-// follow see the state the rest of the transaction will change, and reports
-// ErrNotFound for a missing recipe, or one of another household.
+// lockRecipe reports ErrNotFound for a missing recipe, or one of another
+// household, and otherwise touches the row with a no-op write. Write
+// transactions begin IMMEDIATE, so the write lock is already held when this
+// runs; the touch is what makes the existence check part of the write.
 func lockRecipe(ctx context.Context, q *storedb.Queries, hid, id int64) error {
 	n, err := q.LockRecipe(ctx, storedb.LockRecipeParams{ID: id, HouseholdID: hid})
 	if err != nil {

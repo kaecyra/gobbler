@@ -267,14 +267,15 @@ type ShoppingPantry struct {
 }
 
 type SourceSnapshot struct {
-	ID          int64
-	HouseholdID int64
-	RecipeID    int64
-	Kind        string
-	Content     []byte
-	Sha256      string
-	CreatedAt   string
-	CreatedBy   string
+	ID            int64
+	HouseholdID   int64
+	RecipeID      int64
+	Kind          string
+	Content       []byte
+	Sha256        string
+	CreatedAt     string
+	CreatedBy     string
+	ParserVersion string
 }
 
 type Step struct {

@@ -120,3 +120,35 @@ func TestListSnapshotKindsOfMissingRecipe(t *testing.T) {
 		t.Errorf("ListSnapshotKinds(no snapshots) = %v, %v; want empty", kinds, err)
 	}
 }
+
+// The parser that produced a snapshot's recipe is stored with it, so a later
+// re-ingest can tell which rules made the recipe (ADR-00006).
+func TestSnapshotRecordsParserVersion(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := authedCtx(t)
+	id, err := s.CreateWithSnapshots(ctx, simpleRecipe("x"),
+		SnapshotInput{Kind: SnapshotText, Content: []byte("2 eggs"), ParserVersion: "3"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.GetSnapshot(ctx, id, SnapshotText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ParserVersion != "3" || string(got.Content) != "2 eggs" {
+		t.Errorf("snapshot = %+v, want parser version 3 and the content untouched", got)
+	}
+
+	// A snapshot added without a version, as every one was before this was
+	// recorded, reads back as unknown rather than as some version.
+	if err := s.AddSnapshot(ctx, id, SnapshotHTML, []byte("<p>")); err != nil {
+		t.Fatal(err)
+	}
+	old, err := s.GetSnapshot(ctx, id, SnapshotHTML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if old.ParserVersion != "" {
+		t.Errorf("ParserVersion = %q, want empty for an unversioned snapshot", old.ParserVersion)
+	}
+}

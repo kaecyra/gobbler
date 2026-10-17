@@ -179,3 +179,30 @@ func TestMigration00008LeavesNoStagingNames(t *testing.T) {
 		t.Errorf("%d schema objects mention an _old staging name", n)
 	}
 }
+
+// Snapshots stored before 00012 keep their content and read as having no
+// recorded parser version.
+func TestMigration00012KeepsOldSnapshotsWithUnknownParserVersion(t *testing.T) {
+	ctx := context.Background()
+	d := openRaw(t)
+	if err := db.Migrate(ctx, d, migrationsBelow(t, "00012")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO recipes (id, household_id, name, created_at, created_by, updated_at, updated_by) VALUES (7, 1, 'Stew', 't', 'a', 't', 'a')`,
+		`INSERT INTO source_snapshots (household_id, recipe_id, kind, content, sha256, created_at, created_by) VALUES (1, 7, 'text', x'6162', 'h', 't', 'a')`,
+	} {
+		if _, err := d.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = 7 AND parser_version = '' AND content = x'6162'`); n != 1 {
+		t.Errorf("old snapshot rows matching = %d, want 1 with an empty parser_version", n)
+	}
+}

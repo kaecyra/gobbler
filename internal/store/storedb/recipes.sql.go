@@ -881,8 +881,9 @@ type LockRecipeParams struct {
 	HouseholdID int64
 }
 
-// LockRecipe takes the database write lock with a no-op write, so the reads
-// that follow in the same transaction see the state it will change.
+// LockRecipe touches the recipe row with a no-op write. Write transactions
+// begin IMMEDIATE, so the write lock is already held; the touch makes the
+// existence check part of the write, and a missing row affects zero rows.
 func (q *Queries) LockRecipe(ctx context.Context, arg LockRecipeParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, lockRecipe, arg.ID, arg.HouseholdID)
 	if err != nil {

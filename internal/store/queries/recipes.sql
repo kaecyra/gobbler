@@ -16,8 +16,9 @@ SET name = ?, description = ?, source_url = ?, author = ?,
     version = version + 1, updated_at = ?, updated_by = ?
 WHERE id = ? AND household_id = ?;
 
--- LockRecipe takes the database write lock with a no-op write, so the reads
--- that follow in the same transaction see the state it will change.
+-- LockRecipe touches the recipe row with a no-op write. Write transactions
+-- begin IMMEDIATE, so the write lock is already held; the touch makes the
+-- existence check part of the write, and a missing row affects zero rows.
 -- name: LockRecipe :execrows
 UPDATE recipes SET version = version WHERE id = ? AND household_id = ?;
 
