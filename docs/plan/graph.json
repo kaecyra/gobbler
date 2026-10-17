@@ -2093,7 +2093,7 @@
       "wave": 9,
       "track": null,
       "issue": 230,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-review-edit",
         "i-step-graph"
@@ -2824,6 +2824,12 @@
       "title": "decide what the review screen can edit",
       "merged": "23f4929b52d4ae923a718423e427cd111951a128",
       "note": "ADR-00020 decision 3: the review screen is the recipe editor operating on the unsaved draft (same components, form handling, validation; confirm in place of save). No second implementation of an editor control. Also closes #228's review-banner wording; the UsedLLM doc comment in draft.go goes to i-step-graph."
+    },
+    {
+      "id": "i-review-steps",
+      "title": "Edit step dependencies and passive flags on the review screen",
+      "merged": "8d54a9bfa300efc5a1b6a7e6f7a02f3284ab2d07",
+      "note": "ADR-00020 decision 3, obligation 4: the dependency-edit-before-confirm test lands here, once i-step-graph's step fields exist."
     }
   ],
   "adr_sequence": {
