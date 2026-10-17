@@ -308,7 +308,7 @@ func step(text string, confidence float64) Step {
 	for _, f := range parse.FindDurations(text) {
 		total += f.Max
 	}
-	return Step{Text: text, Duration: total, Confidence: confidence}
+	return Step{Text: text, Duration: total, Confidence: confidence, Kind: stageKind(text)}
 }
 
 func calories(s string) Field[int] {

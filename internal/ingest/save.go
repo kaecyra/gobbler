@@ -287,7 +287,7 @@ func linkSteps(comps []recipe.Component, from []Component) {
 	for ci, dc := range from {
 		for _, st := range dc.Steps {
 			n++
-			step := recipe.Step{ID: stepID(n), Text: st.Text, Duration: st.Duration, Passive: st.Passive}
+			step := recipe.Step{ID: stepID(n), Text: st.Text, Duration: st.Duration, Passive: st.Passive, Kind: st.Kind, Title: st.Title}
 			for _, dep := range st.DependsOn {
 				step.DependsOn = append(step.DependsOn, stepID(dep))
 			}
@@ -310,6 +310,8 @@ func toRecipe(d Draft, comps []recipe.Component, links []recipe.EquipmentLink) r
 		Components:  comps,
 		Equipment:   links,
 		VideoID:     d.VideoID,
+		MealType:    d.MealType,
+		SpiceLevel:  d.SpiceLevel,
 	}
 	if d.Calories.Value > 0 {
 		n := d.Calories.Value

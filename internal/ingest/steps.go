@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
+
+	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
 const passiveVerbs = `(bake|roast|proof|prove|marinate|chill|refrigerate|freeze|simmer|braise|ferment|steep|soak)`
@@ -22,8 +25,7 @@ var (
 	// simmer"). "roasted peppers", "baked beans" and "freeze-dried" are not
 	// instructions. The -s and -ing forms are left out on purpose: "while it
 	// simmers" inside an active step must not make that step passive.
-	passiveVerbRE = regexp.MustCompile(`(?i)(^|[.;:!]\s+)(\w+ly\s+)?` + passiveVerbs + `(\s|[.,;:!]|$)` +
-		`|(,\s+|\b(and|then|to)\s+)(\w+ly\s+)?` + passiveVerbs + `(\s+(the|it|them|this|these|for|until|overnight|at|in|on|to|about|\d+)\b|[.,;:!]|$)`)
+	passiveVerbRE = verbRE(passiveVerbs)
 	// passiveStartRE matches "rest", "rise" and "cool" only as the instruction
 	// that opens a sentence.
 	passiveStartRE = regexp.MustCompile(`(?i)(^|[.;!]\s+)(rest|rise|cool)\b`)
@@ -33,6 +35,14 @@ var (
 	passiveLetRE  = regexp.MustCompile(`(?i)\b(let|allow|leave)\s+(\w+\s+){0,4}?(rest|rise|stand|sit|cool|set|proof|prove)(\s+(for|until|overnight|at|in|on|to|about|before|completely|slightly|fully|briefly|thoroughly|\d)|[.,;:!]|$)`)
 	clauseSplitRE = regexp.MustCompile(`(?i)\b(and|then)\b`)
 )
+
+// verbRE builds the pattern passiveVerbRE describes for any alternation of
+// base-form verbs, so the stage kind vocabulary reads an instruction exactly as
+// the passive vocabulary does.
+func verbRE(verbs string) *regexp.Regexp {
+	return regexp.MustCompile(`(?i)(^|[.;:!]\s+)(\w+ly\s+)?` + verbs + `(\s|[.,;:!]|$)` +
+		`|(,\s+|\b(and|then|to)\s+)(\w+ly\s+)?` + verbs + `(\s+(the|it|them|this|these|for|until|overnight|at|in|on|to|about|\d+)\b|[.,;:!]|$)`)
+}
 
 // isPassive reports whether text instructs the cook to leave something to
 // work unattended. A "let ..." phrase does not count if it runs on into
@@ -183,4 +193,73 @@ func checkStepGraph(comps []Component) error {
 		}
 	}
 	return nil
+}
+
+// Stage kind vocabulary (ADR-00022): the verbs that say what a step is doing,
+// for the time ribbon. Only the verbs that name one kind are here; "freeze",
+// "ferment" and "soak" are passive but fit no kind, and "cool" is not "chill".
+const (
+	cookVerbs = `(saut\w+|fry|stir-fry|boil|sear|grill|broil|cook|brown|poach|steam|toast)`
+	prepVerbs = `(chop|dice|slice|mince|peel|grate|trim)`
+)
+
+var (
+	cookVerbRE = verbRE(cookVerbs)
+	prepVerbRE = verbRE(prepVerbs)
+	// stageWordRE picks the verb out of what verbRE matched, which also holds
+	// the words around it.
+	stageWordRE = regexp.MustCompile(`(?i)\b` + passiveVerbs + `\b`)
+	stageByVerb = map[string]recipe.StageKind{
+		"bake": recipe.StageBake, "roast": recipe.StageRoast, "simmer": recipe.StageSimmer,
+		"braise": recipe.StageBraise, "marinate": recipe.StageMarinate, "steep": recipe.StageSteep,
+		"chill": recipe.StageChill, "refrigerate": recipe.StageChill,
+		"proof": recipe.StageRise, "prove": recipe.StageRise,
+	}
+	stageByWait = map[string]recipe.StageKind{
+		"rest": recipe.StageRest, "stand": recipe.StageRest, "sit": recipe.StageRest,
+		"rise": recipe.StageRise, "proof": recipe.StageRise, "prove": recipe.StageRise,
+	}
+	waitWordRE = regexp.MustCompile(`(?i)\b(rest|rise|stand|sit|cool|set|proof|prove)\b`)
+)
+
+// stageKind proposes what a step is doing from its text, or "" when the text
+// does not say. A step whose text names two different kinds ("let it rise,
+// then bake") gets none: precision over recall, since an empty kind is only
+// unknown and the user can set it on the review screen (ADR-00006).
+func stageKind(text string) recipe.StageKind {
+	kinds := map[recipe.StageKind]bool{}
+	for _, m := range passiveVerbRE.FindAllString(text, -1) {
+		if k, ok := stageByVerb[strings.ToLower(stageWordRE.FindString(m))]; ok {
+			kinds[k] = true
+		}
+	}
+	for _, m := range passiveStartRE.FindAllStringSubmatch(text, -1) {
+		if k, ok := stageByWait[strings.ToLower(m[2])]; ok {
+			kinds[k] = true
+		}
+	}
+	for _, m := range passiveLetRE.FindAllString(text, -1) {
+		if clauseSplitRE.MatchString(m) {
+			continue
+		}
+		// The waiting word ends the phrase, so it is the last one in it.
+		if w := waitWordRE.FindAllString(m, -1); len(w) > 0 {
+			if k, ok := stageByWait[strings.ToLower(w[len(w)-1])]; ok {
+				kinds[k] = true
+			}
+		}
+	}
+	if cookVerbRE.MatchString(text) {
+		kinds[recipe.StageCook] = true
+	}
+	if prepVerbRE.MatchString(text) {
+		kinds[recipe.StagePrep] = true
+	}
+	if len(kinds) != 1 {
+		return ""
+	}
+	for k := range kinds {
+		return k
+	}
+	return ""
 }
