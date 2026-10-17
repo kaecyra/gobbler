@@ -8,13 +8,14 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"strings"
 	"time"
 )
 
-// thumbnailHost is YouTube's image host. The thumbnail address was checked
-// live on 2026-10-17: https://i.ytimg.com/vi/<id>/hqdefault.jpg answers 200
-// image/jpeg.
-const thumbnailHost = "https://i.ytimg.com"
+// DefaultThumbnailHost is YouTube's image host, the default of the configured
+// thumbnail host. The thumbnail address was checked live on 2026-10-17:
+// https://i.ytimg.com/vi/<id>/hqdefault.jpg answers 200 image/jpeg.
+const DefaultThumbnailHost = "https://i.ytimg.com"
 
 // MaxThumbnailBytes bounds a downloaded thumbnail; a real hqdefault is tens of
 // kilobytes.
@@ -42,6 +43,11 @@ type Fetcher struct {
 // NewFetcher returns a Fetcher for YouTube's image host.
 func NewFetcher() *Fetcher { return &Fetcher{} }
 
+// NewFetcherAt returns a Fetcher for the image host at base, the configured
+// thumbnail host (GOBBLER_VIDEO_THUMBNAIL_HOST). Production leaves it at
+// YouTube's; the e2e suite points it at a local fixture.
+func NewFetcherAt(base string) *Fetcher { return &Fetcher{BaseURL: strings.TrimRight(base, "/")} }
+
 // Fetch downloads the hqdefault thumbnail of video id. Any answer but an image
 // of a sane size is an error.
 func (f *Fetcher) Fetch(ctx context.Context, id string) (Thumbnail, error) {
@@ -50,7 +56,7 @@ func (f *Fetcher) Fetch(ctx context.Context, id string) (Thumbnail, error) {
 	}
 	base := f.BaseURL
 	if base == "" {
-		base = thumbnailHost
+		base = DefaultThumbnailHost
 	}
 	client := f.Client
 	if client == nil {

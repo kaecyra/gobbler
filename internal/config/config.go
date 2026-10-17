@@ -9,11 +9,14 @@ import (
 	"log/slog"
 	"math"
 	"net/mail"
+	"net/url"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/video"
 )
 
 // Environment variable names.
@@ -34,6 +37,7 @@ const (
 	EnvLLMTimeout          = "GOBBLER_LLM_TIMEOUT"
 	EnvAnthropicAPIKey     = "GOBBLER_ANTHROPIC_API_KEY"
 	EnvGeminiAPIKey        = "GOBBLER_GEMINI_API_KEY"
+	EnvVideoThumbnailHost  = "GOBBLER_VIDEO_THUMBNAIL_HOST"
 	EnvBackupSchedule      = "GOBBLER_BACKUP_SCHEDULE"
 	EnvBackupLocalKeep     = "GOBBLER_BACKUP_LOCAL_RETENTION"
 	EnvBackupRemoteKeep    = "GOBBLER_BACKUP_REMOTE_RETENTION"
@@ -76,6 +80,7 @@ type Config struct {
 	Operator  Operator
 	Ingestion Ingestion
 	LLM       LLM
+	Video     Video
 	Backup    Backup
 }
 
@@ -131,6 +136,14 @@ type LLM struct {
 
 // Configured reports whether an LLM provider is selected.
 func (l LLM) Configured() bool { return l.Provider != "" }
+
+// Video holds recipe video settings (ADR-00021).
+type Video struct {
+	// ThumbnailHost is the origin thumbnails are downloaded from at save, with
+	// no trailing slash. It is YouTube's image host unless overridden, which
+	// only the e2e suite does.
+	ThumbnailHost string
+}
 
 // Backup holds backup settings (ADR-00010).
 type Backup struct {
@@ -189,6 +202,8 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Ingestion.UserAgent = r.str(EnvUserAgent, defaultUserAgent)
 
 	r.llm(&c.LLM)
+
+	c.Video.ThumbnailHost = r.httpOrigin(EnvVideoThumbnailHost, video.DefaultThumbnailHost)
 
 	r.backup(&c.Backup)
 
@@ -309,6 +324,23 @@ func (r *reader) emails(env string) []string {
 		}
 	}
 	return out
+}
+
+// httpOrigin returns the value as an http or https origin without a trailing
+// slash. A path, query, fragment or credentials, or any other scheme, is an
+// error.
+func (r *reader) httpOrigin(env, def string) string {
+	v := r.str(env, "")
+	if v == "" {
+		return def
+	}
+	u, err := url.Parse(v)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
+		u.User != nil || strings.Trim(u.Path, "/") != "" || u.RawQuery != "" || u.Fragment != "" {
+		r.fail(env, "invalid origin %q (want http:// or https:// and a host, with no path)", v)
+		return def
+	}
+	return u.Scheme + "://" + u.Host
 }
 
 func (r *reader) boolean(env string) bool {

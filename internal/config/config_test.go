@@ -41,6 +41,9 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Ingestion.ConfidenceThreshold != 0.7 || c.Ingestion.FetchTimeout != 15*time.Second || c.Ingestion.UserAgent == "" {
 		t.Errorf("ingestion defaults: %+v", c.Ingestion)
 	}
+	if c.Video.ThumbnailHost != "https://i.ytimg.com" {
+		t.Errorf("thumbnail host default = %q", c.Video.ThumbnailHost)
+	}
 	if c.LLM.Configured() || c.Backup.S3.Configured() {
 		t.Error("optional groups must default to unconfigured")
 	}
@@ -122,6 +125,11 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"provider without vision model", with(EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvAnthropicAPIKey, "k"), EnvLLMVisionModel},
 		{"key without provider", with(EnvAnthropicAPIKey, "k"), EnvAnthropicAPIKey},
 		{"model without provider", with(EnvLLMTextModel, "m"), EnvLLMTextModel},
+		{"thumbnail host not a url", with(EnvVideoThumbnailHost, "not a url"), EnvVideoThumbnailHost},
+		{"thumbnail host bare host", with(EnvVideoThumbnailHost, "i.ytimg.com"), EnvVideoThumbnailHost},
+		{"thumbnail host wrong scheme", with(EnvVideoThumbnailHost, "ftp://i.ytimg.com"), EnvVideoThumbnailHost},
+		{"thumbnail host with path", with(EnvVideoThumbnailHost, "https://example.com/vi"), EnvVideoThumbnailHost},
+		{"thumbnail host with credentials", with(EnvVideoThumbnailHost, "https://u:p@example.com"), EnvVideoThumbnailHost},
 		{"bad schedule", with(EnvBackupSchedule, "25:00"), EnvBackupSchedule},
 		{"schedule not a time", with(EnvBackupSchedule, "nightly"), EnvBackupSchedule},
 		{"local retention zero", with(EnvBackupLocalKeep, "0"), EnvBackupLocalKeep},
@@ -364,5 +372,15 @@ func TestOperatorEmailsRejectMalformedEntries(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), EnvOperatorEmails) {
 			t.Errorf("%q: want error naming %s, got %v", v, EnvOperatorEmails, err)
 		}
+	}
+}
+
+func TestThumbnailHostIsAnOriginWithoutTrailingSlash(t *testing.T) {
+	c, err := loadFrom(env(with(EnvVideoThumbnailHost, "http://127.0.0.1:41700/")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Video.ThumbnailHost != "http://127.0.0.1:41700" {
+		t.Errorf("thumbnail host = %q", c.Video.ThumbnailHost)
 	}
 }

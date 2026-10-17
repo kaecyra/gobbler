@@ -118,6 +118,17 @@ func run(dir string) error {
 		return err
 	}
 
+	// The third has no video yet: the spec adds one through the editor, and the
+	// save downloads its thumbnail from the fixture host.
+	plain := recipe.Recipe{
+		Name:       "E2E Video Later",
+		Components: []recipe.Component{{Steps: []recipe.Step{{ID: "wait", Text: "Add a video later."}}}},
+	}
+	laterID, err := store.New(d).Create(ctx, plain)
+	if err != nil {
+		return err
+	}
+
 	// The meanwhile recipe: while the dough rises, the sauce can be made.
 	pizza := recipe.Recipe{
 		Name: "E2E Pizza",
@@ -144,7 +155,7 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID})
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID})
 }
 
 func line(qty, unit string, ingredient int64, rule quantity.Rule) recipe.IngredientLine {

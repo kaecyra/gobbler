@@ -8,6 +8,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/sharing"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
 	"github.com/kaecyra/gobbler/internal/web/cook"
 	"github.com/kaecyra/gobbler/internal/web/editor"
@@ -31,19 +32,22 @@ import (
 //
 // The router has already applied authentication by the time r is passed here.
 func mountFeatures(r chi.Router, d Deps) {
-	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
+	// One fetcher, built from configuration, serves every save path that
+	// downloads a video thumbnail, so the image host is set in one place.
+	thumbs := video.NewFetcherAt(d.Config.Video.ThumbnailHost)
+	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Thumbnails: thumbs, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
 	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: store.New(d.DB)}))
 	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
-	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
-	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
+	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
+	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
-	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
+	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
 	mountCatalog(r, d)
 	mountHouseholds(r, d)
 	mountPromotion(r, d)
-	mountSharing(r, d)
+	mountSharing(r, d, thumbs)
 	mountEquipment(r, d)
 }
 
@@ -90,10 +94,10 @@ func mountPromotion(r chi.Router, d Deps) {
 
 // mountSharing mounts the pages that send a recipe copy to another household
 // and accept or decline one sent to this household (ADR-00018, Sharing).
-func mountSharing(r chi.Router, d Deps) {
+func mountSharing(r chi.Router, d Deps, thumbs video.ThumbnailSource) {
 	rec := store.New(d.DB)
 	svc := sharing.New(rec, household.New(d.DB), catalog.New(d.DB))
-	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: rec}))
+	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: rec, Thumbnails: thumbs}))
 }
 
 // mountEquipment mounts the operator's review of catalog equipment, where the
