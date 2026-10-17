@@ -1,86 +1,293 @@
-/* Cook mode: large type and big tap targets for a phone propped on the counter. */
+/* Cook mode (docs/ui/design.md; drawn in docs/ui/mockup.html, #cook).
+   Tablet first: the step on the left, timers and up next beside it, big Back
+   and Next under both. Below 820px it stacks into the phone layout.
+   #cook-step is swapped by HTMX on every step while the timers section stays,
+   so #cook-step uses display: contents and its children take places in the
+   grid of .cook beside the timers. */
+
+.cook {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+  grid-template-areas:
+    "head head"
+    "prog prog"
+    "main side"
+    "main upnext"
+    "nav nav"
+    "all all"
+    "wake wake";
+  grid-template-rows: auto auto auto 1fr auto auto auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  overflow: clip;
+}
+
+.cook-step { display: contents; }
+
 .cook-head {
+  grid-area: head;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gutter);
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 22px;
 }
 
-.cook-text {
-  font-size: 1.5rem;
-  line-height: 1.4;
-}
-
-.cook-nav {
-  display: flex;
-  gap: var(--gutter);
-  margin: var(--gutter) 0;
-}
-
-.cook-btn,
-.cook-timer-start,
-.cook-timers button {
-  display: inline-block;
-  min-height: 3rem;
-  padding: 0.5rem 1.25rem;
-  border: 1px solid var(--accent);
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.cook-nav .cook-btn {
-  flex: 1;
-  line-height: 2;
-}
-
-.cook-btn.disabled {
-  border-color: var(--border);
-  color: var(--muted);
-  cursor: default;
-}
-
-.cook-meanwhile {
-  margin: var(--gutter) 0;
-  padding: 0.5rem var(--gutter);
-  border-left: 4px solid var(--accent);
-}
-
-.cook-steps a[aria-current="step"] {
+.cook-head h1 {
+  font-size: 19px;
   font-weight: 700;
 }
 
+.cook-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: var(--tap);
+  padding: 0 14px 0 8px;
+  border-radius: var(--r);
+  background: var(--sunk);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cook-back svg { width: 20px; height: 20px; display: block; flex: none; }
+
+.cook-prog {
+  grid-area: prog;
+  display: flex;
+  gap: 5px;
+  padding: 0 22px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cook-prog i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.cook-prog i.done { background: var(--slate); }
+.cook-prog i.cur { background: var(--wattle); }
+
+.cook-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  min-width: 0;
+  padding: 30px 36px;
+}
+
+.cook-main p,
+.cook-main ul { margin: 0; }
+
+.cook-progress { color: var(--wattle-ink); font-size: 13px; }
+
+.cook-title {
+  font-size: clamp(30px, 3.6vw, 42px);
+  font-weight: 700;
+  line-height: 1.12;
+}
+
+.cook-text {
+  max-width: 34ch;
+  font-size: clamp(21px, 2.3vw, 26px);
+  line-height: 1.5;
+}
+
+.cook-main section { width: 100%; }
+
+.cook-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cook-chips li {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cook-meanwhile { width: 100%; margin-top: 0; }
+.cook-meanwhile ul { padding: 0; list-style: none; }
+.cook-meanwhile li { padding: 4px 0; }
+
+.cook-timers {
+  grid-area: side;
+  position: relative;
+  margin: 70px 22px 0;
+}
+
+.cook-peek {
+  position: absolute;
+  right: 18px;
+  top: -66px;
+  width: 96px;
+  height: auto;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+.cook-timers-box {
+  position: relative;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.cook-timers-box .eyebrow { margin: 2px 6px 6px; }
+.cook-timers-box > p { margin: 0 6px 6px; }
+
 .cook-timers ul {
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .cook-timers li {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.5rem var(--gutter);
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
+  gap: 4px 10px;
+  padding: 10px;
+  border-radius: var(--r);
 }
 
-.cook-timer-label { flex: 1 1 12rem; }
+.cook-timers li + li { margin-top: 4px; }
+
+.cook-timer-label { grid-column: 1 / -1; font-weight: 600; }
 
 .cook-timer-remaining {
-  font-size: 1.5rem;
+  font-family: var(--f-mono);
+  font-size: 28px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.cook-timers li.done {
-  border-left: 4px solid var(--accent);
-  padding-left: 0.5rem;
-  font-weight: 700;
+.cook-timers li.done { background: var(--grain-soft); }
+.cook-timers li.done .cook-timer-remaining { color: var(--grain-ink); }
+
+.cook-timers button,
+.cook-timer-start {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--sunk);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
 }
 
+.cook-timer-start {
+  background: var(--grain-soft);
+  border-color: transparent;
+  color: var(--grain-ink);
+}
+
+.cook-alert { margin: 8px 6px 0; font-weight: 700; color: var(--wattle-ink); }
 .cook-alert:empty { display: none; }
-.cook-alert { font-weight: 700; color: var(--accent); }
+
+.cook-upnext {
+  grid-area: upnext;
+  align-self: start;
+  margin: 18px 22px 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
+  color: var(--ink-2);
+  font-size: 15.5px;
+}
+
+.cook-upnext a {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 16.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cook-nav {
+  grid-area: nav;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  padding: 16px 22px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.cook-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  border: 0;
+  border-radius: var(--r);
+  background: var(--sunk);
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cook-btn.next { background: var(--wattle-ink); color: var(--on-accent); }
+.cook-btn.disabled { opacity: 0.4; cursor: default; }
+
+.cook-all {
+  grid-area: all;
+  padding: 16px 22px 22px;
+  border-top: 1px solid var(--line);
+}
+
+.cook-steps a[aria-current="step"] { font-weight: 700; }
+
+.cook-wake { grid-area: wake; margin: 0; padding: 0 22px 14px; }
+.cook-empty { grid-column: 1 / -1; margin: 0; padding: 22px; }
+
+@media (max-width: 820px) {
+  .cook {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "prog"
+      "main"
+      "side"
+      "upnext"
+      "nav"
+      "all"
+      "wake";
+    grid-template-rows: none;
+  }
+  .cook-main { padding: 22px 20px; }
+  .cook-timers { margin: 64px 14px 0; }
+  .cook-upnext { margin: 14px 14px 18px; }
+  .cook-nav { grid-template-columns: 1fr 1.6fr; padding: 12px 14px 16px; }
+  .cook-btn { min-height: 56px; font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cook-peek { animation: cook-bob 4s ease-in-out infinite; transform-origin: 50% 100%; }
+}
+
+@keyframes cook-bob {
+  0%, 100% { transform: scaleX(-1) translateY(4px); }
+  50% { transform: scaleX(-1) translateY(0) rotate(2deg); }
+}

@@ -80,7 +80,7 @@ func pizza(t *testing.T) recipe.Recipe {
 		Components: []recipe.Component{
 			{Name: "Dough", Lines: []recipe.IngredientLine{line(t, "1 1/3", "cup", 1), line(t, "1/3", "cup", 2)},
 				Steps: []recipe.Step{
-					{ID: "mix", Text: "Mix the dough.", Duration: 10 * time.Minute},
+					{ID: "mix", Text: "Mix the dough.", Title: "Make the dough", Duration: 10 * time.Minute},
 					{ID: "rise", Text: "Let it rise.", Duration: time.Hour, Passive: true, DependsOn: []recipe.StepID{"mix"}},
 					{ID: "bake", Text: "Bake.", DependsOn: []recipe.StepID{"rise"}},
 				}},
@@ -148,6 +148,14 @@ func TestFirstStepShowsOneStepAndItsContext(t *testing.T) {
 	if n := strings.Count(body, `data-testid="step-text"`); n != 1 {
 		t.Errorf("shown steps = %d, want 1", n)
 	}
+}
+
+func TestStepTitleHeadsTheStepAndUpNextNamesTheNextOne(t *testing.T) {
+	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook")
+	mustContain(t, body, `data-testid="step-title"`, "Make the dough", `data-testid="up-next"`, "Let it rise.")
+	// A step without a title has no heading; the last step has no up next.
+	_, body = serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=6")
+	mustNotContain(t, body, `data-testid="step-title"`, `data-testid="up-next"`)
 }
 
 func TestLaterStepHasPreviousAndOtherComponentContext(t *testing.T) {
