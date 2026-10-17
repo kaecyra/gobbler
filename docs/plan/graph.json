@@ -2233,7 +2233,7 @@
       "wave": 9,
       "track": null,
       "issue": 249,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-shell",
         "u-recipe-fields"
@@ -3170,6 +3170,12 @@
       "id": "u-shopping",
       "title": "shopping list pages in the mockup design",
       "merged": "d6313263dd3a0a8fd9e8c9dc08c4a2d917b8e266",
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-ribbon",
+      "title": "time ribbon component: server-computed segments with an embedded fit script",
+      "merged": "513dd2c7355b3ac4649288abd11b72e4d366d0ae",
       "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
