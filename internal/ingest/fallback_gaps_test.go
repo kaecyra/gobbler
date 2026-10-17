@@ -204,6 +204,33 @@ func TestGapFillTakesTheWholeRecipeWhenTheRulesFoundNoIngredients(t *testing.T) 
 	}
 }
 
+func TestGapFillKeepsRuleStepsThatMetTheThresholdWhenTakingTheComponents(t *testing.T) { // ADR-00020 decision 2
+	e := newEnv(t)
+	rule := ruleDraft(t, e, "Toast\n\nIngredients\n\nDirections\nToast the bread.\n")
+	var steps []Step
+	for _, c := range rule.Components {
+		if len(c.Lines) > 0 {
+			t.Fatalf("precondition: no lines, got %+v", rule.Components)
+		}
+		steps = append(steps, c.Steps...)
+	}
+	cfg := testConfig()
+	cfg.ConfidenceThreshold = 0.5 // a split without a steps heading scores its steps 0.6
+	if len(steps) == 0 || steps[0].Confidence < cfg.ConfidenceThreshold {
+		t.Fatalf("precondition: a rule step that met the threshold, got %+v", steps)
+	}
+	got, err := e.pipelineWith(t, cfg, &fakeProvider{resp: llmAnswer()}).Fallback().Retry(e.ctx, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Components) != 1 || len(got.Components[0].Lines) != 2 {
+		t.Fatalf("components = %+v, want the LLM's lines", got.Components)
+	}
+	if !reflect.DeepEqual(got.Components[0].Steps, steps) {
+		t.Errorf("steps = %+v, want the rule steps %+v", got.Components[0].Steps, steps)
+	}
+}
+
 func TestRetryWithNothingToFillMakesNoCall(t *testing.T) {
 	e := newEnv(t)
 	rule := ruleDraft(t, e, mixedText)

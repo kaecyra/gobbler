@@ -140,10 +140,11 @@ func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 	return f.fillGaps(ctx, d, gaps, s)
 }
 
-// findGaps lists what the rules left weak in d against threshold: a scalar field with no value or
-// below the threshold, equipment when none was found, every ingredient line
-// below the threshold, and the components in full when there is no ingredient
-// line to replace. A value at or above the threshold is never a gap.
+// findGaps lists what the rules left weak in d against threshold: a scalar
+// field with no value or below the threshold, equipment when none was found,
+// every ingredient line below the threshold, and the components when there is
+// no ingredient line to replace. A value at or above the threshold is never a
+// gap, so the steps of a draft with no lines that met it are kept.
 func findGaps(d Draft, threshold float64) Gaps {
 	weak := func(confidence float64) bool { return confidence == 0 || confidence < threshold }
 	g := Gaps{
@@ -271,7 +272,8 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 
 	if gaps.Components {
 		d.Components = nil
-		for _, sc := range s.Components {
+		kept := keptSteps(rule, s, f.cfg.ConfidenceThreshold)
+		for i, sc := range s.Components {
 			c := Component{Name: strings.TrimSpace(sc.Name), FromLLM: true}
 			for _, raw := range sc.Ingredients {
 				if l, ok := a.line(raw); ok {
@@ -279,11 +281,14 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 					c.Lines = append(c.Lines, l)
 				}
 			}
-			for _, text := range sc.Steps {
-				if text = strings.TrimSpace(text); text != "" {
-					st := step(text, llmFieldConfidence)
-					st.FromLLM = true
-					c.Steps = append(c.Steps, st)
+			c.Steps = kept[i]
+			if len(c.Steps) == 0 {
+				for _, text := range sc.Steps {
+					if text = strings.TrimSpace(text); text != "" {
+						st := step(text, llmFieldConfidence)
+						st.FromLLM = true
+						c.Steps = append(c.Steps, st)
+					}
 				}
 			}
 			d.Components = append(d.Components, c)
@@ -317,6 +322,28 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 	d.Proposed = ProposedFor(d.Components, nil)
 	d.score(a.requiredStructure())
 	return d, nil
+}
+
+// keptSteps are the rule steps that met the threshold, placed under the
+// answer's components: by index when the answer has as many components as the
+// rules found, else all in the first (the answer's grouping is the weaker
+// evidence of where a step belongs). Indexed by answer component.
+func keptSteps(rule Draft, s Structured, threshold float64) map[int][]Step {
+	out := map[int][]Step{}
+	byIndex := len(s.Components) == len(rule.Components)
+	for i, c := range rule.Components {
+		for _, st := range c.Steps {
+			if st.Confidence < threshold {
+				continue
+			}
+			if byIndex {
+				out[i] = append(out[i], st)
+			} else {
+				out[0] = append(out[0], st)
+			}
+		}
+	}
+	return out
 }
 
 func fromLLM[T any](f Field[T]) Field[T] {
