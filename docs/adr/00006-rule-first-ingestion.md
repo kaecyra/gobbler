@@ -52,6 +52,11 @@ Options considered:
    manual "retry with LLM" for any draft.
 
    > Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md): the
+   > LLM is sent the source and only the low-confidence lines and missing or
+   > low-confidence fields, and its answer replaces exactly those; it is not
+   > asked for the same structure and does not replace the draft.
+
+   > Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md): the
    > fallback sends only the below-threshold lines and fields and replaces only
    > those.
 6. **Review.** The draft, rule-based or LLM-assisted, is shown on a review

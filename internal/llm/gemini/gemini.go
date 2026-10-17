@@ -34,7 +34,8 @@ Keep each ingredient line exactly as written, with its quantity and qualifiers.
 Put each separately headed part of the recipe (for example "For the sauce") in its own component, naming it; use one unnamed component when there are no parts.
 Keep times and yield as written in the source.
 List the equipment the recipe uses (for example "Dutch oven") in the equipment list, only when the source names it, naming the equipment alone without quantities or notes.
-A rule-based reading of the source is included as a draft: use it where it is right and correct it where it is wrong.`
+A rule-based reading of the source is included as a draft: use it where it is right and correct it where it is wrong.
+Instead of a draft you may be given a list of gaps. Answer only for those gaps, exactly as the list asks; everything else is already settled and is ignored.`
 
 // Provider calls the Gemini API. It is safe for concurrent use.
 type Provider struct {
@@ -159,8 +160,12 @@ func userContent(req ingest.Request) *genai.Content {
 		b.WriteString(req.Text)
 		b.WriteString("\n\n")
 	}
-	b.WriteString("Rule-based draft:\n")
-	b.WriteString(draftSummary(req.RuleDraft))
+	if req.Gaps.Empty() {
+		b.WriteString("Rule-based draft:\n")
+		b.WriteString(draftSummary(req.RuleDraft))
+	} else {
+		b.WriteString(req.Gaps.Describe())
+	}
 	parts = append(parts, genai.NewPartFromText(b.String()))
 	return genai.NewContentFromParts(parts, genai.RoleUser)
 }

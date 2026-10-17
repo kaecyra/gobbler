@@ -197,6 +197,29 @@ func TestRuleDraftSentWithoutSnapshot(t *testing.T) {
 	}
 }
 
+func TestGapFillSendsOnlyTheGaps(t *testing.T) { // ADR-00020 decision 2
+	seen := &captured{}
+	srv := serve(t, wire(llmtest.Scenario{Behavior: llmtest.Respond, Payload: []byte(minimalPayload)}, seen).ServeHTTP)
+	p := newProvider(t, srv, "k", time.Second, slog.New(slog.DiscardHandler))
+	req := ingest.Request{Text: "x", Gaps: ingest.Gaps{
+		Author: true,
+		Lines:  []ingest.GapLine{{Raw: "WEAK-LINE-MARKER"}},
+	}}
+	if _, err := p.Structure(context.Background(), req); err != nil {
+		t.Fatalf("Structure: %v", err)
+	}
+	_, body := seen.get()
+	raw, _ := json.Marshal(body)
+	for _, want := range []string{"WEAK-LINE-MARKER", "author", "Fill only these gaps"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("gap detail %q not sent", want)
+		}
+	}
+	if strings.Contains(string(raw), "Rule-based reading") {
+		t.Error("a gap-fill request must not carry the whole rule-based reading")
+	}
+}
+
 func TestUnusableResponsesAreErrors(t *testing.T) {
 	tests := []struct {
 		name string

@@ -172,6 +172,21 @@ func TestRequestShape(t *testing.T) {
 			t.Error("the rule-based reading's equipment was not sent")
 		}
 	})
+	t.Run("a gap-fill sends the gaps and not a rule-based draft", func(t *testing.T) { // ADR-00020 decision 2
+		got := structure(t, ingest.Request{Text: "x", Gaps: ingest.Gaps{
+			Author: true,
+			Lines:  []ingest.GapLine{{Raw: "WEAK-LINE-MARKER"}},
+		}})
+		body := mustJSON(t, got.body)
+		for _, want := range []string{"WEAK-LINE-MARKER", "author", "Fill only these gaps"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("gap detail %q not sent: %s", want, body)
+			}
+		}
+		if strings.Contains(body, "Rule-based draft") {
+			t.Error("a gap-fill request must not carry the whole rule-based draft")
+		}
+	})
 	t.Run("the rule-based draft is sent as context", func(t *testing.T) {
 		got := structure(t, ingest.Request{Text: "x", RuleDraft: ingest.Draft{Name: ingest.Field[string]{Value: "Rule Name Marker"}}})
 		if !strings.Contains(mustJSON(t, got.body), "Rule Name Marker") {

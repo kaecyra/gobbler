@@ -31,8 +31,8 @@ func TestFromOCRBelowThresholdPassesTheImageToTheProvider(t *testing.T) {
 	if req.Text != messyText {
 		t.Errorf("request text = %q, want the OCR text alongside the image", req.Text)
 	}
-	if !d.UsedLLM || d.Name.Value != "Glorp Stew" {
-		t.Errorf("draft = %+v, want the provider's reading", d.Name)
+	if !d.UsedLLM || !d.Components[0].Lines[0].FromLLM {
+		t.Errorf("draft = %+v, want the provider's reading of the weak line", d.Components)
 	}
 }
 
