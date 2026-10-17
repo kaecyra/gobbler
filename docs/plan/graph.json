@@ -2314,7 +2314,7 @@
       "wave": 9,
       "track": null,
       "issue": 253,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-shell",
         "g-e2e-ports"
@@ -3163,6 +3163,12 @@
       "id": "u-recipe-fields",
       "title": "meal type, spice level, step stage kind and title, pinned tips in the recipe model",
       "merged": "a9a0408a214e8e6cfd2c5fa97c4a12fdf2f16523",
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-shopping",
+      "title": "shopping list pages in the mockup design",
+      "merged": "d6313263dd3a0a8fd9e8c9dc08c4a2d917b8e266",
       "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
