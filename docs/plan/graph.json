@@ -2424,7 +2424,8 @@
       "owns": [
         "internal/shopping/**",
         "internal/web/shopping/**",
-        "e2e/shopping/**"
+        "e2e/shopping/**",
+        "docs/ui/design.md"
       ],
       "needs_migration": null,
       "adrs": [],
