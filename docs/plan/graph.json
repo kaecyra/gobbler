@@ -1882,7 +1882,7 @@
       "wave": 9,
       "track": "tenancy",
       "issue": 197,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "t-cross-household-gate"
       ],
@@ -2627,6 +2627,12 @@
       "id": "i-text-meta",
       "title": "read prep, cook and total time, yield and calories from pasted and OCR text",
       "merged": "d8f0bb19d94689a5d430d697f405e6684eaff49d"
+    },
+    {
+      "id": "t-shopping-check-leak",
+      "title": "a cross-household shopping check returns 303 instead of 404 when the key is already checked",
+      "merged": "a7a450677603aaa68ca43672d9c12cb5f89ef456",
+      "note": "ADR-00018: the cross-household lookup fails with ErrNotFound before the already-checked short-circuit. The tenancy spec probes a checked key and its steering comment goes."
     }
   ],
   "adr_sequence": {
