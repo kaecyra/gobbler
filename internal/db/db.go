@@ -33,7 +33,8 @@ var embedded embed.FS
 
 // Open opens the database in cfg.Server.DataDir, creating the directory and
 // file if missing. WAL journal mode, foreign keys and a busy timeout are set
-// on every pooled connection through the DSN.
+// on every pooled connection through the DSN, and read-write transactions
+// begin immediate.
 func Open(ctx context.Context, cfg config.Config) (*sql.DB, error) {
 	dir := cfg.Server.DataDir
 	if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -45,6 +46,11 @@ func Open(ctx context.Context, cfg config.Config) (*sql.DB, error) {
 	q.Add("_pragma", "journal_mode(wal)")
 	q.Add("_pragma", "foreign_keys(1)")
 	q.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyTimeoutMillis))
+	// A read-write transaction begins with BEGIN IMMEDIATE: it takes the write
+	// lock under the busy timeout, so it can never fail later by upgrading a
+	// stale read snapshot (SQLITE_BUSY_SNAPSHOT ignores the timeout). The
+	// driver keeps a plain BEGIN for read-only transactions.
+	q.Add("_txlock", "immediate")
 	dsn := (&url.URL{Scheme: "file", Opaque: filepath.ToSlash(path), RawQuery: q.Encode()}).String()
 
 	return connect(ctx, dsn, path)
