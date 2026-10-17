@@ -74,6 +74,7 @@ always-on set, then route.
 | Touching | Read |
 |---|---|
 | Package boundaries, configuration, which wave something belongs to | [docs/design.md](./docs/design.md) |
+| A `.templ` file, stylesheet or embedded script under `internal/web/` | [rules/frontend.md](./.claude/rules/frontend.md) |
 
 **Where the state lives**, when you need to know rather than to read:
 
@@ -88,9 +89,9 @@ always-on set, then route.
 reasoning. Before *deciding* anything architectural, add one. ADRs outrank
 every rule file; a rule that contradicts an ADR is a bug in the rule.
 
-No on-demand rule files exist yet. Each one needs a `docs/` specification to
-defer to; when one is written for a surface (the database, ingestion, the
-frontend), add its rule file and a row to the on-demand table above.
+Each on-demand rule file defers to a `docs/` specification. When one is
+written for a new surface (the database, ingestion), add its rule file and a
+row to the on-demand table above.
 
 ## Writing rules, ADRs and docs
 
