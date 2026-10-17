@@ -70,12 +70,27 @@ type Line struct {
 }
 
 // Step is one instruction of a draft. Duration is zero when unknown.
+//
+// Steps are numbered from 1 in reading order across the whole draft, through
+// every component; Save gives the step with number n the id "s<n>". DependsOn
+// uses those numbers (ADR-00020 decision 1).
 type Step struct {
 	Text       string
 	Duration   time.Duration
 	Confidence float64
 	// FromLLM marks a step the LLM supplied.
 	FromLLM bool
+	// Passive marks a step the cook can leave unattended (baking, resting).
+	Passive bool
+	// DependsOn lists the numbers of the steps that must finish before this one
+	// starts.
+	DependsOn []int
+	// GraphCue is true when a rule matched this step's text (a passive word or a
+	// parallel cue), so Passive and DependsOn are the rules' reading. A step
+	// without it has the default graph: a chain from the step before it.
+	GraphCue bool
+	// GraphFromLLM marks a step whose Passive and DependsOn the LLM supplied.
+	GraphFromLLM bool
 }
 
 // Component is an ordered part of a draft recipe; Name is empty for the single
@@ -118,7 +133,7 @@ type ProposedEquipment struct {
 }
 
 // Draft is the reading of one input shown on the review screen: the rules'
-// reading, or the LLM's when UsedLLM is set.
+// reading, with the gaps the LLM filled marked FromLLM when UsedLLM is set.
 // It carries a confidence for every field and line and an overall score.
 // Nothing here is stored until it is confirmed (Confirm) and saved.
 type Draft struct {
@@ -151,9 +166,11 @@ type Draft struct {
 	Threshold      float64
 	BelowThreshold bool
 
-	// UsedLLM is true when the LLM supplied this draft; its values carry
-	// FromLLM. LLMError is why an LLM attempt failed and the rule-based draft
-	// was kept; it is an error, not a low score, and never blocks saving.
+	// UsedLLM is true when the LLM filled the gaps in the rule-based reading
+	// (ADR-00020 decision 2): the values it supplied carry FromLLM, and every
+	// other value is the rules'. LLMError is why an LLM attempt failed and the
+	// rule-based draft was kept; it is an error, not a low score, and never
+	// blocks saving.
 	UsedLLM  bool
 	LLMError string
 

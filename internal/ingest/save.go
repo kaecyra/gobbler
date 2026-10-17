@@ -61,6 +61,9 @@ func Confirm(d Draft) (Confirmed, error) {
 	if lines == 0 {
 		problems = append(problems, errors.New("the recipe has no ingredient lines"))
 	}
+	if err := checkStepGraph(d.Components); err != nil {
+		problems = append(problems, err)
+	}
 	if !d.Source.Kind.Valid() || !d.Source.intact() {
 		problems = append(problems, errors.New("the source snapshot does not match the ingested input"))
 	}
@@ -262,16 +265,23 @@ func (s *Saver) unit(ctx context.Context, u quantity.Unit, seen map[string]quant
 }
 
 // linkSteps adds the steps of the draft to comps with ids unique across the
-// recipe: s1, s2, ... in reading order.
+// recipe: s1, s2, ... in reading order. A draft step's DependsOn numbers are
+// those ids' numbers, so they map straight onto step ids.
 func linkSteps(comps []recipe.Component, from []Component) {
 	n := 0
 	for ci, dc := range from {
 		for _, st := range dc.Steps {
 			n++
-			comps[ci].Steps = append(comps[ci].Steps, recipe.Step{ID: recipe.StepID(fmt.Sprintf("s%d", n)), Text: st.Text, Duration: st.Duration})
+			step := recipe.Step{ID: stepID(n), Text: st.Text, Duration: st.Duration, Passive: st.Passive}
+			for _, dep := range st.DependsOn {
+				step.DependsOn = append(step.DependsOn, stepID(dep))
+			}
+			comps[ci].Steps = append(comps[ci].Steps, step)
 		}
 	}
 }
+
+func stepID(n int) recipe.StepID { return recipe.StepID(fmt.Sprintf("s%d", n)) }
 
 func toRecipe(d Draft, comps []recipe.Component, links []recipe.EquipmentLink) recipe.Recipe {
 	r := recipe.Recipe{

@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -45,6 +46,8 @@ type Request struct {
 //   - Equipment is read only when the Equipment gap is set.
 //   - When Components is set the draft has no ingredient lines, and the answer's
 //     components are the recipe's, in full.
+//   - StepGraph is read only for the steps listed in Steps; an entry for any
+//     other step is ignored.
 //   - Otherwise the answer's ingredient entries, read across its components in
 //     order, are one replacement for each of Lines, in order. A different count
 //     is an invalid answer.
@@ -54,9 +57,11 @@ type Gaps struct {
 	Components                                          bool
 	Lines                                               []GapLine
 	// Steps is where step-graph gaps go: the dependencies and passive flag of
-	// every step whose graph is the default (ADR-00020 decision 1). Nothing
-	// fills it yet (#190).
-	Steps []GapStep
+	// every step whose graph is the default (ADR-00020 decision 1). StepTexts is
+	// every step of the recipe in reading order, so a dependency can name one;
+	// it is set with Steps and carries no other part of the draft.
+	Steps     []GapStep
+	StepTexts []string
 }
 
 // GapLine is one ingredient line below the threshold. Component and Line
@@ -66,10 +71,12 @@ type GapLine struct {
 	Raw             string
 }
 
-// GapStep is one step whose graph the rules left at the default. Reserved for
-// #190; the fallback sends none yet.
+// GapStep is one step whose graph the rules left at the default. Component and
+// Step locate it (both from 0); Number is its place in reading order across the
+// whole recipe, from 1, which is how the answer names it.
 type GapStep struct {
 	Component, Step int
+	Number          int
 	Text            string
 }
 
@@ -107,8 +114,16 @@ func (g Gaps) Describe() string {
 			fmt.Fprintf(&b, "  %d. %s\n", i+1, l.Raw)
 		}
 	}
-	for _, st := range g.Steps {
-		fmt.Fprintf(&b, "- step needing dependencies: %s\n", st.Text)
+	if len(g.Steps) > 0 {
+		b.WriteString("- step graph. The recipe's steps are numbered in reading order:\n")
+		for i, text := range g.StepTexts {
+			fmt.Fprintf(&b, "  %d. %s\n", i+1, text)
+		}
+		nums := make([]string, len(g.Steps))
+		for i, st := range g.Steps {
+			nums[i] = strconv.Itoa(st.Number)
+		}
+		fmt.Fprintf(&b, "  Return one step_graph entry for each of steps %s, and none for the others: passive is true when the cook can leave the step unattended (baking, resting, simmering), and depends_on lists the numbers of earlier steps that must finish before it starts, empty when it can start at once. Steps that can run alongside each other do not depend on one another.\n", strings.Join(nums, ", "))
 	}
 	b.WriteString("The name field is always required: if the name is not listed as missing, repeat it as the source gives it.\n\n")
 	return b.String()
@@ -130,6 +145,19 @@ type Structured struct {
 	// oven"); each is matched to the catalog like a source's own tool list.
 	Equipment  []string              `json:"equipment,omitempty"`
 	Components []StructuredComponent `json:"components"`
+	// StepGraph answers the step-graph gap of a request: the passive flag and
+	// dependencies of the steps it listed (ADR-00020 decision 1). Steps are
+	// numbered from 1 in reading order across the whole recipe.
+	StepGraph []StructuredStep `json:"step_graph,omitempty"`
+}
+
+// StructuredStep is the graph of one step in a provider's answer. DependsOn
+// lists earlier step numbers and is empty, not absent, for a step that can
+// start at once.
+type StructuredStep struct {
+	Step      int   `json:"step"`
+	Passive   bool  `json:"passive"`
+	DependsOn []int `json:"depends_on"`
 }
 
 // StructuredComponent is one named part of a provider's recipe; Name is empty

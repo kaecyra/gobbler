@@ -70,6 +70,7 @@ func (p *Pipeline) assemble(ctx context.Context, src Source, res extract.Result)
 	default:
 		structure = a.requiredStructure()
 	}
+	inferGraph(d.Components)
 	set := newEquipmentSet()
 	if res.Recipe != nil {
 		for _, t := range res.Recipe.Tools {

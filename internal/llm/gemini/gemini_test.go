@@ -187,6 +187,25 @@ func TestRequestShape(t *testing.T) {
 			t.Error("a gap-fill request must not carry the whole rule-based draft")
 		}
 	})
+	t.Run("a step-graph gap sends the numbered steps and the schema offers step_graph", func(t *testing.T) { // ADR-00020 decision 1
+		got := structure(t, ingest.Request{Text: "x", Gaps: ingest.Gaps{
+			Steps:     []ingest.GapStep{{Number: 2, Text: "STEP-TWO-MARKER"}},
+			StepTexts: []string{"STEP-ONE-MARKER", "STEP-TWO-MARKER"},
+		}})
+		body := mustJSON(t, got.body)
+		for _, want := range []string{"STEP-ONE-MARKER", "STEP-TWO-MARKER", "step_graph", "depends_on", "passive"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%q not sent: %s", want, body)
+			}
+		}
+		cfg, _ := got.body["generationConfig"].(map[string]any)
+		schema, _ := cfg["responseSchema"].(map[string]any)
+		for _, r := range schema["required"].([]any) {
+			if r == "step_graph" {
+				t.Error("step_graph is required: only a step-graph gap asks for it")
+			}
+		}
+	})
 	t.Run("the rule-based draft is sent as context", func(t *testing.T) {
 		got := structure(t, ingest.Request{Text: "x", RuleDraft: ingest.Draft{Name: ingest.Field[string]{Value: "Rule Name Marker"}}})
 		if !strings.Contains(mustJSON(t, got.body), "Rule Name Marker") {

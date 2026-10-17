@@ -19,6 +19,7 @@ Rules:
 - Split into named components only when the source does (for example "For the sauce"); otherwise use a single component with no name.
 - List the equipment the recipe uses (for example "Dutch oven", "9-inch springform pan") in the equipment list, one per entry, only when the source names it. Name the equipment alone, without quantities or notes.
 - Use only what the source states. Leave a field out rather than guessing.
+- A step graph is asked for only when the list of gaps asks for it: then fill step_graph, numbering steps from 1 in reading order across the whole recipe. Otherwise leave step_graph out.
 - A rule-based reading of the source may be supplied. It can be wrong or incomplete; the source is authoritative.
 - Instead of a reading you may be given a list of gaps. Answer only for those gaps, exactly as the list asks; everything else is already settled and is ignored.`
 
@@ -103,6 +104,20 @@ func recipeSchema() anthropic.ToolInputSchemaParam {
 						"steps":       list("Instructions in order."),
 					},
 					"required":             []string{"ingredients"},
+					"additionalProperties": false,
+				},
+			},
+			"step_graph": map[string]any{
+				"type":        "array",
+				"description": "Passive flag and dependencies of the steps the gaps list names; omit otherwise.",
+				"items": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"step":       map[string]any{"type": "integer", "minimum": 1, "description": "Step number, from 1 in reading order across the whole recipe."},
+						"passive":    map[string]any{"type": "boolean", "description": "True when the cook can leave the step unattended, such as baking or resting."},
+						"depends_on": map[string]any{"type": "array", "description": "Numbers of earlier steps that must finish first; empty when the step can start at once.", "items": map[string]any{"type": "integer", "minimum": 1}},
+					},
+					"required":             []string{"step", "passive", "depends_on"},
 					"additionalProperties": false,
 				},
 			},

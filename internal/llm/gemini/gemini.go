@@ -239,6 +239,19 @@ func responseSchema() *genai.Schema {
 					Required: []string{"ingredients"},
 				},
 			},
+			"step_graph": {
+				Type:        genai.TypeArray,
+				Description: "Passive flag and dependencies of the steps the gaps list names; omit otherwise.",
+				Items: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"step":       {Type: genai.TypeInteger, Description: "Step number, from 1 in reading order across the whole recipe."},
+						"passive":    {Type: genai.TypeBoolean, Description: "True when the cook can leave the step unattended, such as baking or resting."},
+						"depends_on": {Type: genai.TypeArray, Description: "Numbers of earlier steps that must finish first; empty when the step can start at once.", Items: &genai.Schema{Type: genai.TypeInteger}},
+					},
+					Required: []string{"step", "passive", "depends_on"},
+				},
+			},
 		},
 		Required: []string{"name", "components"},
 	}
