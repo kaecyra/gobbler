@@ -1796,7 +1796,7 @@
       "wave": 9,
       "track": null,
       "issue": 190,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-parser-version",
         "i-llm-gap-fill"
@@ -2804,6 +2804,15 @@
       "title": "Three comments still say a guard takes the write lock",
       "merged": "c6f5b118d7eabb1c955a5a47bf7a83b3e3f72178",
       "note": "Comment-only. Since #213 write transactions begin IMMEDIATE; reword the reason each guard gives. Regenerate shoppingdb with make generate."
+    },
+    {
+      "id": "i-step-graph",
+      "title": "infer step dependencies and passive steps",
+      "merged": "60fa063984a5ae640c8ce84e3c72a49c3a213a2a",
+      "adrs": [
+        "00020"
+      ],
+      "note": "ADR-00020 decision 1: rules build the graph (linear default, passive vocabulary, 'meanwhile' breaks the chain); the LLM fallback may supply dependencies and passive flags for the steps it is asked about. Also rewords the UsedLLM doc comment in draft.go (#228)."
     }
   ],
   "adr_sequence": {
