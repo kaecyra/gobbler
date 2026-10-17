@@ -8,6 +8,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // timeLayout is how a revision time is shown; the store keeps UTC.
@@ -70,13 +71,11 @@ type versionView struct {
 	Current     bool
 	Name        string
 	Description string
-	Author      string
-	SourceURL   string
-	Tags        []string
-	Rating      *int
-	Calories    *int
-	Servings    string
-	Yield       string
+	// Meta is the line under the title, built as the recipe page builds it.
+	Meta     layout.RecipeMeta
+	Tags     []string
+	Servings string
+	Yield    string
 
 	Times []timeRow
 	Total string
@@ -92,16 +91,8 @@ type timeRow struct{ Label, Text string }
 type componentView struct {
 	Name      string
 	Lines     []string
-	Steps     []stepView
+	Steps     []layout.RecipeStepView
 	FirstStep int
-}
-
-type stepView struct {
-	Text string
-	// Note is the duration and the passive marker.
-	Note string
-	// After lists the numbers of the steps this one waits for.
-	After []string
 }
 
 // buildVersion formats doc for display. Quantities are shown as stored: a past
@@ -109,8 +100,8 @@ type stepView struct {
 func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion int64, doc recipe.Recipe) (versionView, error) {
 	v := versionView{
 		ID: id, Version: version, Current: version == currentVersion,
-		Name: doc.Name, Description: doc.Description, Author: doc.Author, SourceURL: doc.SourceURL,
-		Tags: doc.Tags, Rating: doc.Rating, Calories: doc.CaloriesPerServing,
+		Name: doc.Name, Description: doc.Description, Meta: layout.NewRecipeMeta(doc),
+		Tags:     doc.Tags,
 		Servings: doc.Servings.String(),
 		Yield:    strings.TrimSpace(doc.Yield.Qty.String() + " " + doc.Yield.Unit),
 	}
@@ -138,11 +129,7 @@ func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion 
 			cv.Lines = append(cv.Lines, line.Text)
 		}
 		for _, s := range c.Steps {
-			sv := stepView{Text: s.Text, Note: display.StepNote(s)}
-			for _, dep := range s.DependsOn {
-				sv.After = append(sv.After, strconv.Itoa(number[dep]))
-			}
-			cv.Steps = append(cv.Steps, sv)
+			cv.Steps = append(cv.Steps, layout.NewRecipeStepView(s, number, nil))
 		}
 		v.Components = append(v.Components, cv)
 	}
@@ -164,4 +151,13 @@ func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion 
 	return v, nil
 }
 
-func joinSteps(nums []string) string { return strings.Join(nums, ", ") }
+// hasLines reports whether any component has an ingredient line, so a version
+// of steps alone shows no empty Ingredients heading.
+func (v versionView) hasLines() bool {
+	for _, c := range v.Components {
+		if len(c.Lines) > 0 {
+			return true
+		}
+	}
+	return false
+}

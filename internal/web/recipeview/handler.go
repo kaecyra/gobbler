@@ -34,6 +34,10 @@ type Recipes interface {
 	// (ADR-00021). Thumbnail is by recipe, never by video ID.
 	HasThumbnail(ctx context.Context, videoID string) (bool, error)
 	Thumbnail(ctx context.Context, id int64) (store.Thumbnail, error)
+	// ListNotes and ListMadeIt feed the tips (pinned notes) and the made
+	// count on the page (ADR-00022).
+	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
+	ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error)
 }
 
 // Catalog is what the view reads from the ingredient and equipment catalog.
@@ -139,6 +143,17 @@ func handle(d Deps) http.HandlerFunc {
 			}
 			v.HasThumbnail = has
 		}
+		notes, err := d.Recipes.ListNotes(r.Context(), id)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load notes of recipe %d: %w", id, err))
+			return
+		}
+		made, err := d.Recipes.ListMadeIt(r.Context(), id)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load made-it log of recipe %d: %w", id, err))
+			return
+		}
+		v.withJournal(notes, made)
 		if info.ClonedFrom != nil {
 			v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
 		}

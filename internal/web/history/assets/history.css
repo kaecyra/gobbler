@@ -1,0 +1,29 @@
+/* History pages (docs/ui/design.md). The recipe document on a version page
+   shares the recipe page's stylesheet; this file is the list and the banner.
+   Colours and radii come from the tokens in app.css. */
+
+.recipe .screen-h { margin-top: 4px; }
+.recipe .screen-h p { margin: 4px 0 0; }
+.back, .recipe .origin a { display: inline-flex; align-items: center; min-height: var(--tap); }
+.recipe .origin { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; margin: 0 0 12px; }
+.versions-h { font-size: 20px; font-weight: 700; margin: 8px 0 12px; }
+
+.history-list { list-style: none; margin: 0; padding: 0; font-size: 15.5px; }
+.history-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 2px 0;
+  border-top: 1px solid var(--line);
+}
+.history-list a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 600; }
+.history-list li span { color: var(--ink-3); }
+.history-list li[data-testid="current-version"] span { color: var(--ink-2); }
+
+.version-banner { margin: 0 0 14px; padding: 8px 14px; border-radius: var(--r); background: var(--sunk); color: var(--ink-2); font-size: 15px; }
+
+.restore { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); }
+.restore h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.restore summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; font-weight: 600; color: var(--wattle-ink); }
+.restore form { margin-top: 8px; }

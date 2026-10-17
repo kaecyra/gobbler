@@ -8,6 +8,9 @@ import (
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout"
+	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
 
 // hintTime is shown on cook and special times of a scaled view (ADR-00005):
@@ -35,18 +38,21 @@ type view struct {
 	ID          int64
 	Name        string
 	Description string
-	Author      string
-	SourceURL   string
+	// Meta is the line under the title; history shows the same for a revision.
+	Meta layout.RecipeMeta
 	// VideoID is the recipe's YouTube video, empty for none. HasThumbnail says
 	// whether a preview image is stored for it; without one the page shows a
 	// plain placeholder (ADR-00021).
 	VideoID      string
 	HasThumbnail bool
 	Tags         []string
-	Rating       *int
-	Calories     *int
-	Servings     string
-	Yield        string
+	// Ribbon is the time ribbon under "Ready in about..."; Empty when no step
+	// has a duration.
+	Ribbon ribbon.Ribbon
+	// Tips are the pinned notes, shown above the steps.
+	Tips     []string
+	Servings string
+	Yield    string
 
 	// Times lists prep, cook and the special times that are set, in that
 	// order; Total is the derived total.
@@ -86,19 +92,10 @@ type timeRow struct {
 type componentView struct {
 	Name  string
 	Lines []display.Line
-	Steps []stepView
+	Steps []layout.RecipeStepView
 	// FirstStep is the number of the component's first step, counted across
 	// components in reading order.
 	FirstStep int
-}
-
-type stepView struct {
-	Text string
-	// Note is the duration and the passive marker, "20 min, passive".
-	Note string
-	// Meanwhile is work offered while this passive step runs (ADR-00004);
-	// empty for every other step and for recipes without a step graph.
-	Meanwhile []display.MeanwhileItem
 }
 
 type equipmentView struct {
@@ -109,10 +106,15 @@ type equipmentView struct {
 // buildView resolves catalog references and applies opts to every line.
 func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o display.Options) (view, error) {
 	v := view{
-		ID: id, Name: r.Name, Description: r.Description, Author: r.Author,
-		SourceURL: r.SourceURL, VideoID: r.VideoID, Tags: r.Tags, Rating: r.Rating, Calories: r.CaloriesPerServing,
+		ID: id, Name: r.Name, Description: r.Description, Meta: layout.NewRecipeMeta(r),
+		VideoID: r.VideoID, Tags: r.Tags,
 		Scaled: o.Scaled(), Multiplier: o.Mult.String(), Opts: o,
 	}
+	var steps []recipe.Step
+	for _, ref := range r.LinearOrder() {
+		steps = append(steps, r.Components[ref.ComponentIndex].Steps[ref.Position-1])
+	}
+	v.Ribbon = ribbon.Build(steps)
 	var err error
 	if v.Servings, err = display.ScaleQty(r.Servings, o); err != nil {
 		return view{}, fmt.Errorf("servings: %w", err)
@@ -155,7 +157,7 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 			cv.Lines = append(cv.Lines, lv)
 		}
 		for _, s := range c.Steps {
-			cv.Steps = append(cv.Steps, stepView{Text: s.Text, Note: display.StepNote(s), Meanwhile: guidance[s.ID]})
+			cv.Steps = append(cv.Steps, layout.NewRecipeStepView(s, number, guidance[s.ID]))
 		}
 		v.Components = append(v.Components, cv)
 	}
@@ -174,4 +176,32 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		v.Equipment = append(v.Equipment, equipmentView{Text: text, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
 	}
 	return v, nil
+}
+
+// withJournal adds what the journal contributes to the page: the pinned notes
+// as tips, and how many times the recipe was made.
+func (v *view) withJournal(notes []store.Note, made []store.MadeIt) {
+	for _, n := range notes {
+		if n.Pinned {
+			v.Tips = append(v.Tips, n.Body)
+		}
+	}
+	v.Meta.Made = len(made)
+}
+
+// readyIn is the time the eyebrow above the ribbon states: the derived total
+// and nothing else. The ribbon's own sum of timed steps is not a total: it
+// skips untimed steps and counts parallel ones twice, and ADR-00004 allows only
+// the three total rules, of which TotalNote says which applied.
+func (v view) readyIn() string { return v.Total }
+
+// hasLines reports whether any component has an ingredient line, so a recipe
+// of steps alone shows no empty Ingredients heading.
+func (v view) hasLines() bool {
+	for _, c := range v.Components {
+		if len(c.Lines) > 0 {
+			return true
+		}
+	}
+	return false
 }

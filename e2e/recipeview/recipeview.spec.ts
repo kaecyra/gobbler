@@ -27,6 +27,7 @@ let meanwhileId = 0;
 let cloneId = 0;
 let bareVideoId = 0;
 let laterId = 0;
+let styledId = 0;
 let thumbnails: Awaited<ReturnType<typeof startThumbnailHost>> | undefined;
 
 test.use({ baseURL: origin });
@@ -39,7 +40,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId } = JSON.parse(out));
   thumbnails = await startThumbnailHost();
   server = spawn(bin, ['serve'], {
     env: {
@@ -333,4 +334,126 @@ test('saving a recipe with a video stores the thumbnail the image host served', 
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toBe('image/jpeg');
   expect(Buffer.compare(await res.body(), THUMBNAIL_JPEG)).toBe(0);
+});
+
+// The mockup design (ADR-00022, docs/ui/design.md).
+
+test('a pinned note shows as a tip with no box, tint or coloured edge, and an unpinned note does not', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  const tip = page.getByTestId('tip');
+  await expect(tip).toHaveCount(1);
+  await expect(tip).toContainText('Salt the ribs the night before.');
+  await expect(page.locator('#recipe')).not.toContainText('Private remark');
+  const style = await tip.evaluate((el) => {
+    const c = getComputedStyle(el);
+    return { left: c.borderLeftWidth, top: c.borderTopWidth, bg: c.backgroundColor, size: parseFloat(getComputedStyle(el.querySelector('p')!).fontSize) };
+  });
+  expect(style.left).toBe('0px');
+  expect(style.top).toBe('0px');
+  expect(style.bg).toBe('rgba(0, 0, 0, 0)');
+  // Full recipe-size text, not a footnote.
+  expect(style.size).toBeGreaterThanOrEqual(19);
+});
+
+test('a recipe without a pinned note shows no tip', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await expect(page.getByTestId('tip')).toHaveCount(0);
+});
+
+test('a step title heads its step', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  const titles = page.getByTestId('step-title');
+  await expect(titles).toHaveText(['Brown the ribs', 'Braise']);
+  await expect(page.getByText('Brown the ribs in two batches.')).toBeVisible();
+});
+
+test('Cook mode sits in the controls row beside the scaler, and Start cooking is nowhere', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  const row = page.locator('.recipe-controls');
+  const cook = row.getByRole('link', { name: 'Cook mode' });
+  await expect(cook).toBeVisible();
+  await expect(row.getByRole('link', { name: '2×' })).toBeVisible();
+  await expect(page.getByText('Start cooking')).toHaveCount(0);
+  await cook.click();
+  await expect(page).toHaveURL(new RegExp(`/recipes/${styledId}/cook$`));
+});
+
+test('the meta row shows meal type, chilis, spoons, made count and the source host', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  await expect(page.getByTestId('meal-type')).toContainText('Main');
+  await expect(page.getByTestId('spice').locator('svg')).toHaveCount(2);
+  await expect(page.getByTestId('spice')).toHaveAttribute('aria-label', 'Medium heat');
+  await expect(page.getByTestId('rating').locator('svg')).toHaveCount(5);
+  await expect(page.getByTestId('rating').locator('svg.on')).toHaveCount(4);
+  await expect(page.getByTestId('made-count')).toHaveText('Made 2×');
+  const source = page.getByTestId('source-link');
+  await expect(source).toContainText('example.com');
+  await expect(source).toHaveAttribute('target', '_blank');
+  await expect(source).toHaveAttribute('rel', /noopener/);
+  // An unrated recipe with no spice or meal type says New and shows nothing else.
+  await page.goto(`/recipes/${id}`);
+  await expect(page.getByTestId('rating-new')).toHaveText('New');
+  await expect(page.getByTestId('spice')).toHaveCount(0);
+  await expect(page.getByTestId('meal-type')).toHaveCount(0);
+});
+
+test('the large ribbon sits under Ready in about, and survives scaling', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  await expect(page.locator('.rtime .eyebrow')).toContainText('Ready in about');
+  const ribbon = page.locator('.rib-big');
+  await expect(ribbon).toBeVisible();
+  await page.getByRole('link', { name: '2×' }).click();
+  await expect(page.getByTestId('servings')).toHaveText('8');
+  await expect(page.locator('.rib-big')).toBeVisible();
+});
+
+test('the meanwhile branch is a tinted callout, not a coloured edge', async ({ page }) => {
+  await page.goto(`/recipes/${meanwhileId}`);
+  const callout = page.getByTestId('meanwhile');
+  const style = await callout.evaluate((el) => {
+    const c = getComputedStyle(el);
+    return { left: c.borderLeftWidth, bg: c.backgroundColor };
+  });
+  expect(style.left).toBe('0px');
+  expect(style.bg).not.toBe('rgba(0, 0, 0, 0)');
+});
+
+// docs/ui/design.md: every interactive control is at least --tap (44px) tall.
+// One assertion per control class, so a failure names the class.
+const TAP = 44;
+const controlClasses: Record<string, string> = {
+  'breadcrumb link': '.crumbs a',
+  'scale and unit links': '.recipe-controls .seg a',
+  'servings field': '.recipe-controls input[name="servings"]',
+  'scale button': '.recipe-controls button',
+  'shopping and cook links': '.recipe-controls a.btn',
+  'source link': 'a.srclink',
+  'journal fields': '#journal select, #journal input[type="text"], #journal textarea',
+  'journal buttons': '#journal button',
+  'recipe tool links': '.tool-links a',
+  'clone button': '.tools button',
+};
+
+test('every control on the recipe page is at least 44px tall', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  await expect(page.locator('#journal')).toBeVisible();
+  for (const [name, selector] of Object.entries(controlClasses)) {
+    const items = page.locator(selector);
+    const n = await items.count();
+    expect(n, `${name} (${selector}) present`).toBeGreaterThan(0);
+    for (let i = 0; i < n; i++) {
+      const box = await items.nth(i).boundingBox();
+      expect(box?.height ?? 0, `${name} #${i} height`).toBeGreaterThanOrEqual(TAP - 0.5);
+    }
+  }
+});
+
+test('every control on a clone page with its origin link is at least 44px tall', async ({ page }) => {
+  await page.goto(`/recipes/${cloneId}`);
+  const links = page.locator('[data-testid="origin"] a');
+  await expect(links).toHaveCount(2);
+  for (let i = 0; i < 2; i++) {
+    const box = await links.nth(i).boundingBox();
+    expect(box?.height ?? 0, `origin link #${i} height`).toBeGreaterThanOrEqual(TAP - 0.5);
+  }
 });

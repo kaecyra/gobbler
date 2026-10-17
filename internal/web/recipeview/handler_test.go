@@ -54,6 +54,12 @@ func (f fakeRecipes) Thumbnail(_ context.Context, id int64) (store.Thumbnail, er
 	return store.Thumbnail{}, fmt.Errorf("recipe %d: %w", id, store.ErrNoThumbnail)
 }
 
+// ListNotes and ListMadeIt: the plain fake has an empty journal; journaled in
+// page_test.go has one.
+func (f fakeRecipes) ListNotes(context.Context, int64) ([]store.Note, error) { return nil, nil }
+
+func (f fakeRecipes) ListMadeIt(context.Context, int64) ([]store.MadeIt, error) { return nil, nil }
+
 type fakeCatalog struct {
 	ingredients map[int64]catalog.Ingredient
 	equipment   map[int64]catalog.Equipment
@@ -443,6 +449,14 @@ type failingRecipes struct{}
 
 func (failingRecipes) Get(context.Context, int64) (recipe.Recipe, error) {
 	return recipe.Recipe{}, errors.New("disk on fire")
+}
+
+func (failingRecipes) ListNotes(context.Context, int64) ([]store.Note, error) {
+	return nil, errors.New("disk on fire")
+}
+
+func (failingRecipes) ListMadeIt(context.Context, int64) ([]store.MadeIt, error) {
+	return nil, errors.New("disk on fire")
 }
 
 func (failingRecipes) Info(context.Context, int64) (store.Info, error) {
