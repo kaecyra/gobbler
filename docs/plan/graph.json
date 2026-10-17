@@ -1888,7 +1888,9 @@
       "owns": [
         "internal/shopping/**check*",
         "internal/web/shopping/**",
-        "e2e/tenancy/tenancy.tenancy.spec.ts"
+        "e2e/tenancy/tenancy.tenancy.spec.ts",
+        "internal/shopping/store_scope_test.go",
+        "e2e/fixtures/routes/tenancy-support.ts"
       ],
       "needs_migration": null,
       "adrs": [],
