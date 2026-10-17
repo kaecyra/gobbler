@@ -603,3 +603,28 @@ test("another household cannot see or watch this household's list or pantry", as
   // The owner still has it.
   expect((await page.request.get(`/shopping/${listID}`)).status()).toBe(200);
 });
+
+test('one tap on a recipe page puts the recipe on the newest list at the page multiplier', async ({ page }) => {
+  // A newer list than the rest, so it is the one the tap lands on.
+  await page.goto('/shopping');
+  await page.locator('#name').fill('E2E One Tap');
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(page).toHaveURL(/\/shopping\/\d+$/);
+  const tapList = page.url().split('/').pop();
+
+  await page.goto(`/recipes/${ids.pancakes}?scale=2`);
+  const add = page.getByTestId('shopping-add');
+  expect((await add.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await add.click();
+  await expect(page).toHaveURL(new RegExp(`/shopping/${tapList}$`));
+  await expect(page.getByText('E2E Pancakes').first()).toBeVisible();
+  const mult = page.getByTestId('entry').locator('input[name="multiplier"]');
+  await expect(mult).toHaveValue('2');
+
+  // Tapping again at another multiplier updates the entry instead of failing.
+  await page.goto(`/recipes/${ids.pancakes}?scale=3`);
+  await page.getByTestId('shopping-add').click();
+  await expect(page).toHaveURL(new RegExp(`/shopping/${tapList}$`));
+  await expect(page.getByTestId('entry')).toHaveCount(1);
+  await expect(page.getByTestId('entry').locator('input[name="multiplier"]')).toHaveValue('3');
+});
