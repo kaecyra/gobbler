@@ -150,6 +150,26 @@ test.describe('theme', () => {
   });
 });
 
+// The header and footer never push the page wider than the screen: tablet,
+// laptop and phone.
+for (const [name, width, height] of [
+  ['tablet', 1024, 768],
+  ['laptop', 1440, 900],
+  ['phone', 390, 844],
+] as const) {
+  test.describe(`at ${name} width`, () => {
+    test.use({ viewport: { width, height } });
+
+    test('the page does not scroll sideways', async ({ page }) => {
+      for (const path of ['/', '/recipes']) {
+        await page.goto(path);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(overflow, path).toBeLessThanOrEqual(0);
+      }
+    });
+  });
+}
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

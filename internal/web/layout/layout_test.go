@@ -47,6 +47,24 @@ func TestPageRendersTitleNavAndContentSlot(t *testing.T) {
 	}
 }
 
+// ADR-00022 obligation 4: each mascot is its own cached SVG file and is shown
+// with an img tag, so no page carries a drawing inline.
+func TestPageInlinesNoMascotDrawing(t *testing.T) {
+	var b bytes.Buffer
+	if err := Page("x").Render(templ.WithChildren(context.Background(), templ.NopComponent), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if !strings.Contains(got, `src="`+MascotHeader+`"`) {
+		t.Errorf("header does not show the mascot from %s:\n%s", MascotHeader, got)
+	}
+	for _, inline := range []string{"<symbol", `id="gob`, "<clipPath", "<use", "M695 1486", "#acafaf"} {
+		if strings.Contains(got, inline) {
+			t.Errorf("page inlines mascot drawing markup %q", inline)
+		}
+	}
+}
+
 func TestWriteErrorMapsStatusAndHidesInternals(t *testing.T) {
 	cases := []struct {
 		name       string
