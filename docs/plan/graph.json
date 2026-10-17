@@ -2262,7 +2262,8 @@
         "internal/store/library*.go",
         "e2e/recipes/**",
         "e2e/home/**",
-        "internal/web/home.go"
+        "internal/web/home.go",
+        "internal/web/web.go"
       ],
       "needs_migration": null,
       "adrs": [],
@@ -2373,7 +2374,8 @@
         "e2e/sharing/**",
         "e2e/catalog/**",
         "e2e/operator/**",
-        "e2e/nonmember/**"
+        "e2e/nonmember/**",
+        "internal/web/static/app.css"
       ],
       "needs_migration": null,
       "adrs": [],
