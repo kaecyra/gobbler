@@ -1,0 +1,16 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Toast",
+    "ingredients": [
+      "2 slices bread"
+    ],
+    "instructions": [
+      {
+        "text": "Toast the bread."
+      }
+    ],
+    "video_id": "dQw4w9WgXcQ"
+  }
+}

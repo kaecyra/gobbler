@@ -111,7 +111,8 @@ func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Dr
 func fromIngest(d ingestcore.Draft, names lookups) draft {
 	low := func(conf float64) bool { return conf < d.Threshold }
 	ed := draft{
-		Name: d.Name.Value, Author: d.Author.Value, Description: d.Description.Value,
+		Video: d.VideoID,
+		Name:  d.Name.Value, Author: d.Author.Value, Description: d.Description.Value,
 		YieldQty: qtyText(d.Yield.Value.Qty), YieldUnit: d.Yield.Value.Unit, Servings: qtyText(d.Servings.Value),
 		Prep: durationText(d.Prep.Value), Cook: durationText(d.Cook.Value), Total: durationText(d.Total.Value),
 		Marks: map[string]mark{},
@@ -204,6 +205,7 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 	out := base
 	out.Name.Value, out.Author.Value, out.Description.Value = rec.Name, rec.Author, rec.Description
 	out.Yield.Value, out.Servings.Value = rec.Yield, rec.Servings
+	out.VideoID = rec.VideoID
 	out.Calories.Value = 0
 	if rec.CaloriesPerServing != nil {
 		out.Calories.Value = *rec.CaloriesPerServing

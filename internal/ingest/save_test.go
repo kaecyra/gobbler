@@ -175,7 +175,7 @@ func (r *recordingStore) CreateWithSnapshots(ctx context.Context, rec recipe.Rec
 	return r.RecipeStore.CreateWithSnapshots(ctx, rec, snaps...)
 }
 
-type failingStore struct{}
+type failingStore struct{ RecipeStore }
 
 func (failingStore) CreateWithSnapshots(context.Context, recipe.Recipe, ...store.SnapshotInput) (int64, error) {
 	return 0, errors.New("disk full")

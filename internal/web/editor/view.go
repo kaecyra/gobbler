@@ -26,13 +26,13 @@ func (v view) reviewing() bool { return v.Review != nil }
 // ingest.Draft and Saver.Save keep; a control for anything else is left out
 // rather than shown and silently dropped on confirm. This is the one place
 // that filters the hidden controls: when the draft learns to carry
-// tags, a video or equipment links, switch the group on here.
+// tags or equipment links, switch the group on here.
 func (v view) carries(g controlGroup) bool {
 	if !v.reviewing() {
 		return true
 	}
 	switch g {
-	case groupPlacement, groupStepGraph:
+	case groupPlacement, groupStepGraph, groupVideo:
 		return true
 	}
 	return false
@@ -47,8 +47,11 @@ const (
 	groupPlacement controlGroup = iota
 	// groupVersion: the stale-save check of a stored recipe.
 	groupVersion
-	// groupSource: the source URL, tags and video of a stored recipe.
+	// groupSource: the source URL and tags of a stored recipe.
 	groupSource
+	// groupVideo: the YouTube video of a recipe; a draft carries it too
+	// (ADR-00021 decision 5).
+	groupVideo
 	// groupScaling: a line's scaling rule.
 	groupScaling
 	// groupStepGraph: a step's dependencies and passive flag.

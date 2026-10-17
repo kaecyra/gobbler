@@ -75,6 +75,12 @@ const RECIPE_PAGE = `<html><head><script type="application/ld+json">
  "recipeInstructions":[{"@type":"HowToStep","text":"Toast the bread."},{"@type":"HowToStep","text":"Butter it."}]}
 </script></head><body><h1>Fixture Toast</h1></body></html>`;
 
+// The same page with a schema.org video, on YouTube and on another host
+// (ADR-00021 decision 5).
+const pageWithVideo = (embedUrl: string) =>
+  RECIPE_PAGE.replace('"name":"Fixture Toast",', `"name":"Fixture Toast","video":{"@type":"VideoObject","name":"How","embedUrl":"${embedUrl}"},`);
+const YOUTUBE_ID = 'dQw4w9WgXcQ';
+
 let fixture: Server;
 let fixtureURL: string;
 
@@ -83,6 +89,9 @@ test.beforeAll(async () => {
     if (req.url === '/toast') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(RECIPE_PAGE);
+    } else if (req.url === '/toast-youtube' || req.url === '/toast-vimeo') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(pageWithVideo(req.url === '/toast-youtube' ? `https://www.youtube.com/embed/${YOUTUBE_ID}` : 'https://player.vimeo.com/video/1'));
     } else {
       res.writeHead(404, { 'content-type': 'text/plain' });
       res.end('no such page');
@@ -310,4 +319,33 @@ test('a failed fetch shows a message on the form and no draft', async ({ page })
   await expect(page.getByRole('alert')).toContainText('Could not fetch that page');
   await expect(page.getByLabel('Recipe URL')).toHaveValue(`${fixtureURL}/missing`);
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toHaveCount(0);
+});
+
+test('a YouTube video in the page markup reaches the review screen and is saved on confirm', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Recipe URL').fill(`${fixtureURL}/toast-youtube`);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+
+  await expect(page.getByLabel('YouTube video (link or ID, optional)')).toHaveValue(YOUTUBE_ID);
+  // The review offers the video, not the stored recipe's other source fields.
+  await expect(page.locator('[name="tags"]')).toHaveCount(0);
+  await expect(page.locator('[name="source_url"]')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await expect(page).toHaveURL(/\/recipes\/\d+$/);
+  await expect(page.getByTestId('video')).toHaveCount(1);
+});
+
+test('a video on another host is not drafted, and the review field starts empty', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Recipe URL').fill(`${fixtureURL}/toast-vimeo`);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByLabel('YouTube video (link or ID, optional)')).toHaveValue('');
+});
+
+test('a page with no video leaves the review video field empty', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Recipe URL').fill(`${fixtureURL}/toast`);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByLabel('YouTube video (link or ID, optional)')).toHaveValue('');
 });

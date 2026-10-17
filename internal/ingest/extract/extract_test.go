@@ -514,3 +514,30 @@ func BenchmarkRenderMarkupUnclosedTags(b *testing.B) {
 		renderMarkup(in)
 	}
 }
+
+func TestJSONLDVideo(t *testing.T) {
+	const id = "dQw4w9WgXcQ"
+	recipe := func(video string) string {
+		return `<script type="application/ld+json">{"@type":"Recipe","name":"T","recipeIngredient":["x"],"video":` + video + `}</script>`
+	}
+	for name, tc := range map[string]struct{ video, want string }{
+		"embedUrl":              {`{"@type":"VideoObject","name":"n","embedUrl":"https://www.youtube.com/embed/` + id + `"}`, id},
+		"contentUrl watch":      {`{"@type":"VideoObject","contentUrl":"https://www.youtube.com/watch?v=` + id + `"}`, id},
+		"url short link":        {`{"url":"https://youtu.be/` + id + `"}`, id},
+		"nocookie embed":        {`{"embedUrl":"https://www.youtube-nocookie.com/embed/` + id + `"}`, id},
+		"bare string":           {`"https://youtu.be/` + id + `"`, id},
+		"array skips other":     {`[{"embedUrl":"https://player.vimeo.com/video/1"},{"embedUrl":"https://youtu.be/` + id + `"}]`, id},
+		"other host ignored":    {`{"embedUrl":"https://player.vimeo.com/video/1","contentUrl":"https://vimeo.com/1"}`, ""},
+		"name is not a link":    {`{"name":"https://youtu.be/` + id + `"}`, ""},
+		"not a video id":        {`{"embedUrl":"https://www.youtube.com/embed/short"}`, ""},
+		"empty":                 {`{}`, ""},
+		"thumbnail is not link": {`{"thumbnailUrl":"https://i.ytimg.com/vi/` + id + `/hqdefault.jpg"}`, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := mustExtract(t, recipe(tc.video), "").Recipe
+			if r == nil || r.VideoID != tc.want {
+				t.Errorf("VideoID = %+v, want %q", r, tc.want)
+			}
+		})
+	}
+}

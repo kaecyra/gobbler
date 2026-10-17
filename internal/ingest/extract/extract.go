@@ -85,6 +85,10 @@ type Raw struct {
 	Tools    []string `json:"tools,omitempty"`
 	Calories string   `json:"calories,omitempty"`
 	ImageURL string   `json:"image_url,omitempty"`
+	// VideoID is the 11-character ID of a YouTube video the page names in its
+	// schema.org "video" property (ADR-00021 decision 5); empty when there is
+	// none or it is on another host. Only the JSON-LD rule reads it.
+	VideoID string `json:"video_id,omitempty"`
 }
 
 // usable reports whether r holds enough to be worth reviewing: a name plus

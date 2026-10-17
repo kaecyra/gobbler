@@ -103,6 +103,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 	d.Prep = duration(raw.PrepDuration)
 	d.Cook = duration(raw.CookDuration)
 	d.Total = duration(raw.TotalDuration)
+	d.VideoID = raw.VideoID
 
 	// A raw recipe lists ingredients once: in the groups a recipe plugin
 	// printed when extract found them, else in the first, unnamed component.

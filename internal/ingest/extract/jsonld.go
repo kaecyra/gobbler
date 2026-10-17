@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	nethtml "golang.org/x/net/html"
+
+	"github.com/kaecyra/gobbler/internal/video"
 )
 
 // extractJSONLD returns the first usable schema.org Recipe found in the page's
@@ -132,11 +134,39 @@ func recipeFromJSONLD(m map[string]any) Raw {
 		r.Ingredients = jsonStrings(m["ingredients"])
 	}
 	r.Tools = jsonStrings(m["tool"])
+	r.VideoID = youTubeID(m["video"])
 	if n, ok := m["nutrition"].(map[string]any); ok {
 		r.Calories = jsonString(n["calories"])
 	}
 	r.Instructions = jsonInstructions(m["recipeInstructions"], "")
 	return r
+}
+
+// youTubeID reads the schema.org "video" property (a VideoObject, a link, or a
+// list of either) into the ID of the first YouTube video it names, or "".
+// Only the address properties of a VideoObject count, never its name or
+// thumbnail, and the link is read by video.ParseID, the one parser of YouTube
+// links; a video on any other host is ignored (ADR-00021 decision 5).
+func youTubeID(v any) string {
+	switch t := v.(type) {
+	case string:
+		if id, err := video.ParseID(t); err == nil && !video.IsID(strings.TrimSpace(t)) {
+			return id
+		}
+	case []any:
+		for _, e := range t {
+			if id := youTubeID(e); id != "" {
+				return id
+			}
+		}
+	case map[string]any:
+		for _, k := range []string{"embedUrl", "contentUrl", "url"} {
+			if id := youTubeID(t[k]); id != "" {
+				return id
+			}
+		}
+	}
+	return ""
 }
 
 func firstOf(s []string) string {
