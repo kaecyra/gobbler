@@ -62,7 +62,8 @@ var parallelRE = regexp.MustCompile(`(?i)^\s*(meanwhile|in the meantime|at the s
 // A step a rule matched is marked GraphCue; the rest have the default graph.
 // Numbers run from 1 across all components, as Step.DependsOn defines. A step
 // the user set (GraphByUser) keeps its graph, whose numbers the caller must
-// translate if the steps were renumbered (see renumberUserGraphs).
+// translate before this runs if the steps were renumbered (see
+// renumberUserGraphs), since a parallel step after it copies its dependencies.
 func inferGraph(comps []Component) {
 	var tails, prev []int
 	n := 0

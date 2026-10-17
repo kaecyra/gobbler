@@ -301,10 +301,12 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 			}
 			d.Components = append(d.Components, c)
 		}
+		// The user's graphs are translated first, so a parallel step after one
+		// copies dependencies that are valid for the new numbering.
+		renumberUserGraphs(d.Components, kept, keptFrom)
 		// Kept and supplied steps alike go through the rules, so the graph is
 		// the same one a rule-based draft of these steps would have.
 		inferGraph(d.Components)
-		renumberUserGraphs(d.Components, kept, keptFrom)
 	}
 	if len(gaps.Steps) > 0 {
 		if err := applyStepGraph(d.Components, gaps.Steps, s.StepGraph); err != nil {
