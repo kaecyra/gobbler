@@ -158,6 +158,12 @@ type Draft struct {
 	Cook        Field[time.Duration]
 	Total       Field[time.Duration]
 
+	// VideoID is the YouTube video the page names in its schema.org markup,
+	// the 11-character ID (ADR-00021 decision 5); empty when there is none or
+	// it is on another host. Only the rules read it, so it carries no
+	// confidence: the review screen shows it and the user may change it.
+	VideoID string
+
 	Components []Component
 
 	// Equipment is what the recipe uses, in reading order, once each.

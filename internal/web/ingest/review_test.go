@@ -36,7 +36,7 @@ func TestReviewIsTheEditorForm(t *testing.T) {
 func TestReviewOffersNoControlTheDraftCannotKeep(t *testing.T) {
 	f := newFixture(t)
 	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
-	for _, absent := range []string{`name="tags"`, `name="video"`, `name="source_url"`, `name="version"`, `<select id="c.0.l.0.rule"`, `name="e.0.qty"`, `name="e.0.step"`} {
+	for _, absent := range []string{`name="tags"`, `name="source_url"`, `name="version"`, `<select id="c.0.l.0.rule"`, `name="e.0.qty"`, `name="e.0.step"`} {
 		if strings.Contains(body, absent) {
 			t.Errorf("review offers %s, which confirm would drop", absent)
 		}
@@ -547,5 +547,66 @@ func TestConfirmGraphFollowsAMovedStep(t *testing.T) {
 	got := savedSteps(f)
 	if len(got) != 3 || got[2].Text != "Mix everything." || deps(got[0]) != "s3" || deps(got[1]) != "s1" {
 		t.Errorf("saved steps = %+v, want Bake after Mix (now step 3) and Cool after Bake (now step 1)", got)
+	}
+}
+
+const reviewVideoID = "dQw4w9WgXcQ"
+
+// The review screen shows the video the page named, and confirming saves it
+// with its thumbnail (ADR-00021 decision 5, ADR-00020 decision 3).
+func TestReviewShowsTheDraftsVideoAndConfirmSavesIt(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft.VideoID = reviewVideoID
+	token := f.ingestText(t)
+	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
+	if !strings.Contains(body, `name="video"`) || !strings.Contains(body, `value="`+reviewVideoID+`"`) {
+		t.Fatal("the review does not show the draft's video in the video field")
+	}
+	form := reviewForm()
+	form.Set("video", reviewVideoID)
+	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+	}
+	if got := f.store.recipes[0].VideoID; got != reviewVideoID {
+		t.Errorf("saved VideoID = %q", got)
+	}
+	if !f.store.thumbs[reviewVideoID] {
+		t.Error("the thumbnail was not kept on save")
+	}
+}
+
+// The user may change or clear the video before confirming.
+func TestConfirmSavesAnEditedOrClearedVideo(t *testing.T) {
+	for name, tc := range map[string]struct{ in, want string }{
+		"pasted link": {"https://youtu.be/" + reviewVideoID, reviewVideoID},
+		"cleared":     {"", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			f.drafter.draft.VideoID = "aaaaaaaaaaa"
+			token := f.ingestText(t)
+			form := reviewForm()
+			form.Set("video", tc.in)
+			if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
+				t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+			}
+			if got := f.store.recipes[0].VideoID; got != tc.want {
+				t.Errorf("saved VideoID = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestConfirmRejectsAVideoThatIsNotYouTube(t *testing.T) {
+	f := newFixture(t)
+	token := f.ingestText(t)
+	form := reviewForm()
+	form.Set("video", "https://vimeo.com/1")
+	rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
+	if rec.Code == http.StatusSeeOther || len(f.store.recipes) != 0 {
+		t.Fatalf("status = %d, saved %d", rec.Code, len(f.store.recipes))
+	}
+	if !strings.Contains(rec.Body.String(), "not a YouTube video") {
+		t.Errorf("no message for the video field: %s", rec.Body)
 	}
 }

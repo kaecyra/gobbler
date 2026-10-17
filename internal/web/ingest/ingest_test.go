@@ -26,6 +26,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -59,6 +60,31 @@ type fakeStore struct {
 	known     map[string]catalog.Ingredient
 	// createdEquipment are the names of equipment a save created.
 	createdEquipment []string
+	// thumbs are the video IDs whose thumbnail a save stored.
+	thumbs map[string]bool
+}
+
+func (s *fakeStore) HasThumbnail(_ context.Context, id string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.thumbs[id], nil
+}
+
+func (s *fakeStore) SaveThumbnail(_ context.Context, id string, _ []byte, _ string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.thumbs == nil {
+		s.thumbs = map[string]bool{}
+	}
+	s.thumbs[id] = true
+	return nil
+}
+
+// stubThumbs stands in for YouTube's image host, so no test reaches the network.
+type stubThumbs struct{}
+
+func (stubThumbs) Fetch(_ context.Context, id string) (video.Thumbnail, error) {
+	return video.Thumbnail{Content: []byte("jpeg:" + id), ContentType: "image/jpeg"}, nil
 }
 
 func newFakeStore() *fakeStore {
@@ -206,7 +232,7 @@ func newFixture(t *testing.T) *fixture {
 	d := &fakeDrafter{draft: sampleDraft()}
 	h := &handler{
 		drafter: d,
-		saver:   ingestcore.NewSaver(st, st),
+		saver:   ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
 		unsaved: editor.NewUnsaved(st),
 		pending: newPendingDrafts(time.Now),
 		log:     slog.New(slog.NewJSONHandler(io.Discard, nil)),

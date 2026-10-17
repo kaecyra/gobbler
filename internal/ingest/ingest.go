@@ -37,7 +37,7 @@ import (
 // ParserVersion identifies the rules that produce a Draft. Bump it with any
 // change to extraction, parsing or scoring that can change a draft, so a draft
 // can be told apart from one made by older rules.
-const ParserVersion = "5"
+const ParserVersion = "6"
 
 // Deps are the collaborators a Pipeline needs. Each is an interface sized to
 // what this package calls, so tests substitute at the boundary.

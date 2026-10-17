@@ -10,6 +10,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 )
 
 var (
@@ -77,6 +78,9 @@ func Confirm(d Draft) (Confirmed, error) {
 // it. The recipe and its snapshot are written in one transaction, so neither
 // can exist without the other.
 type RecipeStore interface {
+	// HasThumbnail and SaveThumbnail keep the preview image of the recipe's
+	// video (ADR-00021 decision 3).
+	video.ThumbnailStore
 	CreateWithSnapshots(ctx context.Context, r recipe.Recipe, snaps ...store.SnapshotInput) (int64, error)
 }
 
@@ -93,6 +97,16 @@ type CatalogWriter interface {
 type Saver struct {
 	recipes RecipeStore
 	catalog CatalogWriter
+	// thumbs downloads a video's thumbnail; nil means YouTube's image host.
+	thumbs video.ThumbnailSource
+}
+
+// WithThumbnails returns s downloading video thumbnails from src instead of
+// YouTube's image host. It exists so a test can stand in for the network.
+func (s *Saver) WithThumbnails(src video.ThumbnailSource) *Saver {
+	c := *s
+	c.thumbs = src
+	return &c
 }
 
 // NewSaver returns a Saver over the recipe store and the catalog.
@@ -165,6 +179,7 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 		return Saved{}, fmt.Errorf("save recipe %q with its %s snapshot, recipe not stored: %w", d.Name.Value, d.Source.Kind, err)
 	}
 	out.RecipeID = id
+	video.KeepThumbnail(ctx, s.recipes, s.thumbs, id, d.VideoID)
 	return out, nil
 }
 
@@ -294,6 +309,7 @@ func toRecipe(d Draft, comps []recipe.Component, links []recipe.EquipmentLink) r
 		Times:       recipe.Times{Prep: d.Prep.Value, Cook: d.Cook.Value, Total: d.Total.Value},
 		Components:  comps,
 		Equipment:   links,
+		VideoID:     d.VideoID,
 	}
 	if d.Calories.Value > 0 {
 		n := d.Calories.Value

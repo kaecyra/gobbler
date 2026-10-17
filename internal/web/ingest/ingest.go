@@ -33,6 +33,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -68,6 +69,9 @@ type Deps struct {
 	Provider ingestcore.Provider
 	// Logger receives this package's logs; the default is slog.Default().
 	Logger *slog.Logger
+	// Thumbnails downloads the preview image of a saved recipe's video; nil
+	// means YouTube's image host. Tests substitute a fake here (ADR-00021).
+	Thumbnails video.ThumbnailSource
 }
 
 type handler struct {
@@ -118,7 +122,7 @@ func Routes(d Deps) http.Handler {
 		h.photos = pipeline
 		h.ocr = ocr.Runner{}
 		h.retrier = pipeline.Fallback()
-		h.saver = ingestcore.NewSaver(store.New(d.DB), cat)
+		h.saver = ingestcore.NewSaver(store.New(d.DB), cat).WithThumbnails(d.Thumbnails)
 		h.unsaved = editor.NewUnsaved(cat)
 	}
 	return h.routes()
