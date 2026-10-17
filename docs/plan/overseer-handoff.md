@@ -6,13 +6,11 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Round 12 (2026-10-17, in progress)
 
-**Merged:** #229 graph (nodes r-write-lock-comments #221, r-thumbnail-everywhere #226, i-review-steps #230; i-step-graph lane widened onto `internal/ingest/{draft,assemble*,llm,ingest}.go`); #231 r-write-lock-comments (c6f5b11); #232 i-step-graph (60fa063); #233 i-review-edit, also closed #228 (23f4929). VERSION on main 0.58.0.
+**Merged:** #229 graph (nodes r-write-lock-comments #221, r-thumbnail-everywhere #226, i-review-steps #230; i-step-graph lane widened); #231 r-write-lock-comments (c6f5b11); #232 i-step-graph (60fa063); #233 i-review-edit, also closed #228 (23f4929); #234 i-review-steps (8d54a9b); #238 r-thumbnail-everywhere (5c7736d). Graph PRs #235, #236 (i-review-steps lane), #237 (i-video-extract after thumbnail), #239 (i-video-extract lane gains `internal/web/editor/**`, `internal/ingest/ingest.go`). VERSION on main 0.59.1.
 
-**Known gap on main until #230 lands:** confirming a reviewed draft drops the inferred step graph (`toIngest` in `internal/web/editor/review.go`). Never deployed, so not a blocker.
+**In flight:** i-video-extract (#199), worktree `wt-199`, worker dispatched; bumps 0.60.0. It is the last dispatchable node: after it only #193 (parked) and #38 (needs an ADR) remain.
 
-**In flight:** i-review-steps (#230), worktree `wt-230`, worker dispatched; bumps 0.59.0.
-
-**Next:** r-thumbnail-everywhere (#226) after #230, then i-video-extract (#199).
+**Process note:** the #230 worker edited `internal/ingest/fallback.go` outside its lane before asking; the lane was widened after the fact (#236) since only merged nodes owned it.
 
 **Unverified call:** the passive vocabulary in `internal/ingest/steps.go` took three review rounds; precision was favoured, so phrasings like "simmer gently" after "and" fall to the LLM as default steps.
 
