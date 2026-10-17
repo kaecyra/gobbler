@@ -2013,6 +2013,24 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Find the writer that holds the lock past busy_timeout or bypasses WithTx; fix at the db layer. A cause in another package is out of lane: stop and report it with file:line."
+    },
+    {
+      "id": "r-write-queue-cleanup",
+      "title": "every write goes through db.WithTx; comments stop claiming a write must come first",
+      "wave": 9,
+      "track": null,
+      "issue": 212,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/household/store*.go",
+        "internal/household/queries/**",
+        "internal/store/store.go",
+        "internal/shopping/store.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Route the three autocommit writes in internal/household/store.go through db.WithTx. With write transactions beginning IMMEDIATE (#213), reword the comments at lockRecipe (internal/store/store.go), lockList (internal/shopping/store.go) and the ClaimInvitation query doc that say a write must be the first statement. Keep the guards themselves: removing them touches call sites outside this lane."
     }
   ],
   "shared_files": [
