@@ -280,3 +280,14 @@ func (v view) readyIn() string {
 	}
 	return display.FormatDuration(v.Ribbon.Total)
 }
+
+// hasLines reports whether any component has an ingredient line, so a recipe
+// of steps alone shows no empty Ingredients heading.
+func (v view) hasLines() bool {
+	for _, c := range v.Components {
+		if len(c.Lines) > 0 {
+			return true
+		}
+	}
+	return false
+}

@@ -165,3 +165,14 @@ func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion 
 }
 
 func joinSteps(nums []string) string { return strings.Join(nums, ", ") }
+
+// hasLines reports whether any component has an ingredient line, so a version
+// of steps alone shows no empty Ingredients heading.
+func (v versionView) hasLines() bool {
+	for _, c := range v.Components {
+		if len(c.Lines) > 0 {
+			return true
+		}
+	}
+	return false
+}

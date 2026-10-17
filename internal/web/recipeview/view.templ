@@ -222,6 +222,7 @@ templ recipeBody(v view) {
 						</ul>
 					</section>
 				}
+if v.hasLines() {
 				<section aria-labelledby="ingredients-h">
 					<h2 id="ingredients-h" class="eyebrow">Ingredients</h2>
 					for _, c := range v.Components {
@@ -248,6 +249,7 @@ templ recipeBody(v view) {
 						}
 					}
 				</section>
+}
 			</div>
 			<section class="method" aria-labelledby="steps-h">
 				<h2 id="steps-h" class="sr">Steps</h2>

@@ -161,6 +161,7 @@ templ versionPage(v versionView) {
 							</ul>
 						</section>
 					}
+if v.hasLines() {
 					<section aria-labelledby="ingredients-h">
 						<h2 id="ingredients-h" class="eyebrow">Ingredients</h2>
 						for _, c := range v.Components {
@@ -178,6 +179,7 @@ templ versionPage(v versionView) {
 							}
 						}
 					</section>
+}
 				</div>
 				<section class="method" aria-labelledby="steps-h">
 					<h2 id="steps-h" class="sr">Steps</h2>

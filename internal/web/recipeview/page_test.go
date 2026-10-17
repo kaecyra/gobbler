@@ -135,3 +135,9 @@ func TestComponentWithNoIngredientLinesHasNoIngredientHeading(t *testing.T) {
 	}
 	mustContain(t, body, `<h3 class="part">Glaze</h3>`)
 }
+
+func TestRecipeOfStepsAloneHasNoIngredientsHeading(t *testing.T) {
+	body := page(t, fakeRecipes{3: doughAndSauce()}, "/recipes/3")
+	mustNotContain(t, body, "Ingredients")
+	mustContain(t, body, "Equipment"[:0]+"Mix the dough.")
+}
