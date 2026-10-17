@@ -123,6 +123,7 @@
 .cook-meanwhile { width: 100%; margin-top: 0; }
 .cook-meanwhile ul { padding: 0; list-style: none; }
 .cook-meanwhile li { padding: 4px 0; }
+.cook-meanwhile a { display: inline-flex; align-items: center; min-height: var(--tap); }
 
 .cook-timers {
   grid-area: side;
@@ -215,7 +216,9 @@
 }
 
 .cook-upnext a {
-  display: block;
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
   margin-top: 2px;
   color: var(--ink);
   font-size: 16.5px;
@@ -257,6 +260,7 @@
   border-top: 1px solid var(--line);
 }
 
+.cook-steps a { display: inline-flex; align-items: center; min-height: var(--tap); }
 .cook-steps a[aria-current="step"] { font-weight: 700; }
 
 .cook-wake { grid-area: wake; margin: 0; padding: 0 22px 14px; }
