@@ -1,0 +1,39 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Layer Cake",
+    "ingredients": [
+      "2 cups flour",
+      "1 cup sugar",
+      "1 cup butter",
+      "2 cups icing sugar"
+    ],
+    "ingredient_groups": [
+      {
+        "name": "Cake",
+        "lines": [
+          "2 cups flour",
+          "1 cup sugar"
+        ]
+      },
+      {
+        "name": "Frosting",
+        "lines": [
+          "1 cup butter",
+          "2 cups icing sugar"
+        ]
+      }
+    ],
+    "instructions": [
+      {
+        "section": "Cake",
+        "text": "Bake the cake."
+      },
+      {
+        "section": "Frosting",
+        "text": "Beat the frosting."
+      }
+    ]
+  }
+}

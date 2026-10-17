@@ -1,0 +1,46 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Filled Buns",
+    "yield": [
+      "8"
+    ],
+    "ingredients": [
+      "3 cups flour",
+      "1 tsp salt",
+      "1 lb pork, minced",
+      "2 tbsp soy sauce"
+    ],
+    "ingredient_groups": [
+      {
+        "name": "For the dough",
+        "lines": [
+          "3 cups flour",
+          "1 tsp salt"
+        ]
+      },
+      {
+        "name": "For the filling",
+        "lines": [
+          "1 lb pork, minced",
+          "2 tbsp soy sauce"
+        ]
+      }
+    ],
+    "instructions": [
+      {
+        "section": "Dough",
+        "text": "Mix the dough."
+      },
+      {
+        "section": "Filling",
+        "text": "Mix the filling."
+      },
+      {
+        "section": "Finish",
+        "text": "Fill and steam."
+      }
+    ]
+  }
+}

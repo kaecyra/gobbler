@@ -1,0 +1,35 @@
+{
+  "method": "microdata",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Rice Bowl",
+    "ingredients": [
+      "1 cup rice",
+      "2 cups water",
+      "1 egg"
+    ],
+    "ingredient_groups": [
+      {
+        "name": "Rice",
+        "lines": [
+          "1 cup rice",
+          "2 cups water"
+        ]
+      },
+      {
+        "name": "Topping",
+        "lines": [
+          "1 egg"
+        ]
+      }
+    ],
+    "instructions": [
+      {
+        "text": "Cook the rice."
+      },
+      {
+        "text": "Top with the egg."
+      }
+    ]
+  }
+}

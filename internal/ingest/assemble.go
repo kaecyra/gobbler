@@ -95,14 +95,35 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 	d.Cook = duration(raw.CookDuration)
 	d.Total = duration(raw.TotalDuration)
 
-	// A raw recipe lists ingredients once, so they go to the first,
-	// unnamed component; steps that name a section get a component of their
-	// own, in source order.
+	// A raw recipe lists ingredients once: in the groups a recipe plugin
+	// printed when extract found them, else in the first, unnamed component.
+	// Steps that name a section get a component of their own, in source order,
+	// or join the ingredient group of the same name.
 	comps := []Component{{}}
 	byName := map[string]int{}
-	for _, text := range raw.Ingredients {
-		if l, ok := a.line(text); ok {
-			comps[0].Lines = append(comps[0].Lines, l)
+	if len(raw.IngredientGroups) > 0 {
+		comps = comps[:0]
+		for _, g := range raw.IngredientGroups {
+			name := strings.TrimSpace(g.Name)
+			i, ok := byName[strings.ToLower(name)]
+			if !ok {
+				comps = append(comps, Component{Name: name})
+				i = len(comps) - 1
+				if name != "" {
+					byName[strings.ToLower(name)] = i
+				}
+			}
+			for _, text := range g.Lines {
+				if l, ok := a.line(text); ok {
+					comps[i].Lines = append(comps[i].Lines, l)
+				}
+			}
+		}
+	} else {
+		for _, text := range raw.Ingredients {
+			if l, ok := a.line(text); ok {
+				comps[0].Lines = append(comps[0].Lines, l)
+			}
 		}
 	}
 	for _, s := range raw.Instructions {
