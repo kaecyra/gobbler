@@ -20,6 +20,8 @@ type Note struct {
 	CreatedAt time.Time
 	// CreatedBy is the verified identity that wrote it.
 	CreatedBy string
+	// Pinned marks the note as a tip, shown in the recipe view (ADR-00022).
+	Pinned bool
 }
 
 // MadeIt is one entry in a recipe's made-it log. On is a calendar date; the
@@ -83,8 +85,16 @@ func (s *Store) ListNotes(ctx context.Context, id int64) ([]Note, error) {
 		if err != nil {
 			return readErr("notes", err)
 		}
+		pins, err := q.ListPinnedNoteIDs(ctx, storedb.ListPinnedNoteIDsParams{RecipeID: id, HouseholdID: hid})
+		if err != nil {
+			return readErr("pinned notes", err)
+		}
+		pinned := make(map[int64]bool, len(pins))
+		for _, pid := range pins {
+			pinned[pid] = true
+		}
 		for _, r := range rows {
-			n := Note{ID: r.ID, RecipeID: id, Body: r.Body, CreatedBy: r.CreatedBy}
+			n := Note{ID: r.ID, RecipeID: id, Body: r.Body, CreatedBy: r.CreatedBy, Pinned: pinned[r.ID]}
 			if n.CreatedAt, err = parseTime(r.CreatedAt); err != nil {
 				return readErr("notes", err)
 			}
@@ -96,6 +106,29 @@ func (s *Store) ListNotes(ctx context.Context, id int64) ([]Note, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// SetNotePinned pins note noteID of recipe id as a tip, or unpins it. A missing
+// recipe or note, one of another household, or a note of another recipe is
+// ErrNotFound.
+func (s *Store) SetNotePinned(ctx context.Context, id, noteID int64, pinned bool) error {
+	if _, err := identity(ctx); err != nil {
+		return err
+	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
+	return s.withTx(ctx, func(q *storedb.Queries) error {
+		n, err := q.SetNotePinned(ctx, storedb.SetNotePinnedParams{Pinned: boolInt(pinned), ID: noteID, RecipeID: id, HouseholdID: hid})
+		if err != nil {
+			return fmt.Errorf("pin note %d on recipe %d: %w", noteID, id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("%w: note %d on recipe %d", ErrNotFound, noteID, id)
+		}
+		return nil
+	})
 }
 
 // AddMadeIt logs that recipe id was made. A zero On means today; the other

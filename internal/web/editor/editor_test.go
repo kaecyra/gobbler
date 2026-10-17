@@ -234,6 +234,7 @@ func encode(d draft) url.Values {
 		"name": d.Name, "description": d.Description, "source_url": d.SourceURL, "author": d.Author, "video": d.Video,
 		"yield_qty": d.YieldQty, "yield_unit": d.YieldUnit, "servings": d.Servings, "calories": d.Calories,
 		"tags": d.Tags, "prep": d.Prep, "cook": d.Cook, "total": d.Total,
+		"meal_type": d.MealType, "spice": d.Spice,
 	} {
 		f.Set(k, v)
 	}
@@ -258,6 +259,8 @@ func encode(d draft) url.Values {
 			f.Set(sField(ci, si, "id"), s.ID)
 			f.Set(sField(ci, si, "text"), s.Text)
 			f.Set(sField(ci, si, "dur"), s.Duration)
+			f.Set(sField(ci, si, "kind"), s.Kind)
+			f.Set(sField(ci, si, "title"), s.Title)
 			f.Set(sField(ci, si, "to"), strconv.Itoa(s.To))
 			setFlag(f, sField(ci, si, "passive"), s.Passive)
 			f[sField(ci, si, "dep")] = append([]string(nil), s.Deps...)

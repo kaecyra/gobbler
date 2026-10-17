@@ -124,6 +124,9 @@ func (s *Store) insertRecipe(ctx context.Context, q *storedb.Queries, hid int64,
 	if err := setVideo(ctx, q, hid, id, r.VideoID); err != nil {
 		return 0, err
 	}
+	if err := setRecipeFields(ctx, q, hid, id, r); err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 
@@ -270,6 +273,9 @@ func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, 
 		return wrapWrite("update recipe", err)
 	}
 	if err := setVideo(ctx, q, hid, id, r.VideoID); err != nil {
+		return err
+	}
+	if err := setRecipeFields(ctx, q, hid, id, r); err != nil {
 		return err
 	}
 	if err := clearChildren(ctx, q, hid, id); err != nil {

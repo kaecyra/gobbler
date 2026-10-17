@@ -70,3 +70,16 @@ func stars() []int {
 func stamp(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") + " UTC" }
 
 func starText(n int) string { return strconv.Itoa(n) + " of " + strconv.Itoa(maxRating) }
+
+// pinPath is where the pin toggle of note n posts.
+func (v view) pinPath(n store.Note) string {
+	return v.base() + "/notes/" + strconv.FormatInt(n.ID, 10) + "/pin"
+}
+
+// pinValue is what the toggle of n posts: the opposite of its state.
+func pinValue(n store.Note) string {
+	if n.Pinned {
+		return "0"
+	}
+	return "1"
+}

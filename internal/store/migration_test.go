@@ -248,3 +248,54 @@ func TestMigration00013GivesOldRecipesNoVideoAndRollsBack(t *testing.T) {
 		t.Errorf("recipes after the rollback = %d, want 1 kept", n)
 	}
 }
+
+// Rows stored before 00014 read as having none of the ADR-00022 fields, and
+// rolling the migration back removes the columns.
+func TestMigration00014GivesOldRowsNoFieldsAndRollsBack(t *testing.T) {
+	ctx := context.Background()
+	d := openRaw(t)
+	if err := db.Migrate(ctx, d, migrationsBelow(t, "00014")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO recipes (id, household_id, name, created_at, created_by, updated_at, updated_by) VALUES (7, 1, 'Stew', 't', 'a', 't', 'a')`,
+		`INSERT INTO components (id, household_id, recipe_id, position, name) VALUES (3, 1, 7, 0, '')`,
+		`INSERT INTO steps (id, household_id, recipe_id, component_id, position, step_key, text) VALUES (5, 1, 7, 3, 0, 'a', 'Boil.')`,
+		`INSERT INTO notes (household_id, recipe_id, body, created_at, created_by) VALUES (1, 7, 'thyme', 't', 'a')`,
+	} {
+		if _, err := d.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM recipes WHERE id = 7 AND meal_type = '' AND spice_level IS NULL`); n != 1 {
+		t.Errorf("old recipe rows with no meal type and no spice level = %d, want 1", n)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM steps WHERE id = 5 AND stage_kind = '' AND title = ''`); n != 1 {
+		t.Errorf("old step rows with no stage kind and no title = %d, want 1", n)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM notes WHERE recipe_id = 7 AND pinned = 0`); n != 1 {
+		t.Errorf("old note rows that are unpinned = %d, want 1", n)
+	}
+
+	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.DownTo(ctx, 13); err != nil {
+		t.Fatalf("rolling back 00014: %v", err)
+	}
+	for _, c := range [][2]string{{"recipes", "meal_type"}, {"recipes", "spice_level"}, {"steps", "stage_kind"}, {"steps", "title"}, {"notes", "pinned"}} {
+		if n := count(t, d, `SELECT COUNT(*) FROM pragma_table_info('`+c[0]+`') WHERE name = '`+c[1]+`'`); n != 0 {
+			t.Errorf("%s.%s survived the rollback", c[0], c[1])
+		}
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM steps`); n != 1 {
+		t.Errorf("steps after the rollback = %d, want 1 kept", n)
+	}
+}

@@ -147,6 +147,30 @@ templ metaFields(v view) {
 				</div>
 			}
 		</div>
+		if v.carries(groupRecipeFields) {
+			<div class="grid">
+				<div>
+					<label for="f-meal-type">Meal type</label>
+					<select id="f-meal-type" name="meal_type">
+						<option value="" selected?={ v.D.MealType == "" }>Not set</option>
+						for _, m := range mealOptions() {
+							<option value={ m } selected?={ v.D.MealType == m }>{ m }</option>
+						}
+					</select>
+					@fieldError(v, "meal_type")
+				</div>
+				<div>
+					<label for="f-spice">Spice level</label>
+					<select id="f-spice" name="spice">
+						<option value="" selected?={ v.D.Spice == "" }>Not set</option>
+						for _, n := range spiceOptions() {
+							<option value={ n } selected?={ v.D.Spice == n }>{ n } of 3</option>
+						}
+					</select>
+					@fieldError(v, "spice")
+				</div>
+			</div>
+		}
 		<div class="grid">
 			<div>
 				<label for="f-yield-qty">Yield amount</label>
@@ -319,6 +343,23 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 			<p class="alert" role="alert">{ s.Err }</p>
 		}
 		<input type="hidden" name={ sField(ci, si, "id") } value={ s.ID }/>
+		if v.carries(groupRecipeFields) {
+			<div class="grid">
+				<div>
+					<label for={ sField(ci, si, "title") }>Title (optional)</label>
+					<input id={ sField(ci, si, "title") } type="text" name={ sField(ci, si, "title") } value={ s.Title }/>
+				</div>
+				<div>
+					<label for={ sField(ci, si, "kind") }>Stage kind (optional)</label>
+					<select id={ sField(ci, si, "kind") } name={ sField(ci, si, "kind") }>
+						<option value="" selected?={ s.Kind == "" }>Not set</option>
+						for _, k := range stageOptions() {
+							<option value={ k } selected?={ s.Kind == k }>{ k }</option>
+						}
+					</select>
+				</div>
+			</div>
+		}
 		<label for={ sField(ci, si, "text") }>Instruction</label>
 		<textarea id={ sField(ci, si, "text") } name={ sField(ci, si, "text") } rows="3">{ s.Text }</textarea>
 		<div class="grid">

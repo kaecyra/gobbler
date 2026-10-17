@@ -214,3 +214,31 @@ test('a recipe that does not exist is a 404', async ({ page }) => {
   const res = await page.goto('/recipes/999999/edit');
   expect(res?.status()).toBe(404);
 });
+
+test('meal type, spice level, stage kind and step title are set in the editor and persist', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('[name="meal_type"]')).toHaveValue('');
+  await expect(page.locator('[name="spice"]')).toHaveValue('');
+  await page.locator('[name="meal_type"]').selectOption('dessert');
+  await page.locator('[name="spice"]').selectOption('0');
+  await page.locator('[name="c.0.s.0.kind"]').selectOption('braise');
+  await page.locator('[name="c.0.s.0.title"]').fill('Start the braise');
+  await save(page);
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('[name="meal_type"]')).toHaveValue('dessert');
+  // Spice 0 is a recipe that is not spicy, which is not the same as unset.
+  await expect(page.locator('[name="spice"]')).toHaveValue('0');
+  await expect(page.locator('[name="c.0.s.0.kind"]')).toHaveValue('braise');
+  await expect(page.locator('[name="c.0.s.0.title"]')).toHaveValue('Start the braise');
+
+  await page.locator('[name="meal_type"]').selectOption('');
+  await page.locator('[name="spice"]').selectOption('');
+  await page.locator('[name="c.0.s.0.kind"]').selectOption('');
+  await page.locator('[name="c.0.s.0.title"]').fill('');
+  await save(page);
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('[name="meal_type"]')).toHaveValue('');
+  await expect(page.locator('[name="spice"]')).toHaveValue('');
+  await expect(page.locator('[name="c.0.s.0.kind"]')).toHaveValue('');
+  await expect(page.locator('[name="c.0.s.0.title"]')).toHaveValue('');
+});

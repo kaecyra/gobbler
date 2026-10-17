@@ -38,6 +38,8 @@ type docStep struct {
 	Text       string   `json:"text,omitempty"`
 	DurationNS int64    `json:"duration_ns,omitempty"`
 	Passive    bool     `json:"passive,omitempty"`
+	Title      string   `json:"title,omitempty"`
+	Kind       string   `json:"stage_kind,omitempty"`
 	DependsOn  []string `json:"depends_on,omitempty"`
 }
 
@@ -64,6 +66,8 @@ type docRecipe struct {
 	SourceURL   string         `json:"source_url,omitempty"`
 	Author      string         `json:"author,omitempty"`
 	VideoID     string         `json:"video_id,omitempty"`
+	MealType    string         `json:"meal_type,omitempty"`
+	SpiceLevel  *int           `json:"spice_level,omitempty"`
 	YieldQty    *string        `json:"yield_qty,omitempty"`
 	YieldUnit   string         `json:"yield_unit,omitempty"`
 	Servings    *string        `json:"servings,omitempty"`
@@ -82,7 +86,7 @@ type docRecipe struct {
 func encodeDocument(r recipe.Recipe, units *unitTable) ([]byte, error) {
 	d := docRecipe{
 		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, VideoID: r.VideoID,
-		YieldUnit: r.Yield.Unit, Calories: r.CaloriesPerServing, Tags: r.Tags, Rating: r.Rating,
+		MealType: string(r.MealType), SpiceLevel: r.SpiceLevel, YieldUnit: r.Yield.Unit, Calories: r.CaloriesPerServing, Tags: r.Tags, Rating: r.Rating,
 		PrepNS: int64(r.Times.Prep), CookNS: int64(r.Times.Cook), TotalNS: int64(r.Times.Total),
 	}
 	var err error
@@ -105,7 +109,7 @@ func encodeDocument(r recipe.Recipe, units *unitTable) ([]byte, error) {
 			dc.Lines = append(dc.Lines, dl)
 		}
 		for _, s := range c.Steps {
-			ds := docStep{ID: string(s.ID), Text: s.Text, DurationNS: int64(s.Duration), Passive: s.Passive}
+			ds := docStep{ID: string(s.ID), Text: s.Text, DurationNS: int64(s.Duration), Passive: s.Passive, Title: s.Title, Kind: string(s.Kind)}
 			for _, dep := range s.DependsOn {
 				ds.DependsOn = append(ds.DependsOn, string(dep))
 			}
@@ -200,6 +204,7 @@ func (d *docRecipe) repointIngredient(loser, winner int64) {
 func (d docRecipe) toRecipe(units *unitTable) (recipe.Recipe, error) {
 	r := recipe.Recipe{
 		Name: d.Name, Description: d.Description, SourceURL: d.SourceURL, Author: d.Author, VideoID: d.VideoID,
+		MealType: recipe.MealType(d.MealType), SpiceLevel: d.SpiceLevel,
 		Yield:              recipe.Yield{Unit: d.YieldUnit},
 		CaloriesPerServing: d.Calories, Tags: d.Tags, Rating: d.Rating,
 		Times: recipe.Times{Prep: time.Duration(d.PrepNS), Cook: time.Duration(d.CookNS), Total: time.Duration(d.TotalNS)},
@@ -224,7 +229,7 @@ func (d docRecipe) toRecipe(units *unitTable) (recipe.Recipe, error) {
 			c.Lines = append(c.Lines, l)
 		}
 		for _, ds := range dc.Steps {
-			s := recipe.Step{ID: recipe.StepID(ds.ID), Text: ds.Text, Duration: time.Duration(ds.DurationNS), Passive: ds.Passive}
+			s := recipe.Step{ID: recipe.StepID(ds.ID), Text: ds.Text, Duration: time.Duration(ds.DurationNS), Passive: ds.Passive, Title: ds.Title, Kind: recipe.StageKind(ds.Kind)}
 			for _, dep := range ds.DependsOn {
 				s.DependsOn = append(s.DependsOn, recipe.StepID(dep))
 			}

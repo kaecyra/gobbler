@@ -66,6 +66,9 @@ func insertChildren(ctx context.Context, q *storedb.Queries, hid, id int64, r re
 			if err != nil {
 				return wrapWrite(fmt.Sprintf("write component %d step %d (%s)", ci+1, si+1, s.ID), err)
 			}
+			if err := setStepFields(ctx, q, hid, stepRows[s.ID], s); err != nil {
+				return err
+			}
 		}
 	}
 
