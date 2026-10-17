@@ -230,6 +230,42 @@ test('a check in one browser appears in another without reload', async ({ browse
   }
 });
 
+test('the basket counts what is checked and says so when everything is', async ({ browser }) => {
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const live = await phone.newPage();
+    await live.goto(`/shopping/${listID}/live`);
+    await expect(live.getByTestId('live-status')).toHaveText('Live');
+    const boxes = live.getByRole('checkbox');
+    const total = await boxes.count();
+    const flour = live.getByRole('checkbox', { name: /e2e flour/ });
+    await expect(flour).toHaveAttribute('aria-checked', 'true');
+    await expect(live.getByTestId('basket-count')).toHaveText(new RegExp(`^[0-9]+ of ${total} in the basket$`));
+    await expect(live.getByTestId('basket-full')).toHaveCount(0);
+
+    for (let i = 0; i < total; i++) {
+      const box = boxes.nth(i);
+      if ((await box.getAttribute('aria-checked')) === 'false') await box.click();
+      await expect(box).toHaveAttribute('aria-checked', 'true');
+    }
+    await expect(live.getByTestId('basket-count')).toHaveText(`${total} of ${total} in the basket`);
+    await expect(live.getByTestId('basket-full')).toBeVisible();
+    await expect(live.getByRole('heading', { name: 'Basket full' })).toBeVisible();
+
+    // Put the list back as the next test expects it: only the flour checked.
+    for (let i = 0; i < total; i++) {
+      const box = boxes.nth(i);
+      if ((await box.textContent())?.includes('e2e flour')) continue;
+      await box.click();
+      await expect(box).toHaveAttribute('aria-checked', 'false');
+    }
+    await expect(live.getByTestId('basket-count')).toHaveText(`1 of ${total} in the basket`);
+    await expect(live.getByTestId('basket-full')).toHaveCount(0);
+  } finally {
+    await phone.close();
+  }
+});
+
 test('an open phone view follows edits made on the build page, and checks survive them', async ({ browser }) => {
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const desk = await browser.newContext();
