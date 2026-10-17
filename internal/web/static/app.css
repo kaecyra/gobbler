@@ -1,54 +1,395 @@
+/* Design tokens, base styles, header, footer and the shared components
+   (docs/ui/design.md; the drawn reference is docs/ui/mockup.html).
+   Light always: nothing here keys off prefers-color-scheme. Dark is opt-in from
+   the header toggle (theme.js), which sets data-mode="dark" on the root. */
+
 :root {
-  color-scheme: light dark;
-  --bg: #fdfcf9;
-  --fg: #1f1d1a;
-  --muted: #6b665e;
-  --accent: #b4401f;
-  --border: #e4dfd5;
+  --paper: #fcfaf5;
+  --card: #ffffff;
+  --sunk: #f4f1e9;
+  --ink: #2b3634;
+  --ink-2: #525d5a;
+  --ink-3: #636c69;
+  --line: #ebe6dc;
+  --slate: #a3adaa;
+  --wattle: #e8836d;
+  --wattle-ink: #a64835;
+  --wattle-soft: #fdeae4;
+  --grain: #f2b85c;
+  --grain-ink: #875a10;
+  --grain-soft: #fef2d8;
+  --walnut: #7a5644;
+  --ok: #3f8a57;
+  --on-accent: #ffffff;
+  --mascot-fx: drop-shadow(0 1px 0 rgba(43, 54, 52, 0.06));
+  /* time-stage families: translucent fill, same-hue 1px border, dark same-hue text */
+  --st-active-b: #e8735b; --st-active-i: #9a3826; --st-active-a: 30%;
+  --st-sky-b: #7fb0e3; --st-sky-i: #2b5a8a; --st-sky-a: 22%;
+  --st-mint-b: #6cc39a; --st-mint-i: #23674a; --st-mint-a: 22%;
+  --st-ice-b: #9cc9d6; --st-ice-i: #2d5f6c; --st-ice-a: 26%;
+  --st-apricot-b: #f2a35e; --st-apricot-i: #8a4a14; --st-apricot-a: 24%;
+  --st-butter-b: #e5c24a; --st-butter-i: #6b5308; --st-butter-a: 26%;
+  --shadow: 0 1px 2px rgba(43, 54, 52, 0.05), 0 8px 24px -12px rgba(43, 54, 52, 0.16);
+  --f-display: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+  --r: 6px;
+  --tap: 44px;
   --gutter: 1rem;
+
+  /* Names the pages not yet restyled (cook.css, video.css, page rules) still
+     use. Each page node moves to the tokens above; the last one removes these. */
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --muted: var(--ink-3);
+  --accent: var(--wattle-ink);
+  --border: var(--line);
+
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #171614;
-    --fg: #ece8e0;
-    --muted: #a39e94;
-    --accent: #ec8a66;
-    --border: #3a3732;
-  }
+:root[data-mode="dark"] {
+  --paper: #192120; --card: #212a29; --sunk: #141a19;
+  --ink: #e5e9e3; --ink-2: #bac2be; --ink-3: #9aa4a1; --line: #323d3c;
+  --slate: #6c7775; --wattle: #e09a8a; --wattle-ink: #eeab9b; --wattle-soft: #45302b;
+  --grain: #e0b16c; --grain-ink: #efcb8a; --grain-soft: #3f3520;
+  --walnut: #c9ab9b; --mascot-fx: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.55));
+  --ok: #86b38f; --on-accent: #1d1715;
+  --st-active-b: #f08a74; --st-active-i: #ffc9bc; --st-active-a: 30%;
+  --st-sky-b: #7fb0e3; --st-sky-i: #cfe3f7; --st-sky-a: 22%;
+  --st-mint-b: #6cc39a; --st-mint-i: #c6f0da; --st-mint-a: 22%;
+  --st-ice-b: #9cc9d6; --st-ice-i: #d8eff5; --st-ice-a: 22%;
+  --st-apricot-b: #f2a35e; --st-apricot-i: #ffdab8; --st-apricot-a: 22%;
+  --st-butter-b: #e5c24a; --st-butter-i: #f7e7ad; --st-butter-a: 22%;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px -10px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font: 1rem/1.5 system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--accent); }
-
-.site-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--gutter);
-  padding: 0.75rem var(--gutter);
-  border-bottom: 1px solid var(--border);
+h1, h2, h3, h4 {
+  font-family: var(--f-display);
+  text-wrap: balance;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
+a { color: var(--wattle-ink); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--wattle); outline-offset: 2px; border-radius: 6px; }
+
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-3); }
+.eyebrow {
+  font-size: 11.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+/* Hidden from the eye, read by screen readers. */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
+@media (min-width: 700px) { .wrap { padding-inline: 28px; } }
+main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
+@media (min-width: 700px) { main { padding-inline: 28px; } }
+
+/* Icons never sit on the text baseline. */
+.tab svg, .btn svg, .foot svg { display: block; flex: none; }
+.foot svg { width: 16px; height: 16px; }
+
+/* ---- header ---- */
+
+.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.top .wrap { display: flex; align-items: center; gap: 18px; padding-block: 10px; }
+
+/* The mascot stands free, his feet on the header's bottom line. */
 .brand {
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: none;
+  align-self: stretch;
+  color: var(--ink);
   text-decoration: none;
 }
+.standing {
+  height: 60px;
+  width: auto;
+  flex: none;
+  align-self: flex-end;
+  margin-bottom: -13px;
+  filter: var(--mascot-fx);
+  position: relative;
+  z-index: 1;
+}
+.brand b { font-family: var(--f-display); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.brand small { display: block; font-size: 13px; color: var(--ink-3); margin-top: -2px; }
 
-.site-nav { display: flex; gap: var(--gutter); }
+.tabs { display: flex; gap: 2px; flex: 0 1 auto; min-width: 0; margin-left: auto; position: relative; }
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+}
+.tab:hover { background: var(--sunk); }
+.tab svg { width: 20px; height: 20px; }
+/* A label shown only in the phone bar, where every entry has one. */
+.tab .lbl-phone { display: none; }
+.tab[aria-current="page"], .tab[data-current="true"] { background: var(--ink); color: var(--paper); }
+.tab.cta { background: var(--wattle-ink); color: var(--on-accent); margin-left: 6px; }
+.tab.cta:hover { background: color-mix(in srgb, var(--wattle-ink) 88%, #000); }
+.tab.cta[aria-current="page"] { box-shadow: inset 0 0 0 2px var(--on-accent), 0 0 0 2px var(--wattle-ink); }
 
-main {
-  max-width: 60rem;
-  margin: 0 auto;
-  padding: var(--gutter);
+/* The sections behind the menu button. */
+.menu { position: relative; }
+.menu summary { list-style: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu[open] > summary:not([data-current]) { background: var(--sunk); }
+.menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 7;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  min-width: 200px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+}
+.menu-list .tab { display: flex; justify-content: flex-start; width: 100%; }
+.menu-list .lbl { display: inline; }
+
+.modebtn {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.modebtn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.modebtn svg { width: 20px; height: 20px; }
+
+@media (max-width: 1060px) {
+  .top .wrap { gap: 12px; }
+  .tab { padding: 8px 9px; gap: 6px; font-size: 15px; }
+  .brand small { display: none; }
+}
+@media (max-width: 767px) {
+  .tab .lbl { display: none; }
+  .tab { padding: 8px 11px; }
+}
+/* Phone: the nav becomes a fixed bar along the bottom. */
+@media (max-width: 560px) {
+  .top { backdrop-filter: none; background: var(--card); }
+  .modebtn { margin-left: auto; }
+  .tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    z-index: 6;
+    justify-content: space-around;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+  .tabs > .tab, .menu > .tab { flex-direction: column; gap: 2px; padding: 4px 6px; font-size: 11px; min-width: 56px; }
+  .tabs .tab .lbl, .tabs .tab .lbl-phone { display: block; }
+  .tab.cta { margin-left: 0; }
+  .menu-list { top: auto; bottom: calc(100% + 10px); }
+  body { padding-bottom: 84px; }
 }
 
-.muted { color: var(--muted); }
+/* ---- footer ---- */
+
+.foot {
+  margin-top: 64px;
+  padding-top: 20px;
+  padding-bottom: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  font-size: 14px;
+  color: var(--ink-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+.foot a {
+  color: var(--ink-2);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+}
+.foot a:hover { color: var(--wattle-ink); text-decoration: underline; }
+.made-by { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); }
+.leaf { width: 14px; height: 14px; flex: none; display: block; }
+
+/* ---- shared components, named for what they are ---- */
+
+/* Page heading row. */
+.screen-h { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; margin-bottom: 20px; }
+.screen-h h1 { font-size: clamp(26px, 4vw, 34px); font-weight: 700; }
+.screen-h p { margin: 4px 0 0; color: var(--ink-2); max-width: 60ch; }
+
+/* Buttons. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--tap);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  padding: 8px 18px;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.accent { background: var(--wattle-ink); color: var(--on-accent); border-color: var(--wattle-ink); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Segmented control: buttons or links, one marked aria-pressed or aria-current. */
+.seg { display: inline-flex; background: var(--sunk); border-radius: var(--r); padding: 3px; }
+.seg > button, .seg > a {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  min-height: 40px;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15.5px;
+  color: var(--ink-2);
+  font-weight: 600;
+  text-decoration: none;
+}
+.seg > [aria-pressed="true"], .seg > [aria-current="true"], .seg > [aria-current="page"] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+/* Card: a raised surface. Add .panel for a flat bordered one. */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  border-radius: var(--r);
+  padding: 16px;
+}
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+.panel h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+
+/* Search box. */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 4px 6px 4px 14px;
+  box-shadow: var(--shadow);
+  max-width: 640px;
+}
+.search input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 18px; color: var(--ink); padding: 12px 0; }
+.search input:focus { outline: none; }
+.search:focus-within { border-color: var(--wattle); }
+.search kbd { font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; }
+
+/* Callout: a quiet tint, never a coloured edge. */
+.callout { border-radius: var(--r); padding: 12px 16px 14px; background: var(--co-bg, var(--sunk)); }
+.co-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--co-ink, var(--ink-2));
+  margin-bottom: 6px;
+}
+.co-label svg { width: 1.2em; height: 1.2em; display: block; flex: none; }
+.callout.meanwhile { --co-bg: var(--wattle-soft); --co-ink: var(--wattle-ink); margin-top: 14px; }
+
+/* Tip: floats free with no box or tint, a coral icon and label, recipe-size text. */
+.tip { position: relative; margin: 30px 0 34px 62px; max-width: 34em; }
+.tip .co-label { color: var(--wattle-ink); font-size: 15px; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 10px; }
+.tip .co-label svg { position: absolute; left: -54px; top: -6px; width: 32px; height: 32px; color: var(--wattle); stroke-width: 1.9; }
+.tip p { margin: 0; font-size: clamp(19px, 2.2vw, 21.5px); font-weight: 560; line-height: 1.5; color: var(--ink); text-wrap: pretty; }
+
+/* Empty state: the mascot shown whole above a line of help. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 30px 16px;
+  color: var(--ink-2);
+  grid-column: 1 / -1;
+}
+.empty img, .empty svg { width: 110px; height: auto; }
+.empty h3 { font-size: 18px; }
+.empty p { margin: 0; max-width: 40ch; font-size: 14px; }

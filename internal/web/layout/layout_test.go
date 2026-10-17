@@ -31,8 +31,11 @@ func TestPageRendersTitleNavAndContentSlot(t *testing.T) {
 	got := b.String()
 	for _, want := range []string{
 		"<title>Lasagna &lt;b&gt; - gobbler</title>",
-		`<nav class="site-nav"`,
+		`aria-label="Primary"`,
 		`<main id="content">`,
+		`src="` + ThemePath + `"`,
+		`data-theme-toggle`,
+		"Made by kaecyra in Canada",
 		"<p>slot content</p>",
 		`href="` + StylesheetPath + `"`,
 		`src="` + HTMXPath + `"`,
