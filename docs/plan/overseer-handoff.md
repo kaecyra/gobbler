@@ -6,13 +6,15 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Round 12 (2026-10-17, in progress)
 
-**Merged:** #229 graph (nodes r-write-lock-comments #221, r-thumbnail-everywhere #226, i-review-steps #230; i-step-graph lane widened onto `internal/ingest/{draft,assemble*,llm,ingest}.go`); #231 r-write-lock-comments, recorded at c6f5b11. VERSION on main 0.56.1.
+**Merged:** #229 graph (nodes r-write-lock-comments #221, r-thumbnail-everywhere #226, i-review-steps #230; i-step-graph lane widened onto `internal/ingest/{draft,assemble*,llm,ingest}.go`); #231 r-write-lock-comments (c6f5b11); #232 i-step-graph (60fa063); #233 i-review-edit, also closed #228 (23f4929). VERSION on main 0.58.0.
 
-**In flight:**
-- #232 i-step-graph (#190), worktree `wt-190`: in review. Bumps 0.57.0.
-- i-review-edit (#192, also closes #228), worktree `wt-192`: verified, rebasing; PR not yet open. Also bumps 0.57.0, so whichever merges second re-bumps to 0.58.0.
+**Known gap on main until #230 lands:** confirming a reviewed draft drops the inferred step graph (`toIngest` in `internal/web/editor/review.go`). Never deployed, so not a blocker.
 
-**Next:** i-review-steps (#230) after #190 and #192; read #230's dispatcher comment (carry the inferred graph through `toIngest`). Then r-thumbnail-everywhere (#226), then i-video-extract (#199).
+**In flight:** i-review-steps (#230), worktree `wt-230`, worker dispatched; bumps 0.59.0.
+
+**Next:** r-thumbnail-everywhere (#226) after #230, then i-video-extract (#199).
+
+**Unverified call:** the passive vocabulary in `internal/ingest/steps.go` took three review rounds; precision was favoured, so phrasings like "simmer gently" after "and" fall to the LLM as default steps.
 
 **Process note:** worktrees are kept until merge, so review fixes go to a worker in the same worktree.
 
