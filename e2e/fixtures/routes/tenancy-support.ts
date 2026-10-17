@@ -1,6 +1,7 @@
 import { expect, type APIRequestContext, type APIResponse, type Playwright } from '@playwright/test';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
+import { createServer, type AddressInfo } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -57,15 +58,45 @@ export interface Server {
   recipe: number;
 }
 
+/** A port the kernel has just shown to be free. */
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address() as AddressInfo;
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+/**
+ * Starts a server on port, or, if that port was taken, on a free one. The
+ * default ports sit in the kernel's ephemeral range, so another test's
+ * outgoing connection can hold one at the moment the server binds it: the
+ * server then exits at once with "address already in use", which the health
+ * poll cannot tell from a slow start and used to wait out its whole deadline.
+ */
 export async function startServer(w: Workdir, port: number, seed: boolean): Promise<Server> {
   if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
-  const origin = `http://127.0.0.1:${port}`;
-  const stale = await fetch(`${origin}/healthz`).then(() => true, () => false);
-  if (stale) throw new Error(`something already listens on ${origin}; set the GOBBLER_E2E_TENANCY*_PORT variables`);
+  const stale = await fetch(`http://127.0.0.1:${port}/healthz`).then(() => true, () => false);
+  if (stale) throw new Error(`something already listens on http://127.0.0.1:${port}; set the GOBBLER_E2E_TENANCY*_PORT variables`);
   const dataDir = mkdtempSync(join(w.dir, 'data-'));
   let recipe = 0;
   if (seed) ({ recipe } = JSON.parse(execFileSync(w.seed, [dataDir], { encoding: 'utf8' })));
-  const child = spawn(bin, ['serve'], {
+  const attempts = 3;
+  for (let attempt = 1; ; attempt++) {
+    const s = await tryStart(dataDir, port, recipe);
+    if (s) return s;
+    if (attempt === attempts) throw new Error(`the tenancy server did not start after ${attempts} attempts; the last port tried was ${port}`);
+    port = await freePort();
+  }
+}
+
+/** One start attempt: the server when healthy, undefined when it exited before it was (the port was taken). */
+async function tryStart(dataDir: string, port: number, recipe: number): Promise<Server | undefined> {
+  const origin = `http://127.0.0.1:${port}`;
+  const child = spawn(bin!, ['serve'], {
     env: {
       PATH: process.env.PATH ?? '',
       GOBBLER_LISTEN_ADDR: `127.0.0.1:${port}`,
@@ -76,10 +107,17 @@ export async function startServer(w: Workdir, port: number, seed: boolean): Prom
     },
     stdio: 'inherit',
   });
+  let exited = false;
+  child.once('exit', () => {
+    exited = true;
+  });
   const deadline = Date.now() + 20_000;
   for (;;) {
+    // A healthy answer from a child that has already exited is the other
+    // process that holds the port, not this server.
+    if (exited) return undefined;
     try {
-      if ((await fetch(`${origin}/healthz`)).ok) break;
+      if ((await fetch(`${origin}/healthz`)).ok && !exited) break;
     } catch {
       // not listening yet
     }
