@@ -16,6 +16,44 @@ func formAction(id int64, suffix string) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("%s/%d%s", Pattern, id, suffix))
 }
 
+// basketTally counts the checked items and all items across the aisles.
+func basketTally(aisles []aisleView) (checked, total int) {
+	for _, a := range aisles {
+		for _, it := range a.Items {
+			total++
+			if it.Checked {
+				checked++
+			}
+		}
+	}
+	return checked, total
+}
+
+func basketText(aisles []aisleView) string {
+	checked, total := basketTally(aisles)
+	return fmt.Sprintf("%d of %d in the basket", checked, total)
+}
+
+func basketPercent(aisles []aisleView) string {
+	checked, total := basketTally(aisles)
+	if total == 0 {
+		return "0%"
+	}
+	return fmt.Sprintf("%d%%", checked*100/total)
+}
+
+func basketFull(aisles []aisleView) bool {
+	checked, total := basketTally(aisles)
+	return total > 0 && checked == total
+}
+
+func itemCount(a aisleView) string {
+	if len(a.Items) == 1 {
+		return "1 item"
+	}
+	return fmt.Sprintf("%d items", len(a.Items))
+}
+
 func eventsPath(id int64) string { return fmt.Sprintf("%s/%d/events", Pattern, id) }
 
 func entryAction(id, entry int64, suffix string) templ.SafeURL {
@@ -32,26 +70,44 @@ templ problem(msg string) {
 	}
 }
 
+templ shoppingNav(current string) {
+	<nav class="seg" aria-label="Shopping">
+		<a href="/shopping" if current == "lists" { aria-current="page" }>All lists</a>
+		<a href="/shopping/pantry" if current == "pantry" { aria-current="page" }>Pantry</a>
+	</nav>
+}
+
 templ indexPage(v indexView) {
 	@layout.Page("Shopping lists") {
 		<link rel="stylesheet" href={ stylesheetPath }/>
-		<h1>Shopping lists</h1>
-		<p><a href="/shopping/pantry">Pantry</a></p>
-		@problem(v.Problem)
-		<form method="post" action="/shopping" data-testid="create-list">
-			<label for="name">New list</label>
-			<input type="text" id="name" name="name" required/>
-			<button type="submit">Create</button>
-		</form>
-		if len(v.Lists) == 0 {
-			<p class="muted" data-testid="lists-empty">No lists yet.</p>
-		} else {
-			<ul data-testid="lists">
-				for _, l := range v.Lists {
-					<li data-testid="list-row"><a href={ formAction(l.ID, "") }>{ l.Name }</a></li>
-				}
-			</ul>
-		}
+		<div class="shopping">
+			<div class="screen-h">
+				<div>
+					<h1>Shopping lists</h1>
+					<p>Recipes merged into one list, sorted the way the store is laid out.</p>
+				</div>
+				@shoppingNav("lists")
+			</div>
+			@problem(v.Problem)
+			<form method="post" action="/shopping" data-testid="create-list" class="row-form panel">
+				<label for="name">New list</label>
+				<input type="text" id="name" name="name" required/>
+				<button type="submit" class="btn primary">Create</button>
+			</form>
+			if len(v.Lists) == 0 {
+				<div class="empty" data-testid="lists-empty">
+					<img src={ layout.MascotPie } alt="" width="110"/>
+					<h3>No lists yet</h3>
+					<p>Name a list above, then add the recipes you plan to cook.</p>
+				</div>
+			} else {
+				<ul class="lists-index" data-testid="lists">
+					for _, l := range v.Lists {
+						<li data-testid="list-row"><a class="panel" href={ formAction(l.ID, "") }>{ l.Name }</a></li>
+					}
+				</ul>
+			}
+		</div>
 	}
 }
 
@@ -59,46 +115,80 @@ templ indexPage(v indexView) {
 // exactly this markup, so the first render and every update look the same.
 templ itemsFragment(listID int64, aisles []aisleView, interactive bool) {
 	if len(aisles) == 0 {
-		<p class="muted" data-testid="list-empty">Nothing on this list yet.</p>
+		<div class="empty" data-testid="list-empty">
+			<img src={ layout.MascotHerbs } alt="" width="110"/>
+			<h3>Nothing on this list yet.</h3>
+			<p>Add a recipe or an item and it appears here, grouped by aisle.</p>
+		</div>
+	} else {
+		<div class="basket">
+			<div class="meter" aria-hidden="true"><i style={ "width:" + basketPercent(aisles) }></i></div>
+			<small class="num" data-testid="basket-count">{ basketText(aisles) }</small>
+		</div>
+		if basketFull(aisles) {
+			<div class="empty done-state" data-testid="basket-full">
+				<img src={ layout.MascotPie } alt="" width="110"/>
+				<h3>Basket full</h3>
+				<p>Everything is checked off. Clear the list, or keep it for next week.</p>
+			</div>
+		}
 	}
-	for _, a := range aisles {
-		<section class="aisle" data-testid="aisle">
-			<h3 data-testid="aisle-name">{ a.Name }</h3>
-			<ul>
-				for _, it := range a.Items {
-					<li id={ it.DOMID } data-testid="item" data-key={ it.Key } data-checked={ strconv.FormatBool(it.Checked) }>
-						if interactive {
-							<form method="post" action={ formAction(listID, "/check") } data-check>
-								<input type="hidden" name="key" value={ it.Key }/>
-								<input type="hidden" name="checked" value={ it.Next }/>
-								<button type="submit" class="item-toggle" role="checkbox" aria-checked={ strconv.FormatBool(it.Checked) }>
+	<div class="aisles">
+		for _, a := range aisles {
+			<section class="aisle" data-testid="aisle">
+				<h3><span data-testid="aisle-name">{ a.Name }</span><small class="num">{ itemCount(a) }</small></h3>
+				<ul class="items">
+					for _, it := range a.Items {
+						<li id={ it.DOMID } class="item" data-testid="item" data-key={ it.Key } data-checked={ strconv.FormatBool(it.Checked) }>
+							if interactive {
+								<form method="post" action={ formAction(listID, "/check") } data-check>
+									<input type="hidden" name="key" value={ it.Key }/>
+									<input type="hidden" name="checked" value={ it.Next }/>
+									<button type="submit" class="item-toggle" role="checkbox" aria-checked={ strconv.FormatBool(it.Checked) }>
+										@checkBox()
+										<span class="item-name" data-testid="item-name">{ it.Name }</span>
+										<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
+									</button>
+								</form>
+							} else {
+								<div class="item-toggle">
+									@checkBox()
 									<span class="item-name" data-testid="item-name">{ it.Name }</span>
-									<span class="item-amount" data-testid="item-amount">{ it.Amounts }</span>
-								</button>
-							</form>
-						} else {
-							<span class="item-name" data-testid="item-name">{ it.Name }</span>
-							<span class="item-amount" data-testid="item-amount">{ it.Amounts }</span>
-						}
-						if it.Sources != "" {
-							<span class="item-sources muted" data-testid="item-sources">{ it.Sources }</span>
-						}
-					</li>
-				}
-			</ul>
-		</section>
-	}
+									<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
+								</div>
+							}
+							if it.Sources != "" {
+								<span class="item-sources" data-testid="item-sources">{ it.Sources }</span>
+							}
+						</li>
+					}
+				</ul>
+			</section>
+		}
+	</div>
+}
+
+templ checkBox() {
+	<span class="box" aria-hidden="true">
+		<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"></path></svg>
+	</span>
 }
 
 templ livePage(v liveView) {
 	@layout.Page(v.Name) {
 		<link rel="stylesheet" href={ stylesheetPath }/>
-		<h1>{ v.Name }</h1>
-		<p><a href={ formAction(v.ID, "") }>Edit this list</a></p>
-		<p id="live-status" role="status" data-testid="live-status" data-state="connecting">Connecting</p>
-		<p><button type="button" id="live-reload" data-testid="live-reload" hidden>Reload the page</button></p>
-		<div id="live-items" data-testid="live-items" data-events={ eventsPath(v.ID) }>
-			@itemsFragment(v.ID, v.Aisles, true)
+		<div class="shopping live">
+			<div class="screen-h">
+				<div>
+					<h1>{ v.Name }</h1>
+					<p id="live-status" role="status" data-testid="live-status" data-state="connecting">Connecting</p>
+				</div>
+				<a class="btn" href={ formAction(v.ID, "") }>Edit this list</a>
+			</div>
+			<p><button type="button" id="live-reload" class="btn" data-testid="live-reload" hidden>Reload the page</button></p>
+			<div id="live-items" data-testid="live-items" data-events={ eventsPath(v.ID) }>
+				@itemsFragment(v.ID, v.Aisles, true)
+			</div>
 		</div>
 		<script src={ scriptPath } defer></script>
 	}
@@ -107,125 +197,143 @@ templ livePage(v liveView) {
 templ buildPage(v buildView) {
 	@layout.Page(v.Name) {
 		<link rel="stylesheet" href={ stylesheetPath }/>
-		<h1>{ v.Name }</h1>
-		<p>
-			<a href="/shopping">All lists</a>
-			<a href={ formAction(v.ID, "/live") } data-testid="open-live">Open the phone view</a>
-			<a href="/shopping/pantry">Pantry</a>
-		</p>
-		@problem(v.Problem)
-		<section aria-labelledby="recipes-h">
-			<h2 id="recipes-h">Recipes</h2>
-			if len(v.Entries) == 0 {
-				<p class="muted" data-testid="entries-empty">No recipes on this list.</p>
-			} else {
-				<ul class="entries" data-testid="entries">
-					for _, e := range v.Entries {
-						<li data-testid="entry">
-							<a href={ templ.SafeURL("/recipes/" + strconv.FormatInt(e.RecipeID, 10)) }>{ e.Name }</a>
-							<form method="post" action={ entryAction(v.ID, e.ID, "") }>
-								<label>Multiplier <input type="text" name="multiplier" value={ e.Multiplier } inputmode="decimal" size="5"/></label>
-								<button type="submit">Update</button>
-							</form>
-							<form method="post" action={ entryAction(v.ID, e.ID, "/remove") }>
-								<button type="submit" aria-label={ "Remove " + e.Name }>Remove</button>
-							</form>
-						</li>
-					}
-				</ul>
-			}
-			<form method="post" action={ formAction(v.ID, "/recipes") } data-testid="add-recipe">
-				<label for="recipe">Recipe</label>
-				<select id="recipe" name="recipe" required>
-					<option value="">Choose a recipe</option>
-					for _, o := range v.Recipes {
-						<option value={ o.Value }>{ o.Label }</option>
-					}
-				</select>
-				<label for="multiplier">Multiplier</label>
-				<input type="text" id="multiplier" name="multiplier" value="1" inputmode="decimal" size="5"/>
-				<button type="submit">Add recipe</button>
-			</form>
-		</section>
-		<form method="post" action={ formAction(v.ID, "/optional") } data-testid="optional-form">
-			<label>
-				<input type="checkbox" name="optional" value="1" checked?={ v.IncludeOptional }/>
-				Include optional ingredients
-			</label>
-			<button type="submit">Save</button>
-		</form>
-		<section aria-labelledby="manual-h">
-			<h2 id="manual-h">Other items</h2>
-			if len(v.Manual) > 0 {
-				<ul class="manual" data-testid="manual">
-					for _, m := range v.Manual {
-						<li data-testid="manual-item">
-							<span>{ m.Label }</span>
-							<span class="muted">{ m.Amounts }</span>
-							<form method="post" action={ manualRemoveAction(v.ID, m.ID) }>
-								<button type="submit" aria-label={ "Remove " + m.Label }>Remove</button>
-							</form>
-						</li>
-					}
-				</ul>
-			}
-			<form method="post" action={ formAction(v.ID, "/manual") } data-testid="add-manual">
-				<label for="text">Item</label>
-				<input type="text" id="text" name="text"/>
-				<label for="ingredient">or catalog ingredient</label>
-				<select id="ingredient" name="ingredient">
-					<option value="">None</option>
-					for _, o := range v.Ingredients {
-						<option value={ o.Value }>{ o.Label }</option>
-					}
-				</select>
-				<label for="qty">Quantity</label>
-				<input type="text" id="qty" name="qty" inputmode="decimal" size="6"/>
-				<label for="unit">Unit</label>
-				<select id="unit" name="unit">
-					<option value="">None</option>
-					for _, u := range v.Units {
-						<option value={ u }>{ u }</option>
-					}
-				</select>
-				<button type="submit">Add item</button>
-			</form>
-		</section>
-		<section aria-labelledby="list-h">
-			<h2 id="list-h">The list</h2>
-			<form method="post" action={ formAction(v.ID, "/regenerate") }>
-				<button type="submit">Refresh the list</button>
-			</form>
-			<div data-testid="list">
-				@itemsFragment(v.ID, v.Aisles, false)
+		<div class="shopping">
+			<div class="screen-h">
+				<div>
+					<h1>{ v.Name }</h1>
+					<p>Recipes and extra items, merged and sorted the way the store is laid out.</p>
+				</div>
+				<nav class="seg" aria-label="Shopping">
+					<a href="/shopping">All lists</a>
+					<a href={ formAction(v.ID, "/live") } data-testid="open-live">Open the phone view</a>
+					<a href="/shopping/pantry">Pantry</a>
+				</nav>
 			</div>
-		</section>
-		if len(v.Dropped) > 0 {
-			<section aria-labelledby="dropped-h" data-testid="dropped">
-				<h2 id="dropped-h">Left off: already in the pantry</h2>
-				<ul class="dropped">
-					for _, d := range v.Dropped {
-						<li data-testid="dropped-item">
-							<span>{ d.Name }</span>
-							<span class="muted">{ d.Amounts }</span>
-							<span class="muted">{ d.Sources }</span>
-							<form method="post" action={ formAction(v.ID, "/addback") }>
-								<input type="hidden" name="ingredient" value={ strconv.FormatInt(d.Ingredient, 10) }/>
-								<button type="submit" aria-label={ "Add " + d.Name + " back" }>Add back</button>
+			@problem(v.Problem)
+			<div class="shop">
+				<div class="main">
+					<section aria-labelledby="list-h">
+						<div class="section-h">
+							<h2 id="list-h">The list</h2>
+							<form method="post" action={ formAction(v.ID, "/regenerate") }>
+								<button type="submit" class="btn">Refresh the list</button>
 							</form>
-						</li>
+						</div>
+						<div data-testid="list">
+							@itemsFragment(v.ID, v.Aisles, false)
+						</div>
+					</section>
+					if len(v.Dropped) > 0 {
+						<section aria-labelledby="dropped-h" data-testid="dropped" class="panel bare">
+							<h2 id="dropped-h">Left off: already in the pantry</h2>
+							<ul class="dropped plain">
+								for _, d := range v.Dropped {
+									<li data-testid="dropped-item">
+										<span>{ d.Name }</span>
+										<span class="muted">{ d.Amounts }</span>
+										<span class="muted">{ d.Sources }</span>
+										<form method="post" action={ formAction(v.ID, "/addback") }>
+											<input type="hidden" name="ingredient" value={ strconv.FormatInt(d.Ingredient, 10) }/>
+											<button type="submit" class="btn" aria-label={ "Add " + d.Name + " back" }>Add back</button>
+										</form>
+									</li>
+								}
+							</ul>
+						</section>
 					}
-				</ul>
-			</section>
-		}
-		<section aria-labelledby="export-h">
-			<h2 id="export-h">Text</h2>
-			<textarea id="export-text" class="export-text" readonly data-testid="export-text">{ v.Export }</textarea>
-			<p>
-				<button type="button" data-copy="export-text" data-testid="copy">Copy</button>
-				<a href={ formAction(v.ID, "/export.txt") } data-testid="export-link">Open as plain text</a>
-			</p>
-		</section>
+					<section aria-labelledby="manual-h" class="panel">
+						<h2 id="manual-h">Other items</h2>
+						if len(v.Manual) > 0 {
+							<ul class="manual plain" data-testid="manual">
+								for _, m := range v.Manual {
+									<li data-testid="manual-item">
+										<span>{ m.Label }</span>
+										<span class="muted">{ m.Amounts }</span>
+										<form method="post" action={ manualRemoveAction(v.ID, m.ID) }>
+											<button type="submit" class="btn" aria-label={ "Remove " + m.Label }>Remove</button>
+										</form>
+									</li>
+								}
+							</ul>
+						}
+						<form method="post" action={ formAction(v.ID, "/manual") } data-testid="add-manual" class="fields">
+							<label for="text">Item</label>
+							<input type="text" id="text" name="text"/>
+							<label for="ingredient">or catalog ingredient</label>
+							<select id="ingredient" name="ingredient">
+								<option value="">None</option>
+								for _, o := range v.Ingredients {
+									<option value={ o.Value }>{ o.Label }</option>
+								}
+							</select>
+							<label for="qty">Quantity</label>
+							<input type="text" id="qty" name="qty" inputmode="decimal" size="6"/>
+							<label for="unit">Unit</label>
+							<select id="unit" name="unit">
+								<option value="">None</option>
+								for _, u := range v.Units {
+									<option value={ u }>{ u }</option>
+								}
+							</select>
+							<button type="submit" class="btn primary">Add item</button>
+						</form>
+					</section>
+					<section aria-labelledby="export-h" class="panel">
+						<h2 id="export-h">Text</h2>
+						<textarea id="export-text" class="export-text" readonly data-testid="export-text">{ v.Export }</textarea>
+						<p class="actions">
+							<button type="button" class="btn" data-copy="export-text" data-testid="copy">Copy</button>
+							<a href={ formAction(v.ID, "/export.txt") } data-testid="export-link">Open as plain text</a>
+						</p>
+					</section>
+				</div>
+				<aside class="side">
+					<section aria-labelledby="recipes-h" class="panel">
+						<h2 id="recipes-h">Recipes</h2>
+						if len(v.Entries) == 0 {
+							<p class="muted" data-testid="entries-empty">No recipes on this list.</p>
+						} else {
+							<ul class="entries plain" data-testid="entries">
+								for _, e := range v.Entries {
+									<li data-testid="entry">
+										<div class="src-r">
+											<a href={ templ.SafeURL("/recipes/" + strconv.FormatInt(e.RecipeID, 10)) }>{ e.Name }</a>
+											<span class="num">{ "x" + e.Multiplier }</span>
+										</div>
+										<form method="post" action={ entryAction(v.ID, e.ID, "") } class="inline">
+											<label>Multiplier <input type="text" name="multiplier" value={ e.Multiplier } inputmode="decimal" size="5"/></label>
+											<button type="submit" class="btn">Update</button>
+										</form>
+										<form method="post" action={ entryAction(v.ID, e.ID, "/remove") } class="inline">
+											<button type="submit" class="btn" aria-label={ "Remove " + e.Name }>Remove</button>
+										</form>
+									</li>
+								}
+							</ul>
+						}
+						<form method="post" action={ formAction(v.ID, "/recipes") } data-testid="add-recipe" class="fields">
+							<label for="recipe">Recipe</label>
+							<select id="recipe" name="recipe" required>
+								<option value="">Choose a recipe</option>
+								for _, o := range v.Recipes {
+									<option value={ o.Value }>{ o.Label }</option>
+								}
+							</select>
+							<label for="multiplier">Multiplier</label>
+							<input type="text" id="multiplier" name="multiplier" value="1" inputmode="decimal" size="5"/>
+							<button type="submit" class="btn primary">Add recipe</button>
+						</form>
+					</section>
+					<form method="post" action={ formAction(v.ID, "/optional") } data-testid="optional-form" class="panel inline">
+						<label class="check">
+							<input type="checkbox" name="optional" value="1" checked?={ v.IncludeOptional }/>
+							Include optional ingredients
+						</label>
+						<button type="submit" class="btn">Save</button>
+					</form>
+				</aside>
+			</div>
+		</div>
 		<script src={ scriptPath } defer></script>
 	}
 }
@@ -233,47 +341,63 @@ templ buildPage(v buildView) {
 templ pantryPage(v pantryView) {
 	@layout.Page("Pantry") {
 		<link rel="stylesheet" href={ stylesheetPath }/>
-		<h1>Pantry</h1>
-		<p><a href="/shopping">Shopping lists</a></p>
-		<p class="muted">Ingredients always on hand. Recipes that call for them are left off every list, and shown so you can add one back.</p>
-		if len(v.Pantry) == 0 {
-			<p class="muted" data-testid="pantry-empty">The pantry is empty.</p>
-		} else {
-			<ul data-testid="pantry">
-				for _, o := range v.Pantry {
-					<li data-testid="pantry-item">
-						{ o.Label }
-						<form method="post" action="/shopping/pantry/remove">
-							<input type="hidden" name="ingredient" value={ o.Value }/>
-							<input type="hidden" name="q" value={ v.Query }/>
-							<button type="submit" aria-label={ "Remove " + o.Label + " from the pantry" }>Remove</button>
-						</form>
-					</li>
-				}
-			</ul>
-		}
-		<form method="get" action="/shopping/pantry" role="search" data-testid="pantry-search">
-			<label for="q">Find an ingredient</label>
-			<input type="search" id="q" name="q" value={ v.Query }/>
-			<button type="submit">Search</button>
-		</form>
-		if v.Query != "" {
-			if len(v.Matches) == 0 {
-				<p class="muted" data-testid="matches-empty">No ingredient outside the pantry matches.</p>
-			} else {
-				<ul data-testid="matches">
-					for _, o := range v.Matches {
-						<li data-testid="match">
-							{ o.Label }
-							<form method="post" action="/shopping/pantry/add">
-								<input type="hidden" name="ingredient" value={ o.Value }/>
-								<input type="hidden" name="q" value={ v.Query }/>
-								<button type="submit" aria-label={ "Add " + o.Label + " to the pantry" }>Add</button>
-							</form>
-						</li>
+		<div class="shopping">
+			<div class="screen-h">
+				<div>
+					<h1>Pantry</h1>
+					<p>Ingredients always on hand. Recipes that call for them are left off every list, and shown so you can add one back.</p>
+				</div>
+				@shoppingNav("pantry")
+			</div>
+			<div class="shop">
+				<div class="main">
+					if len(v.Pantry) == 0 {
+						<div class="empty" data-testid="pantry-empty">
+							<img src={ layout.MascotHerbs } alt="" width="110"/>
+							<h3>The pantry is empty.</h3>
+							<p>Add the staples you always keep, such as salt and oil.</p>
+						</div>
+					} else {
+						<ul data-testid="pantry" class="pantry plain">
+							for _, o := range v.Pantry {
+								<li data-testid="pantry-item" class="panel">
+									{ o.Label }
+									<form method="post" action="/shopping/pantry/remove">
+										<input type="hidden" name="ingredient" value={ o.Value }/>
+										<input type="hidden" name="q" value={ v.Query }/>
+										<button type="submit" class="btn" aria-label={ "Remove " + o.Label + " from the pantry" }>Remove</button>
+									</form>
+								</li>
+							}
+						</ul>
 					}
-				</ul>
-			}
-		}
+				</div>
+				<aside class="side">
+					<form method="get" action="/shopping/pantry" role="search" data-testid="pantry-search" class="panel fields">
+						<label for="q">Find an ingredient</label>
+						<input type="search" id="q" name="q" value={ v.Query }/>
+						<button type="submit" class="btn primary">Search</button>
+					</form>
+					if v.Query != "" {
+						if len(v.Matches) == 0 {
+							<p class="muted" data-testid="matches-empty">No ingredient outside the pantry matches.</p>
+						} else {
+							<ul data-testid="matches" class="matches plain">
+								for _, o := range v.Matches {
+									<li data-testid="match">
+										{ o.Label }
+										<form method="post" action="/shopping/pantry/add">
+											<input type="hidden" name="ingredient" value={ o.Value }/>
+											<input type="hidden" name="q" value={ v.Query }/>
+											<button type="submit" class="btn" aria-label={ "Add " + o.Label + " to the pantry" }>Add</button>
+										</form>
+									</li>
+								}
+							</ul>
+						}
+					}
+				</aside>
+			</div>
+		</div>
 	}
 }

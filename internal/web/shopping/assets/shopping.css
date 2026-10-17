@@ -1,18 +1,89 @@
-.aisle h3 { text-transform: capitalize; margin-block: 1rem 0.25rem; }
-.aisle ul, .dropped, .entries, .manual { list-style: none; padding: 0; margin: 0; }
-.aisle li { border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
-.aisle form { margin: 0; }
+/* Shopping pages (docs/ui/design.md, mockup #shop). Colours, radii and fonts
+   come from the tokens in app.css; this file holds only what is shopping's. */
+.shopping .shop { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
+.shopping .main, .shopping .side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+@media (max-width: 900px) { .shopping .shop { grid-template-columns: minmax(0, 1fr); } }
+
+.shopping .section-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.shopping .section-h h2 { font-size: 20px; }
+.shopping .panel h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.shopping .panel.bare { background: none; border: 0; border-radius: 0; padding: 6px 0; font-size: 13.5px; color: var(--ink-2); }
+.shopping [hidden] { display: none; }
+.shopping .plain { list-style: none; padding: 0; margin: 0; }
+.shopping .actions { display: flex; align-items: center; gap: 16px; margin: 10px 0 0; }
+
+/* Basket meter and the aisle cards. */
+.basket { margin-bottom: 14px; }
+.basket small { color: var(--ink-3); }
+.meter { height: 8px; background: var(--sunk); border-radius: var(--r-sm); overflow: hidden; margin: 0 0 4px; }
+.meter i { display: block; height: 100%; background: var(--ok); transition: width 0.25s; }
+.aisles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 400px) { .aisles { grid-template-columns: minmax(0, 1fr); } }
+.aisle { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 8px; }
+.aisle h3 { font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.aisle h3 [data-testid="aisle-name"] { text-transform: capitalize; }
+.aisle h3 small { font-family: var(--f-body); font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.items { list-style: none; margin: 0; padding: 0; }
+.item { border-top: 1px solid var(--line); }
+.item:first-child { border-top: 0; }
+.item form { margin: 0; }
 .item-toggle {
-  display: flex; justify-content: space-between; gap: 1rem; width: 100%;
-  min-height: 3rem; padding: 0.5rem 0.25rem; text-align: left;
-  font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  width: 100%; min-height: 52px; padding: 8px 0; text-align: left;
+  font: inherit; color: inherit; background: none; border: 0;
 }
-.item-toggle[aria-checked="true"] .item-name { text-decoration: line-through; opacity: 0.6; }
-.item-toggle[aria-checked="true"]::before { content: "\2713"; }
-.item-sources { display: block; font-size: 0.85em; padding: 0 0.25rem 0.5rem; }
-.entries li, .manual li, .dropped li { padding: 0.35rem 0; }
-#live-status[data-state="error"] { font-weight: bold; }
-.export-text { width: 100%; min-height: 8rem; font-family: monospace; }
-@media (max-width: 40rem) {
-  .item-toggle { font-size: 1.15rem; }
+button.item-toggle { cursor: pointer; }
+.box {
+  width: 24px; height: 24px; border-radius: var(--r); border: 2px solid var(--slate);
+  display: grid; place-items: center; transition: background 0.12s; color: var(--on-accent);
 }
+.box svg { width: 12px; height: 12px; opacity: 0; }
+.item-name { font-size: 16.5px; font-weight: 550; }
+.item-amount { font-weight: 650; font-size: 16.5px; text-align: right; white-space: nowrap; }
+.item-toggle[aria-checked="true"] .box { background: var(--ok); border-color: var(--ok); }
+.item-toggle[aria-checked="true"] .box svg { opacity: 1; }
+.item-toggle[aria-checked="true"] .item-name,
+.item-toggle[aria-checked="true"] .item-amount { text-decoration: line-through; color: var(--ink-3); }
+.item[data-checked="true"] .box { background: var(--ok); border-color: var(--ok); }
+.item[data-checked="true"] .box svg { opacity: 1; }
+.item-sources { display: block; font-size: 13px; color: var(--ink-3); padding: 0 0 8px 38px; margin-top: -6px; }
+
+/* Forms and rows. */
+.shopping label { font-weight: 600; font-size: 14px; }
+.shopping input[type="text"], .shopping input[type="search"], .shopping select, .shopping textarea {
+  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
+  border-radius: var(--r); min-height: var(--tap); padding: 8px 12px; max-width: 100%;
+}
+.shopping input:focus-visible, .shopping select:focus-visible, .shopping textarea:focus-visible { border-color: var(--wattle); }
+.shopping input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--wattle-ink); vertical-align: middle; }
+.fields { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 12px; }
+.fields .btn { align-self: flex-start; margin-top: 8px; }
+.row-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 20px; }
+.row-form input { flex: 1; min-width: 12rem; }
+form.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 0; }
+.field-error { color: var(--wattle-ink); background: var(--wattle-soft); border-radius: var(--r); padding: 10px 14px; margin: 0 0 16px; }
+.src-r { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.src-r span { color: var(--ink-3); font-size: 12.5px; font-weight: 500; }
+.entries > li { padding: 10px 0; border-top: 1px solid var(--line); }
+.entries > li:first-child { border-top: 0; }
+.manual li, .dropped li, .pantry li, .matches li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line);
+}
+.manual li:first-child, .dropped li:first-child { border-top: 0; }
+.manual li form, .dropped li form, .pantry li form, .matches li form { margin: 0 0 0 auto; }
+.pantry { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.pantry li { justify-content: space-between; border-top: 0; padding: 8px 14px; font-weight: 550; }
+.lists-index { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.lists-index a { display: block; font-weight: 650; font-size: 17px; color: var(--ink); text-decoration: none; }
+.lists-index a:hover { border-color: var(--ink-3); }
+#live-status[data-state="error"] { font-weight: 700; color: var(--wattle-ink); }
+.export-text { width: 100%; min-height: 8rem; font-family: var(--f-mono); }
+.done-state { margin-bottom: 14px; }
+
+/* The phone view: bigger rows, nothing else on the page but the list. */
+.shopping.live .item-toggle { min-height: 60px; }
+@media (max-width: 40rem) { .item-toggle { font-size: 1.15rem; } }
+
+/* Touch targets: every control is at least --tap tall (docs/ui/design.md). */
+.shopping .check { display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding-block: 4px; }
+.shopping .src-r a, .shopping .actions a { display: inline-flex; align-items: center; min-height: var(--tap); }
