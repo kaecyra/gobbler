@@ -334,6 +334,12 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 			</div>
 		</div>
 		if v.carries(groupStepGraph) {
+			if !s.Graph.zero() {
+				<input type="hidden" name={ sField(ci, si, "graph") } value={ s.Graph.String() }/>
+			}
+			if s.Graph.LLM {
+				<p class="llm"><strong class="llm-mark">LLM</strong> suggested this step's order and passive flag. Check them.</p>
+			}
 			<label class="inline"><input type="checkbox" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/> Passive (no attention needed while it runs)</label>
 			<details class="deps" open?={ len(s.Deps) > 0 }>
 				<summary>Depends on</summary>

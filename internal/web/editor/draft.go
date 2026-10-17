@@ -84,6 +84,8 @@ type stepDraft struct {
 	To   int
 	Err  string
 	Mark mark
+	// Graph is where Passive and Deps came from, from review.
+	Graph graphMark
 }
 
 type equipDraft struct {
@@ -204,7 +206,7 @@ func parseForm(f url.Values) draft {
 			c.Steps = append(c.Steps, stepDraft{
 				ID: strings.TrimSpace(f.Get(sp + "id")), Text: f.Get(sp + "text"), Duration: f.Get(sp + "dur"),
 				Passive: f.Get(sp+"passive") != "", Deps: nonEmpty(f[sp+"dep"]), To: to,
-				Mark: parseMark(f.Get(sp + "mark")),
+				Mark: parseMark(f.Get(sp + "mark")), Graph: parseGraphMark(f.Get(sp + "graph")),
 			})
 		}
 		d.Components = append(d.Components, c)
@@ -284,26 +286,13 @@ func (d *draft) arrange() {
 
 // settle makes the draft self-consistent: every step has a unique id, its To
 // is its position, and no dependency or equipment link names a missing step.
+// Links are checked before new steps are given ids, so a new step that takes
+// the id of a removed one does not inherit the links that named it.
 func (d *draft) settle() {
 	used := map[string]bool{}
 	for _, c := range d.Components {
 		for _, s := range c.Steps {
 			if s.ID != "" {
-				used[s.ID] = true
-			}
-		}
-	}
-	next := 1
-	for ci := range d.Components {
-		c := &d.Components[ci]
-		for si := range c.Steps {
-			s := &c.Steps[si]
-			s.To = ci
-			if s.ID == "" {
-				for used["s"+strconv.Itoa(next)] {
-					next++
-				}
-				s.ID = "s" + strconv.Itoa(next)
 				used[s.ID] = true
 			}
 		}
@@ -325,6 +314,21 @@ func (d *draft) settle() {
 	}
 	for ei := range d.Equipment {
 		d.Equipment[ei].Steps = keep(d.Equipment[ei].Steps)
+	}
+	next := 1
+	for ci := range d.Components {
+		c := &d.Components[ci]
+		for si := range c.Steps {
+			s := &c.Steps[si]
+			s.To = ci
+			if s.ID == "" {
+				for used["s"+strconv.Itoa(next)] {
+					next++
+				}
+				s.ID = "s" + strconv.Itoa(next)
+				used[s.ID] = true
+			}
+		}
 	}
 }
 

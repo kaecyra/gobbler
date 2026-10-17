@@ -26,14 +26,13 @@ func (v view) reviewing() bool { return v.Review != nil }
 // ingest.Draft and Saver.Save keep; a control for anything else is left out
 // rather than shown and silently dropped on confirm. This is the one place
 // that filters the hidden controls: when the draft learns to carry step
-// dependencies and passive flags (#230), tags, a video or equipment links,
-// switch the group on here.
+// tags, a video or equipment links, switch the group on here.
 func (v view) carries(g controlGroup) bool {
 	if !v.reviewing() {
 		return true
 	}
 	switch g {
-	case groupPlacement:
+	case groupPlacement, groupStepGraph:
 		return true
 	}
 	return false

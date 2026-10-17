@@ -1,7 +1,9 @@
 package editor
 
 import (
+	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -60,3 +62,59 @@ func parseMarks(f url.Values) map[string]mark {
 }
 
 func (d draft) mark(field string) mark { return d.Marks[field] }
+
+// graphMark says where a step's passive flag and dependencies came from on the
+// review screen: a rule matched the step's text (Cue), or the LLM supplied the
+// reading (LLM). Read is the graph as it was read, so toIngest can tell a step
+// whose graph the user left alone, which keeps its provenance, from one they
+// changed, which is then theirs. It rides in a hidden field so it follows the
+// step when it moves. A stored recipe's editor has none.
+type graphMark struct {
+	Cue, LLM bool
+	Read     string
+}
+
+func (g graphMark) zero() bool { return !g.Cue && !g.LLM }
+
+// graphReading is the comparable form of a step's passive flag and dependency
+// ids, independent of the order the dependencies were ticked in.
+func graphReading(passive bool, deps []string) string {
+	ids := slices.Clone(deps)
+	slices.Sort(ids)
+	return fmt.Sprintf("%t:%s", passive, strings.Join(ids, ","))
+}
+
+// String is the hidden field's value: the flags, a semicolon, the reading.
+func (g graphMark) String() string {
+	var w []string
+	if g.Cue {
+		w = append(w, "cue")
+	}
+	if g.LLM {
+		w = append(w, markLLM)
+	}
+	return strings.Join(w, " ") + ";" + g.Read
+}
+
+func parseGraphMark(s string) graphMark {
+	flags, read, _ := strings.Cut(s, ";")
+	g := graphMark{Read: read}
+	for _, w := range strings.Fields(flags) {
+		switch w {
+		case "cue":
+			g.Cue = true
+		case markLLM:
+			g.LLM = true
+		}
+	}
+	return g
+}
+
+// current is g if the user left the step's graph as it was read, else nothing:
+// a changed graph is the user's reading, not the rules' or the LLM's.
+func (g graphMark) current(passive bool, deps []string) graphMark {
+	if g.Read != graphReading(passive, deps) {
+		return graphMark{}
+	}
+	return g
+}
