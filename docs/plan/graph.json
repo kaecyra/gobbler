@@ -2437,7 +2437,7 @@
       "wave": 9,
       "track": null,
       "issue": 277,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "r-shopping-by-recipe",
         "u-recipe-view"
@@ -3311,6 +3311,12 @@
       "title": "keep each recipe's share of a merged shopping line and add the by-recipe view",
       "merged": "5d706e7",
       "note": "Owner chose to build the mockup's by-recipe toggle (2026-10-17). Per-recipe shares are derived from list entries at merge time if possible; a node that finds it needs a migration declares it before dispatch."
+    },
+    {
+      "id": "r-recipe-one-tap",
+      "title": "add a recipe to a shopping list from the recipe page in one tap",
+      "merged": "69add6d",
+      "note": "u-recipe-view links Add to shopping list to /shopping today."
     }
   ],
   "adr_sequence": {
