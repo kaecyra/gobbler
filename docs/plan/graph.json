@@ -1748,7 +1748,9 @@
         "internal/ingest/resolve*.go",
         "internal/ingest/extract/**",
         "internal/ingest/fallback_test.go",
-        "internal/ingest/*_test.go"
+        "internal/ingest/*_test.go",
+        "internal/ingest/ingest.go",
+        "internal/ingest/llm.go"
       ],
       "needs_migration": null,
       "adrs": []
