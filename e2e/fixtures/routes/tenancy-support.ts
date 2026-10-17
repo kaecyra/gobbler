@@ -85,16 +85,24 @@ export async function startServer(w: Workdir, port: number, seed: boolean): Prom
   let recipe = 0;
   if (seed) ({ recipe } = JSON.parse(execFileSync(w.seed, [dataDir], { encoding: 'utf8' })));
   const attempts = 3;
+  const failures: string[] = [];
   for (let attempt = 1; ; attempt++) {
     const s = await tryStart(dataDir, port, recipe);
-    if (s) return s;
-    if (attempt === attempts) throw new Error(`the tenancy server did not start after ${attempts} attempts; the last port tried was ${port}`);
+    if ('child' in s) return s;
+    failures.push(`port ${port}: ${s.exit}`);
+    if (attempt === attempts) {
+      throw new Error(`the tenancy server did not start after ${attempts} attempts (${failures.join('; ')}); its own log is above`);
+    }
     port = await freePort();
   }
 }
 
-/** One start attempt: the server when healthy, undefined when it exited before it was (the port was taken). */
-async function tryStart(dataDir: string, port: number, recipe: number): Promise<Server | undefined> {
+/**
+ * One start attempt: the server when healthy, or how the child exited before it
+ * was. An early exit may be a taken port or a real crash; the caller retries
+ * and reports every exit, so a crash is not mistaken for a collision.
+ */
+async function tryStart(dataDir: string, port: number, recipe: number): Promise<Server | { exit: string }> {
   const origin = `http://127.0.0.1:${port}`;
   const child = spawn(bin!, ['serve'], {
     env: {
@@ -108,14 +116,16 @@ async function tryStart(dataDir: string, port: number, recipe: number): Promise<
     stdio: 'inherit',
   });
   let exited = false;
-  child.once('exit', () => {
+  let exit = '';
+  child.once('exit', (code, signal) => {
     exited = true;
+    exit = signal ? `exited on signal ${signal}` : `exited with code ${code}`;
   });
   const deadline = Date.now() + 20_000;
   for (;;) {
     // A healthy answer from a child that has already exited is the other
     // process that holds the port, not this server.
-    if (exited) return undefined;
+    if (exited) return { exit };
     try {
       if ((await fetch(`${origin}/healthz`)).ok && !exited) break;
     } catch {
