@@ -152,6 +152,117 @@ func TestFallbackAsksAboutDefaultStepsOnly(t *testing.T) { // ADR-00020 decision
 	}
 }
 
+// A step whose graph the user set on the review screen is settled: a retry
+// with the LLM does not ask about it or replace it.
+func TestFallbackLeavesAUserSetGraphAlone(t *testing.T) {
+	e := newEnv(t)
+	rule := ruleDraft(t, e, recipeWith("Mix the flour and water.", "Bake for 30 minutes.", "Slice and serve."))
+	rule.Components[0].Steps[0].GraphByUser = true
+	rule.Components[0].Steps[0].DependsOn = []int{}
+	fp := &fakeProvider{resp: graphAnswer(
+		StructuredStep{Step: 1, Passive: true, DependsOn: []int{}},
+		StructuredStep{Step: 3, Passive: true, DependsOn: []int{1}},
+	)}
+	got, err := e.pipelineWith(t, testConfig(), fp).Fallback().Retry(e.ctx, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var asked []int
+	for _, g := range fp.calls[0].Gaps.Steps {
+		asked = append(asked, g.Number)
+	}
+	if !reflect.DeepEqual(asked, []int{3}) {
+		t.Errorf("asked about steps %v, want only the default step 3", asked)
+	}
+	steps := flatSteps(got)
+	if s := steps[0]; s.Passive || s.GraphFromLLM || !s.GraphByUser {
+		t.Errorf("user-set step = %+v, want it unchanged", s)
+	}
+	if s := steps[2]; !s.Passive || !s.GraphFromLLM {
+		t.Errorf("default step = %+v, want the LLM's graph", s)
+	}
+}
+
+// When the fallback replaces the components, the kept steps are numbered
+// afresh: a weak step is dropped and the rest move up. The user's graph is
+// kept, its dependency numbers translated, and a dependency on the dropped
+// step goes with it.
+func TestFallbackKeepsAUserSetGraphThroughReplacedComponents(t *testing.T) {
+	e := newEnv(t)
+	rule := ruleDraft(t, e, "Bread\n\nDirections\nMix the flour and water.\nKnead the dough.\nSlice and serve.\n")
+	steps := rule.Components[0].Steps
+	if len(steps) != 3 {
+		t.Fatalf("rule steps = %+v, want three", steps)
+	}
+	steps[0].Confidence, steps[1].Confidence, steps[2].Confidence = 0, 1, 1 // the weak one is dropped; the others become steps 1 and 2
+	steps[2].GraphByUser, steps[2].Passive, steps[2].DependsOn = true, true, []int{1, 2}
+	fp := &fakeProvider{resp: llmAnswer()}
+	got, err := e.pipelineWith(t, testConfig(), fp).Fallback().Retry(e.ctx, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.UsedLLM || len(fp.calls[0].Gaps.Steps) != 0 {
+		t.Fatalf("the components were not replaced: %+v", fp.calls[0].Gaps)
+	}
+	out := flatSteps(got)
+	if len(out) != 2 || out[1].Text != "Slice and serve." {
+		t.Fatalf("steps = %+v, want the two kept steps", out)
+	}
+	if s := out[1]; !s.GraphByUser || !s.Passive || !reflect.DeepEqual(s.DependsOn, []int{1}) {
+		t.Errorf("user-set step = %+v, want passive and depending on step 1 (old step 2)", s)
+	}
+}
+
+// A parallel step right after a user-set step starts with it, so it copies the
+// user step's dependencies: the translated ones.
+func TestFallbackParallelStepAfterAUserSetStepCopiesTranslatedDependencies(t *testing.T) {
+	e := newEnv(t)
+	rule := ruleDraft(t, e, "Bread\n\nDirections\nMix the flour and water.\nKnead the dough.\nSlice and serve.\n")
+	steps := rule.Components[0].Steps
+	steps[2].Text = "Meanwhile, chop the herbs."
+	steps[0].Confidence, steps[1].Confidence, steps[2].Confidence = 0, 1, 1
+	steps[1].GraphByUser, steps[1].DependsOn = true, []int{1} // old step 1 is dropped
+	got, err := e.pipelineWith(t, testConfig(), &fakeProvider{resp: llmAnswer()}).Fallback().Retry(e.ctx, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := flatSteps(got)
+	if len(out) != 2 || len(out[0].DependsOn) != 0 || len(out[1].DependsOn) != 0 {
+		t.Errorf("steps = %+v, want both without dependencies: the one they named was dropped", out)
+	}
+}
+
+// The new numbers run across components, not within each: the kept steps of
+// the second component come after those of the first. With as many answer
+// components as the rules found the steps stay where they were; with a
+// different number they are all placed in the first.
+func TestFallbackTranslatesUserGraphsAcrossComponents(t *testing.T) {
+	two := Structured{Name: "Bread", Components: []StructuredComponent{
+		{Ingredients: []string{"2 cups flour"}}, {Ingredients: []string{"1 cup water"}},
+	}}
+	for name, answer := range map[string]Structured{"same component count": two, "different component count": llmAnswer()} {
+		e := newEnv(t)
+		rule := ruleDraft(t, e, "Bread\n\nDirections\nMix the flour and water.\n")
+		mk := func(text string) Step { return Step{Text: text, Confidence: 1} }
+		weak := mk("Weak.")
+		weak.Confidence = 0
+		user := mk("Fourth.")
+		user.GraphByUser, user.DependsOn = true, []int{3} // the third step, first of the second component
+		rule.Components = []Component{
+			{Steps: []Step{weak, mk("Second.")}},
+			{Steps: []Step{mk("Third."), user}},
+		}
+		got, err := e.pipelineWith(t, testConfig(), &fakeProvider{resp: answer}).Fallback().Retry(e.ctx, rule)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		out := flatSteps(got)
+		if len(out) != 3 || out[2].Text != "Fourth." || !reflect.DeepEqual(out[2].DependsOn, []int{2}) {
+			t.Errorf("%s: steps = %+v, want the user step depending on step 2 (old step 3)", name, out)
+		}
+	}
+}
+
 func TestFallbackChangesADefaultStepAndLeavesACueBackedOne(t *testing.T) { // ADR-00020 obligation 2
 	e := newEnv(t)
 	rule := ruleDraft(t, e, recipeWith("Mix the flour and water.", "Bake for 30 minutes.", "Slice and serve."))

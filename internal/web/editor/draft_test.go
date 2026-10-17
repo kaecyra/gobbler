@@ -79,6 +79,28 @@ func TestNewStepsGetUniqueIDs(t *testing.T) {
 	}
 }
 
+// A posted form that drops the step with id s1 and adds a step with no id: the
+// new step takes the free id s1, and must not inherit the dependency and the
+// equipment link that named the removed step.
+func TestANewStepReusingARemovedIDInheritsNoLinks(t *testing.T) {
+	d := parseForm(url.Values{
+		"c.0.s.0.text": {"Preheat."}, "c.0.s.0.to": {"0"},
+		"c.0.s.1.text": {"Bake."}, "c.0.s.1.to": {"0"}, "c.0.s.1.id": {"s2"}, "c.0.s.1.dep": {"s1"},
+		"e.0.name": {"oven"}, "e.0.step": {"s1", "s2"},
+	})
+	d.arrange()
+	steps := d.Components[0].Steps
+	if steps[0].ID != "s1" {
+		t.Fatalf("new step id = %q, want the free id s1", steps[0].ID)
+	}
+	if len(steps[1].Deps) != 0 {
+		t.Errorf("Bake depends on %v, want nothing: the step it named is gone", steps[1].Deps)
+	}
+	if !reflect.DeepEqual(d.Equipment[0].Steps, []string{"s2"}) {
+		t.Errorf("equipment steps = %v, want only s2", d.Equipment[0].Steps)
+	}
+}
+
 func TestReorderingAndEdgeMoves(t *testing.T) {
 	d := twoComponents()
 	if err := d.apply("down-step:0.0"); err != nil {

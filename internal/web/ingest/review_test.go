@@ -1,12 +1,17 @@
 package ingest
 
 import (
+	"html"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
+	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/quantity"
+	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
 // The review screen is the recipe editor over the unsaved draft (ADR-00020
@@ -26,12 +31,12 @@ func TestReviewIsTheEditorForm(t *testing.T) {
 	}
 }
 
-// The draft cannot keep these yet, so offering them would drop an edit
-// silently on confirm (#230 turns the step graph on).
+// The draft cannot keep these, so offering them would drop an edit silently on
+// confirm. The step graph is not among them: the draft carries it.
 func TestReviewOffersNoControlTheDraftCannotKeep(t *testing.T) {
 	f := newFixture(t)
 	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
-	for _, absent := range []string{`name="c.0.s.0.dep"`, `name="c.0.s.0.passive"`, `type="checkbox" name="c.0.s.0`, `name="tags"`, `name="video"`, `name="source_url"`, `name="version"`, `<select id="c.0.l.0.rule"`, `name="e.0.qty"`, `name="e.0.step"`} {
+	for _, absent := range []string{`name="tags"`, `name="video"`, `name="source_url"`, `name="version"`, `<select id="c.0.l.0.rule"`, `name="e.0.qty"`, `name="e.0.step"`} {
 		if strings.Contains(body, absent) {
 			t.Errorf("review offers %s, which confirm would drop", absent)
 		}
@@ -385,5 +390,162 @@ func TestFlagsFollowTheirRowsPastBlankRows(t *testing.T) {
 	equip := items(body, "equipment")
 	if len(equip) != 3 || !strings.Contains(equip[2], "LLM") || strings.Contains(equip[1], "LLM") {
 		t.Errorf("equipment after the blank row: %q", equip)
+	}
+}
+
+// graphDraft is the sample draft with a third step and an inferred graph: step
+// 2 is a passive step the rules matched, step 3 follows it, and the LLM
+// supplied step 3's reading.
+func graphDraft() ingestcore.Draft {
+	d := sampleDraft()
+	st := d.Components[0].Steps
+	st[1].Passive, st[1].DependsOn, st[1].GraphCue = true, []int{1}, true
+	d.Components[0].Steps = append(st, ingestcore.Step{Text: "Cool on a rack.", Confidence: 1, DependsOn: []int{2}, GraphFromLLM: true})
+	return d
+}
+
+var hiddenGraph = regexp.MustCompile(`<input type="hidden" name="(c\.\d+\.s\.\d+\.graph)" value="([^"]*)"`)
+
+// graphForm is reviewForm for graphDraft as the browser would post it from the
+// rendered page: the step ids, the checked controls and the hidden graph
+// fields, taken from body.
+func graphForm(body string) url.Values {
+	form := reviewForm()
+	form.Set("c.0.s.2.text", "Cool on a rack.")
+	form.Set("c.0.s.2.to", "0")
+	for i, id := range []string{"s1", "s2", "s3"} {
+		form.Set("c.0.s."+strconv.Itoa(i)+".id", id)
+	}
+	form.Set("c.0.s.1.passive", "1")
+	form.Set("c.0.s.1.dep", "s1")
+	form.Set("c.0.s.2.dep", "s2")
+	for _, m := range hiddenGraph.FindAllStringSubmatch(body, -1) {
+		form.Set(m[1], html.UnescapeString(m[2]))
+	}
+	return form
+}
+
+func savedSteps(f *fixture) []recipe.Step {
+	var out []recipe.Step
+	for _, c := range f.store.recipes[0].Components {
+		out = append(out, c.Steps...)
+	}
+	return out
+}
+
+func deps(s recipe.Step) string {
+	var ids []string
+	for _, d := range s.DependsOn {
+		ids = append(ids, string(d))
+	}
+	return strings.Join(ids, ",")
+}
+
+func TestReviewShowsTheInferredStepGraph(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft = graphDraft()
+	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
+	steps := items(body, "step")
+	if len(steps) != 3 {
+		t.Fatalf("steps shown = %d, want 3", len(steps))
+	}
+	if !strings.Contains(steps[1], `name="c.0.s.1.passive" value="1" checked`) {
+		t.Error("the inferred passive step is not shown ticked")
+	}
+	if !strings.Contains(steps[1], `name="c.0.s.1.dep" value="s1" checked`) || !strings.Contains(steps[2], `name="c.0.s.2.dep" value="s2" checked`) {
+		t.Error("the inferred dependencies are not shown ticked")
+	}
+	if strings.Contains(steps[0], `name="c.0.s.0.dep"`+` value="s1"`) {
+		t.Error("a step offers itself as its own dependency")
+	}
+}
+
+// The LLM's reading of a step's order is flagged in words on that step only.
+func TestReviewFlagsAnLLMSuppliedGraphInWords(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft = graphDraft()
+	steps := items(f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String(), "step")
+	if !strings.Contains(steps[2], "suggested this step's order") {
+		t.Errorf("the LLM-read step is not flagged in words: %s", steps[2])
+	}
+	if strings.Contains(steps[1], "suggested this step's order") || strings.Contains(steps[0], "suggested this step's order") {
+		t.Error("a rule-read or default step is flagged as the LLM's")
+	}
+}
+
+// An inferred graph the user did not touch is saved as inferred (#230).
+func TestConfirmSavesTheInferredGraphUnedited(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft = graphDraft()
+	token := f.ingestText(t)
+	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
+	if rec := f.do(http.MethodPost, "/"+token+"/confirm", graphForm(body)); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+	}
+	got := savedSteps(f)
+	if len(got) != 3 || got[0].Passive || !got[1].Passive || got[2].Passive || deps(got[0]) != "" || deps(got[1]) != "s1" || deps(got[2]) != "s2" {
+		t.Errorf("saved steps = %+v, want the inferred graph", got)
+	}
+}
+
+func TestConfirmSavesAnEditedDependencyAndPassiveFlag(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft = graphDraft()
+	token := f.ingestText(t)
+	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
+	form := graphForm(body)
+	form.Del("c.0.s.1.passive")
+	form.Set("c.0.s.2.passive", "1")
+	form["c.0.s.2.dep"] = []string{"s1"}
+	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+	}
+	got := savedSteps(f)
+	if got[1].Passive || !got[2].Passive || deps(got[2]) != "s1" {
+		t.Errorf("saved steps = %+v, want step 2 active and step 3 passive depending on step 1", got)
+	}
+}
+
+// Dependencies follow the step, not its number, when steps are added or
+// removed: step 1 is replaced by a new step, so Bake loses its dependency on
+// the removed step and must not pick up the new one, which is free to take the
+// removed step's id.
+func TestConfirmGraphFollowsStepsThroughAnAddAndARemoval(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft = graphDraft()
+	token := f.ingestText(t)
+	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
+	form := graphForm(body)
+	for _, field := range []string{"id", "passive", "dep", "graph"} {
+		form.Del("c.0.s.0." + field)
+	}
+	form.Set("c.0.s.0.text", "Preheat the oven.")
+	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+	}
+	got := savedSteps(f)
+	if len(got) != 3 || got[0].Text != "Preheat the oven." || deps(got[0]) != "" {
+		t.Fatalf("saved steps = %+v", got)
+	}
+	if !got[1].Passive || deps(got[1]) != "" || deps(got[2]) != "s2" {
+		t.Errorf("saved steps = %+v, want Bake passive with no dependency and Cool after step 2", got)
+	}
+}
+
+// Moving a step to another component renumbers it; what depends on it follows.
+func TestConfirmGraphFollowsAMovedStep(t *testing.T) {
+	f := newFixture(t)
+	f.drafter.draft = graphDraft()
+	token := f.ingestText(t)
+	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
+	form := graphForm(body)
+	form.Set("c.1.name", "Topping")
+	form.Set("c.0.s.0.to", "1") // step 1 leaves for the end: Mix is now step 3
+	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
+	}
+	got := savedSteps(f)
+	if len(got) != 3 || got[2].Text != "Mix everything." || deps(got[0]) != "s3" || deps(got[1]) != "s1" {
+		t.Errorf("saved steps = %+v, want Bake after Mix (now step 3) and Cool after Bake (now step 1)", got)
 	}
 }

@@ -19,6 +19,21 @@ Whisk the dry ingredients together in a large bowl.
 Cook on a hot greased griddle until golden on both sides.
 `;
 
+// Three plain steps, so the rules' default graph is a chain.
+const THREE_STEPS = `Plain Pancakes
+
+Ingredients:
+- 2 cups all-purpose flour
+- 2 eggs
+
+Instructions:
+Whisk the flour and eggs together in a large bowl.
+
+Pour the batter into a pan.
+
+Flip the pancake and serve.
+`;
+
 // One ingredient the seeded catalog does not have.
 const UNKNOWN = `Zesty Water
 
@@ -218,6 +233,44 @@ test('an amount, a unit and a whole line can be corrected on review before anyth
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
   await expect(page.getByText('3 tbsp')).toBeVisible();
+});
+
+// ADR-00020 obligation 4: the review screen is the recipe editor, so an amount,
+// a unit and a step dependency edited on the draft are what is saved.
+test('an amount, a unit and a step dependency edited on review are what confirm saves', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Or paste the recipe text').fill(THREE_STEPS);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+
+  // The inferred graph is shown: each step follows the one before it.
+  await expect(page.locator('[name="c.0.s.1.dep"][value="s1"]')).toBeChecked();
+  await expect(page.locator('[name="c.0.s.2.dep"][value="s2"]')).toBeChecked();
+
+  const first = page.locator('li.line').nth(0);
+  await first.getByLabel('Quantity').fill('3');
+  await first.getByLabel('Unit', { exact: true }).fill('tbsp');
+
+  // Step 3 follows step 1 instead of step 2, and step 2 is passive.
+  await page.locator('[name="c.0.s.2.dep"][value="s2"]').uncheck();
+  await page.locator('[name="c.0.s.2.dep"][value="s1"]').check();
+  await page.locator('[name="c.0.s.1.passive"]').check();
+
+  // A structural button keeps the edit.
+  await page.getByRole('button', { name: 'Add ingredient line' }).click();
+  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  await expect(page.locator('[name="c.0.s.2.dep"][value="s1"]')).toBeChecked();
+
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await expect(page).toHaveURL(/\/recipes\/(\d+)$/);
+  const id = page.url().match(/\/recipes\/(\d+)$/)![1];
+  await expect(page.getByText('3 tbsp')).toBeVisible();
+
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('[name="c.0.s.2.dep"][value="s1"]')).toBeChecked();
+  await expect(page.locator('[name="c.0.s.2.dep"][value="s2"]')).not.toBeChecked();
+  await expect(page.locator('[name="c.0.s.1.dep"][value="s1"]')).toBeChecked();
+  await expect(page.locator('[name="c.0.s.1.passive"]')).toBeChecked();
+  await expect(page.locator('[name="c.0.s.0.passive"]')).not.toBeChecked();
 });
 
 test('cancel discards the draft and saves nothing', async ({ page, request }) => {

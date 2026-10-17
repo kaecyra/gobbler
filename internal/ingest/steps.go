@@ -60,7 +60,10 @@ var parallelRE = regexp.MustCompile(`(?i)^\s*(meanwhile|in the meantime|at the s
 // before it. A parallel step instead starts when the step before it starts, so
 // it shares that step's dependencies, and the next step waits for every branch.
 // A step a rule matched is marked GraphCue; the rest have the default graph.
-// Numbers run from 1 across all components, as Step.DependsOn defines.
+// Numbers run from 1 across all components, as Step.DependsOn defines. A step
+// the user set (GraphByUser) keeps its graph, whose numbers the caller must
+// translate before this runs if the steps were renumbered (see
+// renumberUserGraphs), since a parallel step after it copies its dependencies.
 func inferGraph(comps []Component) {
 	var tails, prev []int
 	n := 0
@@ -68,8 +71,14 @@ func inferGraph(comps []Component) {
 		for si := range comps[ci].Steps {
 			n++
 			st := &comps[ci].Steps[si]
+			if st.GraphByUser {
+				// The user's graph stands. Its step still counts as a link in
+				// the chain for the steps after it.
+				tails, prev = []int{n}, st.DependsOn
+				continue
+			}
 			passive, parallel := isPassive(st.Text), parallelRE.MatchString(st.Text)
-			st.Passive, st.GraphCue, st.GraphFromLLM = passive, passive || parallel, false
+			st.Passive, st.GraphCue, st.GraphFromLLM, st.GraphByUser = passive, passive || parallel, false, false
 			if parallel {
 				st.DependsOn = slices.Clone(prev)
 				tails = append(tails, n)
@@ -94,7 +103,7 @@ func stepCount(comps []Component) int {
 // stepGaps lists the steps whose graph the rules left at the default, for the
 // fallback to ask about, and the text of every step so a dependency can name
 // one. A recipe with one step has no graph to infer, and a step whose graph the
-// LLM already supplied is settled.
+// LLM supplied or the user set is settled.
 func stepGaps(comps []Component) ([]GapStep, []string) {
 	if stepCount(comps) < 2 {
 		return nil, nil
@@ -104,7 +113,7 @@ func stepGaps(comps []Component) ([]GapStep, []string) {
 	for ci, c := range comps {
 		for si, st := range c.Steps {
 			texts = append(texts, st.Text)
-			if !st.GraphCue && !st.GraphFromLLM {
+			if !st.GraphCue && !st.GraphFromLLM && !st.GraphByUser {
 				gaps = append(gaps, GapStep{Component: ci, Step: si, Number: len(texts), Text: st.Text})
 			}
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -131,6 +132,7 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 	flag("cook", d.Cook.Value > 0, d.Cook.Confidence, d.Cook.FromLLM)
 	flag("total", d.Total.Value > 0, d.Total.Confidence, d.Total.FromLLM)
 
+	n := 0 // the draft numbers its steps from 1 across every component
 	for ci, c := range d.Components {
 		cd := compDraft{Name: c.Name}
 		for _, l := range c.Lines {
@@ -157,9 +159,17 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 			cd.Lines = append(cd.Lines, ld)
 		}
 		for _, s := range c.Steps {
-			cd.Steps = append(cd.Steps, stepDraft{
-				Text: s.Text, Duration: durationText(s.Duration), To: ci, Mark: mark{Low: low(s.Confidence), LLM: s.FromLLM},
-			})
+			n++
+			sd := stepDraft{
+				ID: stepID(n), Text: s.Text, Duration: durationText(s.Duration), To: ci,
+				Mark: mark{Low: low(s.Confidence), LLM: s.FromLLM}, Passive: s.Passive,
+				Graph: graphMark{Cue: s.GraphCue, LLM: s.GraphFromLLM, User: s.GraphByUser},
+			}
+			for _, dep := range s.DependsOn {
+				sd.Deps = append(sd.Deps, stepID(dep))
+			}
+			sd.Graph.Read = graphReading(sd.Passive, sd.Deps)
+			cd.Steps = append(cd.Steps, sd)
 		}
 		ed.Components = append(ed.Components, cd)
 	}
@@ -183,6 +193,13 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 // draft, so a draft put back after a failed save reopens with its flags
 // (ADR-00006 obligation 4). Only what Draft keeps is copied; the form shows
 // only that (see view.carries), so nothing the user edited is lost.
+//
+// A step's passive flag and dependencies go back as the form has them, the
+// dependencies renumbered to the steps' places in the recipe. GraphCue,
+// GraphFromLLM and GraphByUser say who read the graph, so they stay only for a
+// step whose graph the user left as it was read; a step whose flag or
+// dependencies were changed, or that the user added, has the user's reading:
+// only GraphByUser is set, so a retry with the LLM leaves it alone.
 func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows kept, names lookups, ed draft) ingestcore.Draft {
 	out := base
 	out.Name.Value, out.Author.Value, out.Description.Value = rec.Name, rec.Author, rec.Description
@@ -211,6 +228,7 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 	}
 	// rows says which form row each recipe row came from, so the form's marks
 	// follow their rows past any the build dropped.
+	numbers := stepNumbers(rec)
 	out.Components = nil
 	for ci, c := range rec.Components {
 		form := ed.Components[ci]
@@ -229,9 +247,14 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 			dc.Lines = append(dc.Lines, line)
 		}
 		for si, s := range c.Steps {
+			fs := form.Steps[rows.steps[ci][si]]
+			// The graph provenance stays only while the user left this step's
+			// passive flag and dependencies as they were read.
+			g := fs.Graph.current(s.Passive, stepIDs(s.DependsOn))
 			dc.Steps = append(dc.Steps, ingestcore.Step{
 				Text: s.Text, Duration: s.Duration,
-				Confidence: confidence(form.Steps[rows.steps[ci][si]].Mark, base.Threshold), FromLLM: form.Steps[rows.steps[ci][si]].Mark.LLM,
+				Confidence: confidence(fs.Mark, base.Threshold), FromLLM: fs.Mark.LLM,
+				Passive: s.Passive, DependsOn: dependsOn(s, numbers), GraphCue: g.Cue, GraphFromLLM: g.LLM, GraphByUser: g.User,
 			})
 		}
 		out.Components = append(out.Components, dc)
@@ -245,6 +268,34 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 		out.Equipment = append(out.Equipment, eq)
 	}
 	out.Proposed = ingestcore.ProposedFor(out.Components, base.Proposed)
+	return out
+}
+
+// stepID is the id the editor gives the step a draft numbers n. The ids are
+// the draft's numbers while the form is untouched; after that they are only
+// names, and stepNumbers maps them back.
+func stepID(n int) string { return fmt.Sprintf("s%d", n) }
+
+// stepNumbers numbers the steps of rec from 1 in reading order across every
+// component, as ingest.Step.DependsOn does, so a dependency written against a
+// step's id follows the step through any move, add or removal.
+func stepNumbers(rec recipe.Recipe) map[recipe.StepID]int {
+	out := map[recipe.StepID]int{}
+	for _, c := range rec.Components {
+		for _, s := range c.Steps {
+			out[s.ID] = len(out) + 1
+		}
+	}
+	return out
+}
+
+// dependsOn is s's dependencies as step numbers, in ascending order.
+func dependsOn(s recipe.Step, numbers map[recipe.StepID]int) []int {
+	var out []int
+	for _, d := range s.DependsOn {
+		out = append(out, numbers[d])
+	}
+	slices.Sort(out)
 	return out
 }
 
