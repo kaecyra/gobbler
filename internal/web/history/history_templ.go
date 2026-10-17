@@ -775,7 +775,7 @@ func versionPage(v versionView) templ.Component {
 							var templ_7745c5c3_Var40 string
 							templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/history/history.templ`, Line: 154, Col: 24}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/history/history.templ`, Line: 154, Col: 23}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 							if templ_7745c5c3_Err != nil {
@@ -798,7 +798,7 @@ func versionPage(v versionView) templ.Component {
 							var templ_7745c5c3_Var41 string
 							templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(l)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/history/history.templ`, Line: 158, Col: 26}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/history/history.templ`, Line: 158, Col: 25}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 							if templ_7745c5c3_Err != nil {

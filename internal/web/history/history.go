@@ -90,7 +90,7 @@ const libraryPath = "/recipes"
 var stylesheet string
 
 // styles is the history page's stylesheet, written into the page like the
-// recipe page's (layout.Styles).
+// recipe page's (layout.RecipeStyles).
 func styles() templ.Component {
 	return templ.Raw("<style>" + stylesheet + "</style>")
 }
