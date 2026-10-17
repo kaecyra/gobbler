@@ -46,11 +46,9 @@ func (s *Store) MergeIngredients(ctx context.Context, winnerID, loserID int64) (
 	}
 	var merged Ingredient
 	err := s.withTx(ctx, func(q *catalogdb.Queries, tx *sql.Tx) error {
-		// The winner row is written before anything is read, so the
-		// transaction takes the write lock up front (db.WithTx). A read first
-		// would pin a snapshot, and a concurrent writer committing before our
-		// first write would fail the merge with SQLITE_BUSY (#59). The lock
-		// doubles as the winner's existence check.
+		// db.WithTx begins IMMEDIATE, so the write lock is held before this
+		// runs and no read snapshot can go stale (#59, #213). The no-op write
+		// is now only the winner's existence check.
 		n, err := q.LockIngredient(ctx, winnerID)
 		if err != nil {
 			return fmt.Errorf("lock ingredient %d: %w", winnerID, err)
