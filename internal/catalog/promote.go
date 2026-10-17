@@ -70,7 +70,7 @@ func (s *Store) PreviewPromotion(ctx context.Context, id int64) (Promotion, erro
 func (s *Store) PromoteIngredient(ctx context.Context, id int64) (Promotion, error) {
 	var p Promotion
 	err := s.withTx(ctx, func(q *catalogdb.Queries, tx *sql.Tx) error {
-		// Write first, for the lock (db.WithTx).
+		// Existence check; the write lock is already held from begin (db.WithTx).
 		n, err := q.LockIngredient(ctx, id)
 		if err != nil {
 			return fmt.Errorf("lock ingredient %d: %w", id, err)

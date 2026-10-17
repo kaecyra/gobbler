@@ -537,8 +537,9 @@ const lockIngredient = `-- name: LockIngredient :execrows
 UPDATE ingredients SET reviewed = reviewed WHERE id = ?
 `
 
-// LockIngredient takes the database write lock with a no-op write, so the
-// reads that follow in the same transaction see the state it will change.
+// LockIngredient is a no-op write that checks the ingredient exists: zero
+// affected rows means not found. The write transaction already holds the
+// write lock from begin (db.WithTx), so the lock is not why it runs first.
 func (q *Queries) LockIngredient(ctx context.Context, id int64) (int64, error) {
 	result, err := q.db.ExecContext(ctx, lockIngredient, id)
 	if err != nil {
