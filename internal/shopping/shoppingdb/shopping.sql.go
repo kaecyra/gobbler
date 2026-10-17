@@ -412,8 +412,9 @@ type LockListParams struct {
 	HouseholdID int64
 }
 
-// LockList takes the database write lock with a no-op write, so the reads
-// that follow in the same transaction see the state it will change.
+// LockList is a no-op write that checks the list exists in the household:
+// zero affected rows means not found. The write transaction already holds the
+// write lock from begin (db.WithTx), so the lock is not why it runs first.
 func (q *Queries) LockList(ctx context.Context, arg LockListParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, lockList, arg.ID, arg.HouseholdID)
 	if err != nil {

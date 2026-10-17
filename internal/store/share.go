@@ -274,8 +274,9 @@ func (s *Store) AcceptShare(ctx context.Context, id int64, resolve ResolveIngred
 	}
 	var recipeID int64
 	err = db.WithTx(ctx, s.db, s.q, func(q *storedb.Queries, tx *sql.Tx) error {
-		// The claim is the first statement: it takes the write lock, and only one
-		// of two concurrent accepts affects the row.
+		// The claim is the first statement so that only one of two concurrent
+		// accepts affects the row; the loser sees no pending share and stops
+		// before importing anything. The write lock is already held from begin.
 		now := s.stamp()
 		if err := resolveShare(ctx, q, hid, id, shareStatusAccepted, now); err != nil {
 			return err

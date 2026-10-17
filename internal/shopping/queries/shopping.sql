@@ -20,8 +20,9 @@ WHERE id = sqlc.arg(id) AND household_id = sqlc.arg(household_id) AND include_op
 -- name: RenameList :execrows
 UPDATE shopping_lists SET name = ? WHERE id = ? AND household_id = ?;
 
--- LockList takes the database write lock with a no-op write, so the reads
--- that follow in the same transaction see the state it will change.
+-- LockList is a no-op write that checks the list exists in the household:
+-- zero affected rows means not found. The write transaction already holds the
+-- write lock from begin (db.WithTx), so the lock is not why it runs first.
 -- name: LockList :execrows
 UPDATE shopping_lists SET name = name WHERE id = ? AND household_id = ?;
 

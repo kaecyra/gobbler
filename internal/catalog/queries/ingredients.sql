@@ -76,8 +76,9 @@ UPDATE ingredient_aliases
 SET ingredient_id = sqlc.arg(winner_id)
 WHERE ingredient_id = sqlc.arg(loser_id);
 
--- LockIngredient takes the database write lock with a no-op write, so the
--- reads that follow in the same transaction see the state it will change.
+-- LockIngredient is a no-op write that checks the ingredient exists: zero
+-- affected rows means not found. The write transaction already holds the
+-- write lock from begin (db.WithTx), so the lock is not why it runs first.
 -- name: LockIngredient :execrows
 UPDATE ingredients SET reviewed = reviewed WHERE id = ?;
 
