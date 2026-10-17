@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -31,14 +32,35 @@ func TestPageRendersTitleNavAndContentSlot(t *testing.T) {
 	got := b.String()
 	for _, want := range []string{
 		"<title>Lasagna &lt;b&gt; - gobbler</title>",
-		`<nav class="site-nav"`,
+		`aria-label="Primary"`,
 		`<main id="content">`,
+		`src="` + ThemePath + `"`,
+		`data-theme-toggle`,
+		"Made by kaecyra in Canada",
 		"<p>slot content</p>",
 		`href="` + StylesheetPath + `"`,
 		`src="` + HTMXPath + `"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("page missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+// ADR-00022 obligation 4: each mascot is its own cached SVG file and is shown
+// with an img tag, so no page carries a drawing inline.
+func TestPageInlinesNoMascotDrawing(t *testing.T) {
+	var b bytes.Buffer
+	if err := Page("x").Render(templ.WithChildren(context.Background(), templ.NopComponent), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if !strings.Contains(got, `src="`+MascotHeader+`"`) {
+		t.Errorf("header does not show the mascot from %s:\n%s", MascotHeader, got)
+	}
+	for _, inline := range []string{"<symbol", `id="gob`, "<clipPath", "<use", "M695 1486", "#acafaf"} {
+		if strings.Contains(got, inline) {
+			t.Errorf("page inlines mascot drawing markup %q", inline)
 		}
 	}
 }
@@ -182,7 +204,7 @@ func TestNavMarksOnlyTheCurrentSection(t *testing.T) {
 			if n := strings.Count(got, `aria-current="page"`); n != 1 {
 				t.Fatalf("aria-current marks = %d, want exactly one:\n%s", n, got)
 			}
-			if !strings.Contains(got, `href="`+tc.current+`" aria-current="page"`) {
+			if !regexp.MustCompile(`<a [^>]*href="` + tc.current + `"[^>]*aria-current="page"`).MatchString(got) {
 				t.Errorf("link %s not marked current:\n%s", tc.current, got)
 			}
 		})

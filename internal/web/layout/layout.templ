@@ -1,15 +1,12 @@
 package layout
 
-import "strconv"
-
-// Asset URLs served from the embedded static directory by package web.
-const (
-	StylesheetPath = "/static/app.css"
-	HTMXPath       = "/static/htmx.min.js"
+import (
+	"context"
+	"strconv"
 )
 
-// Page renders the document shell around its children: title, navigation and
-// the content slot.
+// Page renders the document shell around its children: title, header with the
+// navigation, the content slot and the footer (docs/ui/design.md).
 templ Page(title string) {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -18,29 +15,124 @@ templ Page(title string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title } - gobbler</title>
 			<link rel="stylesheet" href={ StylesheetPath }/>
+			<script src={ ThemePath }></script>
 			<script src={ HTMXPath } defer></script>
 		</head>
 		<body>
-			<header class="site-header">
-				<a class="brand" href="/">gobbler</a>
-				<nav class="site-nav" aria-label="Primary">
-					for _, item := range navItems {
-						if visible(ctx, item) {
-							<a
-								href={ templ.SafeURL(item.Path) }
-								if isCurrent(ctx, item) {
-									aria-current="page"
-								}
-							>{ item.Label }</a>
+			<header class="top">
+				<div class="wrap">
+					<a class="brand" href="/">
+						<img class="standing" src={ MascotHeader } alt="" width="46" height="60"/>
+						<span class="brand-text">
+							<b>gobbler</b>
+							<small>Find it. Cook it. Gobble it.</small>
+						</span>
+					</a>
+					<nav class="tabs" aria-label="Primary">
+						for _, item := range navItems {
+							if !item.Menu && visible(ctx, item) {
+								@navLink(ctx, item)
+							}
 						}
-					}
-				</nav>
+						<details class="menu" data-menu>
+							<summary
+								class="tab"
+								role="button"
+								aria-label="More sections"
+								title="More sections"
+								if menuCurrent(ctx) {
+									data-current="true"
+								}
+							>
+								@icon("menu")
+								<span class="lbl-phone">More</span>
+							</summary>
+							<ul class="menu-list">
+								for _, item := range navItems {
+									if item.Menu && visible(ctx, item) {
+										<li>@navLink(ctx, item)</li>
+									}
+								}
+							</ul>
+						</details>
+					</nav>
+					<button type="button" class="modebtn" data-theme-toggle aria-pressed="false" aria-label="Switch to dark" title="Dark mode">
+						@icon("moon")
+					</button>
+				</div>
 			</header>
 			<main id="content">
 				{ children... }
 			</main>
+			<footer class="wrap">
+				<div class="foot">
+					<a href={ templ.SafeURL(RepositoryURL) } target="_blank" rel="noopener">
+						@icon("code")
+						<span>{ RepositoryDisplay }</span>
+					</a>
+					<span class="made-by">
+						<span>Made by kaecyra in Canada</span>
+						<svg class="leaf" viewBox="0 0 36 36" width="14" height="14" aria-hidden="true" focusable="false"><path fill="#DD2E44" d="M36 20.917c0-.688-2.895-.5-3.125-1s3.208-4.584 2.708-5.5-5.086 1.167-5.375.708c-.288-.458.292-3.5-.208-3.875s-5.25 4.916-5.917 4.292c-.666-.625 1.542-10.5 1.086-10.698-.456-.198-3.419 1.365-3.793 1.282C21.002 6.042 18.682 0 18 0s-3.002 6.042-3.376 6.125c-.374.083-3.337-1.48-3.793-1.282-.456.198 1.752 10.073 1.085 10.698C11.25 16.166 6.5 10.875 6 11.25s.08 3.417-.208 3.875c-.289.458-4.875-1.625-5.375-.708s2.939 5 2.708 5.5-3.125.312-3.125 1 8.438 5.235 9 5.771c.562.535-2.914 2.802-2.417 3.229.576.496 3.839-.83 10.417-.957V35c0 .553.448 1 1 1 .553 0 1-.447 1-1v-6.04c6.577.127 9.841 1.453 10.417.957.496-.428-2.979-2.694-2.417-3.229.562-.536 9-5.084 9-5.771z"></path></svg>
+					</span>
+				</div>
+			</footer>
 		</body>
 	</html>
+}
+
+// navLink is one entry of the nav: a line icon and a label. The label hides
+// below the widths where the bar is icons only, so the accessible name is set
+// explicitly.
+templ navLink(ctx context.Context, item navItem) {
+	<a
+		class={ "tab", templ.KV("cta", item.CTA) }
+		href={ templ.SafeURL(item.Path) }
+		aria-label={ item.Label }
+		title={ item.Label }
+		if isCurrent(ctx, item) {
+			aria-current="page"
+		}
+	>
+		@icon(item.Icon)
+		<span class="lbl">{ item.Label }</span>
+	</a>
+}
+
+// icon draws one 24px line icon in the current text colour.
+templ icon(name string) {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+		switch name {
+			case "library":
+				<path d="M4 5h4v15H4zM10 5h4v15h-4zM15.6 6.2l3.4-.9 3 14.2-3.4.9z"></path>
+			case "basket":
+				<path d="M3 10h18l-2 10H5zM8 10l3-6M16 10l-3-6M9 14v3M12 14v3M15 14v3"></path>
+			case "plus":
+				<rect x="4" y="4" width="16" height="16" rx="3"></rect>
+				<path d="M12 8.5v7M8.5 12h7"></path>
+			case "menu":
+				<path d="M4 7h16M4 12h16M4 17h16"></path>
+			case "tag":
+				<path d="M3 12V4h8l10 10-8 8z"></path>
+				<circle cx="7.5" cy="8.5" r="1.2"></circle>
+			case "share":
+				<circle cx="6" cy="12" r="2.5"></circle>
+				<circle cx="18" cy="6" r="2.5"></circle>
+				<circle cx="18" cy="18" r="2.5"></circle>
+				<path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"></path>
+			case "home":
+				<path d="M3 11l9-7 9 7M5.5 9.5V20h13V9.5M10 20v-6h4v6"></path>
+			case "mail":
+				<rect x="3" y="5" width="18" height="14" rx="2"></rect>
+				<path d="M3.5 7l8.5 6 8.5-6"></path>
+			case "gear":
+				<circle cx="12" cy="12" r="3"></circle>
+				<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"></path>
+			case "moon":
+				<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path>
+			case "code":
+				<path d="M16 18l6-6-6-6M8 6l-6 6 6 6"></path>
+		}
+	</svg>
 }
 
 // ErrorPage renders a failed request inside the shared layout.

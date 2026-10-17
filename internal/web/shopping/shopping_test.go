@@ -28,6 +28,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/recipe"
 	domain "github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout/layouttest"
 )
 
 type fixture struct {
@@ -499,11 +500,7 @@ func TestAssetsAreServedFromTheBinary(t *testing.T) {
 	list := f.newList("Week")
 	for _, path := range []string{"/", "/pantry", "/" + id(list), "/" + id(list) + "/live"} {
 		body := f.do(http.MethodGet, path, nil).Body.String()
-		for _, bad := range []string{"http://", "https://", "//cdn"} {
-			if strings.Contains(body, bad) {
-				t.Errorf("%s references %q", path, bad)
-			}
-		}
+		layouttest.AssertNoRemoteAssets(t, path, body)
 	}
 }
 
