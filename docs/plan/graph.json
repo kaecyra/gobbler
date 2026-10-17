@@ -2106,7 +2106,8 @@
         "internal/ingest/draft.go",
         "internal/ingest/steps.go",
         "internal/ingest/steps_test.go",
-        "internal/ingest/fallback_gaps_test.go"
+        "internal/ingest/fallback_gaps_test.go",
+        "internal/ingest/fallback.go"
       ],
       "needs_migration": null,
       "adrs": [],
