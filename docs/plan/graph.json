@@ -1775,7 +1775,7 @@
       "wave": 9,
       "track": null,
       "issue": 189,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-equipment-extract",
         "w3-equipment-size"
@@ -2704,6 +2704,11 @@
       "title": "one spelling of the shared ingest issue codes",
       "merged": "90f9e08c84f72fb60468df9eaec7fa41c10ab514",
       "note": "Alias extract.IssueUnparsedDuration to parse.IssueUnparsedDuration (extract already imports parse)."
+    },
+    {
+      "id": "i-parser-version",
+      "title": "record the parser version on the saved recipe",
+      "merged": "49c4cf7c5cbf3f0ba54bcdb542db631568516e65"
     }
   ],
   "adr_sequence": {
