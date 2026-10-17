@@ -292,28 +292,6 @@ func TestTagFilter(t *testing.T) {
 	wantNames(t, mustSearch(t, s, "", "nothing"))
 	wantNames(t, mustSearch(t, s, "a", "quick"), "A")
 	wantNames(t, mustSearch(t, s, "c", "dinner"))
-
-	tags, err := s.Tags(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []TagCount{{"dessert", 1}, {"dinner", 2}, {"quick", 2}, {"vegan", 1}}
-	if len(tags) != len(want) {
-		t.Fatalf("tags = %v, want %v", tags, want)
-	}
-	for i := range want {
-		if tags[i] != want[i] {
-			t.Fatalf("tags = %v, want %v", tags, want)
-		}
-	}
-}
-
-func TestTagsEmptyLibrary(t *testing.T) {
-	s, _ := newTestStore(t)
-	tags, err := s.Tags(authedCtx(t))
-	if err != nil || tags == nil || len(tags) != 0 {
-		t.Fatalf("Tags = %#v, %v", tags, err)
-	}
 }
 
 // migrationsBelow returns the embedded migrations numbered below prefix, as

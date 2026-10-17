@@ -18,7 +18,3 @@ HAVING COUNT(DISTINCT tag) = CAST(? AS INTEGER);
 
 -- name: ListAllRecipeTags :many
 SELECT recipe_id, tag FROM recipe_tags WHERE household_id = ? ORDER BY recipe_id, position;
-
--- name: ListTagCounts :many
-SELECT tag, COUNT(DISTINCT recipe_id) AS recipes FROM recipe_tags
-WHERE household_id = ? GROUP BY tag ORDER BY lower(tag), tag;

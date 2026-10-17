@@ -37,12 +37,6 @@ type SearchQuery struct {
 	Tags []string
 }
 
-// TagCount is a tag in use and the number of recipes carrying it.
-type TagCount struct {
-	Tag     string
-	Recipes int
-}
-
 // Search returns the recipes matching q: best text match first, or by name when
 // q has no text. No match is an empty slice, not an error. Characters that mean
 // something to FTS5 are ordinary punctuation here, so no input is a syntax error.
@@ -86,29 +80,6 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 		out = make([]Summary, 0, len(rows))
 		for _, r := range rows {
 			out = append(out, r.summary(byRecipe[r.id]))
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Tags returns every tag in use with its recipe count, alphabetically.
-func (s *Store) Tags(ctx context.Context) ([]TagCount, error) {
-	hid, err := scope(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := []TagCount{}
-	err = s.read(ctx, func(q *storedb.Queries) error {
-		rows, err := q.ListTagCounts(ctx, hid)
-		if err != nil {
-			return readErr("tag counts", err)
-		}
-		for _, r := range rows {
-			out = append(out, TagCount{Tag: r.Tag, Recipes: int(r.Recipes)})
 		}
 		return nil
 	})

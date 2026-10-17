@@ -184,12 +184,6 @@ func TestSearchNeverCrossesHouseholds(t *testing.T) {
 			t.Errorf("B searching %s = %v, want only its own", c.name, got)
 		}
 	}
-	for ctx, who := range map[context.Context]string{a: "A", b: "B"} {
-		tags, err := s.Tags(ctx)
-		if err != nil || len(tags) != 1 || tags[0].Recipes != 1 {
-			t.Errorf("%s's tags = %+v (err %v), want shared-tag on 1 recipe", who, tags, err)
-		}
-	}
 }
 
 func TestNoHouseholdOnContextFailsEveryCall(t *testing.T) {
@@ -221,7 +215,6 @@ func TestNoHouseholdOnContextFailsEveryCall(t *testing.T) {
 		"Search":            func() error { _, err := s.Search(bare, SearchQuery{}); return err },
 		"Search text":       func() error { _, err := s.Search(bare, SearchQuery{Text: "x"}); return err },
 		"Search punct only": func() error { _, err := s.Search(bare, SearchQuery{Text: "!!!"}); return err },
-		"Tags":              func() error { _, err := s.Tags(bare); return err },
 	}
 	for name, call := range calls {
 		if err := call(); !errors.Is(err, ErrNoHousehold) {

@@ -144,36 +144,3 @@ func (q *Queries) ListRecipeSummaries(ctx context.Context, householdID int64) ([
 	}
 	return items, nil
 }
-
-const listTagCounts = `-- name: ListTagCounts :many
-SELECT tag, COUNT(DISTINCT recipe_id) AS recipes FROM recipe_tags
-WHERE household_id = ? GROUP BY tag ORDER BY lower(tag), tag
-`
-
-type ListTagCountsRow struct {
-	Tag     string
-	Recipes int64
-}
-
-func (q *Queries) ListTagCounts(ctx context.Context, householdID int64) ([]ListTagCountsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTagCounts, householdID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTagCountsRow
-	for rows.Next() {
-		var i ListTagCountsRow
-		if err := rows.Scan(&i.Tag, &i.Recipes); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
