@@ -1822,7 +1822,7 @@
       "wave": 9,
       "track": null,
       "issue": 191,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-equipment-extract",
         "i-parser-version"
@@ -2723,6 +2723,12 @@
         "00021"
       ],
       "note": "ADR-00021. Nothing from a YouTube origin loads before the play click; the thumbnail is a BLOB row per video ID, served per recipe behind the household check."
+    },
+    {
+      "id": "i-llm-gap-fill",
+      "title": "decide whether the LLM fallback fills gaps or replaces the draft",
+      "merged": "928b100e29b88b3cc32f740f7690a844da336845",
+      "note": "ADR-00020 decision 2: the fallback sends only below-threshold lines and fields and replaces only those; retry runs the same gap-filling call."
     }
   ],
   "adr_sequence": {
