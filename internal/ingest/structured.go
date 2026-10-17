@@ -15,9 +15,9 @@ var ErrInvalidStructured = errors.New("does not match the ingestion schema")
 
 // DecodeStructured is the one strict reading of a provider's answer
 // (ADR-00006, ADR-00007): exactly one JSON object, no unknown fields, a
-// non-blank name, no blank equipment name, at least one component, and an ingredients key on every
-// component. Anything else is an error wrapping ErrInvalidStructured, never a
-// partial Structured. Every provider calls it; none keeps its own copy.
+// non-blank name, no blank equipment name, at least one component, and an
+// ingredients key on every component. Anything else is an error wrapping
+// ErrInvalidStructured, never a partial Structured. Every provider calls it; none keeps its own copy.
 func DecodeStructured(raw []byte) (Structured, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()

@@ -95,7 +95,6 @@ func addMatches(set *equipmentSet, ms []equipmentMatch, fromLLM bool) {
 type equipmentTerm struct {
 	eq catalog.Equipment
 	re *regexp.Regexp
-	n  int
 }
 
 type equipmentMatch struct {
@@ -113,7 +112,7 @@ func equipmentTerms(all []catalog.Equipment) []equipmentTerm {
 			if t == "" {
 				continue
 			}
-			out = append(out, equipmentTerm{eq: eq, re: regexp.MustCompile(`(?i)` + regexp.QuoteMeta(t) + `(?:e?s)?`), n: len(t)})
+			out = append(out, equipmentTerm{eq: eq, re: regexp.MustCompile(`(?i)` + regexp.QuoteMeta(t) + `(?:e?s)?`)})
 		}
 	}
 	return out
