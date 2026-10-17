@@ -8,82 +8,205 @@ import (
 
 templ styles() {
 	<style>
-		.ingest-form label { display: block; font-weight: 600; margin-top: 0.75rem; }
-		.ingest-form input[type=url], .ingest-form textarea { width: 100%; font: inherit; padding: 0.4rem; }
-		.ingest-form textarea { min-height: 12rem; }
-		.review-actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
-		.error { border: 2px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; }
-		.low { border-left: 4px solid var(--accent); padding-left: 0.5rem; background: color-mix(in srgb, var(--accent) 10%, transparent); }
-		.flag { color: var(--accent); font-weight: 700; margin-right: 0.4rem; }
-		.llm-mark { border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
-		.retry-form { margin: 1rem 0; }
+		.add-top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 22px; }
+		.src-seg { position: relative; display: inline-flex; background: var(--sunk); border-radius: var(--r); padding: 3px; }
+		.src-seg > label, .src-seg > a {
+			display: inline-flex; align-items: center; min-height: var(--tap); padding: 6px 16px;
+			border-radius: var(--r-sm); cursor: pointer; font-size: 15.5px; font-weight: 600;
+			color: var(--ink-2); text-decoration: none;
+		}
+		.src-seg > label:hover, .src-seg > a:hover { color: var(--ink); }
+		#src-link:checked ~ label[for=src-link], #src-text:checked ~ label[for=src-text], .src-seg > a[aria-current=page] {
+			background: var(--card); color: var(--ink); box-shadow: var(--shadow);
+		}
+		#src-link:focus-visible ~ label[for=src-link], #src-text:focus-visible ~ label[for=src-text] {
+			outline: 2px solid var(--wattle); outline-offset: 2px;
+		}
+		.add:has(#src-link:checked) .pane-text, .add:has(#src-text:checked) .pane-link { display: none; }
+		.ingest-form { display: flex; flex-direction: column; gap: 18px; max-width: 760px; }
+		.ingest-form .field { display: flex; flex-direction: column; gap: 6px; }
+		.ingest-form label.field-label { font-weight: 600; }
+		.ingest-form input[type=url], .ingest-form input[type=file], .ingest-form textarea {
+			width: 100%; font: inherit; color: var(--ink); background: var(--card);
+			border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; min-height: var(--tap);
+		}
+		.ingest-form input[type=file] { padding: 8px 12px; }
+		.ingest-form textarea { min-height: 12rem; font-family: var(--f-mono); font-size: 14px; line-height: 1.65; }
+		.ingest-form input:focus-visible, .ingest-form textarea:focus-visible { outline: none; border-color: var(--wattle); }
+		.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+		.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
+		.retry-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; }
+		.retry-form .muted { font-size: 14px; max-width: 60ch; }
+		.via { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-3); margin-bottom: 12px; }
+		.via span { background: var(--sunk); padding: 2px 8px; border-radius: var(--r); color: var(--ink-2); }
+		.via span.need { background: var(--grain-soft); color: var(--grain-ink); }
+		.review-note { margin: 0 0 10px; max-width: 70ch; }
+		.review-note.check { background: var(--grain-soft); border-radius: var(--r); padding: 10px 14px; }
+		.review-note .flag, .review-body .editor .flag { color: var(--grain-ink); font-weight: 700; margin-right: 0.4rem; }
+		.llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
+		.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }
+		.srcbox-wrap { margin: 0 0 18px; }
+		.srcbox-wrap summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; }
+		.srcbox {
+			background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;
+			font-family: var(--f-mono); font-size: 14px; line-height: 1.65; color: var(--ink-2); overflow-x: auto;
+		}
+		.srcbox .src-h { margin-top: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; color: var(--ink-3); }
+		.srcbox .src-h:first-child { margin-top: 0; }
+		.srcbox div { white-space: pre-wrap; }
+		.srcbox mark { background: var(--grain-soft); color: var(--ink); border-radius: var(--r-sm); padding: 0 2px; box-shadow: inset 0 -2px 0 var(--grain); }
+		/* The recipe editor draws the form; its marks are restyled here for the
+		   review screen, with higher specificity than its own rules. */
+		.review-body .editor .low { border-left: 0; padding-left: 0; background: var(--grain-soft); border-radius: var(--r); }
+		.review-body .editor li.item { position: relative; padding: 0.5rem 0.75rem 0.5rem 2rem; border-radius: var(--r); }
+		.review-body .editor li.item.line::before {
+			content: ""; position: absolute; left: 0.8rem; top: 1.05rem; width: 10px; height: 10px;
+			border-radius: 50%; background: var(--ok);
+		}
+		.review-body .editor li.item.low { border-top-color: transparent; }
+		.review-body .editor li.item.line.low::before { background: var(--grain); }
+		.review-body .editor button {
+			display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); padding: 8px 18px;
+			border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink);
+			font-weight: 600; font-size: 16px; cursor: pointer;
+		}
+		.review-body .editor button[value=save] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+		.review-body .editor input[type=text], .review-body .editor select, .review-body .editor input[type=number] { min-height: var(--tap); border-radius: var(--r); }
+		.review-body .editor textarea { border-radius: var(--r); }
+		.review-body .editor label.inline { min-height: var(--tap); }
 	</style>
+}
+
+// photoTab is the Photo entry of the source toggle: a link, because the
+// photo form is its own page.
+templ photoTab(active bool) {
+	if active {
+		<a href="/ingest/photo" aria-current="page">Photo</a>
+	} else {
+		<a href="/ingest/photo">Photo</a>
+	}
 }
 
 templ formPage(v formView) {
 	@layout.Page("Add a recipe") {
 		@styles()
-		<h1>Add a recipe</h1>
-		<p class="muted">Give a web address or paste the recipe text. You review the result before anything is saved.</p>
+		<div class="screen-h">
+			<div>
+				<h1>Add a recipe</h1>
+				<p>Give a web address or paste the recipe text. You review the result before anything is saved.</p>
+			</div>
+		</div>
 		if v.Error != "" {
 			<p class="error" role="alert">{ v.Error }</p>
 		}
-		<p><a href="/ingest/photo">Or add a recipe from a photo</a></p>
-		<form class="ingest-form" method="post" action="/ingest">
-			<label for="ingest-url">Recipe URL</label>
-			<input id="ingest-url" type="url" name="url" value={ v.URL } placeholder="https://"/>
-			<label for="ingest-text">Or paste the recipe text</label>
-			<textarea id="ingest-text" name="text">{ v.Text }</textarea>
-			<div class="review-actions">
-				<button type="submit">Read recipe</button>
+		<div class="add">
+			<div class="add-top">
+				<div class="src-seg" role="group" aria-label="Source">
+					<input class="sr" type="radio" id="src-link" name="source" value="link" checked?={ v.mode() == modeLink }/>
+					<label for="src-link">Link</label>
+					<input class="sr" type="radio" id="src-text" name="source" value="text" checked?={ v.mode() == modeText }/>
+					<label for="src-text">Paste text</label>
+					@photoTab(false)
+				</div>
 			</div>
-		</form>
+			<form class="ingest-form" method="post" action="/ingest" novalidate>
+				<div class="field pane-link">
+					<label class="field-label" for="ingest-url">Recipe URL</label>
+					<input id="ingest-url" type="url" name="url" value={ v.URL } placeholder="https://"/>
+				</div>
+				<div class="field pane-text">
+					<label class="field-label" for="ingest-text">Recipe text</label>
+					<textarea id="ingest-text" name="text">{ v.Text }</textarea>
+				</div>
+				<div class="review-actions">
+					<button class="btn primary" type="submit">Read recipe</button>
+				</div>
+			</form>
+		</div>
 	}
 }
 
 templ reviewPage(v reviewView) {
 	@layout.Page("Review recipe") {
 		@styles()
-		<h1>Review recipe</h1>
-		<p class="muted">Nothing is saved until you confirm.</p>
-		@summary(v.Draft)
-		if v.CanRetry {
-			<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
-				<button type="submit">Retry with LLM</button>
-				<span class="muted">Asks the configured LLM to read the source again. Edits you have not confirmed are discarded. Nothing is saved.</span>
-			</form>
-		}
-		<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
-		@v.Form.Component()
+		<div class="screen-h">
+			<div>
+				<h1>Review recipe</h1>
+				<p>Nothing is saved until you confirm. Lines marked amber need a look.</p>
+			</div>
+		</div>
+		<div class="review-body">
+			@summary(v.Draft)
+			if v.CanRetry {
+				<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
+					<button class="btn" type="submit">Retry with LLM</button>
+					<span class="muted">Asks the configured LLM to read the source again. Edits you have not confirmed are discarded. Nothing is saved.</span>
+				</form>
+			}
+			@sourceBox(v.Draft)
+			<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
+			@v.Form.Component()
+		</div>
+	}
+}
+
+// sourceBox shows the ingredient lines as the source wrote them, with the
+// lines the rules were unsure of marked in grain.
+templ sourceBox(d ingestcore.Draft) {
+	if rows := sourceRows(d); len(rows) > 0 {
+		<details class="srcbox-wrap" open>
+			<summary><span class="eyebrow">What the source said</span></summary>
+			<div class="srcbox">
+				for _, r := range rows {
+					if r.Heading {
+						<div class="src-h">{ r.Text }</div>
+					} else if r.Low {
+						<div><mark>{ r.Text }</mark><span class="sr"> (needs a look)</span></div>
+					} else {
+						<div>{ r.Text }</div>
+					}
+				}
+			</div>
+		</details>
 	}
 }
 
 // summary shows how sure the rules were, as words.
 templ summary(d ingestcore.Draft) {
-	<section class={ flagClass(d.BelowThreshold) } aria-label="Confidence">
+	<section aria-label="Confidence">
 		if d.LLMError != "" {
 			<div class="error" role="alert">
 				<p><strong>{ d.LLMError }</strong></p>
 				<p>The draft below is unchanged. You can still review and save it.</p>
 			</div>
 		}
+		<div class="via">
+			if d.UsedLLM {
+				<span>Read with the LLM</span>
+			} else {
+				<span>Read by the rule-based parser</span>
+			}
+			if n := lowLineCount(d); n > 0 {
+				<span class="need">{ lowLinesText(n) }</span>
+			}
+		</div>
 		if d.UsedLLM {
-			<p><strong class="llm-mark">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>
+			<p class="review-note"><strong class="llm-mark">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>
 		} else if d.BelowThreshold {
-			<p><strong class="flag">Check this draft.</strong> The rules are not sure they read it correctly (confidence { percent(d.Overall) } of the { percent(d.Threshold) } needed). Look over every flagged item.</p>
+			<p class="review-note check"><strong class="flag">Check this draft.</strong> The rules are not sure they read it correctly (confidence { percent(d.Overall) } of the { percent(d.Threshold) } needed). Look over every flagged item.</p>
 		} else {
-			<p>Confidence { percent(d.Overall) }.</p>
+			<p class="review-note">Confidence { percent(d.Overall) }.</p>
 		}
 		if d.ParserVersion != "" {
-			<p class="muted">Parser version { d.ParserVersion }.</p>
+			<p class="review-note muted">Parser version { d.ParserVersion }.</p>
 		}
 		if len(d.Issues) > 0 {
-			<ul>
+			<ul class="issues">
 				for _, i := range d.Issues {
 					<li>{ issueText(i) }</li>
 				}
 			</ul>
 		}
-		<p class="muted">Read from { sourceText(d) } using { string(d.Method) }.</p>
+		<p class="review-note muted">Read from { sourceText(d) } using { string(d.Method) }.</p>
 	</section>
 }

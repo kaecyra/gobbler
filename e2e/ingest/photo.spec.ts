@@ -66,7 +66,7 @@ test.afterAll(async () => {
 
 test('the ingest form links to the photo form', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByRole('link', { name: 'Or add a recipe from a photo' }).click();
+  await page.getByRole('group', { name: 'Source' }).getByRole('link', { name: 'Photo' }).click();
   await expect(page).toHaveURL(/\/ingest\/photo$/);
   await expect(page.getByRole('heading', { name: 'Add a recipe from a photo' })).toBeVisible();
 });
@@ -98,4 +98,16 @@ test('submitting without a file shows an error', async ({ page }) => {
   await page.goto('/ingest/photo');
   await page.getByRole('button', { name: 'Read photo' }).click();
   await expect(page.getByRole('alert')).toContainText('Choose a photo');
+});
+
+test('the photo page controls are at least 44px tall', async ({ page }) => {
+  await page.goto('/ingest/photo');
+  for (const sel of ['.src-seg a', '#ingest-photo', 'button[type=submit].btn']) {
+    const els = page.locator(sel);
+    const n = await els.count();
+    expect(n, `${sel} matches nothing`).toBeGreaterThan(0);
+    for (let i = 0; i < n; i++) {
+      expect((await els.nth(i).boundingBox())?.height ?? 0, sel).toBeGreaterThanOrEqual(44);
+    }
+  }
 });

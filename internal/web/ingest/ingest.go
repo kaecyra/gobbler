@@ -179,6 +179,8 @@ func householdID(r *http.Request) int64 {
 type formView struct {
 	URL, Text string
 	Error     string
+	// Source is the field the page asked for with ?source=; empty is the link.
+	Source string
 }
 
 // reviewView is what the review screen renders.
@@ -194,7 +196,7 @@ type reviewView struct {
 }
 
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
-	layout.Render(w, r, http.StatusOK, formPage(formView{}))
+	layout.Render(w, r, http.StatusOK, formPage(formView{Source: r.URL.Query().Get("source")}))
 }
 
 // submit runs the pipeline and redirects to the review screen. Nothing is

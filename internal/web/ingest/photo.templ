@@ -5,17 +5,32 @@ import "github.com/kaecyra/gobbler/internal/web/layout"
 templ photoPage(v photoView) {
 	@layout.Page("Add a recipe from a photo") {
 		@styles()
-		<h1>Add a recipe from a photo</h1>
-		<p class="muted">Upload a photo of a recipe page. The text is read on this server, then you review the result before anything is saved. The photo itself is never saved.</p>
+		<div class="screen-h">
+			<div>
+				<h1>Add a recipe from a photo</h1>
+				<p>Upload a photo of a recipe page. The text is read on this server, then you review the result before anything is saved. The photo itself is never saved.</p>
+			</div>
+		</div>
 		if v.Error != "" {
 			<p class="error" role="alert">{ v.Error }</p>
 		}
-		<form class="ingest-form" method="post" action="/ingest/photo" enctype="multipart/form-data">
-			<label for="ingest-photo">Photo</label>
-			<input id="ingest-photo" type="file" name="photo" accept="image/png,image/jpeg,image/webp"/>
-			<div class="review-actions">
-				<button type="submit">Read photo</button>
+		<div class="add">
+			<div class="add-top">
+				<div class="src-seg" role="group" aria-label="Source">
+					<a href="/ingest">Link</a>
+					<a href="/ingest?source=text">Paste text</a>
+					@photoTab(true)
+				</div>
 			</div>
-		</form>
+			<form class="ingest-form" method="post" action="/ingest/photo" enctype="multipart/form-data">
+				<div class="field">
+					<label class="field-label" for="ingest-photo">Photo</label>
+					<input id="ingest-photo" type="file" name="photo" accept="image/png,image/jpeg,image/webp"/>
+				</div>
+				<div class="review-actions">
+					<button class="btn primary" type="submit">Read photo</button>
+				</div>
+			</form>
+		</div>
 	}
 }
