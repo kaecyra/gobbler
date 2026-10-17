@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
+import { pasteText } from './helpers';
 
 // The LLM fallback (ADR-00006, ADR-00007), which fills gaps and never replaces
 // the rule-based draft (ADR-00020 decision 2). This spec starts its own gobbler
@@ -144,7 +145,7 @@ test.beforeEach(() => {
 
 async function ingest(page: import('@playwright/test').Page, text: string) {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(text);
+  await pasteText(page, text);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
 }

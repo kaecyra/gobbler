@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { pasteText } from './helpers';
 
 // The ingest form and the review screen (ADR-00006): nothing is saved until
 // the user confirms. The URL path is exercised against a local fixture HTTP
@@ -124,7 +125,98 @@ test('the ingest form renders', async ({ page }) => {
   expect(res?.status()).toBe(200);
   await expect(page).toHaveTitle(/Add a recipe/);
   await expect(page.getByLabel('Recipe URL')).toBeVisible();
-  await expect(page.getByLabel('Or paste the recipe text')).toBeVisible();
+  await expect(page.getByLabel('Recipe text')).toBeHidden();
+});
+
+test('the source toggle shows one field at a time and offers the photo form', async ({ page }) => {
+  await page.goto('/ingest');
+  const seg = page.getByRole('group', { name: 'Source' });
+  await expect(seg.getByRole('radio', { name: 'Link' })).toBeChecked();
+  await seg.getByText('Paste text', { exact: true }).click();
+  await expect(page.getByLabel('Recipe text')).toBeVisible();
+  await expect(page.getByLabel('Recipe URL')).toBeHidden();
+  await seg.getByText('Link', { exact: true }).click();
+  await expect(page.getByLabel('Recipe URL')).toBeVisible();
+  await expect(page.getByLabel('Recipe text')).toBeHidden();
+
+  await page.goto('/ingest?source=text');
+  await expect(page.getByLabel('Recipe text')).toBeVisible();
+  await expect(seg.getByRole('radio', { name: 'Paste text' })).toBeChecked();
+
+  await seg.getByRole('link', { name: 'Photo' }).click();
+  await expect(page).toHaveURL(/\/ingest\/photo$/);
+  await expect(page.getByRole('group', { name: 'Source' }).getByRole('link', { name: 'Photo' })).toHaveAttribute('aria-current', 'page');
+});
+
+// Every control on the add and review pages is at least --tap (44px) tall.
+const TAP = 44;
+async function expectTall(page: import('@playwright/test').Page, selector: string) {
+  const els = page.locator(selector);
+  const n = await els.count();
+  expect(n, `${selector} matches nothing`).toBeGreaterThan(0);
+  for (let i = 0; i < n; i++) {
+    const box = await els.nth(i).boundingBox();
+    expect(box?.height ?? 0, `${selector} #${i}`).toBeGreaterThanOrEqual(TAP);
+  }
+}
+
+test('the add page controls are at least 44px tall', async ({ page }) => {
+  await page.goto('/ingest');
+  await expectTall(page, '.src-seg label');
+  await expectTall(page, '.src-seg a');
+  await expectTall(page, '#ingest-url');
+  await expectTall(page, 'button[type=submit].btn');
+  await page.locator('label[for=src-text]').click();
+  await expectTall(page, '#ingest-text');
+});
+
+test('the review controls are at least 44px tall', async ({ page }) => {
+  await page.goto('/ingest');
+  await pasteText(page, MESSY);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+  await expectTall(page, '.review-body .editor button');
+  await expectTall(page, '.review-body .editor input[type=text]');
+  await expectTall(page, '.review-body .editor select');
+  await expectTall(page, '.review-body .editor label.inline');
+  await expectTall(page, '.srcbox-wrap summary');
+});
+
+test('a low-confidence line is marked in grain with a dot, never a left border', async ({ page }) => {
+  await page.goto('/ingest');
+  await pasteText(page, MESSY);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+
+  // The source box marks the line the rules could not read, and only that one.
+  const marks = page.locator('.srcbox mark');
+  await expect(marks).toHaveCount(1);
+  await expect(marks).toContainText('glorp');
+  await expect(page.locator('.srcbox')).toContainText('all-purpose flour');
+
+  const style = (sel: string) =>
+    page.locator(sel).first().evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const dot = getComputedStyle(el, '::before');
+      return { border: cs.borderLeftWidth, bg: cs.backgroundColor, dot: dot.backgroundColor };
+    });
+  const probe = await page.evaluate(() => {
+    const t = document.createElement('i');
+    document.body.append(t);
+    const colour = (v: string) => {
+      t.style.backgroundColor = `var(${v})`;
+      return getComputedStyle(t).backgroundColor;
+    };
+    const out = { grain: colour('--grain'), soft: colour('--grain-soft'), ok: colour('--ok') };
+    t.remove();
+    return out;
+  });
+  const low = await style('li.line[data-low]');
+  expect(low.border).toBe('0px');
+  expect(low.bg).toBe(probe.soft);
+  expect(low.dot).toBe(probe.grain);
+  const ok = await style('li.line:not([data-low])');
+  expect(ok.dot).toBe(probe.ok);
 });
 
 test('empty and malformed input is refused with a message', async ({ page }) => {
@@ -132,7 +224,8 @@ test('empty and malformed input is refused with a message', async ({ page }) => 
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByRole('alert')).toContainText('Enter a recipe URL');
 
-  await page.getByLabel('Or paste the recipe text').fill('some text');
+  await pasteText(page, 'some text');
+  await page.locator('label[for=src-link]').click();
   await page.getByLabel('Recipe URL').fill('https://example.test/x');
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByRole('alert')).toContainText('not both');
@@ -146,7 +239,7 @@ test('a malformed URL that gets past the browser is refused by the server', asyn
 
 test('pasted text goes to review, then confirm saves and redirects to the recipe', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(PANCAKES);
+  await pasteText(page, PANCAKES);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
   await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
@@ -162,7 +255,7 @@ test('pasted text goes to review, then confirm saves and redirects to the recipe
 
 test('labelled times, yield and calories in pasted text show on review, not as notes', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(`Fluffy Pancakes
+  await pasteText(page, `Fluffy Pancakes
 Prep time: 20 min
 Cook time: 1 hr 10 min
 Makes 12 pancakes
@@ -185,7 +278,7 @@ Cook on a hot greased griddle until golden on both sides.
 
 test('a low-confidence line is highlighted in words, a confident one is not', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(MESSY);
+  await pasteText(page, MESSY);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
   const flagged = page.locator('li.line[data-low]');
@@ -199,7 +292,7 @@ test('a low-confidence line is highlighted in words, a confident one is not', as
 
 test('a proposed new ingredient is offered as new, and is created only when the draft is confirmed', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(UNKNOWN);
+  await pasteText(page, UNKNOWN);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
   // The editor's own ingredient field and its add-as-new choice; the matched
@@ -227,7 +320,7 @@ test('a proposed new ingredient is offered as new, and is created only when the 
 
 test('a proposed line can be mapped to an existing ingredient', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(UNKNOWN_FOR_MAPPING);
+  await pasteText(page, UNKNOWN_FOR_MAPPING);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await page.locator('li.line').nth(1).getByLabel('Ingredient', { exact: true }).fill('sugar');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
@@ -236,7 +329,7 @@ test('a proposed line can be mapped to an existing ingredient', async ({ page })
 
 test('an amount, a unit and a whole line can be corrected on review before anything is saved', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(PANCAKES);
+  await pasteText(page, PANCAKES);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
   const first = page.locator('li.line').nth(0);
@@ -262,7 +355,7 @@ test('an amount, a unit and a whole line can be corrected on review before anyth
 // a unit and a step dependency edited on the draft are what is saved.
 test('an amount, a unit and a step dependency edited on review are what confirm saves', async ({ page }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(THREE_STEPS);
+  await pasteText(page, THREE_STEPS);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
   // The inferred graph is shown: each step follows the one before it.
@@ -298,7 +391,7 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
 
 test('cancel discards the draft and saves nothing', async ({ page, request }) => {
   await page.goto('/ingest');
-  await page.getByLabel('Or paste the recipe text').fill(PANCAKES);
+  await pasteText(page, PANCAKES);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   const reviewURL = page.url();
   const token = reviewURL.split('/').pop();

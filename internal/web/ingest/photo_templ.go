@@ -49,7 +49,7 @@ func photoPage(v photoView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Add a recipe from a photo</h1><p class=\"muted\">Upload a photo of a recipe page. The text is read on this server, then you review the result before anything is saved. The photo itself is never saved.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"screen-h\"><div><h1>Add a recipe from a photo</h1><p>Upload a photo of a recipe page. The text is read on this server, then you review the result before anything is saved. The photo itself is never saved.</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -61,7 +61,7 @@ func photoPage(v photoView) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/photo.templ`, Line: 11, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/photo.templ`, Line: 15, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -72,7 +72,15 @@ func photoPage(v photoView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " <form class=\"ingest-form\" method=\"post\" action=\"/ingest/photo\" enctype=\"multipart/form-data\"><label for=\"ingest-photo\">Photo</label> <input id=\"ingest-photo\" type=\"file\" name=\"photo\" accept=\"image/png,image/jpeg,image/webp\"><div class=\"review-actions\"><button type=\"submit\">Read photo</button></div></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " <div class=\"add\"><div class=\"add-top\"><div class=\"src-seg\" role=\"group\" aria-label=\"Source\"><a href=\"/ingest\">Link</a> <a href=\"/ingest?source=text\">Paste text</a>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = photoTab(true).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div><form class=\"ingest-form\" method=\"post\" action=\"/ingest/photo\" enctype=\"multipart/form-data\"><div class=\"field\"><label class=\"field-label\" for=\"ingest-photo\">Photo</label> <input id=\"ingest-photo\" type=\"file\" name=\"photo\" accept=\"image/png,image/jpeg,image/webp\"></div><div class=\"review-actions\"><button class=\"btn primary\" type=\"submit\">Read photo</button></div></form></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
