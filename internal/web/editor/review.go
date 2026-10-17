@@ -3,7 +3,6 @@ package editor
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -75,9 +74,9 @@ type Outcome struct {
 	Draft    ingestcore.Draft
 }
 
-// Submit reads a posted review form over base, the draft under review. Only
-// base's source, parser version and method are kept from it: everything the
-// user can see comes from the form.
+// Submit reads a posted review form over base, the draft under review. What
+// the form shows comes from the form; everything else (the source, parser
+// version, method, scoring and LLM state) is kept from base.
 func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Draft, o ReviewOptions) (Outcome, error) {
 	names, err := u.h.names(ctx)
 	if err != nil {
@@ -98,20 +97,11 @@ func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Dr
 		return Outcome{}, err
 	}
 	if !ok {
-		o := show()
-		o.Rejected = true
-		return o, nil
+		rejected := show()
+		rejected.Rejected = true
+		return rejected, nil
 	}
-	return Outcome{Ready: true, Draft: toIngest(base, rec, props, names), Form: Form{v: view{D: d, Names: names, Review: &o}}}, nil
-}
-
-// FormStatus is the status to answer a review form shown again with messages:
-// htmx does not swap a 4xx, so a fragment is a 200 and a plain form gets status.
-func FormStatus(r *http.Request, status int) int {
-	if fromHTMX(r) {
-		return http.StatusOK
-	}
-	return status
+	return Outcome{Ready: true, Draft: toIngest(base, rec, props, names, d), Form: Form{v: view{D: d, Names: names, Review: &o}}}, nil
 }
 
 // fromIngest turns a draft into the editor's starting form. A line the catalog
@@ -189,9 +179,11 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 // toIngest puts a recipe the editor built back into a draft, over base, which
 // supplies what the form does not edit (source, parser version, method, the
 // scoring). props names the lines and equipment the user asked to add as new.
-// Only what Draft keeps is copied; the form shows only that (see
-// view.carries), so nothing the user edited is lost.
-func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names lookups) ingestcore.Draft {
+// ed is the form rec was built from: its marks and issues go back into the
+// draft, so a draft put back after a failed save reopens with its flags
+// (ADR-00006 obligation 4). Only what Draft keeps is copied; the form shows
+// only that (see view.carries), so nothing the user edited is lost.
+func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names lookups, ed draft) ingestcore.Draft {
 	out := base
 	out.Name.Value, out.Author.Value, out.Description.Value = rec.Name, rec.Author, rec.Description
 	out.Yield.Value, out.Servings.Value = rec.Yield, rec.Servings
@@ -200,6 +192,13 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names 
 		out.Calories.Value = *rec.CaloriesPerServing
 	}
 	out.Prep.Value, out.Cook.Value, out.Total.Value = rec.Times.Prep, rec.Times.Cook, rec.Times.Total
+	carryMark(&out.Name, ed.mark("name"), base.Threshold)
+	carryMark(&out.Author, ed.mark("author"), base.Threshold)
+	carryMark(&out.Description, ed.mark("description"), base.Threshold)
+	carryMark(&out.Yield, ed.mark("yield"), base.Threshold)
+	carryMark(&out.Prep, ed.mark("prep"), base.Threshold)
+	carryMark(&out.Cook, ed.mark("cook"), base.Threshold)
+	carryMark(&out.Total, ed.mark("total"), base.Threshold)
 
 	newLine := map[[2]int]string{}
 	newEquip := map[int]string{}
@@ -210,13 +209,28 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names 
 			newLine[[2]int{p.component, p.index}] = p.name
 		}
 	}
+	// rec holds the form's items minus the blank rows build dropped, in the
+	// same order, so the form's marks line up by walking both.
 	out.Components = nil
 	for ci, c := range rec.Components {
+		var lines []lineDraft
+		for _, l := range ed.Components[ci].Lines {
+			if !lineBlank(l) {
+				lines = append(lines, l)
+			}
+		}
+		var steps []stepDraft
+		for _, st := range ed.Components[ci].Steps {
+			if !stepBlank(st) {
+				steps = append(steps, st)
+			}
+		}
 		dc := ingestcore.Component{Name: c.Name}
 		for li, l := range c.Lines {
 			line := ingestcore.Line{
 				Raw: l.Raw, Ingredient: l.Ingredient, Amount: l.Amount, Optional: l.Optional,
-				ToTaste: l.Rule == quantity.RuleToTaste, Qualifiers: l.Qualifiers, Confidence: 1,
+				ToTaste: l.Rule == quantity.RuleToTaste, Qualifiers: l.Qualifiers,
+				Confidence: confidence(lines[li].Mark, base.Threshold), FromLLM: lines[li].Mark.LLM, Issues: lines[li].Issues,
 			}
 			if name, ok := newLine[[2]int{ci, li}]; ok {
 				line.Name = name
@@ -225,14 +239,23 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names 
 			}
 			dc.Lines = append(dc.Lines, line)
 		}
-		for _, s := range c.Steps {
-			dc.Steps = append(dc.Steps, ingestcore.Step{Text: s.Text, Duration: s.Duration, Confidence: 1})
+		for si, s := range c.Steps {
+			dc.Steps = append(dc.Steps, ingestcore.Step{
+				Text: s.Text, Duration: s.Duration,
+				Confidence: confidence(steps[si].Mark, base.Threshold), FromLLM: steps[si].Mark.LLM,
+			})
 		}
 		out.Components = append(out.Components, dc)
 	}
+	var kept []equipDraft
+	for _, e := range ed.Equipment {
+		if !equipBlank(e) {
+			kept = append(kept, e)
+		}
+	}
 	out.Equipment = nil
 	for ei, e := range rec.Equipment {
-		eq := ingestcore.Equipment{Equipment: e.Equipment, Name: names.equipment[int64(e.Equipment)]}
+		eq := ingestcore.Equipment{Equipment: e.Equipment, Name: names.equipment[int64(e.Equipment)], FromLLM: kept[ei].Mark.LLM}
 		if name, ok := newEquip[ei]; ok {
 			eq.Name = strings.TrimSpace(name)
 		}
@@ -240,4 +263,19 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names 
 	}
 	out.Proposed = ingestcore.ProposedFor(out.Components, base.Proposed)
 	return out
+}
+
+// confidence is the confidence a reviewed item goes back into the draft with:
+// below the threshold if the form still flags it, else certain. The score
+// itself is not kept through the form; only whether it was low.
+func confidence(m mark, threshold float64) float64 {
+	if m.Low {
+		return threshold / 2
+	}
+	return 1
+}
+
+// carryMark puts a field's mark back: its confidence and where it came from.
+func carryMark[T any](f *ingestcore.Field[T], m mark, threshold float64) {
+	f.Confidence, f.FromLLM = confidence(m, threshold), m.LLM
 }

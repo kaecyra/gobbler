@@ -94,7 +94,7 @@ func TestConfirmSavesAnEditedAmountAndUnit(t *testing.T) {
 	}
 }
 
-func TestConfirmSavesAnAddedAndARemovedLineAndAStepMoved(t *testing.T) {
+func TestConfirmSavesAnAddedLineARemovedLineAndAMovedStep(t *testing.T) {
 	f := newFixture(t)
 	token := f.ingestText(t)
 	form := reviewForm()
@@ -106,10 +106,18 @@ func TestConfirmSavesAnAddedAndARemovedLineAndAStepMoved(t *testing.T) {
 	form.Del("c.0.l.1.ing")
 	form.Del("c.0.l.1.raw")
 	form.Del("c.0.l.1.propose")
+	// A second component, and the weak step placed in it with the step's
+	// component selector.
+	form.Set("c.1.name", "Topping")
+	form.Set("c.0.s.1.to", "1")
 	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
 	}
-	lines := f.store.recipes[0].Components[0].Lines
+	comps := f.store.recipes[0].Components
+	if len(comps) != 2 || comps[1].Name != "Topping" || len(comps[0].Steps) != 1 || len(comps[1].Steps) != 1 || comps[1].Steps[0].Text != "Bake until goldn" {
+		t.Errorf("saved components = %+v, want the second step moved into Topping", comps)
+	}
+	lines := comps[0].Lines
 	if len(lines) != 2 || lines[1].Amount.Unit.Name != "cup" {
 		t.Errorf("saved lines = %+v, want the butter line and the added cup line (the blank line dropped)", lines)
 	}
@@ -295,5 +303,46 @@ func TestCancelIsAButtonOfItsOwnForm(t *testing.T) {
 	if !strings.Contains(body, `<form id="review-cancel" method="post" action="/ingest/`+token+`/cancel">`) ||
 		!strings.Contains(body, `<button type="submit" form="review-cancel"`) {
 		t.Error("Cancel is not tied to a form that posts to the cancel route")
+	}
+}
+
+// A draft put back after a failed save is what the user left: their edits and
+// the flags the rules and the LLM raised, which the next GET shows again
+// (ADR-00006 obligation 4).
+func TestDraftPutBackAfterAFailedSaveKeepsEditsAndFlags(t *testing.T) {
+	for name, saver := range map[string]Saver{"unknown unit": unknownUnitSaver{}, "save failure": failingSaver{}} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			f.h.saver = saver
+			token := f.ingestText(t)
+			form := reviewForm()
+			form.Set("author", "Grace")
+			form.Set("c.0.l.1.mark", "low llm")
+			form.Set("c.0.l.1.issue", "ingredient not matched")
+			form.Set("c.0.s.1.mark", "low")
+			form.Set("e.2.mark", "llm")
+			form.Set("mark.name", "low")
+			if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code < 400 {
+				t.Fatalf("status = %d, want the save to fail", rec.Code)
+			}
+			rec := f.do(http.MethodGet, "/"+token, nil)
+			body := rec.Body.String()
+			if rec.Code != http.StatusOK || !strings.Contains(body, `value="Grace"`) {
+				t.Fatalf("the user's edit did not survive: status %d", rec.Code)
+			}
+			if got := strings.Count(body, "data-low"); got != 2 {
+				t.Errorf("low items after the failed save = %d, want the line and the step", got)
+			}
+			line := items(body, "line")[1]
+			if !strings.Contains(line, "Check:") || !strings.Contains(line, "LLM") || !strings.Contains(line, "ingredient not matched") {
+				t.Errorf("the line lost its flags or issue: %s", line)
+			}
+			if !strings.Contains(items(body, "equipment")[2], "LLM") {
+				t.Error("the equipment lost its LLM mark")
+			}
+			if !strings.Contains(between(t, body, `<label for="f-name">`, "</div>"), "Check:") {
+				t.Error("the name lost its flag")
+			}
+		})
 	}
 }

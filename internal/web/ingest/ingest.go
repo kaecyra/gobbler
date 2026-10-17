@@ -73,7 +73,7 @@ type Deps struct {
 type handler struct {
 	drafter Drafter
 	saver   Saver
-	// review is the recipe editor over the unsaved draft.
+	// unsaved is the recipe editor over the unsaved draft.
 	unsaved editor.Unsaved
 	pending *pendingDrafts
 	retrier Retrier
@@ -291,8 +291,9 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 		}
 		form = &f
 	}
-	if r.Header.Get("HX-Request") == "true" {
-		layout.Render(w, r, editor.FormStatus(r, status), form.Component())
+	if editor.FromHTMX(r) {
+		// htmx does not swap a 4xx, so the form alone is answered with a 200.
+		layout.Render(w, r, http.StatusOK, form.Component())
 		return
 	}
 	layout.Render(w, r, status, reviewPage(reviewView{
@@ -376,7 +377,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	h.log.InfoContext(r.Context(), "recipe ingested", "recipe_id", saved.RecipeID,
 		"new_ingredients", len(saved.NewIngredients), "new_equipment", len(saved.NewEquipment))
-	if r.Header.Get("HX-Request") == "true" {
+	if editor.FromHTMX(r) {
 		w.Header().Set("HX-Redirect", recipePath(saved.RecipeID))
 		w.WriteHeader(http.StatusOK)
 		return

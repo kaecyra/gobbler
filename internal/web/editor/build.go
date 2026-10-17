@@ -352,14 +352,13 @@ func lineBlank(l lineDraft) bool {
 	return true
 }
 
-// step reads one step; a step with no text, duration or dependencies is
-// dropped as an unused row.
+// step reads one step; a blank one (see stepBlank) is dropped.
 func (b *builder) step(s *stepDraft) (recipe.Step, bool) {
 	s.Err = ""
-	text := strings.TrimSpace(s.Text)
-	if text == "" && strings.TrimSpace(s.Duration) == "" && len(s.Deps) == 0 {
+	if stepBlank(*s) {
 		return recipe.Step{}, false
 	}
+	text := strings.TrimSpace(s.Text)
 	step := recipe.Step{ID: recipe.StepID(s.ID), Text: text, Passive: s.Passive}
 	var msgs []string
 	if text == "" {
@@ -380,12 +379,23 @@ func (b *builder) step(s *stepDraft) (recipe.Step, bool) {
 	return step, true
 }
 
+// stepBlank is a step row with no text, duration or dependencies: an unused
+// row, dropped.
+func stepBlank(s stepDraft) bool {
+	return strings.TrimSpace(s.Text) == "" && strings.TrimSpace(s.Duration) == "" && len(s.Deps) == 0
+}
+
+// equipBlank is an equipment row with no name, quantity or steps.
+func equipBlank(e equipDraft) bool {
+	return strings.TrimSpace(e.Name) == "" && strings.TrimSpace(e.Qty) == "" && len(e.Steps) == 0
+}
+
 func (b *builder) equipment(e *equipDraft) (link recipe.EquipmentLink, keep bool, prop string) {
 	e.Err, e.OfferProposal = "", false
-	name, qty := strings.TrimSpace(e.Name), strings.TrimSpace(e.Qty)
-	if name == "" && qty == "" && len(e.Steps) == 0 {
+	if equipBlank(*e) {
 		return link, false, ""
 	}
+	name, qty := strings.TrimSpace(e.Name), strings.TrimSpace(e.Qty)
 	var msgs []string
 	if qty != "" {
 		q, err := quantity.ParseQuantity(qty)
