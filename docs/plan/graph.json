@@ -1784,7 +1784,8 @@
         "internal/ingest/save*.go",
         "internal/store/recipe*.go",
         "internal/store/snapshot*.go",
-        "internal/web/ingest/**"
+        "internal/web/ingest/**",
+        "internal/store/migration_test.go"
       ],
       "needs_migration": "schema",
       "adrs": []
