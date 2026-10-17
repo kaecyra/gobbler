@@ -2189,7 +2189,8 @@
         "internal/web/journal/**",
         "e2e/editor/**",
         "e2e/journal/**",
-        "docs/design.md"
+        "docs/design.md",
+        "e2e/tenancy/tenancy.tenancy.spec.ts"
       ],
       "needs_migration": "schema",
       "adrs": [],
@@ -2215,11 +2216,12 @@
         "internal/ingest/structured*.go",
         "internal/ingest/*_test.go",
         "internal/web/ingest/**",
-        "e2e/ingest/**"
+        "e2e/ingest/**",
+        "internal/web/editor/**"
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00022; design in docs/ui/design.md."
+      "note": "ADR-00022; design in docs/ui/design.md. u-recipe-fields hides the new fields on a draft under review (groupRecipeFields, left off by carries) because ingest.Draft does not carry them yet: this node adds them to ingest.Draft, maps them in the editor's fromIngest/toIngest and switches the group on in internal/web/editor/view.go."
     },
     {
       "id": "u-ribbon",
@@ -2350,7 +2352,8 @@
       "status": "todo",
       "depends_on": [
         "u-shell",
-        "u-recipe-fields"
+        "u-recipe-fields",
+        "u-ingest-fields"
       ],
       "owns": [
         "internal/web/editor/**",
