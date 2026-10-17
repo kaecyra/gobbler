@@ -39,6 +39,9 @@ type draft struct {
 	Components []compDraft
 	Equipment  []equipDraft
 
+	// Marks flags metadata fields the review screen asks the user to check,
+	// keyed by form name. The editor of a stored recipe has none.
+	Marks map[string]mark
 	// Errs holds the message under a metadata field, keyed by its form name.
 	Errs map[string]string
 	// Problems are messages about the recipe as a whole: a step cycle, a
@@ -63,6 +66,10 @@ type lineDraft struct {
 	Quals           []qualDraft
 	Err             string
 	OfferProposal   bool // the ingredient matched nothing; offer to add it
+	// Mark and Issues come from review: how sure the reading was, and why not
+	// fully. They ride in hidden fields so they follow the line when it moves.
+	Mark   mark
+	Issues []string
 }
 
 type qualDraft struct{ Kind, Text string }
@@ -74,8 +81,9 @@ type stepDraft struct {
 	Passive  bool
 	Deps     []string
 	// To is the component the step is in now, or is being moved to.
-	To  int
-	Err string
+	To   int
+	Err  string
+	Mark mark
 }
 
 type equipDraft struct {
@@ -85,6 +93,7 @@ type equipDraft struct {
 	Propose       bool
 	OfferProposal bool
 	Err           string
+	Mark          mark
 }
 
 // lookups are the catalog names the form suggests and the ids it labels.
@@ -166,6 +175,7 @@ func parseForm(f url.Values) draft {
 		YieldQty: f.Get("yield_qty"), YieldUnit: f.Get("yield_unit"), Servings: f.Get("servings"),
 		Calories: f.Get("calories"), Tags: f.Get("tags"),
 		Prep: f.Get("prep"), Cook: f.Get("cook"), Total: f.Get("total"),
+		Marks: parseMarks(f),
 	}
 	for _, ci := range indices(f, "c.") {
 		cp := fmt.Sprintf("c.%d.", ci)
@@ -177,6 +187,7 @@ func parseForm(f url.Values) draft {
 				PkgQty: f.Get(lp + "pkgqty"), PkgUnit: f.Get(lp + "pkgunit"),
 				Ingredient: f.Get(lp + "ing"), Propose: f.Get(lp+"propose") != "",
 				Optional: f.Get(lp+"optional") != "", Rule: f.Get(lp + "rule"), Raw: f.Get(lp + "raw"),
+				Mark: parseMark(f.Get(lp + "mark")), Issues: nonEmpty(f[lp+"issue"]),
 			}
 			for _, qi := range indices(f, lp+"q.") {
 				qp := fmt.Sprintf("%sq.%d.", lp, qi)
@@ -193,6 +204,7 @@ func parseForm(f url.Values) draft {
 			c.Steps = append(c.Steps, stepDraft{
 				ID: strings.TrimSpace(f.Get(sp + "id")), Text: f.Get(sp + "text"), Duration: f.Get(sp + "dur"),
 				Passive: f.Get(sp+"passive") != "", Deps: nonEmpty(f[sp+"dep"]), To: to,
+				Mark: parseMark(f.Get(sp + "mark")),
 			})
 		}
 		d.Components = append(d.Components, c)
@@ -201,7 +213,7 @@ func parseForm(f url.Values) draft {
 		ep := fmt.Sprintf("e.%d.", ei)
 		d.Equipment = append(d.Equipment, equipDraft{
 			Name: f.Get(ep + "name"), Qty: f.Get(ep + "qty"), Steps: nonEmpty(f[ep+"step"]),
-			Propose: f.Get(ep+"propose") != "",
+			Propose: f.Get(ep+"propose") != "", Mark: parseMark(f.Get(ep + "mark")),
 		})
 	}
 	return d

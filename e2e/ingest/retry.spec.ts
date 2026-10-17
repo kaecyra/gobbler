@@ -163,13 +163,13 @@ test('retry fills gaps only: the rule values are kept, unmarked, and nothing is 
   expect(calls).toBe(1);
   // Every line and field the rules read well is kept, whatever the answer says.
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
-  await expect(page.locator('#f-name').locator('..').locator('.llm-mark')).toHaveCount(0);
-  await expect(page.locator('.lines li[data-llm]')).toHaveCount(0);
-  await expect(page.locator('.steps li[data-llm]')).toHaveCount(0);
-  await expect(page.getByText('dragonfruit zest')).toHaveCount(0);
+  await expect(page.locator('#f-name').locator('xpath=preceding-sibling::div[1]').locator('.llm-mark')).toHaveCount(0);
+  await expect(page.locator('li.line[data-llm]')).toHaveCount(0);
+  await expect(page.locator('li.step[data-llm]')).toHaveCount(0);
+  await expect(page.locator('input[value="dragonfruit zest"]')).toHaveCount(0);
   // Still on the review screen: saving needs the confirm button.
-  await expect(page.getByRole('button', { name: 'Confirm and save' })).toBeVisible();
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
+  await expect(page.getByRole('button', { name: 'Confirm and save' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
 });
 
@@ -186,7 +186,7 @@ test('a failing provider shows the error and keeps the rule-based draft saveable
 
   // The same draft is still pending and can be saved.
   expect((await request.get(`/ingest/${token}`)).status()).toBe(200);
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
 });
 
@@ -195,9 +195,10 @@ test('a below-threshold input calls the provider once on its own', async ({ page
   expect(calls).toBe(1);
   // The weak line is replaced and marked; the name the rules read is kept.
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Mystery Stew');
-  await expect(page.locator('.lines li[data-llm]')).toHaveCount(1);
-  await expect(page.getByRole('region', { name: 'New ingredients' })).toContainText('dragonfruit zest');
-  await expect(page.getByText('The LLM supplied this draft')).toBeVisible();
+  await expect(page.locator('li.line[data-llm]')).toHaveCount(1);
+  await expect(page.getByLabel('Ingredient', { exact: true })).toHaveValue('dragonfruit zest');
+  await expect(page.getByLabel('Add this ingredient to the catalog as new and unreviewed')).toBeChecked();
+  await expect(page.getByText('The LLM filled the gaps the rules left')).toBeVisible();
 });
 
 test('a below-threshold input with a failing provider keeps the rule draft and shows the error', async ({ page }) => {

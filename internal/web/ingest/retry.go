@@ -60,7 +60,7 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	}
 	fail := func(status int, msg string) {
 		d.LLMError = msg
-		layout.Render(w, r, status, reviewPage(h.reviewView(token, d)))
+		h.renderReview(w, r, status, token, d, nil)
 	}
 	if h.llmInitErr != nil {
 		h.log.ErrorContext(r.Context(), "llm provider unavailable", "error", h.llmInitErr.Error())
@@ -84,11 +84,6 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	}
 	h.pending.put(householdID(r), token, out)
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
-}
-
-// reviewView is the view of the review screen for a pending draft.
-func (h *handler) reviewView(token string, d ingestcore.Draft) reviewView {
-	return reviewView{Token: token, Draft: d, CanRetry: h.retrier != nil && h.retrier.Configured()}
 }
 
 var _ Retrier = (*ingestcore.Fallback)(nil)

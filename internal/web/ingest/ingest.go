@@ -1,6 +1,8 @@
 // Package ingest is the web side of ingestion: the form that takes a URL or
 // pasted text, and the review screen where the user checks, edits and confirms
-// the draft before anything is saved (ADR-00006). It drives the pipeline in
+// the draft before anything is saved (ADR-00006). The review screen is the
+// recipe editor operating on the unsaved draft (ADR-00020 decision 3): this
+// package holds no editor control of its own. It drives the pipeline in
 // internal/ingest (FromURL, FromText or FromOCR, then Confirm, then Saver.Save) and
 // never saves anything itself.
 //
@@ -31,6 +33,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -70,7 +73,8 @@ type Deps struct {
 type handler struct {
 	drafter Drafter
 	saver   Saver
-	matcher ingredientMatcher
+	// review is the recipe editor over the unsaved draft.
+	unsaved editor.Unsaved
 	pending *pendingDrafts
 	retrier Retrier
 	// photos drafts from a photo's OCR text, and ocr reads the photo.
@@ -115,7 +119,7 @@ func Routes(d Deps) http.Handler {
 		h.ocr = ocr.Runner{}
 		h.retrier = pipeline.Fallback()
 		h.saver = ingestcore.NewSaver(store.New(d.DB), cat)
-		h.matcher = cat
+		h.unsaved = editor.NewUnsaved(cat)
 	}
 	return h.routes()
 }
@@ -176,9 +180,11 @@ type formView struct {
 // reviewView is what the review screen renders.
 type reviewView struct {
 	Token string
+	// Draft is the draft as the rules read it, for the confidence summary.
 	Draft ingestcore.Draft
-	// Problems are why the last confirm did not go through, in words.
-	Problems []string
+	// Form is the recipe editor over the draft. Why a confirm did not go
+	// through is in it.
+	Form editor.Form
 	// CanRetry is whether the retry-with-LLM action is offered.
 	CanRetry bool
 }
@@ -265,16 +271,46 @@ func (h *handler) review(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, errGone)
 		return
 	}
-	layout.Render(w, r, http.StatusOK, reviewPage(h.reviewView(token, d)))
+	h.renderReview(w, r, http.StatusOK, token, d, nil)
+}
+
+// reviewOptions is where the review form's buttons post.
+func reviewOptions(token string) editor.ReviewOptions {
+	return editor.ReviewOptions{Action: "/ingest/" + token + "/confirm"}
+}
+
+// renderReview shows d in the editor. form, when set, is the editor form to
+// show instead of a fresh one (what the user typed, with its messages). A
+// request from htmx gets the form alone, to swap in place.
+func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status int, token string, d ingestcore.Draft, form *editor.Form) {
+	if form == nil {
+		f, err := h.unsaved.Open(r.Context(), d, reviewOptions(token))
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("open review: %w", err))
+			return
+		}
+		form = &f
+	}
+	if r.Header.Get("HX-Request") == "true" {
+		layout.Render(w, r, editor.FormStatus(r, status), form.Component())
+		return
+	}
+	layout.Render(w, r, status, reviewPage(reviewView{
+		Token: token, Draft: d, Form: *form,
+		CanRetry: h.retrier != nil && h.retrier.Configured(),
+	}))
 }
 
 // errGone is the not-found error for a draft token that is unknown, expired or
 // already used.
 var errGone = fmt.Errorf("that draft is no longer available, ingest it again: %w", layout.ErrNotFound)
 
-// confirm applies the user's edits, confirms the draft and saves it. The draft
-// is taken from the table first, so a second submit cannot save twice; it goes
-// back if anything fails, with the user's edits.
+// confirm reads the editor form posted from the review screen. A structural
+// button (add, remove, move) or a form the editor rejects shows the form
+// again and changes nothing. A form that passes the editor's validation is
+// confirmed and saved. The draft is taken from the table before saving, so a
+// second submit cannot save twice; it goes back, with the user's edits, if
+// anything fails.
 func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
@@ -282,34 +318,42 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("read form: %w", layout.ErrInvalid))
 		return
 	}
-	d, ok := h.pending.take(householdID(r), token)
+	base, ok := h.pending.get(householdID(r), token)
 	if !ok {
 		layout.WriteError(w, r, errGone)
 		return
 	}
-	retry := func(status int, problems []string) {
+	out, err := h.unsaved.Submit(r.Context(), r.PostForm, base, reviewOptions(token))
+	if err != nil {
+		layout.WriteError(w, r, fmt.Errorf("read review form: %w", err))
+		return
+	}
+	if !out.Ready {
+		status := http.StatusOK
+		if out.Rejected {
+			status = http.StatusUnprocessableEntity
+		}
+		h.renderReview(w, r, status, token, base, &out.Form)
+		return
+	}
+	if _, ok := h.pending.take(householdID(r), token); !ok {
+		layout.WriteError(w, r, errGone)
+		return
+	}
+	d := out.Draft
+	retry := func(problems []string) {
 		h.pending.put(householdID(r), token, d)
-		view := h.reviewView(token, d)
-		view.Problems = problems
-		layout.Render(w, r, status, reviewPage(view))
+		form := out.Form.WithProblems(problems...)
+		h.renderReview(w, r, http.StatusUnprocessableEntity, token, d, &form)
 	}
 	fail := func(err error) {
 		h.pending.put(householdID(r), token, d)
 		layout.WriteError(w, r, err)
 	}
 
-	problems, err := applyEdits(r.Context(), r.PostForm, &d, h.matcher)
-	if err != nil {
-		fail(err)
-		return
-	}
-	if len(problems) > 0 {
-		retry(http.StatusUnprocessableEntity, problems)
-		return
-	}
 	confirmed, err := ingestcore.Confirm(d)
 	if errors.Is(err, ingestcore.ErrIncompleteDraft) {
-		retry(http.StatusUnprocessableEntity, incompleteProblems(err))
+		retry(incompleteProblems(err))
 		return
 	}
 	if err != nil {
@@ -321,7 +365,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	if errors.As(err, &unitErr) {
 		// The catalog changed since drafting: a problem with the draft, not a
 		// broken pipeline, so show it on the review screen.
-		retry(http.StatusUnprocessableEntity, []string{
+		retry([]string{
 			fmt.Sprintf("The unit %q is not in the catalog (it may have changed since this draft was made). Ingest the recipe again to re-read it.", unitErr.Name),
 		})
 		return
@@ -332,6 +376,11 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	h.log.InfoContext(r.Context(), "recipe ingested", "recipe_id", saved.RecipeID,
 		"new_ingredients", len(saved.NewIngredients), "new_equipment", len(saved.NewEquipment))
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", recipePath(saved.RecipeID))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	http.Redirect(w, r, recipePath(saved.RecipeID), http.StatusSeeOther)
 }
 
