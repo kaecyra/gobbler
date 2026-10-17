@@ -1994,7 +1994,8 @@
         "i-equipment-extract"
       ],
       "owns": [
-        "internal/ingest/extract/extract.go"
+        "internal/ingest/extract/extract.go",
+        "internal/parse/meta.go"
       ],
       "needs_migration": null,
       "adrs": [],
