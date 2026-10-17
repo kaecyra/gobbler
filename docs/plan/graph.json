@@ -2220,7 +2220,8 @@
         "internal/web/editor/**",
         "internal/ingest/extract/extract*.go",
         "internal/ingest/extract/microdata*.go",
-        "internal/ingest/ingest.go"
+        "internal/ingest/ingest.go",
+        "internal/ingest/extract/plugins*.go"
       ],
       "needs_migration": null,
       "adrs": [],
