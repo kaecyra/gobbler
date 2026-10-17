@@ -7,12 +7,14 @@ package history
 
 import (
 	"context"
+	_ "embed" // the stylesheet is embedded in the binary (ADR-00002)
 	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
 	"strconv"
 
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
@@ -79,6 +81,18 @@ func CloneRoutes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", clone(d))
 	return r
+}
+
+// libraryPath is the library, the first step of the breadcrumb.
+const libraryPath = "/recipes"
+
+//go:embed assets/history.css
+var stylesheet string
+
+// styles is the history page's stylesheet, written into the page like the
+// recipe page's (recipeview.Styles).
+func styles() templ.Component {
+	return templ.Raw("<style>" + stylesheet + "</style>")
 }
 
 func recipePath(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }

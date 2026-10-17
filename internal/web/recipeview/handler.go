@@ -7,12 +7,14 @@ package recipeview
 
 import (
 	"context"
+	_ "embed" // the stylesheet is embedded in the binary (ADR-00002)
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
@@ -34,6 +36,10 @@ type Recipes interface {
 	// (ADR-00021). Thumbnail is by recipe, never by video ID.
 	HasThumbnail(ctx context.Context, videoID string) (bool, error)
 	Thumbnail(ctx context.Context, id int64) (store.Thumbnail, error)
+	// ListNotes and ListMadeIt feed the tips (pinned notes) and the made
+	// count on the page (ADR-00022).
+	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
+	ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error)
 }
 
 // Catalog is what the view reads from the ingredient and equipment catalog.
@@ -54,6 +60,16 @@ func Routes(d Deps) chi.Router {
 	r.Get("/", handle(d))
 	r.Get(thumbnailRoute, thumbnail(d))
 	return r
+}
+
+//go:embed assets/recipe.css
+var stylesheet string
+
+// Styles is the recipe page's stylesheet, written into the page. It is inline
+// so the page needs no route of its own for it; history takes it too, for the
+// recipe document it shows.
+func Styles() templ.Component {
+	return templ.Raw("<style>" + stylesheet + "</style>")
 }
 
 // thumbnailRoute is the thumbnail's path below Pattern.
@@ -139,6 +155,17 @@ func handle(d Deps) http.HandlerFunc {
 			}
 			v.HasThumbnail = has
 		}
+		notes, err := d.Recipes.ListNotes(r.Context(), id)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load notes of recipe %d: %w", id, err))
+			return
+		}
+		made, err := d.Recipes.ListMadeIt(r.Context(), id)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load made-it log of recipe %d: %w", id, err))
+			return
+		}
+		v.withJournal(notes, made)
 		if info.ClonedFrom != nil {
 			v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
 		}

@@ -5,9 +5,9 @@
   aspect-ratio: 16 / 9;
   max-width: 40rem;
   margin: 0 auto var(--gutter);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--border);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--line);
   overflow: hidden;
 }
 
@@ -17,7 +17,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--fg);
+  color: var(--ink);
   text-decoration: none;
 }
 
@@ -34,20 +34,20 @@
 .recipe-video-button {
   position: relative;
   display: inline-block;
-  min-height: 3rem;
+  min-height: var(--tap);
   padding: 0.5rem 1.25rem;
-  border: 1px solid var(--accent);
-  border-radius: 0.5rem;
-  background: var(--bg);
-  color: var(--accent);
+  border: 1px solid var(--wattle-ink);
+  border-radius: var(--r);
+  background: var(--card);
+  color: var(--wattle-ink);
   font-weight: 600;
   line-height: 2rem;
 }
 
 .recipe-video-play:hover .recipe-video-button,
 .recipe-video-play:focus-visible .recipe-video-button {
-  background: var(--accent);
-  color: var(--bg);
+  background: var(--wattle-ink);
+  color: var(--on-accent);
 }
 
 .recipe-video iframe {

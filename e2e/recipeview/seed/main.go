@@ -7,6 +7,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -155,7 +157,60 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID})
+	styledID, err := seedStyled(ctx, d)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID})
+}
+
+// seedStyled stores a recipe that uses every field the mockup design shows: a
+// meal type, a spice level, a rating, a source link, step titles and stage
+// kinds, a pinned and an unpinned note, and a made-it log.
+func seedStyled(ctx context.Context, d *sql.DB) (int64, error) {
+	rs := store.New(d)
+	ribs, err := catalog.New(d).CreateIngredient(ctx, catalog.Ingredient{Name: "e2e short ribs", Aisle: "meat"})
+	if err != nil {
+		return 0, err
+	}
+	spice, rating := 2, 4
+	r := recipe.Recipe{
+		Name:        "E2E Short Ribs",
+		Description: "Deeply browned ribs and a slow braise.",
+		SourceURL:   "https://www.example.com/short-ribs",
+		MealType:    recipe.MealMain,
+		SpiceLevel:  &spice,
+		Rating:      &rating,
+		Servings:    quantity.Exact(mustRat("4")),
+		Components: []recipe.Component{{
+			Name: "Ribs",
+			Lines: []recipe.IngredientLine{line("2", "lb", ribs.ID, quantity.RuleLinear)},
+			Steps: []recipe.Step{
+				{ID: "brown", Title: "Brown the ribs", Text: "Brown the ribs in two batches.", Duration: 20 * time.Minute, Kind: recipe.StagePrep},
+				{ID: "braise", Title: "Braise", Text: "Cover and braise until tender.", Duration: 3 * time.Hour, Passive: true, Kind: recipe.StageBraise, DependsOn: []recipe.StepID{"brown"}},
+			},
+		}},
+	}
+	id, err := rs.Create(ctx, r)
+	if err != nil {
+		return 0, err
+	}
+	tip, err := rs.AddNote(ctx, id, "Salt the ribs the night before.")
+	if err != nil {
+		return 0, err
+	}
+	if err := rs.SetNotePinned(ctx, id, tip.ID, true); err != nil {
+		return 0, err
+	}
+	if _, err := rs.AddNote(ctx, id, "Private remark, not pinned."); err != nil {
+		return 0, err
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := rs.AddMadeIt(ctx, id, store.MadeIt{Comment: "Made it."}); err != nil {
+			return 0, err
+		}
+	}
+	return id, nil
 }
 
 func line(qty, unit string, ingredient int64, rule quantity.Rule) recipe.IngredientLine {

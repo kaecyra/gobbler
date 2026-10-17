@@ -10,11 +10,14 @@ import (
 // nothing when there is none, so recipes without guidance look as before.
 templ meanwhile(items []display.MeanwhileItem) {
 	if len(items) > 0 {
-		<div class="recipe-meanwhile" data-testid="meanwhile">
-			<strong>Meanwhile</strong>
+		<div class="callout meanwhile" data-testid="meanwhile">
+			<div class="co-label">
+				@iconClock()
+				<span>Meanwhile, while it waits</span>
+			</div>
 			<ul>
 				for _, it := range items {
-					<li>step { strconv.Itoa(it.Number) }: { it.Text }</li>
+					<li><b>step { strconv.Itoa(it.Number) }:</b> <span>{ it.Text }</span></li>
 				}
 			</ul>
 		</div>

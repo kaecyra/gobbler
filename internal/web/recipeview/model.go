@@ -3,12 +3,32 @@ package recipeview
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
+
+// mealLabels name the meal types on the page, in the library's order.
+var mealLabels = map[recipe.MealType]string{
+	recipe.MealBreakfast: "Breakfast", recipe.MealMain: "Main", recipe.MealSide: "Side",
+	recipe.MealDessert: "Dessert", recipe.MealSnack: "Snack", recipe.MealDrink: "Drink",
+}
+
+// heatLabels are indexed by spice level; 0 is nothing to say.
+var heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
+
+// verdicts are the words of the spoon scale, indexed by rating; they are the
+// accessible name of the spoons.
+var verdicts = [...]string{"Not rated", "Not again", "It was fine", "Good", "Make it again", "House favourite"}
+
+// maxSpoons is the top of the rating scale.
+const maxSpoons = 5
 
 // hintTime is shown on cook and special times of a scaled view (ADR-00005):
 // times are not scaled, so the page says they may need attention.
@@ -45,6 +65,21 @@ type view struct {
 	Tags         []string
 	Rating       *int
 	Calories     *int
+
+	// MealType is the meal type's key and Meal its label, both empty when
+	// unset. Spice is 0 to 3 and 0 shows nothing. Spoons is the rating, 0 for
+	// unrated. Made is the length of the made-it log.
+	MealType   recipe.MealType
+	Meal       string
+	Spice      int
+	Spoons     int
+	Made       int
+	SourceHost string
+	// Ribbon is the time ribbon under "Ready in about..."; Empty when no step
+	// has a duration.
+	Ribbon ribbon.Ribbon
+	// Tips are the pinned notes, shown above the steps.
+	Tips []string
 	Servings     string
 	Yield        string
 
@@ -93,7 +128,13 @@ type componentView struct {
 }
 
 type stepView struct {
-	Text string
+	// Title is the step's short heading, empty when it has none.
+	Title string
+	Text  string
+	// Passive marks a step that needs no attention while it runs.
+	Passive bool
+	// After lists the numbers of the steps this one waits for.
+	After []int
 	// Note is the duration and the passive marker, "20 min, passive".
 	Note string
 	// Meanwhile is work offered while this passive step runs (ADR-00004);
@@ -112,7 +153,19 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		ID: id, Name: r.Name, Description: r.Description, Author: r.Author,
 		SourceURL: r.SourceURL, VideoID: r.VideoID, Tags: r.Tags, Rating: r.Rating, Calories: r.CaloriesPerServing,
 		Scaled: o.Scaled(), Multiplier: o.Mult.String(), Opts: o,
+		MealType: r.MealType, Meal: mealLabels[r.MealType], SourceHost: sourceHost(r.SourceURL),
 	}
+	if r.SpiceLevel != nil && *r.SpiceLevel > 0 {
+		v.Spice = min(*r.SpiceLevel, recipe.MaxSpiceLevel)
+	}
+	if r.Rating != nil && *r.Rating > 0 {
+		v.Spoons = min(*r.Rating, maxSpoons)
+	}
+	var steps []recipe.Step
+	for _, ref := range r.LinearOrder() {
+		steps = append(steps, r.Components[ref.ComponentIndex].Steps[ref.Position-1])
+	}
+	v.Ribbon = ribbon.Build(steps)
 	var err error
 	if v.Servings, err = display.ScaleQty(r.Servings, o); err != nil {
 		return view{}, fmt.Errorf("servings: %w", err)
@@ -155,7 +208,11 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 			cv.Lines = append(cv.Lines, lv)
 		}
 		for _, s := range c.Steps {
-			cv.Steps = append(cv.Steps, stepView{Text: s.Text, Note: display.StepNote(s), Meanwhile: guidance[s.ID]})
+			sv := stepView{Title: s.Title, Text: s.Text, Passive: s.Passive, Note: display.StepNote(s), Meanwhile: guidance[s.ID]}
+			for _, dep := range s.DependsOn {
+				sv.After = append(sv.After, number[dep])
+			}
+			cv.Steps = append(cv.Steps, sv)
 		}
 		v.Components = append(v.Components, cv)
 	}
@@ -174,4 +231,52 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		v.Equipment = append(v.Equipment, equipmentView{Text: text, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
 	}
 	return v, nil
+}
+
+// withJournal adds what the journal contributes to the page: the pinned notes
+// as tips, and how many times the recipe was made.
+func (v *view) withJournal(notes []store.Note, made []store.MadeIt) {
+	for _, n := range notes {
+		if n.Pinned {
+			v.Tips = append(v.Tips, n.Body)
+		}
+	}
+	v.Made = len(made)
+}
+
+// sourceHost is the host of a source address for the link text, empty when the
+// address does not parse or has none.
+func sourceHost(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimPrefix(u.Hostname(), "www.")
+}
+
+// heatLabel and verdict name the chilis and the spoons for screen readers.
+func heatLabel(level int) string { return heatLabels[level] }
+
+func verdict(spoons int) string { return verdicts[spoons] }
+
+// afterText renders "step 3" or "steps 3, 4, 5" for the steps a step waits
+// for.
+func afterText(nums []int) string {
+	parts := make([]string, len(nums))
+	for i, n := range nums {
+		parts[i] = strconv.Itoa(n)
+	}
+	if len(parts) == 1 {
+		return "after step " + parts[0]
+	}
+	return "after steps " + strings.Join(parts, ", ")
+}
+
+// readyIn is the time the eyebrow above the ribbon states: the derived total,
+// or the sum of the timed steps when the recipe states no total.
+func (v view) readyIn() string {
+	if v.Total != "" {
+		return v.Total
+	}
+	return display.FormatDuration(v.Ribbon.Total)
 }

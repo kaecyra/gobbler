@@ -157,3 +157,32 @@ test("another recipe's revision cannot be viewed or restored through this recipe
   const res = await request.post(`/recipes/${plain}/history/2/restore`, { form: { confirm: 'yes' }, headers: sameOrigin });
   expect(res.status()).toBe(404);
 });
+
+// docs/ui/design.md: every interactive control is at least --tap (44px) tall.
+const TAP = 44;
+
+async function expectTall(page: import('@playwright/test').Page, name: string, selector: string) {
+  const items = page.locator(selector);
+  const n = await items.count();
+  expect(n, `${name} (${selector}) present`).toBeGreaterThan(0);
+  for (let i = 0; i < n; i++) {
+    const box = await items.nth(i).boundingBox();
+    expect(box?.height ?? 0, `${name} #${i} height`).toBeGreaterThanOrEqual(TAP - 0.5);
+  }
+}
+
+test('every control on the history list is at least 44px tall', async ({ page }) => {
+  await page.goto(`/recipes/${edited}/history`);
+  await expectTall(page, 'breadcrumb link', '.crumbs a');
+  await expectTall(page, 'back link', 'a.back');
+  await expectTall(page, 'version links', '.history-list a');
+  await expectTall(page, 'clone button', 'main button');
+});
+
+test('every control on a version page is at least 44px tall', async ({ page }) => {
+  await page.goto(`/recipes/${edited}/history/1`);
+  await expectTall(page, 'breadcrumb links', '.crumbs a');
+  await expectTall(page, 'restore summary', '.restore summary');
+  await page.getByText('Restore this version').click();
+  await expectTall(page, 'restore button', '.restore button');
+});

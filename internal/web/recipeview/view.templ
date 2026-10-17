@@ -6,6 +6,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
+	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
 
 // scalePresets are the one-tap multipliers; Param is the text sent as scale.
@@ -17,6 +18,13 @@ var scalePresets = []struct{ Param, Label string }{
 var unitModes = []struct{ Param, Label string }{
 	{"", "As written"}, {display.UnitsMetric, "Metric"}, {display.UnitsWeight, "Weight"},
 }
+
+// libraryPath is the library, the first step of the breadcrumb.
+const libraryPath = "/recipes"
+
+// shoppingPath is where the shopping lists are; "Add to shopping list" goes
+// there, since a list is chosen on its own page.
+const shoppingPath = "/shopping"
 
 // Paths of the player's own assets, embedded in the binary (ADR-00002).
 const (
@@ -80,6 +88,21 @@ func shareHref(id int64) string {
 	return "/shares/new/" + strconv.FormatInt(id, 10)
 }
 
+// spoonsOn lists the five spoons of the rating, true for the filled ones.
+func spoonsOn(n int) []bool {
+	out := make([]bool, maxSpoons)
+	for i := range out {
+		out[i] = i < n
+	}
+	return out
+}
+
+// chilis lists the peppers of the spice scale.
+func chilis(n int) []struct{} { return make([]struct{}, n) }
+
+// stepNumber is the number printed in a step's marker.
+func stepNumber(first, i int) string { return strconv.Itoa(first + i) }
+
 func presetActive(v view, param string) bool {
 	if v.Opts.Servings != "" {
 		return false
@@ -92,11 +115,14 @@ func presetActive(v view, param string) bool {
 
 templ recipePage(v view) {
 	@layout.Page(v.Name) {
+		<link rel="stylesheet" href={ ribbon.StylesheetPath }/>
+		@Styles()
 		if v.VideoID != "" {
 			@videoPlayer(v)
 		}
 		@recipeBody(v)
 		@aside(v)
+		<script src={ ribbon.ScriptPath } defer></script>
 	}
 }
 
@@ -130,48 +156,48 @@ templ videoPlayer(v view) {
 
 templ recipeBody(v view) {
 	<article id="recipe" class="recipe">
-		<h1>{ v.Name }</h1>
-		if v.Description != "" {
-			<p>{ v.Description }</p>
-		}
-		if v.Origin != nil {
-			<p class="muted" data-testid="origin">
-				Cloned from
-				<a href={ templ.SafeURL(recipePath(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
-				at
-				<a href={ templ.SafeURL(originHref(v.Origin)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
-			</p>
-		}
-		<p class="muted recipe-meta">
-			if v.Author != "" {
-				<span>By { v.Author }</span>
+		<nav class="crumbs" aria-label="Breadcrumb">
+			<a href={ templ.SafeURL(libraryPath) }>Library</a>
+			<span aria-hidden="true">/</span>
+			if v.Meal != "" {
+				<span>{ v.Meal }</span>
+			} else {
+				<span aria-current="page">{ v.Name }</span>
 			}
-			if v.SourceURL != "" {
-				<a href={ templ.URL(v.SourceURL) } rel="noopener noreferrer">Source</a>
-			}
-			if v.Rating != nil {
-				<span>Rating { strconv.Itoa(*v.Rating) }/5</span>
-			}
-			if v.Calories != nil {
-				<span>{ strconv.Itoa(*v.Calories) } kcal per serving</span>
-			}
-		</p>
-		if len(v.Tags) > 0 {
-			<ul class="recipe-tags">
-				for _, t := range v.Tags {
-					<li>{ t }</li>
+		</nav>
+		<div class="rhead">
+			<div>
+				<h1>{ v.Name }</h1>
+				if v.Description != "" {
+					<p class="lede">{ v.Description }</p>
 				}
-			</ul>
-		}
-		<p class="recipe-yield">
-			if v.Servings != "" {
-				<span>Serves <strong data-testid="servings">{ v.Servings }</strong></span>
-			}
-			if v.Yield != "" {
-				<span>Makes <strong data-testid="yield">{ v.Yield }</strong></span>
-			}
-		</p>
-		<p><a href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">Cook mode</a> <a href={ templ.SafeURL(editHref(v.ID)) } data-testid="edit-link">Edit</a> <a href={ templ.SafeURL(shareHref(v.ID)) } data-testid="share-link">Share</a></p>
+				if v.Origin != nil {
+					<p class="muted origin" data-testid="origin">
+						Cloned from
+						<a href={ templ.SafeURL(recipePath(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
+						at
+						<a href={ templ.SafeURL(originHref(v.Origin)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
+					</p>
+				}
+				@metaRow(v)
+				if len(v.Tags) > 0 {
+					<ul class="recipe-tags">
+						for _, t := range v.Tags {
+							<li class="stag">{ t }</li>
+						}
+					</ul>
+				}
+				<p class="recipe-yield">
+					if v.Servings != "" {
+						<span>Serves <strong data-testid="servings">{ v.Servings }</strong></span>
+					}
+					if v.Yield != "" {
+						<span>Makes <strong data-testid="yield">{ v.Yield }</strong></span>
+					}
+				</p>
+			</div>
+			@times(v)
+		</div>
 		@controls(v)
 		if v.Notice != "" {
 			<p role="alert" class="recipe-error" data-testid="view-error">{ v.Notice }</p>
@@ -179,66 +205,142 @@ templ recipeBody(v view) {
 		if v.Scaled {
 			<p class="muted" data-testid="scaled-note">Scaled by { v.Multiplier }. Quantities are rounded for the kitchen; hover one for the exact value.</p>
 		}
-		@times(v)
-		if len(v.Equipment) > 0 {
-			<section aria-labelledby="equipment-h">
-				<h2 id="equipment-h">Equipment</h2>
-				<ul data-testid="equipment">
-					for _, e := range v.Equipment {
-						<li data-testid="equipment-item">
-							{ e.Text }
-							if e.Hint != "" {
-								<span class="muted" data-testid="equipment-hint"> ({ e.Hint })</span>
+		<div class="recipe-grid">
+			<div class="ingr">
+				if len(v.Equipment) > 0 {
+					<section class="equip" aria-labelledby="equipment-h">
+						<h2 id="equipment-h" class="eyebrow">Equipment</h2>
+						<ul data-testid="equipment">
+							for _, e := range v.Equipment {
+								<li data-testid="equipment-item">
+									{ e.Text }
+									if e.Hint != "" {
+										<span class="muted" data-testid="equipment-hint"> ({ e.Hint })</span>
+									}
+								</li>
 							}
-						</li>
-					}
-				</ul>
-			</section>
-		}
-		<section aria-labelledby="ingredients-h">
-			<h2 id="ingredients-h">Ingredients</h2>
-			for _, c := range v.Components {
-				if c.Name != "" {
-					<h3>{ c.Name }</h3>
+						</ul>
+					</section>
 				}
-				<ul class="recipe-lines">
-					for _, l := range c.Lines {
-						<li>
-							if l.Exact != "" {
-								<span title={ "exact: " + l.Exact }>{ l.Text }</span>
-							} else {
-								<span>{ l.Text }</span>
+				<section aria-labelledby="ingredients-h">
+					<h2 id="ingredients-h" class="eyebrow">Ingredients</h2>
+					for _, c := range v.Components {
+						<div class="comp">
+							if c.Name != "" {
+								<h3>{ c.Name }</h3>
 							}
-							if l.Unscaled {
-								<span class="muted"> (not scaled or converted: ingredient not matched)</span>
-							}
-						</li>
-					}
-				</ul>
-			}
-		</section>
-		<section aria-labelledby="steps-h">
-			<h2 id="steps-h">Steps</h2>
-			for _, c := range v.Components {
-				if len(c.Steps) > 0 {
-					if c.Name != "" {
-						<h3>{ c.Name }</h3>
-					}
-					<ol start={ strconv.Itoa(c.FirstStep) }>
-						for _, s := range c.Steps {
-							<li>
-								{ s.Text }
-								if s.Note != "" {
-									<span class="muted"> ({ s.Note })</span>
+							<ul class="ing">
+								for _, l := range c.Lines {
+									<li>
+										if l.Exact != "" {
+											<span title={ "exact: " + l.Exact }>{ l.Text }</span>
+										} else {
+											<span>{ l.Text }</span>
+										}
+										if l.Unscaled {
+											<span class="muted"> (not scaled or converted: ingredient not matched)</span>
+										}
+									</li>
 								}
-								@meanwhile(s.Meanwhile)
-							</li>
-						}
-					</ol>
+							</ul>
+						</div>
+					}
+				</section>
+			</div>
+			<section class="method" aria-labelledby="steps-h">
+				<h2 id="steps-h" class="sr">Steps</h2>
+				for _, t := range v.Tips {
+					<div class="tip" data-testid="tip">
+						<div class="co-label">
+							@iconBulb()
+							<span>Tip</span>
+						</div>
+						<p>{ t } <small>From your notes</small></p>
+					</div>
 				}
-			}
-		</section>
+				for _, c := range v.Components {
+					if len(c.Steps) > 0 {
+						if c.Name != "" {
+							<h3 class="part">{ c.Name }</h3>
+						}
+						<ol start={ strconv.Itoa(c.FirstStep) }>
+							for i, s := range c.Steps {
+								<li class={ "step", templ.KV("passive", s.Passive) }>
+									<div class="sn" aria-hidden="true">{ stepNumber(c.FirstStep, i) }</div>
+									<div>
+										if s.Title != "" {
+											<h4 data-testid="step-title">{ s.Title }</h4>
+										}
+										<p>{ s.Text }</p>
+										if s.Note != "" || len(s.After) > 0 {
+											<div class="stags">
+												if s.Note != "" {
+													<span class={ "stag", templ.KV("t", s.Passive) }>{ s.Note }</span>
+												}
+												if len(s.After) > 0 {
+													<span class="stag dep">{ afterText(s.After) }</span>
+												}
+											</div>
+										}
+										@meanwhile(s.Meanwhile)
+									</div>
+								</li>
+							}
+						</ol>
+					}
+				}
+			</section>
+		</div>
 	</article>
+}
+
+// metaRow is the line under the title: meal type, spice, rating, how often it
+// was made and where it came from. Unset fields show nothing; an unrated
+// recipe says "New".
+templ metaRow(v view) {
+	<div class="meta-row">
+		if v.Meal != "" {
+			<span class="mtype" data-testid="meal-type">
+				@mealIcon(v.MealType)
+				<span class="lbl">{ v.Meal }</span>
+			</span>
+		}
+		if v.Spice > 0 {
+			<span class="heat big" role="img" aria-label={ heatLabel(v.Spice) } title={ heatLabel(v.Spice) } data-testid="spice">
+				for range chilis(v.Spice) {
+					@chili()
+				}
+			</span>
+		}
+		if v.Spoons > 0 {
+			<span class="spoons" role="img" aria-label={ verdict(v.Spoons) } title={ verdict(v.Spoons) } data-testid="rating">
+				for _, on := range spoonsOn(v.Spoons) {
+					@spoon(on)
+				}
+			</span>
+		} else {
+			<span data-testid="rating-new">New</span>
+		}
+		if v.Made > 0 {
+			<span data-testid="made-count">Made { strconv.Itoa(v.Made) }×</span>
+		}
+		if v.Author != "" {
+			<span>By { v.Author }</span>
+		}
+		if v.Calories != nil {
+			<span>{ strconv.Itoa(*v.Calories) } kcal per serving</span>
+		}
+		if v.SourceURL != "" {
+			<a class="srclink" href={ templ.URL(v.SourceURL) } target="_blank" rel="noopener noreferrer" data-testid="source-link">
+				<span class="srck">Original recipe</span>
+				if v.SourceHost != "" {
+					<span>{ v.SourceHost }</span>
+				}
+				@iconExternal()
+				<span class="sr">(opens in a new tab)</span>
+			</a>
+		}
+	</div>
 }
 
 // aside holds what belongs to the recipe but not to its scaled view: it sits
@@ -246,43 +348,57 @@ templ recipeBody(v view) {
 // (and lose a half-typed note) on every tap.
 templ aside(v view) {
 	<aside aria-label="Recipe tools">
-		<p>
-			<a href={ templ.SafeURL(historyHref(v.ID)) } data-testid="history-link">History</a>
-		</p>
-		<form method="post" action={ templ.SafeURL(cloneHref(v.ID)) }>
-			<button type="submit" data-testid="clone-button">Clone this recipe</button>
-		</form>
-		<div data-testid="journal-slot" hx-get={ journalHref(v.ID) } hx-trigger="load" hx-swap="outerHTML">
-			<p><a href={ templ.SafeURL(journalHref(v.ID)) }>Journal</a></p>
+		<div class="recipe-after">
+			<div data-testid="journal-slot" hx-get={ journalHref(v.ID) } hx-trigger="load" hx-swap="outerHTML">
+				<a href={ templ.SafeURL(journalHref(v.ID)) } class="btn">Journal</a>
+			</div>
+			<div class="tools">
+				<h2>History</h2>
+				<ul class="tool-links">
+					<li><a href={ templ.SafeURL(historyHref(v.ID)) } data-testid="history-link">History</a></li>
+					<li><a href={ templ.SafeURL(editHref(v.ID)) } data-testid="edit-link">Edit</a></li>
+					<li><a href={ templ.SafeURL(shareHref(v.ID)) } data-testid="share-link">Share</a></li>
+				</ul>
+				<form method="post" action={ templ.SafeURL(cloneHref(v.ID)) }>
+					<button type="submit" class="btn" data-testid="clone-button">Clone this recipe</button>
+				</form>
+				<div class="snap"><i></i>Original source snapshot kept, unchanged</div>
+			</div>
 		</div>
 	</aside>
 }
 
+// times is the ribbon's heading and the stated times. The derived total is
+// the headline; prep, cook and the special times sit under the ribbon.
 templ times(v view) {
-	if len(v.Times) > 0 || v.Total != "" {
-		<section aria-labelledby="times-h">
-			<h2 id="times-h">Times</h2>
-			<dl class="recipe-times">
-				for _, t := range v.Times {
-					<dt>{ t.Label }</dt>
-					<dd>
-						{ t.Text }
-						if t.Hint != "" {
-							<span class="muted"> ({ t.Hint })</span>
-						}
-					</dd>
-				}
-				if v.Total != "" {
-					<dt>Total</dt>
-					<dd data-testid="total">
-						{ v.Total }
-						if v.TotalNote != "" {
-							<span class="muted"> ({ v.TotalNote })</span>
-						}
-					</dd>
-				}
-			</dl>
-		</section>
+	if v.readyIn() != "" || len(v.Times) > 0 {
+		<div class="rtime">
+			if v.readyIn() != "" {
+				<span class="eyebrow">
+					Ready in about
+					<span data-testid="total">{ v.readyIn() }</span>
+					if v.TotalNote != "" {
+						<span class="muted"> ({ v.TotalNote })</span>
+					}
+				</span>
+			}
+			@ribbon.Large(v.Ribbon)
+			if len(v.Times) > 0 {
+				<dl class="recipe-times">
+					for _, t := range v.Times {
+						<div>
+							<dt>{ t.Label }</dt>
+							<dd>
+								{ t.Text }
+								if t.Hint != "" {
+									<span class="muted"> ({ t.Hint })</span>
+								}
+							</dd>
+						</div>
+					}
+				</dl>
+			}
+		</div>
 	}
 }
 
@@ -290,8 +406,7 @@ templ times(v view) {
 // hx-* attributes only make HTMX swap the recipe in place.
 templ controls(v view) {
 	<div class="recipe-controls">
-		<p>
-			<span id="scale-h">Scale</span>
+		<div class="seg" role="group" aria-label="Scale">
 			for _, p := range scalePresets {
 				<a
 					href={ templ.SafeURL(href(v.ID, p.Param, "", v.Opts.Units)) }
@@ -305,8 +420,8 @@ templ controls(v view) {
 					}
 				>{ p.Label }</a>
 			}
-		</p>
-		<form method="get" action={ templ.SafeURL(href(v.ID, "", "", "")) } hx-get={ href(v.ID, "", "", "") } hx-target="#recipe" hx-select="#recipe" hx-swap="outerHTML" hx-push-url="true">
+		</div>
+		<form class="servings" method="get" action={ templ.SafeURL(href(v.ID, "", "", "")) } hx-get={ href(v.ID, "", "", "") } hx-target="#recipe" hx-select="#recipe" hx-swap="outerHTML" hx-push-url="true">
 			<label>
 				Servings
 				<input type="text" name="servings" inputmode="decimal" value={ v.Opts.Servings } size="4"/>
@@ -314,10 +429,9 @@ templ controls(v view) {
 			if v.Opts.Units != "" {
 				<input type="hidden" name="units" value={ v.Opts.Units }/>
 			}
-			<button type="submit">Scale</button>
+			<button type="submit" class="btn">Scale</button>
 		</form>
-		<p>
-			<span id="units-h">Units</span>
+		<div class="seg" role="group" aria-label="Units">
 			for _, m := range unitModes {
 				<a
 					href={ templ.SafeURL(href(v.ID, v.Opts.Scale, v.Opts.Servings, m.Param)) }
@@ -331,6 +445,12 @@ templ controls(v view) {
 					}
 				>{ m.Label }</a>
 			}
-		</p>
+		</div>
+		<span class="grow"></span>
+		<a class="btn" href={ templ.SafeURL(shoppingPath) } data-testid="shopping-link">Add to shopping list</a>
+		<a class="btn accent cookbtn" href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">
+			@iconPot()
+			<span>Cook mode</span>
+		</a>
 	</div>
 }
