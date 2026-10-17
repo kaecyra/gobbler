@@ -1831,7 +1831,10 @@
         "internal/ingest/fallback.go",
         "internal/llm/**",
         "internal/ingest/structured*.go",
-        "internal/ingest/*_test.go"
+        "internal/ingest/*_test.go",
+        "internal/ingest/llm.go",
+        "internal/ingest/ingest.go",
+        "docs/adr/00006-rule-first-ingestion.md"
       ],
       "needs_migration": null,
       "adrs": [],
