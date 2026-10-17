@@ -83,3 +83,7 @@ form.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px
 /* The phone view: bigger rows, nothing else on the page but the list. */
 .shopping.live .item-toggle { min-height: 60px; }
 @media (max-width: 40rem) { .item-toggle { font-size: 1.15rem; } }
+
+/* Touch targets: every control is at least --tap tall (docs/ui/design.md). */
+.shopping .check { display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding-block: 4px; }
+.shopping .src-r a, .shopping .actions a { display: inline-flex; align-items: center; min-height: var(--tap); }

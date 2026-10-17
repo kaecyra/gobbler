@@ -240,6 +240,20 @@ test('the index and the pantry mark their own tab as the current page', async ({
   await expect(tabs.getByRole('link', { name: 'All lists' })).not.toHaveAttribute('aria-current');
 });
 
+test('controls on the build page are at least 44px tall', async ({ page }) => {
+  await page.goto(`/shopping/${listID}`);
+  const targets = [
+    page.getByTestId('optional-form').locator('label.check'),
+    page.getByTestId('entry').first().getByRole('link').first(),
+    page.getByTestId('export-link'),
+  ];
+  for (const t of targets) {
+    const box = await t.boundingBox();
+    expect(box, 'control is on the page').not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
 test('the basket counts what is checked and says so when everything is', async ({ browser }) => {
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
   try {
