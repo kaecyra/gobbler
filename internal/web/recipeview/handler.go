@@ -7,14 +7,12 @@ package recipeview
 
 import (
 	"context"
-	_ "embed" // the stylesheet is embedded in the binary (ADR-00002)
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 
-	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
@@ -60,16 +58,6 @@ func Routes(d Deps) chi.Router {
 	r.Get("/", handle(d))
 	r.Get(thumbnailRoute, thumbnail(d))
 	return r
-}
-
-//go:embed assets/recipe.css
-var stylesheet string
-
-// Styles is the recipe page's stylesheet, written into the page. It is inline
-// so the page needs no route of its own for it; history takes it too, for the
-// recipe document it shows.
-func Styles() templ.Component {
-	return templ.Raw("<style>" + stylesheet + "</style>")
 }
 
 // thumbnailRoute is the thumbnail's path below Pattern.

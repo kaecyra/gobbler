@@ -3,32 +3,15 @@ package recipeview
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
-
-// mealLabels name the meal types on the page, in the library's order.
-var mealLabels = map[recipe.MealType]string{
-	recipe.MealBreakfast: "Breakfast", recipe.MealMain: "Main", recipe.MealSide: "Side",
-	recipe.MealDessert: "Dessert", recipe.MealSnack: "Snack", recipe.MealDrink: "Drink",
-}
-
-// heatLabels are indexed by spice level; 0 is nothing to say.
-var heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
-
-// verdicts are the words of the spoon scale, indexed by rating; they are the
-// accessible name of the spoons.
-var verdicts = [...]string{"Not rated", "Not again", "It was fine", "Good", "Make it again", "House favourite"}
-
-// maxSpoons is the top of the rating scale.
-const maxSpoons = 5
 
 // hintTime is shown on cook and special times of a scaled view (ADR-00005):
 // times are not scaled, so the page says they may need attention.
@@ -56,7 +39,7 @@ type view struct {
 	Name        string
 	Description string
 	// Meta is the line under the title; history shows the same for a revision.
-	Meta Meta
+	Meta layout.RecipeMeta
 	// VideoID is the recipe's YouTube video, empty for none. HasThumbnail says
 	// whether a preview image is stored for it; without one the page shows a
 	// plain placeholder (ADR-00021).
@@ -109,26 +92,10 @@ type timeRow struct {
 type componentView struct {
 	Name  string
 	Lines []display.Line
-	Steps []StepView
+	Steps []layout.RecipeStepView
 	// FirstStep is the number of the component's first step, counted across
 	// components in reading order.
 	FirstStep int
-}
-
-// StepView is one step as the recipe page and a past version show it.
-type StepView struct {
-	// Title is the step's short heading, empty when it has none.
-	Title string
-	Text  string
-	// Passive marks a step that needs no attention while it runs.
-	Passive bool
-	// After lists the numbers of the steps this one waits for.
-	After []int
-	// Note is the duration and the passive marker, "20 min, passive".
-	Note string
-	// Meanwhile is work offered while this passive step runs (ADR-00004);
-	// empty for every other step and for recipes without a step graph.
-	Meanwhile []display.MeanwhileItem
 }
 
 type equipmentView struct {
@@ -139,7 +106,7 @@ type equipmentView struct {
 // buildView resolves catalog references and applies opts to every line.
 func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o display.Options) (view, error) {
 	v := view{
-		ID: id, Name: r.Name, Description: r.Description, Meta: NewMeta(r),
+		ID: id, Name: r.Name, Description: r.Description, Meta: layout.NewRecipeMeta(r),
 		VideoID: r.VideoID, Tags: r.Tags,
 		Scaled: o.Scaled(), Multiplier: o.Mult.String(), Opts: o,
 	}
@@ -190,7 +157,7 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 			cv.Lines = append(cv.Lines, lv)
 		}
 		for _, s := range c.Steps {
-			cv.Steps = append(cv.Steps, NewStepView(s, number, guidance[s.ID]))
+			cv.Steps = append(cv.Steps, layout.NewRecipeStepView(s, number, guidance[s.ID]))
 		}
 		v.Components = append(v.Components, cv)
 	}
@@ -211,50 +178,6 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	return v, nil
 }
 
-// NewStepView formats one step. number is display.StepNumbers of the recipe,
-// which turns each dependency into the number printed on its step; meanwhile
-// is the guidance offered while it runs, nil for none.
-func NewStepView(s recipe.Step, number map[recipe.StepID]int, meanwhile []display.MeanwhileItem) StepView {
-	sv := StepView{Title: s.Title, Text: s.Text, Passive: s.Passive, Note: display.StepNote(s), Meanwhile: meanwhile}
-	for _, dep := range s.DependsOn {
-		sv.After = append(sv.After, number[dep])
-	}
-	return sv
-}
-
-// Meta is what sits in the line under a recipe's title: meal type, spice,
-// rating, made count, author, calories and source. The recipe page and the
-// page of a past version build it the same way, so the two cannot drift.
-type Meta struct {
-	// MealType is the meal type's key and Meal its label, both empty when
-	// unset. Spice is 0 to 3 and 0 shows nothing. Spoons is the rating, 0 for
-	// unrated. Made is the length of the made-it log; a past version has none.
-	MealType   recipe.MealType
-	Meal       string
-	Spice      int
-	Spoons     int
-	Made       int
-	Author     string
-	Calories   *int
-	SourceURL  string
-	SourceHost string
-}
-
-// NewMeta reads the fields of r that the meta row shows.
-func NewMeta(r recipe.Recipe) Meta {
-	m := Meta{
-		MealType: r.MealType, Meal: mealLabels[r.MealType], Author: r.Author,
-		Calories: r.CaloriesPerServing, SourceURL: r.SourceURL, SourceHost: sourceHost(r.SourceURL),
-	}
-	if r.SpiceLevel != nil && *r.SpiceLevel > 0 {
-		m.Spice = min(*r.SpiceLevel, recipe.MaxSpiceLevel)
-	}
-	if r.Rating != nil && *r.Rating > 0 {
-		m.Spoons = min(*r.Rating, maxSpoons)
-	}
-	return m
-}
-
 // withJournal adds what the journal contributes to the page: the pinned notes
 // as tips, and how many times the recipe was made.
 func (v *view) withJournal(notes []store.Note, made []store.MadeIt) {
@@ -264,34 +187,6 @@ func (v *view) withJournal(notes []store.Note, made []store.MadeIt) {
 		}
 	}
 	v.Meta.Made = len(made)
-}
-
-// sourceHost is the host of a source address for the link text, empty when the
-// address does not parse or has none.
-func sourceHost(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return ""
-	}
-	return strings.TrimPrefix(u.Hostname(), "www.")
-}
-
-// heatLabel and verdict name the chilis and the spoons for screen readers.
-func heatLabel(level int) string { return heatLabels[level] }
-
-func verdict(spoons int) string { return verdicts[spoons] }
-
-// afterText renders "step 3" or "steps 3, 4, 5" for the steps a step waits
-// for.
-func afterText(nums []int) string {
-	parts := make([]string, len(nums))
-	for i, n := range nums {
-		parts[i] = strconv.Itoa(n)
-	}
-	if len(parts) == 1 {
-		return "after step " + parts[0]
-	}
-	return "after steps " + strings.Join(parts, ", ")
 }
 
 // readyIn is the time the eyebrow above the ribbon states: the derived total

@@ -88,18 +88,6 @@ func shareHref(id int64) string {
 	return "/shares/new/" + strconv.FormatInt(id, 10)
 }
 
-// spoonsOn lists the five spoons of the rating, true for the filled ones.
-func spoonsOn(n int) []bool {
-	out := make([]bool, maxSpoons)
-	for i := range out {
-		out[i] = i < n
-	}
-	return out
-}
-
-// chilis lists the peppers of the spice scale.
-func chilis(n int) []struct{} { return make([]struct{}, n) }
-
 // stepNumber is the number printed in a step's marker.
 func stepNumber(first, i int) string { return strconv.Itoa(first + i) }
 
@@ -116,7 +104,7 @@ func presetActive(v view, param string) bool {
 templ recipePage(v view) {
 	@layout.Page(v.Name) {
 		<link rel="stylesheet" href={ ribbon.StylesheetPath }/>
-		@Styles()
+		@layout.RecipeStyles()
 		if v.VideoID != "" {
 			@videoPlayer(v)
 		}
@@ -179,7 +167,7 @@ templ recipeBody(v view) {
 						<a href={ templ.SafeURL(originHref(v.Origin)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
 					</p>
 				}
-				@MetaRow(v.Meta)
+				@layout.RecipeMetaRow(v.Meta)
 				if len(v.Tags) > 0 {
 					<ul class="recipe-tags">
 						for _, t := range v.Tags {
@@ -269,7 +257,7 @@ templ recipeBody(v view) {
 						}
 						<ol start={ strconv.Itoa(c.FirstStep) }>
 							for i, s := range c.Steps {
-								@Step(s, stepNumber(c.FirstStep, i))
+								@layout.RecipeStep(s, stepNumber(c.FirstStep, i))
 							}
 						</ol>
 					}
@@ -277,55 +265,6 @@ templ recipeBody(v view) {
 			</section>
 		</div>
 	</article>
-}
-
-// MetaRow is the line under the title: meal type, spice, rating, how often it
-// was made and where it came from. Unset fields show nothing; an unrated
-// recipe says "New".
-templ MetaRow(m Meta) {
-	<div class="meta-row">
-		if m.Meal != "" {
-			<span class="mtype" data-testid="meal-type">
-				@mealIcon(m.MealType)
-				<span class="lbl">{ m.Meal }</span>
-			</span>
-		}
-		if m.Spice > 0 {
-			<span class="heat big" role="img" aria-label={ heatLabel(m.Spice) } title={ heatLabel(m.Spice) } data-testid="spice">
-				for range chilis(m.Spice) {
-					@chili()
-				}
-			</span>
-		}
-		if m.Spoons > 0 {
-			<span class="spoons" role="img" aria-label={ verdict(m.Spoons) } title={ verdict(m.Spoons) } data-testid="rating">
-				for _, on := range spoonsOn(m.Spoons) {
-					@spoon(on)
-				}
-			</span>
-		} else {
-			<span data-testid="rating-new">New</span>
-		}
-		if m.Made > 0 {
-			<span data-testid="made-count">Made { strconv.Itoa(m.Made) }×</span>
-		}
-		if m.Author != "" {
-			<span>By { m.Author }</span>
-		}
-		if m.Calories != nil {
-			<span>{ strconv.Itoa(*m.Calories) } kcal per serving</span>
-		}
-		if m.SourceURL != "" {
-			<a class="srclink" href={ templ.URL(m.SourceURL) } target="_blank" rel="noopener noreferrer" data-testid="source-link">
-				<span class="srck">Original recipe</span>
-				if m.SourceHost != "" {
-					<span>{ m.SourceHost }</span>
-				}
-				@iconExternal()
-				<span class="sr">(opens in a new tab)</span>
-			</a>
-		}
-	</div>
 }
 
 // aside holds what belongs to the recipe but not to its scaled view: it sits
@@ -438,29 +377,4 @@ templ controls(v view) {
 			<span>Cook mode</span>
 		</a>
 	</div>
-}
-
-// Step is one step of the rail: its number, title, text, tags and, when the
-// recipe page has one, the meanwhile callout. A past version shows the same.
-templ Step(s StepView, number string) {
-	<li class={ "step", templ.KV("passive", s.Passive) }>
-		<div class="sn" aria-hidden="true">{ number }</div>
-		<div>
-			if s.Title != "" {
-				<h4 data-testid="step-title">{ s.Title }</h4>
-			}
-			<p>{ s.Text }</p>
-			if s.Note != "" || len(s.After) > 0 {
-				<div class="stags">
-					if s.Note != "" {
-						<span class={ "stag", templ.KV("t", s.Passive) }>{ s.Note }</span>
-					}
-					if len(s.After) > 0 {
-						<span class="stag dep" data-testid="after">{ afterText(s.After) }</span>
-					}
-				</div>
-			}
-			@meanwhile(s.Meanwhile)
-		</div>
-	</li>
 }

@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/kaecyra/gobbler/internal/web/layout"
-	"github.com/kaecyra/gobbler/internal/web/recipeview"
 )
 
 // crumbs is the path back to the recipe; the last entry is the page itself.
@@ -20,7 +19,7 @@ templ crumbs(id int64, name, here string) {
 
 templ listPage(v listView) {
 	@layout.Page("History of " + v.Name) {
-		@recipeview.Styles()
+		@layout.RecipeStyles()
 		@styles()
 		<article class="recipe">
 			@crumbs(v.ID, v.Name, "History")
@@ -71,7 +70,7 @@ templ listPage(v listView) {
 
 templ versionPage(v versionView) {
 	@layout.Page(v.Name + ", version " + strconv.FormatInt(v.Version, 10)) {
-		@recipeview.Styles()
+		@layout.RecipeStyles()
 		@styles()
 		<article class="recipe" data-testid="version">
 			<nav class="crumbs" aria-label="Breadcrumb">
@@ -92,7 +91,7 @@ templ versionPage(v versionView) {
 					if v.Description != "" {
 						<p class="lede">{ v.Description }</p>
 					}
-					@recipeview.MetaRow(v.Meta)
+					@layout.RecipeMetaRow(v.Meta)
 					if len(v.Tags) > 0 {
 						<ul class="recipe-tags">
 							for _, t := range v.Tags {
@@ -174,7 +173,7 @@ templ versionPage(v versionView) {
 							}
 							<ol start={ strconv.Itoa(c.FirstStep) }>
 								for i, s := range c.Steps {
-									@recipeview.Step(s, strconv.Itoa(c.FirstStep + i))
+									@layout.RecipeStep(s, strconv.Itoa(c.FirstStep + i))
 								}
 							</ol>
 						}
