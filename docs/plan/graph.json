@@ -1851,7 +1851,7 @@
       "wave": 9,
       "track": null,
       "issue": 192,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-equipment-extract",
         "i-parser-version",
@@ -2813,6 +2813,12 @@
         "00020"
       ],
       "note": "ADR-00020 decision 1: rules build the graph (linear default, passive vocabulary, 'meanwhile' breaks the chain); the LLM fallback may supply dependencies and passive flags for the steps it is asked about. Also rewords the UsedLLM doc comment in draft.go (#228)."
+    },
+    {
+      "id": "i-review-edit",
+      "title": "decide what the review screen can edit",
+      "merged": "23f4929b52d4ae923a718423e427cd111951a128",
+      "note": "ADR-00020 decision 3: the review screen is the recipe editor operating on the unsaved draft (same components, form handling, validation; confirm in place of save). No second implementation of an editor control. Also closes #228's review-banner wording; the UsedLLM doc comment in draft.go goes to i-step-graph."
     }
   ],
   "adr_sequence": {
