@@ -56,15 +56,12 @@ func TestOtherHouseholdCannotReachAnotherHouseholdsShopping(t *testing.T) {
 		"EditManualItem":     func() error { return f.s.EditManualItem(b, manual, ManualItem{Text: "x"}) },
 		"RemoveManualItem":   func() error { return f.s.RemoveManualItem(b, manual) },
 		"SetChecked on":      func() error { return f.s.SetChecked(b, l.ID, ingKey(f.egg), true) },
+		"SetChecked off":     func() error { return f.s.SetChecked(b, l.ID, ingKey(f.flour), false) },
 	}
 	for name, call := range notFound {
 		if err := call(); !errors.Is(err, ErrNotFound) {
 			t.Errorf("%s as the other household = %v, want ErrNotFound", name, err)
 		}
-	}
-	// B cannot clear A's check either: the call is a no-op for B.
-	if err := f.s.SetChecked(b, l.ID, ingKey(f.flour), false); err != nil {
-		t.Errorf("SetChecked off as the other household: %v", err)
 	}
 
 	// B sees no lists and an empty pantry; A's pantry is untouched by B's.

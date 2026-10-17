@@ -2,6 +2,8 @@ package shopping
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/kaecyra/gobbler/internal/db"
@@ -12,10 +14,12 @@ import (
 // wanted result rather than flipping the current one, so two devices or two
 // goroutines acting on the same item end in one of the two states they asked
 // for, never in an error or a duplicate. Setting what is already set changes
-// nothing and notifies nobody. Setting a check on a missing list returns
-// ErrNotFound; clearing one there is a no-op that returns nil, since the wanted
-// state already holds. A key KeyOf could not have produced returns ErrInvalid. A key naming no item is
-// stored all the same and dropped by the next Regenerate.
+// nothing and notifies nobody. The list is looked up in the caller's household
+// first, so a list that is missing or another household's returns ErrNotFound
+// for a set and a clear alike, whatever is checked on it: a different answer
+// for an already-checked key would reveal that state across households
+// (ADR-00018). A key KeyOf could not have produced returns ErrInvalid. A key
+// naming no item is stored all the same and dropped by the next Regenerate.
 func (s *Store) SetChecked(ctx context.Context, listID int64, key ItemKey, checked bool) error {
 	if !key.valid() {
 		return fmt.Errorf("%w: item key %q", ErrInvalid, key)
@@ -27,6 +31,11 @@ func (s *Store) SetChecked(ctx context.Context, listID int64, key ItemKey, check
 	var changed int64
 	err = s.withTx(ctx, func(q *shoppingdb.Queries) error {
 		var err error
+		if _, err = q.GetList(ctx, shoppingdb.GetListParams{ID: listID, HouseholdID: hid}); errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("check %q on list %d: %w", key, listID, ErrNotFound)
+		} else if err != nil {
+			return fmt.Errorf("get list %d: %w", listID, err)
+		}
 		if checked {
 			changed, err = q.SetChecked(ctx, shoppingdb.SetCheckedParams{HouseholdID: hid, ListID: listID, ItemKey: string(key), CheckedAt: s.stamp()})
 			// The only foreign key is the list, within the household.

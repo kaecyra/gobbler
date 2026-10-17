@@ -199,8 +199,8 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   const manual = lastId(listPage, /\/shopping\/\d+\/manual\/(\d+)\/remove/g, 'manual item');
   const catalog = await page(dev, '/catalog?q=e2e+sender');
   const ingredient = lastId(catalog, /href="\/catalog\/(\d+)">e2e sender fruit/g, 'overlay ingredient');
-  // The fruit's line is checked off; the onion (item key i:1) is left unchecked
-  // for the check probe (see the note there).
+  // The fruit's line is checked off; the check probe posts this already-checked
+  // key as another household (see the note there).
   expect(await page(dev, `/shopping/${list}/live`)).toContain(`data-key="i:${ingredient}"`);
   await ok(dev, 'POST', `/shopping/${list}/check`, { key: `i:${ingredient}`, checked: '1' });
   await ok(dev, 'POST', '/shopping/pantry/add', { ingredient: String(ingredient) });

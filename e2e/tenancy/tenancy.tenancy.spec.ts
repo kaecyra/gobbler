@@ -162,10 +162,9 @@ const PROBES: Probe[] = [
   hidden('GET', (i) => `/shopping/${i.list}/live`),
   hidden('GET', (i) => `/shopping/${i.list}/events`),
   hidden('GET', (i) => `/shopping/${i.list}/export.txt`),
-  // The key is the unchecked onion. KNOWN DEFECT, outside this lane: for a key DEV
-  // has already checked, another household's request gets 303 instead of 404
-  // (state is unchanged), which tells it that the list has that item checked.
-  hidden('POST', (i) => `/shopping/${i.list}/check`, () => ({ key: 'i:1', checked: '1' })),
+  // The key is one DEV has already checked: a different answer for it than for an
+  // unchecked key would reveal what is checked on a list this household cannot see.
+  hidden('POST', (i) => `/shopping/${i.list}/check`, (i) => ({ key: `i:${i.ingredient}`, checked: '1' })),
   hidden('POST', (i) => `/shopping/${i.list}/addback`, (i) => ({ ingredient: String(i.ingredient) })),
   hidden('POST', (i) => `/shopping/${i.list}/manual`, () => ({ text: 'hijacked item' })),
   hidden('POST', (i) => `/shopping/${i.list}/manual/${i.manual}/remove`),

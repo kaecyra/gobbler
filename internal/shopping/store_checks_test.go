@@ -109,9 +109,29 @@ func TestSetCheckedErrors(t *testing.T) {
 	if err := f.s.SetChecked(f.ctx, l.ID, "i:1", false); err != nil {
 		t.Errorf("clearing what is not set: %v", err)
 	}
-	// Clearing on a missing list holds already; only setting is refused.
-	if err := f.s.SetChecked(f.ctx, 999, "i:1", false); err != nil {
-		t.Errorf("clearing on a missing list: %v, want nil", err)
+	if err := f.s.SetChecked(f.ctx, 999, "i:1", false); !errors.Is(err, ErrNotFound) {
+		t.Errorf("clearing on a missing list: err = %v, want ErrNotFound", err)
+	}
+}
+
+// Another household's check or uncheck is ErrNotFound whether or not the key is
+// already checked, so the answer never tells it what is checked on a list it
+// cannot see (ADR-00018), and nothing changes.
+func TestSetCheckedOtherHouseholdIsNotFoundForCheckedKey(t *testing.T) {
+	f := newFixture(t)
+	b := f.otherHousehold()
+	l := f.newList("Week")
+	f.check(l, "i:1", true)
+	for _, want := range []bool{true, false} {
+		if err := f.s.SetChecked(b, l.ID, "i:1", want); !errors.Is(err, ErrNotFound) {
+			t.Errorf("checked=%v on a checked key: err = %v, want ErrNotFound", want, err)
+		}
+		if err := f.s.SetChecked(b, l.ID, "i:2", want); !errors.Is(err, ErrNotFound) {
+			t.Errorf("checked=%v on an unchecked key: err = %v, want ErrNotFound", want, err)
+		}
+	}
+	if n := f.count(`SELECT COUNT(*) FROM shopping_checks`); n != 1 {
+		t.Errorf("check rows = %d, want the owner's one unchanged", n)
 	}
 }
 
