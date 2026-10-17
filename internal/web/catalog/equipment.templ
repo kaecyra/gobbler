@@ -12,11 +12,13 @@ func sizedAction(id int64) templ.SafeURL {
 
 templ equipmentPage(v equipmentView) {
 	@layout.Page("Equipment catalog") {
-		<h1>Equipment catalog</h1>
+		<div class="pg wide">
+		<div class="screen-h"><h1>Equipment catalog</h1></div>
 		<p class="muted">
 			Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows "may need a larger pan" on them and on nothing else.
 		</p>
-		<table data-testid="equipment-table">
+		<div class="panel table-wrap">
+<table data-testid="equipment-table">
 			<thead>
 				<tr>
 					<th scope="col">Name</th>
@@ -34,11 +36,11 @@ templ equipmentPage(v equipmentView) {
 								if r.Sized {
 									<span data-testid="sized-state">Sized</span>
 									<input type="hidden" name="sized" value="0"/>
-									<button type="submit">Clear sized on { r.Name }</button>
+									<button type="submit" class="btn">Clear sized on { r.Name }</button>
 								} else {
 									<span class="muted" data-testid="sized-state">Not sized</span>
 									<input type="hidden" name="sized" value="1"/>
-									<button type="submit">Mark { r.Name } sized</button>
+									<button type="submit" class="btn">Mark { r.Name } sized</button>
 								}
 							</form>
 						</td>
@@ -46,5 +48,7 @@ templ equipmentPage(v equipmentView) {
 				}
 			</tbody>
 		</table>
+		</div>
+		</div>
 	}
 }

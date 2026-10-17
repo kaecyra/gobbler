@@ -51,7 +51,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Equipment catalog</h1><p class=\"muted\">Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows \"may need a larger pan\" on them and on nothing else.</p><table data-testid=\"equipment-table\"><thead><tr><th scope=\"col\">Name</th><th scope=\"col\">Also called</th><th scope=\"col\">Sized</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><h1>Equipment catalog</h1></div><p class=\"muted\">Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows \"may need a larger pan\" on them and on nothing else.</p><div class=\"panel table-wrap\"><table data-testid=\"equipment-table\"><thead><tr><th scope=\"col\">Name</th><th scope=\"col\">Also called</th><th scope=\"col\">Sized</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -63,7 +63,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 30, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 32, Col: 18}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -76,7 +76,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(r.Aliases)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 31, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 33, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -89,7 +89,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(sizedAction(r.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 33, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 35, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -100,14 +100,14 @@ func equipmentPage(v equipmentView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if r.Sized {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span data-testid=\"sized-state\">Sized</span> <input type=\"hidden\" name=\"sized\" value=\"0\"> <button type=\"submit\">Clear sized on ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span data-testid=\"sized-state\">Sized</span> <input type=\"hidden\" name=\"sized\" value=\"0\"> <button type=\"submit\" class=\"btn\">Clear sized on ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 37, Col: 54}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 39, Col: 66}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -118,14 +118,14 @@ func equipmentPage(v equipmentView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"muted\" data-testid=\"sized-state\">Not sized</span> <input type=\"hidden\" name=\"sized\" value=\"1\"> <button type=\"submit\">Mark ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"muted\" data-testid=\"sized-state\">Not sized</span> <input type=\"hidden\" name=\"sized\" value=\"1\"> <button type=\"submit\" class=\"btn\">Mark ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 41, Col: 44}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/catalog/equipment.templ`, Line: 43, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -141,7 +141,7 @@ func equipmentPage(v equipmentView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</tbody></table>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</tbody></table></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

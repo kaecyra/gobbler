@@ -4,67 +4,79 @@ import "github.com/kaecyra/gobbler/internal/web/layout"
 
 templ membersPage(v pageView) {
 	@layout.Page("Household") {
-		<h1 data-testid="household-name">{ v.Name }</h1>
-		<section aria-labelledby="members-h" data-testid="members">
-			<h2 id="members-h">Members</h2>
-			<ul>
-				for _, m := range v.Members {
-					<li data-testid="member">
-						{ m }
-						if m == v.Self {
-							<span class="muted"> (you)</span>
-						} else {
-							<form method="post" action="/household/members/remove" style="display:inline">
-								<input type="hidden" name="email" value={ m }/>
-								<button type="submit" aria-label={ "Remove " + m }>Remove</button>
-							</form>
-						}
-					</li>
-				}
-			</ul>
-		</section>
-		<section aria-labelledby="invite-h" data-testid="invite">
-			<h2 id="invite-h">Invite someone</h2>
-			<form method="post" action="/household/invitations">
-				<label>Email address <input type="email" name="email" required/></label>
-				<button type="submit">Invite</button>
-			</form>
-			<p class="muted">Send the invitation address below to the invitee. They must sign in as the invited email to use it.</p>
-			if len(v.Pending) > 0 {
-				<ul data-testid="pending">
-					for _, p := range v.Pending {
-						<li data-testid="pending-invitation">
-							{ p.Email }: <a href={ templ.SafeURL(p.Path) }>{ p.Path }</a>
-							<span class="muted"> expires { p.Expires }</span>
-							if p.Mine {
-								<form method="post" action={ templ.SafeURL(revokePath(p.ID)) } style="display:inline">
-									<button type="submit" aria-label={ "Revoke the invitation of " + p.Email }>Revoke</button>
+		<div class="pg">
+			<div class="screen-h">
+				<div>
+					<h1 data-testid="household-name">{ v.Name }</h1>
+					<p>The people who share this household's recipes and shopping lists.</p>
+				</div>
+			</div>
+			<section class="panel" aria-labelledby="members-h" data-testid="members">
+				<h2 id="members-h">Members</h2>
+				<ul class="list">
+					for _, m := range v.Members {
+						<li data-testid="member">
+							<span class="grow">
+								{ m }
+								if m == v.Self {
+									<span class="muted"> (you)</span>
+								}
+							</span>
+							if m != v.Self {
+								<form class="row-form" method="post" action="/household/members/remove">
+									<input type="hidden" name="email" value={ m }/>
+									<button type="submit" class="btn" aria-label={ "Remove " + m }>Remove</button>
 								</form>
 							}
 						</li>
 					}
 				</ul>
-			}
-		</section>
-		<section aria-labelledby="leave-h" data-testid="leave">
-			<h2 id="leave-h">Leave</h2>
-			if v.OnlyMember() {
-				<p>You are the last member, so you cannot leave. Delete the household instead.</p>
-			} else {
-				<form method="post" action="/household/leave">
-					<button type="submit">Leave this household</button>
-				</form>
-			}
-		</section>
-		if v.OnlyMember() {
-			<section aria-labelledby="delete-h" data-testid="delete">
-				<h2 id="delete-h">Delete this household</h2>
-				<p>This removes all of the household's data, for good. Type the household's name, <strong>{ v.Name }</strong>, to confirm.</p>
-				<form method="post" action="/household/delete">
-					<label>Household name <input type="text" name="confirm" required autocomplete="off"/></label>
-					<button type="submit">Delete the household and all its data</button>
-				</form>
 			</section>
-		}
+			<section class="panel" aria-labelledby="invite-h" data-testid="invite">
+				<h2 id="invite-h">Invite someone</h2>
+				<form class="fields" method="post" action="/household/invitations">
+					<label>Email address <input type="email" name="email" required/></label>
+					<button type="submit" class="btn accent">Invite</button>
+				</form>
+				<p class="muted">Send the invitation address below to the invitee. They must sign in as the invited email to use it.</p>
+				if len(v.Pending) > 0 {
+					<ul class="list" data-testid="pending">
+						for _, p := range v.Pending {
+							<li data-testid="pending-invitation">
+								<span class="grow">
+									{ p.Email }: <a href={ templ.SafeURL(p.Path) }>{ p.Path }</a>
+									<span class="muted"> expires { p.Expires }</span>
+								</span>
+								if p.Mine {
+									<form class="row-form" method="post" action={ templ.SafeURL(revokePath(p.ID)) }>
+										<button type="submit" class="btn" aria-label={ "Revoke the invitation of " + p.Email }>Revoke</button>
+									</form>
+								}
+							</li>
+						}
+					</ul>
+				}
+			</section>
+			<section class="panel" aria-labelledby="leave-h" data-testid="leave">
+				<h2 id="leave-h">Leave</h2>
+				if v.OnlyMember() {
+					<p>You are the last member, so you cannot leave. Delete the household instead.</p>
+				} else {
+					<form method="post" action="/household/leave">
+						<button type="submit" class="btn">Leave this household</button>
+					</form>
+				}
+			</section>
+			if v.OnlyMember() {
+				<section class="panel" aria-labelledby="delete-h" data-testid="delete">
+					<h2 id="delete-h">Delete this household</h2>
+					<p>This removes all of the household's data, for good. Type the household's name, <strong>{ v.Name }</strong>, to confirm.</p>
+					<form class="fields" method="post" action="/household/delete">
+						<label>Household name <input type="text" name="confirm" required autocomplete="off"/></label>
+						<button type="submit" class="btn">Delete the household and all its data</button>
+					</form>
+				</section>
+			}
+		</div>
 	}
 }

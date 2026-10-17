@@ -10,8 +10,11 @@ import (
 // the whole page of a browser without HTMX.
 templ editorPage(v view) {
 	@layout.Page("Edit: " + v.D.Name) {
-		<h1>Edit recipe</h1>
-		<p><a href={ templ.SafeURL(v.back()) }>Back to the recipe without saving</a></p>
+		<style>
+			.edit-page a.back { display: inline-flex; align-items: center; min-height: var(--tap); }
+		</style>
+		<div class="screen-h"><h1>Edit recipe</h1></div>
+		<p class="edit-page"><a class="back" href={ templ.SafeURL(v.back()) }>Back to the recipe without saving</a></p>
 		@editorForm(v)
 	}
 }
@@ -23,23 +26,37 @@ templ editorPage(v view) {
 templ editorForm(v view) {
 	<form id="editor" class="editor" method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
 		<style>
-			.editor fieldset { border: 1px solid var(--border); margin: 1rem 0; padding: 0.5rem 0.75rem; }
-			.editor legend { font-weight: 700; padding: 0 0.25rem; }
-			.editor label { display: block; font-weight: 600; margin-top: 0.5rem; }
-			.editor input[type=text], .editor textarea, .editor select { width: 100%; font: inherit; padding: 0.35rem; }
-			.editor label.inline { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 400; }
-			.editor label.inline input { width: auto; }
-			.editor .alert { border: 2px solid var(--accent); padding: 0.4rem 0.6rem; margin: 0.5rem 0; }
-			.editor .field-error { color: var(--accent); margin: 0.25rem 0 0; }
-			.editor .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0 0.75rem; }
-			.editor ol { list-style: none; padding-left: 0; }
-			.editor li.item { border-top: 1px solid var(--border); padding: 0.5rem 0; }
-			.editor .tools { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
-			.editor .deps { margin-top: 0.5rem; }
-			.editor .deps label { font-weight: 400; margin-top: 0.15rem; }
-			.editor .low { border-left: 4px solid var(--accent); padding-left: 0.5rem; background: color-mix(in srgb, var(--accent) 10%, transparent); }
-			.editor .flag { color: var(--accent); font-weight: 700; margin-right: 0.4rem; }
-			.editor .llm-mark { border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
+			.editor fieldset { border: 1px solid var(--line); border-radius: var(--r); background: var(--card); margin: 16px 0; padding: 8px 16px 16px; min-width: 0; }
+			.editor legend { font-family: var(--f-display); font-weight: 700; padding: 0 6px; }
+			.editor h2 { font-size: 22px; margin: 24px 0 4px; }
+			.editor h3 { font-size: 17px; margin: 16px 0 4px; }
+			.editor label { display: block; font-weight: 600; font-size: 15px; color: var(--ink-2); margin-top: 10px; }
+			.editor input[type=text], .editor textarea, .editor select {
+				display: block; width: 100%; min-height: var(--tap); margin-top: 4px; padding: 8px 12px;
+				border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);
+				font: inherit; font-weight: 400;
+			}
+			.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }
+			.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); margin-top: 0; font-weight: 400; color: var(--ink); }
+			.editor label.inline input { width: 22px; height: 22px; flex: none; accent-color: var(--wattle-ink); }
+			.editor summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; font-weight: 600; color: var(--ink-2); }
+			.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 8px 0; }
+			.editor .alert p { margin: 0; }
+			.editor .field-error { color: var(--wattle-ink); font-weight: 600; margin: 4px 0 0; }
+			.editor .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0 12px; }
+			.editor ol { list-style: none; padding-left: 0; margin: 0; }
+			.editor li.item { border-top: 1px solid var(--line); padding: 12px 0; }
+			.editor li.item:first-child { border-top: 0; }
+			.editor .grid > div { display: flex; flex-direction: column; justify-content: flex-end; }
+			@media (min-width: 700px) { .editor .line-grid { grid-template-columns: minmax(5rem, 0.6fr) minmax(6rem, 0.8fr) minmax(10rem, 2fr) minmax(8rem, 1fr); } }
+			.editor .flag::before { content: ""; display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--grain); margin-right: 6px; }
+			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+			.editor .deps { margin-top: 8px; }
+			.editor .deps label { font-weight: 400; margin-top: 0; }
+			.editor .low { background: var(--grain-soft); border-radius: var(--r); padding-inline: 12px; }
+			.editor li.item.low { border-top-color: transparent; }
+			.editor .flag { color: var(--grain-ink); font-weight: 700; margin-right: 6px; }
+			.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; margin-right: 6px; font-size: 0.8em; }
 		</style>
 		if v.carries(groupVersion) {
 			<input type="hidden" name="version" value={ v.version() }/>
@@ -57,7 +74,7 @@ templ editorForm(v view) {
 		for ci, c := range v.D.Components {
 			@componentFields(v, ci, c)
 		}
-		<p class="tools"><button type="submit" name="action" value="add-component">Add component</button></p>
+		<p class="tools"><button type="submit" class="btn" name="action" value="add-component">Add component</button></p>
 		@equipmentFields(v)
 		@saveButtons(v)
 		<datalist id="ingredient-names">
@@ -82,9 +99,9 @@ templ editorForm(v view) {
 // save for a draft under review, which can also be cancelled.
 templ saveButtons(v view) {
 	<p class="tools">
-		<button type="submit" name="action" value="save">{ v.saveLabel() }</button>
+		<button type="submit" class="btn accent" name="action" value="save">{ v.saveLabel() }</button>
 		if v.reviewing() {
-			<button type="submit" form={ CancelFormID } formnovalidate>Cancel</button>
+			<button type="submit" form={ CancelFormID } class="btn" formnovalidate>Cancel</button>
 		}
 	</p>
 }
@@ -222,9 +239,9 @@ templ componentFields(v view, ci int, c compDraft) {
 		<label for={ cField(ci, "name") }>Component name (empty for a recipe without parts)</label>
 		<input id={ cField(ci, "name") } type="text" name={ cField(ci, "name") } value={ c.Name }/>
 		<p class="tools">
-			<button type="submit" name="action" value={ act("up-component", ci) } disabled?={ ci == 0 }>Move component up</button>
-			<button type="submit" name="action" value={ act("down-component", ci) } disabled?={ ci == len(v.D.Components)-1 }>Move component down</button>
-			<button type="submit" name="action" value={ act("rm-component", ci) }>Remove component</button>
+			<button type="submit" class="btn" name="action" value={ act("up-component", ci) } disabled?={ ci == 0 }>Move component up</button>
+			<button type="submit" class="btn" name="action" value={ act("down-component", ci) } disabled?={ ci == len(v.D.Components)-1 }>Move component down</button>
+			<button type="submit" class="btn" name="action" value={ act("rm-component", ci) }>Remove component</button>
 		</p>
 		<h3>Ingredients</h3>
 		<ol>
@@ -232,14 +249,14 @@ templ componentFields(v view, ci int, c compDraft) {
 				@lineFields(v, ci, li, len(c.Lines), l)
 			}
 		</ol>
-		<p class="tools"><button type="submit" name="action" value={ act("add-line", ci) }>Add ingredient line</button></p>
+		<p class="tools"><button type="submit" class="btn" name="action" value={ act("add-line", ci) }>Add ingredient line</button></p>
 		<h3>Steps</h3>
 		<ol>
 			for si, s := range c.Steps {
 				@stepFields(v, ci, si, len(c.Steps), s)
 			}
 		</ol>
-		<p class="tools"><button type="submit" name="action" value={ act("add-step", ci) }>Add step</button></p>
+		<p class="tools"><button type="submit" class="btn" name="action" value={ act("add-step", ci) }>Add step</button></p>
 	</fieldset>
 }
 
@@ -257,7 +274,7 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 		if l.Err != "" {
 			<p class="alert" role="alert">{ l.Err }</p>
 		}
-		<div class="grid">
+		<div class="grid line-grid">
 			<div>
 				<label for={ lField(ci, li, "qty") }>Quantity</label>
 				<input id={ lField(ci, li, "qty") } type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off"/>
@@ -317,17 +334,17 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 					<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text }/>
 				</div>
 				<p class="tools">
-					<button type="submit" name="action" value={ act("up-qual", ci, li, qi) } disabled?={ qi == 0 }>Move qualifier up</button>
-					<button type="submit" name="action" value={ act("down-qual", ci, li, qi) } disabled?={ qi == len(l.Quals)-1 }>Move qualifier down</button>
-					<button type="submit" name="action" value={ act("rm-qual", ci, li, qi) }>Remove qualifier</button>
+					<button type="submit" class="btn" name="action" value={ act("up-qual", ci, li, qi) } disabled?={ qi == 0 }>Move qualifier up</button>
+					<button type="submit" class="btn" name="action" value={ act("down-qual", ci, li, qi) } disabled?={ qi == len(l.Quals)-1 }>Move qualifier down</button>
+					<button type="submit" class="btn" name="action" value={ act("rm-qual", ci, li, qi) }>Remove qualifier</button>
 				</p>
 			</div>
 		}
 		<p class="tools">
-			<button type="submit" name="action" value={ act("add-qual", ci, li) }>Add qualifier</button>
-			<button type="submit" name="action" value={ act("up-line", ci, li) } disabled?={ li == 0 }>Move line up</button>
-			<button type="submit" name="action" value={ act("down-line", ci, li) } disabled?={ li == count-1 }>Move line down</button>
-			<button type="submit" name="action" value={ act("rm-line", ci, li) }>Remove line</button>
+			<button type="submit" class="btn" name="action" value={ act("add-qual", ci, li) }>Add qualifier</button>
+			<button type="submit" class="btn" name="action" value={ act("up-line", ci, li) } disabled?={ li == 0 }>Move line up</button>
+			<button type="submit" class="btn" name="action" value={ act("down-line", ci, li) } disabled?={ li == count-1 }>Move line down</button>
+			<button type="submit" class="btn" name="action" value={ act("rm-line", ci, li) }>Remove line</button>
 		</p>
 	</li>
 }
@@ -394,9 +411,9 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 			</details>
 		}
 		<p class="tools">
-			<button type="submit" name="action" value={ act("up-step", ci, si) } disabled?={ si == 0 }>Move step up</button>
-			<button type="submit" name="action" value={ act("down-step", ci, si) } disabled?={ si == count-1 }>Move step down</button>
-			<button type="submit" name="action" value={ act("rm-step", ci, si) }>Remove step</button>
+			<button type="submit" class="btn" name="action" value={ act("up-step", ci, si) } disabled?={ si == 0 }>Move step up</button>
+			<button type="submit" class="btn" name="action" value={ act("down-step", ci, si) } disabled?={ si == count-1 }>Move step down</button>
+			<button type="submit" class="btn" name="action" value={ act("rm-step", ci, si) }>Remove step</button>
 		</p>
 	</li>
 }
@@ -438,12 +455,12 @@ templ equipmentFields(v view) {
 					</details>
 				}
 				<p class="tools">
-					<button type="submit" name="action" value={ act("up-equip", ei) } disabled?={ ei == 0 }>Move equipment up</button>
-					<button type="submit" name="action" value={ act("down-equip", ei) } disabled?={ ei == len(v.D.Equipment)-1 }>Move equipment down</button>
-					<button type="submit" name="action" value={ act("rm-equip", ei) }>Remove equipment</button>
+					<button type="submit" class="btn" name="action" value={ act("up-equip", ei) } disabled?={ ei == 0 }>Move equipment up</button>
+					<button type="submit" class="btn" name="action" value={ act("down-equip", ei) } disabled?={ ei == len(v.D.Equipment)-1 }>Move equipment down</button>
+					<button type="submit" class="btn" name="action" value={ act("rm-equip", ei) }>Remove equipment</button>
 				</p>
 			</li>
 		}
 	</ol>
-	<p class="tools"><button type="submit" name="action" value="add-equip">Add equipment</button></p>
+	<p class="tools"><button type="submit" class="btn" name="action" value="add-equip">Add equipment</button></p>
 }

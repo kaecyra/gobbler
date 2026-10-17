@@ -1,34 +1,46 @@
 package operator
 
-import "github.com/kaecyra/gobbler/internal/web/layout"
+import (
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
 
 templ invitationsPage(v invitationsView) {
 	@layout.Page("Household invitations") {
-		<h1>Household invitations</h1>
-		<p>Nobody starts a household without an invitation. Invite an email address to start one; accepting it creates the household with that person as its first member. This page shows no household's data.</p>
-		<form method="post" action="/operator/invitations">
-			<label>Email address <input type="email" name="email" required/></label>
-			<button type="submit">Invite</button>
-		</form>
-		<p><a href="/operator/promotions">Suggested ingredients</a> households would like every household to use.</p>
-		<section aria-labelledby="pending-h" data-testid="pending">
-			<h2 id="pending-h">Pending invitations</h2>
-			if len(v.Pending) == 0 {
-				<p class="muted" data-testid="none-pending">No invitations are waiting.</p>
-			} else {
-				<ul>
-					for _, p := range v.Pending {
-						<li data-testid="pending-invitation">
-							{ p.Email }: <a href={ templ.SafeURL(p.Path) }>{ p.Path }</a>
-							<span class="muted"> expires { p.Expires }</span>
-							<form method="post" action={ templ.SafeURL(revokePath(p.ID)) } style="display:inline">
-								<button type="submit" aria-label={ "Revoke the invitation of " + p.Email }>Revoke</button>
-							</form>
-						</li>
-					}
-				</ul>
-				<p class="muted">Send the address above to the invitee. They must sign in as the invited email to use it.</p>
-			}
-		</section>
+		<div class="pg">
+			<div class="screen-h">
+				<div>
+					<h1>Household invitations</h1>
+					<p>Nobody starts a household without an invitation. Invite an email address to start one; accepting it creates the household with that person as its first member. This page shows no household's data.</p>
+				</div>
+			</div>
+			<section class="panel">
+				<form class="fields" method="post" action="/operator/invitations">
+					<label>Email address <input type="email" name="email" required/></label>
+					<button type="submit" class="btn accent">Invite</button>
+				</form>
+				<p><a class="link" href="/operator/promotions">Suggested ingredients</a> households would like every household to use.</p>
+			</section>
+			<section class="panel" aria-labelledby="pending-h" data-testid="pending">
+				<h2 id="pending-h">Pending invitations</h2>
+				if len(v.Pending) == 0 {
+					<p class="muted" data-testid="none-pending">No invitations are waiting.</p>
+				} else {
+					<ul class="list">
+						for _, p := range v.Pending {
+							<li data-testid="pending-invitation">
+								<span class="grow">
+									{ p.Email }: <a href={ templ.SafeURL(p.Path) }>{ p.Path }</a>
+									<span class="muted"> expires { p.Expires }</span>
+								</span>
+								<form class="row-form" method="post" action={ templ.SafeURL(revokePath(p.ID)) }>
+									<button type="submit" class="btn" aria-label={ "Revoke the invitation of " + p.Email }>Revoke</button>
+								</form>
+							</li>
+						}
+					</ul>
+					<p class="muted">Send the address above to the invitee. They must sign in as the invited email to use it.</p>
+				}
+			</section>
+		</div>
 	}
 }

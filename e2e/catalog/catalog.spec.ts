@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OPERATOR, OTHER, asIdentity } from '../fixtures/identity';
 import { portFromEnv } from '../fixtures/ports.mjs';
+import { expectTapTargets } from '../fixtures/tap';
 
 // The catalog page needs unreviewed ingredients and a recipe that uses one,
 // which the shared server of the suite does not have. This spec seeds its own
@@ -246,4 +247,24 @@ test.describe('equipment sized flag', () => {
       await member.close();
     }
   });
+});
+
+test('the catalog pages keep every control at least 44px tall', async ({ page }) => {
+  for (const path of [
+    '/catalog',
+    `/catalog/${ids.edit}`,
+    `/catalog/merge?source=${ids.edit}`,
+    `/catalog/merge?source=${ids.edit}&target=${ids.target}`,
+  ]) {
+    await page.goto(path);
+    expect(await expectTapTargets(page), path).toBeGreaterThan(1);
+  }
+});
+
+test('the equipment catalog keeps every control at least 44px tall', async ({ browser, baseURL }) => {
+  const ctx = await browser.newContext({ baseURL, ...asIdentity(OPERATOR) });
+  const page = await ctx.newPage();
+  await page.goto('/operator/equipment');
+  expect(await expectTapTargets(page)).toBeGreaterThan(0);
+  await ctx.close();
 });
