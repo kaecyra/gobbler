@@ -4,6 +4,14 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
+## Round 13 (2026-10-17), open: the UI track
+
+**Why:** shown the running app, the owner found it nearly unstyled; the reviewed mockup was never adopted. ADR-00022 (#256, 867124c) adopts it, with `docs/ui/design.md` as the spec and `docs/ui/mockup.html` as the drawn reference. The owner accepted every recommendation ("just rock it, we'll tweak later").
+
+**Nodes:** g-e2e-ports (#257) first, then u-shell (#246) and u-recipe-fields (#247, schema migration), then u-ingest-fields (#248), u-ribbon (#249), u-library (#250), u-recipe-view (#251), u-cook (#252), u-shopping (#253), u-ingest-look (#254), u-other-pages (#255).
+
+**Demo server** on the owner's Mac: `/tmp/gobbler-demo/gobbler serve`, dev auth bypass on `127.0.0.1:8080`, data in `/tmp/gobbler-demo/data`, built from 1b5fdfc. Six ingested drafts await review there. Rebuild it once the UI nodes land.
+
 ## Round 12 (2026-10-17), closed
 
 **Merged:** #231 r-write-lock-comments (c6f5b11); #232 i-step-graph (60fa063); #233 i-review-edit, also closed #228 (23f4929); #234 i-review-steps (8d54a9b); #238 r-thumbnail-everywhere (5c7736d); #241 i-video-extract (fb35b78); #244 g-thumbnail-fixture, #242 (46fd2b6). Graph PRs #229, #235, #236, #237, #239, #240, #243, #245. VERSION on main 0.61.0.
