@@ -10,12 +10,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **In flight at handoff (check `gh pr list`; a fresh session cannot message the old workers, so re-dispatch a fresh worker into the existing worktree for any fix):**
 - **Merged late in the round:** #224 (graph, owner-approved: retry spec added to i-llm-gap-fill's lane) and #225 r-recipe-video (#198, schema 00013), recorded at 6c71fce. VERSION on main is 0.55.0.
-- **#227** i-llm-gap-fill (#191): reviewed APPROVED. The out-of-lane SHOULD is resolved and filed as #228. The worker was asked to fix the remaining two SHOULDs and the NIT:
-  - remove the duplicate ADR-00006 note
-  - keep rule steps that met the threshold when components are a gap
-  - rewrap the `findGaps` comment
-  
-  It was also asked to rebase to VERSION **0.56.0**. Worktree `wt-191`. If a commit with those fixes is on the branch, verify it, push, resolve threads 4301181644, 4301181656 and 4301181657, and merge on green CI. Otherwise dispatch a fresh worker into `wt-191` with those three items.
+- #227 i-llm-gap-fill (#191) merged at 928b100. VERSION on main is 0.56.0. **Nothing is in flight: no open PRs, no worktrees.**
 
 **Next after those:** i-step-graph (#190) after #191; read #191's PR and fill `Gaps.Steps` and the merge point in `fillGaps`. i-review-edit (#192) after #191 and #198. i-video-extract (#199) last. Issues without nodes: #221 (three stale "takes the write lock" comments), #226 (thumbnail download on restore and share accept), #228 (review banner and `UsedLLM` doc overstate the LLM's role; fold into i-review-edit with a `draft.go` grant).
 
