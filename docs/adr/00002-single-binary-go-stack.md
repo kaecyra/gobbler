@@ -1,6 +1,6 @@
 # ADR-00002: Single Go binary: chi, templ, HTMX, SQLite
 
-**Status:** Amended by [ADR-00017](00017-cloudflared-on-the-guest.md)
+**Status:** Amended by [ADR-00017](00017-cloudflared-on-the-guest.md), [ADR-00021](00021-youtube-video-on-a-recipe.md)
 
 **Date:** 2026-10-06
 
@@ -47,6 +47,10 @@ gobbler is one Go binary serving server-rendered HTML.
   notes.
 - **Static assets:** embedded with `embed`; nothing is loaded from a third-party
   origin at runtime.
+
+  > Amended by [ADR-00021](00021-youtube-video-on-a-recipe.md): a recipe's
+  > YouTube player loads from `youtube-nocookie.com`, and only after the play
+  > button is pressed.
 - **Packaging:** a container image run by Docker Compose on the VM, with the
   database file on a named volume. `cloudflared` runs alongside as its own
   service.
@@ -71,5 +75,7 @@ must justify the JavaScript.
 2. `docker compose up` on a fresh Ubuntu host with only a `.env` file brings
    the app up with migrations applied.
 3. No page references a script, stylesheet or font from a third-party origin.
+   (Amended by [ADR-00021](00021-youtube-video-on-a-recipe.md): except the
+   YouTube player, loaded on an explicit play action.)
 4. Every schema change is a `goose` migration; the binary refuses to start if a
    migration fails.
