@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { expectTapTargets } from '../household/support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // The settings page shows the live backup job, whose state depends on how the
 // server is configured, so this spec starts its own gobbler per state on a

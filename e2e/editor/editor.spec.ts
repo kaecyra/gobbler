@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { expectTapTargets } from '../household/support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // The editor needs a recipe in the database, which the shared server of the
 // suite does not have. This spec seeds its own data directory through the real
@@ -246,10 +246,12 @@ test('meal type, spice level, stage kind and step title are set in the editor an
   await expect(page.locator('[name="c.0.s.0.title"]')).toHaveValue('');
 });
 
-test('the editor keeps every control at least 44px tall, on a tablet and a phone', async ({ page }) => {
+test('the editor keeps every control at least 44px tall and does not scroll sideways, on a tablet and a phone', async ({ page }) => {
   for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     await page.goto(`/recipes/${id}/edit`);
     expect(await expectTapTargets(page), `${viewport.width}px`).toBeGreaterThan(20);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, `${viewport.width}px page scrolls sideways`).toBeLessThanOrEqual(0);
   }
 });

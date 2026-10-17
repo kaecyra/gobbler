@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
-import { expectTapTargets } from '../household/support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // Admission (ADR-00018): Access admits any email that authenticates, so the
 // app's membership check is the only lock. The dev-auth server seeds DEV and
@@ -73,6 +73,7 @@ test.describe('the not-a-member page', () => {
   test('is drawn in the design system, with no control under 44px', async ({ page }) => {
     await page.goto('/not-a-member');
     await expect(page.locator('main img')).toBeVisible();
-    await expectTapTargets(page);
+    // Header and footer links are the page's controls, so measure the body.
+    await expectTapTargets(page, 'body');
   });
 });

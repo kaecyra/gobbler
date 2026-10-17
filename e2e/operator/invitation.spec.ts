@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
-import { as, expectTapTargets, issueHouseholdInvitation, linkFor, uniqueEmail } from '../household/support';
+import { as, issueHouseholdInvitation, linkFor, uniqueEmail } from '../household/support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // The operator's household-invitation page (ADR-00018, Invitations). The shared
 // dev-auth server lists OPERATOR (a member of no household) and DEV as

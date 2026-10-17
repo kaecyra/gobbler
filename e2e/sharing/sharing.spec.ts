@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEV, OTHER, STRANGER, OPERATOR } from '../fixtures/identity';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { as, expectTapTargets, startHousehold, uniqueEmail } from '../household/support';
+import { as, startHousehold, uniqueEmail } from '../household/support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // Sending a recipe copy to another household (ADR-00018, Sharing). The sender
 // recipe needs data the shared server does not have, so this spec seeds its own

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { OTHER, STRANGER } from '../fixtures/identity';
-import { as, expectTapTargets, linkFor, startHousehold, uniqueEmail } from './support';
+import { as, linkFor, startHousehold, uniqueEmail } from './support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // The members page and the invitations into a household (ADR-00018). Every test
 // makes its own household through the operator, so none disturbs the seeded

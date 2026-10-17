@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OPERATOR, OTHER, asIdentity } from '../fixtures/identity';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { expectTapTargets } from '../household/support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // The catalog page needs unreviewed ingredients and a recipe that uses one,
 // which the shared server of the suite does not have. This spec seeds its own

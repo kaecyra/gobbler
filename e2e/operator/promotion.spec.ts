@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { expectTapTargets } from '../household/support';
+import { expectTapTargets } from '../fixtures/tap';
 
 // Promotion (ADR-00018, Catalog): the operator reviews the overlay entries
 // households suggested for the central catalog and promotes one, which merges
