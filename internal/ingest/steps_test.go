@@ -70,20 +70,40 @@ func TestStepCuesNeedTheWordInTheRightPlace(t *testing.T) {
 		text              string
 		passive, parallel bool
 	}{
+		// Not passive: the word names an ingredient, a tool, or another action.
 		{"Add the rest of the flour.", false, false},
 		{"Grease the baking dish.", false, false},
-		{"Stir constantly while the sauce thickens.", false, false},
+		{"Let the butter melt, then add the rest of the flour.", false, false},
+		{"Let the oven preheat, then set the timer.", false, false},
+		{"Leave the lid on and stir the stand mixer.", false, false},
+		{"Let the pan and then cool for 5 minutes.", false, false},
+		{"Set aside the bowl.", false, false},
+		{"Add the roasted red peppers and the baked beans.", false, false},
+		{"Stir in the freeze-dried strawberries.", false, false},
+		{"Add the roast beef.", false, false},
+		{"Add the sugar, freeze-dried strawberries and nuts.", false, false},
+		{"Leave the bowl on the stand mixer.", false, false},
+		{"Stir while it simmers.", false, false},
+		{"Stir the simmering sauce.", false, false},
+		// Passive: the instruction itself.
 		{"Bake until golden.", true, false},
+		{"Preheat the oven and bake for 20 minutes.", true, false},
 		{"Marinate the chicken overnight.", true, false},
 		{"Simmer for 20 minutes.", true, false},
+		{"Gently simmer for 20 minutes.", true, false},
 		{"Cool on a wire rack.", true, false},
 		{"Leave the dough to rest.", true, false},
-		{"Whisk the eggs. Meanwhile, heat the pan.", false, true},
+		{"Let the dough rise for 1 hour.", true, false},
+		{"Let the jelly set overnight.", true, false},
+		// Parallel only at the start of the step.
+		{"Whisk the eggs. Meanwhile, heat the pan.", false, false},
+		{"Meanwhile, heat the pan.", false, true},
 		{"While the oven heats, chop the onions.", false, true},
 		{"In the meantime, set the table.", false, true},
+		{"Stir constantly while the sauce thickens.", false, false},
 	}
 	for _, tt := range tests {
-		if got := passiveRE.MatchString(tt.text); got != tt.passive {
+		if got := isPassive(tt.text); got != tt.passive {
 			t.Errorf("passive(%q) = %v, want %v", tt.text, got, tt.passive)
 		}
 		if got := parallelRE.MatchString(tt.text); got != tt.parallel {

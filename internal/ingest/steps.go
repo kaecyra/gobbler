@@ -6,18 +6,48 @@ import (
 	"slices"
 )
 
-// passiveRE is the passive vocabulary (ADR-00020 decision 1): words that mark a
-// step the cook can leave unattended. "baking" is left out on purpose, since it
-// mostly names a dish or powder, and "rest" and "cool" count only where they
-// are the instruction.
-var passiveRE = regexp.MustCompile(`(?i)\b(bake[sd]?|roast(s|ed)?|proof|prove|marinate|chill|refrigerate|freeze|simmer|braise|ferment|steep|soak|set aside)\b` +
-	`|(^|[.;!]\s+)(rest|rise|cool)\b` +
-	`|\b(let|allow|leave)\b[^.;]*\b(rest|rise|stand|sit|cool|proof|prove|set)\b`)
+// The passive vocabulary (ADR-00020 decision 1): words that mark a step the
+// cook can leave unattended. Each form matches only where it is the
+// instruction, never as an adjective, an ingredient or part of another phrase,
+// because a false positive hides a step from the cook's attention.
+var (
+	// passiveVerbRE matches the base form of a passive verb where an
+	// instruction can start: the start of the step, after a sentence or clause
+	// break, after "and", "then" or "to", with at most one adverb ("gently
+	// simmer"). "roasted peppers", "baked beans" and "freeze-dried" are not
+	// instructions. The -s and -ing forms are left out on purpose: "while it
+	// simmers" inside an active step must not make that step passive.
+	passiveVerbRE = regexp.MustCompile(`(?i)(^|[.;,:!]\s+|\b(and|then|to)\s+)(\w+ly\s+)?(bake|roast|proof|prove|marinate|chill|refrigerate|freeze|simmer|braise|ferment|steep|soak)(\s|[.,;:!]|$)`)
+	// passiveStartRE matches "rest", "rise" and "cool" only as the instruction
+	// that opens a sentence.
+	passiveStartRE = regexp.MustCompile(`(?i)(^|[.;!]\s+)(rest|rise|cool)\b`)
+	// passiveLetRE matches "let the dough rise", "leave to rest": a few plain
+	// words between the verb and the waiting word, which must end its phrase.
+	// "set the timer", "the rest of the flour" and "stand mixer" fail that.
+	passiveLetRE  = regexp.MustCompile(`(?i)\b(let|allow|leave)\s+(\w+\s+){0,4}?(rest|rise|stand|sit|cool|set|proof|prove)(\s+(for|until|overnight|at|in|on|to|about|\d)|[.,;:!]|$)`)
+	clauseSplitRE = regexp.MustCompile(`(?i)\b(and|then)\b`)
+)
 
-// parallelRE is the parallel cue: a step that opens with, or follows a full stop
-// with, wording that says it runs alongside the step before it. "while" counts
-// only at the start, so "stir while the sauce thickens" does not break the chain.
-var parallelRE = regexp.MustCompile(`(?i)(^|[.;!]\s+)(meanwhile|in the meantime|at the same time|while (the|it|they|you)\b)`)
+// isPassive reports whether text instructs the cook to leave something to
+// work unattended. A "let ..." phrase does not count if it runs on into
+// another clause ("let it cool and ..." is read from its own words only).
+func isPassive(text string) bool {
+	if passiveVerbRE.MatchString(text) || passiveStartRE.MatchString(text) {
+		return true
+	}
+	for _, m := range passiveLetRE.FindAllString(text, -1) {
+		if !clauseSplitRE.MatchString(m) {
+			return true
+		}
+	}
+	return false
+}
+
+// parallelRE is the parallel cue: a step that opens with wording that says it
+// runs alongside the step before it. It counts only at the start of the step,
+// since a cue after a full stop leaves the first sentence in sequence, and
+// "stir while the sauce thickens" is not parallel to anything.
+var parallelRE = regexp.MustCompile(`(?i)^\s*(meanwhile|in the meantime|at the same time|while (the|it|they|you)\b)`)
 
 // inferGraph sets the dependencies and passive flag of every step by rule
 // (ADR-00020 decision 1). Steps chain in reading order, each after the one
@@ -32,7 +62,7 @@ func inferGraph(comps []Component) {
 		for si := range comps[ci].Steps {
 			n++
 			st := &comps[ci].Steps[si]
-			passive, parallel := passiveRE.MatchString(st.Text), parallelRE.MatchString(st.Text)
+			passive, parallel := isPassive(st.Text), parallelRE.MatchString(st.Text)
 			st.Passive, st.GraphCue, st.GraphFromLLM = passive, passive || parallel, false
 			if parallel {
 				st.DependsOn = slices.Clone(prev)
