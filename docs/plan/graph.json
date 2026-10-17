@@ -2284,7 +2284,8 @@
         "internal/web/history/**",
         "internal/web/static/video*",
         "e2e/recipeview/**",
-        "e2e/history/**"
+        "e2e/history/**",
+        "internal/web/layout/recipe*"
       ],
       "needs_migration": null,
       "adrs": [],
@@ -2375,7 +2376,8 @@
         "e2e/catalog/**",
         "e2e/operator/**",
         "e2e/nonmember/**",
-        "internal/web/static/app.css"
+        "internal/web/static/app.css",
+        "e2e/fixtures/tap*"
       ],
       "needs_migration": null,
       "adrs": [],
