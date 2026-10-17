@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -49,5 +50,23 @@ func TestFromURLGroupsIngredientsByPluginMarkup(t *testing.T) {
 	}
 	if raw := d.Components[1].Lines[0].Raw; raw != "1 lb pork, minced" {
 		t.Errorf("line raw = %q, want the JSON-LD string", raw)
+	}
+}
+
+// A step section named like an ingredient group shares its component, so the
+// lines and steps of one part of the recipe sit together.
+func TestFromURLStepSectionJoinsSameNamedIngredientGroup(t *testing.T) {
+	e := newEnv(t)
+	page := strings.Replace(groupedPage, "For the dough", "Dough", 1)
+	srv, _ := serve(t, []byte(page))
+	d, err := e.pipeline(t, srv.Client()).FromURL(e.ctx, srv.URL+"/buns")
+	if err != nil {
+		t.Fatalf("FromURL: %v", err)
+	}
+	if len(d.Components) != 3 {
+		t.Fatalf("components = %+v, want Dough, For the filling, Finish", d.Components)
+	}
+	if c := d.Components[0]; c.Name != "Dough" || len(c.Lines) != 1 || len(c.Steps) != 1 {
+		t.Errorf("first component = %q with %d lines, %d steps, want Dough with 1 and 1", c.Name, len(c.Lines), len(c.Steps))
 	}
 }

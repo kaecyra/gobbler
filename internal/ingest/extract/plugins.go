@@ -262,6 +262,9 @@ func headedItems(container *html.Node, f func(name, text string)) {
 	}
 	name := ""
 	walk(container, func(n *html.Node) bool {
+		if n.Type != html.ElementNode {
+			return true
+		}
 		switch {
 		case len(n.Data) == 2 && n.Data[0] == 'h' && n.Data[1] >= '1' && n.Data[1] <= '6':
 			if t := textOf(n); !sectionTitles[strings.ToLower(strings.TrimRight(t, ":"))] {
