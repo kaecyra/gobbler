@@ -92,7 +92,7 @@ func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Dr
 		}
 		return show(), nil
 	}
-	rec, props, ok, err := u.h.build(ctx, &d, recipe.Recipe{})
+	rec, props, rows, ok, err := u.h.build(ctx, &d, recipe.Recipe{})
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -101,7 +101,7 @@ func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Dr
 		rejected.Rejected = true
 		return rejected, nil
 	}
-	return Outcome{Ready: true, Draft: toIngest(base, rec, props, names, d), Form: Form{v: view{D: d, Names: names, Review: &o}}}, nil
+	return Outcome{Ready: true, Draft: toIngest(base, rec, props, rows, names, d), Form: Form{v: view{D: d, Names: names, Review: &o}}}, nil
 }
 
 // fromIngest turns a draft into the editor's starting form. A line the catalog
@@ -183,7 +183,7 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 // draft, so a draft put back after a failed save reopens with its flags
 // (ADR-00006 obligation 4). Only what Draft keeps is copied; the form shows
 // only that (see view.carries), so nothing the user edited is lost.
-func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names lookups, ed draft) ingestcore.Draft {
+func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows kept, names lookups, ed draft) ingestcore.Draft {
 	out := base
 	out.Name.Value, out.Author.Value, out.Description.Value = rec.Name, rec.Author, rec.Description
 	out.Yield.Value, out.Servings.Value = rec.Yield, rec.Servings
@@ -209,28 +209,17 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names 
 			newLine[[2]int{p.component, p.index}] = p.name
 		}
 	}
-	// rec holds the form's items minus the blank rows build dropped, in the
-	// same order, so the form's marks line up by walking both.
+	// rows says which form row each recipe row came from, so the form's marks
+	// follow their rows past any the build dropped.
 	out.Components = nil
 	for ci, c := range rec.Components {
-		var lines []lineDraft
-		for _, l := range ed.Components[ci].Lines {
-			if !lineBlank(l) {
-				lines = append(lines, l)
-			}
-		}
-		var steps []stepDraft
-		for _, st := range ed.Components[ci].Steps {
-			if !stepBlank(st) {
-				steps = append(steps, st)
-			}
-		}
+		form := ed.Components[ci]
 		dc := ingestcore.Component{Name: c.Name}
 		for li, l := range c.Lines {
 			line := ingestcore.Line{
 				Raw: l.Raw, Ingredient: l.Ingredient, Amount: l.Amount, Optional: l.Optional,
 				ToTaste: l.Rule == quantity.RuleToTaste, Qualifiers: l.Qualifiers,
-				Confidence: confidence(lines[li].Mark, base.Threshold), FromLLM: lines[li].Mark.LLM, Issues: lines[li].Issues,
+				Confidence: confidence(form.Lines[rows.lines[ci][li]].Mark, base.Threshold), FromLLM: form.Lines[rows.lines[ci][li]].Mark.LLM, Issues: form.Lines[rows.lines[ci][li]].Issues,
 			}
 			if name, ok := newLine[[2]int{ci, li}]; ok {
 				line.Name = name
@@ -242,20 +231,14 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, names 
 		for si, s := range c.Steps {
 			dc.Steps = append(dc.Steps, ingestcore.Step{
 				Text: s.Text, Duration: s.Duration,
-				Confidence: confidence(steps[si].Mark, base.Threshold), FromLLM: steps[si].Mark.LLM,
+				Confidence: confidence(form.Steps[rows.steps[ci][si]].Mark, base.Threshold), FromLLM: form.Steps[rows.steps[ci][si]].Mark.LLM,
 			})
 		}
 		out.Components = append(out.Components, dc)
 	}
-	var kept []equipDraft
-	for _, e := range ed.Equipment {
-		if !equipBlank(e) {
-			kept = append(kept, e)
-		}
-	}
 	out.Equipment = nil
 	for ei, e := range rec.Equipment {
-		eq := ingestcore.Equipment{Equipment: e.Equipment, Name: names.equipment[int64(e.Equipment)], FromLLM: kept[ei].Mark.LLM}
+		eq := ingestcore.Equipment{Equipment: e.Equipment, Name: names.equipment[int64(e.Equipment)], FromLLM: ed.Equipment[rows.equipment[ei]].Mark.LLM}
 		if name, ok := newEquip[ei]; ok {
 			eq.Name = strings.TrimSpace(name)
 		}

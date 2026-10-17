@@ -346,3 +346,44 @@ func TestDraftPutBackAfterAFailedSaveKeepsEditsAndFlags(t *testing.T) {
 		})
 	}
 }
+
+// Flags follow their rows past the blank rows the editor drops: a flagged row
+// after a blank middle row keeps its flag in the draft put back.
+func TestFlagsFollowTheirRowsPastBlankRows(t *testing.T) {
+	f := newFixture(t)
+	f.h.saver = failingSaver{}
+	token := f.ingestText(t)
+	form := reviewForm()
+	// Blank middle rows, then flagged rows behind them.
+	form.Set("c.0.l.2.rule", "linear") // line 1 (the proposed one) moves to form row 2
+	for k, v := range map[string]string{
+		"c.0.l.2.ing": "dragonfruit zest", "c.0.l.2.propose": "1", "c.0.l.2.raw": "1 dragonfruit zest",
+		"c.0.l.2.mark": "low llm", "c.0.l.2.issue": "ingredient not matched",
+		"c.0.s.2.text": "Bake until goldn", "c.0.s.2.to": "0", "c.0.s.2.mark": "low",
+		"e.3.name": "whisk", "e.3.mark": "llm",
+	} {
+		form.Set(k, v)
+	}
+	for _, k := range []string{"c.0.l.1.ing", "c.0.l.1.raw", "c.0.l.1.propose", "c.0.s.1.text", "e.2.name"} {
+		form.Del(k)
+	}
+	form.Set("c.0.l.1.rule", "linear") // a row present but blank
+	form.Set("c.0.s.1.to", "0")
+	form.Set("e.2.qty", "")
+	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want the save to fail", rec.Code)
+	}
+	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
+	lines := items(body, "line")
+	if len(lines) != 2 || !strings.Contains(lines[1], "Check:") || !strings.Contains(lines[1], "LLM") || !strings.Contains(lines[1], "ingredient not matched") || strings.Contains(lines[0], "Check:") {
+		t.Errorf("lines after the blank row lost their flags or took another's: %q", lines)
+	}
+	steps := items(body, "step")
+	if len(steps) != 2 || !strings.Contains(steps[1], "Check:") || strings.Contains(steps[0], "Check:") {
+		t.Errorf("steps after the blank row: %q", steps)
+	}
+	equip := items(body, "equipment")
+	if len(equip) != 3 || !strings.Contains(equip[2], "LLM") || strings.Contains(equip[1], "LLM") {
+		t.Errorf("equipment after the blank row: %q", equip)
+	}
+}

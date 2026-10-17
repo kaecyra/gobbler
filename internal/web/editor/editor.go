@@ -155,7 +155,7 @@ func (h *handler) post(w http.ResponseWriter, r *http.Request) {
 // with what the user typed and the stored recipe untouched.
 func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base recipe.Recipe, d draft, names lookups) {
 	ctx := r.Context()
-	rec, proposals, ok, err := h.build(ctx, &d, base)
+	rec, proposals, _, ok, err := h.build(ctx, &d, base)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
