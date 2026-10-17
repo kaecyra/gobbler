@@ -225,6 +225,7 @@ templ recipeBody(v view) {
 				<section aria-labelledby="ingredients-h">
 					<h2 id="ingredients-h" class="eyebrow">Ingredients</h2>
 					for _, c := range v.Components {
+						if len(c.Lines) > 0 {
 						<div class="comp">
 							if c.Name != "" {
 								<h3>{ c.Name }</h3>
@@ -244,6 +245,7 @@ templ recipeBody(v view) {
 								}
 							</ul>
 						</div>
+						}
 					}
 				</section>
 			</div>

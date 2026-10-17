@@ -196,3 +196,6 @@
 
 /* The note on a derived total is a sentence, not a label. */
 .rtime .eyebrow .muted { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+/* A document with no controls row (a past version) still clears its head. */
+.rhead + .recipe-grid { margin-top: 26px; }

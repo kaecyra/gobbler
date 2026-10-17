@@ -126,3 +126,12 @@ func TestPageCarriesItsStylesheet(t *testing.T) {
 	body := page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
 	mustContain(t, body, "<style>", ".recipe-controls")
 }
+
+func TestComponentWithNoIngredientLinesHasNoIngredientHeading(t *testing.T) {
+	body := page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
+	// Glaze has steps and no lines: it heads its steps, not an empty list.
+	if n := strings.Count(body, "<h3>Glaze</h3>"); n != 0 {
+		t.Errorf("empty ingredient heading present\n%s", body)
+	}
+	mustContain(t, body, `<h3 class="part">Glaze</h3>`)
+}
