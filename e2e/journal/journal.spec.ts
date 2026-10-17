@@ -163,21 +163,24 @@ test('an unknown recipe is a 404', async ({ request }) => {
 
 test('a note is pinned as a tip and unpinned', async ({ page }) => {
   await page.goto(`/recipes/${id}/journal`);
-  const pinned = () => page.waitForResponse((r) => /\/notes\/\d+\/pin$/.test(r.url()) && r.request().method() === 'POST');
-  const note = page.locator('.notes li').filter({ hasText: 'Needs more salt' });
-  await expect(note.getByRole('button', { name: 'Pin as tip' })).toBeVisible();
+  const salt = () => page.locator('.notes li').filter({ hasText: 'Needs more salt' });
+  const sugar = () => page.locator('.notes li').filter({ hasText: 'Use less sugar next time' });
+  const noteID = ((await salt().locator('form.pin-form').getAttribute('action')) ?? '').match(/\/notes\/(\d+)\/pin$/)?.[1];
+  expect(noteID).toBeTruthy();
+  const pinned = () => page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/notes/${noteID}/pin`) && r.request().method() === 'POST');
+  await expect(salt().getByRole('button', { name: 'Pin as tip' })).toBeVisible();
 
   let saved = pinned();
-  await note.getByRole('button', { name: 'Pin as tip' }).click();
+  await salt().getByRole('button', { name: 'Pin as tip' }).click();
   expect((await saved).status()).toBe(200);
-  await expect(note.getByRole('button', { name: 'Unpin' })).toBeVisible();
+  await expect(salt().getByRole('button', { name: 'Unpin' })).toBeVisible();
   // The pin is stored, not just swapped into the page, and only this note has it.
   await page.reload();
-  await expect(page.locator('.notes li').filter({ hasText: 'Needs more salt' }).getByRole('button', { name: 'Unpin' })).toBeVisible();
-  await expect(page.locator('.notes li').filter({ hasText: 'Use less sugar next time' }).getByRole('button', { name: 'Pin as tip' })).toBeVisible();
+  await expect(salt().getByRole('button', { name: 'Unpin' })).toBeVisible();
+  await expect(sugar().getByRole('button', { name: 'Pin as tip' })).toBeVisible();
 
   saved = pinned();
-  await page.locator('.notes li').filter({ hasText: 'Needs more salt' }).getByRole('button', { name: 'Unpin' }).click();
+  await salt().getByRole('button', { name: 'Unpin' }).click();
   expect((await saved).status()).toBe(200);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Unpin' })).toHaveCount(0);
