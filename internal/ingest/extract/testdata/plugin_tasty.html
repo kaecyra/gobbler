@@ -1,0 +1,28 @@
+<!-- Hand-trimmed to the structure that matters: JSON-LD plus the Tasty Recipes
+     ingredient and instruction lists, whose headings name the groups.
+     Invented recipe, no scripts or trackers. -->
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Layer Cake</title>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Recipe","name":"Layer Cake",
+ "recipeIngredient":["2 cups flour","1 cup sugar","1 cup butter","2 cups icing sugar"],
+ "recipeInstructions":[{"@type":"HowToStep","text":"Bake the cake."},{"@type":"HowToStep","text":"Beat the frosting."}]}
+</script></head>
+<body>
+<div class="tasty-recipes-ingredients">
+ <h3>Ingredients</h3>
+ <div class="tasty-recipes-ingredients-body">
+  <h4>Cake</h4>
+  <ul><li data-tr-ingredient-checkbox><span data-amount="2">2</span> cups <span>flour</span></li><li>1 cup sugar</li></ul>
+  <h4>Frosting</h4>
+  <ul><li>1 cup butter</li><li>2 cups icing sugar</li></ul>
+ </div>
+</div>
+<div class="tasty-recipes-instructions">
+ <h3>Instructions</h3>
+ <div class="tasty-recipes-instructions-body">
+  <h4>Cake</h4><ol><li>Bake the cake.</li></ol>
+  <h4>Frosting</h4><ol><li>Beat the frosting.</li></ol>
+ </div>
+</div>
+</body></html>

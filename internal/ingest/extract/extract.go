@@ -70,13 +70,17 @@ type Raw struct {
 	// PrepDuration, CookDuration and TotalDuration are the parsed time
 	// fields; zero when the field is absent or was not read (see
 	// IssueUnparsedDuration).
-	PrepDuration  time.Duration     `json:"prep_duration,omitempty"`
-	CookDuration  time.Duration     `json:"cook_duration,omitempty"`
-	TotalDuration time.Duration     `json:"total_duration,omitempty"`
-	Ingredients   []string          `json:"ingredients,omitempty"`
-	Instructions  []InstructionStep `json:"instructions,omitempty"`
-	Calories      string            `json:"calories,omitempty"`
-	ImageURL      string            `json:"image_url,omitempty"`
+	PrepDuration  time.Duration `json:"prep_duration,omitempty"`
+	CookDuration  time.Duration `json:"cook_duration,omitempty"`
+	TotalDuration time.Duration `json:"total_duration,omitempty"`
+	Ingredients   []string      `json:"ingredients,omitempty"`
+	// IngredientGroups is the same ingredients as Ingredients, grouped under
+	// the headings a recipe plugin on the page prints. Set only when the
+	// groups hold exactly Ingredients, in order; nil otherwise.
+	IngredientGroups []IngredientGroup `json:"ingredient_groups,omitempty"`
+	Instructions     []InstructionStep `json:"instructions,omitempty"`
+	Calories         string            `json:"calories,omitempty"`
+	ImageURL         string            `json:"image_url,omitempty"`
 }
 
 // usable reports whether r holds enough to be worth reviewing: a name plus
@@ -163,9 +167,11 @@ func (r *Registry) Extract(page []byte, sourceURL string) (Result, error) {
 	raw, issues, ok := extractJSONLD(doc)
 	res.Issues = append(res.Issues, issues...)
 	if ok {
+		applyPlugins(doc, &raw)
 		return res.withRecipe(MethodJSONLD, raw), nil
 	}
 	if raw, ok := extractMicrodata(doc); ok {
+		applyPlugins(doc, &raw)
 		return res.withRecipe(MethodMicrodata, raw), nil
 	}
 	if u, perr := url.Parse(sourceURL); perr == nil && u.Host != "" {
