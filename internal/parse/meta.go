@@ -11,8 +11,9 @@ import (
 
 // Issues SplitSections reports for a labelled meta line it recognised but could
 // not read. The line is then left in Notes, so nothing is dropped. The first
-// two are also spelled by package extract (IssueUnparsedDuration) and the
-// ingest assembler (IssueUnreadableYield); the assembler aliases these.
+// two are also named by package extract (IssueUnparsedDuration) and the
+// ingest assembler (IssueUnreadableYield); both alias these, so each code is
+// spelled only here.
 const (
 	// IssueUnparsedDuration: a time field was not one clean duration.
 	IssueUnparsedDuration = "unparsed_duration"
