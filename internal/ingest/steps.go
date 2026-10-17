@@ -6,25 +6,31 @@ import (
 	"slices"
 )
 
+const passiveVerbs = `(bake|roast|proof|prove|marinate|chill|refrigerate|freeze|simmer|braise|ferment|steep|soak)`
+
 // The passive vocabulary (ADR-00020 decision 1): words that mark a step the
 // cook can leave unattended. Each form matches only where it is the
 // instruction, never as an adjective, an ingredient or part of another phrase,
 // because a false positive hides a step from the cook's attention.
 var (
 	// passiveVerbRE matches the base form of a passive verb where an
-	// instruction can start: the start of the step, after a sentence or clause
-	// break, after "and", "then" or "to", with at most one adverb ("gently
+	// instruction can start. At the start of a step or sentence any following
+	// word is fine. After a comma, "and", "then" or "to" the verb must be
+	// followed by what a verb takes (an article or pronoun, "for", "until", a
+	// number) or end its clause, because there a noun is as likely: "add the
+	// carrots and roast beef". A single adverb may precede it ("gently
 	// simmer"). "roasted peppers", "baked beans" and "freeze-dried" are not
 	// instructions. The -s and -ing forms are left out on purpose: "while it
 	// simmers" inside an active step must not make that step passive.
-	passiveVerbRE = regexp.MustCompile(`(?i)(^|[.;,:!]\s+|\b(and|then|to)\s+)(\w+ly\s+)?(bake|roast|proof|prove|marinate|chill|refrigerate|freeze|simmer|braise|ferment|steep|soak)(\s|[.,;:!]|$)`)
+	passiveVerbRE = regexp.MustCompile(`(?i)(^|[.;:!]\s+)(\w+ly\s+)?` + passiveVerbs + `(\s|[.,;:!]|$)` +
+		`|(,\s+|\b(and|then|to)\s+)(\w+ly\s+)?` + passiveVerbs + `(\s+(the|it|them|this|these|for|until|overnight|at|in|on|to|about|\d)\b|[.,;:!]|$)`)
 	// passiveStartRE matches "rest", "rise" and "cool" only as the instruction
 	// that opens a sentence.
 	passiveStartRE = regexp.MustCompile(`(?i)(^|[.;!]\s+)(rest|rise|cool)\b`)
 	// passiveLetRE matches "let the dough rise", "leave to rest": a few plain
 	// words between the verb and the waiting word, which must end its phrase.
 	// "set the timer", "the rest of the flour" and "stand mixer" fail that.
-	passiveLetRE  = regexp.MustCompile(`(?i)\b(let|allow|leave)\s+(\w+\s+){0,4}?(rest|rise|stand|sit|cool|set|proof|prove)(\s+(for|until|overnight|at|in|on|to|about|\d)|[.,;:!]|$)`)
+	passiveLetRE  = regexp.MustCompile(`(?i)\b(let|allow|leave)\s+(\w+\s+){0,4}?(rest|rise|stand|sit|cool|set|proof|prove)(\s+(for|until|overnight|at|in|on|to|about|before|completely|slightly|fully|briefly|thoroughly|\d)|[.,;:!]|$)`)
 	clauseSplitRE = regexp.MustCompile(`(?i)\b(and|then)\b`)
 )
 
