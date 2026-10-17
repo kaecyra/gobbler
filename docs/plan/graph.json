@@ -1969,7 +1969,8 @@
         "internal/web/ingest/**",
         "e2e/ingest/**",
         "internal/web/editor/**",
-        "internal/ingest/ingest.go"
+        "internal/ingest/ingest.go",
+        "internal/ingest/extract/extract*.go"
       ],
       "needs_migration": null,
       "adrs": [],
