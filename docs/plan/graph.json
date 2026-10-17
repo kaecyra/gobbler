@@ -1696,7 +1696,7 @@
       "wave": 9,
       "track": null,
       "issue": 185,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/parse/section*.go",
@@ -2622,6 +2622,11 @@
       "id": "i-fallback-no-call-test",
       "title": "a high-scoring draft at the default threshold makes no provider call",
       "merged": "b5d56c5bb59aef30d919ebcedb4b2d670c87527d"
+    },
+    {
+      "id": "i-text-meta",
+      "title": "read prep, cook and total time, yield and calories from pasted and OCR text",
+      "merged": "d8f0bb19d94689a5d430d697f405e6684eaff49d"
     }
   ],
   "adr_sequence": {
