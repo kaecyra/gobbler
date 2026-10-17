@@ -46,6 +46,8 @@ templ editorForm(v view) {
 			.editor li.item { border-top: 1px solid var(--line); padding: 12px 0; }
 			.editor li.item:first-child { border-top: 0; }
 			.editor .grid > div { display: flex; flex-direction: column; justify-content: flex-end; }
+			.editor .line-grid { grid-template-columns: minmax(5rem, 0.6fr) minmax(6rem, 0.8fr) minmax(10rem, 2fr) minmax(8rem, 1fr); }
+			.editor .flag::before { content: ""; display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--grain); margin-right: 6px; }
 			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
 			.editor .deps { margin-top: 8px; }
 			.editor .deps label { font-weight: 400; margin-top: 0; }
@@ -270,7 +272,7 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 		if l.Err != "" {
 			<p class="alert" role="alert">{ l.Err }</p>
 		}
-		<div class="grid">
+		<div class="grid line-grid">
 			<div>
 				<label for={ lField(ci, li, "qty") }>Quantity</label>
 				<input id={ lField(ci, li, "qty") } type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off"/>
