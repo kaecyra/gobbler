@@ -2116,6 +2116,29 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00020 decision 3, obligation 4: the dependency-edit-before-confirm test lands here, once i-step-graph's step fields exist."
+    },
+    {
+      "id": "g-thumbnail-fixture",
+      "title": "The e2e server downloads video thumbnails from a fixture, not i.ytimg.com",
+      "wave": 9,
+      "track": null,
+      "issue": 242,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/video/**",
+        "internal/config/**",
+        "internal/web/routes.go",
+        "internal/web/web.go",
+        "cmd/gobbler/serve.go",
+        "e2e/fixtures/**",
+        "e2e/playwright.config.ts",
+        "e2e/recipeview/**",
+        "docs/operations.md"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Make the thumbnail host configurable (default https://i.ytimg.com) and point the e2e server at a serve.mjs fixture route. Granted: edit the existing Deps lines in internal/web/routes.go (otherwise append-only) to pass the configured source."
     }
   ],
   "shared_files": [
