@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"time"
@@ -127,4 +128,35 @@ func EnsureThumbnail(ctx context.Context, st ThumbnailStore, src ThumbnailSource
 		return fmt.Errorf("store thumbnail of %s: %w", id, err)
 	}
 	return nil
+}
+
+// KeepThumbnail is what every save of a recipe revision with a video calls
+// afterwards (ADR-00021 decision 3): it ensures the thumbnail of videoID is
+// stored, downloading it from src, or from YouTube's image host when src is
+// nil. The revision is already saved, so a failure is logged and never
+// returned; the recipe shows the placeholder until the next save of a recipe
+// with this video tries again. An empty videoID does nothing.
+func KeepThumbnail(ctx context.Context, st ThumbnailStore, src ThumbnailSource, recipeID int64, videoID string) {
+	if videoID == "" {
+		return
+	}
+	if src == nil {
+		src = NewFetcher()
+	}
+	if err := EnsureThumbnail(ctx, st, src, videoID); err != nil {
+		slog.WarnContext(ctx, "recipe saved without a video thumbnail", "recipe_id", recipeID, "video_id", videoID, "error", err.Error())
+	}
+}
+
+// KeepThumbnailAfter is KeepThumbnail for a handler that must read the saved
+// recipe back to learn its video ID: readVideoID does that read. A failed read
+// is logged and the thumbnail check skipped, since the revision is already
+// saved and the next save of the recipe tries again.
+func KeepThumbnailAfter(ctx context.Context, st ThumbnailStore, src ThumbnailSource, recipeID int64, readVideoID func(context.Context) (string, error)) {
+	videoID, err := readVideoID(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "saved recipe left without a video thumbnail check", "recipe_id", recipeID, "error", err.Error())
+		return
+	}
+	KeepThumbnail(ctx, st, src, recipeID, videoID)
 }

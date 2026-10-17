@@ -18,6 +18,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -37,11 +38,15 @@ const (
 
 // Recipes is what the history needs from the recipe store.
 type Recipes interface {
+	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, id int64) (store.Info, error)
 	ListRevisions(ctx context.Context, id int64) ([]store.Revision, error)
 	GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error)
 	Restore(ctx context.Context, id, version int64) error
 	Clone(ctx context.Context, id int64) (int64, error)
+	// HasThumbnail and SaveThumbnail keep the preview image of a recipe's video
+	// (ADR-00021).
+	video.ThumbnailStore
 }
 
 // Catalog is what a version's page reads from the ingredient and equipment
@@ -55,6 +60,9 @@ type Catalog interface {
 type Deps struct {
 	Recipes Recipes
 	Catalog Catalog
+	// Thumbnails downloads the preview image of a restored recipe's video;
+	// nil means YouTube's image host.
+	Thumbnails video.ThumbnailSource
 }
 
 // Routes returns the history routes, relative to Pattern.
@@ -194,6 +202,12 @@ func restore(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("restore version %d of recipe %d: %w", version, id, err))
 			return
 		}
+		// The restored revision can carry a video with no stored thumbnail
+		// (ADR-00021 decision 3); the restore is already done.
+		video.KeepThumbnailAfter(r.Context(), d.Recipes, d.Thumbnails, id, func(ctx context.Context) (string, error) {
+			restored, err := d.Recipes.GetVersion(ctx, id, version)
+			return restored.VideoID, err
+		})
 		http.Redirect(w, r, historyPath(id), http.StatusSeeOther)
 	}
 }
@@ -210,6 +224,12 @@ func clone(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("clone recipe %d: %w", id, err))
 			return
 		}
+		// The clone is a saved revision carrying the source's video (ADR-00021
+		// decision 3); the clone is already made.
+		video.KeepThumbnailAfter(r.Context(), d.Recipes, d.Thumbnails, newID, func(ctx context.Context) (string, error) {
+			cloned, err := d.Recipes.Get(ctx, newID)
+			return cloned.VideoID, err
+		})
 		http.Redirect(w, r, recipePath(newID), http.StatusSeeOther)
 	}
 }
