@@ -38,6 +38,7 @@ const (
 
 // Recipes is what the history needs from the recipe store.
 type Recipes interface {
+	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, id int64) (store.Info, error)
 	ListRevisions(ctx context.Context, id int64) ([]store.Revision, error)
 	GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error)
@@ -201,13 +202,10 @@ func restore(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("restore version %d of recipe %d: %w", version, id, err))
 			return
 		}
-		// The restored revision can carry a video the recipe has not had a
-		// thumbnail for (ADR-00021 decision 3); the restore is already done.
-		if restored, err := d.Recipes.GetVersion(r.Context(), id, version); err != nil {
-			slog.WarnContext(r.Context(), "restored recipe left without a video thumbnail check", "recipe_id", id, "version", version, "error", err.Error())
-		} else {
-			video.KeepThumbnail(r.Context(), d.Recipes, d.Thumbnails, id, restored.VideoID)
-		}
+		// The restored revision can carry a video with no stored thumbnail
+		// (ADR-00021 decision 3); the restore is already done.
+		restored, err := d.Recipes.GetVersion(r.Context(), id, version)
+		keepThumbnail(r.Context(), d, id, restored, err)
 		http.Redirect(w, r, historyPath(id), http.StatusSeeOther)
 	}
 }
@@ -224,6 +222,21 @@ func clone(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("clone recipe %d: %w", id, err))
 			return
 		}
+		// The clone is a saved revision carrying the source's video (ADR-00021
+		// decision 3); the clone is already made.
+		cloned, err := d.Recipes.Get(r.Context(), newID)
+		keepThumbnail(r.Context(), d, newID, cloned, err)
 		http.Redirect(w, r, recipePath(newID), http.StatusSeeOther)
 	}
+}
+
+// keepThumbnail stores the thumbnail of the video of the recipe a handler has
+// just saved. readErr is the failure of reading that recipe back: the save is
+// already done, so it is logged and the response is unchanged.
+func keepThumbnail(ctx context.Context, d Deps, id int64, saved recipe.Recipe, readErr error) {
+	if readErr != nil {
+		slog.WarnContext(ctx, "saved recipe left without a video thumbnail check", "recipe_id", id, "error", readErr.Error())
+		return
+	}
+	video.KeepThumbnail(ctx, d.Recipes, d.Thumbnails, id, saved.VideoID)
 }

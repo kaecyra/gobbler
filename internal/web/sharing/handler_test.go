@@ -36,12 +36,17 @@ func (f *fakeShares) Accept(_ context.Context, id int64) (int64, error) {
 func (f *fakeShares) Decline(_ context.Context, id int64) error { f.declined = id; return nil }
 
 type fakeRecipes struct {
-	err     error
+	err error
+	// onlyID, when set, is the one recipe Get knows; any other id is not found.
+	onlyID  int64
 	videoID string
 	saved   map[string][]byte
 }
 
-func (f fakeRecipes) Get(context.Context, int64) (recipe.Recipe, error) {
+func (f fakeRecipes) Get(_ context.Context, id int64) (recipe.Recipe, error) {
+	if f.onlyID != 0 && id != f.onlyID {
+		return recipe.Recipe{}, store.ErrNotFound
+	}
 	return recipe.Recipe{Name: "<b>Pie</b>", VideoID: f.videoID}, f.err
 }
 
@@ -70,7 +75,7 @@ func (s *stubThumbs) Fetch(_ context.Context, id string) (video.Thumbnail, error
 }
 
 func TestAcceptDownloadsTheThumbnailOfTheCopiesVideo(t *testing.T) {
-	recipes := fakeRecipes{videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
+	recipes := fakeRecipes{onlyID: 77, videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
 	th := &stubThumbs{}
 	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
 	if rec.Code != http.StatusSeeOther || string(recipes.saved["dQw4w9WgXcQ"]) != "jpeg:dQw4w9WgXcQ" {
@@ -79,7 +84,7 @@ func TestAcceptDownloadsTheThumbnailOfTheCopiesVideo(t *testing.T) {
 }
 
 func TestAFailedThumbnailDownloadDoesNotFailTheAccept(t *testing.T) {
-	recipes := fakeRecipes{videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
+	recipes := fakeRecipes{onlyID: 77, videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
 	th := &stubThumbs{fail: errors.New("youtube is unreachable")}
 	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/77" || len(th.asked) != 1 {
@@ -162,5 +167,13 @@ func TestInboxListsOffersByRecipeAndSenderNameOnly(t *testing.T) {
 	empty := do(Routes(Deps{Shares: &fakeShares{}, Recipes: fakeRecipes{}}), http.MethodGet, "/", nil)
 	if !strings.Contains(empty.Body.String(), "no-shares") {
 		t.Error("an empty inbox says nothing is waiting")
+	}
+}
+
+func TestAcceptStillRedirectsWhenTheAcceptedRecipeCannotBeRead(t *testing.T) {
+	th := &stubThumbs{}
+	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: fakeRecipes{err: store.ErrNotFound}, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/77" || len(th.asked) != 0 {
+		t.Errorf("accept = %d to %q after %v, want 303 to the recipe and no download", rec.Code, rec.Header().Get("Location"), th.asked)
 	}
 }

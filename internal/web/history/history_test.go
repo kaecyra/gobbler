@@ -77,17 +77,23 @@ func newEnv(t *testing.T) *env {
 	}
 
 	thumbs := &stubThumbs{}
-	deps := Deps{Recipes: s, Catalog: cat, Thumbnails: thumbs}
+	e := &env{t: t, ctx: authed, store: s, flour: flour.ID, pan: pan.ID, thumbs: thumbs}
+	e.router = e.routerFor(Deps{Recipes: s, Catalog: cat, Thumbnails: thumbs})
+	return e
+}
+
+// routerFor mounts the history routes over deps the way internal/web does.
+func (e *env) routerFor(deps Deps) chi.Router {
 	r := chi.NewRouter()
 	// Stand in for the auth middleware, which gives every request an identity.
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			next.ServeHTTP(w, req.WithContext(withIdentity{Context: req.Context(), identity: authed}))
+			next.ServeHTTP(w, req.WithContext(withIdentity{Context: req.Context(), identity: e.ctx}))
 		})
 	})
 	r.Mount(Pattern, Routes(deps))
 	r.Mount(ClonePattern, CloneRoutes(deps))
-	return &env{t: t, ctx: authed, store: s, router: r, flour: flour.ID, pan: pan.ID, thumbs: thumbs}
+	return r
 }
 
 // withIdentity answers context values from the request first and falls back to
@@ -520,5 +526,75 @@ func TestAFailedThumbnailDownloadDoesNotFailTheRestore(t *testing.T) {
 	}
 	if e.current(id).VideoID != "dQw4w9WgXcQ" {
 		t.Error("the restore was not applied")
+	}
+}
+
+// unreadable is a store whose read-back of a saved recipe fails, as a database
+// error right after the write would.
+type unreadable struct{ *store.Store }
+
+func (unreadable) Get(context.Context, int64) (recipe.Recipe, error) {
+	return recipe.Recipe{}, errors.New("database is locked")
+}
+
+func (unreadable) GetVersion(context.Context, int64, int64) (recipe.Recipe, error) {
+	return recipe.Recipe{}, errors.New("database is locked")
+}
+
+func (e *env) post(router chi.Router, path string, form url.Values) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	defer slog.SetDefault(prev)
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestRestoreStillSucceedsWhenTheRestoredRecipeCannotBeReadBack(t *testing.T) {
+	e := newEnv(t)
+	id := e.create(e.doc("Loaf v1", "3"))
+	e.update(id, e.doc("Loaf v2", "4"))
+	router := e.routerFor(Deps{Recipes: unreadable{e.store}, Catalog: catalog.New(nil), Thumbnails: e.thumbs})
+
+	rec := e.post(router, "/recipes/"+itoa(id)+"/history/1/restore", url.Values{confirmField: {confirmValue}})
+	if rec.Code != http.StatusSeeOther || len(e.thumbs.asked) != 0 {
+		t.Fatalf("restore = %d after downloads %v, want 303 and none", rec.Code, e.thumbs.asked)
+	}
+	if e.current(id).Name != "Loaf v1" {
+		t.Error("the restore was not applied")
+	}
+}
+
+func TestCloningAVideoRecipeDownloadsItsThumbnail(t *testing.T) {
+	e := newEnv(t)
+	r := e.doc("Loaf", "3")
+	r.VideoID = "dQw4w9WgXcQ"
+	id := e.create(r)
+
+	rec := e.do(http.MethodPost, "/recipes/"+itoa(id)+"/clone", nil)
+	loc := rec.Header().Get("Location")
+	if rec.Code != http.StatusSeeOther || !strings.HasPrefix(loc, "/recipes/") {
+		t.Fatalf("clone = %d to %q, want 303 to the clone", rec.Code, loc)
+	}
+	newID, err := strconv.ParseInt(strings.TrimPrefix(loc, "/recipes/"), 10, 64)
+	if err != nil {
+		t.Fatalf("clone location %q: %v", loc, err)
+	}
+	got, err := e.store.Thumbnail(e.ctx, newID)
+	if err != nil || string(got.Content) != "jpeg:dQw4w9WgXcQ" {
+		t.Fatalf("Thumbnail of the clone = %q (%v), want the downloaded image", got.Content, err)
+	}
+}
+
+func TestCloneStillSucceedsWhenTheCloneCannotBeReadBack(t *testing.T) {
+	e := newEnv(t)
+	id := e.create(e.doc("Loaf", "3"))
+	router := e.routerFor(Deps{Recipes: unreadable{e.store}, Catalog: catalog.New(nil), Thumbnails: e.thumbs})
+
+	rec := e.post(router, "/recipes/"+itoa(id)+"/clone", nil)
+	if rec.Code != http.StatusSeeOther || len(e.thumbs.asked) != 0 {
+		t.Fatalf("clone = %d after downloads %v, want 303 and none", rec.Code, e.thumbs.asked)
 	}
 }
