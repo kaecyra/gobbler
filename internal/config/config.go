@@ -325,8 +325,8 @@ func (r *reader) emails(env string) []string {
 }
 
 // httpOrigin returns the value as an http or https origin without a trailing
-// slash, or "" when unset. A path, query, fragment or credentials, or any other scheme, is an
-// error.
+// slash, or "" when unset. A path, query, fragment or credentials, or any
+// other scheme, is an error.
 func (r *reader) httpOrigin(env string) string {
 	v := r.str(env, "")
 	if v == "" {
