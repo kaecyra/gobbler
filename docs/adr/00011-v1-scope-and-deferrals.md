@@ -1,6 +1,6 @@
 # ADR-00011: Scope and deferrals
 
-**Status:** Amended by [ADR-00018](00018-households-as-tenants.md)
+**Status:** Amended by [ADR-00018](00018-households-as-tenants.md), [ADR-00021](00021-youtube-video-on-a-recipe.md)
 
 **Date:** 2026-10-06
 

@@ -1,6 +1,6 @@
 # ADR-00002: Single Go binary: chi, templ, HTMX, SQLite
 
-**Status:** Amended by [ADR-00017](00017-cloudflared-on-the-guest.md)
+**Status:** Amended by [ADR-00017](00017-cloudflared-on-the-guest.md), [ADR-00021](00021-youtube-video-on-a-recipe.md)
 
 **Date:** 2026-10-06
 

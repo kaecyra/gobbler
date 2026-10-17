@@ -16,7 +16,7 @@ index below in the same commit.
 | ADR | Decision | Status |
 |---|---|---|
 | [00001](00001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
-| [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md) |
+| [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md), [00021](00021-youtube-video-on-a-recipe.md) |
 | [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Amended by [00018](00018-households-as-tenants.md) |
 | [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Accepted |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
@@ -25,7 +25,7 @@ index below in the same commit.
 | [00008](00008-ingredient-catalog.md) | Canonical ingredient catalog: curated seed plus USDA FoodData Central | Accepted |
 | [00009](00009-shopping-list.md) | Shopping list aggregation, pantry, live view, Todoist push | Amended by [00018](00018-households-as-tenants.md) |
 | [00010](00010-backups.md) | Nightly SQLite snapshot to S3-compatible storage | Accepted |
-| [00011](00011-v1-scope-and-deferrals.md) | Scope and deferrals | Amended by [00018](00018-households-as-tenants.md) |
+| [00011](00011-v1-scope-and-deferrals.md) | Scope and deferrals | Amended by [00018](00018-households-as-tenants.md), [00021](00021-youtube-video-on-a-recipe.md) |
 | [00012](00012-web-subpackage-per-feature.md) | Web layer as a server package plus one subpackage per feature area | Accepted |
 | [00013](00013-playwright-e2e-in-node.md) | End-to-end tests with Node Playwright under e2e/ | Accepted |
 | [00014](00014-sqlc-for-data-access.md) | Data access through sqlc-generated code | Accepted |

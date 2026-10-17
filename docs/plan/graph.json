@@ -1877,7 +1877,7 @@
     },
     {
       "id": "t-shopping-check-leak",
-      "title": "a cross-household shopping check returns 404 even when the key is already checked",
+      "title": "a cross-household shopping check returns 303 instead of 404 when the key is already checked",
       "wave": 9,
       "track": "tenancy",
       "issue": 197,

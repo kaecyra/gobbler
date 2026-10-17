@@ -100,5 +100,6 @@ megabytes each and would need their own decision on storage.
    show the draft carries the ID only in the first case, and it reaches the
    review screen (#199).
 6. ADR-00002's static-assets entry and obligation 3, and ADR-00011's
-   "Images" entry, carry amendment notes pointing here, and the third-party
+   "Images" entry, carry amendment notes pointing here; both records' Status
+   lines and their rows in the ADR index name ADR-00021; and the third-party
    boundary in `AGENTS.md` names this exception.
