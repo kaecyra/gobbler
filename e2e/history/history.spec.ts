@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { portFromEnv } from '../fixtures/ports.mjs';
 
 // The history needs recipes with revisions in the database, which the shared
 // server of the suite does not have. This spec seeds its own data directory
@@ -14,7 +15,7 @@ const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 
 // Fixed series with the other specs that run their own server (ADR-00013).
-const port = Number(process.env.GOBBLER_E2E_HISTORY_PORT ?? 38471);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_HISTORY_PORT');
 const origin = `http://127.0.0.1:${port}`;
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 // What a browser sets on a same-origin form post; request.post sets none.

@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { portFromEnv } from '../fixtures/ports.mjs';
 
 // Photo ingestion (ADR-00006). This spec starts its own gobbler whose PATH
 // begins with a directory holding a stub `tesseract` that prints fixture text,
@@ -11,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 
-const port = Number(process.env.GOBBLER_E2E_PHOTO_PORT ?? 38481);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_PHOTO_PORT');
 const origin = `http://127.0.0.1:${port}`;
 const stubDir = resolve(dirname(fileURLToPath(import.meta.url)), 'stub');
 

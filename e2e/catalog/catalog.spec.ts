@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OPERATOR, OTHER, asIdentity } from '../fixtures/identity';
+import { portFromEnv } from '../fixtures/ports.mjs';
 
 // The catalog page needs unreviewed ingredients and a recipe that uses one,
 // which the shared server of the suite does not have. This spec seeds its own
@@ -14,7 +15,7 @@ import { OPERATOR, OTHER, asIdentity } from '../fixtures/identity';
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 
-const port = Number(process.env.GOBBLER_E2E_CATALOG_PORT ?? 38521);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_CATALOG_PORT');
 const origin = `http://127.0.0.1:${port}`;
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 

@@ -3,6 +3,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { portFromEnv } from '../fixtures/ports.mjs';
 
 // The settings page shows the live backup job, whose state depends on how the
 // server is configured, so this spec starts its own gobbler per state on a
@@ -13,7 +14,7 @@ import { join } from 'node:path';
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 
-const port = Number(process.env.GOBBLER_E2E_SETTINGS_PORT ?? 38501);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_SETTINGS_PORT');
 const origin = `http://127.0.0.1:${port}`;
 
 test.use({ baseURL: origin });

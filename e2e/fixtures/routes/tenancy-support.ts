@@ -1,11 +1,11 @@
 import { expect, type APIRequestContext, type APIResponse, type Playwright } from '@playwright/test';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { createServer, type AddressInfo } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { freePorts } from '../ports.mjs';
 import { DEV, OTHER, OPERATOR, asIdentity } from '../identity';
 
 // Setup and verification for the cross-household specs (*.tenancy.spec.ts). It
@@ -58,23 +58,10 @@ export interface Server {
   recipe: number;
 }
 
-/** A port the kernel has just shown to be free. */
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = createServer();
-    probe.once('error', reject);
-    probe.listen(0, '127.0.0.1', () => {
-      const { port } = probe.address() as AddressInfo;
-      probe.close(() => resolve(port));
-    });
-  });
-}
-
 /**
  * Starts a server on port, or, if that port was taken, on a free one. The
- * default ports sit in the kernel's ephemeral range, so another test's
- * outgoing connection can hold one at the moment the server binds it: the
- * server then exits at once with "address already in use", which the health
+ * kernel can still give a port to another test's outgoing connection between
+ * the probe and the bind, and then the server exits at once with "address already in use", which the health
  * poll cannot tell from a slow start and used to wait out its whole deadline.
  */
 export async function startServer(w: Workdir, port: number, seed: boolean): Promise<Server> {
@@ -93,7 +80,7 @@ export async function startServer(w: Workdir, port: number, seed: boolean): Prom
     if (attempt === attempts) {
       throw new Error(`the tenancy server did not start after ${attempts} attempts (${failures.join('; ')}); its own log is above`);
     }
-    port = await freePort();
+    [port] = await freePorts(1);
   }
 }
 

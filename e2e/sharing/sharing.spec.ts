@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEV, OTHER, STRANGER, OPERATOR } from '../fixtures/identity';
+import { portFromEnv } from '../fixtures/ports.mjs';
 import { as, startHousehold, uniqueEmail } from '../household/support';
 
 // Sending a recipe copy to another household (ADR-00018, Sharing). The sender
@@ -15,7 +16,7 @@ import { as, startHousehold, uniqueEmail } from '../household/support';
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 
-const port = Number(process.env.GOBBLER_E2E_SHARING_PORT ?? 38451);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_SHARING_PORT');
 const origin = `http://127.0.0.1:${port}`;
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
