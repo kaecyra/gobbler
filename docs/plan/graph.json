@@ -2134,7 +2134,9 @@
         "e2e/fixtures/**",
         "e2e/playwright.config.ts",
         "e2e/recipeview/**",
-        "docs/operations.md"
+        "docs/operations.md",
+        "docs/design.md",
+        "internal/web/routes_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
