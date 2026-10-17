@@ -14,21 +14,21 @@ templ RecipeMetaRow(m RecipeMeta) {
 	<div class="meta-row">
 		if m.Meal != "" {
 			<span class="mtype" data-testid="meal-type">
-				@mealIcon(m.MealType)
+				@MealIcon(m.MealType)
 				<span class="lbl">{ m.Meal }</span>
 			</span>
 		}
 		if m.Spice > 0 {
 			<span class="heat big" role="img" aria-label={ heatLabel(m.Spice) } title={ heatLabel(m.Spice) } data-testid="spice">
 				for range chilis(m.Spice) {
-					@chili()
+					@Chili()
 				}
 			</span>
 		}
 		if m.Spoons > 0 {
 			<span class="spoons" role="img" aria-label={ verdict(m.Spoons) } title={ verdict(m.Spoons) } data-testid="rating">
 				for _, on := range spoonsOn(m.Spoons) {
-					@spoon(on)
+					@Spoon(on)
 				}
 			</span>
 		} else {
@@ -103,7 +103,9 @@ templ meanwhile(items []display.MeanwhileItem) {
 // currentColor (docs/ui/design.md). They are decoration: the text beside each
 // one, or an aria-label on its wrapper, is the accessible name.
 
-templ mealIcon(m recipe.MealType) {
+// MealIcon draws a meal type's line icon; an unset or unknown type draws the
+// main-course icon, so callers guard on an empty type when nothing should show.
+templ MealIcon(m recipe.MealType) {
 	switch m {
 		case recipe.MealBreakfast:
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0M12 6.5V4M5.2 10.2 3.8 8.8M18.8 10.2l1.4-1.4M8 21h8"></path></svg>
@@ -120,13 +122,13 @@ templ mealIcon(m recipe.MealType) {
 	}
 }
 
-// chili is one pepper of the spice scale.
-templ chili() {
+// Chili is one pepper of the spice scale.
+templ Chili() {
 	<svg class="chili" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 8c-3.6.2-5.6 3-7.2 6.3S5.3 19.6 3.6 20.2c4.6 1.1 11.2-.9 13.3-5.9 1-2.4.4-4.9-1.3-6.3z" fill="currentColor"></path><path d="M15.6 8c.2-2 1.4-3.6 3.6-4.2" fill="none" stroke="var(--ok)" stroke-width="1.8" stroke-linecap="round"></path></svg>
 }
 
-// spoon is one wooden spoon of the rating; on fills it.
-templ spoon(on bool) {
+// Spoon is one wooden spoon of the rating; on fills it.
+templ Spoon(on bool) {
 	<svg class={ "spoon", templ.KV("on", on) } viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="7.5" cy="7.5" rx="3.4" ry="4.8" transform="rotate(-45 7.5 7.5)"></ellipse><path d="M10.4 10.4 20 20"></path></svg>
 }
 

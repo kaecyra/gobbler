@@ -72,7 +72,7 @@ templ resultsFragment(res results) {
 				<section class="group" aria-label={ g.Title }>
 					<h2 class="grp-h">
 						if g.Meal != "" {
-							@mealIcon(g.Meal)
+							@layout.MealIcon(g.Meal)
 						}
 						{ g.Title }
 						<small>{ itoa(len(g.Cards)) }</small>
