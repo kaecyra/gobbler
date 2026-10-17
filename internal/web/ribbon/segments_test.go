@@ -7,8 +7,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
-func step(min int, passive bool, kind recipe.StageKind) recipe.Step {
-	return recipe.Step{Duration: time.Duration(min) * time.Minute, Passive: passive, Kind: kind}
+func step(mins int, passive bool, kind recipe.StageKind) recipe.Step {
+	return recipe.Step{Duration: time.Duration(mins) * time.Minute, Passive: passive, Kind: kind}
 }
 
 func TestFamilyOf(t *testing.T) {

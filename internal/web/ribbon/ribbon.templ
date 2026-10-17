@@ -21,7 +21,7 @@ templ Large(r Ribbon) {
 // ribbon prints both levels. Level 0 is shown until the script finds it does
 // not fit and sets data-level.
 templ ribbon(r Ribbon, class string) {
-	<div class={ class } data-rib data-level="0" role="img" aria-label={ r.Label }>
+	<div class={ class, templ.KV("rib-merges", r.Merges()) } data-rib data-level="0" role="img" aria-label={ r.Label }>
 		@level("rib-lv rib-full", r.Full)
 		if r.Merges() {
 			@level("rib-lv rib-merged", r.Merged)

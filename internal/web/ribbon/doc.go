@@ -4,8 +4,9 @@
 //
 // The server computes everything: Build turns steps into segments at two merge
 // levels, and the templ components print both. The embedded script
-// (ScriptPath) only picks which level fits the width it is given, so the
-// ribbon is complete without it, at the unmerged level.
+// (ScriptPath) only picks which level fits the width it is given. Without it
+// the ribbon shows every step and wraps onto further lines when narrow, so
+// nothing is clipped.
 //
 // A page that shows a ribbon links StylesheetPath, and ScriptPath if it wants
 // the fit.

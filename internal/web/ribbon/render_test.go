@@ -41,6 +41,7 @@ func TestRibbonMarkup(t *testing.T) {
 		`aria-label="20 minutes prep, then 30 minutes hands-on, then 3 hours braise"`,
 		`data-level="0"`,
 		`rib-full`, `rib-merged`,
+		`rib-merges`,
 		`rib-seg rib-butter`,
 		`flex-grow:`,
 	} {
@@ -55,7 +56,7 @@ func TestRibbonMarkup(t *testing.T) {
 
 func TestRibbonOmitsMergedLevelWhenNothingMerges(t *testing.T) {
 	got := render(t, Card(Build([]recipe.Step{step(10, false, ""), step(20, true, recipe.StageRise)})))
-	if strings.Contains(got, "rib-merged") {
+	if strings.Contains(got, "rib-merged") || strings.Contains(got, "rib-merges") {
 		t.Errorf("duplicate merged level printed:\n%s", got)
 	}
 }

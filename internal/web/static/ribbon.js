@@ -1,10 +1,11 @@
 // Fits the time ribbon to its width (docs/ui/design.md, Time ribbon).
 //
 // The server prints every ribbon at two merge levels and shows the first. This
-// script only chooses: level 0 shows every step, level 1 the merged segments,
-// level 2 the merged segments with tighter padding. It takes the first level
-// that does not overflow. Without it the ribbon stays at level 0, complete but
-// possibly cropped.
+// script only chooses, as the mockup's fitRib does: level 0 shows every step,
+// level 1 the merged segments, level 2 the merged segments with tighter
+// padding. It takes the first level that fits on one line. If none does, it
+// leaves the ribbon at level 2 and lets it wrap, so nothing is clipped.
+// Without this script the ribbon shows level 0 and wraps when narrow.
 (function () {
   'use strict';
 
@@ -12,36 +13,39 @@
     return el.scrollWidth > el.clientWidth + 1;
   }
 
+  // Fixed height and one line while measuring; wrapping when nothing fits.
   function fit(el) {
     // A hidden ribbon has no width to measure; it is fitted when it shows.
     if (!el.clientWidth) return;
-    var merges = el.querySelector('.rib-merged') !== null;
-    var last = merges ? 2 : 0;
-    for (var level = 0; level <= last; level++) {
+    el.setAttribute('data-fit', '');
+    for (var level = 0; level <= 2; level++) {
       el.setAttribute('data-level', String(level));
       if (!overflows(el)) return;
     }
+    el.removeAttribute('data-fit');
   }
 
+  // Wrapping changes the height, so only a change of width refits; otherwise
+  // the observer would answer its own change.
   var observer = typeof ResizeObserver === 'function'
     ? new ResizeObserver(function (entries) {
-        entries.forEach(function (entry) { fit(entry.target); });
+        entries.forEach(function (entry) {
+          var el = entry.target;
+          var width = el.clientWidth;
+          if (el.__ribWidth === width) return;
+          el.__ribWidth = width;
+          fit(el);
+        });
       })
     : null;
-  var seen = typeof WeakSet === 'function' ? new WeakSet() : null;
 
   function scan(root) {
-    var ribbons = root.querySelectorAll('[data-rib]');
-    Array.prototype.forEach.call(ribbons, function (el) {
-      if (observer) {
-        // Observing fires once at start, which does the first fit.
-        if (seen && !seen.has(el)) {
-          seen.add(el);
-          observer.observe(el);
-        }
-      } else {
-        fit(el);
-      }
+    var ribbons = Array.prototype.slice.call(root.querySelectorAll('[data-rib]'));
+    if (root.matches && root.matches('[data-rib]')) ribbons.push(root);
+    ribbons.forEach(function (el) {
+      // Observing fires once at start, which does the first fit.
+      if (observer) observer.observe(el);
+      else fit(el);
     });
   }
 
