@@ -1,5 +1,5 @@
 import { defineConfig } from '@playwright/test';
-import { portFromEnv } from './fixtures/ports.mjs';
+import { portsFromEnv } from './fixtures/ports.mjs';
 
 // The suite runs against a real gobbler binary in dev-auth mode on loopback
 // with a throwaway database (ADR-00013, ADR-00003). `make e2e` builds the
@@ -7,9 +7,8 @@ import { portFromEnv } from './fixtures/ports.mjs';
 // Free ports from the kernel, not fixed ones in its ephemeral range (#257).
 // Written back to the environment so a worker that loads this file again, and
 // the specs, see the same ports.
-const port = await portFromEnv(process.env, 'GOBBLER_E2E_PORT');
+const [port, accessPort] = await portsFromEnv(process.env, ['GOBBLER_E2E_PORT', 'GOBBLER_E2E_ACCESS_PORT']);
 process.env.GOBBLER_E2E_PORT = String(port);
-const accessPort = await portFromEnv(process.env, 'GOBBLER_E2E_ACCESS_PORT');
 process.env.GOBBLER_E2E_ACCESS_PORT = String(accessPort);
 const baseURL = `http://127.0.0.1:${port}`;
 const accessURL = `http://127.0.0.1:${accessPort}`;
