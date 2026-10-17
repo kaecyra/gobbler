@@ -154,7 +154,9 @@ type Recipe struct {
 
 // Validate checks the structural rules of the model: at least one component,
 // well-formed lines and qualifiers, non-negative durations, a valid step graph (see
-// ValidateSteps) and, when set, a well-formed video ID. It does not judge content such as an empty name.
+// ValidateSteps) and, when set, a well-formed video ID, a meal type and stage
+// kinds from their closed sets and a spice level of 0 to 3. It does not judge
+// content such as an empty name.
 func (r Recipe) Validate() error {
 	if len(r.Components) == 0 {
 		return ErrNoComponents
