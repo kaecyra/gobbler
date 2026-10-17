@@ -83,7 +83,6 @@ func newRouter(d Deps) (*chi.Mux, error) {
 
 	r.Get(HealthPath, healthHandler(d.HealthDetails))
 	r.Mount(nonmember.Pattern, nonmember.Routes())
-	r.Get("/", homeHandler)
 	r.Handle("/static/*", staticHandler())
 	mountFeatures(r, d)
 	return r, nil

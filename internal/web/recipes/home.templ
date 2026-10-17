@@ -1,0 +1,82 @@
+package recipes
+
+import (
+	"github.com/kaecyra/gobbler/internal/web/layout"
+	"github.com/kaecyra/gobbler/internal/web/ribbon"
+)
+
+// homePage is the landing page: the hero search, a suggestion and the recently
+// made panel. Typing in the search moves to the library through htmx, with the
+// address bar following, so Back returns here.
+templ homePage(h homeView) {
+	@layout.Page("Home") {
+		@templ.Raw("<style>" + libraryStyle + "</style>")
+		@ribbonAssets()
+		@focusKey()
+		<section id="library">
+			<form
+				id="hero"
+				class="hero"
+				role="search"
+				action="/recipes"
+				method="get"
+				hx-get="/recipes"
+				hx-target="#content"
+				hx-select="#content"
+				hx-swap="outerHTML"
+				hx-push-url="true"
+				hx-trigger="input changed delay:300ms from:find input[type=search], submit"
+			>
+				<h1>What are we making?</h1>
+				@searchBox("")
+				<p>Search by name, ingredient or anything you wrote in a note.</p>
+			</form>
+			<div class="lib home">
+				<div class="side">
+					if h.Empty {
+						@emptyLibrary()
+					} else {
+						@suggestion(h.Suggest)
+					}
+					@recentPanel(h.Recent)
+				</div>
+			</div>
+		</section>
+	}
+}
+
+// suggestion is the home page's pick: a recipe the household has not made for a
+// while. "Another idea" asks for the next one and replaces just this block.
+templ suggestion(s suggestView) {
+	<article class="suggest" id="suggest" aria-label="A suggestion from gobbler">
+		<div class="sg-gob"><img src={ layout.MascotRollingPin } alt="" width="150"/></div>
+		<div class="sg-body">
+			<p class="sg-voice">{ s.Voice }</p>
+			<h2 class="sg-name">{ s.Card.Name }</h2>
+			<div class="sg-meta">
+				if s.Card.Meal != "" {
+					@mealType(s.Card.Meal, s.Card.MealLabel)
+				}
+				<span>{ s.When }</span>
+				if s.Card.Rating > 0 {
+					@spoons(s.Card.Rating, s.Card.RatingLabel)
+				}
+			</div>
+			<div class="sg-act">
+				<a class="btn accent" href={ templ.SafeURL(s.Card.Href) }>Open recipe</a>
+				if s.NextHref != "" {
+					<a
+						class="sg-next"
+						href={ templ.SafeURL(s.NextHref) }
+						hx-get={ s.NextHref }
+						hx-target="#suggest"
+						hx-swap="outerHTML"
+					>Another idea</a>
+				}
+			</div>
+			<div class="sg-rib">
+				@ribbon.Card(s.Card.Ribbon)
+			</div>
+		</div>
+	</article>
+}
