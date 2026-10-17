@@ -2253,7 +2253,7 @@
       "wave": 9,
       "track": null,
       "issue": 250,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-ribbon"
       ],
@@ -3199,6 +3199,12 @@
       "title": "add and review screens in the mockup design",
       "merged": "21d07fa0c9a9b32320f919989af5b64e64f0741e",
       "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-library",
+      "title": "home hero search, library cards grouped by meal, side panels",
+      "merged": "5da0df419aa7505380a6eabb94bf50fe3e8bac17",
+      "note": "ADR-00022; design in docs/ui/design.md. Carries the ribbon e2e u-ribbon (#249) could not write without a page: level 0 shows, data-level moves to 1 or 2 as the card narrows, tooltip and aria-label present. Link ribbon.StylesheetPath and ribbon.ScriptPath."
     }
   ],
   "adr_sequence": {
