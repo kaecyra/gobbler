@@ -1731,7 +1731,7 @@
       "wave": 9,
       "track": null,
       "issue": 187,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-plugin-extractors",
         "w3-equipment-size",
@@ -2685,6 +2685,11 @@
       "title": "a confirmed save must not fail with SQLITE_BUSY",
       "merged": "1a85c8b7310c7c01fa9dfdb25f64d922939deb8f",
       "note": "Find the writer that holds the lock past busy_timeout or bypasses WithTx; fix at the db layer. A cause in another package is out of lane: stop and report it with file:line."
+    },
+    {
+      "id": "i-equipment-extract",
+      "title": "extract equipment",
+      "merged": "b962842af9086fe8cb72b110a4901a345cffbe76"
     }
   ],
   "adr_sequence": {
