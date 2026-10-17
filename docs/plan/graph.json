@@ -2262,7 +2262,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00022; design in docs/ui/design.md."
+      "note": "ADR-00022; design in docs/ui/design.md. Carries the ribbon e2e u-ribbon (#249) could not write without a page: level 0 shows, data-level moves to 1 or 2 as the card narrows, tooltip and aria-label present. Link ribbon.StylesheetPath and ribbon.ScriptPath."
     },
     {
       "id": "u-recipe-view",
