@@ -23,6 +23,7 @@ let server: ChildProcess | undefined;
 let id = 0;
 let meanwhileId = 0;
 let cloneId = 0;
+let bareVideoId = 0;
 
 test.use({ baseURL: origin });
 // One server per file: fullyParallel would otherwise run beforeAll in every worker.
@@ -34,7 +35,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId } = JSON.parse(out));
   server = spawn(bin, ['serve'], {
     env: {
       PATH: process.env.PATH ?? '',
@@ -231,4 +232,83 @@ test('an unscaled view has no larger-pan hint', async ({ page }) => {
   await page.goto(`/recipes/${id}`);
   await expect(page.getByTestId('equipment-item')).toHaveCount(2);
   await expect(page.getByTestId('equipment-hint')).toHaveCount(0);
+});
+
+// ADR-00021 obligation 1. The video is click to play: the page makes no request
+// to a YouTube origin before the button is pressed, and loads the
+// youtube-nocookie.com player after. The requests are intercepted, so the test
+// never reaches YouTube whatever the network does.
+const YOUTUBE_HOST = /(^|\.)(youtube\.com|youtube-nocookie\.com|ytimg\.com|googlevideo\.com|youtu\.be)$/;
+const VIDEO = 'dQw4w9WgXcQ';
+
+async function stubYouTube(page: import('@playwright/test').Page): Promise<string[]> {
+  const asked: string[] = [];
+  await page.route((url) => YOUTUBE_HOST.test(url.hostname), async (route) => {
+    asked.push(route.request().url());
+    await route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>stub player</title>' });
+  });
+  return asked;
+}
+
+test('a recipe video makes no request to YouTube until Play is pressed, then loads the nocookie player', async ({ page }) => {
+  const asked = await stubYouTube(page);
+  await page.goto(`/recipes/${id}`);
+  const thumb = page.getByTestId('video-thumbnail');
+  await expect(thumb).toBeVisible();
+  // The preview is the application's own copy, and it decoded.
+  await expect(thumb).toHaveAttribute('src', `/recipes/${id}/video/thumbnail`);
+  await expect.poll(() => thumb.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await page.waitForLoadState('networkidle');
+  expect(asked, 'requests to a YouTube origin before Play').toEqual([]);
+  await expect(page.locator('iframe')).toHaveCount(0);
+
+  await page.getByTestId('video-play').click();
+  const frame = page.getByTestId('video-frame');
+  await expect(frame).toBeVisible();
+  const src = (await frame.getAttribute('src')) ?? '';
+  expect(src.startsWith(`https://www.youtube-nocookie.com/embed/${VIDEO}?`)).toBe(true);
+  expect(new URL(src).searchParams.get('autoplay')).toBe('1');
+  await expect(page.getByTestId('video-play')).toHaveCount(0);
+  await expect.poll(() => asked.some((u) => new URL(u).hostname === 'www.youtube-nocookie.com')).toBe(true);
+  expect(asked.filter((u) => new URL(u).hostname !== 'www.youtube-nocookie.com'), 'other YouTube origins after Play').toEqual([]);
+});
+
+test('scaling the recipe does not reset a playing video', async ({ page }) => {
+  await stubYouTube(page);
+  await page.goto(`/recipes/${id}`);
+  await page.getByTestId('video-play').click();
+  await expect(page.getByTestId('video-frame')).toBeVisible();
+  await page.getByRole('link', { name: '2×' }).click();
+  await expect(page.getByTestId('servings')).toHaveText('8');
+  await expect(page.getByTestId('video-frame')).toBeVisible();
+});
+
+test('a video whose thumbnail could not be downloaded shows a plain placeholder that still plays', async ({ page }) => {
+  const asked = await stubYouTube(page);
+  await page.goto(`/recipes/${bareVideoId}`);
+  await expect(page.getByTestId('video-play')).toBeVisible();
+  await expect(page.getByTestId('video-thumbnail')).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
+  expect(asked).toEqual([]);
+  await page.getByTestId('video-play').click();
+  await expect(page.getByTestId('video-frame')).toBeVisible();
+});
+
+test('a recipe without a video has no player and loads no video script', async ({ page }) => {
+  const scripts: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/static/video')) scripts.push(r.url());
+  });
+  await page.goto(`/recipes/${meanwhileId}`);
+  await expect(page.getByText('Mix the dough.')).toBeVisible();
+  await expect(page.getByTestId('video')).toHaveCount(0);
+  expect(scripts).toEqual([]);
+});
+
+test('the thumbnail is served as an image through the recipe', async ({ request }) => {
+  const res = await request.get(`/recipes/${id}/video/thumbnail`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toBe('image/png');
+  const none = await request.get(`/recipes/${bareVideoId}/video/thumbnail`);
+  expect(none.status()).toBe(404);
 });

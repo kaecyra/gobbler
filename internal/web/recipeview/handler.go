@@ -30,6 +30,10 @@ const Pattern = "/recipes/{id}"
 type Recipes interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, id int64) (store.Info, error)
+	// HasThumbnail and Thumbnail serve the preview image of the recipe's video
+	// (ADR-00021). Thumbnail is by recipe, never by video ID.
+	HasThumbnail(ctx context.Context, videoID string) (bool, error)
+	Thumbnail(ctx context.Context, id int64) (store.Thumbnail, error)
 }
 
 // Catalog is what the view reads from the ingredient and equipment catalog.
@@ -48,7 +52,41 @@ type Deps struct {
 func Routes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", handle(d))
+	r.Get(thumbnailRoute, thumbnail(d))
 	return r
+}
+
+// thumbnailRoute is the thumbnail's path below Pattern.
+const thumbnailRoute = "/video/thumbnail"
+
+// thumbnailMaxAge lets the browser keep a thumbnail for a day; it is private
+// because the response is behind the household check.
+const thumbnailMaxAge = "private, max-age=86400"
+
+// thumbnail serves the stored preview image of the recipe's video. The image
+// is reached through the recipe, which the store scopes to the household, so a
+// recipe of another household, a recipe with no video and a video with no
+// stored image all answer 404 (ADR-00021 decision 4).
+func thumbnail(d Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil || id <= 0 {
+			layout.WriteError(w, r, fmt.Errorf("recipe id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
+			return
+		}
+		t, err := d.Recipes.Thumbnail(r.Context(), id)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load thumbnail of recipe %d: %w", id, err))
+			return
+		}
+		h := w.Header()
+		h.Set("Content-Type", t.ContentType)
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Cache-Control", thumbnailMaxAge)
+		if _, err := w.Write(t.Content); err != nil {
+			slog.WarnContext(r.Context(), "write thumbnail", "recipe_id", id, "error", err.Error())
+		}
+	}
 }
 
 func handle(d Deps) http.HandlerFunc {
@@ -93,6 +131,14 @@ func handle(d Deps) http.HandlerFunc {
 			return
 		}
 		v.Notice = notice
+		if rec.VideoID != "" {
+			has, err := d.Recipes.HasThumbnail(r.Context(), rec.VideoID)
+			if err != nil {
+				layout.WriteError(w, r, fmt.Errorf("check thumbnail of recipe %d: %w", id, err))
+				return
+			}
+			v.HasThumbnail = has
+		}
 		if info.ClonedFrom != nil {
 			v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
 		}

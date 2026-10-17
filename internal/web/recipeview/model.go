@@ -37,11 +37,16 @@ type view struct {
 	Description string
 	Author      string
 	SourceURL   string
-	Tags        []string
-	Rating      *int
-	Calories    *int
-	Servings    string
-	Yield       string
+	// VideoID is the recipe's YouTube video, empty for none. HasThumbnail says
+	// whether a preview image is stored for it; without one the page shows a
+	// plain placeholder (ADR-00021).
+	VideoID      string
+	HasThumbnail bool
+	Tags         []string
+	Rating       *int
+	Calories     *int
+	Servings     string
+	Yield        string
 
 	// Times lists prep, cook and the special times that are set, in that
 	// order; Total is the derived total.
@@ -105,7 +110,7 @@ type equipmentView struct {
 func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o display.Options) (view, error) {
 	v := view{
 		ID: id, Name: r.Name, Description: r.Description, Author: r.Author,
-		SourceURL: r.SourceURL, Tags: r.Tags, Rating: r.Rating, Calories: r.CaloriesPerServing,
+		SourceURL: r.SourceURL, VideoID: r.VideoID, Tags: r.Tags, Rating: r.Rating, Calories: r.CaloriesPerServing,
 		Scaled: o.Scaled(), Multiplier: o.Mult.String(), Opts: o,
 	}
 	var err error

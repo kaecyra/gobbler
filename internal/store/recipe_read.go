@@ -30,6 +30,9 @@ func loadDocument(ctx context.Context, q *storedb.Queries, hid, id int64, units 
 	if r.Servings, err = decodeQty(stringPtr(row.Servings)); err != nil {
 		return recipe.Recipe{}, fmt.Errorf("recipe %d servings: %w", id, err)
 	}
+	if r.VideoID, err = q.GetRecipeVideo(ctx, storedb.GetRecipeVideoParams{ID: id, HouseholdID: hid}); err != nil {
+		return recipe.Recipe{}, fmt.Errorf("read recipe %d video: %w", id, err)
+	}
 	r.CaloriesPerServing, r.Rating = intPtr(row.CaloriesPerServing), intPtr(row.Rating)
 	r.Times = recipe.Times{Prep: time.Duration(row.PrepNs), Cook: time.Duration(row.CookNs), Total: time.Duration(row.TotalNs)}
 

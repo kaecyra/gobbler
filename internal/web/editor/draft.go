@@ -30,9 +30,11 @@ type draft struct {
 	Version int64
 
 	Name, Description, SourceURL, Author string
-	YieldQty, YieldUnit, Servings        string
-	Calories, Tags                       string
-	Prep, Cook, Total                    string
+	// Video is what was typed in the video field: a YouTube link or a bare ID.
+	Video                         string
+	YieldQty, YieldUnit, Servings string
+	Calories, Tags                string
+	Prep, Cook, Total             string
 
 	Components []compDraft
 	Equipment  []equipDraft
@@ -94,7 +96,7 @@ type lookups struct {
 // fromRecipe turns a stored recipe into the form's starting draft.
 func fromRecipe(r recipe.Recipe, names lookups) draft {
 	d := draft{
-		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author,
+		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, Video: r.VideoID,
 		YieldQty: qtyText(r.Yield.Qty), YieldUnit: r.Yield.Unit, Servings: qtyText(r.Servings),
 		Tags: strings.Join(r.Tags, ", "),
 		Prep: durationText(r.Times.Prep), Cook: durationText(r.Times.Cook), Total: durationText(r.Times.Total),
@@ -160,7 +162,7 @@ func durationText(d time.Duration) string {
 // order and renumbered from zero, so a hole in the posted indexes closes.
 func parseForm(f url.Values) draft {
 	d := draft{
-		Name: f.Get("name"), Description: f.Get("description"), SourceURL: f.Get("source_url"), Author: f.Get("author"),
+		Name: f.Get("name"), Description: f.Get("description"), SourceURL: f.Get("source_url"), Author: f.Get("author"), Video: f.Get("video"),
 		YieldQty: f.Get("yield_qty"), YieldUnit: f.Get("yield_unit"), Servings: f.Get("servings"),
 		Calories: f.Get("calories"), Tags: f.Get("tags"),
 		Prep: f.Get("prep"), Cook: f.Get("cook"), Total: f.Get("total"),

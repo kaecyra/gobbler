@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
+	"github.com/kaecyra/gobbler/internal/video"
 )
 
 // Sentinel errors returned (wrapped) by Recipe.Validate.
@@ -21,6 +22,9 @@ var (
 	ErrInvalidLine = errors.New("invalid ingredient line")
 	// ErrInvalidDuration is returned for a negative step duration or time.
 	ErrInvalidDuration = errors.New("negative duration")
+	// ErrInvalidVideoID is returned for a video ID that is neither empty nor an
+	// 11-character YouTube video ID (ADR-00021).
+	ErrInvalidVideoID = errors.New("invalid video id")
 )
 
 // IngredientID references a canonical ingredient (ADR-00008). The catalog owns
@@ -119,10 +123,13 @@ type Component struct {
 // scraped and never computed (ADR-00011); nil means not stated. Rating is nil
 // when unrated.
 type Recipe struct {
-	Name               string
-	Description        string
-	SourceURL          string
-	Author             string
+	Name        string
+	Description string
+	SourceURL   string
+	Author      string
+	// VideoID is the 11-character ID of the recipe's YouTube video, empty when
+	// it has none (ADR-00021). Nothing else about the video is stored.
+	VideoID            string
 	Yield              Yield
 	Servings           quantity.Quantity
 	CaloriesPerServing *int
@@ -134,11 +141,14 @@ type Recipe struct {
 }
 
 // Validate checks the structural rules of the model: at least one component,
-// well-formed lines and qualifiers, non-negative durations, and a valid step graph (see
-// ValidateSteps). It does not judge content such as an empty name.
+// well-formed lines and qualifiers, non-negative durations, a valid step graph (see
+// ValidateSteps) and, when set, a well-formed video ID. It does not judge content such as an empty name.
 func (r Recipe) Validate() error {
 	if len(r.Components) == 0 {
 		return ErrNoComponents
+	}
+	if r.VideoID != "" && !video.IsID(r.VideoID) {
+		return fmt.Errorf("%w: %q", ErrInvalidVideoID, r.VideoID)
 	}
 	for ci, c := range r.Components {
 		for li, l := range c.Lines {

@@ -14,6 +14,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/shopping"
+	"github.com/kaecyra/gobbler/internal/video"
 )
 
 // proposal is a catalog entry the user asked to add as unreviewed. It sits at
@@ -39,6 +40,7 @@ func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec 
 		d.Errs["name"] = "A recipe needs a name."
 	}
 	rec.Description, rec.SourceURL, rec.Author = d.Description, strings.TrimSpace(d.SourceURL), strings.TrimSpace(d.Author)
+	rec.VideoID = b.video()
 	rec.Tags = tagList(d.Tags)
 	rec.Yield.Unit = strings.TrimSpace(d.YieldUnit)
 	rec.Yield.Qty = b.optionalQuantity("yield_qty", d.YieldQty, "The yield amount")
@@ -179,6 +181,18 @@ func (b *builder) optionalQuantity(field, text, label string) quantity.Quantity 
 
 func quantityMessage(label, text string) string {
 	return fmt.Sprintf("%s %q is not a quantity. Use a whole number, decimal, fraction or mixed number such as 1 1/2, ½ or 0.75, or a range such as 2-3.", label, text)
+}
+
+// video reads the video field into the 11-character ID the recipe stores. A
+// link or ID that cannot be read is a message beside the field and an empty ID;
+// the recipe is then not saved.
+func (b *builder) video() string {
+	id, err := video.ParseID(b.d.Video)
+	if err != nil {
+		b.d.Errs["video"] = fmt.Sprintf("%q is not a YouTube video. %s", strings.TrimSpace(b.d.Video), video.Message)
+		return ""
+	}
+	return id
 }
 
 func (b *builder) calories() *int {

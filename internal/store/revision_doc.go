@@ -63,6 +63,7 @@ type docRecipe struct {
 	Description string         `json:"description,omitempty"`
 	SourceURL   string         `json:"source_url,omitempty"`
 	Author      string         `json:"author,omitempty"`
+	VideoID     string         `json:"video_id,omitempty"`
 	YieldQty    *string        `json:"yield_qty,omitempty"`
 	YieldUnit   string         `json:"yield_unit,omitempty"`
 	Servings    *string        `json:"servings,omitempty"`
@@ -80,7 +81,7 @@ type docRecipe struct {
 // encodeDocument renders r as revision document JSON.
 func encodeDocument(r recipe.Recipe, units *unitTable) ([]byte, error) {
 	d := docRecipe{
-		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author,
+		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, VideoID: r.VideoID,
 		YieldUnit: r.Yield.Unit, Calories: r.CaloriesPerServing, Tags: r.Tags, Rating: r.Rating,
 		PrepNS: int64(r.Times.Prep), CookNS: int64(r.Times.Cook), TotalNS: int64(r.Times.Total),
 	}
@@ -198,7 +199,7 @@ func (d *docRecipe) repointIngredient(loser, winner int64) {
 // catalog.
 func (d docRecipe) toRecipe(units *unitTable) (recipe.Recipe, error) {
 	r := recipe.Recipe{
-		Name: d.Name, Description: d.Description, SourceURL: d.SourceURL, Author: d.Author,
+		Name: d.Name, Description: d.Description, SourceURL: d.SourceURL, Author: d.Author, VideoID: d.VideoID,
 		Yield:              recipe.Yield{Unit: d.YieldUnit},
 		CaloriesPerServing: d.Calories, Tags: d.Tags, Rating: d.Rating,
 		Times: recipe.Times{Prep: time.Duration(d.PrepNS), Cook: time.Duration(d.CookNS), Total: time.Duration(d.TotalNS)},

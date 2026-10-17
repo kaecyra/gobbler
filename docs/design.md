@@ -13,6 +13,9 @@ and this document is wrong.
 - **Store** it as structured data: components, semantic ingredient lines,
   equipment, a step graph, times, notes, revisions
   ([ADR-00004](adr/00004-recipe-data-model.md)).
+- **Watch** it, optionally: a recipe may carry a YouTube video that plays at the
+  top of its page only when someone presses Play; the thumbnail is downloaded at
+  save and kept in SQLite ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)).
 - **Find** it by full-text search and tags.
 - **Follow** it: scale it, switch units, see "meanwhile" guidance, use cook mode
   ([ADR-00005](adr/00005-quantities-and-units.md)).
@@ -51,9 +54,10 @@ dependencies.
 | `db` | SQLite connection, WAL setup, embedded `goose` migrations, the shared transaction helpers (`WithTx`, `WithReadTx`) and constraint-error wrapper (`WrapWrite`) | `config` |
 | `auth` | Access JWT verification middleware, dev bypass | `config` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
-| `recipe` | Domain types, step-graph validation, "meanwhile" derivation (pure) | `quantity` |
+| `recipe` | Domain types, step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
+| `video` | Reading a pasted YouTube link into the video ID a recipe stores, the thumbnail and embed addresses, and the thumbnail download ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)) | — |
 | `recipe/display` | What pages show of a recipe: scale, servings and unit-mode options, formatted ingredient and equipment lines, step numbers, durations, meanwhile items; shared by the recipe view and cook mode, which may not import each other (pure apart from catalog lookups) | `quantity`, `recipe`, `catalog` |
-| `store` | Persistence for recipes, revisions, notes, snapshots, FTS index; queries in `queries/`, sqlc-generated `storedb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `recipe` |
+| `store` | Persistence for recipes, revisions, notes, snapshots, video thumbnails, FTS index; queries in `queries/`, sqlc-generated `storedb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `recipe`, `video` |
 | `catalog` | Canonical ingredients, units, equipment, aliases, matching, USDA import; queries in `queries/`, sqlc-generated `catalogdb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)); ingredients in a central layer plus a per-household overlay, scoped by the household on the context ([ADR-00018](adr/00018-households-as-tenants.md)) | `db`, `household`, `quantity` |
 | `parse` | Ingredient-line parser, duration parser, text sectioning (pure) | `quantity`, `catalog` (matching interface) |
 | `ingest` | Acquire → extract → parse → score → fallback pipeline; JSON-LD, microdata, site extractors, OCR | `parse`, `recipe`, LLM interface |

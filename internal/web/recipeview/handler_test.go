@@ -46,6 +46,14 @@ func (f fakeRecipes) Info(_ context.Context, id int64) (store.Info, error) {
 	return store.Info{ID: id, Version: 1}, nil
 }
 
+// HasThumbnail and Thumbnail: the fake stores no thumbnails; the real store
+// serves them in video_test.go.
+func (f fakeRecipes) HasThumbnail(context.Context, string) (bool, error) { return false, nil }
+
+func (f fakeRecipes) Thumbnail(_ context.Context, id int64) (store.Thumbnail, error) {
+	return store.Thumbnail{}, fmt.Errorf("recipe %d: %w", id, store.ErrNoThumbnail)
+}
+
 type fakeCatalog struct {
 	ingredients map[int64]catalog.Ingredient
 	equipment   map[int64]catalog.Equipment
@@ -439,6 +447,14 @@ func (failingRecipes) Get(context.Context, int64) (recipe.Recipe, error) {
 
 func (failingRecipes) Info(context.Context, int64) (store.Info, error) {
 	return store.Info{}, errors.New("disk on fire")
+}
+
+func (failingRecipes) HasThumbnail(context.Context, string) (bool, error) {
+	return false, errors.New("disk on fire")
+}
+
+func (failingRecipes) Thumbnail(context.Context, int64) (store.Thumbnail, error) {
+	return store.Thumbnail{}, errors.New("disk on fire")
 }
 
 func TestSourceURLWithScriptSchemeIsNotLinked(t *testing.T) {

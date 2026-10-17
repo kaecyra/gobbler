@@ -97,6 +97,11 @@ templ metaFields(v view) {
 				<input id="f-source" type="text" name="source_url" value={ v.D.SourceURL }/>
 			</div>
 			<div>
+				<label for="f-video">YouTube video (link or ID, optional)</label>
+				<input id="f-video" type="text" name="video" value={ v.D.Video } autocomplete="off" spellcheck="false"/>
+				@fieldError(v, "video")
+			</div>
+			<div>
 				<label for="f-tags">Tags (comma separated)</label>
 				<input id="f-tags" type="text" name="tags" value={ v.D.Tags }/>
 			</div>

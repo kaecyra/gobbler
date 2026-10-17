@@ -1,0 +1,59 @@
+/* The recipe's video: a 16:9 box that holds the thumbnail and a play control,
+   then the embedded player in the same box (ADR-00021). */
+.recipe-video {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-width: 40rem;
+  margin: 0 auto var(--gutter);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.recipe-video-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+/* YouTube's hqdefault is 4:3 with black bars above and below the picture, so
+   the image fills the 16:9 box and the bars are cropped. */
+.recipe-video-play img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recipe-video-button {
+  position: relative;
+  display: inline-block;
+  min-height: 3rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+  background: var(--bg);
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 2rem;
+}
+
+.recipe-video-play:hover .recipe-video-button,
+.recipe-video-play:focus-visible .recipe-video-button {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.recipe-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

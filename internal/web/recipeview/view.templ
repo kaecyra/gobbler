@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -16,6 +17,23 @@ var scalePresets = []struct{ Param, Label string }{
 var unitModes = []struct{ Param, Label string }{
 	{"", "As written"}, {display.UnitsMetric, "Metric"}, {display.UnitsWeight, "Weight"},
 }
+
+// Paths of the player's own assets, embedded in the binary (ADR-00002).
+const (
+	videoStylesheetPath = "/static/video.css"
+	videoScriptPath     = "/static/video.js"
+)
+
+// thumbnailHref is the stored preview of the recipe's video, reached through
+// the recipe so the household check applies.
+func thumbnailHref(id int64) string { return recipePath(id) + thumbnailRoute }
+
+// videoWatchURL is where the play control goes without scripts. It is only
+// followed when someone presses it.
+func videoWatchURL(videoID string) string { return "https://www.youtube.com/watch?v=" + videoID }
+
+// videoEmbedURL is the privacy-enhanced player that video.js loads on Play.
+func videoEmbedURL(videoID string) string { return video.EmbedURL(videoID) }
 
 // recipePath is the recipe page's path, the base of its sibling pages.
 func recipePath(id int64) string {
@@ -74,9 +92,40 @@ func presetActive(v view, param string) bool {
 
 templ recipePage(v view) {
 	@layout.Page(v.Name) {
+		if v.VideoID != "" {
+			@videoPlayer(v)
+		}
 		@recipeBody(v)
 		@aside(v)
 	}
+}
+
+// videoPlayer is the recipe's video at the top of the page (ADR-00021). Until
+// Play is pressed it holds no address of a YouTube origin that the browser
+// would load: the thumbnail is the application's own copy, and the player's
+// address sits in a data attribute that video.js reads on click. The control
+// is a link to the video's watch page, which is what a browser without
+// scripts follows; video.js replaces it with the embedded player. It sits
+// outside #recipe so scaling the recipe does not reset a playing video.
+templ videoPlayer(v view) {
+	<link rel="stylesheet" href={ videoStylesheetPath }/>
+	<section class="recipe-video" aria-label="Video" data-testid="video">
+		<a
+			class="recipe-video-play"
+			href={ templ.URL(videoWatchURL(v.VideoID)) }
+			rel="noopener noreferrer"
+			data-video-play
+			data-embed={ videoEmbedURL(v.VideoID) }
+			data-title={ "Video: " + v.Name }
+			data-testid="video-play"
+		>
+			if v.HasThumbnail {
+				<img src={ thumbnailHref(v.ID) } alt="" loading="lazy" data-testid="video-thumbnail"/>
+			}
+			<span class="recipe-video-button">Play video</span>
+		</a>
+	</section>
+	<script src={ videoScriptPath } defer></script>
 }
 
 templ recipeBody(v view) {
