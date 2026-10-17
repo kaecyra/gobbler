@@ -183,6 +183,36 @@ func TestFallbackLeavesAUserSetGraphAlone(t *testing.T) {
 	}
 }
 
+// When the fallback replaces the components, the kept steps are numbered
+// afresh: a weak step is dropped and the rest move up. The user's graph is
+// kept, its dependency numbers translated, and a dependency on the dropped
+// step goes with it.
+func TestFallbackKeepsAUserSetGraphThroughReplacedComponents(t *testing.T) {
+	e := newEnv(t)
+	rule := ruleDraft(t, e, "Bread\n\nDirections\nMix the flour and water.\nKnead the dough.\nSlice and serve.\n")
+	steps := rule.Components[0].Steps
+	if len(steps) != 3 {
+		t.Fatalf("rule steps = %+v, want three", steps)
+	}
+	steps[0].Confidence, steps[1].Confidence, steps[2].Confidence = 0, 1, 1 // the weak one is dropped; the others become steps 1 and 2
+	steps[2].GraphByUser, steps[2].Passive, steps[2].DependsOn = true, true, []int{1, 2}
+	fp := &fakeProvider{resp: llmAnswer()}
+	got, err := e.pipelineWith(t, testConfig(), fp).Fallback().Retry(e.ctx, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.UsedLLM || len(fp.calls[0].Gaps.Steps) != 0 {
+		t.Fatalf("the components were not replaced: %+v", fp.calls[0].Gaps)
+	}
+	out := flatSteps(got)
+	if len(out) != 2 || out[1].Text != "Slice and serve." {
+		t.Fatalf("steps = %+v, want the two kept steps", out)
+	}
+	if s := out[1]; !s.GraphByUser || !s.Passive || !reflect.DeepEqual(s.DependsOn, []int{1}) {
+		t.Errorf("user-set step = %+v, want passive and depending on step 1 (old step 2)", s)
+	}
+}
+
 func TestFallbackChangesADefaultStepAndLeavesACueBackedOne(t *testing.T) { // ADR-00020 obligation 2
 	e := newEnv(t)
 	rule := ruleDraft(t, e, recipeWith("Mix the flour and water.", "Bake for 30 minutes.", "Slice and serve."))

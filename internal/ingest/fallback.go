@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -279,7 +280,7 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 
 	if gaps.Components {
 		d.Components = nil
-		kept := keptSteps(rule, s, f.cfg.ConfidenceThreshold)
+		kept, keptFrom := keptSteps(rule, s, f.cfg.ConfidenceThreshold)
 		for i, sc := range s.Components {
 			c := Component{Name: strings.TrimSpace(sc.Name), FromLLM: true}
 			for _, raw := range sc.Ingredients {
@@ -303,6 +304,7 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 		// Kept and supplied steps alike go through the rules, so the graph is
 		// the same one a rule-based draft of these steps would have.
 		inferGraph(d.Components)
+		renumberUserGraphs(d.Components, kept, keptFrom)
 	}
 	if len(gaps.Steps) > 0 {
 		if err := applyStepGraph(d.Components, gaps.Steps, s.StepGraph); err != nil {
@@ -342,23 +344,60 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 // keptSteps are the rule steps that met the threshold, placed under the
 // answer's components: by index when the answer has as many components as the
 // rules found, else all in the first (the answer's grouping is the weaker
-// evidence of where a step belongs). Indexed by answer component.
-func keptSteps(rule Draft, s Structured, threshold float64) map[int][]Step {
-	out := map[int][]Step{}
+// evidence of where a step belongs). Indexed by answer component. from gives,
+// for each kept step, the number it had in rule.
+func keptSteps(rule Draft, s Structured, threshold float64) (out map[int][]Step, from map[int][]int) {
+	out, from = map[int][]Step{}, map[int][]int{}
+	n := 0
 	byIndex := len(s.Components) == len(rule.Components)
 	for i, c := range rule.Components {
 		for _, st := range c.Steps {
+			n++
 			if st.Confidence < threshold {
 				continue
 			}
+			at := 0
 			if byIndex {
-				out[i] = append(out[i], st)
-			} else {
-				out[0] = append(out[0], st)
+				at = i
+			}
+			out[at], from[at] = append(out[at], st), append(from[at], n)
+		}
+	}
+	return out, from
+}
+
+// renumberUserGraphs puts the graphs the user set back on the kept steps of
+// comps, which inferGraph left alone. The steps are numbered afresh, because
+// weak steps were dropped and the answer's grouping may have moved the rest, so
+// each dependency is translated from the step's old number to its new one. A
+// dependency on a step that was dropped is dropped with it.
+func renumberUserGraphs(comps []Component, kept map[int][]Step, from map[int][]int) {
+	newNumber := map[int]int{}
+	n := 0
+	for ci, c := range comps {
+		for si := range c.Steps {
+			n++
+			if si < len(kept[ci]) {
+				newNumber[from[ci][si]] = n
 			}
 		}
 	}
-	return out
+	for ci := range comps {
+		for si := range comps[ci].Steps {
+			st := &comps[ci].Steps[si]
+			if !st.GraphByUser {
+				continue
+			}
+			var deps []int
+			for _, d := range st.DependsOn {
+				if nd, ok := newNumber[d]; ok {
+					deps = append(deps, nd)
+				}
+			}
+			slices.Sort(deps)
+			st.DependsOn = slices.Compact(deps)
+		}
+	}
 }
 
 func fromLLM[T any](f Field[T]) Field[T] {
