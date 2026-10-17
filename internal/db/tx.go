@@ -51,11 +51,10 @@ func acquireWrite(ctx context.Context, d *sql.DB) (release func(), err error) {
 // writers outside WithTx. fn must not call WithTx on the same database: that
 // waits on itself.
 //
-// A transaction whose first statement is a read holds a snapshot, and when
-// another writer outside this queue commits before its first write it cannot
-// upgrade: it fails with SQLITE_BUSY at once, ignoring the busy timeout. fn
-// that reads before it writes must therefore make its first statement a
-// write (a no-op UPDATE of the row it is about to read is enough).
+// Open's DSN makes the transaction begin immediate, so it holds the write
+// lock before fn runs. fn may read before it writes: a writer outside this
+// queue waits on the busy timeout instead of invalidating fn's snapshot, which
+// would fail fn's first write with SQLITE_BUSY at once, ignoring the timeout.
 func WithTx[Q Queries[Q]](ctx context.Context, d *sql.DB, q Q, fn func(q Q, tx *sql.Tx) error) (err error) {
 	release, err := acquireWrite(ctx, d)
 	if err != nil {
