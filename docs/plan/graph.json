@@ -1988,7 +1988,7 @@
       "wave": 9,
       "track": null,
       "issue": 205,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-plugin-extractors",
         "i-equipment-extract"
@@ -2698,6 +2698,12 @@
       "title": "every write goes through db.WithTx; comments stop claiming a write must come first",
       "merged": "c5790f9ac5c90e30c3ea23837950c0589085a094",
       "note": "Route the three autocommit writes in internal/household/store.go through db.WithTx. With write transactions beginning IMMEDIATE (#213), reword the comments at lockRecipe (internal/store/store.go), lockList (internal/shopping/store.go) and the ClaimInvitation query doc that say a write must be the first statement. Keep the guards themselves: removing them touches call sites outside this lane."
+    },
+    {
+      "id": "r-issue-code-spelling",
+      "title": "one spelling of the shared ingest issue codes",
+      "merged": "90f9e08c84f72fb60468df9eaec7fa41c10ab514",
+      "note": "Alias extract.IssueUnparsedDuration to parse.IssueUnparsedDuration (extract already imports parse)."
     }
   ],
   "adr_sequence": {
