@@ -40,9 +40,8 @@ type page struct {
 
 // upNext names the following step: its title when it has one, else its text.
 type upNext struct {
-	Number int
-	Label  string
-	Href   string
+	Label string
+	Href  string
 }
 
 type stepView struct {
@@ -106,7 +105,7 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	if n < p.Total {
 		next := refs[n]
 		ns := r.Components[next.ComponentIndex].Steps[next.Position-1]
-		p.UpNext = upNext{Number: n + 1, Label: cmp.Or(ns.Title, ns.Text), Href: stepHref(id, n+1, o)}
+		p.UpNext = upNext{Label: cmp.Or(ns.Title, ns.Text), Href: stepHref(id, n+1, o)}
 	}
 
 	// Ingredients belong to components, not to steps, so the step shows its

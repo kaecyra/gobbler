@@ -82,7 +82,7 @@ func pizza(t *testing.T) recipe.Recipe {
 				Steps: []recipe.Step{
 					{ID: "mix", Text: "Mix the dough.", Title: "Make the dough", Duration: 10 * time.Minute},
 					{ID: "rise", Text: "Let it rise.", Duration: time.Hour, Passive: true, DependsOn: []recipe.StepID{"mix"}},
-					{ID: "bake", Text: "Bake.", DependsOn: []recipe.StepID{"rise"}},
+					{ID: "bake", Text: "Bake.", Title: "Finish in the oven", DependsOn: []recipe.StepID{"rise"}},
 				}},
 			{Name: "Sauce", Lines: []recipe.IngredientLine{line(t, "2", "", 3)},
 				Steps: []recipe.Step{
@@ -152,10 +152,33 @@ func TestFirstStepShowsOneStepAndItsContext(t *testing.T) {
 
 func TestStepTitleHeadsTheStepAndUpNextNamesTheNextOne(t *testing.T) {
 	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook")
-	mustContain(t, body, `data-testid="step-title"`, "Make the dough", `data-testid="up-next"`, "Let it rise.")
+	mustContain(t, body, `data-testid="step-title"`, "Make the dough")
+	// The step list holds every step's text, so up next is read on its own.
+	mustContain(t, upNextOf(t, body), "Let it rise.")
 	// A step without a title has no heading; the last step has no up next.
 	_, body = serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=6")
 	mustNotContain(t, body, `data-testid="step-title"`, `data-testid="up-next"`)
+}
+
+func TestUpNextShowsTheNextStepsTitleWhenItHasOne(t *testing.T) {
+	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=2")
+	up := upNextOf(t, body)
+	mustContain(t, up, "Finish in the oven", `href="/recipes/3/cook?step=3"`)
+	mustNotContain(t, up, "Bake.")
+}
+
+// upNextOf returns the up-next element of a rendered cook page.
+func upNextOf(t *testing.T, body string) string {
+	t.Helper()
+	i := strings.Index(body, `data-testid="up-next"`)
+	if i < 0 {
+		t.Fatalf("no up-next element\n%s", body)
+	}
+	j := strings.Index(body[i:], "</aside>")
+	if j < 0 {
+		t.Fatalf("up-next element is not closed\n%s", body)
+	}
+	return body[i : i+j]
 }
 
 func TestLaterStepHasPreviousAndOtherComponentContext(t *testing.T) {
