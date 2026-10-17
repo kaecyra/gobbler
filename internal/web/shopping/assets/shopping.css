@@ -35,7 +35,7 @@
 button.item-toggle { cursor: pointer; }
 .box {
   width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--slate);
-  display: grid; place-items: center; transition: background 0.12s;
+  display: grid; place-items: center; transition: background 0.12s; color: var(--on-accent);
 }
 .box svg { width: 12px; height: 12px; opacity: 0; }
 .item-name { font-size: 16.5px; font-weight: 550; }

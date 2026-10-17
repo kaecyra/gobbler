@@ -145,18 +145,14 @@ templ itemsFragment(listID int64, aisles []aisleView, interactive bool) {
 									<input type="hidden" name="key" value={ it.Key }/>
 									<input type="hidden" name="checked" value={ it.Next }/>
 									<button type="submit" class="item-toggle" role="checkbox" aria-checked={ strconv.FormatBool(it.Checked) }>
-										<span class="box" aria-hidden="true">
-											<svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"></path></svg>
-										</span>
+										@checkBox()
 										<span class="item-name" data-testid="item-name">{ it.Name }</span>
 										<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
 									</button>
 								</form>
 							} else {
 								<div class="item-toggle">
-									<span class="box" aria-hidden="true">
-										<svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"></path></svg>
-									</span>
+									@checkBox()
 									<span class="item-name" data-testid="item-name">{ it.Name }</span>
 									<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
 								</div>
@@ -170,6 +166,12 @@ templ itemsFragment(listID int64, aisles []aisleView, interactive bool) {
 			</section>
 		}
 	</div>
+}
+
+templ checkBox() {
+	<span class="box" aria-hidden="true">
+		<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"></path></svg>
+	</span>
 }
 
 templ livePage(v liveView) {
