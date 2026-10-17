@@ -137,6 +137,7 @@ the container runs in UTC.
 | `GOBBLER_LLM_TEXT_MODEL` | none | no | Required with a provider; set in configuration only. |
 | `GOBBLER_LLM_VISION_MODEL` | none | no | Required with a provider. |
 | `GOBBLER_LLM_TIMEOUT` | `60s` | no | Go duration, positive. |
+| `GOBBLER_VIDEO_THUMBNAIL_HOST` | `https://i.ytimg.com` | no | Origin a recipe video's thumbnail is downloaded from when a recipe with that video is saved ([ADR-00021](./adr/00021-youtube-video-on-a-recipe.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fixture so no test reaches YouTube. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |

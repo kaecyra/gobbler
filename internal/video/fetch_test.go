@@ -108,3 +108,20 @@ func (m *memStore) SaveThumbnail(context.Context, string, []byte, string) error 
 	m.saved = true
 	return nil
 }
+
+func TestNewFetcherAtDownloadsFromTheGivenHost(t *testing.T) {
+	var path string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		w.Header().Set("Content-Type", "image/jpeg")
+		_, _ = w.Write([]byte("jpegbytes"))
+	}))
+	t.Cleanup(srv.Close)
+	// A trailing slash on the configured host must not double the slash.
+	if _, err := NewFetcherAt(srv.URL+"/").Fetch(context.Background(), id); err != nil {
+		t.Fatal(err)
+	}
+	if path != "/vi/"+id+"/hqdefault.jpg" {
+		t.Errorf("requested %q, want the hqdefault path", path)
+	}
+}

@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { startThumbnailHost, THUMBNAIL_HOST_ENV, THUMBNAIL_JPEG } from '../fixtures/thumbnails.mjs';
 
 // The recipe view needs a recipe in the database, which the shared server of
 // the suite does not have. This spec seeds its own data directory through the
@@ -24,6 +25,8 @@ let id = 0;
 let meanwhileId = 0;
 let cloneId = 0;
 let bareVideoId = 0;
+let laterId = 0;
+let thumbnails: Awaited<ReturnType<typeof startThumbnailHost>> | undefined;
 
 test.use({ baseURL: origin });
 // One server per file: fullyParallel would otherwise run beforeAll in every worker.
@@ -35,7 +38,8 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId } = JSON.parse(out));
+  thumbnails = await startThumbnailHost();
   server = spawn(bin, ['serve'], {
     env: {
       PATH: process.env.PATH ?? '',
@@ -43,6 +47,7 @@ test.beforeAll(async () => {
       GOBBLER_DATA_DIR: dataDir,
       GOBBLER_LOG_LEVEL: 'warn',
       GOBBLER_DEV_AUTH_BYPASS: 'true',
+      [THUMBNAIL_HOST_ENV]: thumbnails.origin,
     },
     stdio: 'inherit',
   });
@@ -64,6 +69,7 @@ test.afterAll(async () => {
     server.kill('SIGTERM');
     await exited;
   }
+  await thumbnails?.close();
   if (dataDir) rmSync(dataDir, { recursive: true, force: true });
 });
 
@@ -311,4 +317,19 @@ test('the thumbnail is served as an image through the recipe', async ({ request 
   expect(res.headers()['content-type']).toBe('image/png');
   const none = await request.get(`/recipes/${bareVideoId}/video/thumbnail`);
   expect(none.status()).toBe(404);
+});
+
+// ADR-00021 decision 3: a save downloads the thumbnail of a new video. The
+// server is pointed at the fixture host, so no request leaves the machine.
+test('saving a recipe with a video stores the thumbnail the image host served', async ({ page, request }) => {
+  const before = await request.get(`/recipes/${laterId}/video/thumbnail`);
+  expect(before.status()).toBe(404);
+  await page.goto(`/recipes/${laterId}/edit`);
+  await page.locator('[name="video"]').fill('https://youtu.be/aqz-KE-bpKQ');
+  await page.getByRole('button', { name: 'Save recipe' }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/recipes/${laterId}$`));
+  const res = await request.get(`/recipes/${laterId}/video/thumbnail`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toBe('image/jpeg');
+  expect(Buffer.compare(await res.body(), THUMBNAIL_JPEG)).toBe(0);
 });
