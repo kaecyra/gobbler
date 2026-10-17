@@ -33,6 +33,9 @@ func loadDocument(ctx context.Context, q *storedb.Queries, hid, id int64, units 
 	if r.VideoID, err = q.GetRecipeVideo(ctx, storedb.GetRecipeVideoParams{ID: id, HouseholdID: hid}); err != nil {
 		return recipe.Recipe{}, fmt.Errorf("read recipe %d video: %w", id, err)
 	}
+	if r.MealType, r.SpiceLevel, err = getRecipeFields(ctx, q, hid, id); err != nil {
+		return recipe.Recipe{}, err
+	}
 	r.CaloriesPerServing, r.Rating = intPtr(row.CaloriesPerServing), intPtr(row.Rating)
 	r.Times = recipe.Times{Prep: time.Duration(row.PrepNs), Cook: time.Duration(row.CookNs), Total: time.Duration(row.TotalNs)}
 
@@ -118,10 +121,15 @@ func loadComponents(ctx context.Context, q *storedb.Queries, hid, id int64, unit
 	if err != nil {
 		return nil, readErr("steps", err)
 	}
+	fields, err := loadStepFields(ctx, q, hid, id)
+	if err != nil {
+		return nil, err
+	}
 	stepKeys := map[int64]recipe.StepID{}
 	stepIdx := map[int64][2]int{}
 	for _, r := range stepRows {
 		s := recipe.Step{ID: recipe.StepID(r.StepKey), Text: r.Text, Duration: time.Duration(r.DurationNs), Passive: r.Passive == 1}
+		s.Kind, s.Title = fields[r.ID].kind, fields[r.ID].title
 		ci, err := lookup(compIdx, r.ComponentID, "component")
 		if err != nil {
 			return nil, readErr("steps", err)

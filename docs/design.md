@@ -12,7 +12,9 @@ and this document is wrong.
   ([ADR-00006](adr/00006-rule-first-ingestion.md)).
 - **Store** it as structured data: components, semantic ingredient lines,
   equipment, a step graph, times, notes, revisions
-  ([ADR-00004](adr/00004-recipe-data-model.md)).
+  ([ADR-00004](adr/00004-recipe-data-model.md)). A recipe also has an optional
+  meal type and spice level, a step an optional stage kind and title, and a note
+  may be pinned as a tip ([ADR-00022](adr/00022-adopt-the-mockup-design.md)).
 - **Watch** it, optionally: a recipe may carry a YouTube video that plays at the
   top of its page only when someone presses Play; the thumbnail is downloaded at
   save and kept in SQLite ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)).
@@ -54,7 +56,7 @@ dependencies.
 | `db` | SQLite connection, WAL setup, embedded `goose` migrations, the shared transaction helpers (`WithTx`, `WithReadTx`) and constraint-error wrapper (`WrapWrite`) | `config` |
 | `auth` | Access JWT verification middleware, dev bypass | `config` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
-| `recipe` | Domain types, step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
+| `recipe` | Domain types (with the closed sets of meal types and stage kinds), step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
 | `video` | Reading a pasted YouTube link into the video ID a recipe stores, the thumbnail and embed addresses, and the thumbnail download ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)) | — |
 | `recipe/display` | What pages show of a recipe: scale, servings and unit-mode options, formatted ingredient and equipment lines, step numbers, durations, meanwhile items; shared by the recipe view and cook mode, which may not import each other (pure apart from catalog lookups) | `quantity`, `recipe`, `catalog` |
 | `store` | Persistence for recipes, revisions, notes, snapshots, video thumbnails, FTS index; queries in `queries/`, sqlc-generated `storedb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `recipe`, `video` |

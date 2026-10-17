@@ -119,6 +119,7 @@ type Note struct {
 	Body        string
 	CreatedAt   string
 	CreatedBy   string
+	Pinned      int64
 }
 
 type Recipe struct {
@@ -144,6 +145,8 @@ type Recipe struct {
 	UpdatedAt          string
 	UpdatedBy          string
 	VideoID            string
+	MealType           string
+	SpiceLevel         sql.NullInt64
 }
 
 type RecipeEquipment struct {
@@ -289,6 +292,8 @@ type Step struct {
 	Text        string
 	DurationNs  int64
 	Passive     int64
+	StageKind   string
+	Title       string
 }
 
 type StepDependency struct {

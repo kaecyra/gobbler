@@ -48,6 +48,7 @@ type Journal interface {
 	Update(ctx context.Context, id int64, r recipe.Recipe) error
 	AddNote(ctx context.Context, id int64, body string) (store.Note, error)
 	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
+	SetNotePinned(ctx context.Context, id, noteID int64, pinned bool) error
 	AddMadeIt(ctx context.Context, id int64, e store.MadeIt) (store.MadeIt, error)
 	ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error)
 }
@@ -67,6 +68,7 @@ func Routes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.show)
 	r.Post("/notes", h.addNote)
+	r.Post("/notes/{noteID}/pin", h.pinNote)
 	r.Post("/rating", h.setRating)
 	r.Post("/made", h.addMadeIt)
 	return r
@@ -115,6 +117,35 @@ func (h *handler) addNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.finish(w, r, id, problem, func(v *view) { v.NoteBody = body })
+}
+
+// pinNote pins a note as a tip or unpins it: the form's pinned field is 1 or 0,
+// anything else is a bad request. The note must be one of this recipe's.
+func (h *handler) pinNote(w http.ResponseWriter, r *http.Request) {
+	id, form, ok := h.post(w, r)
+	if !ok {
+		return
+	}
+	raw := chi.URLParam(r, "noteID")
+	noteID, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || noteID <= 0 {
+		layout.WriteError(w, r, fmt.Errorf("note id %q: %w", raw, layout.ErrNotFound))
+		return
+	}
+	var pinned bool
+	switch choice := form.Get("pinned"); choice {
+	case "1":
+		pinned = true
+	case "0":
+	default:
+		layout.WriteError(w, r, fmt.Errorf("%w: pinned must be 1 or 0, got %q", layout.ErrInvalid, choice))
+		return
+	}
+	if err := h.Journal.SetNotePinned(r.Context(), id, noteID, pinned); err != nil {
+		layout.WriteError(w, r, fmt.Errorf("pin note %d of recipe %d: %w", noteID, id, err))
+		return
+	}
+	h.finish(w, r, id, formProblem{}, nil)
 }
 
 func (h *handler) setRating(w http.ResponseWriter, r *http.Request) {

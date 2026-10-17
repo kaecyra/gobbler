@@ -33,7 +33,7 @@ func (v view) carries(g controlGroup) bool {
 	}
 	switch g {
 	case groupPlacement, groupStepGraph, groupVideo:
-		return true
+		return true // groupRecipeFields is not here: see its comment
 	}
 	return false
 }
@@ -58,6 +58,11 @@ const (
 	groupStepGraph
 	// groupEquipmentLinks: an equipment quantity and the steps that use it.
 	groupEquipmentLinks
+	// groupRecipeFields: the meal type and spice level of a recipe, and the
+	// stage kind and title of a step (ADR-00022). ingest.Draft does not carry
+	// them yet, so a draft under review hides them rather than drop them on
+	// confirm; switch the group on in carries when it does.
+	groupRecipeFields
 )
 
 func (v view) action() string {
@@ -164,3 +169,29 @@ func (l lineDraft) ruleIs(r string) bool {
 
 func (l lineDraft) hasPackage() bool { return l.PkgQty != "" || l.PkgUnit != "" }
 func n0(i int) string                { return strconv.Itoa(i) }
+
+// mealOptions and stageOptions are the closed sets the selects offer.
+func mealOptions() []string {
+	var out []string
+	for _, m := range recipe.MealTypes() {
+		out = append(out, string(m))
+	}
+	return out
+}
+
+func stageOptions() []string {
+	var out []string
+	for _, k := range recipe.StageKinds() {
+		out = append(out, string(k))
+	}
+	return out
+}
+
+// spiceOptions are the levels 0 to recipe.MaxSpiceLevel as the form posts them.
+func spiceOptions() []string {
+	var out []string
+	for n := 0; n <= recipe.MaxSpiceLevel; n++ {
+		out = append(out, strconv.Itoa(n))
+	}
+	return out
+}

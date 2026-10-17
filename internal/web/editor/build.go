@@ -50,6 +50,8 @@ func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec 
 	}
 	rec.Description, rec.SourceURL, rec.Author = d.Description, strings.TrimSpace(d.SourceURL), strings.TrimSpace(d.Author)
 	rec.VideoID = b.video()
+	rec.MealType = b.mealType()
+	rec.SpiceLevel = b.spiceLevel()
 	rec.Tags = tagList(d.Tags)
 	rec.Yield.Unit = strings.TrimSpace(d.YieldUnit)
 	rec.Yield.Qty = b.optionalQuantity("yield_qty", d.YieldQty, "The yield amount")
@@ -206,6 +208,30 @@ func (b *builder) video() string {
 		return ""
 	}
 	return id
+}
+
+// mealType reads the meal type select; empty is unset.
+func (b *builder) mealType() recipe.MealType {
+	m := recipe.MealType(strings.TrimSpace(b.d.MealType))
+	if m != "" && !m.Valid() {
+		b.d.Errs["meal_type"] = fmt.Sprintf("%q is not a meal type. Choose one from the list, or leave it empty.", string(m))
+		return ""
+	}
+	return m
+}
+
+// spiceLevel reads the spice select: empty is unset, "0" is not spicy.
+func (b *builder) spiceLevel() *int {
+	text := strings.TrimSpace(b.d.Spice)
+	if text == "" {
+		return nil
+	}
+	n, err := strconv.Atoi(text)
+	if err != nil || n < 0 || n > recipe.MaxSpiceLevel {
+		b.d.Errs["spice"] = fmt.Sprintf("%q is not a spice level. Choose 0 to %d, or leave it empty.", text, recipe.MaxSpiceLevel)
+		return nil
+	}
+	return &n
 }
 
 func (b *builder) calories() *int {
@@ -372,8 +398,13 @@ func (b *builder) step(s *stepDraft) (recipe.Step, bool) {
 		return recipe.Step{}, false
 	}
 	text := strings.TrimSpace(s.Text)
-	step := recipe.Step{ID: recipe.StepID(s.ID), Text: text, Passive: s.Passive}
+	step := recipe.Step{ID: recipe.StepID(s.ID), Text: text, Passive: s.Passive, Title: strings.TrimSpace(s.Title)}
 	var msgs []string
+	if k := recipe.StageKind(strings.TrimSpace(s.Kind)); k != "" && !k.Valid() {
+		msgs = append(msgs, fmt.Sprintf("%q is not a stage kind. Choose one from the list, or leave it empty.", string(k)))
+	} else {
+		step.Kind = k
+	}
 	if text == "" {
 		msgs = append(msgs, "A step needs text.")
 	}

@@ -3,6 +3,7 @@ package journal
 import (
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -70,10 +71,25 @@ templ notesPart(v view) {
 				<li>
 					<span class="muted"><time datetime={ n.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }>{ stamp(n.CreatedAt) }</time> by { n.CreatedBy }</span>
 					<p class="note-body">{ n.Body }</p>
+					@pinForm(v, n)
 				</li>
 			}
 		</ul>
 	}
+}
+
+// pinForm is the toggle that makes a note a tip, shown in the recipe view, or
+// takes it back.
+templ pinForm(v view, n store.Note) {
+	<form class="pin-form" method="post" action={ templ.SafeURL(v.pinPath(n)) } hx-post={ v.pinPath(n) } hx-target="#journal" hx-swap="outerHTML">
+		<input type="hidden" name="pinned" value={ pinValue(n) }/>
+		if n.Pinned {
+			<span class="muted">Tip</span>
+			<button type="submit">Unpin</button>
+		} else {
+			<button type="submit">Pin as tip</button>
+		}
+	</form>
 }
 
 templ madePart(v view) {

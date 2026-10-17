@@ -31,7 +31,9 @@ type draft struct {
 
 	Name, Description, SourceURL, Author string
 	// Video is what was typed in the video field: a YouTube link or a bare ID.
-	Video                         string
+	Video string
+	// MealType is a meal type name, or empty; Spice is "0" to "3", or empty.
+	MealType, Spice               string
 	YieldQty, YieldUnit, Servings string
 	Calories, Tags                string
 	Prep, Cook, Total             string
@@ -79,7 +81,9 @@ type stepDraft struct {
 	Text     string
 	Duration string
 	Passive  bool
-	Deps     []string
+	// Kind is a stage kind name, or empty; Title is free text.
+	Kind, Title string
+	Deps        []string
 	// To is the component the step is in now, or is being moved to.
 	To   int
 	Err  string
@@ -107,13 +111,16 @@ type lookups struct {
 // fromRecipe turns a stored recipe into the form's starting draft.
 func fromRecipe(r recipe.Recipe, names lookups) draft {
 	d := draft{
-		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, Video: r.VideoID,
+		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, Video: r.VideoID, MealType: string(r.MealType),
 		YieldQty: qtyText(r.Yield.Qty), YieldUnit: r.Yield.Unit, Servings: qtyText(r.Servings),
 		Tags: strings.Join(r.Tags, ", "),
 		Prep: durationText(r.Times.Prep), Cook: durationText(r.Times.Cook), Total: durationText(r.Times.Total),
 	}
 	if r.CaloriesPerServing != nil {
 		d.Calories = strconv.Itoa(*r.CaloriesPerServing)
+	}
+	if r.SpiceLevel != nil {
+		d.Spice = strconv.Itoa(*r.SpiceLevel)
 	}
 	for ci, c := range r.Components {
 		cd := compDraft{Name: c.Name}
@@ -134,7 +141,7 @@ func fromRecipe(r recipe.Recipe, names lookups) draft {
 		for _, s := range c.Steps {
 			cd.Steps = append(cd.Steps, stepDraft{
 				ID: string(s.ID), Text: s.Text, Duration: durationText(s.Duration), Passive: s.Passive,
-				Deps: stepIDs(s.DependsOn), To: ci,
+				Kind: string(s.Kind), Title: s.Title, Deps: stepIDs(s.DependsOn), To: ci,
 			})
 		}
 		d.Components = append(d.Components, cd)
@@ -174,6 +181,7 @@ func durationText(d time.Duration) string {
 func parseForm(f url.Values) draft {
 	d := draft{
 		Name: f.Get("name"), Description: f.Get("description"), SourceURL: f.Get("source_url"), Author: f.Get("author"), Video: f.Get("video"),
+		MealType: f.Get("meal_type"), Spice: strings.TrimSpace(f.Get("spice")),
 		YieldQty: f.Get("yield_qty"), YieldUnit: f.Get("yield_unit"), Servings: f.Get("servings"),
 		Calories: f.Get("calories"), Tags: f.Get("tags"),
 		Prep: f.Get("prep"), Cook: f.Get("cook"), Total: f.Get("total"),
@@ -205,7 +213,7 @@ func parseForm(f url.Values) draft {
 			}
 			c.Steps = append(c.Steps, stepDraft{
 				ID: strings.TrimSpace(f.Get(sp + "id")), Text: f.Get(sp + "text"), Duration: f.Get(sp + "dur"),
-				Passive: f.Get(sp+"passive") != "", Deps: nonEmpty(f[sp+"dep"]), To: to,
+				Passive: f.Get(sp+"passive") != "", Kind: f.Get(sp + "kind"), Title: f.Get(sp + "title"), Deps: nonEmpty(f[sp+"dep"]), To: to,
 				Mark: parseMark(f.Get(sp + "mark")), Graph: parseGraphMark(f.Get(sp + "graph")),
 			})
 		}

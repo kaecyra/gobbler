@@ -162,6 +162,7 @@ const PROBES: Probe[] = [
   hidden('POST', (i) => `/recipes/${i.recipe}/journal/notes`, () => ({ body: 'hijacked note' })),
   hidden('POST', (i) => `/recipes/${i.recipe}/journal/made`, () => ({ comment: 'hijacked comment' })),
   hidden('POST', (i) => `/recipes/${i.recipe}/journal/rating`, () => ({ rating: '1' })),
+  hidden('POST', (i) => `/recipes/${i.recipe}/journal/notes/1/pin`, () => ({ pinned: '1' })),
 
   // Catalog.
   hidden('GET', (i) => `/catalog/${i.ingredient}`),
