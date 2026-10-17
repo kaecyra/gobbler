@@ -26,9 +26,16 @@ export async function freePorts(n) {
   }
 }
 
+/**
+ * One port per name: env[name] when set, otherwise a free one. The free ones are
+ * taken together, so they are distinct from each other.
+ */
+export async function portsFromEnv(env, names) {
+  const free = await freePorts(names.length);
+  return names.map((name, i) => (env[name] ? Number(env[name]) : free[i]));
+}
+
 /** The port named by env[name] when set, otherwise a free one. */
 export async function portFromEnv(env, name) {
-  const set = env[name];
-  if (set !== undefined && set !== '') return Number(set);
-  return (await freePorts(1))[0];
+  return (await portsFromEnv(env, [name]))[0];
 }

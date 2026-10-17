@@ -61,8 +61,9 @@ export interface Server {
 /**
  * Starts a server on port, or, if that port was taken, on a free one. The
  * kernel can still give a port to another test's outgoing connection between
- * the probe and the bind, and then the server exits at once with "address already in use", which the health
- * poll cannot tell from a slow start and used to wait out its whole deadline.
+ * the probe and the bind, and then the server exits at once with "address
+ * already in use", which the health poll cannot tell from a slow start and
+ * used to wait out its whole deadline.
  */
 export async function startServer(w: Workdir, port: number, seed: boolean): Promise<Server> {
   if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');

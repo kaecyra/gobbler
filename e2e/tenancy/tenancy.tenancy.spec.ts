@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEV, OTHER, OPERATOR, STRANGER } from '../fixtures/identity';
-import { freePorts } from '../fixtures/ports.mjs';
+import { portsFromEnv } from '../fixtures/ports.mjs';
 import {
   DEV_HOUSEHOLD,
   SETUP_TIMEOUT_MS,
@@ -58,12 +58,12 @@ import {
 // bypass seeds.
 // Four distinct free ports, taken together so the kernel cannot hand one out
 // twice; an environment variable still pins its server to a chosen port.
-const freeTenancyPorts = await freePorts(4);
-const envPort = (name: string, free: number): number => Number(process.env[name] || free);
-const routesPort = envPort('GOBBLER_E2E_TENANCY_PORT', freeTenancyPorts[0]);
-const deletePort = envPort('GOBBLER_E2E_TENANCY_DELETE_PORT', freeTenancyPorts[1]);
-const baselinePort = envPort('GOBBLER_E2E_TENANCY_BASELINE_PORT', freeTenancyPorts[2]);
-const videoPort = envPort('GOBBLER_E2E_TENANCY_VIDEO_PORT', freeTenancyPorts[3]);
+const [routesPort, deletePort, baselinePort, videoPort] = await portsFromEnv(process.env, [
+  'GOBBLER_E2E_TENANCY_PORT',
+  'GOBBLER_E2E_TENANCY_DELETE_PORT',
+  'GOBBLER_E2E_TENANCY_BASELINE_PORT',
+  'GOBBLER_E2E_TENANCY_VIDEO_PORT',
+]);
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 interface Probe {

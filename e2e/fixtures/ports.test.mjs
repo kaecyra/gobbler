@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:net';
 import { test } from 'node:test';
-import { freePorts, portFromEnv } from './ports.mjs';
+import { freePorts, portFromEnv, portsFromEnv } from './ports.mjs';
 
 const listen = (port) =>
   new Promise((resolve, reject) => {
@@ -24,4 +24,11 @@ test('portFromEnv honours a set variable', async () => {
 test('portFromEnv without the variable returns a bindable port', async () => {
   const port = await portFromEnv({}, 'GOBBLER_E2E_X_PORT');
   (await listen(port)).close();
+});
+
+test('portsFromEnv pins the named ports and gives the rest distinct free ones', async () => {
+  const [a, b, c] = await portsFromEnv({ A: '4321' }, ['A', 'B', 'C']);
+  assert.equal(a, 4321);
+  assert.notEqual(b, c);
+  (await listen(b)).close();
 });
