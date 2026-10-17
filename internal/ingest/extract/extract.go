@@ -43,10 +43,11 @@ const (
 	IssueNoStructuredData = "no_structured_data"
 	// IssueNoText: the page has no readable text.
 	IssueNoText = "no_text"
-	// IssueUnparsedDuration: a time field was not a single clean duration
-	// that parse.Duration reads (a range, a fraction such as PT0.5H, or mixed
-	// with other text), so its Duration field is zero. The raw string is kept.
-	IssueUnparsedDuration = "unparsed_duration"
+	// IssueUnparsedDuration (spelled once, in package parse): a time field was
+	// not a single clean duration that parse.Duration reads (a range, a fraction
+	// such as PT0.5H, or mixed with other text), so its Duration field is zero.
+	// The raw string is kept.
+	IssueUnparsedDuration = parse.IssueUnparsedDuration
 )
 
 // InstructionStep is one instruction text. Section is the HowToSection name it
