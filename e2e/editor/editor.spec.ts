@@ -224,6 +224,7 @@ test('meal type, spice level, stage kind and step title are set in the editor an
   await page.locator('[name="c.0.s.0.kind"]').selectOption('braise');
   await page.locator('[name="c.0.s.0.title"]').fill('Start the braise');
   await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator('[name="meal_type"]')).toHaveValue('dessert');
   // Spice 0 is a recipe that is not spicy, which is not the same as unset.
@@ -236,6 +237,7 @@ test('meal type, spice level, stage kind and step title are set in the editor an
   await page.locator('[name="c.0.s.0.kind"]').selectOption('');
   await page.locator('[name="c.0.s.0.title"]').fill('');
   await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator('[name="meal_type"]')).toHaveValue('');
   await expect(page.locator('[name="spice"]')).toHaveValue('');
