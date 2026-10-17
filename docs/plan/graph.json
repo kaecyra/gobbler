@@ -2148,7 +2148,7 @@
       "wave": 9,
       "track": null,
       "issue": 246,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/layout/**",
@@ -3143,6 +3143,15 @@
       "title": "self-spawned e2e spec servers take a free port, not a fixed one in the ephemeral range",
       "merged": "2e8627fc48b2b29ef30c650cd96a980d3a8f5a5c",
       "note": "Generalise freePort() from e2e/fixtures/routes/tenancy-support.ts (#210). Runs first: every u-* node with an e2e lane depends on it."
+    },
+    {
+      "id": "u-shell",
+      "title": "design tokens, header, footer, mascot files and the light/dark toggle",
+      "merged": "21fe01c9be5fc732b7d4d4d9abf9703043b794f0",
+      "adrs": [
+        "00022"
+      ],
+      "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
   "adr_sequence": {
