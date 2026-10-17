@@ -18,7 +18,7 @@ index below in the same commit.
 | [00001](00001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md), [00021](00021-youtube-video-on-a-recipe.md) |
 | [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Amended by [00018](00018-households-as-tenants.md) |
-| [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Accepted |
+| [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md) |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
 | [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Amended by [00020](00020-ingest-step-graph-gap-fill-review.md) |
 | [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Accepted |
@@ -36,6 +36,7 @@ index below in the same commit.
 | [00019](00019-sized-equipment-flag.md) | Equipment carries a hand-set `sized` flag that drives the scaled view's larger-pan hint | Accepted |
 | [00020](00020-ingest-step-graph-gap-fill-review.md) | Ingest infers the step graph by rules then LLM, the LLM fills only gaps, and review reuses the editor | Accepted |
 | [00021](00021-youtube-video-on-a-recipe.md) | A recipe may carry a YouTube video, played only on click, with its thumbnail stored in SQLite | Accepted |
+| [00022](00022-adopt-the-mockup-design.md) | Adopt the reviewed mockup as the visual design, with the recipe fields it needs | Accepted |
 
 ## What needs one
 

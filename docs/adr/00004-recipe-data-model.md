@@ -1,6 +1,6 @@
 # ADR-00004: Recipe data model: components, ingredient lines, step graph, revisions
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00022](00022-adopt-the-mockup-design.md)
 
 **Date:** 2026-10-06
 
@@ -30,6 +30,9 @@ Options considered:
 Name, description, source URL, author, yield (quantity + free-text unit, e.g.
 "1 loaf"), servings, calories per serving (entered or scraped, not computed —
 ADR-00011), tags, rating, and times.
+
+> Amended by [ADR-00022](00022-adopt-the-mockup-design.md): a recipe also has
+> an optional meal type and spice level, and a note may be pinned as a tip.
 
 **Times:** `prep`, `cook`, and zero or more **special** times, each with a
 label (`rise`, `marinate`, `chill`, `rest`, or free text) and a duration.
@@ -66,6 +69,9 @@ Each step belongs to a component and has text, an optional duration, and an
 `active` / `passive` flag (passive: rising, baking, marinating). Steps may
 declare **dependencies on other steps in any component of the same recipe**.
 The dependencies form a directed acyclic graph; a cycle is rejected on save.
+
+> Amended by [ADR-00022](00022-adopt-the-mockup-design.md): a step also has an
+> optional title and an optional stage kind, beside the active/passive flag.
 
 The default linear order is component order, then step order. The view derives
 "meanwhile" guidance from the graph: when a passive step starts, steps whose

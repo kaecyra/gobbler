@@ -2141,6 +2141,230 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Make the thumbnail host configurable (default https://i.ytimg.com) and point the e2e server at a serve.mjs fixture route. Granted: edit the existing Deps lines in internal/web/routes.go (otherwise append-only) to pass the configured source."
+    },
+    {
+      "id": "u-shell",
+      "title": "design tokens, header, footer, mascot files and the light/dark toggle",
+      "wave": 9,
+      "track": null,
+      "issue": 246,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/layout/**",
+        "internal/web/static/app.css",
+        "internal/web/static/img/**",
+        "internal/web/static/theme*",
+        "internal/web/static.go",
+        "e2e/layout/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00022"
+      ],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-recipe-fields",
+      "title": "meal type, spice level, step stage kind and title, pinned tips in the recipe model",
+      "wave": 9,
+      "track": null,
+      "issue": 247,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/model*.go",
+        "internal/store/recipe*.go",
+        "internal/store/revision*.go",
+        "internal/store/share*.go",
+        "internal/store/journal*.go",
+        "internal/store/migration_test.go",
+        "internal/store/testdata/**",
+        "internal/web/editor/**",
+        "internal/web/journal/**",
+        "e2e/editor/**",
+        "e2e/journal/**",
+        "docs/design.md"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-ingest-fields",
+      "title": "map recipeCategory to meal type and propose step stage kinds in rule-based ingest",
+      "wave": 9,
+      "track": null,
+      "issue": 248,
+      "status": "todo",
+      "depends_on": [
+        "u-recipe-fields"
+      ],
+      "owns": [
+        "internal/ingest/extract/jsonld*.go",
+        "internal/ingest/extract/testdata/**",
+        "internal/ingest/draft*.go",
+        "internal/ingest/save*.go",
+        "internal/ingest/assemble*.go",
+        "internal/ingest/steps*.go",
+        "internal/ingest/structured*.go",
+        "internal/ingest/*_test.go",
+        "internal/web/ingest/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-ribbon",
+      "title": "time ribbon component: server-computed segments with an embedded fit script",
+      "wave": 9,
+      "track": null,
+      "issue": 249,
+      "status": "todo",
+      "depends_on": [
+        "u-shell",
+        "u-recipe-fields"
+      ],
+      "owns": [
+        "internal/web/ribbon/**",
+        "internal/web/static/ribbon*",
+        "e2e/ribbon/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-library",
+      "title": "home hero search, library cards grouped by meal, side panels",
+      "wave": 9,
+      "track": null,
+      "issue": 250,
+      "status": "todo",
+      "depends_on": [
+        "u-ribbon"
+      ],
+      "owns": [
+        "internal/web/recipes/**",
+        "internal/store/library*.go",
+        "e2e/recipes/**",
+        "e2e/home/**",
+        "internal/web/home.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-recipe-view",
+      "title": "recipe page, journal and history in the mockup design",
+      "wave": 9,
+      "track": null,
+      "issue": 251,
+      "status": "todo",
+      "depends_on": [
+        "u-ribbon"
+      ],
+      "owns": [
+        "internal/web/recipeview/**",
+        "internal/web/history/**",
+        "internal/web/static/video*",
+        "e2e/recipeview/**",
+        "e2e/history/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-cook",
+      "title": "cook mode in the mockup design",
+      "wave": 9,
+      "track": null,
+      "issue": 252,
+      "status": "todo",
+      "depends_on": [
+        "u-shell",
+        "u-recipe-fields"
+      ],
+      "owns": [
+        "internal/web/cook/**",
+        "internal/web/static/cook*",
+        "e2e/cook/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-shopping",
+      "title": "shopping list pages in the mockup design",
+      "wave": 9,
+      "track": null,
+      "issue": 253,
+      "status": "todo",
+      "depends_on": [
+        "u-shell"
+      ],
+      "owns": [
+        "internal/web/shopping/**",
+        "e2e/shopping/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-ingest-look",
+      "title": "add and review screens in the mockup design",
+      "wave": 9,
+      "track": null,
+      "issue": 254,
+      "status": "todo",
+      "depends_on": [
+        "u-ingest-fields",
+        "u-shell"
+      ],
+      "owns": [
+        "internal/web/ingest/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-other-pages",
+      "title": "editor, settings, household, sharing, catalog and operator pages in the design system",
+      "wave": 9,
+      "track": null,
+      "issue": 255,
+      "status": "todo",
+      "depends_on": [
+        "u-shell",
+        "u-recipe-fields"
+      ],
+      "owns": [
+        "internal/web/editor/**",
+        "internal/web/settings/**",
+        "internal/web/household/**",
+        "internal/web/sharing/**",
+        "internal/web/catalog/**",
+        "internal/web/operator/**",
+        "internal/web/nonmember/**",
+        "e2e/editor/**",
+        "e2e/settings/**",
+        "e2e/household/**",
+        "e2e/sharing/**",
+        "e2e/catalog/**",
+        "e2e/operator/**",
+        "e2e/nonmember/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
   "shared_files": [
@@ -2880,7 +3104,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00021",
+    "last_used": "00022",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
   }
 }
