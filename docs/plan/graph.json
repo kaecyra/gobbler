@@ -2156,7 +2156,10 @@
         "internal/web/static/img/**",
         "internal/web/static/theme*",
         "internal/web/static.go",
-        "e2e/layout/**"
+        "e2e/layout/**",
+        "internal/web/web_test.go",
+        "internal/web/cook/handler_test.go",
+        "internal/web/shopping/shopping_test.go"
       ],
       "needs_migration": null,
       "adrs": [
