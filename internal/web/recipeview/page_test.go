@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -139,5 +140,19 @@ func TestComponentWithNoIngredientLinesHasNoIngredientHeading(t *testing.T) {
 func TestRecipeOfStepsAloneHasNoIngredientsHeading(t *testing.T) {
 	body := page(t, fakeRecipes{3: doughAndSauce()}, "/recipes/3")
 	mustNotContain(t, body, "Ingredients")
-	mustContain(t, body, "Equipment"[:0]+"Mix the dough.")
+	mustContain(t, body, "Mix the dough.")
+}
+
+// ADR-00004 allows three total rules, and the page says which applied. One
+// timed step and one untimed step with no stated times has none of them, so
+// the page states no total: summing the timed step would skip the untimed one.
+func TestNoDerivableTotalStatesNoReadyInTime(t *testing.T) {
+	r := recipe.Recipe{Name: "Half known", Components: []recipe.Component{{Steps: []recipe.Step{
+		{ID: "a", Text: "Timed.", Duration: 30 * time.Minute},
+		{ID: "b", Text: "Untimed.", DependsOn: []recipe.StepID{"a"}},
+	}}}}
+	body := page(t, fakeRecipes{1: r}, "/recipes/1")
+	mustNotContain(t, body, "Ready in about", `data-testid="total"`)
+	// The ribbon still draws the one step that has a time.
+	mustContain(t, body, "rib rib-big")
 }

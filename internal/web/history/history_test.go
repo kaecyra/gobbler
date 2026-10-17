@@ -611,3 +611,31 @@ func TestCloneStillSucceedsWhenTheCloneCannotBeReadBack(t *testing.T) {
 		t.Fatalf("clone = %d after downloads %v, want 303 and none", rec.Code, e.thumbs.asked)
 	}
 }
+
+// A past version shows what the recipe page shows of it: meal type, spice,
+// spoons or New, and step titles (ADR-00022 decision 4).
+func TestVersionPageShowsTheMealSpiceRatingAndStepTitlesOfThatVersion(t *testing.T) {
+	e := newEnv(t)
+	spice, rating := 3, 5
+	v1 := e.doc("Loaf v1", "3")
+	v1.MealType, v1.SpiceLevel, v1.Rating = recipe.MealSide, &spice, &rating
+	v1.Components[0].Steps[0].Title = "Mix it up"
+	id := e.create(v1)
+	e.update(id, e.doc("Loaf v2", "4"))
+
+	_, body := e.get("/recipes/" + itoa(id) + "/history/1")
+	for _, want := range []string{
+		`data-testid="meal-type"`, "Side", `data-testid="spice"`, `aria-label="Hot"`,
+		`data-testid="rating"`, `aria-label="House favourite"`,
+		`<h4 data-testid="step-title">Mix it up</h4>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("version 1 lacks %q:\n%s", want, body)
+		}
+	}
+	// Version 2 is unrated and has none of the rest.
+	_, body = e.get("/recipes/" + itoa(id) + "/history/2")
+	if !strings.Contains(body, `data-testid="rating-new"`) || strings.Contains(body, `data-testid="meal-type"`) || strings.Contains(body, `data-testid="step-title"`) {
+		t.Errorf("version 2 shows version 1's fields:\n%s", body)
+	}
+}

@@ -55,26 +55,14 @@ type view struct {
 	ID          int64
 	Name        string
 	Description string
-	Author      string
-	SourceURL   string
+	// Meta is the line under the title; history shows the same for a revision.
+	Meta Meta
 	// VideoID is the recipe's YouTube video, empty for none. HasThumbnail says
 	// whether a preview image is stored for it; without one the page shows a
 	// plain placeholder (ADR-00021).
 	VideoID      string
 	HasThumbnail bool
 	Tags         []string
-	Rating       *int
-	Calories     *int
-
-	// MealType is the meal type's key and Meal its label, both empty when
-	// unset. Spice is 0 to 3 and 0 shows nothing. Spoons is the rating, 0 for
-	// unrated. Made is the length of the made-it log.
-	MealType   recipe.MealType
-	Meal       string
-	Spice      int
-	Spoons     int
-	Made       int
-	SourceHost string
 	// Ribbon is the time ribbon under "Ready in about..."; Empty when no step
 	// has a duration.
 	Ribbon ribbon.Ribbon
@@ -121,13 +109,14 @@ type timeRow struct {
 type componentView struct {
 	Name  string
 	Lines []display.Line
-	Steps []stepView
+	Steps []StepView
 	// FirstStep is the number of the component's first step, counted across
 	// components in reading order.
 	FirstStep int
 }
 
-type stepView struct {
+// StepView is one step as the recipe page and a past version show it.
+type StepView struct {
 	// Title is the step's short heading, empty when it has none.
 	Title string
 	Text  string
@@ -150,16 +139,9 @@ type equipmentView struct {
 // buildView resolves catalog references and applies opts to every line.
 func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o display.Options) (view, error) {
 	v := view{
-		ID: id, Name: r.Name, Description: r.Description, Author: r.Author,
-		SourceURL: r.SourceURL, VideoID: r.VideoID, Tags: r.Tags, Rating: r.Rating, Calories: r.CaloriesPerServing,
+		ID: id, Name: r.Name, Description: r.Description, Meta: NewMeta(r),
+		VideoID: r.VideoID, Tags: r.Tags,
 		Scaled: o.Scaled(), Multiplier: o.Mult.String(), Opts: o,
-		MealType: r.MealType, Meal: mealLabels[r.MealType], SourceHost: sourceHost(r.SourceURL),
-	}
-	if r.SpiceLevel != nil && *r.SpiceLevel > 0 {
-		v.Spice = min(*r.SpiceLevel, recipe.MaxSpiceLevel)
-	}
-	if r.Rating != nil && *r.Rating > 0 {
-		v.Spoons = min(*r.Rating, maxSpoons)
 	}
 	var steps []recipe.Step
 	for _, ref := range r.LinearOrder() {
@@ -208,11 +190,7 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 			cv.Lines = append(cv.Lines, lv)
 		}
 		for _, s := range c.Steps {
-			sv := stepView{Title: s.Title, Text: s.Text, Passive: s.Passive, Note: display.StepNote(s), Meanwhile: guidance[s.ID]}
-			for _, dep := range s.DependsOn {
-				sv.After = append(sv.After, number[dep])
-			}
-			cv.Steps = append(cv.Steps, sv)
+			cv.Steps = append(cv.Steps, NewStepView(s, number, guidance[s.ID]))
 		}
 		v.Components = append(v.Components, cv)
 	}
@@ -233,6 +211,50 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	return v, nil
 }
 
+// NewStepView formats one step. number is display.StepNumbers of the recipe,
+// which turns each dependency into the number printed on its step; meanwhile
+// is the guidance offered while it runs, nil for none.
+func NewStepView(s recipe.Step, number map[recipe.StepID]int, meanwhile []display.MeanwhileItem) StepView {
+	sv := StepView{Title: s.Title, Text: s.Text, Passive: s.Passive, Note: display.StepNote(s), Meanwhile: meanwhile}
+	for _, dep := range s.DependsOn {
+		sv.After = append(sv.After, number[dep])
+	}
+	return sv
+}
+
+// Meta is what sits in the line under a recipe's title: meal type, spice,
+// rating, made count, author, calories and source. The recipe page and the
+// page of a past version build it the same way, so the two cannot drift.
+type Meta struct {
+	// MealType is the meal type's key and Meal its label, both empty when
+	// unset. Spice is 0 to 3 and 0 shows nothing. Spoons is the rating, 0 for
+	// unrated. Made is the length of the made-it log; a past version has none.
+	MealType   recipe.MealType
+	Meal       string
+	Spice      int
+	Spoons     int
+	Made       int
+	Author     string
+	Calories   *int
+	SourceURL  string
+	SourceHost string
+}
+
+// NewMeta reads the fields of r that the meta row shows.
+func NewMeta(r recipe.Recipe) Meta {
+	m := Meta{
+		MealType: r.MealType, Meal: mealLabels[r.MealType], Author: r.Author,
+		Calories: r.CaloriesPerServing, SourceURL: r.SourceURL, SourceHost: sourceHost(r.SourceURL),
+	}
+	if r.SpiceLevel != nil && *r.SpiceLevel > 0 {
+		m.Spice = min(*r.SpiceLevel, recipe.MaxSpiceLevel)
+	}
+	if r.Rating != nil && *r.Rating > 0 {
+		m.Spoons = min(*r.Rating, maxSpoons)
+	}
+	return m
+}
+
 // withJournal adds what the journal contributes to the page: the pinned notes
 // as tips, and how many times the recipe was made.
 func (v *view) withJournal(notes []store.Note, made []store.MadeIt) {
@@ -241,7 +263,7 @@ func (v *view) withJournal(notes []store.Note, made []store.MadeIt) {
 			v.Tips = append(v.Tips, n.Body)
 		}
 	}
-	v.Made = len(made)
+	v.Meta.Made = len(made)
 }
 
 // sourceHost is the host of a source address for the link text, empty when the
@@ -272,14 +294,11 @@ func afterText(nums []int) string {
 	return "after steps " + strings.Join(parts, ", ")
 }
 
-// readyIn is the time the eyebrow above the ribbon states: the derived total,
-// or the sum of the timed steps when the recipe states no total.
-func (v view) readyIn() string {
-	if v.Total != "" {
-		return v.Total
-	}
-	return display.FormatDuration(v.Ribbon.Total)
-}
+// readyIn is the time the eyebrow above the ribbon states: the derived total
+// and nothing else. The ribbon's own sum of timed steps is not a total: it
+// skips untimed steps and counts parallel ones twice, and ADR-00004 allows only
+// the three total rules, of which TotalNote says which applied.
+func (v view) readyIn() string { return v.Total }
 
 // hasLines reports whether any component has an ingredient line, so a recipe
 // of steps alone shows no empty Ingredients heading.

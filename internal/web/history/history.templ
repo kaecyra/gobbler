@@ -92,23 +92,7 @@ templ versionPage(v versionView) {
 					if v.Description != "" {
 						<p class="lede">{ v.Description }</p>
 					}
-					<div class="meta-row">
-						if v.Author != "" {
-							<span>By { v.Author }</span>
-						}
-						if v.Rating != nil {
-							<span>Rating { strconv.Itoa(*v.Rating) }/5</span>
-						}
-						if v.Calories != nil {
-							<span>{ strconv.Itoa(*v.Calories) } kcal per serving</span>
-						}
-						if v.SourceURL != "" {
-							<a class="srclink" href={ templ.URL(v.SourceURL) } target="_blank" rel="noopener noreferrer">
-								<span class="srck">Original recipe</span>
-								<span class="sr">(opens in a new tab)</span>
-							</a>
-						}
-					</div>
+					@recipeview.MetaRow(v.Meta)
 					if len(v.Tags) > 0 {
 						<ul class="recipe-tags">
 							for _, t := range v.Tags {
@@ -161,25 +145,25 @@ templ versionPage(v versionView) {
 							</ul>
 						</section>
 					}
-if v.hasLines() {
-					<section aria-labelledby="ingredients-h">
-						<h2 id="ingredients-h" class="eyebrow">Ingredients</h2>
-						for _, c := range v.Components {
-							if len(c.Lines) > 0 {
-								<div class="comp">
-									if c.Name != "" {
-										<h3>{ c.Name }</h3>
-									}
-									<ul class="ing">
-										for _, l := range c.Lines {
-											<li><span>{ l }</span></li>
-										}
-									</ul>
-								</div>
+					if v.hasLines() {
+						<section aria-labelledby="ingredients-h">
+							<h2 id="ingredients-h" class="eyebrow">Ingredients</h2>
+							for _, c := range v.Components {
+								if len(c.Lines) > 0 {
+										<div class="comp">
+											if c.Name != "" {
+												<h3>{ c.Name }</h3>
+											}
+											<ul class="ing">
+												for _, l := range c.Lines {
+													<li><span>{ l }</span></li>
+												}
+											</ul>
+										</div>
+								}
 							}
-						}
-					</section>
-}
+						</section>
+					}
 				</div>
 				<section class="method" aria-labelledby="steps-h">
 					<h2 id="steps-h" class="sr">Steps</h2>
@@ -190,22 +174,7 @@ if v.hasLines() {
 							}
 							<ol start={ strconv.Itoa(c.FirstStep) }>
 								for i, s := range c.Steps {
-									<li class="step">
-										<div class="sn" aria-hidden="true">{ strconv.Itoa(c.FirstStep + i) }</div>
-										<div>
-											<p>{ s.Text }</p>
-											if s.Note != "" || len(s.After) > 0 {
-												<div class="stags">
-													if s.Note != "" {
-														<span class="stag">{ s.Note }</span>
-													}
-													if len(s.After) > 0 {
-														<span class="stag dep" data-testid="after">after step { joinSteps(s.After) }</span>
-													}
-												</div>
-											}
-										</div>
-									</li>
+									@recipeview.Step(s, strconv.Itoa(c.FirstStep + i))
 								}
 							</ol>
 						}
