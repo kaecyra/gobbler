@@ -2149,9 +2149,7 @@
       "track": null,
       "issue": 246,
       "status": "todo",
-      "depends_on": [
-        "g-e2e-ports"
-      ],
+      "depends_on": [],
       "owns": [
         "internal/web/layout/**",
         "internal/web/static/app.css",
@@ -2310,7 +2308,8 @@
       "issue": 253,
       "status": "todo",
       "depends_on": [
-        "u-shell"
+        "u-shell",
+        "g-e2e-ports"
       ],
       "owns": [
         "internal/web/shopping/**",
