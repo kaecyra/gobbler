@@ -6,7 +6,8 @@
 // through the recipe store, which writes the revision holding the prior
 // document; the editor never writes SQL and never touches a source snapshot.
 // The author of an edit is the verified identity on the request context
-// (ADR-00003). It is mounted from internal/web (ADR-00012).
+// (ADR-00003). It is mounted from internal/web (ADR-00012). The same form is
+// the ingest review screen over an unsaved draft (Unsaved, ADR-00020 decision 3).
 package editor
 
 import (
@@ -154,7 +155,7 @@ func (h *handler) post(w http.ResponseWriter, r *http.Request) {
 // with what the user typed and the stored recipe untouched.
 func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base recipe.Recipe, d draft, names lookups) {
 	ctx := r.Context()
-	rec, proposals, ok, err := h.build(ctx, &d, base)
+	rec, proposals, _, ok, err := h.build(ctx, &d, base)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -192,7 +193,7 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 	}
 	h.keepThumbnail(ctx, id, rec.VideoID)
 	to := recipePath(id)
-	if fromHTMX(r) {
+	if FromHTMX(r) {
 		w.Header().Set("HX-Redirect", to)
 		w.WriteHeader(http.StatusOK)
 		return
@@ -228,14 +229,14 @@ func (h *handler) stale(w http.ResponseWriter, r *http.Request, id int64, d draf
 // does not swap a 4xx, so a fragment is a 200 and a plain form gets the
 // status.
 func rejectedStatus(r *http.Request) int {
-	if fromHTMX(r) {
+	if FromHTMX(r) {
 		return http.StatusOK
 	}
 	return http.StatusBadRequest
 }
 
 func staleStatus(r *http.Request) int {
-	if fromHTMX(r) {
+	if FromHTMX(r) {
 		return http.StatusOK
 	}
 	return layout.StatusFor(store.ErrStaleVersion)
@@ -243,7 +244,7 @@ func staleStatus(r *http.Request) int {
 
 func (h *handler) render(w http.ResponseWriter, r *http.Request, status int, id int64, d draft, names lookups) {
 	v := view{ID: id, D: d, Names: names}
-	if fromHTMX(r) {
+	if FromHTMX(r) {
 		layout.Render(w, r, status, editorForm(v))
 		return
 	}
@@ -289,7 +290,9 @@ func recipeID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	return id, true
 }
 
-func fromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
+// FromHTMX reports whether r was sent by htmx, which swaps the answer into
+// the page instead of loading it.
+func FromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 
 func recipePath(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }
 

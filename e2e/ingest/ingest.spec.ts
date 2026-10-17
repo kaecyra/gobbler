@@ -113,11 +113,11 @@ test('pasted text goes to review, then confirm saves and redirects to the recipe
 
   await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
-  await expect(page.getByLabel('Name')).toHaveValue('Fluffy Pancakes');
-  await expect(page.getByText('2 cups all-purpose flour')).toBeVisible();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
+  await expect(page.getByLabel('Original text').first()).toHaveValue('2 cups all-purpose flour');
 
-  await page.getByLabel('Name').fill('Best Pancakes');
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Best Pancakes');
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   // The recipe view is a later node; the redirect target is its URL.
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
 });
@@ -137,10 +137,12 @@ Cook on a hot greased griddle until golden on both sides.
 `);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
-  await expect(page.getByText('Prep: 20 min')).toBeVisible();
-  await expect(page.getByText('Cook: 1 h 10 min')).toBeVisible();
-  await expect(page.getByText('Yield: 12 pancakes')).toBeVisible();
-  await expect(page.getByText('Prep time')).toHaveCount(0);
+  await expect(page.getByLabel('Prep time')).toHaveValue('20 min');
+  await expect(page.getByLabel('Cook time')).toHaveValue('70 min');
+  await expect(page.getByLabel('Yield amount')).toHaveValue('12');
+  await expect(page.getByLabel('Yield unit (for example loaf)')).toHaveValue('pancakes');
+  // Read as fields, so the label text is not left in a step or the description.
+  await expect(page.locator('textarea').filter({ hasText: 'Prep time' })).toHaveCount(0);
 });
 
 test('a low-confidence line is highlighted in words, a confident one is not', async ({ page }) => {
@@ -148,35 +150,40 @@ test('a low-confidence line is highlighted in words, a confident one is not', as
   await page.getByLabel('Or paste the recipe text').fill(MESSY);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
-  const flagged = page.locator('.lines li[data-low]');
+  const flagged = page.locator('li.line[data-low]');
   await expect(flagged).toHaveCount(1);
-  await expect(flagged).toContainText('glorp');
+  await expect(flagged.getByLabel('Original text')).toHaveValue(/glorp/);
   await expect(flagged).toContainText('Check:');
-  await expect(page.locator('.lines li:not([data-low])')).toContainText('all-purpose flour');
+  const confident = page.locator('li.line:not([data-low])');
+  await expect(confident.getByLabel('Original text')).toHaveValue(/all-purpose flour/);
+  await expect(confident).not.toContainText('Check:');
 });
 
-test('a proposed new ingredient is listed, and is created only when the draft is confirmed', async ({ page }) => {
+test('a proposed new ingredient is offered as new, and is created only when the draft is confirmed', async ({ page }) => {
   await page.goto('/ingest');
   await page.getByLabel('Or paste the recipe text').fill(UNKNOWN);
   await page.getByRole('button', { name: 'Read recipe' }).click();
 
-  const proposals = page.getByRole('region', { name: 'New ingredients' });
-  await expect(proposals).toContainText('unreviewed');
-  await expect(proposals.locator('[data-proposed]')).toHaveCount(1);
-  await expect(proposals).toContainText('dragonfruit zest');
-  // The matched line offers no such choice; the proposed one does.
-  await expect(page.getByLabel('Add as new ingredient named')).toHaveValue(/dragonfruit zest/);
-  await expect(page.getByLabel('Or use an existing ingredient (type its name)')).toBeVisible();
+  // The editor's own ingredient field and its add-as-new choice; the matched
+  // line offers no such choice.
+  const unknown = page.locator('li.line').nth(1);
+  await expect(unknown.getByLabel('Ingredient', { exact: true })).toHaveValue(/dragonfruit zest/);
+  const asNew = unknown.getByLabel('Add this ingredient to the catalog as new and unreviewed');
+  await expect(asNew).toBeChecked();
+  await expect(page.locator('li.line').nth(0).getByLabel('Add this ingredient to the catalog as new and unreviewed')).toHaveCount(0);
 
-  // Naming an ingredient the catalog lacks is refused and the draft stays.
-  await page.getByLabel('Or use an existing ingredient (type its name)').fill('no such ingredient');
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
-  await expect(page.getByRole('alert')).toContainText('no existing ingredient is called');
-  await expect(proposals).toContainText('dragonfruit zest');
+  // Naming an ingredient the catalog lacks, without adding it, is refused and
+  // the draft stays.
+  await unknown.getByLabel('Ingredient', { exact: true }).fill('no such ingredient');
+  await asNew.uncheck();
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await expect(page.getByRole('alert')).toContainText('No ingredient in the catalog is called');
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
 
   // Accepting it as new saves.
-  await page.getByLabel('Or use an existing ingredient (type its name)').fill('');
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
+  await page.locator('li.line').nth(1).getByLabel('Ingredient', { exact: true }).fill('dragonfruit zest');
+  await page.locator('li.line').nth(1).getByLabel('Add this ingredient to the catalog as new and unreviewed').check();
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
 });
 
@@ -184,9 +191,33 @@ test('a proposed line can be mapped to an existing ingredient', async ({ page })
   await page.goto('/ingest');
   await page.getByLabel('Or paste the recipe text').fill(UNKNOWN_FOR_MAPPING);
   await page.getByRole('button', { name: 'Read recipe' }).click();
-  await page.getByLabel('Or use an existing ingredient (type its name)').fill('sugar');
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
+  await page.locator('li.line').nth(1).getByLabel('Ingredient', { exact: true }).fill('sugar');
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
+});
+
+test('an amount, a unit and a whole line can be corrected on review before anything is saved', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Or paste the recipe text').fill(PANCAKES);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+
+  const first = page.locator('li.line').nth(0);
+  await expect(first.getByLabel('Quantity')).toHaveValue('2');
+  await first.getByLabel('Quantity').fill('3');
+  await first.getByLabel('Unit', { exact: true }).fill('tbsp');
+
+  // A structural button keeps what was typed and saves nothing.
+  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  await expect(page.locator('li.line')).toHaveCount(2);
+  await expect(page.locator('li.line').nth(0).getByLabel('Quantity')).toHaveValue('3');
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add ingredient line' }).click();
+  await expect(page.locator('li.line')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Remove line' }).last().click();
+
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await expect(page).toHaveURL(/\/recipes\/\d+$/);
+  await expect(page.getByText('3 tbsp')).toBeVisible();
 });
 
 test('cancel discards the draft and saves nothing', async ({ page, request }) => {
@@ -196,7 +227,7 @@ test('cancel discards the draft and saves nothing', async ({ page, request }) =>
   const reviewURL = page.url();
   const token = reviewURL.split('/').pop();
 
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).first().click();
   await expect(page).toHaveURL(/\/ingest$/);
 
   // The draft is gone, so it can be neither reviewed nor confirmed.
@@ -214,8 +245,8 @@ test('a URL is fetched from the fixture server and reviewed', async ({ page }) =
   await page.goto('/ingest');
   await page.getByLabel('Recipe URL').fill(`${fixtureURL}/toast`);
   await page.getByRole('button', { name: 'Read recipe' }).click();
-  await expect(page.getByLabel('Name')).toHaveValue('Fixture Toast');
-  await expect(page.getByText('2 slices bread')).toBeVisible();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fixture Toast');
+  await expect(page.getByLabel('Original text').first()).toHaveValue('2 slices bread');
   await expect(page.getByText(`Read from ${fixtureURL}/toast`)).toBeVisible();
 });
 

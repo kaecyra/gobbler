@@ -1,27 +1,22 @@
 package ingest
 
 import (
-	"fmt"
-
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 templ styles() {
 	<style>
-		.ingest-form label, .review label { display: block; font-weight: 600; margin-top: 0.75rem; }
-		.ingest-form input[type=url], .ingest-form textarea, .review input[type=text], .review textarea { width: 100%; font: inherit; padding: 0.4rem; }
+		.ingest-form label { display: block; font-weight: 600; margin-top: 0.75rem; }
+		.ingest-form input[type=url], .ingest-form textarea { width: 100%; font: inherit; padding: 0.4rem; }
 		.ingest-form textarea { min-height: 12rem; }
 		.review-actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
-		.error, .problems { border: 2px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; }
-		.lines, .steps { padding-left: 1.25rem; }
-		.lines li, .steps li { margin: 0.5rem 0; }
+		.error { border: 2px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; }
 		.low { border-left: 4px solid var(--accent); padding-left: 0.5rem; background: color-mix(in srgb, var(--accent) 10%, transparent); }
 		.flag { color: var(--accent); font-weight: 700; margin-right: 0.4rem; }
 		.llm-mark { border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
 		.retry-form { margin: 1rem 0; }
-		.new-ingredient { border: 1px dashed var(--border); padding: 0.25rem 0.5rem; }
-		.times { display: flex; gap: 1.5rem; flex-wrap: wrap; }
 	</style>
 }
 
@@ -52,77 +47,14 @@ templ reviewPage(v reviewView) {
 		<h1>Review recipe</h1>
 		<p class="muted">Nothing is saved until you confirm.</p>
 		@summary(v.Draft)
-		if len(v.Problems) > 0 {
-			<div class="problems" role="alert">
-				<p><strong>This draft cannot be saved yet.</strong></p>
-				<ul>
-					for _, p := range v.Problems {
-						<li>{ p }</li>
-					}
-				</ul>
-			</div>
-		}
-		@proposed(v.Draft)
-		@equipment(v.Draft)
 		if v.CanRetry {
 			<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
 				<button type="submit">Retry with LLM</button>
 				<span class="muted">Asks the configured LLM to read the source again. Edits you have not confirmed are discarded. Nothing is saved.</span>
 			</form>
 		}
-		<form class="review" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/confirm") }>
-			<label for="f-name">Name</label>
-			<div class={ markClass(lowRequired(v.Draft.Name, v.Draft.Threshold), v.Draft.Name.FromLLM) }>
-				@flagMark(lowRequired(v.Draft.Name, v.Draft.Threshold))
-				@llmMark(v.Draft.Name.FromLLM)
-				<input id="f-name" type="text" name="name" value={ v.Draft.Name.Value }/>
-			</div>
-			<label for="f-author">Author</label>
-			<div class={ markClass(lowOptional(v.Draft.Author, v.Draft.Threshold), v.Draft.Author.FromLLM) }>
-				@flagMark(lowOptional(v.Draft.Author, v.Draft.Threshold))
-				@llmMark(v.Draft.Author.FromLLM)
-				<input id="f-author" type="text" name="author" value={ v.Draft.Author.Value }/>
-			</div>
-			<label for="f-description">Description</label>
-			<div class={ markClass(lowOptional(v.Draft.Description, v.Draft.Threshold), v.Draft.Description.FromLLM) }>
-				@flagMark(lowOptional(v.Draft.Description, v.Draft.Threshold))
-				@llmMark(v.Draft.Description.FromLLM)
-				<textarea id="f-description" name="description">{ v.Draft.Description.Value }</textarea>
-			</div>
-			@facts(v.Draft)
-			for ci, c := range v.Draft.Components {
-				<section class="component">
-					if c.Name != "" {
-						<h2>{ c.Name }</h2>
-					} else {
-						<h2>Ingredients and steps</h2>
-					}
-					<h3>Ingredients</h3>
-					<ol class="lines">
-						for li, l := range c.Lines {
-							@lineItem(ci, li, l, v.Draft.Threshold)
-						}
-					</ol>
-					<h3>Steps</h3>
-					<ol class="steps">
-						for si, s := range c.Steps {
-							<li class={ markClass(s.Confidence < v.Draft.Threshold, s.FromLLM) } data-llm?={ s.FromLLM }>
-								@flagMark(s.Confidence < v.Draft.Threshold)
-								@llmMark(s.FromLLM)
-								<textarea name={ stepField(ci, si) } aria-label={ fmt.Sprintf("Step %d", si+1) }>{ s.Text }</textarea>
-								if s.Duration > 0 {
-									<span class="muted">{ formatDuration(s.Duration) }</span>
-								}
-							</li>
-						}
-					</ol>
-				</section>
-			}
-			<div class="review-actions">
-				<button type="submit">Confirm and save</button>
-				<button type="submit" formaction={ templ.SafeURL("/ingest/" + v.Token + "/cancel") } formnovalidate>Cancel</button>
-			</div>
-		</form>
+		<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
+		@v.Form.Component()
 	}
 }
 
@@ -136,7 +68,7 @@ templ summary(d ingestcore.Draft) {
 			</div>
 		}
 		if d.UsedLLM {
-			<p><strong class="llm-mark">LLM</strong> The LLM supplied this draft. Check every item marked LLM before you confirm.</p>
+			<p><strong class="llm-mark">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>
 		} else if d.BelowThreshold {
 			<p><strong class="flag">Check this draft.</strong> The rules are not sure they read it correctly (confidence { percent(d.Overall) } of the { percent(d.Threshold) } needed). Look over every flagged item.</p>
 		} else {
@@ -154,90 +86,4 @@ templ summary(d ingestcore.Draft) {
 		}
 		<p class="muted">Read from { sourceText(d) } using { string(d.Method) }.</p>
 	</section>
-}
-
-// proposed lists the ingredients the catalog does not have. They are created,
-// unreviewed, only when the draft is confirmed (ADR-00008).
-templ proposed(d ingestcore.Draft) {
-	if len(d.Proposed) > 0 {
-		<section class="new-ingredients" aria-label="New ingredients">
-			<h2>New ingredients</h2>
-			<p class="muted">The catalog does not have these. Confirming adds them as unreviewed ingredients, unless you map the line to an existing one below.</p>
-			<ul>
-				for _, p := range d.Proposed {
-					<li data-proposed={ p.Name }><strong>{ p.Name }</strong> <span class="muted">aisle: { p.Aisle }</span></li>
-				}
-			</ul>
-		</section>
-	}
-}
-
-// equipment lists what the draft found. Equipment is not edited here: it can be
-// changed after saving, in the recipe editor (ADR-00020). Equipment the catalog
-// does not have is created, unreviewed, only when the draft is confirmed
-// (ADR-00008).
-templ equipment(d ingestcore.Draft) {
-	if len(d.Equipment) > 0 {
-		<section class="equipment" aria-label="Equipment">
-			<h2>Equipment</h2>
-			<p class="muted">Equipment the catalog does not have is added, unreviewed, when you confirm. Change the list in the recipe editor after saving.</p>
-			<ul>
-				for _, e := range d.Equipment {
-					<li data-equipment={ e.Name } class={ markClass(false, e.FromLLM) }>
-						@llmMark(e.FromLLM)
-						<strong>{ e.Name }</strong>
-						if e.Equipment == 0 {
-							<span class="muted" data-proposed-equipment={ e.Name }>new</span>
-						}
-					</li>
-				}
-			</ul>
-		</section>
-	}
-}
-
-templ facts(d ingestcore.Draft) {
-	<div class="times">
-		if yieldText(d.Yield.Value) != "" {
-			@fact("Yield", yieldText(d.Yield.Value), d.Yield.Confidence < d.Threshold, d.Yield.FromLLM)
-		}
-		if d.Prep.Value > 0 {
-			@fact("Prep", formatDuration(d.Prep.Value), d.Prep.Confidence < d.Threshold, d.Prep.FromLLM)
-		}
-		if d.Cook.Value > 0 {
-			@fact("Cook", formatDuration(d.Cook.Value), d.Cook.Confidence < d.Threshold, d.Cook.FromLLM)
-		}
-		if d.Total.Value > 0 {
-			@fact("Total", formatDuration(d.Total.Value), d.Total.Confidence < d.Threshold, d.Total.FromLLM)
-		}
-	</div>
-}
-
-templ fact(label, text string, low, fromLLM bool) {
-	<p class={ markClass(low, fromLLM) }>
-		@flagMark(low)
-		@llmMark(fromLLM)
-		{ label }: { text }
-	</p>
-}
-
-templ lineItem(ci, li int, l ingestcore.Line, threshold float64) {
-	<li class={ markClass(l.Confidence < threshold, l.FromLLM) } data-low?={ l.Confidence < threshold } data-llm?={ l.FromLLM }>
-		@flagMark(l.Confidence < threshold)
-		@llmMark(l.FromLLM)
-		<span class="raw">{ l.Raw }</span>
-		<div class="muted">{ lineSummary(l) }</div>
-		for _, issue := range l.Issues {
-			<div class="muted">{ issue }</div>
-		}
-		if l.Ingredient == 0 {
-			<div class="new-ingredient">
-				<strong>New ingredient.</strong>
-				<label for={ fmt.Sprintf("line-%d-%d-name", ci, li) }>Add as new ingredient named</label>
-				<input id={ fmt.Sprintf("line-%d-%d-name", ci, li) } type="text" name={ lineNameField(ci, li) } value={ l.Name }/>
-				<label for={ fmt.Sprintf("line-%d-%d-existing", ci, li) }>Or use an existing ingredient (type its name)</label>
-				<input id={ fmt.Sprintf("line-%d-%d-existing", ci, li) } type="text" name={ lineExistingField(ci, li) }/>
-			</div>
-		}
-	</li>
 }

@@ -26,12 +26,21 @@ type proposal struct {
 	component, index int
 }
 
+// kept says which rows of the form build turned into recipe rows: the form
+// index of each kept line and step, per component, and of each kept equipment
+// row. Rows build dropped as blank are absent, so the recipe's rows and the
+// form's can be paired without a second copy of the rule.
+type kept struct {
+	lines, steps [][]int
+	equipment    []int
+}
+
 // build turns the draft into a recipe on top of base, which supplies what the
 // form does not edit (the rating and the special times). Anything the user
 // typed that cannot be used is written into d as a message, and ok is false;
 // the recipe is then not to be saved. err is a failure to read the catalog.
 // Proposals name the ingredients and equipment to create before saving.
-func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec recipe.Recipe, props []proposal, ok bool, err error) {
+func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec recipe.Recipe, props []proposal, rows kept, ok bool, err error) {
 	d.Errs, d.Problems = map[string]string{}, nil
 	b := builder{ctx: ctx, cat: h.Catalog, d: d}
 	rec = base
@@ -54,11 +63,13 @@ func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec 
 	for ci := range d.Components {
 		c := &d.Components[ci]
 		comp := recipe.Component{Name: strings.TrimSpace(c.Name)}
+		rows.lines, rows.steps = append(rows.lines, nil), append(rows.steps, nil)
 		for li := range c.Lines {
 			line, keep, prop := b.line(&c.Lines[li])
 			if !keep {
 				continue
 			}
+			rows.lines[ci] = append(rows.lines[ci], li)
 			if prop != "" {
 				props = append(props, proposal{name: prop, component: ci, index: len(comp.Lines)})
 			}
@@ -66,6 +77,7 @@ func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec 
 		}
 		for si := range c.Steps {
 			if step, keep := b.step(&c.Steps[si]); keep {
+				rows.steps[ci] = append(rows.steps[ci], si)
 				comp.Steps = append(comp.Steps, step)
 			}
 		}
@@ -77,22 +89,23 @@ func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec 
 		if !keep {
 			continue
 		}
+		rows.equipment = append(rows.equipment, ei)
 		if prop != "" {
 			props = append(props, proposal{name: prop, equipment: true, index: len(rec.Equipment)})
 		}
 		rec.Equipment = append(rec.Equipment, link)
 	}
 	if b.err != nil {
-		return recipe.Recipe{}, nil, false, b.err
+		return recipe.Recipe{}, nil, kept{}, false, b.err
 	}
 	if b.failed || len(d.Errs) > 0 {
-		return recipe.Recipe{}, nil, false, nil
+		return recipe.Recipe{}, nil, kept{}, false, nil
 	}
 	if err := rec.Validate(); err != nil {
 		d.Problems = append(d.Problems, validationMessage(err))
-		return recipe.Recipe{}, nil, false, nil
+		return recipe.Recipe{}, nil, kept{}, false, nil
 	}
-	return rec, props, true, nil
+	return rec, props, rows, true, nil
 }
 
 // validationMessage words a structural error of the recipe for the form. A
@@ -352,14 +365,13 @@ func lineBlank(l lineDraft) bool {
 	return true
 }
 
-// step reads one step; a step with no text, duration or dependencies is
-// dropped as an unused row.
+// step reads one step; a blank one (see stepBlank) is dropped.
 func (b *builder) step(s *stepDraft) (recipe.Step, bool) {
 	s.Err = ""
-	text := strings.TrimSpace(s.Text)
-	if text == "" && strings.TrimSpace(s.Duration) == "" && len(s.Deps) == 0 {
+	if stepBlank(*s) {
 		return recipe.Step{}, false
 	}
+	text := strings.TrimSpace(s.Text)
 	step := recipe.Step{ID: recipe.StepID(s.ID), Text: text, Passive: s.Passive}
 	var msgs []string
 	if text == "" {
@@ -380,12 +392,23 @@ func (b *builder) step(s *stepDraft) (recipe.Step, bool) {
 	return step, true
 }
 
+// stepBlank is a step row with no text, duration or dependencies: an unused
+// row, dropped.
+func stepBlank(s stepDraft) bool {
+	return strings.TrimSpace(s.Text) == "" && strings.TrimSpace(s.Duration) == "" && len(s.Deps) == 0
+}
+
+// equipBlank is an equipment row with no name, quantity or steps.
+func equipBlank(e equipDraft) bool {
+	return strings.TrimSpace(e.Name) == "" && strings.TrimSpace(e.Qty) == "" && len(e.Steps) == 0
+}
+
 func (b *builder) equipment(e *equipDraft) (link recipe.EquipmentLink, keep bool, prop string) {
 	e.Err, e.OfferProposal = "", false
-	name, qty := strings.TrimSpace(e.Name), strings.TrimSpace(e.Qty)
-	if name == "" && qty == "" && len(e.Steps) == 0 {
+	if equipBlank(*e) {
 		return link, false, ""
 	}
+	name, qty := strings.TrimSpace(e.Name), strings.TrimSpace(e.Qty)
 	var msgs []string
 	if qty != "" {
 		q, err := quantity.ParseQuantity(qty)

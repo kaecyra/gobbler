@@ -88,7 +88,7 @@ func TestRetryFailureShowsErrorKeepsRuleDraftAndStaysSaveable(t *testing.T) { //
 	if !strings.Contains(body, "Apple pie") || strings.Contains(body, "LLM pie") {
 		t.Error("the rule-based draft must be what is shown")
 	}
-	if strings.Contains(body, "llm-mark") && strings.Contains(between(t, body, "<h1>", "<form class=\"review\""), "supplied this draft") {
+	if strings.Contains(body, "llm-mark") && strings.Contains(between(t, body, "<h1>", "<form id=\"editor\""), "filled the gaps") {
 		t.Error("a failed retry must not be presented as an LLM draft")
 	}
 	// A second look at the pending draft has no partial LLM state.
@@ -158,11 +158,11 @@ func TestReviewMarksLLMSuppliedValues(t *testing.T) { // ADR-00006 obligation 4
 	if !strings.Contains(name, `llm-mark">LLM`) {
 		t.Errorf("LLM name not marked: %s", name)
 	}
-	line := between(t, body, `<li class="llm" data-llm>`, "</li>")
+	line := between(t, body, `<li class="item line llm" data-llm>`, "</li>")
 	if !strings.Contains(line, "LLM") || !strings.Contains(line, "butter") {
 		t.Errorf("LLM line not marked: %s", line)
 	}
-	if !strings.Contains(body, "The LLM supplied this draft") {
+	if !strings.Contains(body, "The LLM filled the gaps the rules left") {
 		t.Error("no summary of LLM origin")
 	}
 	// A rule-based draft carries no marker.

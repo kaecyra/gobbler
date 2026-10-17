@@ -14,9 +14,63 @@ type view struct {
 	ID    int64
 	D     draft
 	Names lookups
+	// Review is set when the form edits an unsaved ingest draft (ADR-00020
+	// decision 3) rather than a stored recipe; nil for the recipe editor.
+	Review *ReviewOptions
 }
 
-func (v view) action() string { return editPath(v.ID) }
+func (v view) reviewing() bool { return v.Review != nil }
+
+// carries reports whether the control group that edits a recipe field is shown.
+// A stored recipe carries everything. A draft under review carries only what
+// ingest.Draft and Saver.Save keep; a control for anything else is left out
+// rather than shown and silently dropped on confirm. This is the one place
+// that filters the hidden controls: when the draft learns to carry step
+// dependencies and passive flags (#230), tags, a video or equipment links,
+// switch the group on here.
+func (v view) carries(g controlGroup) bool {
+	if !v.reviewing() {
+		return true
+	}
+	switch g {
+	case groupPlacement:
+		return true
+	}
+	return false
+}
+
+// controlGroup names a set of editor controls that exist only if the recipe
+// being edited can store what they edit.
+type controlGroup int
+
+const (
+	// groupPlacement: the component a step belongs to.
+	groupPlacement controlGroup = iota
+	// groupVersion: the stale-save check of a stored recipe.
+	groupVersion
+	// groupSource: the source URL, tags and video of a stored recipe.
+	groupSource
+	// groupScaling: a line's scaling rule.
+	groupScaling
+	// groupStepGraph: a step's dependencies and passive flag.
+	groupStepGraph
+	// groupEquipmentLinks: an equipment quantity and the steps that use it.
+	groupEquipmentLinks
+)
+
+func (v view) action() string {
+	if v.reviewing() {
+		return v.Review.Action
+	}
+	return editPath(v.ID)
+}
+
+func (v view) saveLabel() string {
+	if v.reviewing() {
+		return "Confirm and save"
+	}
+	return "Save recipe"
+}
 
 func (v view) back() string { return recipePath(v.ID) }
 

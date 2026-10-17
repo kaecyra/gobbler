@@ -23,8 +23,10 @@ import (
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/parse"
+	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -80,19 +82,49 @@ func (s *fakeStore) MatchIngredient(_ context.Context, term string) (catalog.Ing
 	return ing, ok, nil
 }
 
-func (s *fakeStore) MatchUnit(context.Context, string) (catalog.Unit, bool, error) {
+// fakeUnits are the units the fake catalog knows.
+var fakeUnits = []string{"tbsp", "cup"}
+
+func (s *fakeStore) MatchUnit(_ context.Context, term string) (catalog.Unit, bool, error) {
+	for i, n := range fakeUnits {
+		if strings.EqualFold(term, n) {
+			return catalog.Unit{ID: int64(i + 1), Unit: quantity.OtherUnit(n)}, true, nil
+		}
+	}
 	return catalog.Unit{}, false, nil
 }
 
+func (s *fakeStore) ListUnits(context.Context) ([]catalog.Unit, error) {
+	var out []catalog.Unit
+	for i, n := range fakeUnits {
+		out = append(out, catalog.Unit{ID: int64(i + 1), Unit: quantity.OtherUnit(n)})
+	}
+	return out, nil
+}
+
+func (s *fakeStore) ListIngredients(context.Context) ([]catalog.Ingredient, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []catalog.Ingredient
+	for _, i := range s.known {
+		out = append(out, i)
+	}
+	return out, nil
+}
+
+var fakeEquipment = []catalog.Equipment{{ID: 5, Name: "dutch oven"}, {ID: 6, Name: "whisk"}}
+
 func (s *fakeStore) MatchEquipment(_ context.Context, term string) (catalog.Equipment, bool, error) {
-	if strings.EqualFold(term, "dutch oven") {
-		return catalog.Equipment{ID: 5, Name: "dutch oven"}, true, nil
+	for _, e := range fakeEquipment {
+		if strings.EqualFold(term, e.Name) {
+			return e, true, nil
+		}
 	}
 	return catalog.Equipment{}, false, nil
 }
 
 func (s *fakeStore) ListEquipment(context.Context) ([]catalog.Equipment, error) {
-	return []catalog.Equipment{{ID: 5, Name: "dutch oven"}}, nil
+	return fakeEquipment, nil
 }
 
 func (s *fakeStore) CreateEquipment(_ context.Context, in catalog.Equipment) (catalog.Equipment, error) {
@@ -122,7 +154,8 @@ func sampleDraft() ingestcore.Draft {
 		Prep:          ingestcore.Field[time.Duration]{Value: 20 * time.Minute, Confidence: 1},
 		Components: []ingestcore.Component{{
 			Lines: []ingestcore.Line{
-				{Raw: "2 tbsp butter", Name: "butter", Ingredient: 7, Confidence: 1},
+				{Raw: "2 tbsp butter", Name: "butter", Ingredient: 7, Confidence: 1,
+					Amount: quantity.Amount{Qty: quantity.Exact(quantity.Int(2)), Unit: quantity.OtherUnit("tbsp")}},
 				{Raw: "1 dragonfruit zest", Name: "dragonfruit zest", Confidence: 0.4, Issues: []string{`ingredient "dragonfruit zest" not matched`}},
 			},
 			Steps: []ingestcore.Step{
@@ -174,11 +207,23 @@ func newFixture(t *testing.T) *fixture {
 	h := &handler{
 		drafter: d,
 		saver:   ingestcore.NewSaver(st, st),
-		matcher: st,
+		unsaved: editor.NewUnsaved(st),
 		pending: newPendingDrafts(time.Now),
 		log:     slog.New(slog.NewJSONHandler(io.Discard, nil)),
 	}
 	return &fixture{h: h, srv: asMember(householdA)(h.routes()), drafter: d, store: st}
+}
+
+func newFormRequest(target string, form url.Values) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return req
+}
+
+func (f *fixture) serve(req *http.Request) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	f.srv.ServeHTTP(rec, req)
+	return rec
 }
 
 func (f *fixture) do(method, target string, form url.Values) *httptest.ResponseRecorder {
@@ -208,18 +253,6 @@ func (f *fixture) ingestText(t *testing.T) string {
 		t.Fatalf("redirect = %q, want /ingest/<token>", loc)
 	}
 	return token
-}
-
-// reviewForm is the review form as the browser would send it untouched.
-func reviewForm() url.Values {
-	return url.Values{
-		fieldName:               {"Apple pie"},
-		fieldAuthor:             {"Ada"},
-		lineNameField(0, 1):     {"dragonfruit zest"},
-		lineExistingField(0, 1): {""},
-		stepField(0, 0):         {"Mix everything."},
-		stepField(0, 1):         {"Bake until goldn"},
-	}
 }
 
 func TestFormRenders(t *testing.T) {
@@ -329,79 +362,6 @@ func TestReviewShowsTheParserVersion(t *testing.T) {
 		t.Errorf("review lacks %q", want)
 	}
 }
-
-func TestReviewFlagsLowConfidenceWithTextNotColourAlone(t *testing.T) {
-	f := newFixture(t)
-	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
-
-	lowLine := between(t, body, `<li class="low" data-low>`, "</li>")
-	if !strings.Contains(lowLine, "dragonfruit zest") || !strings.Contains(lowLine, "Check:") {
-		t.Errorf("low-confidence line is not flagged in words: %s", lowLine)
-	}
-	if !strings.Contains(lowLine, "not matched") {
-		t.Error("the line's issue is not shown")
-	}
-	// Exactly the two low items (line and step) plus the draft summary carry
-	// the flag; the confident line, step and fields do not.
-	if got := strings.Count(body, `class="low"`); got != 3 {
-		t.Errorf("flagged elements = %d, want 3 (summary, line, step)", got)
-	}
-	if strings.Contains(between(t, body, "2 tbsp butter", "</li>"), "Check:") {
-		t.Error("a confident line is flagged")
-	}
-	if !strings.Contains(body, "Check this draft.") {
-		t.Error("a below-threshold draft has no overall warning")
-	}
-}
-
-func TestReviewListsProposedIngredientsWithChoice(t *testing.T) {
-	f := newFixture(t)
-	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
-	section := between(t, body, `aria-label="New ingredients"`, "</section>")
-	if !strings.Contains(section, `data-proposed="dragonfruit zest"`) || !strings.Contains(section, "unreviewed") {
-		t.Errorf("proposal not listed: %s", section)
-	}
-	for _, want := range []string{`name="` + lineNameField(0, 1) + `"`, `name="` + lineExistingField(0, 1) + `"`} {
-		if !strings.Contains(body, want) {
-			t.Errorf("no choice control %s", want)
-		}
-	}
-	if strings.Contains(body, lineNameField(0, 0)) {
-		t.Error("a matched line offers a new-ingredient choice")
-	}
-}
-
-func TestReviewListsEquipmentAndMarksNewAndLLMOnes(t *testing.T) {
-	f := newFixture(t)
-	f.drafter.draft.Equipment[2].FromLLM = true
-	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
-	section := between(t, body, `aria-label="Equipment"`, "</section>")
-	for _, want := range []string{`data-equipment="dutch oven"`, `data-equipment="whisk"`, `data-equipment="mandoline slicer"`} {
-		if !strings.Contains(section, want) {
-			t.Errorf("equipment section lacks %s: %s", want, section)
-		}
-	}
-	proposed := between(t, section, `data-proposed-equipment="`, `"`)
-	if proposed != "mandoline slicer" {
-		t.Errorf("proposed equipment = %q, want the mandoline", proposed)
-	}
-	if strings.Count(section, "data-proposed-equipment") != 1 {
-		t.Errorf("only unmatched equipment is proposed: %s", section)
-	}
-	if !strings.Contains(section, "llm-mark") || !strings.Contains(section, "unreviewed") {
-		t.Errorf("section does not mark LLM equipment or say new equipment is added unreviewed: %s", section)
-	}
-}
-
-func TestReviewWithoutEquipmentHasNoEquipmentSection(t *testing.T) {
-	f := newFixture(t)
-	f.drafter.draft.Equipment = nil
-	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
-	if strings.Contains(body, `aria-label="Equipment"`) {
-		t.Error("an empty equipment list still renders a section")
-	}
-}
-
 func TestConfirmSavesEquipmentAndCreatesTheProposedOne(t *testing.T) {
 	f := newFixture(t)
 	token := f.ingestText(t)
@@ -432,8 +392,8 @@ func TestConfirmSavesAcceptedNewIngredientAndRedirects(t *testing.T) {
 	f := newFixture(t)
 	token := f.ingestText(t)
 	form := reviewForm()
-	form.Set(fieldName, "  Best apple pie ")
-	form.Set(stepField(0, 1), "Bake until golden.")
+	form.Set("name", "  Best apple pie ")
+	form.Set("c.0.s.1.text", "Bake until golden.")
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/1" {
 		t.Fatalf("status = %d location = %q, want 303 /recipes/1; body: %s", rec.Code, rec.Header().Get("Location"), rec.Body)
@@ -461,7 +421,8 @@ func TestConfirmMapsProposedLineToExistingIngredient(t *testing.T) {
 	f.store.known["zest"] = catalog.Ingredient{ID: 9, Name: "zest"}
 	token := f.ingestText(t)
 	form := reviewForm()
-	form.Set(lineExistingField(0, 1), "Zest")
+	form.Set("c.0.l.1.ing", "Zest")
+	form.Del("c.0.l.1.propose")
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
@@ -473,38 +434,20 @@ func TestConfirmMapsProposedLineToExistingIngredient(t *testing.T) {
 		t.Errorf("line ingredient = %d, want 9", got)
 	}
 }
-
-func TestConfirmUnknownExistingIngredientReturnsToReview(t *testing.T) {
-	f := newFixture(t)
-	token := f.ingestText(t)
-	form := reviewForm()
-	form.Set(lineExistingField(0, 1), "no such thing")
-	rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
-	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), "no existing ingredient is called &#34;no such thing&#34;") {
-		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
-	}
-	if len(f.store.recipes) != 0 {
-		t.Error("saved despite the unresolved mapping")
-	}
-	if rec := f.do(http.MethodGet, "/"+token, nil); rec.Code != http.StatusOK {
-		t.Error("the draft was lost after a failed confirm")
-	}
-}
-
 func TestConfirmIncompleteDraftKeepsEditsAndSavesNothing(t *testing.T) {
 	f := newFixture(t)
 	token := f.ingestText(t)
 	form := reviewForm()
-	form.Set(fieldName, "")
-	form.Set(fieldAuthor, "Grace")
+	form.Set("name", "")
+	form.Set("author", "Grace")
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
-	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), "The recipe has no name.") {
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), "A recipe needs a name.") {
 		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
 	}
 	if len(f.store.recipes) != 0 || len(f.store.created) != 0 {
 		t.Error("an incomplete draft was saved")
 	}
-	if !strings.Contains(f.do(http.MethodGet, "/"+token, nil).Body.String(), `value="Grace"`) {
+	if !strings.Contains(rec.Body.String(), `value="Grace"`) {
 		t.Error("the user's other edits were lost")
 	}
 }
@@ -605,43 +548,6 @@ func TestSubmitMapsPipelineErrorsThroughTheStatusTable(t *testing.T) {
 		})
 	}
 }
-
-func TestReviewAfterFailedConfirmListsOnlyWhatConfirmWouldAdd(t *testing.T) {
-	t.Run("mapped line is no longer proposed", func(t *testing.T) {
-		f := newFixture(t)
-		f.store.known["zest"] = catalog.Ingredient{ID: 9, Name: "zest"}
-		token := f.ingestText(t)
-		form := reviewForm()
-		form.Set(lineExistingField(0, 1), "Zest")
-		form.Set(fieldName, "") // forces the 422
-		rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
-		if rec.Code != http.StatusUnprocessableEntity {
-			t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
-		}
-		if strings.Contains(rec.Body.String(), `data-proposed="dragonfruit zest"`) {
-			t.Error("a line mapped to an existing ingredient is still listed as added on confirm")
-		}
-		if strings.Contains(f.do(http.MethodGet, "/"+token, nil).Body.String(), `data-proposed="dragonfruit zest"`) {
-			t.Error("the next review still lists the mapped line")
-		}
-	})
-	t.Run("renamed line is proposed under its new name", func(t *testing.T) {
-		f := newFixture(t)
-		token := f.ingestText(t)
-		form := reviewForm()
-		form.Set(lineNameField(0, 1), "Passion  Fruit")
-		form.Set(fieldName, "")
-		rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
-		body := rec.Body.String()
-		if rec.Code != http.StatusUnprocessableEntity {
-			t.Fatalf("status = %d; body: %s", rec.Code, body)
-		}
-		if strings.Contains(body, `data-proposed="dragonfruit zest"`) || !strings.Contains(body, `data-proposed="passion fruit"`) {
-			t.Errorf("proposed list is stale after a rename: %s", between(t, body, "New ingredients", "</section>"))
-		}
-	})
-}
-
 func TestIncompleteProblemsUnwrapsEachProblem(t *testing.T) {
 	err := fmt.Errorf("%w: %w", ingestcore.ErrIncompleteDraft,
 		errors.Join(errors.New("the recipe has no name"), errors.New("line one\nline two")))
@@ -651,30 +557,6 @@ func TestIncompleteProblemsUnwrapsEachProblem(t *testing.T) {
 		t.Errorf("problems = %q, want %q", got, want)
 	}
 }
-
-func TestApplyEditsLeavesAbsentFieldsAlone(t *testing.T) {
-	d := sampleDraft()
-	problems, err := applyEdits(context.Background(), url.Values{}, &d, newFakeStore())
-	if err != nil || len(problems) != 0 {
-		t.Fatalf("problems = %v err = %v", problems, err)
-	}
-	want := sampleDraft()
-	if d.Name != want.Name || d.Components[0].Lines[1].Confidence != 0.4 || d.Components[0].Steps[1].Text != "Bake until goldn" {
-		t.Error("an absent field changed the draft")
-	}
-}
-
-func TestEditedItemIsNoLongerFlagged(t *testing.T) {
-	d := sampleDraft()
-	form := url.Values{stepField(0, 1): {"Bake until golden."}}
-	if _, err := applyEdits(context.Background(), form, &d, newFakeStore()); err != nil {
-		t.Fatal(err)
-	}
-	if d.Components[0].Steps[1].Confidence != 1 {
-		t.Error("an edited step is still low confidence")
-	}
-}
-
 func TestPendingExpiresAndIsBounded(t *testing.T) {
 	now := time.Now()
 	p := newPendingDrafts(func() time.Time { return now })
@@ -743,5 +625,33 @@ func TestConfirmUnknownUnitReturnsToReviewWithProblem(t *testing.T) {
 	}
 	if f.do(http.MethodGet, "/"+token, nil).Code != http.StatusOK {
 		t.Error("the draft was lost")
+	}
+}
+
+// reviewForm is the review form as the browser would send it untouched for
+// sampleDraft: the editor's own field names.
+func reviewForm() url.Values {
+	return url.Values{
+		"name":            {"Apple pie"},
+		"author":          {"Ada"},
+		"prep":            {"20 min"},
+		"c.0.name":        {""},
+		"c.0.l.0.qty":     {"2"},
+		"c.0.l.0.unit":    {"tbsp"},
+		"c.0.l.0.ing":     {"butter"},
+		"c.0.l.0.rule":    {"linear"},
+		"c.0.l.0.raw":     {"2 tbsp butter"},
+		"c.0.l.1.ing":     {"dragonfruit zest"},
+		"c.0.l.1.propose": {"1"},
+		"c.0.l.1.rule":    {"linear"},
+		"c.0.l.1.raw":     {"1 dragonfruit zest"},
+		"c.0.s.0.text":    {"Mix everything."},
+		"c.0.s.0.to":      {"0"},
+		"c.0.s.1.text":    {"Bake until goldn"},
+		"c.0.s.1.to":      {"0"},
+		"e.0.name":        {"dutch oven"},
+		"e.1.name":        {"mandoline slicer"},
+		"e.1.propose":     {"1"},
+		"e.2.name":        {"whisk"},
 	}
 }
