@@ -44,8 +44,11 @@ func keyOf(a quantity.Amount) bucketKey {
 // ("to taste") are ignored. density is grams per millilitre, zero when
 // unknown. When the density is known and both volume and mass are present,
 // the volume is converted to mass and merged into the mass amount; otherwise
-// volume and mass stay separate amounts.
-func mergeAmounts(in []quantity.Amount, density quantity.Rat) ([]quantity.Amount, error) {
+// volume and mass stay separate amounts. forceMass converts the volume to mass
+// whenever the density is known, mass present or not: a recipe's share of a
+// line merged that way is shown in the line's terms. converted reports whether
+// a volume was turned into mass.
+func mergeAmounts(in []quantity.Amount, density quantity.Rat, forceMass bool) (out []quantity.Amount, converted bool, err error) {
 	buckets := map[bucketKey]quantity.Amount{}
 	for _, a := range in {
 		if a.Qty.IsAbsent() {
@@ -55,21 +58,22 @@ func mergeAmounts(in []quantity.Amount, density quantity.Rat) ([]quantity.Amount
 			a.Unit = quantity.MustUnit("each")
 		}
 		if err := addTo(buckets, a); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
 	vol, mass := bucketKey{rank: rankVolume, name: string(quantity.DimVolume)}, bucketKey{rank: rankMass, name: string(quantity.DimMass)}
 	if v, ok := buckets[vol]; ok {
-		if _, hasMass := buckets[mass]; hasMass {
+		if _, hasMass := buckets[mass]; hasMass || forceMass {
 			g, ok, err := quantity.ToMass(v, density)
 			if err != nil {
-				return nil, fmt.Errorf("convert volume to mass: %w", err)
+				return nil, false, fmt.Errorf("convert volume to mass: %w", err)
 			}
 			if ok {
 				delete(buckets, vol)
+				converted = true
 				if err := addTo(buckets, g); err != nil {
-					return nil, err
+					return nil, false, err
 				}
 			}
 		}
@@ -90,19 +94,19 @@ func mergeAmounts(in []quantity.Amount, density quantity.Rat) ([]quantity.Amount
 		return a.pkg < b.pkg
 	})
 
-	out := make([]quantity.Amount, 0, len(keys))
+	out = make([]quantity.Amount, 0, len(keys))
 	for _, k := range keys {
 		a := buckets[k]
 		r, err := quantity.Readable(a)
 		if err != nil {
-			return nil, fmt.Errorf("make %s readable: %w", a, err)
+			return nil, false, fmt.Errorf("make %s readable: %w", a, err)
 		}
 		if r.Unit.Name == "each" && !r.HasPackage {
 			r.Unit = quantity.Unit{} // "3", not "3 each"
 		}
 		out = append(out, r)
 	}
-	return out, nil
+	return out, converted, nil
 }
 
 // addTo adds a to the bucket for its key, expressing the sum in whichever of

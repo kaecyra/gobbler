@@ -27,12 +27,17 @@ func (h *handler) live(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, fmt.Errorf("load list %d: %w", id, err))
 		return
 	}
-	aisles, err := newAisles(view.Aisles)
+	group, err := groupOf(r)
 	if err != nil {
 		fail(w, r, err)
 		return
 	}
-	layout.Render(w, r, http.StatusOK, livePage(liveView{ID: id, Name: view.List.Name, Aisles: aisles}))
+	list, err := newListing(view, group)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	layout.Render(w, r, http.StatusOK, livePage(liveView{ID: id, Name: view.List.Name, List: list}))
 }
 
 // check sets or clears the check on one item. The result reaches every open
@@ -60,7 +65,7 @@ func (h *handler) check(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	http.Redirect(w, r, listURL(id)+"/live", http.StatusSeeOther)
+	back(w, r, id, "/live")
 }
 
 // events streams the list to a live view: the whole list on connect, and again
@@ -68,6 +73,11 @@ func (h *handler) check(w http.ResponseWriter, r *http.Request) {
 // from the full current state, whatever it missed.
 func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 	id, err := listID(r)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	group, err := groupOf(r)
 	if err != nil {
 		fail(w, r, err)
 		return
@@ -140,7 +150,7 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 		}
 		return rc.Flush() == nil
 	}
-	if !h.sendList(ctx, id, view, send) {
+	if !h.sendList(ctx, id, group, view, send) {
 		return
 	}
 	tick := time.NewTicker(h.heartbeat)
@@ -163,23 +173,23 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 				h.log.ErrorContext(ctx, "reload list for event stream", "list_id", id, "error", err.Error())
 				return
 			}
-			if !h.sendList(ctx, id, view, send) {
+			if !h.sendList(ctx, id, group, view, send) {
 				return
 			}
 		}
 	}
 }
 
-// sendList renders the list as one "list" event. It reports false when the
-// stream should end.
-func (h *handler) sendList(ctx context.Context, id int64, view domain.View, send func([]byte) bool) bool {
-	aisles, err := newAisles(view.Aisles)
+// sendList renders the list, grouped as the stream asked, as one "list" event.
+// It reports false when the stream should end.
+func (h *handler) sendList(ctx context.Context, id int64, group string, view domain.View, send func([]byte) bool) bool {
+	list, err := newListing(view, group)
 	if err != nil {
 		h.log.ErrorContext(ctx, "render list for event stream", "list_id", id, "error", err.Error())
 		return false
 	}
 	var html bytes.Buffer
-	if err := itemsFragment(id, aisles, true).Render(ctx, &html); err != nil {
+	if err := itemsFragment(id, list, true).Render(ctx, &html); err != nil {
 		h.log.ErrorContext(ctx, "render list for event stream", "list_id", id, "error", err.Error())
 		return false
 	}

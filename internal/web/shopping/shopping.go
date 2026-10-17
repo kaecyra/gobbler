@@ -190,3 +190,45 @@ func parseForm(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func listURL(id int64) string { return fmt.Sprintf("%s/%d", Pattern, id) }
+
+// The two ways a list is grouped, chosen by the group query parameter. By aisle
+// is the default.
+const (
+	groupAisle  = "aisle"
+	groupRecipe = "recipe"
+
+	// manualGroupName heads the by-recipe group of hand-added items.
+	manualGroupName = "Added by hand"
+)
+
+// groupOf reads the grouping a request asks for. A value other than the two
+// known ones is a bad request rather than a quiet fall back to the default.
+func groupOf(r *http.Request) (string, error) {
+	switch g := r.URL.Query().Get("group"); g {
+	case "", groupAisle:
+		return groupAisle, nil
+	case groupRecipe:
+		return groupRecipe, nil
+	default:
+		return "", fmt.Errorf("group %q is neither %q nor %q: %w", g, groupAisle, groupRecipe, layout.ErrInvalid)
+	}
+}
+
+// groupQuery is the query string that keeps a page in grouping g.
+func groupQuery(g string) string {
+	if g == groupRecipe {
+		return "?group=" + groupRecipe
+	}
+	return ""
+}
+
+// back redirects to path of list id, in the grouping the request came from, so
+// an edit does not throw the reader back to the default view.
+func back(w http.ResponseWriter, r *http.Request, id int64, suffix string) {
+	g, err := groupOf(r)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	http.Redirect(w, r, listURL(id)+suffix+groupQuery(g), http.StatusSeeOther)
+}

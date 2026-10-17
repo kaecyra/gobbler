@@ -87,3 +87,9 @@ form.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px
 /* Touch targets: every control is at least --tap tall (docs/ui/design.md). */
 .shopping .check { display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding-block: 4px; }
 .shopping .src-r a, .shopping .actions a { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+/* Group by toggle and the tools beside a list heading. The segmented control's
+   links are --tap tall here, like every other control on the page. */
+.shopping .head-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.shopping .head-tools form { margin: 0; }
+.shopping .seg > a { min-height: var(--tap); }

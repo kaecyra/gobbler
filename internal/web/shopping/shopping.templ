@@ -47,27 +47,53 @@ func basketFull(aisles []aisleView) bool {
 	return total > 0 && checked == total
 }
 
-func itemCount(a aisleView) string {
-	if len(a.Items) == 1 {
+func itemCount(n int) string {
+	if n == 1 {
 		return "1 item"
 	}
-	return fmt.Sprintf("%d items", len(a.Items))
+	return fmt.Sprintf("%d items", n)
 }
 
-func eventsPath(id int64) string { return fmt.Sprintf("%s/%d/events", Pattern, id) }
-
-func entryAction(id, entry int64, suffix string) templ.SafeURL {
-	return templ.SafeURL(fmt.Sprintf("%s/%d/recipes/%d%s", Pattern, id, entry, suffix))
+// eventsPath is the stream that feeds a live view in grouping group.
+func eventsPath(id int64, group string) string {
+	return fmt.Sprintf("%s/%d/events%s", Pattern, id, groupQuery(group))
 }
 
-func manualRemoveAction(id, item int64) templ.SafeURL {
-	return templ.SafeURL(fmt.Sprintf("%s/%d/manual/%d/remove", Pattern, id, item))
+// The actions below keep the page in its grouping: the handler redirects back
+// to the same view.
+func groupAction(id int64, suffix, group string) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("%s/%d%s%s", Pattern, id, suffix, groupQuery(group)))
+}
+
+func entryAction(id, entry int64, suffix, group string) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("%s/%d/recipes/%d%s%s", Pattern, id, entry, suffix, groupQuery(group)))
+}
+
+func manualRemoveAction(id, item int64, group string) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("%s/%d/manual/%d/remove%s", Pattern, id, item, groupQuery(group)))
+}
+
+// groupOfList names the grouping of a listing.
+func groupOfList(l listing) string {
+	if l.ByRecipe {
+		return groupRecipe
+	}
+	return groupAisle
 }
 
 templ problem(msg string) {
 	if msg != "" {
 		<p role="alert" class="field-error" data-testid="problem">{ msg }</p>
 	}
+}
+
+// groupToggle switches a list between By aisle and By recipe. It is two links
+// to the same page, so it works without script and the choice is in the URL.
+templ groupToggle(path string, byRecipe bool) {
+	<nav class="seg" aria-label="Group by" data-testid="group-toggle">
+		<a href={ templ.SafeURL(path) } data-testid="group-aisle" if !byRecipe { aria-current="true" }>By aisle</a>
+		<a href={ templ.SafeURL(path + groupQuery(groupRecipe)) } data-testid="group-recipe" if byRecipe { aria-current="true" }>By recipe</a>
+	</nav>
 }
 
 templ shoppingNav(current string) {
@@ -113,8 +139,8 @@ templ indexPage(v indexView) {
 
 // itemsFragment is the list as the live view shows it. The event stream sends
 // exactly this markup, so the first render and every update look the same.
-templ itemsFragment(listID int64, aisles []aisleView, interactive bool) {
-	if len(aisles) == 0 {
+templ itemsFragment(listID int64, l listing, interactive bool) {
+	if len(l.Aisles) == 0 {
 		<div class="empty" data-testid="list-empty">
 			<img src={ layout.MascotHerbs } alt="" width="110"/>
 			<h3>Nothing on this list yet.</h3>
@@ -122,10 +148,10 @@ templ itemsFragment(listID int64, aisles []aisleView, interactive bool) {
 		</div>
 	} else {
 		<div class="basket">
-			<div class="meter" aria-hidden="true"><i style={ "width:" + basketPercent(aisles) }></i></div>
-			<small class="num" data-testid="basket-count">{ basketText(aisles) }</small>
+			<div class="meter" aria-hidden="true"><i style={ "width:" + basketPercent(l.Aisles) }></i></div>
+			<small class="num" data-testid="basket-count">{ basketText(l.Aisles) }</small>
 		</div>
-		if basketFull(aisles) {
+		if basketFull(l.Aisles) {
 			<div class="empty done-state" data-testid="basket-full">
 				<img src={ layout.MascotPie } alt="" width="110"/>
 				<h3>Basket full</h3>
@@ -133,39 +159,54 @@ templ itemsFragment(listID int64, aisles []aisleView, interactive bool) {
 			</div>
 		}
 	}
-	<div class="aisles">
-		for _, a := range aisles {
-			<section class="aisle" data-testid="aisle">
-				<h3><span data-testid="aisle-name">{ a.Name }</span><small class="num">{ itemCount(a) }</small></h3>
-				<ul class="items">
-					for _, it := range a.Items {
-						<li id={ it.DOMID } class="item" data-testid="item" data-key={ it.Key } data-checked={ strconv.FormatBool(it.Checked) }>
-							if interactive {
-								<form method="post" action={ formAction(listID, "/check") } data-check>
-									<input type="hidden" name="key" value={ it.Key }/>
-									<input type="hidden" name="checked" value={ it.Next }/>
-									<button type="submit" class="item-toggle" role="checkbox" aria-checked={ strconv.FormatBool(it.Checked) }>
-										@checkBox()
-										<span class="item-name" data-testid="item-name">{ it.Name }</span>
-										<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
-									</button>
-								</form>
-							} else {
-								<div class="item-toggle">
-									@checkBox()
-									<span class="item-name" data-testid="item-name">{ it.Name }</span>
-									<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
-								</div>
-							}
-							if it.Sources != "" {
-								<span class="item-sources" data-testid="item-sources">{ it.Sources }</span>
-							}
-						</li>
-					}
-				</ul>
-			</section>
+	if l.ByRecipe {
+		<div class="aisles" data-testid="groups">
+			for _, g := range l.Groups {
+				<section class="aisle" data-testid="recipe-group">
+					<h3><span data-testid="group-name">{ g.Name }</span><small class="num">{ itemCount(len(g.Items)) }</small></h3>
+					@itemList(listID, g.Items, interactive, l)
+				</section>
+			}
+		</div>
+	} else {
+		<div class="aisles">
+			for _, a := range l.Aisles {
+				<section class="aisle" data-testid="aisle">
+					<h3><span data-testid="aisle-name">{ a.Name }</span><small class="num">{ itemCount(len(a.Items)) }</small></h3>
+					@itemList(listID, a.Items, interactive, l)
+				</section>
+			}
+		</div>
+	}
+}
+
+templ itemList(listID int64, items []itemView, interactive bool, l listing) {
+	<ul class="items">
+		for _, it := range items {
+			<li id={ it.DOMID } class="item" data-testid="item" data-key={ it.Key } data-checked={ strconv.FormatBool(it.Checked) }>
+				if interactive {
+					<form method="post" action={ groupAction(listID, "/check", groupOfList(l)) } data-check>
+						<input type="hidden" name="key" value={ it.Key }/>
+						<input type="hidden" name="checked" value={ it.Next }/>
+						<button type="submit" class="item-toggle" role="checkbox" aria-checked={ strconv.FormatBool(it.Checked) }>
+							@checkBox()
+							<span class="item-name" data-testid="item-name">{ it.Name }</span>
+							<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
+						</button>
+					</form>
+				} else {
+					<div class="item-toggle">
+						@checkBox()
+						<span class="item-name" data-testid="item-name">{ it.Name }</span>
+						<span class="item-amount num" data-testid="item-amount">{ it.Amounts }</span>
+					</div>
+				}
+				if it.Sources != "" {
+					<span class="item-sources" data-testid="item-sources">{ it.Sources }</span>
+				}
+			</li>
 		}
-	</div>
+	</ul>
 }
 
 templ checkBox() {
@@ -183,11 +224,14 @@ templ livePage(v liveView) {
 					<h1>{ v.Name }</h1>
 					<p id="live-status" role="status" data-testid="live-status" data-state="connecting">Connecting</p>
 				</div>
-				<a class="btn" href={ formAction(v.ID, "") }>Edit this list</a>
+				<div class="head-tools">
+					@groupToggle(string(formAction(v.ID, "/live")), v.List.ByRecipe)
+					<a class="btn" href={ groupAction(v.ID, "", groupOfList(v.List)) }>Edit this list</a>
+				</div>
 			</div>
 			<p><button type="button" id="live-reload" class="btn" data-testid="live-reload" hidden>Reload the page</button></p>
-			<div id="live-items" data-testid="live-items" data-events={ eventsPath(v.ID) }>
-				@itemsFragment(v.ID, v.Aisles, true)
+			<div id="live-items" data-testid="live-items" data-events={ eventsPath(v.ID, groupOfList(v.List)) }>
+				@itemsFragment(v.ID, v.List, true)
 			</div>
 		</div>
 		<script src={ scriptPath } defer></script>
@@ -205,7 +249,7 @@ templ buildPage(v buildView) {
 				</div>
 				<nav class="seg" aria-label="Shopping">
 					<a href="/shopping">All lists</a>
-					<a href={ formAction(v.ID, "/live") } data-testid="open-live">Open the phone view</a>
+					<a href={ groupAction(v.ID, "/live", groupOfList(v.List)) } data-testid="open-live">Open the phone view</a>
 					<a href="/shopping/pantry">Pantry</a>
 				</nav>
 			</div>
@@ -215,12 +259,15 @@ templ buildPage(v buildView) {
 					<section aria-labelledby="list-h">
 						<div class="section-h">
 							<h2 id="list-h">The list</h2>
-							<form method="post" action={ formAction(v.ID, "/regenerate") }>
-								<button type="submit" class="btn">Refresh the list</button>
-							</form>
+							<div class="head-tools">
+								@groupToggle(string(formAction(v.ID, "")), v.List.ByRecipe)
+								<form method="post" action={ groupAction(v.ID, "/regenerate", groupOfList(v.List)) }>
+									<button type="submit" class="btn">Refresh the list</button>
+								</form>
+							</div>
 						</div>
 						<div data-testid="list">
-							@itemsFragment(v.ID, v.Aisles, false)
+							@itemsFragment(v.ID, v.List, false)
 						</div>
 					</section>
 					if len(v.Dropped) > 0 {
@@ -232,7 +279,7 @@ templ buildPage(v buildView) {
 										<span>{ d.Name }</span>
 										<span class="muted">{ d.Amounts }</span>
 										<span class="muted">{ d.Sources }</span>
-										<form method="post" action={ formAction(v.ID, "/addback") }>
+										<form method="post" action={ groupAction(v.ID, "/addback", groupOfList(v.List)) }>
 											<input type="hidden" name="ingredient" value={ strconv.FormatInt(d.Ingredient, 10) }/>
 											<button type="submit" class="btn" aria-label={ "Add " + d.Name + " back" }>Add back</button>
 										</form>
@@ -249,14 +296,14 @@ templ buildPage(v buildView) {
 									<li data-testid="manual-item">
 										<span>{ m.Label }</span>
 										<span class="muted">{ m.Amounts }</span>
-										<form method="post" action={ manualRemoveAction(v.ID, m.ID) }>
+										<form method="post" action={ manualRemoveAction(v.ID, m.ID, groupOfList(v.List)) }>
 											<button type="submit" class="btn" aria-label={ "Remove " + m.Label }>Remove</button>
 										</form>
 									</li>
 								}
 							</ul>
 						}
-						<form method="post" action={ formAction(v.ID, "/manual") } data-testid="add-manual" class="fields">
+						<form method="post" action={ groupAction(v.ID, "/manual", groupOfList(v.List)) } data-testid="add-manual" class="fields">
 							<label for="text">Item</label>
 							<input type="text" id="text" name="text"/>
 							<label for="ingredient">or catalog ingredient</label>
@@ -300,18 +347,18 @@ templ buildPage(v buildView) {
 											<a href={ templ.SafeURL("/recipes/" + strconv.FormatInt(e.RecipeID, 10)) }>{ e.Name }</a>
 											<span class="num">{ "x" + e.Multiplier }</span>
 										</div>
-										<form method="post" action={ entryAction(v.ID, e.ID, "") } class="inline">
+										<form method="post" action={ entryAction(v.ID, e.ID, "", groupOfList(v.List)) } class="inline">
 											<label>Multiplier <input type="text" name="multiplier" value={ e.Multiplier } inputmode="decimal" size="5"/></label>
 											<button type="submit" class="btn">Update</button>
 										</form>
-										<form method="post" action={ entryAction(v.ID, e.ID, "/remove") } class="inline">
+										<form method="post" action={ entryAction(v.ID, e.ID, "/remove", groupOfList(v.List)) } class="inline">
 											<button type="submit" class="btn" aria-label={ "Remove " + e.Name }>Remove</button>
 										</form>
 									</li>
 								}
 							</ul>
 						}
-						<form method="post" action={ formAction(v.ID, "/recipes") } data-testid="add-recipe" class="fields">
+						<form method="post" action={ groupAction(v.ID, "/recipes", groupOfList(v.List)) } data-testid="add-recipe" class="fields">
 							<label for="recipe">Recipe</label>
 							<select id="recipe" name="recipe" required>
 								<option value="">Choose a recipe</option>
@@ -324,7 +371,7 @@ templ buildPage(v buildView) {
 							<button type="submit" class="btn primary">Add recipe</button>
 						</form>
 					</section>
-					<form method="post" action={ formAction(v.ID, "/optional") } data-testid="optional-form" class="panel inline">
+					<form method="post" action={ groupAction(v.ID, "/optional", groupOfList(v.List)) } data-testid="optional-form" class="panel inline">
 						<label class="check">
 							<input type="checkbox" name="optional" value="1" checked?={ v.IncludeOptional }/>
 							Include optional ingredients

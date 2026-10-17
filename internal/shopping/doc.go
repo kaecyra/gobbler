@@ -24,6 +24,12 @@
 // Items group by aisle: aisles alphabetically, then Uncategorised last, items
 // alphabetically within each. The same input always yields the same output.
 //
+// Each item also keeps what every contributor gave (Item.Shares): one share per
+// recipe in entry order, then the manual entries'. A share is merged the same
+// way as the item and, when the item's volume was converted to mass, converted
+// too, so the shares always add up to the item. View.ByRecipe regroups a loaded
+// list under its recipes from them.
+//
 // A line with no resolved ingredient (ID zero) becomes its own free-text item
 // named by its original line, so a recipe the owner has not finished cleaning
 // up still produces a usable list. Its text cannot be parsed or rescaled, so
