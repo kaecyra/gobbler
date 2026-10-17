@@ -110,6 +110,10 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 - **Library side panels:** a suggestion with "Another idea", recently made,
   and haven't made in a while. They are read from the made-it log.
 - There are **no tag filters**.
+- **Shopping list grouping:** a By aisle / By recipe toggle, two links to the
+  same page with the choice in `?group=recipe`. By aisle is the default. By
+  recipe shows each recipe's own share of a merged line; hand-added items sit
+  in a last "Added by hand" group.
 - **Pages with no mockup** take the same tokens and components: the editor,
   settings, household and invitations, sharing, catalog, pantry, shopping
   build and export, and the operator pages. They are reviewed from screenshots

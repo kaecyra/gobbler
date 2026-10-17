@@ -96,6 +96,7 @@ func Routes(d Deps) chi.Router {
 
 func (h *handler) routes() chi.Router {
 	r := chi.NewRouter()
+	r.Use(validGroup)
 	r.Get("/", h.index)
 	r.Post("/", h.create)
 	r.Get("/pantry", h.pantryShow)
@@ -212,6 +213,18 @@ func groupOf(r *http.Request) (string, error) {
 	default:
 		return "", fmt.Errorf("group %q is neither %q nor %q: %w", g, groupAisle, groupRecipe, layout.ErrInvalid)
 	}
+}
+
+// validGroup rejects a request with an unknown group before any handler runs,
+// so a write never happens under a request that is then answered 400.
+func validGroup(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := groupOf(r); err != nil {
+			fail(w, r, err)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // groupQuery is the query string that keeps a page in grouping g.

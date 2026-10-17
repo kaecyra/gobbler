@@ -155,3 +155,36 @@ func TestLivePageStreamsInItsOwnGrouping(t *testing.T) {
 		t.Errorf("by-recipe phone view follows the default stream:\n%s", body)
 	}
 }
+
+func TestPostWithABadGroupChangesNothing(t *testing.T) {
+	f := newFixture(t)
+	list := f.newList("Week")
+	f.addRecipe(list, f.waffl, "1")
+	key := "i:" + id(f.flour)
+	posts := []struct {
+		path string
+		form url.Values
+	}{
+		{"/recipes", url.Values{"recipe": {id(f.cakes)}, "multiplier": {"1"}}},
+		{"/manual", url.Values{"text": {"Zz napkins"}}},
+		{"/optional", url.Values{"optional": {"1"}}},
+		{"/check", checkForm(key, "1")},
+	}
+	for _, p := range posts {
+		wantStatus(t, f.do(http.MethodPost, "/"+id(list)+p.path+"?group=bogus", p.form), http.StatusBadRequest)
+	}
+	view, err := f.shop.Load(f.ctx, list)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Entries) != 1 || len(view.Manual) != 0 || view.IncludeOptional {
+		t.Errorf("a rejected request changed the list: %d entries, %d manual, optional %v", len(view.Entries), len(view.Manual), view.IncludeOptional)
+	}
+	for _, a := range view.Aisles {
+		for _, it := range a.Items {
+			if it.Checked {
+				t.Errorf("%s was checked by a rejected request", it.Name)
+			}
+		}
+	}
+}
