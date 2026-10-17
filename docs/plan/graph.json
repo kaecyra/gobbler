@@ -2412,6 +2412,80 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Generalise freePort() from e2e/fixtures/routes/tenancy-support.ts (#210). Runs first: every u-* node with an e2e lane depends on it."
+    },
+    {
+      "id": "r-shopping-by-recipe",
+      "title": "keep each recipe's share of a merged shopping line and add the by-recipe view",
+      "wave": 9,
+      "track": null,
+      "issue": 276,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/shopping/**",
+        "internal/web/shopping/**",
+        "e2e/shopping/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner chose to build the mockup's by-recipe toggle (2026-10-17). Per-recipe shares are derived from list entries at merge time if possible; a node that finds it needs a migration declares it before dispatch."
+    },
+    {
+      "id": "r-recipe-one-tap",
+      "title": "add a recipe to a shopping list from the recipe page in one tap",
+      "wave": 9,
+      "track": null,
+      "issue": 277,
+      "status": "todo",
+      "depends_on": [
+        "r-shopping-by-recipe",
+        "u-recipe-view"
+      ],
+      "owns": [
+        "internal/web/shopping/**",
+        "internal/web/recipeview/**",
+        "e2e/shopping/**",
+        "e2e/recipeview/**",
+        "e2e/tenancy/tenancy.tenancy.spec.ts"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "u-recipe-view links Add to shopping list to /shopping today."
+    },
+    {
+      "id": "r-remove-tags",
+      "title": "remove store.Tags, unused since the library dropped tag filters",
+      "wave": 9,
+      "track": null,
+      "issue": 278,
+      "status": "todo",
+      "depends_on": [
+        "u-library"
+      ],
+      "owns": [
+        "internal/store/search*.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "r-one-icon-set",
+      "title": "one set of meal-type, chili and spoon components in layout",
+      "wave": 9,
+      "track": null,
+      "issue": 279,
+      "status": "todo",
+      "depends_on": [
+        "u-library",
+        "u-recipe-view"
+      ],
+      "owns": [
+        "internal/web/recipes/**",
+        "internal/web/layout/recipe*",
+        "e2e/recipes/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
     }
   ],
   "shared_files": [
