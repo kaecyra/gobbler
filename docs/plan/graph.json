@@ -2149,7 +2149,9 @@
       "track": null,
       "issue": 246,
       "status": "todo",
-      "depends_on": [],
+      "depends_on": [
+        "g-e2e-ports"
+      ],
       "owns": [
         "internal/web/layout/**",
         "internal/web/static/app.css",
@@ -2171,7 +2173,9 @@
       "track": null,
       "issue": 247,
       "status": "todo",
-      "depends_on": [],
+      "depends_on": [
+        "g-e2e-ports"
+      ],
       "owns": [
         "internal/recipe/model*.go",
         "internal/store/recipe*.go",
@@ -2365,6 +2369,36 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "g-e2e-ports",
+      "title": "self-spawned e2e spec servers take a free port, not a fixed one in the ephemeral range",
+      "wave": 9,
+      "track": null,
+      "issue": 257,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "e2e/fixtures/**",
+        "e2e/playwright.config.ts",
+        "e2e/recipeview/recipeview.spec.ts",
+        "e2e/journal/journal.spec.ts",
+        "e2e/settings/settings.spec.ts",
+        "e2e/shopping/shopping.spec.ts",
+        "e2e/sharing/sharing.spec.ts",
+        "e2e/tenancy/tenancy.tenancy.spec.ts",
+        "e2e/ingest/photo.spec.ts",
+        "e2e/ingest/retry.spec.ts",
+        "e2e/catalog/catalog.spec.ts",
+        "e2e/cook/cook.spec.ts",
+        "e2e/recipes/recipes.spec.ts",
+        "e2e/history/history.spec.ts",
+        "e2e/operator/promotion.spec.ts",
+        "e2e/editor/editor.spec.ts"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Generalise freePort() from e2e/fixtures/routes/tenancy-support.ts (#210). Runs first: every u-* node with an e2e lane depends on it."
     }
   ],
   "shared_files": [
