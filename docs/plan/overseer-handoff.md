@@ -4,6 +4,18 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
+## Round 12 (2026-10-17, in progress)
+
+**Merged:** #229 graph (nodes r-write-lock-comments #221, r-thumbnail-everywhere #226, i-review-steps #230; i-step-graph lane widened onto `internal/ingest/{draft,assemble*,llm,ingest}.go`); #231 r-write-lock-comments, recorded at c6f5b11. VERSION on main 0.56.1.
+
+**In flight:**
+- #232 i-step-graph (#190), worktree `wt-190`: in review. Bumps 0.57.0.
+- i-review-edit (#192, also closes #228), worktree `wt-192`: verified, rebasing; PR not yet open. Also bumps 0.57.0, so whichever merges second re-bumps to 0.58.0.
+
+**Next:** i-review-steps (#230) after #190 and #192; read #230's dispatcher comment (carry the inferred graph through `toIngest`). Then r-thumbnail-everywhere (#226), then i-video-extract (#199).
+
+**Process note:** worktrees are kept until merge, so review fixes go to a worker in the same worktree.
+
 ## Round 11 (2026-10-17)
 
 **Merged:** #200 ADR-00021 (YouTube video on a recipe) and nodes; #201 i-text-meta (#185); #202 i-fallback-no-call-test (#188); #207 t-shopping-check-leak (#197); #208 i-plugin-extractors (#186); #210 g-e2e-flakes (#204, tenancy port collision); #213 r-sqlite-busy (#209, write transactions begin IMMEDIATE); #214 i-equipment-extract (#187); #218 r-write-queue-cleanup (#212); #220 r-issue-code-spelling (#205); #222 i-parser-version (#189, schema 00012). Graph PRs #203, #206, #211, #215, #216, #217, #219.
