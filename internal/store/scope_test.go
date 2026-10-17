@@ -158,9 +158,9 @@ func TestSearchNeverCrossesHouseholds(t *testing.T) {
 	mk(a, "Lemon Cake of A", "shared-tag", "zesty")
 	mk(b, "Lemon Pie of B", "shared-tag", "zesty")
 
-	search := func(ctx context.Context, text string, tags ...string) []string {
+	search := func(ctx context.Context, text string) []string {
 		t.Helper()
-		got, err := s.Search(ctx, SearchQuery{Text: text, Tags: tags})
+		got, err := s.Search(ctx, SearchQuery{Text: text})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,18 +169,16 @@ func TestSearchNeverCrossesHouseholds(t *testing.T) {
 	for _, c := range []struct {
 		name string
 		text string
-		tags []string
 	}{
-		{"by name", "lemon", nil},
-		{"by note", "zesty", nil},
-		{"by tag", "", []string{"shared-tag"}},
-		{"by text and tag", "lemon", []string{"shared-tag"}},
-		{"everything", "", nil},
+		{"by name", "lemon"},
+		{"by note", "zesty"},
+		{"by tag", "shared"},
+		{"everything", ""},
 	} {
-		if got := search(a, c.text, c.tags...); len(got) != 1 || got[0] != "Lemon Cake of A" {
+		if got := search(a, c.text); len(got) != 1 || got[0] != "Lemon Cake of A" {
 			t.Errorf("A searching %s = %v, want only its own", c.name, got)
 		}
-		if got := search(b, c.text, c.tags...); len(got) != 1 || got[0] != "Lemon Pie of B" {
+		if got := search(b, c.text); len(got) != 1 || got[0] != "Lemon Pie of B" {
 			t.Errorf("B searching %s = %v, want only its own", c.name, got)
 		}
 	}

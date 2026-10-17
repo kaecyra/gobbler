@@ -24,11 +24,11 @@ func names(ss []Summary) []string {
 	return out
 }
 
-func mustSearch(t *testing.T, s *Store, text string, tags ...string) []Summary {
+func mustSearch(t *testing.T, s *Store, text string) []Summary {
 	t.Helper()
-	got, err := s.Search(authedCtx(t), SearchQuery{Text: text, Tags: tags})
+	got, err := s.Search(authedCtx(t), SearchQuery{Text: text})
 	if err != nil {
-		t.Fatalf("Search(%q, %v): %v", text, tags, err)
+		t.Fatalf("Search(%q): %v", text, err)
 	}
 	return got
 }
@@ -269,29 +269,6 @@ func TestIndexFollowsCatalogRename(t *testing.T) {
 	if n := count(t, d, `SELECT count(*) FROM recipe_search WHERE ingredients LIKE '%zz test flour%'`); n != 0 {
 		t.Fatalf("old ingredient name still indexed")
 	}
-}
-
-func TestTagFilter(t *testing.T) {
-	ctx := authedCtx(t)
-	s, _ := newTestStore(t)
-	mk := func(name string, tags ...string) {
-		r := simpleRecipe(name)
-		r.Tags = tags
-		if _, err := s.Create(ctx, r); err != nil {
-			t.Fatal(err)
-		}
-	}
-	mk("A", "dinner", "quick")
-	mk("B", "dinner", "vegan")
-	mk("C", "dessert", "quick")
-	mk("D")
-
-	wantNames(t, mustSearch(t, s, "", "dinner"), "A", "B")
-	wantNames(t, mustSearch(t, s, "", "dinner", "quick"), "A")
-	wantNames(t, mustSearch(t, s, "", "dinner", "dinner"), "A", "B")
-	wantNames(t, mustSearch(t, s, "", "nothing"))
-	wantNames(t, mustSearch(t, s, "a", "quick"), "A")
-	wantNames(t, mustSearch(t, s, "c", "dinner"))
 }
 
 // migrationsBelow returns the embedded migrations numbered below prefix, as

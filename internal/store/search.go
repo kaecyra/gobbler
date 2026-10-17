@@ -29,12 +29,10 @@ type Summary struct {
 
 // SearchQuery selects recipes. Text is what the user typed: every word must
 // appear in the name, description, ingredients, tags or notes, and the last
-// word may be unfinished (it matches as a prefix, so results follow typing). Tags
-// are exact tag names; a recipe must carry all of them. Both empty selects every
-// recipe.
+// word may be unfinished (it matches as a prefix, so results follow typing).
+// Empty Text selects every recipe. There is no tag filter (ADR-00022).
 type SearchQuery struct {
 	Text string
-	Tags []string
 }
 
 // Search returns the recipes matching q: best text match first, or by name when
@@ -50,24 +48,12 @@ func (s *Store) Search(ctx context.Context, q SearchQuery) ([]Summary, error) {
 	if text != "" && !hasWords {
 		return []Summary{}, nil
 	}
-	tags := cleanTags(q.Tags)
 
 	var out []Summary
 	err = db.WithReadTx(ctx, s.db, s.q, func(qs *storedb.Queries, tx *sql.Tx) error {
 		rows, err := s.summaryRows(ctx, tx, qs, hid, expr)
 		if err != nil {
 			return err
-		}
-		if len(tags) > 0 {
-			ids, err := qs.ListRecipeIDsWithAllTags(ctx, storedb.ListRecipeIDsWithAllTagsParams{Tags: tags, HouseholdID: hid, Column3: int64(len(tags))})
-			if err != nil {
-				return readErr("recipes by tag", err)
-			}
-			keep := make(map[int64]bool, len(ids))
-			for _, id := range ids {
-				keep[id] = true
-			}
-			rows = filterRows(rows, keep)
 		}
 		tagRows, err := qs.ListAllRecipeTags(ctx, hid)
 		if err != nil {
@@ -106,16 +92,6 @@ func (r summaryRow) summary(tags []string) Summary {
 		ID: r.id, Name: r.name, Description: r.description, Rating: intPtr(r.rating), Tags: tags,
 		Prep: time.Duration(r.prepNS), Cook: time.Duration(r.cookNS), Total: total,
 	}
-}
-
-func filterRows(rows []summaryRow, keep map[int64]bool) []summaryRow {
-	out := rows[:0]
-	for _, r := range rows {
-		if keep[r.id] {
-			out = append(out, r)
-		}
-	}
-	return out
 }
 
 // searchSQL is hand-written because sqlc cannot resolve the `recipe_search
@@ -177,18 +153,4 @@ func matchExpression(text string) (expr string, ok bool) {
 		words[i] = `"` + w + `"`
 	}
 	return strings.Join(words, " ") + "*", true
-}
-
-// cleanTags drops blanks and repeats, so the tag count the query compares
-// against is the number of distinct tags asked for.
-func cleanTags(tags []string) []string {
-	seen := make(map[string]bool, len(tags))
-	var out []string
-	for _, t := range tags {
-		if t = strings.TrimSpace(t); t != "" && !seen[t] {
-			seen[t] = true
-			out = append(out, t)
-		}
-	}
-	return out
 }
