@@ -8,10 +8,10 @@ package storedb
 import (
 	"context"
 	"database/sql"
-	"strings"
 )
 
 const listAllRecipeTags = `-- name: ListAllRecipeTags :many
+
 SELECT recipe_id, tag FROM recipe_tags WHERE household_id = ? ORDER BY recipe_id, position
 `
 
@@ -20,6 +20,8 @@ type ListAllRecipeTagsRow struct {
 	Tag      string
 }
 
+// The full-text query itself is hand-written in search.go: sqlc cannot resolve
+// the `recipe_search MATCH ?` form that FTS5 requires.
 func (q *Queries) ListAllRecipeTags(ctx context.Context, householdID int64) ([]ListAllRecipeTagsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAllRecipeTags, householdID)
 	if err != nil {
@@ -33,58 +35,6 @@ func (q *Queries) ListAllRecipeTags(ctx context.Context, householdID int64) ([]L
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRecipeIDsWithAllTags = `-- name: ListRecipeIDsWithAllTags :many
-
-SELECT recipe_id FROM recipe_tags
-WHERE tag IN (/*SLICE:tags*/?) AND household_id = ?
-GROUP BY recipe_id
-HAVING COUNT(DISTINCT tag) = CAST(? AS INTEGER)
-`
-
-type ListRecipeIDsWithAllTagsParams struct {
-	Tags        []string
-	HouseholdID int64
-	Column3     int64
-}
-
-// The full-text query itself is hand-written in search.go: sqlc cannot resolve
-// the `recipe_search MATCH ?` form that FTS5 requires.
-// Recipes carrying every one of the given tags.
-func (q *Queries) ListRecipeIDsWithAllTags(ctx context.Context, arg ListRecipeIDsWithAllTagsParams) ([]int64, error) {
-	query := listRecipeIDsWithAllTags
-	var queryParams []interface{}
-	if len(arg.Tags) > 0 {
-		for _, v := range arg.Tags {
-			queryParams = append(queryParams, v)
-		}
-		query = strings.Replace(query, "/*SLICE:tags*/?", strings.Repeat(",?", len(arg.Tags))[1:], 1)
-	} else {
-		query = strings.Replace(query, "/*SLICE:tags*/?", "NULL", 1)
-	}
-	queryParams = append(queryParams, arg.HouseholdID)
-	queryParams = append(queryParams, arg.Column3)
-	rows, err := q.db.QueryContext(ctx, query, queryParams...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int64
-	for rows.Next() {
-		var recipe_id int64
-		if err := rows.Scan(&recipe_id); err != nil {
-			return nil, err
-		}
-		items = append(items, recipe_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -132,39 +82,6 @@ func (q *Queries) ListRecipeSummaries(ctx context.Context, householdID int64) ([
 			&i.CookNs,
 			&i.TotalNs,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listTagCounts = `-- name: ListTagCounts :many
-SELECT tag, COUNT(DISTINCT recipe_id) AS recipes FROM recipe_tags
-WHERE household_id = ? GROUP BY tag ORDER BY lower(tag), tag
-`
-
-type ListTagCountsRow struct {
-	Tag     string
-	Recipes int64
-}
-
-func (q *Queries) ListTagCounts(ctx context.Context, householdID int64) ([]ListTagCountsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTagCounts, householdID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTagCountsRow
-	for rows.Next() {
-		var i ListTagCountsRow
-		if err := rows.Scan(&i.Tag, &i.Recipes); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -158,9 +158,9 @@ func TestSearchNeverCrossesHouseholds(t *testing.T) {
 	mk(a, "Lemon Cake of A", "shared-tag", "zesty")
 	mk(b, "Lemon Pie of B", "shared-tag", "zesty")
 
-	search := func(ctx context.Context, text string, tags ...string) []string {
+	search := func(ctx context.Context, text string) []string {
 		t.Helper()
-		got, err := s.Search(ctx, SearchQuery{Text: text, Tags: tags})
+		got, err := s.Search(ctx, SearchQuery{Text: text})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,25 +169,17 @@ func TestSearchNeverCrossesHouseholds(t *testing.T) {
 	for _, c := range []struct {
 		name string
 		text string
-		tags []string
 	}{
-		{"by name", "lemon", nil},
-		{"by note", "zesty", nil},
-		{"by tag", "", []string{"shared-tag"}},
-		{"by text and tag", "lemon", []string{"shared-tag"}},
-		{"everything", "", nil},
+		{"by name", "lemon"},
+		{"by note", "zesty"},
+		{"by tag", "shared"},
+		{"everything", ""},
 	} {
-		if got := search(a, c.text, c.tags...); len(got) != 1 || got[0] != "Lemon Cake of A" {
+		if got := search(a, c.text); len(got) != 1 || got[0] != "Lemon Cake of A" {
 			t.Errorf("A searching %s = %v, want only its own", c.name, got)
 		}
-		if got := search(b, c.text, c.tags...); len(got) != 1 || got[0] != "Lemon Pie of B" {
+		if got := search(b, c.text); len(got) != 1 || got[0] != "Lemon Pie of B" {
 			t.Errorf("B searching %s = %v, want only its own", c.name, got)
-		}
-	}
-	for ctx, who := range map[context.Context]string{a: "A", b: "B"} {
-		tags, err := s.Tags(ctx)
-		if err != nil || len(tags) != 1 || tags[0].Recipes != 1 {
-			t.Errorf("%s's tags = %+v (err %v), want shared-tag on 1 recipe", who, tags, err)
 		}
 	}
 }
@@ -221,7 +213,6 @@ func TestNoHouseholdOnContextFailsEveryCall(t *testing.T) {
 		"Search":            func() error { _, err := s.Search(bare, SearchQuery{}); return err },
 		"Search text":       func() error { _, err := s.Search(bare, SearchQuery{Text: "x"}); return err },
 		"Search punct only": func() error { _, err := s.Search(bare, SearchQuery{Text: "!!!"}); return err },
-		"Tags":              func() error { _, err := s.Tags(bare); return err },
 	}
 	for name, call := range calls {
 		if err := call(); !errors.Is(err, ErrNoHousehold) {

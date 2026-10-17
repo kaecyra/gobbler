@@ -9,16 +9,5 @@ FROM recipes WHERE household_id = ? ORDER BY lower(name), id;
 -- The full-text query itself is hand-written in search.go: sqlc cannot resolve
 -- the `recipe_search MATCH ?` form that FTS5 requires.
 
--- Recipes carrying every one of the given tags.
--- name: ListRecipeIDsWithAllTags :many
-SELECT recipe_id FROM recipe_tags
-WHERE tag IN (sqlc.slice('tags')) AND household_id = ?
-GROUP BY recipe_id
-HAVING COUNT(DISTINCT tag) = CAST(? AS INTEGER);
-
 -- name: ListAllRecipeTags :many
 SELECT recipe_id, tag FROM recipe_tags WHERE household_id = ? ORDER BY recipe_id, position;
-
--- name: ListTagCounts :many
-SELECT tag, COUNT(DISTINCT recipe_id) AS recipes FROM recipe_tags
-WHERE household_id = ? GROUP BY tag ORDER BY lower(tag), tag;
