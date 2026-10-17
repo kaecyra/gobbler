@@ -1956,7 +1956,8 @@
         "i-plugin-extractors",
         "i-equipment-extract",
         "i-step-graph",
-        "i-review-steps"
+        "i-review-steps",
+        "r-thumbnail-everywhere"
       ],
       "owns": [
         "internal/ingest/extract/jsonld*.go",
