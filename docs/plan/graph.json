@@ -2419,7 +2419,7 @@
       "wave": 9,
       "track": null,
       "issue": 276,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/shopping/**",
@@ -3305,6 +3305,12 @@
       "id": "r-remove-tags",
       "title": "remove store.Tags, unused since the library dropped tag filters",
       "merged": "56dcec3"
+    },
+    {
+      "id": "r-shopping-by-recipe",
+      "title": "keep each recipe's share of a merged shopping line and add the by-recipe view",
+      "merged": "5d706e7",
+      "note": "Owner chose to build the mockup's by-recipe toggle (2026-10-17). Per-recipe shares are derived from list entries at merge time if possible; a node that finds it needs a migration declares it before dispatch."
     }
   ],
   "adr_sequence": {
