@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -185,7 +186,7 @@ func TestNavMarksOnlyTheCurrentSection(t *testing.T) {
 			if n := strings.Count(got, `aria-current="page"`); n != 1 {
 				t.Fatalf("aria-current marks = %d, want exactly one:\n%s", n, got)
 			}
-			if !strings.Contains(got, `href="`+tc.current+`" aria-current="page"`) {
+			if !regexp.MustCompile(`<a [^>]*href="` + tc.current + `"[^>]*aria-current="page"`).MatchString(got) {
 				t.Errorf("link %s not marked current:\n%s", tc.current, got)
 			}
 		})
