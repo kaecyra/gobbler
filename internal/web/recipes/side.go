@@ -12,7 +12,9 @@ const recentLimit = 4
 
 // sideView is the library's side panels.
 type sideView struct {
-	Recent []recentView
+	// Suggest is nil when the library is empty.
+	Suggest *suggestView
+	Recent  []recentView
 	// Forgot is nil when nothing has been made.
 	Forgot *forgotView
 }
@@ -80,7 +82,7 @@ func forgotFor(idle []store.Card, now time.Time) *forgotView {
 
 // suggestFor picks idea number n from the idle list, wrapping round. The idea
 // is in the URL, so "Another idea" needs no state on the server.
-func suggestFor(idle []store.Card, n int, now time.Time) suggestView {
+func suggestFor(idle []store.Card, n int, now time.Time, href func(idea int) string) suggestView {
 	i := n % len(idle)
 	c := idle[i]
 	v := suggestView{Card: cardFor(c, now), Voice: "Haven’t tried this one yet…", When: "Not made yet"}
@@ -88,7 +90,7 @@ func suggestFor(idle []store.Card, n int, now time.Time) suggestView {
 		v.Voice, v.When = "Haven’t made this in a while…", "Last made "+ago(*c.LastMade, now)
 	}
 	if len(idle) > 1 {
-		v.NextHref = homeHref((i + 1) % len(idle))
+		v.NextHref = href((i + 1) % len(idle))
 	}
 	return v
 }

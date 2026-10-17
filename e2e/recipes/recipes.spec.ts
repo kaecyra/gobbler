@@ -101,6 +101,23 @@ test.describe('with recipes', () => {
     await expect(forgot.getByRole('link', { name: 'Lemon Cake' })).toHaveAttribute('href', `/recipes/${ids['Lemon Cake']}`);
   });
 
+  test('the library has the suggestion, and Another idea stays on the library page', async ({ page }) => {
+    await page.goto('/recipes?q=a&group=time');
+    const suggest = page.locator('#suggest');
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Lemon Cake');
+    // The suggestion draws on the whole library, not on the search.
+    const next = suggest.getByRole('link', { name: 'Another idea' });
+    await expect(next).toHaveAttribute('href', '/recipes?group=time&idea=1&q=a');
+    await next.click();
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Tomato Soup');
+    await expect(page).toHaveURL(/\/recipes\?q=a&group=time$/);
+    await expect(page.locator('.group h2').first()).toBeVisible();
+    await page.goto('/recipes?idea=1');
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Tomato Soup');
+    await expectTappable(suggest.locator('.btn'));
+    await expectTappable(suggest.locator('.sg-next'));
+  });
+
   test('search narrows the results, updates the URL and survives a reload', async ({ page }) => {
     await page.goto('/recipes');
     await searchbox(page).fill('lemon');

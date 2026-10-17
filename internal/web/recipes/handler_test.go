@@ -20,10 +20,15 @@ type fakeLibrary struct {
 	recent []store.MadeEntry
 	idle   []store.Card
 	err    error
+	// reads counts Cards calls.
+	reads int
 }
 
 func (f *fakeLibrary) Cards(_ context.Context, q store.SearchQuery) ([]store.Card, error) {
-	f.got = q
+	if f.reads == 0 {
+		f.got = q // the search itself; later reads are for the side panels
+	}
+	f.reads++
 	return f.cards, f.err
 }
 
@@ -274,5 +279,35 @@ func TestFormatting(t *testing.T) {
 		if tc.got != tc.want {
 			t.Errorf("got %q, want %q", tc.got, tc.want)
 		}
+	}
+}
+
+func TestLibraryShowsTheSuggestionAndKeepsTheSearchOnAnotherIdea(t *testing.T) {
+	last := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	a, b := card(1, "Old soup", recipe.MealMain), card(2, "Never cake", recipe.MealDessert)
+	a.LastMade = &last
+	lib := &fakeLibrary{cards: []store.Card{b, a}}
+
+	_, body, _ := get(t, lib, "/?q=cake&group=time", nil)
+	if !strings.Contains(body, `id="suggest"`) || !strings.Contains(body, "Old soup") {
+		t.Errorf("the library aside lacks the suggestion:\n%s", body)
+	}
+	if !strings.Contains(body, `href="/recipes?group=time&amp;idea=1&amp;q=cake"`) {
+		t.Errorf("Another idea should stay on the library page and keep q and group:\n%s", body)
+	}
+	_, frag, _ := get(t, lib, "/?q=cake&idea=1", map[string]string{"HX-Request": "true", "HX-Target": "suggest"})
+	if strings.Contains(frag, "<html") || !strings.Contains(frag, "Never cake") {
+		t.Errorf("another idea should get just the next suggestion:\n%s", frag)
+	}
+	if code, _, _ := get(t, lib, "/?idea=x", nil); code != http.StatusBadRequest {
+		t.Errorf("bad idea status %d, want 400", code)
+	}
+}
+
+func TestLibraryReadsTheCardsOnceWhenNothingNarrowsThem(t *testing.T) {
+	lib := &fakeLibrary{cards: []store.Card{card(1, "Soup", recipe.MealMain)}}
+	get(t, lib, "/", nil)
+	if lib.reads != 1 {
+		t.Errorf("Cards called %d times for the whole library, want once", lib.reads)
 	}
 }

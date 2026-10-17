@@ -71,6 +71,12 @@ const libraryStyle = `
 .sg-rib .rib-seg:last-child { border-right-width: 0; }
 @media (max-width: 520px) { .suggest { grid-template-columns: 112px minmax(0, 1fr); } .sg-gob img { left: 6px; height: clamp(120px, calc(100% + 22px), 146px); } }
 
+.lib:not(.home) .suggest { grid-template-columns: minmax(0, 1fr); }
+.lib:not(.home) .sg-gob { height: 120px; }
+.lib:not(.home) .sg-gob img { left: 22px; height: 120px; }
+.lib:not(.home) .sg-body { padding: 14px 22px 0; }
+.lib:not(.home) .sg-name { font-size: 22px; }
+.lib:not(.home) .sg-rib { margin: 12px -22px 0; }
 .made { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .made li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); align-items: center; }
 .made li:first-child { border-top: 0; padding-top: 0; }

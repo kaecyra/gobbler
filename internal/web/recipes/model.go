@@ -205,6 +205,27 @@ func listHref(q, group string) string {
 	return Pattern + "?" + vals.Encode()
 }
 
+// ideaHref is the library page showing suggestion n for a search and grouping;
+// the first idea is left out.
+func ideaHref(q, group string) func(int) string {
+	return func(n int) string {
+		vals := url.Values{}
+		if q != "" {
+			vals.Set(paramText, q)
+		}
+		if group == groupTime {
+			vals.Set(paramGroup, groupTime)
+		}
+		if n > 0 {
+			vals.Set(paramIdea, strconv.Itoa(n))
+		}
+		if len(vals) == 0 {
+			return Pattern
+		}
+		return Pattern + "?" + vals.Encode()
+	}
+}
+
 // madeLine is the card footer's account of the made-it log: "Not made yet", or
 // "Made 6× · 10 Oct".
 func madeLine(count int, last *time.Time, now time.Time) string {

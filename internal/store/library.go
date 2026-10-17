@@ -178,13 +178,20 @@ func (s *Store) RecentlyMade(ctx context.Context, limit int) ([]MadeEntry, error
 }
 
 // Idle returns every recipe of the household as a card, the one made longest
-// ago first: recipes made at least once by the date of their latest entry, then
-// the recipes never made, by name. It is what a suggestion draws from.
+// ago first (see IdleOrder). It is what a suggestion draws from.
 func (s *Store) Idle(ctx context.Context) ([]Card, error) {
 	cards, err := s.Cards(ctx, SearchQuery{})
 	if err != nil {
 		return nil, err
 	}
+	return IdleOrder(cards), nil
+}
+
+// IdleOrder sorts cards, in place and returned, with the one made longest ago
+// first: recipes made at least once by the date of their latest entry, then the
+// recipes never made, by name. A page that already holds every card uses it
+// instead of reading them again.
+func IdleOrder(cards []Card) []Card {
 	slices.SortStableFunc(cards, func(a, b Card) int {
 		switch {
 		case a.LastMade != nil && b.LastMade != nil:
@@ -196,5 +203,5 @@ func (s *Store) Idle(ctx context.Context) ([]Card, error) {
 		}
 		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 	})
-	return cards, nil
+	return cards
 }

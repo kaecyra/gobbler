@@ -32,6 +32,9 @@ templ libraryPage(res results, side sideView) {
 					</div>
 				</div>
 				<aside class="side" aria-label="From your kitchen">
+					if side.Suggest != nil {
+						@suggestion(*side.Suggest)
+					}
 					@recentPanel(side.Recent)
 					@forgotPanel(side.Forgot)
 				</aside>

@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -75,46 +76,81 @@ func library(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("search text of %d characters: %w", utf8.RuneCountInString(text), layout.ErrInvalid))
 			return
 		}
+		idea, err := ideaParam(r)
+		if err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
 		q := strings.TrimSpace(text)
+		group := r.URL.Query().Get(paramGroup)
+		// The same URL answers a full page and, for htmx aimed at one part of
+		// it, just that part.
+		varyOnHTMX(w)
+		if targets(r, "suggest") {
+			all, err := d.Library.Cards(r.Context(), store.SearchQuery{})
+			if err != nil {
+				layout.WriteError(w, r, fmt.Errorf("list library cards: %w", err))
+				return
+			}
+			if idle := store.IdleOrder(all); len(idle) > 0 {
+				layout.Render(w, r, http.StatusOK, suggestion(suggestFor(idle, idea, d.now(), ideaHref(q, group))))
+				return
+			}
+		}
 		found, err := d.Library.Cards(r.Context(), store.SearchQuery{Text: q})
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("list library cards: %w", err))
 			return
 		}
-		res := buildResults(q, r.URL.Query().Get(paramGroup), found, d.now())
-		// The same URL answers a full page and, for htmx aimed at the results,
-		// just those.
-		varyOnHTMX(w)
+		res := buildResults(q, group, found, d.now())
 		if targets(r, "results") {
 			layout.Render(w, r, http.StatusOK, resultsFragment(res))
 			return
+		}
+		// The side panels draw on the whole library: the cards already loaded
+		// when nothing narrowed them, else one more read.
+		all := found
+		if q != "" {
+			if all, err = d.Library.Cards(r.Context(), store.SearchQuery{}); err != nil {
+				layout.WriteError(w, r, fmt.Errorf("list library cards: %w", err))
+				return
+			}
 		}
 		recent, err := d.Library.RecentlyMade(r.Context(), recentLimit)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("list recently made: %w", err))
 			return
 		}
-		idle, err := d.Library.Idle(r.Context())
-		if err != nil {
-			layout.WriteError(w, r, fmt.Errorf("list idle recipes: %w", err))
-			return
-		}
+		idle := store.IdleOrder(slices.Clone(all))
 		side := sideView{Recent: recentViews(recent), Forgot: forgotFor(idle, d.now())}
+		if len(idle) > 0 {
+			sg := suggestFor(idle, idea, d.now(), ideaHref(q, group))
+			side.Suggest = &sg
+		}
 		layout.Render(w, r, http.StatusOK, libraryPage(res, side))
 	}
+}
+
+// ideaParam reads the suggestion index from the URL; absent is the first idea.
+func ideaParam(r *http.Request) (int, error) {
+	raw := r.URL.Query().Get(paramIdea)
+	if raw == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 || n > maxIdea {
+		return 0, fmt.Errorf("suggestion %q: %w", raw, layout.ErrInvalid)
+	}
+	return n, nil
 }
 
 // Home returns the handler of the home page.
 func Home(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idea := 0
-		if raw := r.URL.Query().Get(paramIdea); raw != "" {
-			n, err := strconv.Atoi(raw)
-			if err != nil || n < 0 || n > maxIdea {
-				layout.WriteError(w, r, fmt.Errorf("suggestion %q: %w", raw, layout.ErrInvalid))
-				return
-			}
-			idea = n
+		idea, err := ideaParam(r)
+		if err != nil {
+			layout.WriteError(w, r, err)
+			return
 		}
 		idle, err := d.Library.Idle(r.Context())
 		if err != nil {
@@ -123,7 +159,7 @@ func Home(d Deps) http.HandlerFunc {
 		}
 		v := homeView{Empty: len(idle) == 0}
 		if !v.Empty {
-			v.Suggest = suggestFor(idle, idea, d.now())
+			v.Suggest = suggestFor(idle, idea, d.now(), homeHref)
 		}
 		varyOnHTMX(w)
 		if targets(r, "suggest") && !v.Empty {
