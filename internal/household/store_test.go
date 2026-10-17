@@ -3,6 +3,8 @@ package household
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -302,5 +304,40 @@ func TestContext(t *testing.T) {
 	h := Household{ID: 3, Name: "x"}
 	if got, ok := FromContext(WithContext(context.Background(), h)); !ok || got != h {
 		t.Fatalf("FromContext = %+v, %v", got, ok)
+	}
+}
+
+// Invite and Revoke run together from many goroutines. Each write queues
+// through db.WithTx, so none fails with SQLITE_BUSY.
+func TestInviteAndRevokeUnderConcurrentWriters(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	h := f.create("Alpha", "ann@example.com")
+
+	const n = 12
+	errs := make(chan error, 2*n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			email := fmt.Sprintf("guest%d@example.com", i)
+			if _, err := f.s.Invite(ctx, Invite{Kind: KindHousehold, Email: email, IssuedBy: "ann@example.com"}); err != nil {
+				errs <- fmt.Errorf("household invite %d: %w", i, err)
+			}
+			id, err := f.s.Invite(ctx, Invite{Kind: KindJoin, Email: email, HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+			if err != nil {
+				errs <- fmt.Errorf("join invite %d: %w", i, err)
+				return
+			}
+			if err := f.s.Revoke(ctx, id, "ann@example.com"); err != nil {
+				errs <- fmt.Errorf("revoke %d: %w", i, err)
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
 	}
 }

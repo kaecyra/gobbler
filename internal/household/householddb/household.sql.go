@@ -30,8 +30,8 @@ type ClaimInvitationRow struct {
 
 // ClaimInvitation marks an invitation accepted only while it is addressed to
 // email, unused, unrevoked and unexpired, so single use holds under
-// concurrent accepts. It is also the first statement of the accepting
-// transaction, which takes the write lock up front.
+// concurrent accepts. It runs first in the accepting transaction so a failed
+// claim ends the accept before anything else is read or written.
 func (q *Queries) ClaimInvitation(ctx context.Context, arg ClaimInvitationParams) (ClaimInvitationRow, error) {
 	row := q.db.QueryRowContext(ctx, claimInvitation, arg.Now, arg.ID, arg.Email)
 	var i ClaimInvitationRow

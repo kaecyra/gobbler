@@ -26,8 +26,8 @@ FROM invitations WHERE id = ?;
 
 -- ClaimInvitation marks an invitation accepted only while it is addressed to
 -- email, unused, unrevoked and unexpired, so single use holds under
--- concurrent accepts. It is also the first statement of the accepting
--- transaction, which takes the write lock up front.
+-- concurrent accepts. It runs first in the accepting transaction so a failed
+-- claim ends the accept before anything else is read or written.
 -- name: ClaimInvitation :one
 UPDATE invitations SET accepted_at = sqlc.arg(now)
 WHERE id = sqlc.arg(id) AND email = sqlc.arg(email)
