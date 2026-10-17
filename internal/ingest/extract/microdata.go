@@ -102,6 +102,10 @@ func recipeFromMicrodata(item *html.Node) Raw {
 			if v != "" {
 				r.Ingredients = append(r.Ingredients, v)
 			}
+		case "tool":
+			if v != "" {
+				r.Tools = append(r.Tools, v)
+			}
 		case "nutrition":
 			r.Calories = firstNonEmpty(r.Calories, nestedProp(p.node, "calories"))
 		case "recipeInstructions":

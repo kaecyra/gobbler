@@ -17,6 +17,7 @@ Rules:
 - Copy times and yield as written (for example "1 hour 30 minutes", "Serves 4").
 - Put each instruction in its own step, in order, without numbering.
 - Split into named components only when the source does (for example "For the sauce"); otherwise use a single component with no name.
+- List the equipment the recipe uses (for example "Dutch oven", "9-inch springform pan") in the equipment list, one per entry, only when the source names it. Name the equipment alone, without quantities or notes.
 - Use only what the source states. Leave a field out rather than guessing.
 - A rule-based reading of the source may be supplied. It can be wrong or incomplete; the source is authoritative.`
 
@@ -40,13 +41,16 @@ func userBlocks(req ingest.Request) []anthropic.ContentBlockParamUnion {
 // describeDraft renders the rule-based reading as plain text. The source
 // snapshot is left out: the source text already carries it.
 func describeDraft(d ingest.Draft) string {
-	if d.Name.Value == "" && len(d.Components) == 0 {
+	if d.Name.Value == "" && len(d.Components) == 0 && len(d.Equipment) == 0 {
 		return ""
 	}
 	var b strings.Builder
 	b.WriteString("Rule-based reading (may be wrong):\n")
 	if d.Name.Value != "" {
 		fmt.Fprintf(&b, "Name: %s\n", d.Name.Value)
+	}
+	for _, e := range d.Equipment {
+		fmt.Fprintf(&b, "- equipment: %s\n", e.Name)
 	}
 	for _, c := range d.Components {
 		if c.Name != "" {
@@ -81,6 +85,7 @@ func recipeSchema() anthropic.ToolInputSchemaParam {
 			"prep_time":   str("Preparation time as written."),
 			"cook_time":   str("Cooking time as written."),
 			"total_time":  str("Total time as written."),
+			"equipment":   list("Equipment the recipe uses, named alone; omit when the source names none."),
 			"components": map[string]any{
 				"type":        "array",
 				"description": "Named parts of the recipe; one unnamed component when the source has no parts.",

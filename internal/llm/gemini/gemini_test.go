@@ -151,6 +151,27 @@ func TestRequestShape(t *testing.T) {
 			t.Errorf("request carries no inlineData image part: %s", mustJSON(t, got.body))
 		}
 	})
+	t.Run("the schema offers an optional equipment list and the rule-based equipment is sent", func(t *testing.T) {
+		got := structure(t, ingest.Request{Text: "x", RuleDraft: ingest.Draft{
+			Name:      ingest.Field[string]{Value: "Rule Name"},
+			Equipment: []ingest.Equipment{{Name: "rule dutch oven"}},
+		}})
+		cfg, _ := got.body["generationConfig"].(map[string]any)
+		schema, _ := cfg["responseSchema"].(map[string]any)
+		props, _ := schema["properties"].(map[string]any)
+		eq, _ := props["equipment"].(map[string]any)
+		if eq["type"] != "ARRAY" && eq["type"] != "array" {
+			t.Fatalf("schema has no equipment array: %v", props)
+		}
+		for _, r := range schema["required"].([]any) {
+			if r == "equipment" {
+				t.Error("equipment is required: a source may name none")
+			}
+		}
+		if !strings.Contains(mustJSON(t, got.body), "rule dutch oven") {
+			t.Error("the rule-based reading's equipment was not sent")
+		}
+	})
 	t.Run("the rule-based draft is sent as context", func(t *testing.T) {
 		got := structure(t, ingest.Request{Text: "x", RuleDraft: ingest.Draft{Name: ingest.Field[string]{Value: "Rule Name Marker"}}})
 		if !strings.Contains(mustJSON(t, got.body), "Rule Name Marker") {

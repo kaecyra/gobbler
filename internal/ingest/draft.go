@@ -97,6 +97,26 @@ type ProposedIngredient struct {
 	Aisle string
 }
 
+// Equipment is one piece of equipment a draft found: named by the source's own
+// tool list, by the LLM, or by a catalog name or alias in the recipe text.
+// Equipment is zero when the catalog does not have it; it is then covered by a
+// ProposedEquipment entry.
+type Equipment struct {
+	// Name is the catalog's name when matched, else the name as read, trimmed,
+	// lower-case and with its qualifier ("(optional)") dropped.
+	Name      string
+	Equipment recipe.EquipmentID
+	// FromLLM marks equipment the LLM supplied.
+	FromLLM bool
+}
+
+// ProposedEquipment is equipment the catalog does not have, proposed from the
+// source's tool list or the LLM's answer. It is created, with reviewed false,
+// only when a confirmed draft is saved (ADR-00008); ingesting creates nothing.
+type ProposedEquipment struct {
+	Name string
+}
+
 // Draft is the reading of one input shown on the review screen: the rules'
 // reading, or the LLM's when UsedLLM is set.
 // It carries a confidence for every field and line and an overall score.
@@ -121,6 +141,9 @@ type Draft struct {
 
 	Components []Component
 
+	// Equipment is what the recipe uses, in reading order, once each.
+	Equipment []Equipment
+
 	// Overall is 0 to 1. Threshold is the configured threshold the draft was
 	// judged against and BelowThreshold is Overall < Threshold: the signal for
 	// the LLM fallback.
@@ -138,4 +161,16 @@ type Draft struct {
 	Issues []string
 
 	Proposed []ProposedIngredient
+}
+
+// ProposedEquipment lists what confirming d would add to the catalog: the
+// equipment the catalog lacks, in order.
+func (d Draft) ProposedEquipment() []ProposedEquipment {
+	var out []ProposedEquipment
+	for _, e := range d.Equipment {
+		if e.Equipment == 0 {
+			out = append(out, ProposedEquipment{Name: e.Name})
+		}
+	}
+	return out
 }

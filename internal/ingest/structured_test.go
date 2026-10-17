@@ -20,6 +20,10 @@ func TestDecodeStructured(t *testing.T) {
 	if _, err := ingest.DecodeStructured([]byte(`{"name":"Toast","components":[{"ingredients":[]}]}`)); err != nil {
 		t.Fatalf("empty ingredients list must be accepted: %v", err)
 	}
+	withEquip, err := ingest.DecodeStructured([]byte(`{"name":"Toast","equipment":["toaster","Butter knife"],"components":[` + comp + `]}`))
+	if err != nil || len(withEquip.Equipment) != 2 || withEquip.Equipment[1] != "Butter knife" {
+		t.Fatalf("equipment list: %+v, %v", withEquip, err)
+	}
 	if _, err := ingest.DecodeStructured([]byte(good + " \n")); err != nil {
 		t.Fatalf("trailing whitespace must be accepted: %v", err)
 	}
@@ -37,6 +41,9 @@ func TestDecodeStructured(t *testing.T) {
 		"missing ingredients":     `{"name":"Toast","components":[{"steps":["x"]}]}`,
 		"null ingredients":        `{"name":"Toast","components":[{"ingredients":null}]}`,
 		"second ingredientless":   `{"name":"Toast","components":[` + comp + `,{"name":"x"}]}`,
+		"blank equipment":         `{"name":"Toast","equipment":["toaster"," "],"components":[` + comp + `]}`,
+		"null equipment entry":    `{"name":"Toast","equipment":[null],"components":[` + comp + `]}`,
+		"equipment not a list":    `{"name":"Toast","equipment":"toaster","components":[` + comp + `]}`,
 		"trailing text":           good + ` and more`,
 		"second object":           good + good,
 	} {

@@ -223,6 +223,17 @@ func (f *Fallback) fromStructured(ctx context.Context, rule Draft, s Structured)
 		}
 		d.Components = append(d.Components, c)
 	}
+	// Equipment: the LLM's list, then what the rule-based reading found (the
+	// page's own tool list among it), then catalog names in the LLM's text.
+	set := newEquipmentSet()
+	for _, name := range s.Equipment {
+		a.named(set, name, true)
+	}
+	for _, e := range rule.Equipment {
+		set.add(e)
+	}
+	a.scanEquipment(set)
+	d.Equipment = set.items
 	if a.rs.err != nil {
 		return Draft{}, fmt.Errorf("read catalog while drafting: %w", a.rs.err)
 	}

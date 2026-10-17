@@ -29,14 +29,17 @@ type Request struct {
 // ingredient lines are strings as written, so a provider answer goes through
 // the same line parser and scoring as any other input.
 type Structured struct {
-	Name        string                `json:"name"`
-	Author      string                `json:"author,omitempty"`
-	Description string                `json:"description,omitempty"`
-	Yield       string                `json:"yield,omitempty"`
-	PrepTime    string                `json:"prep_time,omitempty"`
-	CookTime    string                `json:"cook_time,omitempty"`
-	TotalTime   string                `json:"total_time,omitempty"`
-	Components  []StructuredComponent `json:"components"`
+	Name        string `json:"name"`
+	Author      string `json:"author,omitempty"`
+	Description string `json:"description,omitempty"`
+	Yield       string `json:"yield,omitempty"`
+	PrepTime    string `json:"prep_time,omitempty"`
+	CookTime    string `json:"cook_time,omitempty"`
+	TotalTime   string `json:"total_time,omitempty"`
+	// Equipment names the equipment the recipe uses, as written ("Dutch
+	// oven"); each is matched to the catalog like a source's own tool list.
+	Equipment  []string              `json:"equipment,omitempty"`
+	Components []StructuredComponent `json:"components"`
 }
 
 // StructuredComponent is one named part of a provider's recipe; Name is empty

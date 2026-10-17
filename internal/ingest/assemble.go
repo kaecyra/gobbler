@@ -70,6 +70,14 @@ func (p *Pipeline) assemble(ctx context.Context, src Source, res extract.Result)
 	default:
 		structure = a.requiredStructure()
 	}
+	set := newEquipmentSet()
+	if res.Recipe != nil {
+		for _, t := range res.Recipe.Tools {
+			a.named(set, t, false)
+		}
+	}
+	a.scanEquipment(set)
+	d.Equipment = set.items
 	if rs.err != nil {
 		return Draft{}, fmt.Errorf("read catalog while drafting: %w", rs.err)
 	}
