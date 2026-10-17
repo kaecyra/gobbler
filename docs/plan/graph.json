@@ -2102,7 +2102,11 @@
         "internal/web/ingest/**",
         "internal/web/editor/**",
         "e2e/ingest/**",
-        "e2e/editor/**"
+        "e2e/editor/**",
+        "internal/ingest/draft.go",
+        "internal/ingest/steps.go",
+        "internal/ingest/steps_test.go",
+        "internal/ingest/fallback_gaps_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
