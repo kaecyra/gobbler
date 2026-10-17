@@ -10,15 +10,19 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Nodes:** g-e2e-ports (#257) first, then u-shell (#246) and u-recipe-fields (#247, schema migration), then u-ingest-fields (#248), u-ribbon (#249), u-library (#250), u-recipe-view (#251), u-cook (#252), u-shopping (#253), u-ingest-look (#254), u-other-pages (#255).
 
-**Merged so far:** #258, #260, #262 (graph); #259 g-e2e-ports (2e8627f); #261 u-shell (21fe01c); #263 u-recipe-fields, schema 00014 (a9a0408). VERSION on main 0.63.0.
+**Merged so far:** graph #258, #260, #262, #266, #269; #259 g-e2e-ports (2e8627f); #261 u-shell (21fe01c); #263 u-recipe-fields, schema 00014 (a9a0408); #264 u-shopping (d631326); #267 u-ribbon (513dd2c); #268 u-ingest-fields, parser version 7 (90466b5). VERSION on main 0.66.0.
 
-**In flight (worktrees under `.claude/worktrees/`):** #264 u-shopping in review (wt-253); u-ingest-fields (wt-248), u-ribbon (wt-249), u-cook (wt-252) dispatched. A fresh session cannot message these workers; re-dispatch a fresh one into the worktree.
+**In flight:** #265 u-cook (wt-252) review-clean, rebased to 0.67.0, awaiting CI then merge. Dispatched, no PR yet: u-library (wt-250, carries the ribbon e2e), u-recipe-view (wt-251), u-ingest-look (wt-254), u-other-pages (wt-255). Each later PR re-bumps VERSION to one minor over main at merge. A fresh session cannot message these workers; re-dispatch a fresh one into the worktree with `.cc-scratch/ui/prompt-<node>.md` (gitignored, on the owner's disk).
 
-**Open owner question:** inbox item ib-d51936be9069, the shopping list's by-recipe toggle (needs per-recipe amounts in the shopping merge; recommended dropping it for now). #264 ships without it.
+**Worker briefs:** `.cc-scratch/ui/common-notes.md` holds the recurring review findings (44px tap targets, tokens for every radius and colour, in-container lint). Every UI review so far raised at least one of these.
 
-**Gate gap:** host `golangci-lint` is 2.13.2 against the pinned 2.14.0, so `make lint` fails locally for every worker; CI runs lint. `make tools` would fix it on the host.
+**Screenshots** for PR bodies are pushed to the `pr-assets` branch (never merged) and linked with `?raw=true`.
 
-**Next:** u-library and u-recipe-view after u-ribbon; u-ingest-look after u-ingest-fields; u-other-pages after u-ingest-fields.
+**Open owner question:** inbox ib-d51936be9069, the shopping list's by-recipe toggle (recommended dropping it). Also for the owner: u-cook's mascot peeks over the timers card as drawn, though design.md says a mascot is never clipped; no timer pause button (timer behaviour was held unchanged).
+
+**Gate gap:** host `golangci-lint` is 2.13.2 against the pinned 2.14.0, so `make lint` fails on the host; v2.14.0 runs in the container. `make tools` on the host would fix it.
+
+**Process note:** concurrent review agents shared `.cc-scratch/conventions.md`, and one posted on the wrong PR (#267); reviewers now use `.cc-scratch/pr<N>/`.
 
 **Demo server** on the owner's Mac: `/tmp/gobbler-demo/gobbler serve`, dev auth bypass on `127.0.0.1:8080`, data in `/tmp/gobbler-demo/data`, built from 1b5fdfc. Six ingested drafts await review there. Rebuild it once the UI nodes land.
 
