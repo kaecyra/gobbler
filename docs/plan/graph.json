@@ -1759,7 +1759,7 @@
       "wave": 9,
       "track": null,
       "issue": 188,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/ingest/fallback_test.go"
@@ -2577,6 +2577,11 @@
         "00019"
       ],
       "note": "ADR-00019: a hand-set sized flag on catalog equipment (migration), set by the operator during catalog review, drives the scaled-view larger-pan hint. No equipment review surface exists yet; if t-catalog-overlay moves central curation under internal/web/operator, re-derive this lane before dispatch. Waits on t-catalog-overlay because both edit catalog equipment and the catalog page. Remove the recipeview model comment saying the schema has no size yet (#85)."
+    },
+    {
+      "id": "i-fallback-no-call-test",
+      "title": "a high-scoring draft at the default threshold makes no provider call",
+      "merged": "b5d56c5bb59aef30d919ebcedb4b2d670c87527d"
     }
   ],
   "adr_sequence": {
