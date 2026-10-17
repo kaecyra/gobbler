@@ -4,13 +4,17 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
-## Round 14 (2026-10-17), in flight
+## Round 14 (2026-10-17), closed
 
-**Merged:** r-one-icon-set #282 (81f57ef); r-remove-tags #283 (56dcec3; also removed the dead tag filter in `Search`, ADR-00022; the issue had named a live query); r-shopping-by-recipe #284 (5d706e7; `?group=recipe`, manual items in a last "Added by hand" group, unknown group is 400, design.md line added). Graph PRs #281, #285. VERSION on main 0.72.0.
+**Merged:** r-one-icon-set #282 (81f57ef); r-remove-tags #283 (56dcec3; also removed the dead tag filter in `Search`, ADR-00022; the issue had named a live query); r-shopping-by-recipe #284 (5d706e7; `?group=recipe`, manual items in a last "Added by hand" group, unknown group is 400, design.md line added); r-recipe-one-tap #286 (69add6d; `POST /shopping/add` puts the recipe on the newest list, overwriting the multiplier if already there; no list redirects to `/shopping`). Graph PRs #281, #285. VERSION on main 0.73.0.
 
-**In flight:** r-recipe-one-tap (#277): `.claude/worktrees/wt-277`, `feat/277-recipe-one-tap`, e2e ports 41400+. Told to use the most recent list if no "active list" concept exists, falling back to the /shopping link when the household has none.
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
 
-**After that:** only the parked nodes remain: i-site-extractors (#193), l-meal-planning (#38).
+**Remaining nodes, both waiting on the owner:** i-site-extractors (#193), parked until a URL still ingests badly; l-meal-planning (#38), deferred and needs an ADR.
+
+**Calls made under the tickets, for the owner to check:** the "active list" is the newest list (the store has no current-list notion); a repeat one-tap overwrites the multiplier; checking an item in one by-recipe group checks it everywhere.
+
+**Still unfiled from round 13:** u-cook timer mascot clipping and no pause button; u-recipe-view timer tags and passive bar; u-ingest-look two-column review layout.
 
 The worker brief is `.cc-scratch/worker-common.md` (plus `.cc-scratch/worker-ui-notes.md` for UI nodes), both gitignored. Host plugin scripts: `/Users/timothygunter/.odette/base/.marketplace-cache/market/plugins/overseer/skills/` (`$ODETTE_SCRIPTS_HOST` is unset on the host).
 
