@@ -2335,7 +2335,7 @@
       "wave": 9,
       "track": null,
       "issue": 254,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-ingest-fields",
         "u-shell"
@@ -3190,6 +3190,12 @@
       "id": "u-cook",
       "title": "cook mode in the mockup design",
       "merged": "56dfb71635424ad003b7b122f4a55144118f8249",
+      "note": "ADR-00022; design in docs/ui/design.md."
+    },
+    {
+      "id": "u-ingest-look",
+      "title": "add and review screens in the mockup design",
+      "merged": "21d07fa0c9a9b32320f919989af5b64e64f0741e",
       "note": "ADR-00022; design in docs/ui/design.md."
     }
   ],
