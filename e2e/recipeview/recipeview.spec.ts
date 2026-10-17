@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startThumbnailHost, THUMBNAIL_HOST_ENV, THUMBNAIL_JPEG } from '../fixtures/thumbnails.mjs';
+import { portFromEnv } from '../fixtures/ports.mjs';
 
 // The recipe view needs a recipe in the database, which the shared server of
 // the suite does not have. This spec seeds its own data directory through the
@@ -15,7 +16,7 @@ if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 const accessURL = process.env.GOBBLER_E2E_ACCESS_URL;
 if (!accessURL) throw new Error('GOBBLER_E2E_ACCESS_URL is not set; run through playwright.config.ts');
 
-const port = Number(process.env.GOBBLER_E2E_RECIPEVIEW_PORT ?? 38431);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_RECIPEVIEW_PORT');
 const origin = `http://127.0.0.1:${port}`;
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 

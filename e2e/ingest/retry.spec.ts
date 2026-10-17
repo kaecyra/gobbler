@@ -5,6 +5,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { portFromEnv } from '../fixtures/ports.mjs';
 
 // The LLM fallback (ADR-00006, ADR-00007), which fills gaps and never replaces
 // the rule-based draft (ADR-00020 decision 2). This spec starts its own gobbler
@@ -14,7 +15,7 @@ import { join } from 'node:path';
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 
-const port = Number(process.env.GOBBLER_E2E_RETRY_PORT ?? 38441);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_RETRY_PORT');
 const origin = `http://127.0.0.1:${port}`;
 
 const PANCAKES = `Fluffy Pancakes

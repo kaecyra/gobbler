@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
+import { portFromEnv } from '../fixtures/ports.mjs';
 
 // Promotion (ADR-00018, Catalog): the operator reviews the overlay entries
 // households suggested for the central catalog and promotes one, which merges
@@ -15,7 +16,7 @@ import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
 
-const port = Number(process.env.GOBBLER_E2E_PROMOTION_PORT ?? 38522);
+const port = await portFromEnv(process.env, 'GOBBLER_E2E_PROMOTION_PORT');
 const origin = `http://127.0.0.1:${port}`;
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
