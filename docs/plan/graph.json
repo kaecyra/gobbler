@@ -2592,7 +2592,9 @@
       "owns": [
         "internal/web/recipes/side*.go",
         "internal/web/recipes/handler_test.go",
-        "e2e/home/**"
+        "e2e/home/**",
+        "internal/web/recipes/model.go",
+        "e2e/recipes/support.ts"
       ],
       "needs_migration": null,
       "adrs": []
