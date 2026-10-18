@@ -30,6 +30,8 @@ export async function seededServer(portVar: string, prefix: string) {
       server = spawn(bin, ['serve'], {
         env: {
           PATH: process.env.PATH ?? '',
+          // The seed (go run) inherits TZ; the server must read dates in the same zone.
+          ...(process.env.TZ ? { TZ: process.env.TZ } : {}),
           GOBBLER_LISTEN_ADDR: `127.0.0.1:${port}`,
           GOBBLER_DATA_DIR: dataDir,
           GOBBLER_LOG_LEVEL: 'warn',
