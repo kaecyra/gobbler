@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00014",
+      "last_used": "00015",
       "contiguous": true
     }
   },
@@ -2490,6 +2490,95 @@
       ],
       "needs_migration": null,
       "adrs": []
+    },
+    {
+      "id": "i-source-fidelity",
+      "title": "ingest author by @id, no duplicate yield, video from a page embed, strip blog cruft",
+      "wave": 9,
+      "track": null,
+      "issue": 287,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00023"
+      ],
+      "note": "One node so the parser version bumps once. Video fallback per the ADR drawn here (amends ADR-00021 decision 5)."
+    },
+    {
+      "id": "u-editor-savebar",
+      "title": "sticky save bar on the recipe editor",
+      "wave": 9,
+      "track": null,
+      "issue": 288,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/editor/**",
+        "e2e/editor/**",
+        "docs/ui/design.md",
+        "internal/web/static/app.css"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "u-equipment-chips",
+      "title": "equipment chips with icons, and the common equipment in the catalog",
+      "wave": 9,
+      "track": null,
+      "issue": 289,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/catalog/seed/**",
+        "internal/web/layout/equip*",
+        "internal/web/layout/recipe.css",
+        "internal/web/recipeview/**",
+        "internal/web/cook/**",
+        "internal/web/static/cook.css",
+        "e2e/recipeview/**",
+        "e2e/cook/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00024"
+      ]
+    },
+    {
+      "id": "r-cuisine",
+      "title": "one cuisine per recipe from a fixed list",
+      "wave": 9,
+      "track": null,
+      "issue": 290,
+      "status": "todo",
+      "depends_on": [
+        "i-source-fidelity",
+        "u-editor-savebar",
+        "u-equipment-chips"
+      ],
+      "owns": [
+        "internal/recipe/**",
+        "internal/store/**",
+        "internal/web/editor/**",
+        "internal/web/recipeview/**",
+        "internal/web/recipes/**",
+        "internal/web/history/**",
+        "internal/web/layout/recipe*",
+        "internal/ingest/**",
+        "e2e/editor/**",
+        "e2e/recipeview/**",
+        "e2e/recipes/**",
+        "e2e/history/**",
+        "docs/design.md"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00025"
+      ]
     }
   ],
   "shared_files": [
@@ -3320,7 +3409,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00022",
+    "last_used": "00025",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
   }
 }

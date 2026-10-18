@@ -75,6 +75,10 @@ Options for the placeholder's thumbnail:
    only through it ([ADR-00006](00006-rule-first-ingestion.md)). A video on any
    other host is ignored.
 
+   > Amended by [ADR-00023](00023-video-from-a-page-embed.md): when the
+   > markup has no YouTube video, ingest takes the first YouTube embed on the
+   > page.
+
 ## Consequences
 
 The no-third-party-scripts boundary now has one exception: the YouTube player,
