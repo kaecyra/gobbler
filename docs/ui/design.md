@@ -117,6 +117,8 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   same page with the choice in `?group=recipe`. By aisle is the default. By
   recipe shows each recipe's own share of a merged line; hand-added items sit
   in a last "Added by hand" group.
+- **Editor save bar:** Save and Cancel sit in a bar stuck to the bottom of the
+  viewport while the form scrolls, above the bottom tab bar on a phone.
 - **Pages with no mockup** take the same tokens and components: the editor,
   settings, household and invitations, sharing, catalog, pantry, shopping
   build and export, and the operator pages. They are reviewed from screenshots

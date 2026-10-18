@@ -37,6 +37,7 @@
   --r-sm: 4px;
   --shade: #000;
   --tap: 44px;
+  --tabs-h: 60px;
   --gutter: 1rem;
 
   /* Names the pages not yet restyled (cook.css, video.css, page rules) still
@@ -240,16 +241,34 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
     margin: 0;
     z-index: 6;
     justify-content: space-around;
+    align-items: center;
+    box-sizing: border-box;
+    height: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px));
     background: var(--card);
     border-top: 1px solid var(--line);
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: 0 8px env(safe-area-inset-bottom, 0px);
   }
   .tabs > .tab, .menu > .tab { flex-direction: column; gap: 2px; padding: 4px 6px; font-size: 11px; min-width: 56px; }
   .tabs .tab .lbl, .tabs .tab .lbl-phone { display: block; }
   .tab.cta { margin-left: 0; }
   .menu-list { top: auto; bottom: calc(100% + 10px); }
-  body { padding-bottom: 84px; }
+  body { padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px) + 24px); }
 }
+
+/* Editor save bar: sticks to the bottom of the viewport while the form
+   scrolls; on a phone it sits above the fixed .tabs bar, whose height is --tabs-h plus the safe area. */
+.savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 560px) { .savebar { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px)); } }
 
 /* ---- footer ---- */
 

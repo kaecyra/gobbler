@@ -255,3 +255,73 @@ test('the editor keeps every control at least 44px tall and does not scroll side
     expect(overflow, `${viewport.width}px page scrolls sideways`).toBeLessThanOrEqual(0);
   }
 });
+
+test('Save and Cancel stay in the viewport at the top and bottom of a long editor, clear of the tab bar; Enter and Cancel work', async ({ page }) => {
+  for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/recipes/${id}/edit`);
+    const bar = page.locator('.savebar');
+    const saveBtn = bar.getByRole('button', { name: 'Save recipe' });
+    const cancel = bar.getByRole('link', { name: 'Cancel' });
+    const where = (label: string) => `${viewport.width}px ${label}`;
+    for (const label of ['top', 'bottom']) {
+      if (label === 'bottom') await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      else await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(saveBtn, where(label)).toBeInViewport({ ratio: 1 });
+      await expect(cancel, where(label)).toBeInViewport({ ratio: 1 });
+      const box = (await saveBtn.boundingBox())!;
+      expect(box.height, where(label)).toBeGreaterThanOrEqual(44);
+      expect((await cancel.boundingBox())!.height, where(label)).toBeGreaterThanOrEqual(44);
+      const tabs = page.locator('nav .tabs, .tabs').first();
+      const tabBox = await tabs.boundingBox();
+      if (tabBox && (await tabs.evaluate((el) => getComputedStyle(el).position)) === 'fixed') {
+        expect(box.y + box.height, where(`${label} above tab bar`)).toBeLessThanOrEqual(tabBox.y);
+      }
+      // The last field is not hidden behind the bar.
+      if (label === 'bottom') {
+        const last = page.locator('.editor input:visible, .editor textarea:visible, .editor select:visible').last();
+        const lastBox = (await last.boundingBox())!;
+        const barBox = (await bar.boundingBox())!;
+        expect(lastBox.y + lastBox.height, where('last field')).toBeLessThanOrEqual(barBox.y + 1);
+      }
+    }
+  }
+  // Cancel leaves for the recipe without saving.
+  await page.goto(`/recipes/${id}/edit`);
+  await page.locator('.savebar').getByRole('link', { name: 'Cancel' }).click();
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+});
+
+test('Enter in a text field saves, with the bar in place', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  const before = await revisions(page);
+  await page.goto(`/recipes/${id}/edit`);
+  await page.locator('[name="name"]').fill('E2E Enter Loaf');
+  await page.locator('[name="name"]').press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByRole('heading', { name: 'E2E Enter Loaf' })).toBeVisible();
+  expect(await revisions(page)).toBe(before + 1);
+});
+
+// Saving is a plain form post: the bar works without script (#288).
+test('without JavaScript, Save in the bar saves', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
+  const page = await ctx.newPage();
+  await page.goto(`/recipes/${id}/edit`);
+  await page.locator('[name="name"]').fill('E2E No Script Loaf');
+  await page.locator('.savebar').getByRole('button', { name: 'Save recipe' }).click();
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByRole('heading', { name: 'E2E No Script Loaf' })).toBeVisible();
+  await ctx.close();
+});
+
+test('without JavaScript, Enter in a field saves', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
+  const page = await ctx.newPage();
+  await page.goto(`/recipes/${id}/edit`);
+  await page.locator('[name="name"]').fill('E2E No Script Enter Loaf');
+  await page.locator('[name="name"]').press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByRole('heading', { name: 'E2E No Script Enter Loaf' })).toBeVisible();
+  await ctx.close();
+});
