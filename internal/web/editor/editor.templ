@@ -69,8 +69,9 @@ templ editorForm(v view) {
 			</div>
 		}
 		// The default button for the Enter key: the visible Save is last, in the
-		// sticky bar, and implicit submission presses the first submit button.
-		<button type="submit" name="action" value="save" hidden></button>
+		// sticky bar, and implicit submission presses the first submit button. An input, not a
+		// button: the review screen styles every .editor button as a visible control.
+		<input type="submit" name="action" value="save" hidden/>
 		@metaFields(v)
 		<h2>Components</h2>
 		for ci, c := range v.D.Components {

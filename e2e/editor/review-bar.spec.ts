@@ -28,7 +28,7 @@ test('the review bar shows Confirm and save and Cancel, and the Enter-key button
   const bar = page.locator('.savebar');
   await expect(bar.getByRole('button', { name: 'Confirm and save' })).toBeVisible();
   await expect(bar.getByRole('button', { name: 'Cancel' })).toBeVisible();
-  const hidden = page.locator('.editor button[hidden]');
+  const hidden = page.locator('.editor input[type=submit][hidden]');
   await expect(hidden).toHaveCount(1);
   await expect(hidden).toBeHidden();
   expect(await hidden.boundingBox()).toBeNull();

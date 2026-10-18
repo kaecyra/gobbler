@@ -255,9 +255,6 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
   body { padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px) + 24px); }
 }
 
-/* The hidden attribute always wins over a component's own display rule. */
-[hidden] { display: none !important; }
-
 /* Editor save bar: sticks to the bottom of the viewport while the form
    scrolls; on a phone it sits above the fixed .tabs bar, whose height is --tabs-h plus the safe area. */
 .savebar {
