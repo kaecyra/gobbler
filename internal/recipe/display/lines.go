@@ -104,13 +104,27 @@ func (b *LineBuilder) Build(ctx context.Context, l recipe.IngredientLine) (Line,
 	return lv, nil
 }
 
-// EquipmentText renders an equipment link as "2 baking sheet".
-func EquipmentText(ctx context.Context, cat Equipment, link recipe.EquipmentLink) (string, error) {
+// EquipmentLine is an equipment link resolved with one catalog read: its
+// rendered text, and the catalog name and sized flag that callers key chip
+// icons and hints on.
+type EquipmentLine struct {
+	Text  string // "2 baking sheet"
+	Name  string // the catalog name, without the quantity
+	Sized bool
+}
+
+// ResolveEquipment renders an equipment link as "2 baking sheet" and returns
+// the catalog fields it read, so a caller needs no second read.
+func ResolveEquipment(ctx context.Context, cat Equipment, link recipe.EquipmentLink) (EquipmentLine, error) {
 	eq, err := cat.GetEquipment(ctx, int64(link.Equipment))
 	if err != nil {
-		return "", Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
+		return EquipmentLine{}, Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
 	}
-	return strings.TrimSpace(link.Qty.String() + " " + eq.Name), nil
+	return EquipmentLine{
+		Text:  strings.TrimSpace(link.Qty.String() + " " + eq.Name),
+		Name:  eq.Name,
+		Sized: eq.Sized,
+	}, nil
 }
 
 // Opaque flattens a catalog "not found" met while resolving a reference of an
