@@ -39,6 +39,8 @@ test.describe('with recipes', () => {
     const soup = card(page, 'Tomato Soup');
     await expect(soup.getByRole('link', { name: 'Tomato Soup' })).toHaveAttribute('href', `/recipes/${ids['Tomato Soup']}`);
     await expect(soup.locator('.mtype')).toContainText('Main');
+    await expect(soup.getByTestId('card-cuisine')).toHaveText('Italian');
+    await expect(card(page, 'Beef Stew').getByTestId('card-cuisine')).toHaveCount(0);
     await expect(soup.getByRole('img', { name: 'Medium heat' })).toBeVisible();
     await expect(soup.locator('.heat svg')).toHaveCount(2);
     await expect(soup).toContainText('example.test');

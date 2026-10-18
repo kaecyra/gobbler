@@ -18,6 +18,9 @@ templ RecipeMetaRow(m RecipeMeta) {
 				<span class="lbl">{ m.Meal }</span>
 			</span>
 		}
+		if m.Cuisine != "" {
+			<span data-testid="cuisine">{ m.Cuisine }</span>
+		}
 		if m.Spice > 0 {
 			<span class="heat big" role="img" aria-label={ heatLabel(m.Spice) } title={ heatLabel(m.Spice) } data-testid="spice">
 				for range chilis(m.Spice) {

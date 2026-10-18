@@ -114,7 +114,7 @@ func fixtures() []fixture {
 		}
 	}
 	four, one, two := 4, 1, 2
-	return []fixture{
+	fx := []fixture{
 		{
 			doc:  mk("Lemon Cake", "Zesty and light", recipe.MealDessert, nil, "3 lemons :: lemons", []string{"dessert", "quick"}, &four, 15*time.Minute, 40*time.Minute, hands("mix", 15, recipe.StagePrep), wait("bake", 40, recipe.StageBake)),
 			made: []madeAt{{daysAgo: 200, comment: "Too sweet"}},
@@ -128,4 +128,7 @@ func fixtures() []fixture {
 		{doc: mk("Cardamom Knots", "Sticky morning buns", recipe.MealBreakfast, nil, "4 tsp cardamom :: cardamom", []string{"bread"}, nil, 20*time.Minute, 20*time.Minute,
 			hands("knead", 20, recipe.StagePrep), wait("rise", 90, recipe.StageRise), hands("shape", 40, ""), wait("rest", 30, recipe.StageRest), wait("bake", 20, recipe.StageBake))},
 	}
+	// Tomato Soup is the one card with a cuisine, so the others show none.
+	fx[1].doc.Cuisine = recipe.CuisineItalian
+	return fx
 }

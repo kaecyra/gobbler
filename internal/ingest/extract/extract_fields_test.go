@@ -14,6 +14,27 @@ func TestJSONLDReadsRecipeCategory(t *testing.T) {
 	}
 }
 
+// recipeCuisine is read as the page wrote it, a string or a list (ADR-00025).
+func TestJSONLDReadsRecipeCuisineAsStringOrList(t *testing.T) {
+	for name, want := range map[string][]string{
+		"real_recipetineats_graph": {"Japanese"},
+		"real_wprm_graph":          {"Mexican", "Tex Mex"},
+		"real_yoast_graph":         {"American"},
+	} {
+		res := mustExtract(t, fixture(t, name), fixtureURL)
+		if !reflect.DeepEqual(res.Recipe.Cuisines, want) {
+			t.Errorf("%s: cuisines = %v, want %v", name, res.Recipe.Cuisines, want)
+		}
+	}
+}
+
+func TestMicrodataReadsRecipeCuisine(t *testing.T) {
+	res := mustExtract(t, fixture(t, "microdata_cuisine"), fixtureURL)
+	if want := []string{"Thai"}; !reflect.DeepEqual(res.Recipe.Cuisines, want) {
+		t.Errorf("cuisines = %v, want %v", res.Recipe.Cuisines, want)
+	}
+}
+
 func TestMicrodataReadsRecipeCategory(t *testing.T) {
 	res := mustExtract(t, fixture(t, "microdata_category"), fixtureURL)
 	if want := []string{"Beverage"}; !reflect.DeepEqual(res.Recipe.Categories, want) {

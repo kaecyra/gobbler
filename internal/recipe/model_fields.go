@@ -10,6 +10,8 @@ import (
 var (
 	// ErrInvalidMealType is returned for a meal type outside the closed set.
 	ErrInvalidMealType = errors.New("invalid meal type")
+	// ErrInvalidCuisine is returned for a cuisine outside the closed set.
+	ErrInvalidCuisine = errors.New("invalid cuisine")
 	// ErrInvalidSpiceLevel is returned for a spice level outside 0 to 3.
 	ErrInvalidSpiceLevel = errors.New("invalid spice level")
 	// ErrInvalidStageKind is returned for a step stage kind outside the closed
@@ -44,6 +46,75 @@ func (m MealType) Valid() bool {
 		}
 	}
 	return false
+}
+
+// Cuisine is the one cuisine a recipe belongs to (ADR-00025). The empty value
+// is unset, and is not a member of the set. The value is a lower-case key with
+// underscores; Label is the name a page shows.
+type Cuisine string
+
+// The cuisines.
+const (
+	CuisineAmerican      Cuisine = "american"
+	CuisineBritish       Cuisine = "british"
+	CuisineCaribbean     Cuisine = "caribbean"
+	CuisineChinese       Cuisine = "chinese"
+	CuisineFrench        Cuisine = "french"
+	CuisineGerman        Cuisine = "german"
+	CuisineGreek         Cuisine = "greek"
+	CuisineIndian        Cuisine = "indian"
+	CuisineItalian       Cuisine = "italian"
+	CuisineJapanese      Cuisine = "japanese"
+	CuisineKorean        Cuisine = "korean"
+	CuisineMediterranean Cuisine = "mediterranean"
+	CuisineMexican       Cuisine = "mexican"
+	CuisineMiddleEastern Cuisine = "middle_eastern"
+	CuisineSpanish       Cuisine = "spanish"
+	CuisineThai          Cuisine = "thai"
+	CuisineVietnamese    Cuisine = "vietnamese"
+	CuisineOther         Cuisine = "other"
+)
+
+// cuisineLabels name the cuisines on a page, in the order Cuisines lists them.
+var cuisineLabels = []struct {
+	Cuisine Cuisine
+	Label   string
+}{
+	{CuisineAmerican, "American"}, {CuisineBritish, "British"}, {CuisineCaribbean, "Caribbean"},
+	{CuisineChinese, "Chinese"}, {CuisineFrench, "French"}, {CuisineGerman, "German"},
+	{CuisineGreek, "Greek"}, {CuisineIndian, "Indian"}, {CuisineItalian, "Italian"},
+	{CuisineJapanese, "Japanese"}, {CuisineKorean, "Korean"}, {CuisineMediterranean, "Mediterranean"},
+	{CuisineMexican, "Mexican"}, {CuisineMiddleEastern, "Middle Eastern"}, {CuisineSpanish, "Spanish"},
+	{CuisineThai, "Thai"}, {CuisineVietnamese, "Vietnamese"}, {CuisineOther, "Other"},
+}
+
+// Cuisines lists the closed set of cuisines, alphabetical with Other last.
+func Cuisines() []Cuisine {
+	out := make([]Cuisine, len(cuisineLabels))
+	for i, c := range cuisineLabels {
+		out[i] = c.Cuisine
+	}
+	return out
+}
+
+// Valid reports whether c is one of the defined cuisines.
+func (c Cuisine) Valid() bool {
+	for _, k := range cuisineLabels {
+		if c == k.Cuisine {
+			return true
+		}
+	}
+	return false
+}
+
+// Label is the name a page shows for c, empty for an unset or unknown cuisine.
+func (c Cuisine) Label() string {
+	for _, k := range cuisineLabels {
+		if c == k.Cuisine {
+			return k.Label
+		}
+	}
+	return ""
 }
 
 // MaxSpiceLevel is the top of the spice scale; the bottom is 0.
@@ -90,6 +161,9 @@ func (k StageKind) Valid() bool {
 func (r Recipe) validateFields() error {
 	if r.MealType != "" && !r.MealType.Valid() {
 		return fmt.Errorf("%w: %q", ErrInvalidMealType, r.MealType)
+	}
+	if r.Cuisine != "" && !r.Cuisine.Valid() {
+		return fmt.Errorf("%w: %q", ErrInvalidCuisine, r.Cuisine)
 	}
 	if s := r.SpiceLevel; s != nil && (*s < 0 || *s > MaxSpiceLevel) {
 		return fmt.Errorf("%w: %d", ErrInvalidSpiceLevel, *s)

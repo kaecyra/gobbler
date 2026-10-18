@@ -139,6 +139,8 @@ type Recipe struct {
 	// MealType groups the recipe in the library; empty when unset
 	// (ADR-00022).
 	MealType MealType
+	// Cuisine is the recipe's one cuisine; empty when unset (ADR-00025).
+	Cuisine Cuisine
 	// SpiceLevel is 0 to 3; nil when unset, which shows nothing, unlike 0
 	// (ADR-00022).
 	SpiceLevel         *int

@@ -1,0 +1,18 @@
+{
+  "method": "microdata",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Pad See Ew",
+    "ingredients": [
+      "200 g rice noodles"
+    ],
+    "instructions": [
+      {
+        "text": "Stir-fry the noodles."
+      }
+    ],
+    "cuisines": [
+      "Thai"
+    ]
+  }
+}

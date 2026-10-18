@@ -10,6 +10,22 @@ import (
 	"database/sql"
 )
 
+const getRecipeCuisine = `-- name: GetRecipeCuisine :one
+SELECT cuisine FROM recipes WHERE id = ? AND household_id = ?
+`
+
+type GetRecipeCuisineParams struct {
+	ID          int64
+	HouseholdID int64
+}
+
+func (q *Queries) GetRecipeCuisine(ctx context.Context, arg GetRecipeCuisineParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getRecipeCuisine, arg.ID, arg.HouseholdID)
+	var cuisine string
+	err := row.Scan(&cuisine)
+	return cuisine, err
+}
+
 const getRecipeFields = `-- name: GetRecipeFields :one
 SELECT meal_type, spice_level FROM recipes WHERE id = ? AND household_id = ?
 `
@@ -123,6 +139,23 @@ func (q *Queries) SetNotePinned(ctx context.Context, arg SetNotePinnedParams) (i
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const setRecipeCuisine = `-- name: SetRecipeCuisine :exec
+
+UPDATE recipes SET cuisine = ? WHERE id = ? AND household_id = ?
+`
+
+type SetRecipeCuisineParams struct {
+	Cuisine     string
+	ID          int64
+	HouseholdID int64
+}
+
+// The cuisine (ADR-00025) has statements of its own, like the fields above.
+func (q *Queries) SetRecipeCuisine(ctx context.Context, arg SetRecipeCuisineParams) error {
+	_, err := q.db.ExecContext(ctx, setRecipeCuisine, arg.Cuisine, arg.ID, arg.HouseholdID)
+	return err
 }
 
 const setRecipeFields = `-- name: SetRecipeFields :exec

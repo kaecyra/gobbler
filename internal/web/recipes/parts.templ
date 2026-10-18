@@ -88,6 +88,9 @@ templ recipeCard(c cardView) {
 			if c.Source != "" {
 				<div class="src">{ c.Source }</div>
 			}
+			if c.Cuisine != "" {
+				<div class="src" data-testid="card-cuisine">{ c.Cuisine }</div>
+			}
 		</div>
 		if len(c.Components) > 0 {
 			<ul class="comps" aria-label="Parts">

@@ -77,6 +77,7 @@ type RecipeMeta struct {
 	// unrated. Made is the length of the made-it log; a past version has none.
 	MealType   recipe.MealType
 	Meal       string
+	Cuisine    string // the cuisine's label, empty when unset (ADR-00025)
 	Spice      int
 	Spoons     int
 	Made       int
@@ -89,7 +90,7 @@ type RecipeMeta struct {
 // NewRecipeMeta reads the fields of r that the meta row shows.
 func NewRecipeMeta(r recipe.Recipe) RecipeMeta {
 	m := RecipeMeta{
-		MealType: r.MealType, Meal: mealLabels[r.MealType], Author: r.Author,
+		MealType: r.MealType, Meal: mealLabels[r.MealType], Cuisine: r.Cuisine.Label(), Author: r.Author,
 		Calories: r.CaloriesPerServing, SourceURL: r.SourceURL, SourceHost: sourceHost(r.SourceURL),
 	}
 	if r.SpiceLevel != nil && *r.SpiceLevel > 0 {

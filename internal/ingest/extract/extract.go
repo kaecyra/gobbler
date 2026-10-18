@@ -89,8 +89,11 @@ type Raw struct {
 	// Categories are the page's recipeCategory values as written, one per
 	// entry; mapping them to a meal type is the assembler's job.
 	Categories []string `json:"categories,omitempty"`
-	Calories   string   `json:"calories,omitempty"`
-	ImageURL   string   `json:"image_url,omitempty"`
+	// Cuisines are the page's recipeCuisine values as written, one per entry;
+	// mapping them onto the cuisine list is the assembler's job (ADR-00025).
+	Cuisines []string `json:"cuisines,omitempty"`
+	Calories string   `json:"calories,omitempty"`
+	ImageURL string   `json:"image_url,omitempty"`
 	// VideoID is the 11-character ID of a YouTube video the page names in its
 	// schema.org "video" property (ADR-00021 decision 5), else of the first
 	// YouTube embed in the page body (ADR-00023); empty when there is neither

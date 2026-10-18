@@ -33,3 +33,6 @@ SELECT m.recipe_id, r.name, m.made_on, m.comment, m.rating
 FROM made_it m JOIN recipes r ON r.id = m.recipe_id AND r.household_id = m.household_id
 WHERE m.household_id = sqlc.arg(household_id)
 ORDER BY m.made_on DESC, m.id DESC LIMIT sqlc.arg(max_rows);
+
+-- name: ListLibraryCuisines :many
+SELECT id, cuisine FROM recipes WHERE household_id = ?;

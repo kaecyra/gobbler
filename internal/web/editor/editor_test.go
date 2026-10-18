@@ -234,7 +234,7 @@ func encode(d draft) url.Values {
 		"name": d.Name, "description": d.Description, "source_url": d.SourceURL, "author": d.Author, "video": d.Video,
 		"yield_qty": d.YieldQty, "yield_unit": d.YieldUnit, "servings": d.Servings, "calories": d.Calories,
 		"tags": d.Tags, "prep": d.Prep, "cook": d.Cook, "total": d.Total,
-		"meal_type": d.MealType, "spice": d.Spice,
+		"meal_type": d.MealType, "cuisine": d.Cuisine, "spice": d.Spice,
 	} {
 		f.Set(k, v)
 	}

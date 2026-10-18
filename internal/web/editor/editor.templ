@@ -184,6 +184,16 @@ templ metaFields(v view) {
 					@fieldError(v, "meal_type")
 				</div>
 				<div>
+					<label for="f-cuisine">Cuisine</label>
+					<select id="f-cuisine" name="cuisine">
+						<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
+						for _, c := range cuisineOptions() {
+							<option value={ c.Key } selected?={ v.D.Cuisine == c.Key }>{ c.Label }</option>
+						}
+					</select>
+					@fieldError(v, "cuisine")
+				</div>
+				<div>
 					<label for="f-spice">Spice level</label>
 					<select id="f-spice" name="spice">
 						<option value="" selected?={ v.D.Spice == "" }>Not set</option>

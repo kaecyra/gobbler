@@ -20,6 +20,7 @@ const keyIngredientCap = 5
 type Card struct {
 	Summary
 	MealType   recipe.MealType
+	Cuisine    recipe.Cuisine
 	SpiceLevel *int
 	// Source is where the recipe came from: the site of its source URL without
 	// "www.", else its author, else empty.
@@ -87,6 +88,16 @@ func fillCards(ctx context.Context, q *storedb.Queries, hid int64, cards []Card)
 	for _, r := range fields {
 		if c := at[r.ID]; c != nil {
 			c.MealType, c.SpiceLevel, c.Source = recipe.MealType(r.MealType), intPtr(r.SpiceLevel), sourceOf(r.SourceUrl, r.Author)
+		}
+	}
+
+	cuisines, err := q.ListLibraryCuisines(ctx, hid)
+	if err != nil {
+		return readErr("library cuisines", err)
+	}
+	for _, r := range cuisines {
+		if c := at[r.ID]; c != nil {
+			c.Cuisine = recipe.Cuisine(r.Cuisine)
 		}
 	}
 

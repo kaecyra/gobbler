@@ -394,6 +394,7 @@ test('Cook mode sits in the controls row beside the scaler, and Start cooking is
 test('the meta row shows meal type, chilis, spoons, made count and the source host', async ({ page }) => {
   await page.goto(`/recipes/${styledId}`);
   await expect(page.getByTestId('meal-type')).toContainText('Main');
+  await expect(page.getByTestId('cuisine')).toHaveText('Korean');
   await expect(page.getByTestId('spice').locator('svg')).toHaveCount(2);
   await expect(page.getByTestId('spice')).toHaveAttribute('aria-label', 'Medium heat');
   await expect(page.getByTestId('rating').locator('svg')).toHaveCount(5);
@@ -408,6 +409,7 @@ test('the meta row shows meal type, chilis, spoons, made count and the source ho
   await expect(page.getByTestId('rating-new')).toHaveText('New');
   await expect(page.getByTestId('spice')).toHaveCount(0);
   await expect(page.getByTestId('meal-type')).toHaveCount(0);
+  await expect(page.getByTestId('cuisine')).toHaveCount(0);
 });
 
 test('the large ribbon sits under Ready in about, and survives scaling', async ({ page }) => {
