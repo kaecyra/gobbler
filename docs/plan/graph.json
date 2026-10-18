@@ -2673,7 +2673,7 @@
       "wave": 10,
       "track": null,
       "issue": 304,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-ingest-two-column"
       ],
@@ -3557,6 +3557,11 @@
       "id": "u-ingest-two-column",
       "title": "two-column review screen",
       "merged": "50cc793"
+    },
+    {
+      "id": "r-equipment-aliases",
+      "title": "mandoline slicer and pastry blender aliases",
+      "merged": "2c95aa5"
     }
   ],
   "adr_sequence": {
