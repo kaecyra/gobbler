@@ -574,4 +574,9 @@ test('a collapsed source box does not leave an empty column beside the editor', 
   const grid = (await page.locator('.review-grid').boundingBox())!;
   const form = (await page.locator('.review-body .editor').first().boundingBox())!;
   expect(form.width).toBeGreaterThan(grid.width - 4);
+  // The collapsed summary scrolls away with the page; it does not stick over the editor.
+  await page.evaluate(() => window.scrollTo(0, 400));
+  const sum = (await page.locator('.srcbox-wrap').boundingBox())!;
+  const ed = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(sum.y + sum.height, 'summary stays out of the editor').toBeLessThanOrEqual(ed.y + 1);
 });
