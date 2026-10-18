@@ -2605,7 +2605,7 @@
       "wave": 10,
       "track": null,
       "issue": 300,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/recipe/display/**",
@@ -3547,6 +3547,11 @@
       "adrs": [
         "00025"
       ]
+    },
+    {
+      "id": "r-equipment-one-read",
+      "title": "one catalog read per equipment link",
+      "merged": "12eed74"
     }
   ],
   "adr_sequence": {
