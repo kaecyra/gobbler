@@ -282,6 +282,37 @@ func TestFormatting(t *testing.T) {
 	}
 }
 
+// A made-it date is a plain calendar date (stored and parsed as UTC midnight);
+// "today" is the calendar date in now's own zone. The difference must not
+// depend on the hour or on how far now's zone sits from UTC.
+func TestAgoCountsCalendarDays(t *testing.T) {
+	toronto := time.FixedZone("EDT", -4*3600)
+	tokyo := time.FixedZone("JST", 9*3600)
+	made := time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name string
+		now  time.Time
+	}{
+		{"toronto 00:30", time.Date(2026, 10, 18, 0, 30, 0, 0, toronto)},
+		{"toronto 12:00", time.Date(2026, 10, 18, 12, 0, 0, 0, toronto)},
+		{"toronto 23:30 (already the 19th in UTC)", time.Date(2026, 10, 18, 23, 30, 0, 0, toronto)},
+		{"utc 00:30", time.Date(2026, 10, 18, 0, 30, 0, 0, time.UTC)},
+		{"utc 23:30", time.Date(2026, 10, 18, 23, 30, 0, 0, time.UTC)},
+		{"tokyo 00:30 (still the 17th in UTC)", time.Date(2026, 10, 18, 0, 30, 0, 0, tokyo)},
+		{"tokyo 23:30", time.Date(2026, 10, 18, 23, 30, 0, 0, tokyo)},
+	} {
+		if got := ago(made, tc.now); got != "2 days ago" {
+			t.Errorf("%s: ago = %q, want %q", tc.name, got, "2 days ago")
+		}
+	}
+	if got := ago(made, time.Date(2026, 10, 16, 23, 59, 0, 0, toronto)); got != "today" {
+		t.Errorf("same calendar day late evening: %q, want today", got)
+	}
+	if got := ago(made, time.Date(2026, 10, 17, 0, 1, 0, 0, tokyo)); got != "yesterday" {
+		t.Errorf("just past midnight: %q, want yesterday", got)
+	}
+}
+
 func TestLibraryShowsTheSuggestionAndKeepsTheSearchOnAnotherIdea(t *testing.T) {
 	last := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
 	a, b := card(1, "Old soup", recipe.MealMain), card(2, "Never cake", recipe.MealDessert)
