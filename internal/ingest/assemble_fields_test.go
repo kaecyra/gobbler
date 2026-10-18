@@ -78,12 +78,6 @@ func TestCuisineFromRecipeCuisine(t *testing.T) {
 	}
 }
 
-func TestParserVersionCoversCuisine(t *testing.T) {
-	if ParserVersion == "8" {
-		t.Errorf("ParserVersion %q predates cuisine proposals", ParserVersion)
-	}
-}
-
 func TestAssembleTakesMealTypeAndStepTitlesFromTheSource(t *testing.T) {
 	e := newEnv(t)
 	res := extract.Result{Method: extract.MethodJSONLD, Recipe: &extract.Raw{

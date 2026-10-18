@@ -114,13 +114,18 @@ func fixtures() []fixture {
 		}
 	}
 	four, one, two := 4, 1, 2
+	// italian marks a recipe's cuisine; Tomato Soup is the one card with one.
+	italian := func(r recipe.Recipe) recipe.Recipe {
+		r.Cuisine = recipe.CuisineItalian
+		return r
+	}
 	fx := []fixture{
 		{
 			doc:  mk("Lemon Cake", "Zesty and light", recipe.MealDessert, nil, "3 lemons :: lemons", []string{"dessert", "quick"}, &four, 15*time.Minute, 40*time.Minute, hands("mix", 15, recipe.StagePrep), wait("bake", 40, recipe.StageBake)),
 			made: []madeAt{{daysAgo: 200, comment: "Too sweet"}},
 		},
 		{
-			doc:  mk("Tomato Soup", "Warming", recipe.MealMain, &two, "800 g canned tomatoes :: tomatoes", []string{"dinner", "vegan"}, nil, 10*time.Minute, 25*time.Minute, hands("chop", 10, recipe.StagePrep), wait("simmer", 25, recipe.StageSimmer)),
+			doc:  italian(mk("Tomato Soup", "Warming", recipe.MealMain, &two, "800 g canned tomatoes :: tomatoes", []string{"dinner", "vegan"}, nil, 10*time.Minute, 25*time.Minute, hands("chop", 10, recipe.StagePrep), wait("simmer", 25, recipe.StageSimmer))),
 			made: []madeAt{{daysAgo: 30}, {daysAgo: 9, comment: "Added basil"}, {daysAgo: 2}},
 		},
 		{doc: mk("Beef Stew", "Slow and rich", recipe.MealMain, &one, "1 kg beef :: beef", []string{"dinner"}, nil, 20*time.Minute, 150*time.Minute, hands("brown", 20, recipe.StagePrep), wait("braise", 150, recipe.StageBraise)), notes: []string{"Needs more thyme"}},
@@ -128,7 +133,5 @@ func fixtures() []fixture {
 		{doc: mk("Cardamom Knots", "Sticky morning buns", recipe.MealBreakfast, nil, "4 tsp cardamom :: cardamom", []string{"bread"}, nil, 20*time.Minute, 20*time.Minute,
 			hands("knead", 20, recipe.StagePrep), wait("rise", 90, recipe.StageRise), hands("shape", 40, ""), wait("rest", 30, recipe.StageRest), wait("bake", 20, recipe.StageBake))},
 	}
-	// Tomato Soup is the one card with a cuisine, so the others show none.
-	fx[1].doc.Cuisine = recipe.CuisineItalian
 	return fx
 }

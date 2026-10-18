@@ -13,9 +13,10 @@ and this document is wrong.
 - **Store** it as structured data: components, semantic ingredient lines,
   equipment, a step graph, times, notes, revisions
   ([ADR-00004](adr/00004-recipe-data-model.md)). A recipe also has an optional
-  meal type, cuisine and spice level, a step an optional stage kind and title, and a note
-  may be pinned as a tip ([ADR-00022](adr/00022-adopt-the-mockup-design.md)); the cuisine is one
-  value from a fixed list ([ADR-00025](adr/00025-one-cuisine-per-recipe.md)).
+  meal type, cuisine and spice level, a step an optional stage kind and title,
+  and a note may be pinned as a tip
+  ([ADR-00022](adr/00022-adopt-the-mockup-design.md)); the cuisine is one value
+  from a fixed list ([ADR-00025](adr/00025-one-cuisine-per-recipe.md)).
 - **Watch** it, optionally: a recipe may carry a YouTube video that plays at the
   top of its page only when someone presses Play; the thumbnail is downloaded at
   save and kept in SQLite ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)).
