@@ -95,7 +95,8 @@ func TestMigration00003AdoptsUnitsTheOldSaveFlowCreated(t *testing.T) {
 
 // Migration 00015 adds the common equipment (ADR-00024) to a database the
 // application has written to: a same-named row an ingest created unreviewed is
-// adopted, not a start-up failure, and a sized addition arrives sized.
+// adopted, not a start-up failure, and a sized addition ends up sized whether
+// the row was created by the migration or adopted.
 func TestMigration00015AddsEquipmentAndAdoptsExistingRows(t *testing.T) {
 	ctx := context.Background()
 	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
@@ -122,7 +123,7 @@ func TestMigration00015AddsEquipmentAndAdoptsExistingRows(t *testing.T) {
 	if err := db.Migrate(ctx, d, before); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.ExecContext(ctx, `INSERT INTO equipment (name, reviewed) VALUES ('tongs', 0)`); err != nil {
+	if _, err := d.ExecContext(ctx, `INSERT INTO equipment (name, reviewed) VALUES ('tongs', 0), ('bundt pan', 0)`); err != nil {
 		t.Fatal(err)
 	}
 

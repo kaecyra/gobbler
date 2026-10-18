@@ -195,9 +195,9 @@ var equipIcons = map[string]string{
 
 func equipKey(name string) string { return strings.ToLower(strings.TrimSpace(name)) }
 
-// EquipHasIcon reports whether the central catalog equipment of that name has
+// equipHasIcon reports whether the central catalog equipment of that name has
 // its own icon rather than the generic one.
-func EquipHasIcon(name string) bool {
+func equipHasIcon(name string) bool {
 	_, ok := equipIcons[equipKey(name)]
 	return ok
 }

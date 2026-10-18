@@ -50,7 +50,7 @@ func TestEveryCentralEquipmentItemHasAnIcon(t *testing.T) {
 		t.Fatal("the migrations seed no equipment")
 	}
 	for _, n := range names {
-		if !EquipHasIcon(n) {
+		if !equipHasIcon(n) {
 			t.Errorf("central equipment %q has no icon; add it to equipIcons", n)
 		}
 	}
