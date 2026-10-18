@@ -57,3 +57,31 @@ test('saved timers restore, and corrupt storage yields no timers instead of an e
     { step: '3', label: 'x', endAt: 10, seconds: 5, notified: false },
   ]);
 });
+
+test('pausing freezes the time left, and resuming continues from it', () => {
+  const t = T.start('1', 'a', 600, 0);
+  const p = T.pause(t, 200_000);
+  expect(T.isPaused(p)).toBe(true);
+  expect(T.remainingMs(p, 200_000)).toBe(400_000);
+  // However long the pause lasts, nothing is lost or gained.
+  expect(T.remainingMs(p, 5_000_000)).toBe(400_000);
+  expect(T.isDone(p, 5_000_000)).toBe(false);
+  expect(T.due([p], 5_000_000)).toEqual([]);
+  const r = T.resume(p, 5_000_000);
+  expect(T.isPaused(r)).toBe(false);
+  expect(T.remainingMs(r, 5_000_000)).toBe(400_000);
+  expect(T.remainingMs(r, 5_100_000)).toBe(300_000);
+  // The input is not changed, and a finished timer cannot be paused.
+  expect(T.isPaused(t)).toBe(false);
+  const done = T.pause(t, 700_000);
+  expect(T.isPaused(done)).toBe(false);
+  expect(T.isDone(done, 700_000)).toBe(true);
+});
+
+test('a paused timer survives save and restore as paused', () => {
+  const p = T.pause(T.start('1', 'a', 600, 0), 200_000);
+  const back = T.restore(T.save([p]));
+  expect(back).toEqual([p]);
+  expect(T.remainingMs(back[0], 9_999_999)).toBe(400_000);
+  expect(T.restore(JSON.stringify([{ step: '1', label: 'a', endAt: 1, seconds: 5, pausedMs: 'x' }]))[0].pausedMs).toBeUndefined();
+});

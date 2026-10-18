@@ -10,13 +10,40 @@
     return { step: step, label: label, endAt: now + seconds * 1000, seconds: seconds, notified: false };
   }
 
+  // A paused timer carries pausedMs, the time that was left when it stopped,
+  // and its endAt is ignored until resume. A running timer has no pausedMs.
+  function isPaused(timer) {
+    return Number.isFinite(timer.pausedMs);
+  }
+
   // remainingMs is how long is left, never negative.
   function remainingMs(timer, now) {
+    if (isPaused(timer)) return Math.max(0, timer.pausedMs);
     return Math.max(0, timer.endAt - now);
   }
 
   function isDone(timer, now) {
     return remainingMs(timer, now) === 0;
+  }
+
+  // pause freezes a running timer at its remaining time. A finished or already
+  // paused timer is returned unchanged.
+  function pause(timer, now) {
+    if (isPaused(timer) || isDone(timer, now)) return timer;
+    return Object.assign({}, timer, { pausedMs: remainingMs(timer, now) });
+  }
+
+  // resume continues a paused timer from the time it had left.
+  function resume(timer, now) {
+    if (!isPaused(timer)) return timer;
+    var next = Object.assign({}, timer, { endAt: now + timer.pausedMs });
+    delete next.pausedMs;
+    return next;
+  }
+
+  // update returns a new list with fn applied to the timer of the given step.
+  function update(timers, step, fn) {
+    return timers.map(function (t) { return t.step === step ? fn(t) : t; });
   }
 
   // format renders remaining time as m:ss, or h:mm:ss from an hour up. Partial
@@ -72,12 +99,15 @@
       return t && typeof t.step === 'string' && typeof t.label === 'string' &&
         Number.isFinite(t.endAt) && Number.isFinite(t.seconds);
     }).map(function (t) {
-      return { step: t.step, label: t.label, endAt: t.endAt, seconds: t.seconds, notified: t.notified === true };
+      var timer = { step: t.step, label: t.label, endAt: t.endAt, seconds: t.seconds, notified: t.notified === true };
+      if (Number.isFinite(t.pausedMs) && t.pausedMs >= 0) timer.pausedMs = t.pausedMs;
+      return timer;
     });
   }
 
   var api = {
-    start: start, remainingMs: remainingMs, isDone: isDone, format: format, upsert: upsert,
+    start: start, remainingMs: remainingMs, isDone: isDone, isPaused: isPaused,
+    pause: pause, resume: resume, update: update, format: format, upsert: upsert,
     remove: remove, due: due, markNotified: markNotified, save: save, restore: restore,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

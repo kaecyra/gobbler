@@ -138,15 +138,17 @@
 .cook-timers {
   grid-area: side;
   position: relative;
-  margin: 70px 22px 0;
+  /* Room for the mascot to stand whole on the box (design.md: never clipped). */
+  --peek-h: 93px;
+  margin: calc(var(--peek-h) + 8px) 22px 0;
 }
 
 .cook-peek {
   position: absolute;
   right: 18px;
-  top: -66px;
+  bottom: 100%;
   width: 96px;
-  height: auto;
+  height: var(--peek-h);
   transform: scaleX(-1);
   pointer-events: none;
 }
@@ -189,6 +191,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.cook-timer-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+.cook-timer-actions button { flex: 1; }
+
+.cook-timers li.paused .cook-timer-remaining { color: var(--ink-2); }
 .cook-timers li.done { background: var(--grain-soft); }
 .cook-timers li.done .cook-timer-remaining { color: var(--grain-ink); }
 
@@ -291,7 +297,7 @@
     grid-template-rows: none;
   }
   .cook-main { padding: 22px 20px; }
-  .cook-timers { margin: 64px 14px 0; }
+  .cook-timers { margin: calc(var(--peek-h) + 8px) 14px 0; }
   .cook-upnext { margin: 14px 14px 18px; }
   .cook-nav { grid-template-columns: 1fr 1.6fr; padding: 12px 14px 16px; }
   .cook-btn { min-height: 56px; font-size: 18px; }
@@ -302,6 +308,6 @@
 }
 
 @keyframes cook-bob {
-  0%, 100% { transform: scaleX(-1) translateY(4px); }
-  50% { transform: scaleX(-1) translateY(0) rotate(2deg); }
+  0%, 100% { transform: scaleX(-1) translateY(0); }
+  50% { transform: scaleX(-1) translateY(-4px) rotate(2deg); }
 }
