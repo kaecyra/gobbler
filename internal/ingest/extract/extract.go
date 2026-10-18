@@ -92,8 +92,9 @@ type Raw struct {
 	Calories   string   `json:"calories,omitempty"`
 	ImageURL   string   `json:"image_url,omitempty"`
 	// VideoID is the 11-character ID of a YouTube video the page names in its
-	// schema.org "video" property (ADR-00021 decision 5); empty when there is
-	// none or it is on another host. Only the JSON-LD rule reads it.
+	// schema.org "video" property (ADR-00021 decision 5), else of the first
+	// YouTube embed in the page body (ADR-00023); empty when there is neither
+	// or it is on another host. Only the JSON-LD rule reads the property.
 	VideoID string `json:"video_id,omitempty"`
 }
 
@@ -182,10 +183,12 @@ func (r *Registry) Extract(page []byte, sourceURL string) (Result, error) {
 	res.Issues = append(res.Issues, issues...)
 	if ok {
 		applyPlugins(doc, &raw)
+		applyEmbeddedVideo(doc, &raw)
 		return res.withRecipe(MethodJSONLD, raw), nil
 	}
 	if raw, ok := extractMicrodata(doc); ok {
 		applyPlugins(doc, &raw)
+		applyEmbeddedVideo(doc, &raw)
 		return res.withRecipe(MethodMicrodata, raw), nil
 	}
 	if u, perr := url.Parse(sourceURL); perr == nil && u.Host != "" {

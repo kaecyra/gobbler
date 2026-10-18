@@ -45,8 +45,8 @@ func TestFromTextServesSetsServings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Servings.Value.String() != "4" || d.Yield.Value.Unit != "servings" {
-		t.Errorf("servings = %v, yield = %+v, want 4 servings", d.Servings.Value, d.Yield.Value)
+	if d.Servings.Value.String() != "4" || d.Yield.Value.Unit != "" {
+		t.Errorf("servings = %v, yield = %+v, want 4 servings and no yield", d.Servings.Value, d.Yield.Value)
 	}
 }
 

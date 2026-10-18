@@ -1,0 +1,84 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Chicken Cutlet (Japanese Chicken Schnitzel)",
+    "author": "Yumiko",
+    "description": "This is how Japanese people make a Chicken Cutlet that is deliciously crispy. By deep-frying the cutlet, you can perfect the consistency of the golden-brown crumbs around the chicken. Pour over fruity tonkatsu sauce to eat it. (Watch the video)Cook Time assumes chicken is cooked in two batches.Don't forget to see the section 'MEAL IDEAS' below the recipe card! It gives you a list of dishes that I have already posted and this recipe that can make up a complete meal. I hope it is of help to you.",
+    "yield": [
+      "4"
+    ],
+    "prep_time": "PT10M",
+    "cook_time": "PT15M",
+    "total_time": "PT25M",
+    "prep_duration": 600000000000,
+    "cook_duration": 900000000000,
+    "total_duration": 1500000000000,
+    "ingredients": [
+      "4 chicken thigh fillets ((skinless and about 150g/5.3oz each, note 1))",
+      "Salt and pepper",
+      "30g/1.1oz flour",
+      "1 egg (beaten)",
+      "1 cup panko breadcrumbs ((note 2))",
+      "Oil to deep fry ((note 3))",
+      "Shredded Cabbage mixed with julienned carrot and cucumber",
+      "Tonkatsu sauce ((note 5))"
+    ],
+    "ingredient_groups": [
+      {
+        "lines": [
+          "4 chicken thigh fillets ((skinless and about 150g/5.3oz each, note 1))",
+          "Salt and pepper",
+          "30g/1.1oz flour",
+          "1 egg (beaten)",
+          "1 cup panko breadcrumbs ((note 2))",
+          "Oil to deep fry ((note 3))"
+        ]
+      },
+      {
+        "name": "Serving (note 4)",
+        "lines": [
+          "Shredded Cabbage mixed with julienned carrot and cucumber",
+          "Tonkatsu sauce ((note 5))"
+        ]
+      }
+    ],
+    "instructions": [
+      {
+        "text": "If the thickness of the thigh fillet is not even, cut into the thick part of the meat horizontally without cutting all the way through, then open it so that the fillet’s thickness becomes consistent (see the step-by-step photo in the post as well)."
+      },
+      {
+        "text": "Season the chicken all over with salt and pepper."
+      },
+      {
+        "text": "Place flour, egg and breadcrumbs in a shallow plate or bowl individually and line them up in this order. Place an additional clean plate or a small baking tray next to the breadcrumbs."
+      },
+      {
+        "text": "Working one fillet at a time, coat a fillet with flour, shake off excess flour, then place it in the egg and coat all over. Allow excess egg to drip, then transfer to the breadcrumbs."
+      },
+      {
+        "text": "Cover the entire fillet in breadcrumbs, making sure that a good layer of breadcrumbs is stuck to both sides. Repeat for the rest of the fillets."
+      },
+      {
+        "text": "Heat oil in a deep-frying pan to 170-180°C/338-356°F (note 6). The amount of oil should be about 3-3.5cm/1¼-1⅜” deep."
+      },
+      {
+        "text": "Gently place a fillet into the oil. Depending on the size of the pan, you may fry more than one at a time. But do not over crowd the pan."
+      },
+      {
+        "text": "Fry for about 3 minutes or until the bottom side is browned. Using tongs, flip the fillet and cook for further 3 minutes until the other side is browned."
+      },
+      {
+        "text": "Transfer the cutlet onto a tray lined with a couple of layers of paper towel to drain excess oil. Rest for 5 minutes."
+      },
+      {
+        "text": "Cut each chicken cutlet into 2.5cm/1” wide strips. Serve with shredded cabbage with tonkatsu sauce."
+      }
+    ],
+    "categories": [
+      "Main"
+    ],
+    "image_url": "https://japan.recipetineats.com/wp-content/uploads/2020/04/Chicken_Cutlet_4478_sq.jpg",
+    "video_id": "L57S_S22Mf8"
+  }
+}

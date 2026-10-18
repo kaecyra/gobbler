@@ -97,7 +97,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 	d := a.d
 	d.Name = stated(raw.Name, 1)
 	d.Author = stated(raw.Author, 1)
-	d.Description = stated(raw.Description, 1)
+	d.Description = stated(cleanDescription(raw.Description), 1)
 	a.yield(raw.Yield)
 	d.Calories = calories(raw.Calories)
 	d.Prep = duration(raw.PrepDuration)
@@ -326,8 +326,11 @@ func calories(s string) Field[int] {
 	return Field[int]{Value: n, Confidence: 1}
 }
 
-// yield reads the first yield text that starts with a quantity: "4" or
-// "4 servings" give servings 4; "1 loaf" gives a yield of one loaf.
+// yield reads the first yield text that starts with a quantity: "4" gives
+// servings 4 and no yield, since a bare number names no unit and a "Makes 4
+// servings" line beside "Serves 4" would say the same thing twice; "4
+// servings" gives servings 4 and a yield of 4 servings; "1 loaf" gives a yield
+// of one loaf.
 func (a *assembler) yield(texts []string) {
 	var stated bool
 	for _, t := range texts {
@@ -340,7 +343,11 @@ func (a *assembler) yield(texts []string) {
 		if !ok {
 			continue
 		}
-		if unit == "" || strings.HasPrefix(strings.ToLower(unit), "serving") {
+		if unit == "" {
+			a.d.Servings = Field[quantity.Quantity]{Value: qty, Confidence: 1}
+			return
+		}
+		if strings.HasPrefix(strings.ToLower(unit), "serving") {
 			a.d.Servings = Field[quantity.Quantity]{Value: qty, Confidence: 1}
 			unit = "servings"
 		}

@@ -153,11 +153,12 @@ func findGaps(d Draft, threshold float64) Gaps {
 		Name:        weak(d.Name.Confidence),
 		Author:      weak(d.Author.Confidence),
 		Description: weak(d.Description.Confidence),
-		Yield:       weak(d.Yield.Confidence),
-		Prep:        weak(d.Prep.Confidence),
-		Cook:        weak(d.Cook.Confidence),
-		Total:       weak(d.Total.Confidence),
-		Equipment:   len(d.Equipment) == 0,
+		// A bare yield is stated as servings alone, so servings count too.
+		Yield:     weak(max(d.Yield.Confidence, d.Servings.Confidence)),
+		Prep:      weak(d.Prep.Confidence),
+		Cook:      weak(d.Cook.Confidence),
+		Total:     weak(d.Total.Confidence),
+		Equipment: len(d.Equipment) == 0,
 	}
 	var lines int
 	for ci, c := range d.Components {
@@ -262,9 +263,9 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 	if gaps.Yield {
 		answer := Draft{}
 		(&assembler{rs: a.rs, d: &answer}).yield([]string{s.Yield})
-		if answer.Yield.Value.Unit != "" {
+		if answer.Yield.Value.Unit != "" || !answer.Servings.Value.IsAbsent() {
 			d.Yield, d.Servings = answer.Yield, answer.Servings
-			d.Yield.FromLLM = true
+			d.Yield.FromLLM = answer.Yield.Value.Unit != ""
 			d.Servings.FromLLM = !d.Servings.Value.IsAbsent()
 		}
 	}
