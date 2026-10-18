@@ -176,7 +176,7 @@ test('every control on the cook page is at least 44px tall', async ({ page }) =>
   const controls: Record<string, ReturnType<Page['locator']>> = {
     'back to recipe': page.getByTestId('cook-exit'),
     'timer start': page.getByTestId('timer-start'),
-    'timer dismiss': page.getByTestId('timer').getByRole('button', { name: 'Dismiss' }),
+    'timer dismiss': page.getByTestId('timer').getByTestId('timer-dismiss'),
     'timer pause': page.getByTestId('timer-toggle'),
     'meanwhile link': page.getByTestId('meanwhile').getByRole('link'),
     'up next link': page.getByTestId('up-next').getByRole('link'),
@@ -288,7 +288,7 @@ test('timers run side by side, keep their steps, and finish by the clock', async
   await page.clock.fastForward(9 * 60_000);
   await expect(rows.nth(0)).toContainText('Done');
 
-  await rows.nth(1).getByRole('button', { name: 'Dismiss' }).click();
+  await page.getByRole('button', { name: 'Dismiss Step 6: Top and serve. timer' }).click();
   await expect(rows).toHaveCount(1);
 });
 
@@ -301,7 +301,7 @@ test('a paused timer holds its time, resumes from it, and keeps that across step
   await page.clock.fastForward(120_000);
   await toggle.click();
   await expect(row).toContainText('8:00');
-  await expect(row.getByTestId('timer-toggle')).toHaveText('Resume');
+  await expect(page.getByRole('button', { name: 'Resume Step 1: Mix the dough. timer' })).toBeVisible();
 
   // Time passing, stepping and reloading change nothing while paused.
   await page.clock.fastForward(300_000);
@@ -311,13 +311,13 @@ test('a paused timer holds its time, resumes from it, and keeps that across step
   await expect(row).toContainText('8:00');
   await page.reload();
   await expect(row).toContainText('8:00');
-  await expect(row.getByTestId('timer-toggle')).toHaveText('Resume');
+  await expect(page.getByRole('button', { name: 'Resume Step 1: Mix the dough. timer' })).toBeVisible();
 
   // Resume continues from what was left.
   await page.getByRole('button', { name: 'Resume Step 1: Mix the dough. timer' }).click();
   await page.clock.fastForward(60_000);
   await expect(row).toContainText('7:00');
-  await expect(row.getByTestId('timer-toggle')).toHaveText('Pause');
+  await expect(page.getByRole('button', { name: 'Pause Step 1: Mix the dough. timer' })).toBeVisible();
 });
 
 test('the timers mascot is shown whole, above the box, inside the cook card', async ({ page }) => {
@@ -402,7 +402,7 @@ test('going Back after stepping runs one set of timers: one beep, no dismissed t
   expect(await page.evaluate(() => (window as any).__beeps)).toBe(3);
 
   // A dismissed timer stays dismissed across the same trip.
-  await page.getByTestId('timer').getByRole('button', { name: 'Dismiss' }).click();
+  await page.getByRole('button', { name: /^Dismiss .* timer$/ }).click();
   await page.getByTestId('prev').click();
   await expect(page.getByTestId('progress')).toContainText('Step 5 of 6');
   await page.goBack();

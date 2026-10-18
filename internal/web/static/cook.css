@@ -173,7 +173,7 @@
 
 .cook-timers li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 4px 10px;
   padding: 10px;
@@ -182,7 +182,7 @@
 
 .cook-timers li + li { margin-top: 4px; }
 
-.cook-timer-label { grid-column: 1 / -1; font-weight: 600; }
+.cook-timer-label { font-weight: 600; }
 
 .cook-timer-remaining {
   font-family: var(--f-mono);
@@ -191,8 +191,17 @@
   font-variant-numeric: tabular-nums;
 }
 
-.cook-timer-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
-.cook-timer-actions button { flex: 1; }
+.cook-timer-actions { display: flex; gap: 8px; }
+
+.cook-timer-actions button {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  padding: 0;
+  color: var(--ink-2);
+}
+
+.cook-timer-actions svg { width: 24px; height: 24px; }
 
 .cook-timers li.paused .cook-timer-remaining { color: var(--ink-2); }
 .cook-timers li.done { background: var(--grain-soft); }

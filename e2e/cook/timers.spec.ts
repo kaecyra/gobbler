@@ -84,4 +84,5 @@ test('a paused timer survives save and restore as paused', () => {
   expect(back).toEqual([p]);
   expect(T.remainingMs(back[0], 9_999_999)).toBe(400_000);
   expect(T.restore(JSON.stringify([{ step: '1', label: 'a', endAt: 1, seconds: 5, pausedMs: 'x' }]))[0].pausedMs).toBeUndefined();
+  expect(T.restore(JSON.stringify([{ step: '1', label: 'a', endAt: 1, seconds: 5, pausedMs: -1 }]))[0].pausedMs).toBeUndefined();
 });

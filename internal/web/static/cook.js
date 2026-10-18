@@ -80,6 +80,32 @@
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
   }
 
+  // Icon-only controls, drawn like the rest of the cook page: 24px grid,
+  // stroke in currentColor. The accessible name is the button's aria-label.
+  var ICON_PAUSE = 'M9 6v12M15 6v12';
+  var ICON_PLAY = 'M8 5l11 7-11 7z';
+  var ICON_CLOSE = 'M6 6l12 12M18 6L6 18';
+
+  function icon(d) {
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.appendChild(document.createElementNS(ns, 'path')).setAttribute('d', d);
+    return svg;
+  }
+
+  function setIcon(btn, d) {
+    var path = btn.querySelector('path');
+    if (path) path.setAttribute('d', d);
+    else btn.appendChild(icon(d));
+  }
+
   function renderList(now) {
     var list = byId('cook-timer-list');
     if (!list) return;
@@ -107,7 +133,9 @@
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.setAttribute('data-cook-timer-dismiss', t.step);
-        btn.textContent = 'Dismiss';
+        btn.className = 'cook-timer-dismiss';
+        btn.setAttribute('data-testid', 'timer-dismiss');
+        btn.appendChild(icon(ICON_CLOSE));
         actions.appendChild(toggle);
         actions.appendChild(btn);
         li.appendChild(label);
@@ -124,7 +152,8 @@
       li.querySelector('output').textContent = done ? 'Done' : T.format(T.remainingMs(t, now));
       var toggle = li.querySelector('.cook-timer-toggle');
       toggle.hidden = done;
-      toggle.textContent = paused ? 'Resume' : 'Pause';
+      setIcon(toggle, paused ? ICON_PLAY : ICON_PAUSE);
+      li.querySelector('.cook-timer-dismiss').setAttribute('aria-label', 'Dismiss ' + t.label + ' timer');
       toggle.setAttribute('aria-label', (paused ? 'Resume ' : 'Pause ') + t.label + ' timer');
     });
     Object.keys(existing).forEach(function (k) { list.removeChild(existing[k]); });
