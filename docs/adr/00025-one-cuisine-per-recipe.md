@@ -46,6 +46,9 @@ the parser version bumps.
 
 **Obligations:**
 
-1. Add a cuisine column to `docs/design.md`'s recipe-revision description.
-2. Set the index rows for ADR-00004 and ADR-00022 in `docs/adr/README.md` to
-   note "Amended by 00025".
+1. `docs/design.md`'s Store description names cuisine beside meal type and
+   spice level. This lands with the implementation.
+2. ADR-00004 (at its recipe fields) and ADR-00022 (at decision 4) carry
+   amendment notes and name this record in their Status lines, and their index
+   rows in `docs/adr/README.md` say "Amended by 00025". All of this lands with
+   this record.

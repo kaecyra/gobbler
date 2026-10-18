@@ -48,6 +48,7 @@ alongside each new central item.
 
 1. A test enumerates the central catalog's equipment and fails if any item
    has no icon.
-2. Add a line to `docs/ui/design.md` stating that equipment renders as chips
-   with icons, and set ADR-00022's index row in `docs/adr/README.md` to
-   "Amended by 00024".
+2. `docs/ui/design.md` states that equipment renders as chips with icons.
+   ADR-00022 carries an amendment note at decision 1 and names this record in
+   its Status line, and its index row in `docs/adr/README.md` says "Amended by
+   00024". All three land with this record.

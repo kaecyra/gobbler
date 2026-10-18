@@ -1,6 +1,6 @@
 # ADR-00021: A recipe may carry a YouTube video, played only on click, with its thumbnail stored in SQLite
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00023](00023-video-from-a-page-embed.md)
 
 **Date:** 2026-10-17
 

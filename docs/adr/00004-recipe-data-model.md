@@ -1,6 +1,6 @@
 # ADR-00004: Recipe data model: components, ingredient lines, step graph, revisions
 
-**Status:** Amended by [ADR-00022](00022-adopt-the-mockup-design.md)
+**Status:** Amended by [ADR-00022](00022-adopt-the-mockup-design.md), [ADR-00025](00025-one-cuisine-per-recipe.md)
 
 **Date:** 2026-10-06
 
@@ -33,6 +33,9 @@ ADR-00011), tags, rating, and times.
 
 > Amended by [ADR-00022](00022-adopt-the-mockup-design.md): a recipe also has
 > an optional meal type and spice level, and a note may be pinned as a tip.
+
+> Amended by [ADR-00025](00025-one-cuisine-per-recipe.md): a recipe also has
+> an optional cuisine from a fixed list.
 
 **Times:** `prep`, `cook`, and zero or more **special** times, each with a
 label (`rise`, `marinate`, `chill`, `rest`, or free text) and a duration.
