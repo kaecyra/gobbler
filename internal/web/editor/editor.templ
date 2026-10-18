@@ -21,8 +21,8 @@ templ editorPage(v view) {
 
 // editorForm is the whole form. Every button posts the whole form back: a
 // structural button (add, remove, move) changes the draft and shows the form
-// again, Save validates it and stores it. Save comes first in the markup so it
-// is the button the Enter key presses.
+// again, Save validates it and stores it. The first submit button in the markup is
+// the one the Enter key presses.
 templ editorForm(v view) {
 	<form id="editor" class="editor" method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
 		<style>
@@ -68,7 +68,9 @@ templ editorForm(v view) {
 				}
 			</div>
 		}
-		@saveButtons(v)
+		// The default button for the Enter key: the visible Save is last, in the
+		// sticky bar, and implicit submission presses the first submit button.
+		<button type="submit" name="action" value="save" hidden></button>
 		@metaFields(v)
 		<h2>Components</h2>
 		for ci, c := range v.D.Components {
@@ -76,7 +78,7 @@ templ editorForm(v view) {
 		}
 		<p class="tools"><button type="submit" class="btn" name="action" value="add-component">Add component</button></p>
 		@equipmentFields(v)
-		@saveButtons(v)
+		@saveBar(v)
 		<datalist id="ingredient-names">
 			for _, n := range v.Names.Ingredients {
 				<option value={ n }></option>
@@ -95,15 +97,19 @@ templ editorForm(v view) {
 	</form>
 }
 
-// saveButtons is the primary action: Save for a stored recipe, Confirm and
-// save for a draft under review, which can also be cancelled.
-templ saveButtons(v view) {
-	<p class="tools">
+// saveBar is the primary action, stuck to the bottom of the viewport while the
+// form scrolls (above the tab bar on a phone): Save for a stored recipe, which
+// Cancel leaves for the recipe; Confirm and save for a draft under review, which
+// Cancel discards. It is last in the form, so it never covers a field.
+templ saveBar(v view) {
+	<div class="savebar">
 		<button type="submit" class="btn accent" name="action" value="save">{ v.saveLabel() }</button>
 		if v.reviewing() {
 			<button type="submit" form={ CancelFormID } class="btn" formnovalidate>Cancel</button>
+		} else {
+			<a class="btn" href={ templ.SafeURL(v.back()) }>Cancel</a>
 		}
-	</p>
+	</div>
 }
 
 // badges are the words that flag an item of a draft under review.

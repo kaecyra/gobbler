@@ -37,6 +37,7 @@
   --r-sm: 4px;
   --shade: #000;
   --tap: 44px;
+  --tabs-h: 72px;
   --gutter: 1rem;
 
   /* Names the pages not yet restyled (cook.css, video.css, page rules) still
@@ -250,6 +251,21 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
   .menu-list { top: auto; bottom: calc(100% + 10px); }
   body { padding-bottom: 84px; }
 }
+
+/* Editor save bar: sticks to the bottom of the viewport while the form
+   scrolls; on a phone it sits above the fixed .tabs bar (--tabs-h). */
+.savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 560px) { .savebar { bottom: var(--tabs-h); } }
 
 /* ---- footer ---- */
 
