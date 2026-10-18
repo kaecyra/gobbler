@@ -2640,7 +2640,7 @@
       "wave": 10,
       "track": null,
       "issue": 302,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "r-equipment-one-read"
       ],
@@ -3567,6 +3567,11 @@
       "id": "u-cook-timers",
       "title": "cook-mode timer pause and whole mascot",
       "merged": "96a9f5f"
+    },
+    {
+      "id": "u-recipe-timers",
+      "title": "recipe page step tags and passive steps",
+      "merged": "be04277"
     }
   ],
   "adr_sequence": {
