@@ -35,15 +35,15 @@ func TestSaveLinksEquipmentAndCreatesProposalsUnreviewedOnlyOnSave(t *testing.T)
 	if err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	want := []string{"dutch oven", "mandoline slicer"}
+	want := []string{"dutch oven", "flux capacitor"}
 	if got := savedEquipmentNames(t, e, saved.RecipeID); !reflect.DeepEqual(got, want) {
 		t.Errorf("saved equipment = %q, want %q", got, want)
 	}
-	if len(saved.NewEquipment) != 1 || saved.NewEquipment[0].Name != "mandoline slicer" || saved.NewEquipment[0].Reviewed {
-		t.Errorf("NewEquipment = %+v, want the mandoline, unreviewed", saved.NewEquipment)
+	if len(saved.NewEquipment) != 1 || saved.NewEquipment[0].Name != "flux capacitor" || saved.NewEquipment[0].Reviewed {
+		t.Errorf("NewEquipment = %+v, want the flux capacitor, unreviewed", saved.NewEquipment)
 	}
 	unrev, err := e.catalog.ListUnreviewedEquipment(e.ctx)
-	if err != nil || len(unrev) != 1 || unrev[0].Name != "mandoline slicer" {
+	if err != nil || len(unrev) != 1 || unrev[0].Name != "flux capacitor" {
 		t.Fatalf("unreviewed equipment = %+v, err %v", unrev, err)
 	}
 	if unrev[0].Sized {

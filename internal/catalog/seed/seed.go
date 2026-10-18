@@ -9,7 +9,9 @@
 // ships as a new migration whose INSERTs come from `genseed <name>...`. Units
 // and unit aliases added after the first migration are listed in
 // unit_additions.json instead, so units.json keeps matching migration 00001;
-// `genseed -unit-additions` renders the migration that ships them.
+// `genseed -unit-additions` renders the migration that ships them. Migration
+// 00017 is the exception: it is hand-written, and its two equipment aliases
+// are not in the JSON, which stays pinned to migration 00015.
 //
 // Unit factors, systems and dimensions are not repeated here. Units that
 // convert take them from internal/quantity, the single source of truth

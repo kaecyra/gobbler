@@ -11,7 +11,7 @@ const toolsPage = `<!doctype html><html><head><title>Braise</title>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Recipe","name":"Braise",
  "recipeIngredient":["1 onion","2 tbsp butter"],
- "tool":["Dutch oven",{"@type":"HowToTool","name":"Mandoline slicer (optional)"},"dutch ovens"],
+ "tool":["Dutch oven",{"@type":"HowToTool","name":"Flux capacitor (optional)"},"dutch ovens"],
  "recipeInstructions":[{"@type":"HowToStep","text":"Slice the onion."},{"@type":"HowToStep","text":"Brown it in the dutch oven, then bake."}]}
 </script></head><body></body></html>`
 
@@ -37,13 +37,13 @@ func TestFromURLReadsSchemaToolsAndMatchesTheCatalog(t *testing.T) {
 		t.Fatalf("FromURL: %v", err)
 	}
 	// "Dutch oven" matches the catalog (and its plural and the step text name
-	// the same one, so it is listed once); the mandoline is unknown, with its
+	// the same one, so it is listed once); the flux capacitor is unknown, with its
 	// qualifier dropped, and is proposed.
-	want := []string{"dutch oven", "mandoline slicer?"}
+	want := []string{"dutch oven", "flux capacitor?"}
 	if got := equipmentOf(d); !reflect.DeepEqual(got, want) {
 		t.Fatalf("equipment = %q, want %q", got, want)
 	}
-	if got := d.ProposedEquipment(); !reflect.DeepEqual(got, []ProposedEquipment{{Name: "mandoline slicer"}}) {
+	if got := d.ProposedEquipment(); !reflect.DeepEqual(got, []ProposedEquipment{{Name: "flux capacitor"}}) {
 		t.Errorf("proposed = %+v", got)
 	}
 	for _, eq := range d.Equipment {
@@ -123,5 +123,49 @@ func TestParserVersionCoversEquipment(t *testing.T) {
 	// distinguishable (ParserVersion's contract).
 	if ParserVersion == "2" {
 		t.Errorf("ParserVersion %q predates equipment extraction", ParserVersion)
+	}
+}
+
+// "Mandoline slicer" and "pastry blender" are what recipe pages call catalog
+// items; migration 00017 aliases them, so ingestion matches rather than
+// proposing duplicates.
+func TestFromTextMatchesMandolineSlicerAndPastryBlenderToTheCatalog(t *testing.T) {
+	e := newEnv(t)
+	text := "Biscuits\n\nIngredients\n2 cups flour\n\nDirections\n1. Cut the butter in with a pastry blender.\n2. Slice the apples on a mandoline slicer.\n"
+	d, err := e.pipeline(t, nil).FromText(e.ctx, text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"pastry cutter", "mandoline"}
+	if got := equipmentOf(d); !reflect.DeepEqual(got, want) {
+		t.Errorf("equipment = %q, want %q", got, want)
+	}
+	if got := d.ProposedEquipment(); len(got) != 0 {
+		t.Errorf("proposed = %+v, want none", got)
+	}
+}
+
+// A page's own tool list is matched by name, not by words in the steps, so
+// this is the path that needs the aliases themselves.
+func TestFromURLMatchesToolListAliasesToTheCatalog(t *testing.T) {
+	e := newEnv(t)
+	page := `<!doctype html><html><head><title>Biscuits</title>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Recipe","name":"Biscuits",
+ "recipeIngredient":["2 cups flour"],
+ "tool":["Mandoline slicer","Pastry blender"],
+ "recipeInstructions":[{"@type":"HowToStep","text":"Mix."}]}
+</script></head><body></body></html>`
+	srv, _ := serve(t, []byte(page))
+	d, err := e.pipeline(t, srv.Client()).FromURL(e.ctx, srv.URL+"/biscuits")
+	if err != nil {
+		t.Fatalf("FromURL: %v", err)
+	}
+	want := []string{"mandoline", "pastry cutter"}
+	if got := equipmentOf(d); !reflect.DeepEqual(got, want) {
+		t.Errorf("equipment = %q, want %q", got, want)
+	}
+	if got := d.ProposedEquipment(); len(got) != 0 {
+		t.Errorf("proposed = %+v, want none", got)
 	}
 }

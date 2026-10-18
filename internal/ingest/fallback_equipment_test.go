@@ -8,7 +8,7 @@ import (
 func TestLLMEquipmentIsMatchedToTheCatalogAndMarked(t *testing.T) {
 	e := newEnv(t)
 	ans := llmAnswer()
-	ans.Equipment = []string{"Whisk", "pastry blender", "Whisks"}
+	ans.Equipment = []string{"Whisk", "quantum spatula", "Whisks"}
 	ans.Components[0].Steps = []string{"Heat the oven.", "Simmer for 20 minutes."}
 	fp := &fakeProvider{resp: ans}
 
@@ -18,7 +18,7 @@ func TestLLMEquipmentIsMatchedToTheCatalogAndMarked(t *testing.T) {
 	}
 	// The LLM's list first, then catalog names found in its steps; the
 	// unknown name is a proposal, like an unmatched ingredient.
-	want := []string{"whisk", "pastry blender?", "oven"}
+	want := []string{"whisk", "quantum spatula?", "oven"}
 	if got := equipmentOf(d); !reflect.DeepEqual(got, want) {
 		t.Fatalf("equipment = %q, want %q", got, want)
 	}
@@ -28,7 +28,7 @@ func TestLLMEquipmentIsMatchedToTheCatalogAndMarked(t *testing.T) {
 	if d.Equipment[2].FromLLM {
 		t.Errorf("equipment the rules found in the text is not the LLM's: %+v", d.Equipment[2])
 	}
-	if got := d.ProposedEquipment(); !reflect.DeepEqual(got, []ProposedEquipment{{Name: "pastry blender"}}) {
+	if got := d.ProposedEquipment(); !reflect.DeepEqual(got, []ProposedEquipment{{Name: "quantum spatula"}}) {
 		t.Errorf("proposed = %+v", got)
 	}
 	if unrev, err := e.catalog.ListUnreviewedEquipment(e.ctx); err != nil || len(unrev) != 0 {
@@ -53,7 +53,7 @@ func TestLLMDraftKeepsTheRuleReadingsEquipment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"dutch oven", "mandoline slicer?"}
+	want := []string{"dutch oven", "flux capacitor?"}
 	if got := equipmentOf(d); !reflect.DeepEqual(got, want) {
 		t.Errorf("equipment = %q, want %q", got, want)
 	}

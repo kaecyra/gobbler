@@ -196,7 +196,7 @@ func sampleDraft() ingestcore.Draft {
 		Proposed:       []ingestcore.ProposedIngredient{{Name: "dragonfruit zest", Aisle: "uncategorised"}},
 		Equipment: []ingestcore.Equipment{
 			{Name: "dutch oven", Equipment: 5},
-			{Name: "mandoline slicer"},
+			{Name: "flux capacitor"},
 			{Name: "whisk", Equipment: 6},
 		},
 	}
@@ -395,7 +395,7 @@ func TestConfirmSavesEquipmentAndCreatesTheProposedOne(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
 	}
-	if len(f.store.createdEquipment) != 1 || f.store.createdEquipment[0] != "mandoline slicer" {
+	if len(f.store.createdEquipment) != 1 || f.store.createdEquipment[0] != "flux capacitor" {
 		t.Errorf("created equipment = %v, want the proposed one", f.store.createdEquipment)
 	}
 	var ids []recipe.EquipmentID
@@ -676,7 +676,7 @@ func reviewForm() url.Values {
 		"c.0.s.1.text":    {"Bake until goldn"},
 		"c.0.s.1.to":      {"0"},
 		"e.0.name":        {"dutch oven"},
-		"e.1.name":        {"mandoline slicer"},
+		"e.1.name":        {"flux capacitor"},
 		"e.1.propose":     {"1"},
 		"e.2.name":        {"whisk"},
 	}
