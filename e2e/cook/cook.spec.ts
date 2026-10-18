@@ -280,6 +280,9 @@ test('timers run side by side, keep their steps, and finish by the clock', async
   // only an end timestamp gets this right.
   await page.clock.fastForward(60_000);
   await expect(rows.nth(1)).toContainText('Done');
+  // A finished timer has nothing to pause; the running one still does.
+  await expect(rows.nth(1).getByTestId('timer-toggle')).toBeHidden();
+  await expect(rows.nth(0).getByTestId('timer-toggle')).toBeVisible();
   await expect(page.getByTestId('timer-alert')).toContainText('Step 6: Top and serve.');
   expect(await page.evaluate(() => (window as any).__beeps)).toBeGreaterThan(0);
   await expect(rows.nth(0)).not.toContainText('Done');
@@ -318,6 +321,22 @@ test('a paused timer holds its time, resumes from it, and keeps that across step
   await page.clock.fastForward(60_000);
   await expect(row).toContainText('7:00');
   await expect(page.getByRole('button', { name: 'Pause Step 1: Mix the dough. timer' })).toBeVisible();
+});
+
+test('timer icons use the secondary ink colour, as in the mockup', async ({ page }) => {
+  await page.goto(`/recipes/${pizza}/cook`);
+  await page.getByTestId('timer-start').click();
+  const color = (loc: ReturnType<Page['locator']>) => loc.evaluate((el) => getComputedStyle(el).color);
+  const ink2 = await page.evaluate(() => {
+    const probe = document.createElement('i');
+    probe.style.color = 'var(--ink-2)';
+    document.body.append(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return c;
+  });
+  expect(await color(page.getByTestId('timer-toggle'))).toBe(ink2);
+  expect(await color(page.getByTestId('timer-dismiss'))).toBe(ink2);
 });
 
 test('the timers mascot is shown whole, above the box, inside the cook card', async ({ page }) => {

@@ -193,13 +193,16 @@
 
 .cook-timer-actions { display: flex; gap: 8px; }
 
-.cook-timer-actions button {
+.cook-timers .cook-timer-actions button {
   display: grid;
   place-items: center;
   width: var(--tap);
   padding: 0;
   color: var(--ink-2);
 }
+
+/* The display above would otherwise override the hidden attribute. */
+.cook-timers .cook-timer-actions button[hidden] { display: none; }
 
 .cook-timer-actions svg { width: 24px; height: 24px; }
 
