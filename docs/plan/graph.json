@@ -2497,7 +2497,7 @@
       "wave": 9,
       "track": null,
       "issue": 287,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/ingest/**"
@@ -3425,6 +3425,15 @@
       "title": "add a recipe to a shopping list from the recipe page in one tap",
       "merged": "69add6d",
       "note": "u-recipe-view links Add to shopping list to /shopping today."
+    },
+    {
+      "id": "i-source-fidelity",
+      "title": "ingest author by @id, no duplicate yield, video from a page embed, strip blog cruft",
+      "merged": "1639a02",
+      "adrs": [
+        "00023"
+      ],
+      "note": "One node so the parser version bumps once. Video fallback per the ADR drawn here (amends ADR-00021 decision 5)."
     }
   ],
   "adr_sequence": {
