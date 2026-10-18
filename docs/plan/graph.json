@@ -2554,7 +2554,7 @@
       "wave": 9,
       "track": null,
       "issue": 290,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "i-source-fidelity",
         "u-editor-savebar",
@@ -3451,6 +3451,14 @@
       "merged": "30faec0",
       "adrs": [
         "00024"
+      ]
+    },
+    {
+      "id": "r-cuisine",
+      "title": "one cuisine per recipe from a fixed list",
+      "merged": "42a507b",
+      "adrs": [
+        "00025"
       ]
     }
   ],
