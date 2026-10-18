@@ -55,14 +55,18 @@ func TestJSONLDResolvesAVideoReference(t *testing.T) {
 func TestEmbeddedVideo(t *testing.T) {
 	const a, b = "aaaaaaaaaaa", "bbbbbbbbbbb"
 	for name, tc := range map[string]struct{ extra, body, want string }{
-		"first embed":      {``, `<iframe src="https://www.youtube.com/embed/` + a + `"></iframe><iframe src="https://www.youtube.com/embed/` + b + `"></iframe>`, a},
-		"nocookie":         {``, `<iframe src="https://www.youtube-nocookie.com/embed/` + a + `?rel=0"></iframe>`, a},
-		"lazy data-src":    {``, `<iframe data-src="https://www.youtube.com/embed/` + a + `"></iframe>`, a},
-		"other host first": {``, `<iframe src="https://player.vimeo.com/embed/1"></iframe><iframe src="https://www.youtube.com/embed/` + b + `"></iframe>`, b},
-		"not an embed":     {``, `<iframe src="https://www.youtube.com/watch?v=` + a + `"></iframe>`, ""},
-		"look-alike host":  {``, `<iframe src="https://evil.test/youtube.com/embed/` + a + `"></iframe>`, ""},
-		"no iframe":        {``, `<a href="https://www.youtube.com/embed/` + a + `">x</a>`, ""},
-		"markup wins":      {`"video":{"embedUrl":"https://www.youtube.com/embed/` + b + `"},`, `<iframe src="https://www.youtube.com/embed/` + a + `"></iframe>`, b},
+		"first embed":                       {``, `<iframe src="https://www.youtube.com/embed/` + a + `"></iframe><iframe src="https://www.youtube.com/embed/` + b + `"></iframe>`, a},
+		"nocookie":                          {``, `<iframe src="https://www.youtube-nocookie.com/embed/` + a + `?rel=0"></iframe>`, a},
+		"lazy data-src":                     {``, `<iframe data-src="https://www.youtube.com/embed/` + a + `"></iframe>`, a},
+		"other host first":                  {``, `<iframe src="https://player.vimeo.com/embed/1"></iframe><iframe src="https://www.youtube.com/embed/` + b + `"></iframe>`, b},
+		"not an embed":                      {``, `<iframe src="https://www.youtube.com/watch?v=` + a + `"></iframe>`, ""},
+		"look-alike host":                   {``, `<iframe src="https://evil.test/youtube.com/embed/` + a + `"></iframe>`, ""},
+		"placeholder src":                   {``, `<iframe src="about:blank" data-src="https://www.youtube.com/embed/` + a + `"></iframe>`, a},
+		"data-lazy-src":                     {``, `<iframe src="about:blank" data-lazy-src="https://www.youtube.com/embed/` + a + `"></iframe>`, a},
+		"protocol relative":                 {``, `<iframe src="//www.youtube.com/embed/` + a + `"></iframe>`, a},
+		"non-youtube src, youtube data-src": {``, `<iframe src="https://player.vimeo.com/video/1" data-src="https://www.youtube.com/embed/` + a + `"></iframe>`, a},
+		"no iframe":                         {``, `<a href="https://www.youtube.com/embed/` + a + `">x</a>`, ""},
+		"markup wins":                       {`"video":{"embedUrl":"https://www.youtube.com/embed/` + b + `"},`, `<iframe src="https://www.youtube.com/embed/` + a + `"></iframe>`, b},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if got := mustExtract(t, recipePage(tc.extra, tc.body), fixtureURL).Recipe.VideoID; got != tc.want {

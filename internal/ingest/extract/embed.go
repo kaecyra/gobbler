@@ -17,10 +17,12 @@ func applyEmbeddedVideo(doc *html.Node, raw *Raw) {
 }
 
 // embeddedVideoID is the video ID of the first iframe, in document order,
-// whose source is a youtube.com/embed/ or youtube-nocookie.com/embed/ address.
-// A lazy-loading iframe keeps its address in data-src until it scrolls into
-// view, so that is read when src is empty. video.ParseID owns the host check:
-// an iframe on any other host, or at a non-embed YouTube path, is skipped.
+// that has a YouTube embed address. A lazy-loading iframe keeps its address in
+// data-src or data-lazy-src while src holds a placeholder (about:blank), so
+// each is tried in turn until one is a YouTube embed. A protocol-relative
+// address ("//www.youtube.com/embed/...") gets https. video.ParseID owns the
+// host check: an iframe on any other host, or at a non-embed YouTube path, is
+// skipped.
 func embeddedVideoID(doc *html.Node) string {
 	var id string
 	walk(doc, func(n *html.Node) bool {
@@ -30,17 +32,29 @@ func embeddedVideoID(doc *html.Node) string {
 		if !isElem(n, "iframe") {
 			return true
 		}
-		src := strings.TrimSpace(attr(n, "src"))
-		if src == "" {
-			src = strings.TrimSpace(attr(n, "data-src"))
-		}
-		if !strings.Contains(src, "/embed/") {
-			return true
-		}
-		if got, err := video.ParseID(src); err == nil && !video.IsID(src) {
-			id = got
+		for _, key := range []string{"src", "data-src", "data-lazy-src"} {
+			if got := youTubeEmbedID(attr(n, key)); got != "" {
+				id = got
+				break
+			}
 		}
 		return true
 	})
+	return id
+}
+
+// youTubeEmbedID is the video ID in a YouTube /embed/ address, or "".
+func youTubeEmbedID(src string) string {
+	src = strings.TrimSpace(src)
+	if strings.HasPrefix(src, "//") {
+		src = "https:" + src
+	}
+	if !strings.Contains(src, "/embed/") || video.IsID(src) {
+		return ""
+	}
+	id, err := video.ParseID(src)
+	if err != nil {
+		return ""
+	}
 	return id
 }

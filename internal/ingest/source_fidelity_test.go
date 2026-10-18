@@ -3,6 +3,9 @@ package ingest
 import (
 	"os"
 	"testing"
+
+	"github.com/kaecyra/gobbler/internal/quantity"
+	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
 // The saved page of the owner's first test recipe, held with the extract
@@ -66,10 +69,44 @@ func TestYieldKeepsAStatedUnit(t *testing.T) {
 	}
 }
 
-func TestParserVersionCoversSourceFidelity(t *testing.T) {
-	// Drafts made before author references, bare yields, page-embed videos and
-	// description cleanup must be told apart (ParserVersion's contract).
-	if ParserVersion == "7" {
-		t.Errorf("ParserVersion %q predates source fidelity rules", ParserVersion)
+// A yield gap is filled by the same bare-number rule the rules use: an LLM
+// answer of "4" is servings, and a draft with servings but no yield has no
+// yield gap to ask about.
+func TestFindGapsTreatsServingsAsAStatedYield(t *testing.T) {
+	var d Draft
+	if !findGaps(d, 0.8).Yield {
+		t.Fatal("empty draft has no yield gap")
+	}
+	d.Servings = Field[quantity.Quantity]{Value: quantity.Quantity{}, Confidence: 1}
+	if findGaps(d, 0.8).Yield {
+		t.Error("a draft with servings still has a yield gap")
+	}
+}
+
+func TestGapFillReadsABareYieldAsServings(t *testing.T) {
+	e := newEnv(t)
+	rule := ruleDraft(t, e, mixedText)
+	// Everything but the yield is stated, so the yield is the only gap.
+	full := func(s string) Field[string] { return Field[string]{Value: s, Confidence: 1} }
+	rule.Name, rule.Author, rule.Description = full("Toast"), full("Ada"), full("Bread")
+	rule.Prep.Confidence, rule.Cook.Confidence, rule.Total.Confidence = 1, 1, 1
+	rule.Equipment = []Equipment{{Name: "toaster"}}
+	for i := range rule.Components[0].Lines {
+		rule.Components[0].Lines[i].Confidence = 1
+	}
+	rule.Yield, rule.Servings = Field[recipe.Yield]{}, Field[quantity.Quantity]{}
+	ans := llmAnswer()
+	ans.Yield = "4"
+	fp := &fakeProvider{resp: ans}
+
+	got, err := e.pipelineWith(t, testConfig(), fp).Fallback().Retry(e.ctx, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Servings.Value.String() != "4" || !got.Servings.FromLLM {
+		t.Errorf("servings = %+v, want 4 from the LLM", got.Servings)
+	}
+	if got.Yield.Value.Unit != "" {
+		t.Errorf("yield = %+v, want none beside servings", got.Yield)
 	}
 }

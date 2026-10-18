@@ -22,11 +22,11 @@ var cruftCallOutRE = regexp.MustCompile(`(?i)\s*\((?:watch|see|click|view)\b[^()
 // apostrophes straightened (a copy for matching only; the kept text is never
 // altered). A rule must name the page-pointer intent itself: a bare verb plus
 // "it" or "this" ("pin it closed") is cooking and never matches.
-// pointer marks a pointer to another page section: the sentence after it that starts with "it" or "this" describes what the
-// pointer points at, so it goes too.
 var cruftSentences = []struct {
-	name    string
-	re      *regexp.Regexp
+	name string
+	re   *regexp.Regexp
+	// pointer marks a pointer to another part of the page: a sentence after it
+	// that describes the pointed-at thing (cruftAnaphoraRE) goes too.
 	pointer bool
 }{
 	{"section pointer", regexp.MustCompile(
@@ -36,13 +36,18 @@ var cruftSentences = []struct {
 	{"scroll", regexp.MustCompile(`\bscroll (?:down|up|to)\b`), true},
 	{"jump to recipe", regexp.MustCompile(`\bjump to (?:the )?recipe\b`), false},
 	{"video invitation", regexp.MustCompile(`^(?:watch|see) (?:the|my|our) (?:how-?to )?video\b`), false},
-	{"pin", regexp.MustCompile(`\bpinterest\b|\bpin (?:this|it) (?:recipe |post )?(?:for later|to\b)|\bpin this recipe\b`), false},
+	{"pin", regexp.MustCompile(`\bpinterest\b|\bpin (?:this|it)(?: recipe| post)? (?:for later|to (?:your |my |a |the )?(?:[\w'-]+ ){0,2}board\b)|\bpin this recipe\b`), false},
 	{"subscribe", regexp.MustCompile(`\bsubscribe\b|\b(?:sign up|signup) (?:for|to) (?:my|our) newsletter\b|\bjoin (?:my|our) newsletter\b`), false},
 	{"sign-off", regexp.MustCompile(`^i hope (?:it|this|you)\b[^.!?]*\b(?:helps?|helpful|of help|enjoy)\b`), false},
 }
 
-// cruftAnaphoraRE starts a sentence that refers back to the pointer before it.
-var cruftAnaphoraRE = regexp.MustCompile(`^(?:it|this) `)
+// cruftAnaphoraRE is a sentence that describes the page part a pointer
+// pointed at ("It gives you a list of dishes ..."): "it" or "this", a verb of
+// listing, and a noun for page content. A sentence about the food ("It keeps 3
+// days.") matches nothing here and stays.
+var cruftAnaphoraRE = regexp.MustCompile(
+	`^(?:it|this) (?:gives you|has|shows you|lists|contains|includes|will give you|links to)\b[^.!?]*` +
+		`\b(?:list|dishes|recipes|ideas|links|tips|notes|variations|meals?|sections?|suggestions)\b`)
 
 // sentenceAbbreviations are words whose trailing period does not end a
 // sentence and which a missing space after must not be "repaired" around.
