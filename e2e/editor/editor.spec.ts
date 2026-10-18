@@ -246,6 +246,23 @@ test('meal type, spice level, stage kind and step title are set in the editor an
   await expect(page.locator('[name="c.0.s.0.title"]')).toHaveValue('');
 });
 
+test('the cuisine is set from the fixed list in the editor, shown on the recipe page, and cleared', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  const select = page.locator('[name="cuisine"]');
+  await expect(select).toHaveValue('');
+  await expect(select.locator('option').last()).toHaveText('Other');
+  await select.selectOption('middle_eastern');
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByTestId('cuisine')).toHaveText('Middle Eastern');
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(select).toHaveValue('middle_eastern');
+  await select.selectOption('');
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByTestId('cuisine')).toHaveCount(0);
+});
+
 test('the editor keeps every control at least 44px tall and does not scroll sideways, on a tablet and a phone', async ({ page }) => {
   for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);

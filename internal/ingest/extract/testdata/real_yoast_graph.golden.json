@@ -46,6 +46,9 @@
     "categories": [
       "Dessert"
     ],
+    "cuisines": [
+      "American"
+    ],
     "calories": "250 calories",
     "image_url": "https://pinchofyum.com/tachyon/Chocolate-Chip-Cookies-Recipe.jpg?fit=225%2C225"
   }

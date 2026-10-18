@@ -106,6 +106,10 @@ func recipeFromMicrodata(item *html.Node) Raw {
 			if v != "" {
 				r.Categories = append(r.Categories, v)
 			}
+		case "recipeCuisine":
+			if v != "" {
+				r.Cuisines = append(r.Cuisines, v)
+			}
 		case "tool":
 			if v != "" {
 				r.Tools = append(r.Tools, v)

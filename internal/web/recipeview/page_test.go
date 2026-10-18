@@ -86,6 +86,14 @@ func TestMetaRowShowsMealSpiceRatingAndMadeCount(t *testing.T) {
 	}
 }
 
+func TestMetaRowShowsTheCuisineLabelOnlyWhenSet(t *testing.T) {
+	r := testRecipe(t)
+	r.Cuisine = recipe.CuisineMiddleEastern
+	body := page(t, fakeRecipes{7: r}, "/recipes/7")
+	mustContain(t, body, `data-testid="cuisine"`, "Middle Eastern")
+	mustNotContain(t, page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7"), `data-testid="cuisine"`)
+}
+
 func TestUnsetFieldsShowNothingAndAnUnratedRecipeSaysNew(t *testing.T) {
 	body := page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
 	mustNotContain(t, body, `data-testid="meal-type"`, `data-testid="spice"`, `data-testid="made-count"`)

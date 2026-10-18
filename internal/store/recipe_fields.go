@@ -14,7 +14,7 @@ import (
 // model has already checked the closed sets; the columns' CHECK constraints
 // refuse anything that got past it.
 
-// setRecipeFields writes the meal type and spice level of recipe id inside the
+// setRecipeFields writes the meal type, spice level and cuisine of recipe id inside the
 // transaction q is bound to.
 func setRecipeFields(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe.Recipe) error {
 	err := q.SetRecipeFields(ctx, storedb.SetRecipeFieldsParams{
@@ -23,7 +23,7 @@ func setRecipeFields(ctx context.Context, q *storedb.Queries, hid, id int64, r r
 	if err != nil {
 		return wrapWrite(fmt.Sprintf("write recipe %d meal type and spice level", id), err)
 	}
-	return nil
+	return setRecipeCuisine(ctx, q, hid, id, r.Cuisine)
 }
 
 // getRecipeFields reads the meal type and spice level of recipe id.
@@ -33,6 +33,23 @@ func getRecipeFields(ctx context.Context, q *storedb.Queries, hid, id int64) (re
 		return "", nil, fmt.Errorf("read recipe %d meal type and spice level: %w", id, err)
 	}
 	return recipe.MealType(row.MealType), intPtr(row.SpiceLevel), nil
+}
+
+// setRecipeCuisine writes the cuisine of recipe id (ADR-00025).
+func setRecipeCuisine(ctx context.Context, q *storedb.Queries, hid, id int64, c recipe.Cuisine) error {
+	if err := q.SetRecipeCuisine(ctx, storedb.SetRecipeCuisineParams{Cuisine: string(c), ID: id, HouseholdID: hid}); err != nil {
+		return wrapWrite(fmt.Sprintf("write recipe %d cuisine", id), err)
+	}
+	return nil
+}
+
+// getRecipeCuisine reads the cuisine of recipe id.
+func getRecipeCuisine(ctx context.Context, q *storedb.Queries, hid, id int64) (recipe.Cuisine, error) {
+	c, err := q.GetRecipeCuisine(ctx, storedb.GetRecipeCuisineParams{ID: id, HouseholdID: hid})
+	if err != nil {
+		return "", fmt.Errorf("read recipe %d cuisine: %w", id, err)
+	}
+	return recipe.Cuisine(c), nil
 }
 
 // setStepFields writes the stage kind and title of the step row stepRow.

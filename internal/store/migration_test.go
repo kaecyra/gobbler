@@ -299,3 +299,38 @@ func TestMigration00014GivesOldRowsNoFieldsAndRollsBack(t *testing.T) {
 		t.Errorf("steps after the rollback = %d, want 1 kept", n)
 	}
 }
+
+// Rows stored before 00016 have no cuisine, and rolling it back removes the
+// column (ADR-00025).
+func TestMigration00016GivesOldRowsNoCuisineAndRollsBack(t *testing.T) {
+	ctx := context.Background()
+	d := openRaw(t)
+	if err := db.Migrate(ctx, d, migrationsBelow(t, "00016")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`INSERT INTO recipes (id, household_id, name, created_at, created_by, updated_at, updated_by) VALUES (7, 1, 'Stew', 't', 'a', 't', 'a')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM recipes WHERE id = 7 AND cuisine = ''`); n != 1 {
+		t.Errorf("old recipe rows with no cuisine = %d, want 1", n)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.DownTo(ctx, 15); err != nil {
+		t.Fatalf("rolling back 00016: %v", err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM pragma_table_info('recipes') WHERE name = 'cuisine'`); n != 0 {
+		t.Error("recipes.cuisine survived the rollback")
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM recipes`); n != 1 {
+		t.Errorf("recipes after the rollback = %d, want 1 kept", n)
+	}
+}

@@ -58,7 +58,7 @@ const (
 	groupStepGraph
 	// groupEquipmentLinks: an equipment quantity and the steps that use it.
 	groupEquipmentLinks
-	// groupRecipeFields: the meal type and spice level of a recipe, and the
+	// groupRecipeFields: the meal type, cuisine and spice level of a recipe, and the
 	// stage kind and title of a step (ADR-00022); a draft carries them too.
 	groupRecipeFields
 )
@@ -173,6 +173,17 @@ func mealOptions() []string {
 	var out []string
 	for _, m := range recipe.MealTypes() {
 		out = append(out, string(m))
+	}
+	return out
+}
+
+// cuisineOption is one entry of the cuisine select.
+type cuisineOption struct{ Key, Label string }
+
+func cuisineOptions() []cuisineOption {
+	var out []cuisineOption
+	for _, c := range recipe.Cuisines() {
+		out = append(out, cuisineOption{string(c), c.Label()})
 	}
 	return out
 }

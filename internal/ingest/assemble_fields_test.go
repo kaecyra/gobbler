@@ -46,6 +46,38 @@ func TestMealTypeFromRecipeCategory(t *testing.T) {
 	}
 }
 
+// A cuisine maps by name or by an explicit synonym; a value that names no one
+// cuisine leaves it empty and never vetoes a later one (ADR-00025).
+func TestCuisineFromRecipeCuisine(t *testing.T) {
+	cases := []struct {
+		in   []string
+		want recipe.Cuisine
+	}{
+		{[]string{"Japanese"}, recipe.CuisineJapanese},
+		{[]string{"  middle   EASTERN "}, recipe.CuisineMiddleEastern},
+		{[]string{"Japanese food"}, recipe.CuisineJapanese},
+		{[]string{"Tex Mex"}, recipe.CuisineMexican},
+		{[]string{"Other"}, recipe.CuisineOther},
+		{[]string{"Italian, French"}, recipe.CuisineItalian},
+		{[]string{"Asian", "Thai"}, recipe.CuisineThai},
+		{[]string{"Mexican", "Tex Mex"}, recipe.CuisineMexican},
+		{[]string{"Asian"}, ""},
+		{[]string{"Asian-inspired"}, ""},
+		{[]string{""}, ""},
+		{nil, ""},
+	}
+	for _, c := range cases {
+		if got := cuisineFor(c.in); got != c.want {
+			t.Errorf("cuisineFor(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+	for syn, c := range cuisineSynonyms {
+		if !c.Valid() || syn != normalizeName(syn) {
+			t.Errorf("synonym %q -> %q is not a normalised key for a listed cuisine", syn, c)
+		}
+	}
+}
+
 func TestAssembleTakesMealTypeAndStepTitlesFromTheSource(t *testing.T) {
 	e := newEnv(t)
 	res := extract.Result{Method: extract.MethodJSONLD, Recipe: &extract.Raw{

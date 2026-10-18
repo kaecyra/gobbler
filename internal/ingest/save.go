@@ -311,6 +311,7 @@ func toRecipe(d Draft, comps []recipe.Component, links []recipe.EquipmentLink) r
 		Equipment:   links,
 		VideoID:     d.VideoID,
 		MealType:    d.MealType,
+		Cuisine:     d.Cuisine,
 		SpiceLevel:  d.SpiceLevel,
 	}
 	if d.Calories.Value > 0 {

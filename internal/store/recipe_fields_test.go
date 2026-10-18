@@ -180,3 +180,93 @@ func TestRevisionDocumentFromBefore00014DecodesWithTheFieldsEmpty(t *testing.T) 
 	}
 	checkFields(t, "after restoring the old revision", readFields(a, t, s, id), fieldsOf{})
 }
+
+// ADR-00025: the cuisine is part of the revision like the fields above, so it
+// survives an edit, a restore, a clone and a shared copy, and shows on a card.
+func TestCuisineSurvivesEditRestoreAndAShare(t *testing.T) {
+	s, _ := newTestStore(t)
+	a, b := authedCtx(t), otherCtx(t)
+	cuisine := func(c context.Context, id int64) recipe.Cuisine {
+		t.Helper()
+		r, err := s.Get(c, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r.Cuisine
+	}
+	with := func(c recipe.Cuisine) recipe.Recipe {
+		r := simpleRecipe("Katsu")
+		r.Cuisine = c
+		return r
+	}
+
+	id, err := s.Create(a, with(recipe.CuisineJapanese))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cuisine(a, id); got != recipe.CuisineJapanese {
+		t.Errorf("after create = %q", got)
+	}
+	if err := s.Update(a, id, with(recipe.CuisineMiddleEastern)); err != nil {
+		t.Fatal(err)
+	}
+	if got := cuisine(a, id); got != recipe.CuisineMiddleEastern {
+		t.Errorf("after an edit = %q", got)
+	}
+	if old, err := s.GetVersion(a, id, 1); err != nil || old.Cuisine != recipe.CuisineJapanese {
+		t.Errorf("version 1 cuisine = %q (%v)", old.Cuisine, err)
+	}
+	cards, err := s.Cards(a, SearchQuery{})
+	if err != nil || len(cards) != 1 || cards[0].Cuisine != recipe.CuisineMiddleEastern {
+		t.Errorf("library cards = %+v (%v), want the cuisine on the card", cards, err)
+	}
+	if err := s.Update(a, id, with("")); err != nil {
+		t.Fatal(err)
+	}
+	if got := cuisine(a, id); got != "" {
+		t.Errorf("after clearing = %q", got)
+	}
+	if err := s.Restore(a, id, 1); err != nil {
+		t.Fatal(err)
+	}
+	if got := cuisine(a, id); got != recipe.CuisineJapanese {
+		t.Errorf("after restoring version 1 = %q", got)
+	}
+	cloneID, err := s.Clone(a, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cuisine(a, cloneID); got != recipe.CuisineJapanese {
+		t.Errorf("clone = %q", got)
+	}
+	shareID, err := s.SendShare(a, id, otherHouseholdID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copyID, err := s.AcceptShare(b, shareID, fixed(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cuisine(b, copyID); got != recipe.CuisineJapanese {
+		t.Errorf("shared copy = %q", got)
+	}
+}
+
+func TestInvalidCuisineWritesNothingAndTheColumnRefusesIt(t *testing.T) {
+	s, d := newTestStore(t)
+	a := authedCtx(t)
+	bad := simpleRecipe("A")
+	bad.Cuisine = "asian"
+	if _, err := s.Create(a, bad); !errors.Is(err, recipe.ErrInvalidCuisine) {
+		t.Errorf("Create with a bad cuisine = %v", err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM recipes`); n != 0 {
+		t.Errorf("rejected document left %d recipes", n)
+	}
+	if _, err := s.Create(a, simpleRecipe("B")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`UPDATE recipes SET cuisine = 'asian'`); err == nil {
+		t.Error("the column accepted a cuisine outside the list")
+	}
+}

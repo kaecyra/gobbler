@@ -67,6 +67,7 @@ type docRecipe struct {
 	Author      string         `json:"author,omitempty"`
 	VideoID     string         `json:"video_id,omitempty"`
 	MealType    string         `json:"meal_type,omitempty"`
+	Cuisine     string         `json:"cuisine,omitempty"`
 	SpiceLevel  *int           `json:"spice_level,omitempty"`
 	YieldQty    *string        `json:"yield_qty,omitempty"`
 	YieldUnit   string         `json:"yield_unit,omitempty"`
@@ -86,7 +87,7 @@ type docRecipe struct {
 func encodeDocument(r recipe.Recipe, units *unitTable) ([]byte, error) {
 	d := docRecipe{
 		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, VideoID: r.VideoID,
-		MealType: string(r.MealType), SpiceLevel: r.SpiceLevel, YieldUnit: r.Yield.Unit, Calories: r.CaloriesPerServing, Tags: r.Tags, Rating: r.Rating,
+		MealType: string(r.MealType), Cuisine: string(r.Cuisine), SpiceLevel: r.SpiceLevel, YieldUnit: r.Yield.Unit, Calories: r.CaloriesPerServing, Tags: r.Tags, Rating: r.Rating,
 		PrepNS: int64(r.Times.Prep), CookNS: int64(r.Times.Cook), TotalNS: int64(r.Times.Total),
 	}
 	var err error
@@ -204,7 +205,7 @@ func (d *docRecipe) repointIngredient(loser, winner int64) {
 func (d docRecipe) toRecipe(units *unitTable) (recipe.Recipe, error) {
 	r := recipe.Recipe{
 		Name: d.Name, Description: d.Description, SourceURL: d.SourceURL, Author: d.Author, VideoID: d.VideoID,
-		MealType: recipe.MealType(d.MealType), SpiceLevel: d.SpiceLevel,
+		MealType: recipe.MealType(d.MealType), Cuisine: recipe.Cuisine(d.Cuisine), SpiceLevel: d.SpiceLevel,
 		Yield:              recipe.Yield{Unit: d.YieldUnit},
 		CaloriesPerServing: d.Calories, Tags: d.Tags, Rating: d.Rating,
 		Times: recipe.Times{Prep: time.Duration(d.PrepNS), Cook: time.Duration(d.CookNS), Total: time.Duration(d.TotalNS)},

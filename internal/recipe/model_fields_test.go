@@ -48,3 +48,29 @@ func TestClosedSetsMatchTheirValidators(t *testing.T) {
 		t.Error("the empty value is unset, not a member of a closed set")
 	}
 }
+
+func TestCuisineIsAClosedSetEndingInOther(t *testing.T) {
+	all := Cuisines()
+	if len(all) == 0 || all[len(all)-1] != CuisineOther {
+		t.Fatalf("Cuisines() = %v, want a list ending in Other", all)
+	}
+	for _, c := range all {
+		if !c.Valid() || c.Label() == "" {
+			t.Errorf("cuisine %q: Valid=%v Label=%q", c, c.Valid(), c.Label())
+		}
+	}
+	if Cuisine("").Valid() || Cuisine("asian").Valid() {
+		t.Error("unset and unlisted cuisines must not be valid")
+	}
+	if got := CuisineMiddleEastern.Label(); got != "Middle Eastern" {
+		t.Errorf("Label() = %q", got)
+	}
+	r := Recipe{Cuisine: "asian", Components: []Component{{Steps: []Step{{ID: "a", Title: "x"}}}}}
+	if err := r.Validate(); !errors.Is(err, ErrInvalidCuisine) {
+		t.Errorf("Validate() = %v, want ErrInvalidCuisine", err)
+	}
+	r.Cuisine = CuisineThai
+	if err := r.Validate(); err != nil {
+		t.Errorf("Validate() = %v, want nil", err)
+	}
+}

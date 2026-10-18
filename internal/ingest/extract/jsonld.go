@@ -204,6 +204,7 @@ func recipeFromJSONLD(m map[string]any, ids map[string]map[string]any) Raw {
 	}
 	r.Tools = jsonStrings(m["tool"])
 	r.Categories = jsonStrings(m["recipeCategory"])
+	r.Cuisines = jsonStrings(m["recipeCuisine"])
 	r.VideoID = youTubeID(m["video"])
 	if n, ok := m["nutrition"].(map[string]any); ok {
 		r.Calories = jsonString(n["calories"])

@@ -36,6 +36,9 @@ func loadDocument(ctx context.Context, q *storedb.Queries, hid, id int64, units 
 	if r.MealType, r.SpiceLevel, err = getRecipeFields(ctx, q, hid, id); err != nil {
 		return recipe.Recipe{}, err
 	}
+	if r.Cuisine, err = getRecipeCuisine(ctx, q, hid, id); err != nil {
+		return recipe.Recipe{}, err
+	}
 	r.CaloriesPerServing, r.Rating = intPtr(row.CaloriesPerServing), intPtr(row.Rating)
 	r.Times = recipe.Times{Prep: time.Duration(row.PrepNs), Cook: time.Duration(row.CookNs), Total: time.Duration(row.TotalNs)}
 

@@ -32,8 +32,9 @@ type draft struct {
 	Name, Description, SourceURL, Author string
 	// Video is what was typed in the video field: a YouTube link or a bare ID.
 	Video string
-	// MealType is a meal type name, or empty; Spice is "0" to "3", or empty.
-	MealType, Spice               string
+	// MealType is a meal type name, or empty; Cuisine is a cuisine key, or
+	// empty (ADR-00025); Spice is "0" to "3", or empty.
+	MealType, Cuisine, Spice      string
 	YieldQty, YieldUnit, Servings string
 	Calories, Tags                string
 	Prep, Cook, Total             string
@@ -111,7 +112,7 @@ type lookups struct {
 // fromRecipe turns a stored recipe into the form's starting draft.
 func fromRecipe(r recipe.Recipe, names lookups) draft {
 	d := draft{
-		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, Video: r.VideoID, MealType: string(r.MealType),
+		Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author, Video: r.VideoID, MealType: string(r.MealType), Cuisine: string(r.Cuisine),
 		YieldQty: qtyText(r.Yield.Qty), YieldUnit: r.Yield.Unit, Servings: qtyText(r.Servings),
 		Tags: strings.Join(r.Tags, ", "),
 		Prep: durationText(r.Times.Prep), Cook: durationText(r.Times.Cook), Total: durationText(r.Times.Total),
@@ -181,7 +182,7 @@ func durationText(d time.Duration) string {
 func parseForm(f url.Values) draft {
 	d := draft{
 		Name: f.Get("name"), Description: f.Get("description"), SourceURL: f.Get("source_url"), Author: f.Get("author"), Video: f.Get("video"),
-		MealType: f.Get("meal_type"), Spice: strings.TrimSpace(f.Get("spice")),
+		MealType: f.Get("meal_type"), Cuisine: f.Get("cuisine"), Spice: strings.TrimSpace(f.Get("spice")),
 		YieldQty: f.Get("yield_qty"), YieldUnit: f.Get("yield_unit"), Servings: f.Get("servings"),
 		Calories: f.Get("calories"), Tags: f.Get("tags"),
 		Prep: f.Get("prep"), Cook: f.Get("cook"), Total: f.Get("total"),

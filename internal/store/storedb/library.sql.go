@@ -42,6 +42,38 @@ func (q *Queries) ListLibraryComponents(ctx context.Context, householdID int64) 
 	return items, nil
 }
 
+const listLibraryCuisines = `-- name: ListLibraryCuisines :many
+SELECT id, cuisine FROM recipes WHERE household_id = ?
+`
+
+type ListLibraryCuisinesRow struct {
+	ID      int64
+	Cuisine string
+}
+
+func (q *Queries) ListLibraryCuisines(ctx context.Context, householdID int64) ([]ListLibraryCuisinesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLibraryCuisines, householdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLibraryCuisinesRow
+	for rows.Next() {
+		var i ListLibraryCuisinesRow
+		if err := rows.Scan(&i.ID, &i.Cuisine); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLibraryFields = `-- name: ListLibraryFields :many
 
 SELECT id, meal_type, spice_level, source_url, author FROM recipes WHERE household_id = ?

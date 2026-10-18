@@ -20,3 +20,11 @@ UPDATE notes SET pinned = ? WHERE id = ? AND recipe_id = ? AND household_id = ?;
 
 -- name: ListPinnedNoteIDs :many
 SELECT id FROM notes WHERE recipe_id = ? AND household_id = ? AND pinned = 1;
+
+-- The cuisine (ADR-00025) has statements of its own, like the fields above.
+
+-- name: SetRecipeCuisine :exec
+UPDATE recipes SET cuisine = ? WHERE id = ? AND household_id = ?;
+
+-- name: GetRecipeCuisine :one
+SELECT cuisine FROM recipes WHERE id = ? AND household_id = ?;

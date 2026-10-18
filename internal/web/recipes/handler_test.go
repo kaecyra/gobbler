@@ -85,6 +85,15 @@ func TestQueryAndGroupingReachThePage(t *testing.T) {
 	}
 }
 
+func TestCardShowsTheCuisineLabelOnlyWhenSet(t *testing.T) {
+	with := card(1, "Katsu", recipe.MealMain)
+	with.Cuisine = recipe.CuisineMiddleEastern
+	_, body, _ := get(t, &fakeLibrary{cards: []store.Card{with, card(2, "Plain", recipe.MealMain)}}, "/?group=time", nil)
+	if n := strings.Count(body, `data-testid="card-cuisine"`); n != 1 || !strings.Contains(body, "Middle Eastern") {
+		t.Errorf("cuisine lines = %d, want 1 labelled Middle Eastern:\n%s", n, body)
+	}
+}
+
 func TestEmptyStates(t *testing.T) {
 	_, body, _ := get(t, &fakeLibrary{}, "/", nil)
 	if !strings.Contains(body, `data-testid="empty-library"`) {

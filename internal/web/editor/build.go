@@ -51,6 +51,7 @@ func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec 
 	rec.Description, rec.SourceURL, rec.Author = d.Description, strings.TrimSpace(d.SourceURL), strings.TrimSpace(d.Author)
 	rec.VideoID = b.video()
 	rec.MealType = b.mealType()
+	rec.Cuisine = b.cuisine()
 	rec.SpiceLevel = b.spiceLevel()
 	rec.Tags = tagList(d.Tags)
 	rec.Yield.Unit = strings.TrimSpace(d.YieldUnit)
@@ -218,6 +219,16 @@ func (b *builder) mealType() recipe.MealType {
 		return ""
 	}
 	return m
+}
+
+// cuisine reads the cuisine select; empty is unset.
+func (b *builder) cuisine() recipe.Cuisine {
+	c := recipe.Cuisine(strings.TrimSpace(b.d.Cuisine))
+	if c != "" && !c.Valid() {
+		b.d.Errs["cuisine"] = fmt.Sprintf("%q is not a cuisine. Choose one from the list, or leave it empty.", string(c))
+		return ""
+	}
+	return c
 }
 
 // spiceLevel reads the spice select: empty is unset, "0" is not spicy.

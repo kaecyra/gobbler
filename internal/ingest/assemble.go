@@ -105,6 +105,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 	d.Total = duration(raw.TotalDuration)
 	d.VideoID = raw.VideoID
 	d.MealType = mealTypeFor(raw.Categories)
+	d.Cuisine = cuisineFor(raw.Cuisines)
 
 	// A raw recipe lists ingredients once: in the groups a recipe plugin
 	// printed when extract found them, else in the first, unnamed component.
@@ -392,4 +393,46 @@ func mealTypeFor(categories []string) recipe.MealType {
 		}
 	}
 	return found
+}
+
+// cuisineSynonyms maps a normalised recipeCuisine value to the cuisine it
+// names when it is not the cuisine's own name. It is small on purpose: a broad
+// value ("asian", "european") fits no single cuisine and is left out, because
+// an empty cuisine is unknown and a guessed one is wrong (ADR-00025).
+var cuisineSynonyms = map[string]recipe.Cuisine{
+	"japanese food": recipe.CuisineJapanese, "japan": recipe.CuisineJapanese,
+	"mexican food": recipe.CuisineMexican, "tex mex": recipe.CuisineMexican, "tex-mex": recipe.CuisineMexican,
+	"italian food": recipe.CuisineItalian, "italy": recipe.CuisineItalian,
+	"chinese food": recipe.CuisineChinese, "china": recipe.CuisineChinese,
+	"thai food": recipe.CuisineThai, "thailand": recipe.CuisineThai,
+	"indian food": recipe.CuisineIndian, "india": recipe.CuisineIndian,
+	"korean food": recipe.CuisineKorean, "korea": recipe.CuisineKorean,
+	"french food": recipe.CuisineFrench, "france": recipe.CuisineFrench,
+	"greek food": recipe.CuisineGreek, "greece": recipe.CuisineGreek,
+	"spain": recipe.CuisineSpanish, "german food": recipe.CuisineGerman, "germany": recipe.CuisineGerman,
+	"vietnam": recipe.CuisineVietnamese, "british food": recipe.CuisineBritish, "english": recipe.CuisineBritish,
+	"american food": recipe.CuisineAmerican, "southern": recipe.CuisineAmerican, "usa": recipe.CuisineAmerican,
+	"middle-eastern": recipe.CuisineMiddleEastern, "middle east": recipe.CuisineMiddleEastern,
+	"caribbean food": recipe.CuisineCaribbean, "jamaican": recipe.CuisineCaribbean,
+}
+
+// cuisineFor reads schema.org recipeCuisine values (each may list several,
+// comma separated) as a cuisine: the first value that is a cuisine's name,
+// compared case-insensitively, or a synonym of one. Values that match nothing
+// are skipped, and when none matches the cuisine is empty, not an error.
+func cuisineFor(cuisines []string) recipe.Cuisine {
+	for _, c := range cuisines {
+		for _, part := range strings.Split(c, ",") {
+			name := normalizeName(part)
+			for _, k := range recipe.Cuisines() {
+				if normalizeName(k.Label()) == name {
+					return k
+				}
+			}
+			if k, ok := cuisineSynonyms[name]; ok {
+				return k
+			}
+		}
+	}
+	return ""
 }

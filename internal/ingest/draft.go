@@ -175,6 +175,9 @@ type Draft struct {
 	// the review screen may, and a confirmed draft keeps it (ADR-00022).
 	MealType   recipe.MealType
 	SpiceLevel *int
+	// Cuisine is the recipe's cuisine when the source's recipeCuisine names one
+	// the list knows, else empty (ADR-00025).
+	Cuisine recipe.Cuisine
 
 	Components []Component
 

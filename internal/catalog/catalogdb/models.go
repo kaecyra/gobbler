@@ -147,6 +147,7 @@ type Recipe struct {
 	VideoID            string
 	MealType           string
 	SpiceLevel         sql.NullInt64
+	Cuisine            string
 }
 
 type RecipeEquipment struct {

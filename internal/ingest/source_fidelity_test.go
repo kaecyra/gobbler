@@ -31,6 +31,9 @@ func TestIngestChickenCutletPageIsFaithful(t *testing.T) {
 	if d.Yield.Value.Unit != "" || d.Yield.Confidence != 0 {
 		t.Errorf("yield = %+v, want none beside servings", d.Yield)
 	}
+	if d.Cuisine != recipe.CuisineJapanese {
+		t.Errorf("cuisine = %q, want japanese from recipeCuisine", d.Cuisine)
+	}
 	if d.VideoID != "L57S_S22Mf8" {
 		t.Errorf("video id = %q, want L57S_S22Mf8", d.VideoID)
 	}

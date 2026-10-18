@@ -179,6 +179,7 @@ func seedStyled(ctx context.Context, d *sql.DB) (int64, error) {
 		Description: "Deeply browned ribs and a slow braise.",
 		SourceURL:   "https://www.example.com/short-ribs",
 		MealType:    recipe.MealMain,
+		Cuisine:     recipe.CuisineKorean,
 		SpiceLevel:  &spice,
 		Rating:      &rating,
 		Servings:    quantity.Exact(mustRat("4")),

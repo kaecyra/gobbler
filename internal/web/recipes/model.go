@@ -25,7 +25,8 @@ type cardView struct {
 	Source     string
 	Meal       recipe.MealType // empty when unset
 	MealLabel  string
-	Spice      int // chilis to draw; 0 draws none
+	Cuisine    string // the cuisine's label; empty when unset
+	Spice      int    // chilis to draw; 0 draws none
 	SpiceLabel string
 	Components []string
 	// Key is the key ingredients; the first is emphasised.
@@ -92,7 +93,7 @@ const noTimeTitle = "No time set"
 
 func cardFor(c store.Card, now time.Time) cardView {
 	v := cardView{
-		Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: mealLabels[c.MealType],
+		Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: mealLabels[c.MealType], Cuisine: c.Cuisine.Label(),
 		Components: c.Components, Key: c.KeyIngredients,
 		Made:   madeLine(c.MadeCount, c.LastMade, now),
 		Ribbon: ribbon.Build(c.Steps),
