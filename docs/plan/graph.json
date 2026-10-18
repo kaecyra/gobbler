@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00015",
+      "last_used": "00016",
       "contiguous": true
     }
   },
@@ -2531,7 +2531,7 @@
       "wave": 9,
       "track": null,
       "issue": 289,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/catalog/seed/**",
@@ -3444,6 +3444,14 @@
       "id": "u-editor-savebar",
       "title": "sticky save bar on the recipe editor",
       "merged": "a2b5232"
+    },
+    {
+      "id": "u-equipment-chips",
+      "title": "equipment chips with icons, and the common equipment in the catalog",
+      "merged": "30faec0",
+      "adrs": [
+        "00024"
+      ]
     }
   ],
   "adr_sequence": {
