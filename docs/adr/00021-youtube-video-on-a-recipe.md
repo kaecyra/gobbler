@@ -1,6 +1,6 @@
 # ADR-00021: A recipe may carry a YouTube video, played only on click, with its thumbnail stored in SQLite
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00023](00023-video-from-a-page-embed.md)
 
 **Date:** 2026-10-17
 
@@ -74,6 +74,10 @@ Options for the placeholder's thumbnail:
    draft. Like every drafted field it is shown on the review screen and saved
    only through it ([ADR-00006](00006-rule-first-ingestion.md)). A video on any
    other host is ignored.
+
+   > Amended by [ADR-00023](00023-video-from-a-page-embed.md): when the
+   > markup has no YouTube video, ingest takes the first YouTube embed on the
+   > page.
 
 ## Consequences
 

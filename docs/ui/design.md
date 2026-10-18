@@ -110,6 +110,9 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 - **Library side panels:** a suggestion with "Another idea", recently made,
   and haven't made in a while. They are read from the made-it log.
 - There are **no tag filters**.
+- **Equipment** on the recipe page and in cook mode is a row of chips, each
+  an icon and the name, with the size hint where one applies
+  ([ADR-00024](../adr/00024-equipment-chips-icons-and-catalog.md)).
 - **Shopping list grouping:** a By aisle / By recipe toggle, two links to the
   same page with the choice in `?group=recipe`. By aisle is the default. By
   recipe shows each recipe's own share of a merged line; hand-added items sit

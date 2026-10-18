@@ -1,6 +1,6 @@
 # ADR-00022: Adopt the reviewed mockup as the app's visual design, with the recipe fields it needs
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00024](00024-equipment-chips-icons-and-catalog.md), [ADR-00025](00025-one-cuisine-per-recipe.md)
 
 **Date:** 2026-10-17
 
@@ -49,6 +49,9 @@ Options considered:
    repository under `docs/ui/`, beside a written specification
    (`docs/ui/design.md`) of its tokens, components and the owner's settled
    choices. Where the two disagree, the written specification wins.
+
+   > Amended by [ADR-00024](00024-equipment-chips-icons-and-catalog.md):
+   > equipment renders as chips with icons, not the mockup's rows.
 2. **Light by default.** The theme never follows the operating system's
    colour scheme; dark is an explicit toggle remembered by the browser.
    Tablet on a kitchen counter is the first layout, then phone, then laptop.
@@ -65,6 +68,9 @@ Options considered:
      ingest proposes a kind from the step text; an unknown kind is empty, not
      an error ([ADR-00006](00006-rule-first-ingestion.md)).
    - **Step title**, short free text, taken from the source when it has one.
+
+   > Amended by [ADR-00025](00025-one-cuisine-per-recipe.md): a recipe also
+   > has an optional cuisine from a fixed list.
 5. **A tip is a pinned note.** A note may be pinned as a tip and is then shown
    in the recipe view. Ingest never creates tips.
 6. **The library's side panels are built:** a suggestion, recently made, and
