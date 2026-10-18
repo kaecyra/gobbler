@@ -302,3 +302,26 @@ test('Enter in a text field saves, with the bar in place', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'E2E Enter Loaf' })).toBeVisible();
   expect(await revisions(page)).toBe(before + 1);
 });
+
+// Saving is a plain form post: the bar works without script (#288).
+test('without JavaScript, Save in the bar saves', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
+  const page = await ctx.newPage();
+  await page.goto(`/recipes/${id}/edit`);
+  await page.locator('[name="name"]').fill('E2E No Script Loaf');
+  await page.locator('.savebar').getByRole('button', { name: 'Save recipe' }).click();
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByRole('heading', { name: 'E2E No Script Loaf' })).toBeVisible();
+  await ctx.close();
+});
+
+test('without JavaScript, Enter in a field saves', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
+  const page = await ctx.newPage();
+  await page.goto(`/recipes/${id}/edit`);
+  await page.locator('[name="name"]').fill('E2E No Script Enter Loaf');
+  await page.locator('[name="name"]').press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByRole('heading', { name: 'E2E No Script Enter Loaf' })).toBeVisible();
+  await ctx.close();
+});
