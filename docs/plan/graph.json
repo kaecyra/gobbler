@@ -2514,7 +2514,7 @@
       "wave": 9,
       "track": null,
       "issue": 288,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/editor/**",
@@ -3439,6 +3439,11 @@
       "id": "r-last-made-days",
       "title": "Last made N days ago counts calendar days in one zone",
       "merged": "1dbae97"
+    },
+    {
+      "id": "u-editor-savebar",
+      "title": "sticky save bar on the recipe editor",
+      "merged": "a2b5232"
     }
   ],
   "adr_sequence": {
