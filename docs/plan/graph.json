@@ -2587,7 +2587,7 @@
       "wave": 9,
       "track": null,
       "issue": 292,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/recipes/side*.go",
@@ -3434,6 +3434,11 @@
         "00023"
       ],
       "note": "One node so the parser version bumps once. Video fallback per the ADR drawn here (amends ADR-00021 decision 5)."
+    },
+    {
+      "id": "r-last-made-days",
+      "title": "Last made N days ago counts calendar days in one zone",
+      "merged": "1dbae97"
     }
   ],
   "adr_sequence": {
