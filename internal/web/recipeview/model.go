@@ -146,6 +146,8 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		return view{}, err
 	}
 
+	during := duringSteps(r, number, guidance)
+
 	lines := display.NewLineBuilder(cat, o)
 	for _, c := range r.Components {
 		cv := componentView{Name: c.Name}
@@ -160,7 +162,9 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 			cv.Lines = append(cv.Lines, lv)
 		}
 		for _, s := range c.Steps {
-			cv.Steps = append(cv.Steps, layout.NewRecipeStepView(s, number, guidance[s.ID]))
+			sv := layout.NewRecipeStepView(s, number, guidance[s.ID])
+			sv.During = during[s.ID]
+			cv.Steps = append(cv.Steps, sv)
 		}
 		v.Components = append(v.Components, cv)
 	}
@@ -173,6 +177,24 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		v.Equipment = append(v.Equipment, equipmentView{Text: eq.Text, Name: eq.Name, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
 	}
 	return v, nil
+}
+
+// duringSteps inverts the meanwhile guidance: for each step offered while a
+// passive step waits, the numbers of those passive steps, ascending. It reads
+// the guidance already derived, so the tag and the callout cannot disagree.
+func duringSteps(r recipe.Recipe, number map[recipe.StepID]int, guidance map[recipe.StepID][]display.MeanwhileItem) map[recipe.StepID][]int {
+	byNumber := map[int]recipe.StepID{}
+	for id, n := range number {
+		byNumber[n] = id
+	}
+	out := map[recipe.StepID][]int{}
+	for _, ref := range r.LinearOrder() { // reading order keeps the passive numbers ascending
+		for _, it := range guidance[ref.ID] {
+			id := byNumber[it.Number]
+			out[id] = append(out[id], number[ref.ID])
+		}
+	}
+	return out
 }
 
 // withJournal adds what the journal contributes to the page: the pinned notes

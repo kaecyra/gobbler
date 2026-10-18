@@ -68,7 +68,7 @@ func TestViewWithoutGuidanceIsUnchanged(t *testing.T) {
 		t.Fatalf("status = %d\n%s", code, body)
 	}
 	mustNotContain(t, body, "Meanwhile", "meanwhile")
-	mustContain(t, body, "Bake until golden.", "45 min, passive")
+	mustContain(t, body, "Bake until golden.", "Timer · 45 min")
 }
 
 func TestViewMeanwhileSurvivesScaling(t *testing.T) {
@@ -84,4 +84,30 @@ func TestViewWithBrokenStepGraphFailsLoudly(t *testing.T) {
 	if code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500\n%s", code, body)
 	}
+}
+
+func TestViewTagsTheStepsOfferedMeanwhileWithTheStepTheyRunDuring(t *testing.T) {
+	_, body := serve(t, fakeRecipes{3: doughAndSauce()}, "/recipes/3")
+	// Only chop (step 4) is offered while the rise (step 2) waits.
+	if n := strings.Count(body, `data-testid="during"`); n != 1 {
+		t.Fatalf("during tags = %d, want 1\n%s", n, body)
+	}
+	mustContain(t, body, "during step 2")
+}
+
+func TestViewTagsAStepOfferedDuringTwoPassiveStepsInAscendingOrder(t *testing.T) {
+	// 1 soak beans and 2 brine pork both wait with nothing to do; 3 chop
+	// needs neither, so it is offered during both.
+	r := recipe.Recipe{Name: "Stew", Components: []recipe.Component{{Steps: []recipe.Step{
+		{ID: "beans", Text: "Soak the beans.", Duration: 8 * time.Hour, Passive: true},
+		{ID: "pork", Text: "Brine the pork.", Duration: 4 * time.Hour, Passive: true},
+		{ID: "chop", Text: "Chop the onions.", Duration: 5 * time.Minute},
+		{ID: "cook", Text: "Cook it all.", Duration: time.Hour, DependsOn: []recipe.StepID{"beans", "pork", "chop"}},
+	}}}}
+	_, body := serve(t, fakeRecipes{4: r}, "/recipes/4")
+	if n := strings.Count(body, `data-testid="during"`); n != 1 {
+		t.Fatalf("during tags = %d, want 1 (only the chop)\n%s", n, body)
+	}
+	mustContain(t, body, "during steps 1, 2")
+	mustNotContain(t, body, "during steps 2, 1")
 }

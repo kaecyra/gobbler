@@ -129,10 +129,10 @@ func TestNewRecipeStepViewNumbersTheStepsItWaitsFor(t *testing.T) {
 		DependsOn: []recipe.StepID{"a", "b"},
 	}
 	got := NewRecipeStepView(s, map[recipe.StepID]int{"a": 1, "b": 2, "c": 3}, nil)
-	if got.Title != "Serve" || !got.Passive || got.Note != "15 min, passive" || len(got.After) != 2 || got.After[0] != 1 || got.After[1] != 2 {
+	if got.Title != "Serve" || !got.Passive || got.Time != "Timer · 15 min" || len(got.After) != 2 || got.After[0] != 1 || got.After[1] != 2 {
 		t.Errorf("step view = %+v", got)
 	}
-	if got := NewRecipeStepView(recipe.Step{ID: "x", Text: "t"}, nil, nil); got.After != nil || got.Note != "" {
+	if got := NewRecipeStepView(recipe.Step{ID: "x", Text: "t"}, nil, nil); got.After != nil || got.Time != "" {
 		t.Errorf("a step with no dependencies and no time has %+v", got)
 	}
 }
@@ -143,13 +143,13 @@ func TestStepShowsTagsOnlyForWhatItHas(t *testing.T) {
 	lacks(t, body, "step-title", "stags", "after step", "passive")
 
 	body = renderPart(t, RecipeStep(RecipeStepView{
-		Title: "Rest", Text: "Leave it.", Passive: true, Note: "1 h, passive", After: []int{2, 3},
+		Title: "Rest", Text: "Leave it.", Passive: true, Time: "Timer · 1 h", After: []int{2, 3},
 	}, "5"))
 	has(t, body, `class="step passive"`, `<h4 data-testid="step-title">Rest</h4>`,
-		`class="stag t"`, "1 h, passive", `data-testid="after"`, "after steps 2, 3")
+		`class="stag t"`, "Timer · 1 h", `data-testid="after"`, "after steps 2, 3")
 
 	// An active step's time tag is not the waiting colour.
-	body = renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", Note: "5 min"}, "1"))
+	body = renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", Time: "5 min hands-on"}, "1"))
 	has(t, body, `class="stag"`)
 	lacks(t, body, `class="stag t"`)
 }
@@ -214,7 +214,7 @@ func TestAFailedWriteInARecipePartIsReported(t *testing.T) {
 				Calories: &cal, SourceURL: "https://x.test/", SourceHost: "x.test",
 			}),
 			"step": RecipeStep(RecipeStepView{
-				Title: "T", Text: text, Passive: true, Note: "1 h, passive", After: []int{1, 2},
+				Title: "T", Text: text, Passive: true, Time: "Timer · 1 h", After: []int{1, 2},
 				Meanwhile: []display.MeanwhileItem{{Number: 3, Text: "Do it."}},
 			}, "2"),
 		}
@@ -242,4 +242,27 @@ func TestRenderOfACancelledContextStops(t *testing.T) {
 			t.Errorf("%s: a cancelled request rendered anyway", name)
 		}
 	}
+}
+
+func TestNewRecipeStepViewWordsTheTimeByWhoseItIs(t *testing.T) {
+	for _, tc := range []struct {
+		s    recipe.Step
+		want string
+	}{
+		{recipe.Step{Duration: 25 * time.Minute}, "25 min hands-on"},
+		{recipe.Step{Duration: 3 * time.Hour, Passive: true}, "Timer · 3 h"},
+		{recipe.Step{Passive: true}, ""},
+	} {
+		if got := NewRecipeStepView(tc.s, nil, nil).Time; got != tc.want {
+			t.Errorf("step %+v: time tag = %q, want %q", tc.s, got, tc.want)
+		}
+	}
+}
+
+func TestStepShowsWhichPassiveStepsItCanRunDuring(t *testing.T) {
+	body := renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", During: []int{3}}, "4"))
+	has(t, body, `class="stag dep"`, `data-testid="during"`, "during step 3")
+	body = renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", During: []int{2, 3}}, "4"))
+	has(t, body, "during steps 2, 3")
+	lacks(t, renderPart(t, RecipeStep(RecipeStepView{Text: "Stir."}, "1")), "during")
 }

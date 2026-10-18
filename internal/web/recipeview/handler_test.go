@@ -207,7 +207,7 @@ func TestViewShowsRecipeAsWritten(t *testing.T) {
 		"1 bay leaf",
 		"salt to taste (optional)",
 		"a splash of the good stuff",
-		"Mix everything.", "Bake until golden.", "10 min", "45 min, passive",
+		"Mix everything.", "Bake until golden.", "10 min hands-on", "Timer · 45 min",
 		"9x13 pan",
 		"Batter", "Glaze",
 		`<ol start="3">`, // glaze step continues the numbering
