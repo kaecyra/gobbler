@@ -19,8 +19,10 @@ import (
 var cruftCallOutRE = regexp.MustCompile(`(?i)\s*\((?:watch|see|click|view)\b[^()]*\bvideo\b[^()]*\)`)
 
 // cruftSentences are tested against a whole sentence, lower-cased with curly
-// apostrophes straightened. pointer marks a pointer to another page section:
-// the sentence after it that starts with "it" or "this" describes what the
+// apostrophes straightened (a copy for matching only; the kept text is never
+// altered). A rule must name the page-pointer intent itself: a bare verb plus
+// "it" or "this" ("pin it closed") is cooking and never matches.
+// pointer marks a pointer to another page section: the sentence after it that starts with "it" or "this" describes what the
 // pointer points at, so it goes too.
 var cruftSentences = []struct {
 	name    string
@@ -30,11 +32,11 @@ var cruftSentences = []struct {
 	{"section pointer", regexp.MustCompile(
 		`^(?:(?:please )?(?:don't forget to|be sure to|make sure to|remember to) )?` +
 			`(?:see|check|read|visit|look at|have a look at|take a look at|refer to) ` +
-			`(?:the|my|our) [^.!?]*\b(?:section|below|above|recipe card|recipe notes|post)\b`), true},
+			`(?:(?:the|my|our) (?:[\w'-]+ ){0,4}?(?:section|recipe card|recipe notes|notes|post)\b|(?:below|above)\b)`), true},
 	{"scroll", regexp.MustCompile(`\bscroll (?:down|up|to)\b`), true},
 	{"jump to recipe", regexp.MustCompile(`\bjump to (?:the )?recipe\b`), false},
 	{"video invitation", regexp.MustCompile(`^(?:watch|see) (?:the|my|our) (?:how-?to )?video\b`), false},
-	{"pin", regexp.MustCompile(`\bpin (?:this|it)\b|\bsave (?:this|it) (?:to|on) pinterest\b`), false},
+	{"pin", regexp.MustCompile(`\bpinterest\b|\bpin (?:this|it) (?:recipe |post )?(?:for later|to\b)|\bpin this recipe\b`), false},
 	{"subscribe", regexp.MustCompile(`\bsubscribe\b|\b(?:sign up|signup) (?:for|to) (?:my|our) newsletter\b|\bjoin (?:my|our) newsletter\b`), false},
 	{"sign-off", regexp.MustCompile(`^i hope (?:it|this|you)\b[^.!?]*\b(?:helps?|helpful|of help|enjoy)\b`), false},
 }
@@ -51,16 +53,18 @@ var sentenceAbbreviations = map[string]bool{
 	"eg": true, "ie": true, "pkg": true, "ca": true, "max": true,
 }
 
+// apostropheStraightener makes a matching copy of a sentence; see cruftSentences.
+var apostropheStraightener = strings.NewReplacer("\u2019", "'", "\u2018", "'")
+
 // cleanDescription returns a description without blog cruft and with sentence
 // spacing restored where paragraphs were fused ("batches.Don't"). It is pure.
 func cleanDescription(s string) string {
 	s = cruftCallOutRE.ReplaceAllString(s, " ")
-	s = strings.NewReplacer("’", "'", "‘", "'").Replace(s)
 	s = restoreSentenceSpacing(s)
 	var kept []string
 	dropNextAnaphor := false
 	for _, sent := range splitSentences(s) {
-		low := strings.ToLower(sent)
+		low := strings.ToLower(apostropheStraightener.Replace(sent))
 		switch drop, pointer := matchCruft(low); {
 		case drop:
 			dropNextAnaphor = pointer
@@ -141,7 +145,7 @@ func splitSentences(s string) []string {
 }
 
 func endsSentence(word string) bool {
-	trimmed := strings.TrimRight(word, `)"'`)
+	trimmed := strings.TrimRight(word, ")\"'\u2019\u201d")
 	if trimmed == "" {
 		return false
 	}
