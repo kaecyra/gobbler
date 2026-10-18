@@ -9,6 +9,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
+	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 )
@@ -142,5 +143,68 @@ func TestMigration00015AddsEquipmentAndAdoptsExistingRows(t *testing.T) {
 	var id int64
 	if err := d.QueryRowContext(ctx, `SELECT equipment_id FROM equipment_aliases WHERE alias = 'tin opener'`).Scan(&id); err != nil {
 		t.Errorf("alias of an added can opener missing: %v", err)
+	}
+}
+
+// Migration 00017 aliases "mandoline slicer" and "pastry blender". A database
+// whose old save flow already created an equipment row under one of those
+// names must keep it as the name, not also gain an alias for the same term:
+// names and aliases share one namespace.
+func TestMigration00017SkipsAliasesWhoseTermIsAlreadyAName(t *testing.T) {
+	ctx := context.Background()
+	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+
+	before := fstest.MapFS{}
+	entries, err := fs.ReadDir(db.Migrations(), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name() >= "00017" || !strings.HasSuffix(e.Name(), ".sql") {
+			continue
+		}
+		b, err := fs.ReadFile(db.Migrations(), e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		before[e.Name()] = &fstest.MapFile{Data: b}
+	}
+	if err := db.Migrate(ctx, d, before); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.ExecContext(ctx, `INSERT INTO equipment (name, reviewed) VALUES ('pastry blender', 0)`); err != nil {
+		t.Fatal(err)
+	}
+	var ownID int64
+	if err := d.QueryRowContext(ctx, `SELECT id FROM equipment WHERE name = 'pastry blender'`).Scan(&ownID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("migrating a database that already holds a pastry blender: %v", err)
+	}
+	var aliases int
+	if err := d.QueryRowContext(ctx, `SELECT count(*) FROM equipment_aliases WHERE alias = 'pastry blender'`).Scan(&aliases); err != nil {
+		t.Fatal(err)
+	}
+	if aliases != 0 {
+		t.Errorf("'pastry blender' is already an equipment name but also became an alias")
+	}
+	var reviewed, rows int
+	if err := d.QueryRowContext(ctx, `SELECT reviewed, (SELECT count(*) FROM equipment WHERE name = 'pastry blender') FROM equipment WHERE id = ?`, ownID).Scan(&reviewed, &rows); err != nil || reviewed != 0 || rows != 1 {
+		t.Errorf("the existing row changed: reviewed = %d, rows = %d, err %v", reviewed, rows, err)
+	}
+	got, ok, err := catalog.New(d).MatchEquipment(ctx, "pastry blender")
+	if err != nil || !ok || got.ID != ownID {
+		t.Errorf("lookup = %+v, %v, %v; want the existing row %d", got, ok, err, ownID)
+	}
+	// The other term had no clash and is aliased as usual.
+	got, ok, err = catalog.New(d).MatchEquipment(ctx, "mandoline slicer")
+	if err != nil || !ok || got.Name != "mandoline" {
+		t.Errorf("mandoline slicer lookup = %+v, %v, %v; want mandoline", got, ok, err)
 	}
 }
