@@ -2558,7 +2558,8 @@
       "depends_on": [
         "i-source-fidelity",
         "u-editor-savebar",
-        "u-equipment-chips"
+        "u-equipment-chips",
+        "r-last-made-days"
       ],
       "owns": [
         "internal/recipe/**",
@@ -2579,6 +2580,22 @@
       "adrs": [
         "00025"
       ]
+    },
+    {
+      "id": "r-last-made-days",
+      "title": "Last made N days ago counts calendar days in one zone",
+      "wave": 9,
+      "track": null,
+      "issue": 292,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/recipes/side*.go",
+        "internal/web/recipes/handler_test.go",
+        "e2e/home/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
     }
   ],
   "shared_files": [
