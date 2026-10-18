@@ -99,7 +99,10 @@ type componentView struct {
 }
 
 type equipmentView struct {
+	// Text is the line as written ("2 baking sheet"); Name is the catalog name
+	// alone, which picks the chip's icon (ADR-00024).
 	Text string
+	Name string
 	Hint string
 }
 
@@ -173,7 +176,7 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		if err != nil {
 			return view{}, display.Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
 		}
-		v.Equipment = append(v.Equipment, equipmentView{Text: text, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
+		v.Equipment = append(v.Equipment, equipmentView{Text: text, Name: eq.Name, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
 	}
 	return v, nil
 }

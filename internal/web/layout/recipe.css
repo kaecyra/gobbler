@@ -98,8 +98,11 @@
 .ingr { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 20px; }
 @media (max-width: 900px) { .ingr { position: static; } }
 .ingr h2 { margin-bottom: 6px; }
-.equip ul { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px 18px; }
-.equip li { line-height: 1.3; }
+.equip ul { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+/* Chips for kit (ADR-00024): not interactive, so not held to --tap. */
+.equip-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); line-height: 1.3; }
+.equip-chip .equip-ic { flex: none; width: 22px; height: 22px; color: var(--ink-2); }
+.equip-hint { color: var(--muted); font-size: 0.85em; }
 .comp + .comp { margin-top: 20px; }
 .comp h3 { font-size: 16px; font-weight: 700; border-bottom: 2px solid var(--ink); padding-bottom: 5px; margin-bottom: 4px; }
 .ing { list-style: none; margin: 0; padding: 0; }

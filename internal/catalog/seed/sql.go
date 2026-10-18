@@ -116,6 +116,29 @@ func AdditionsSQL() (string, error) {
 	return b.String(), nil
 }
 
+// EquipmentAdditionsSQL renders EquipmentAdditions as the body of the migration
+// that ships them. Like AdditionsSQL it tolerates rows the application already
+// created: an equipment row of the same name is adopted (marked reviewed, and
+// sized when the addition is, never un-sized) and an existing alias is left
+// alone.
+func EquipmentAdditionsSQL() (string, error) {
+	adds, err := EquipmentAdditions()
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	for _, e := range adds {
+		sized := 0
+		if e.Sized {
+			sized = 1
+		}
+		fmt.Fprintf(&b, "INSERT INTO equipment (name, reviewed, sized) VALUES (%s, 1, %d) ON CONFLICT (name) DO UPDATE SET reviewed = 1, sized = max(sized, excluded.sized);\n",
+			quote(e.Name), sized)
+		aliasInserts(&b, "equipment_aliases", "equipment_id", "equipment", e.Name, e.Aliases, true)
+	}
+	return b.String(), nil
+}
+
 func aliasInserts(b *strings.Builder, aliasTable, fk, table, name string, aliases []string, rerunnable bool) {
 	onConflict := ""
 	if rerunnable {

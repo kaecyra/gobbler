@@ -32,10 +32,18 @@ type page struct {
 	StepList  []listItem
 	Component string
 	Lines     []display.Line
-	Equipment []string
+	Equipment []equipmentChip
 	Meanwhile []meanwhileLink
 	// UpNext is the step after this one, empty on the last step.
 	UpNext upNext
+}
+
+// equipmentChip is one piece of equipment on a step: the line as written
+// ("2 baking sheet") and the catalog name alone, which picks its icon
+// (ADR-00024).
+type equipmentChip struct {
+	Text string
+	Name string
 }
 
 // upNext names the following step: its title when it has one, else its text.
@@ -129,7 +137,13 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		if err != nil {
 			return page{}, err
 		}
-		p.Equipment = append(p.Equipment, text)
+		// The text helper does not return the row; the chip's icon is keyed by
+		// the catalog name, so a second primary-key read supplies it.
+		eq, err := cat.GetEquipment(ctx, int64(link.Equipment))
+		if err != nil {
+			return page{}, display.Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
+		}
+		p.Equipment = append(p.Equipment, equipmentChip{Text: text, Name: eq.Name})
 	}
 
 	guidance, err := display.BuildMeanwhile(r, display.StepNumbers(r))

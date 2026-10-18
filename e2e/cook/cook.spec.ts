@@ -150,6 +150,13 @@ test('shows one step at a time with its ingredients and equipment', async ({ pag
   await expect(page.getByTestId('step-text')).toHaveCount(1);
 });
 
+test('step equipment shows as chips with an icon', async ({ page }) => {
+  await page.goto(`/recipes/${pizza}/cook`);
+  const chip = page.getByTestId('cook-equipment').locator('li').first();
+  await expect(chip).toContainText('e2e bowl');
+  await expect(chip.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+});
+
 test('a step with a title shows it above the text, and up next names the following step', async ({ page }) => {
   await page.goto(`/recipes/${pizza}/cook`);
   await expect(page.getByTestId('step-title')).toHaveText('Make the dough');

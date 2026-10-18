@@ -295,3 +295,9 @@ func TestImportsNoOtherWebFeature(t *testing.T) {
 		}
 	}
 }
+
+// ADR-00024: cook mode shows equipment as chips with an icon.
+func TestEquipmentIsAChipWithAnIcon(t *testing.T) {
+	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=1")
+	mustContain(t, body, `<li class="equip-chip"><svg class="equip-ic"`, "mixing bowl")
+}

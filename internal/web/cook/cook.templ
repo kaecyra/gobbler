@@ -110,7 +110,10 @@ templ stepPanel(p page) {
 					<h2 id="cook-eq-h" class="eyebrow">Equipment</h2>
 					<ul class="cook-chips" data-testid="cook-equipment">
 						for _, e := range p.Equipment {
-							<li>{ e }</li>
+							<li class="equip-chip">
+								@layout.EquipIcon(e.Name)
+								<span>{ e.Text }</span>
+							</li>
 						}
 					</ul>
 				</section>
