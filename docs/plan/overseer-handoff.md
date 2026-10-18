@@ -1,8 +1,24 @@
-# Overseer handoff: 2026-10-18, round 15
+# Overseer handoff: 2026-10-18, round 16
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 16 (2026-10-18), closed: round 15 leftovers
+
+**Merged:** r-equipment-one-read #306 (12eed74, `display.ResolveEquipment` replaces `EquipmentText`); u-ingest-two-column #307 (50cc793, source beside lines, sticky only while open); r-equipment-aliases #309 (2c95aa5, schema 00017, aliases skipped when the term is already a name or alias); u-cook-timers #308 (96a9f5f, icon pause/resume/dismiss, mascot whole); u-recipe-timers #310 (be04277, "Timer · 3 h" / "N min hands-on" tags and "during step N" from `display.BuildMeanwhile`). Graph PR #305 (also the design.md cuisine line). VERSION on main 0.79.0.
+
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
+
+**Remaining nodes, both waiting on the owner:** i-site-extractors (#193), l-meal-planning (#38).
+
+**Not built:** the mockup's per-step equipment tag; the step model has no per-step equipment display data.
+
+**Demo:** `/tmp/gobbler-demo` on the owner's Mac, rebuilt from be04277 with the owner's six URLs and a "This week" list.
+
+**Process notes:**
+- New worktrees need `cd e2e && npm ci` before `make e2e`; workers stop on its absence.
+- Dark screenshots need the header theme toggle; the theme never follows `prefers-color-scheme`.
 
 ## Round 15 (2026-10-18), closed: owner demo feedback
 
@@ -14,11 +30,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Remaining nodes, both waiting on the owner:** i-site-extractors (#193), l-meal-planning (#38).
 
-**Leftovers, no issue yet:**
-- Cook mode reads each equipment row twice, because `display.EquipmentText` drops the row (#296 NIT, outside its lane).
-- Ingest tests use "mandoline slicer" and "pastry blender" as known-unmatched names, so the catalog left out those aliases (#296). The tests should use names no catalog will hold.
-- `docs/ui/design.md` says nothing about cuisine display (#299 review note).
-- Still from round 13: the u-cook timer mascot is clipped and timers have no pause; u-recipe-view lacks the timer tags and passive bar; u-ingest-look lacks the two-column review.
+**Leftovers:** all filed and shipped in round 16.
 
 **Demo:** `/tmp/gobbler-demo` on the owner's Mac, rebuilt from 42a507b, seeded with the owner's six URLs (`.memory/demo-recipes.md`) and a "This week" list.
 
