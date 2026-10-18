@@ -2622,7 +2622,7 @@
       "wave": 10,
       "track": null,
       "issue": 301,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "r-equipment-one-read"
       ],
@@ -3562,6 +3562,11 @@
       "id": "r-equipment-aliases",
       "title": "mandoline slicer and pastry blender aliases",
       "merged": "2c95aa5"
+    },
+    {
+      "id": "u-cook-timers",
+      "title": "cook-mode timer pause and whole mascot",
+      "merged": "96a9f5f"
     }
   ],
   "adr_sequence": {
