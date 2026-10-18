@@ -159,7 +159,7 @@ func (f fakeCat) GetEquipment(_ context.Context, id int64) (catalog.Equipment, e
 	if id != 1 {
 		return catalog.Equipment{}, fmt.Errorf("equipment %d: %w", id, catalog.ErrNotFound)
 	}
-	return catalog.Equipment{ID: 1, Name: "baking sheet"}, nil
+	return catalog.Equipment{ID: 1, Name: "baking sheet", Sized: true}, nil
 }
 
 func line(t *testing.T, qty, unit string, ing recipe.IngredientID, rule quantity.Rule) recipe.IngredientLine {
@@ -225,7 +225,7 @@ func TestLineBuilder(t *testing.T) {
 func TestResolveEquipment(t *testing.T) {
 	ctx := context.Background()
 	link := recipe.EquipmentLink{Equipment: 1, Qty: quantity.Exact(rat(t, "2"))}
-	if got, err := ResolveEquipment(ctx, fakeCat{}, link); err != nil || got.Text != "2 baking sheet" || got.Name != "baking sheet" {
+	if got, err := ResolveEquipment(ctx, fakeCat{}, link); err != nil || got.Text != "2 baking sheet" || got.Name != "baking sheet" || !got.Sized {
 		t.Errorf("got %+v, %v", got, err)
 	}
 	if _, err := ResolveEquipment(ctx, fakeCat{}, recipe.EquipmentLink{Equipment: 9}); err == nil || errors.Is(err, catalog.ErrNotFound) {
