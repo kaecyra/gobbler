@@ -1,8 +1,30 @@
-# Overseer handoff: 2026-10-17, round 14
+# Overseer handoff: 2026-10-18, round 15
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 15 (2026-10-18), closed: owner demo feedback
+
+**Why:** shown the demo with the owner's six recipes, the owner raised author, duplicate yield, missing video, blog cruft, cuisine, the editor's save button and equipment display. Decisions came through one question round and were recorded in ADR-00023 (video from a page embed), ADR-00024 (equipment chips, icons, larger catalog) and ADR-00025 (one cuisine from a fixed list), all in #291.
+
+**Merged:** i-source-fidelity #294 (1639a02, parser version 8); r-last-made-days #298 (1dbae97, calendar days; e2e harness passes TZ); u-editor-savebar #293 (a2b5232); u-equipment-chips #296 (30faec0, schema 00015, 93 catalog items); r-cuisine #299 (42a507b, schema 00016, parser version 9). Graph/ADR PRs #291, #295, #297. VERSION on main 0.76.0.
+
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
+
+**Remaining nodes, both waiting on the owner:** i-site-extractors (#193), l-meal-planning (#38).
+
+**Leftovers, no issue yet:**
+- Cook mode reads each equipment row twice, because `display.EquipmentText` drops the row (#296 NIT, outside its lane).
+- Ingest tests use "mandoline slicer" and "pastry blender" as known-unmatched names, so the catalog left out those aliases (#296). The tests should use names no catalog will hold.
+- `docs/ui/design.md` says nothing about cuisine display (#299 review note).
+- Still from round 13: the u-cook timer mascot is clipped and timers have no pause; u-recipe-view lacks the timer tags and passive bar; u-ingest-look lacks the two-column review.
+
+**Demo:** `/tmp/gobbler-demo` on the owner's Mac, rebuilt from 42a507b, seeded with the owner's six URLs (`.memory/demo-recipes.md`) and a "This week" list.
+
+**Process notes:**
+- Run a full e2e on the host before trusting a date-sensitive test. CI runs in UTC; the host is America/Toronto.
+- Background a server from exec-daemon with `nohup … < /dev/null & disown`. Otherwise the job never returns.
 
 ## Round 14 (2026-10-17), closed
 
