@@ -501,3 +501,40 @@ test('meal type, stage kinds and step titles from the page reach review and are 
   await expect(page.locator('[name="c.0.s.1.kind"]')).toHaveValue('');
   await expect(page.locator('[name="c.0.s.2.kind"]')).toHaveValue('roast');
 });
+
+// The review screen puts the source beside the parsed lines on a wide screen,
+// so a reviewer compares without scrolling, and stacks them, source first, on
+// a phone. The save bar stays at the bottom and the page never scrolls sideways.
+async function openReview(page: import('@playwright/test').Page) {
+  await page.goto('/ingest');
+  await pasteText(page, MESSY);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+}
+
+test('on a wide screen the source sits beside the parsed lines', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  const src = (await page.locator('.srcbox-wrap').boundingBox())!;
+  const form = (await page.locator('.review-body form.editor, .review-body .editor').first().boundingBox())!;
+  expect(src.x + src.width, 'source ends before the form starts').toBeLessThanOrEqual(form.x + 1);
+  expect(Math.abs(src.y - form.y), 'both columns start on one row').toBeLessThan(40);
+});
+
+test('on a phone the source stacks above the parsed lines with no sideways scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReview(page);
+  const src = (await page.locator('.srcbox-wrap').boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(src.y + src.height, 'source ends before the form starts').toBeLessThanOrEqual(form.y + 1);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('the save bar still sits at the bottom of the wide review screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  const bar = (await page.locator('.savebar').boundingBox())!;
+  expect(bar.y + bar.height).toBeGreaterThan(768 - 4);
+  expect(bar.y + bar.height).toBeLessThanOrEqual(768 + 1);
+});
