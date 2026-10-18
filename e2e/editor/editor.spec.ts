@@ -259,7 +259,7 @@ test('the cuisine is set from the fixed list in the editor, shown on the recipe 
   await expect(select).toHaveValue('middle_eastern');
   await select.selectOption('');
   await save(page);
-  await page.goto(`/recipes/${id}`);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
   await expect(page.getByTestId('cuisine')).toHaveCount(0);
 });
 
