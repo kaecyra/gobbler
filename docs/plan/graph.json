@@ -2598,6 +2598,93 @@
       ],
       "needs_migration": null,
       "adrs": []
+    },
+    {
+      "id": "r-equipment-one-read",
+      "title": "one catalog read per equipment link",
+      "wave": 10,
+      "track": null,
+      "issue": 300,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/display/**",
+        "internal/web/cook/model.go",
+        "internal/web/recipeview/model.go",
+        "internal/web/history/model.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "u-cook-timers",
+      "title": "cook-mode timer pause and whole mascot",
+      "wave": 10,
+      "track": null,
+      "issue": 301,
+      "status": "todo",
+      "depends_on": [
+        "r-equipment-one-read"
+      ],
+      "owns": [
+        "internal/web/cook/**",
+        "internal/web/static/cook*",
+        "e2e/cook/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "u-recipe-timers",
+      "title": "recipe page step tags and passive steps",
+      "wave": 10,
+      "track": null,
+      "issue": 302,
+      "status": "todo",
+      "depends_on": [
+        "r-equipment-one-read"
+      ],
+      "owns": [
+        "internal/web/recipeview/**",
+        "internal/web/layout/recipe*",
+        "e2e/recipeview/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "u-ingest-two-column",
+      "title": "two-column review screen",
+      "wave": 10,
+      "track": null,
+      "issue": 303,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/ingest/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "r-equipment-aliases",
+      "title": "mandoline slicer and pastry blender aliases",
+      "wave": 10,
+      "track": null,
+      "issue": 304,
+      "status": "todo",
+      "depends_on": [
+        "u-ingest-two-column"
+      ],
+      "owns": [
+        "internal/ingest/*_test.go",
+        "internal/web/ingest/ingest_test.go",
+        "internal/catalog/seed/**",
+        "internal/db/migrations/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": []
     }
   ],
   "shared_files": [
