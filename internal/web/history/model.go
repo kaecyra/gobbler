@@ -135,10 +135,11 @@ func buildVersion(ctx context.Context, cat Catalog, id, version, currentVersion 
 	}
 
 	for _, link := range doc.Equipment {
-		text, err := display.EquipmentText(ctx, cat, link)
+		eq, err := display.ResolveEquipment(ctx, cat, link)
 		if err != nil {
 			return versionView{}, err
 		}
+		text := eq.Text
 		if len(link.Steps) > 0 {
 			var used []string
 			for _, s := range link.Steps {

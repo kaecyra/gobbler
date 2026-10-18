@@ -166,17 +166,11 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	}
 
 	for _, link := range r.Equipment {
-		text, err := display.EquipmentText(ctx, cat, link)
+		eq, err := display.ResolveEquipment(ctx, cat, link)
 		if err != nil {
 			return view{}, err
 		}
-		// The text helper does not return the row, and the hint needs its sized
-		// flag; a second primary-key read keeps one formatter for the line.
-		eq, err := cat.GetEquipment(ctx, int64(link.Equipment))
-		if err != nil {
-			return view{}, display.Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
-		}
-		v.Equipment = append(v.Equipment, equipmentView{Text: text, Name: eq.Name, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
+		v.Equipment = append(v.Equipment, equipmentView{Text: eq.Text, Name: eq.Name, Hint: equipmentHint(o.Mult.Cmp(quantity.Int(1)) > 0, eq.Sized)})
 	}
 	return v, nil
 }

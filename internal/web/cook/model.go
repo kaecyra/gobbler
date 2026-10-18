@@ -133,17 +133,11 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		if !usesStep(link, step.ID) {
 			continue
 		}
-		text, err := display.EquipmentText(ctx, cat, link)
+		eq, err := display.ResolveEquipment(ctx, cat, link)
 		if err != nil {
 			return page{}, err
 		}
-		// The text helper does not return the row; the chip's icon is keyed by
-		// the catalog name, so a second primary-key read supplies it.
-		eq, err := cat.GetEquipment(ctx, int64(link.Equipment))
-		if err != nil {
-			return page{}, display.Opaque(err, fmt.Sprintf("equipment %d", link.Equipment))
-		}
-		p.Equipment = append(p.Equipment, equipmentChip{Text: text, Name: eq.Name})
+		p.Equipment = append(p.Equipment, equipmentChip{Text: eq.Text, Name: eq.Name})
 	}
 
 	guidance, err := display.BuildMeanwhile(r, display.StepNumbers(r))

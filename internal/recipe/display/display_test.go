@@ -222,13 +222,13 @@ func TestLineBuilder(t *testing.T) {
 	}
 }
 
-func TestEquipmentText(t *testing.T) {
+func TestResolveEquipment(t *testing.T) {
 	ctx := context.Background()
 	link := recipe.EquipmentLink{Equipment: 1, Qty: quantity.Exact(rat(t, "2"))}
-	if got, err := EquipmentText(ctx, fakeCat{}, link); err != nil || got != "2 baking sheet" {
-		t.Errorf("got %q, %v", got, err)
+	if got, err := ResolveEquipment(ctx, fakeCat{}, link); err != nil || got.Text != "2 baking sheet" || got.Name != "baking sheet" {
+		t.Errorf("got %+v, %v", got, err)
 	}
-	if _, err := EquipmentText(ctx, fakeCat{}, recipe.EquipmentLink{Equipment: 9}); err == nil || errors.Is(err, catalog.ErrNotFound) {
+	if _, err := ResolveEquipment(ctx, fakeCat{}, recipe.EquipmentLink{Equipment: 9}); err == nil || errors.Is(err, catalog.ErrNotFound) {
 		t.Errorf("dangling equipment err = %v", err)
 	}
 }
