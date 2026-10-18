@@ -258,3 +258,11 @@ func TestNewRecipeStepViewWordsTheTimeByWhoseItIs(t *testing.T) {
 		}
 	}
 }
+
+func TestStepShowsWhichPassiveStepsItCanRunDuring(t *testing.T) {
+	body := renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", During: []int{3}}, "4"))
+	has(t, body, `class="stag dep"`, `data-testid="during"`, "during step 3")
+	body = renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", During: []int{2, 3}}, "4"))
+	has(t, body, "during steps 2, 3")
+	lacks(t, renderPart(t, RecipeStep(RecipeStepView{Text: "Stir."}, "1")), "during")
+}

@@ -69,13 +69,16 @@ templ RecipeStep(s RecipeStepView, number string) {
 				<h4 data-testid="step-title">{ s.Title }</h4>
 			}
 			<p>{ s.Text }</p>
-			if s.Time != "" || len(s.After) > 0 {
+			if s.Time != "" || len(s.After) > 0 || len(s.During) > 0 {
 				<div class="stags">
 					if s.Time != "" {
 						<span class={ "stag", templ.KV("t", s.Passive) }>{ s.Time }</span>
 					}
 					if len(s.After) > 0 {
 						<span class="stag dep" data-testid="after">{ afterText(s.After) }</span>
+					}
+					if len(s.During) > 0 {
+						<span class="stag dep" data-testid="during">{ duringText(s.During) }</span>
 					}
 				</div>
 			}

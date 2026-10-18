@@ -487,3 +487,11 @@ test('steps carry their time tag, dependency tag and the passive number mark', a
   expect(await border(0)).toBe('solid');
   expect(await border(1)).toBe('dashed');
 });
+
+test('a step offered while a passive step waits is tagged with that step', async ({ page }) => {
+  await page.goto(`/recipes/${meanwhileId}`);
+  const chop = page.locator('.step', { hasText: 'Chop the tomatoes.' });
+  await expect(chop.getByTestId('during')).toHaveText('during step 2');
+  // The step that waits for the chop is not offered, so it has no such tag.
+  await expect(page.locator('.step', { hasText: 'Simmer the sauce.' }).getByTestId('during')).toHaveCount(0);
+});

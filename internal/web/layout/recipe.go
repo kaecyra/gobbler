@@ -54,6 +54,9 @@ type RecipeStepView struct {
 	Time string
 	// After lists the numbers of the steps this one waits for.
 	After []int
+	// During lists the numbers of the passive steps this one is offered
+	// while (their Meanwhile callouts name it); empty for most steps.
+	During []int
 	// Meanwhile is work offered while this passive step runs (ADR-00004);
 	// empty for every other step and for a past version.
 	Meanwhile []display.MeanwhileItem
@@ -144,13 +147,18 @@ func chilis(n int) []struct{} { return make([]struct{}, n) }
 
 // afterText renders "after step 3" or "after steps 3, 4, 5" for the steps a
 // step waits for.
-func afterText(nums []int) string {
+func afterText(nums []int) string { return stepRefs("after", nums) }
+
+// duringText is "during step 3", the inverse of a Meanwhile callout.
+func duringText(nums []int) string { return stepRefs("during", nums) }
+
+func stepRefs(word string, nums []int) string {
 	parts := make([]string, len(nums))
 	for i, n := range nums {
 		parts[i] = strconv.Itoa(n)
 	}
 	if len(parts) == 1 {
-		return "after step " + parts[0]
+		return word + " step " + parts[0]
 	}
-	return "after steps " + strings.Join(parts, ", ")
+	return word + " steps " + strings.Join(parts, ", ")
 }

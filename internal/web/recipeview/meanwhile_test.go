@@ -85,3 +85,12 @@ func TestViewWithBrokenStepGraphFailsLoudly(t *testing.T) {
 		t.Fatalf("status = %d, want 500\n%s", code, body)
 	}
 }
+
+func TestViewTagsTheStepsOfferedMeanwhileWithTheStepTheyRunDuring(t *testing.T) {
+	_, body := serve(t, fakeRecipes{3: doughAndSauce()}, "/recipes/3")
+	// Only chop (step 4) is offered while the rise (step 2) waits.
+	if n := strings.Count(body, `data-testid="during"`); n != 1 {
+		t.Fatalf("during tags = %d, want 1\n%s", n, body)
+	}
+	mustContain(t, body, "during step 2")
+}
