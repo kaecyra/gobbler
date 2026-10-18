@@ -473,3 +473,17 @@ test('every control on a clone page with its origin link is at least 44px tall',
     expect(box?.height ?? 0, `origin link #${i} height`).toBeGreaterThanOrEqual(TAP - 0.5);
   }
 });
+
+test('steps carry their time tag, dependency tag and the passive number mark', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  const steps = page.locator('.step');
+  await expect(steps.nth(0).locator('.stag')).toHaveText(['20 min hands-on']);
+  await expect(steps.nth(1).locator('.stag')).toHaveText(['Timer · 3 h', 'after step 1']);
+  // The timer tag is the waiting colour, the hands-on tag is not.
+  const bg = (i: number) => steps.nth(i).locator('.stag').first().evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await bg(1)).not.toBe(await bg(0));
+  // A passive step's number is dashed; an active one's is solid.
+  const border = (i: number) => steps.nth(i).locator('.sn').evaluate((el) => getComputedStyle(el).borderTopStyle);
+  expect(await border(0)).toBe('solid');
+  expect(await border(1)).toBe('dashed');
+});

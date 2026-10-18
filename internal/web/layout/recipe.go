@@ -49,8 +49,9 @@ type RecipeStepView struct {
 	Text  string
 	// Passive marks a step that needs no attention while it runs.
 	Passive bool
-	// Note is the duration and the passive marker, "20 min, passive".
-	Note string
+	// Time is the step's time tag: "Timer · 3 h" when it runs unattended,
+	// "25 min hands-on" when it does not, empty when the step has no duration.
+	Time string
 	// After lists the numbers of the steps this one waits for.
 	After []int
 	// Meanwhile is work offered while this passive step runs (ADR-00004);
@@ -62,11 +63,23 @@ type RecipeStepView struct {
 // recipe, which turns each dependency into the number printed on its step;
 // meanwhile is the guidance offered while it runs, nil for none.
 func NewRecipeStepView(s recipe.Step, number map[recipe.StepID]int, meanwhile []display.MeanwhileItem) RecipeStepView {
-	sv := RecipeStepView{Title: s.Title, Text: s.Text, Passive: s.Passive, Note: display.StepNote(s), Meanwhile: meanwhile}
+	sv := RecipeStepView{Title: s.Title, Text: s.Text, Passive: s.Passive, Time: stepTime(s), Meanwhile: meanwhile}
 	for _, dep := range s.DependsOn {
 		sv.After = append(sv.After, number[dep])
 	}
 	return sv
+}
+
+// stepTime words a step's duration by whose time it is, as the mockup does.
+func stepTime(s recipe.Step) string {
+	d := display.FormatDuration(s.Duration)
+	switch {
+	case d == "":
+		return ""
+	case s.Passive:
+		return "Timer · " + d
+	}
+	return d + " hands-on"
 }
 
 // RecipeMeta is what sits in the line under a recipe's title: meal type,

@@ -68,7 +68,7 @@ func TestViewWithoutGuidanceIsUnchanged(t *testing.T) {
 		t.Fatalf("status = %d\n%s", code, body)
 	}
 	mustNotContain(t, body, "Meanwhile", "meanwhile")
-	mustContain(t, body, "Bake until golden.", "45 min, passive")
+	mustContain(t, body, "Bake until golden.", "Timer · 45 min")
 }
 
 func TestViewMeanwhileSurvivesScaling(t *testing.T) {
