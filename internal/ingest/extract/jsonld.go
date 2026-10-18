@@ -56,7 +56,7 @@ func scriptText(n *nethtml.Node) string {
 // findRecipe searches a decoded JSON-LD value (object, array or @graph) for
 // the first usable Recipe.
 func findRecipe(v any) (Raw, bool) {
-	return findRecipeDepth(v, 0)
+	return findRecipeDepth(v, 0, indexByID(v))
 }
 
 // jsonldMaxDepth bounds how far below the top of a block a Recipe is looked
@@ -66,20 +66,20 @@ const jsonldMaxDepth = 4
 // findRecipeDepth looks at v, then at @graph, then at every other object or
 // array valued property in sorted key order (map order is random and the
 // result must be deterministic), so a Recipe under mainEntity is found.
-func findRecipeDepth(v any, depth int) (Raw, bool) {
+func findRecipeDepth(v any, depth int, ids map[string]map[string]any) (Raw, bool) {
 	if depth > jsonldMaxDepth {
 		return Raw{}, false
 	}
 	switch t := v.(type) {
 	case []any:
 		for _, e := range t {
-			if r, ok := findRecipeDepth(e, depth+1); ok {
+			if r, ok := findRecipeDepth(e, depth+1, ids); ok {
 				return r, true
 			}
 		}
 	case map[string]any:
 		if hasType(t["@type"], "Recipe") {
-			if r := recipeFromJSONLD(t); r.usable() {
+			if r := recipeFromJSONLD(t, ids); r.usable() {
 				return r, true
 			}
 		}
@@ -94,12 +94,79 @@ func findRecipeDepth(v any, depth int) (Raw, bool) {
 			keys = append([]string{"@graph"}, keys...)
 		}
 		for _, k := range keys {
-			if r, ok := findRecipeDepth(t[k], depth+1); ok {
+			if r, ok := findRecipeDepth(t[k], depth+1, ids); ok {
 				return r, true
 			}
 		}
 	}
 	return Raw{}, false
+}
+
+// indexByID collects every object in a JSON-LD block that carries an "@id" and
+// at least one other property, so a reference elsewhere in the block
+// ({"@id": ...} alone, as Yoast writes Recipe.author) can be resolved. The
+// first object with an ID wins, so the result is deterministic.
+func indexByID(v any) map[string]map[string]any {
+	ids := map[string]map[string]any{}
+	var rec func(v any)
+	rec = func(v any) {
+		switch t := v.(type) {
+		case []any:
+			for _, e := range t {
+				rec(e)
+			}
+		case map[string]any:
+			if id, ok := t["@id"].(string); ok && len(t) > 1 {
+				if _, dup := ids[id]; !dup {
+					ids[id] = t
+				}
+			}
+			keys := make([]string, 0, len(t))
+			for k := range t {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				rec(t[k])
+			}
+		}
+	}
+	rec(v)
+	return ids
+}
+
+// resolveRefs returns a copy of the Recipe m in which every property value that
+// is a bare reference ({"@id": ...}), alone or inside a list, is replaced by
+// the object it names. One level only: a reference inside the resolved object
+// stays as written, which also makes a reference cycle harmless.
+func resolveRefs(m map[string]any, ids map[string]map[string]any) map[string]any {
+	deref := func(v any) any {
+		ref, ok := v.(map[string]any)
+		if !ok || len(ref) != 1 {
+			return v
+		}
+		id, ok := ref["@id"].(string)
+		if !ok {
+			return v
+		}
+		if target, found := ids[id]; found {
+			return target
+		}
+		return v
+	}
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		if arr, ok := v.([]any); ok {
+			res := make([]any, len(arr))
+			for i, e := range arr {
+				res[i] = deref(e)
+			}
+			out[k] = res
+			continue
+		}
+		out[k] = deref(v)
+	}
+	return out
 }
 
 func hasType(v any, want string) bool {
@@ -119,7 +186,8 @@ func hasType(v any, want string) bool {
 	return false
 }
 
-func recipeFromJSONLD(m map[string]any) Raw {
+func recipeFromJSONLD(m map[string]any, ids map[string]map[string]any) Raw {
+	m = resolveRefs(m, ids)
 	r := Raw{
 		Name:        jsonString(m["name"]),
 		Author:      strings.Join(jsonStrings(m["author"]), ", "),
