@@ -516,7 +516,7 @@ test('on a wide screen the source sits beside the parsed lines', async ({ page }
   await page.setViewportSize({ width: 1024, height: 768 });
   await openReview(page);
   const src = (await page.locator('.srcbox-wrap').boundingBox())!;
-  const form = (await page.locator('.review-body form.editor, .review-body .editor').first().boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
   expect(src.x + src.width, 'source ends before the form starts').toBeLessThanOrEqual(form.x + 1);
   expect(Math.abs(src.y - form.y), 'both columns start on one row').toBeLessThan(40);
 });
@@ -537,4 +537,41 @@ test('the save bar still sits at the bottom of the wide review screen', async ({
   const bar = (await page.locator('.savebar').boundingBox())!;
   expect(bar.y + bar.height).toBeGreaterThan(768 - 4);
   expect(bar.y + bar.height).toBeLessThanOrEqual(768 + 1);
+});
+
+test('the sticky source column clears the site header while the page scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  await page.evaluate(() => window.scrollTo(0, 300));
+  const head = (await page.locator('.top').boundingBox())!;
+  const src = (await page.locator('.srcbox-wrap').boundingBox())!;
+  expect(src.y).toBeGreaterThanOrEqual(head.y + head.height);
+});
+
+const NO_INGREDIENTS = `Toast
+
+Instructions:
+Toast the bread until golden.
+`;
+
+test('a draft with no source box leaves the editor the full width of the review grid', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/ingest');
+  await pasteText(page, NO_INGREDIENTS);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+  await expect(page.locator('.srcbox-wrap')).toHaveCount(0);
+  const grid = (await page.locator('.review-grid').boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(form.width).toBeGreaterThan(grid.width - 4);
+});
+
+test('a collapsed source box does not leave an empty column beside the editor', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  await page.locator('.srcbox-wrap summary').click();
+  await expect(page.locator('.srcbox-wrap')).not.toHaveAttribute('open', '');
+  const grid = (await page.locator('.review-grid').boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(form.width).toBeGreaterThan(grid.width - 4);
 });

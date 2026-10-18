@@ -46,8 +46,9 @@ templ styles() {
 		.llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
 		.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }
 		.review-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }
-		.review-grid:not(:has(.srcbox-wrap)) { grid-template-columns: minmax(0, 1fr); }
-		.review-grid > .srcbox-wrap { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+		.review-grid:not(:has(.srcbox-wrap[open])) { grid-template-columns: minmax(0, 1fr); }
+		/* Clears the sticky site header: the same 90px offset as .ingr in layout/recipe.css. */
+		.review-grid > .srcbox-wrap { position: sticky; top: 90px; max-height: calc(100vh - 106px); overflow-y: auto; }
 		@media (max-width: 860px) {
 			.review-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
 			.review-grid > .srcbox-wrap { position: static; max-height: none; overflow-y: visible; }
