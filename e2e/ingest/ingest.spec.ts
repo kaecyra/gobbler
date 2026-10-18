@@ -501,3 +501,82 @@ test('meal type, stage kinds and step titles from the page reach review and are 
   await expect(page.locator('[name="c.0.s.1.kind"]')).toHaveValue('');
   await expect(page.locator('[name="c.0.s.2.kind"]')).toHaveValue('roast');
 });
+
+// The review screen puts the source beside the parsed lines on a wide screen,
+// so a reviewer compares without scrolling, and stacks them, source first, on
+// a phone. The save bar stays at the bottom and the page never scrolls sideways.
+async function openReview(page: import('@playwright/test').Page) {
+  await page.goto('/ingest');
+  await pasteText(page, MESSY);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+}
+
+test('on a wide screen the source sits beside the parsed lines', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  const src = (await page.locator('.srcbox-wrap').boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(src.x + src.width, 'source ends before the form starts').toBeLessThanOrEqual(form.x + 1);
+  expect(Math.abs(src.y - form.y), 'both columns start on one row').toBeLessThan(40);
+});
+
+test('on a phone the source stacks above the parsed lines with no sideways scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReview(page);
+  const src = (await page.locator('.srcbox-wrap').boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(src.y + src.height, 'source ends before the form starts').toBeLessThanOrEqual(form.y + 1);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('the save bar still sits at the bottom of the wide review screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  const bar = (await page.locator('.savebar').boundingBox())!;
+  expect(bar.y + bar.height).toBeGreaterThan(768 - 4);
+  expect(bar.y + bar.height).toBeLessThanOrEqual(768 + 1);
+});
+
+test('the sticky source column clears the site header while the page scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  await page.evaluate(() => window.scrollTo(0, 300));
+  const head = (await page.locator('.top').boundingBox())!;
+  const src = (await page.locator('.srcbox-wrap').boundingBox())!;
+  expect(src.y).toBeGreaterThanOrEqual(head.y + head.height);
+});
+
+const NO_INGREDIENTS = `Toast
+
+Instructions:
+Toast the bread until golden.
+`;
+
+test('a draft with no source box leaves the editor the full width of the review grid', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/ingest');
+  await pasteText(page, NO_INGREDIENTS);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+  await expect(page.locator('.srcbox-wrap')).toHaveCount(0);
+  const grid = (await page.locator('.review-grid').boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(form.width).toBeGreaterThan(grid.width - 4);
+});
+
+test('a collapsed source box does not leave an empty column beside the editor', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openReview(page);
+  await page.locator('.srcbox-wrap summary').click();
+  await expect(page.locator('.srcbox-wrap')).not.toHaveAttribute('open', '');
+  const grid = (await page.locator('.review-grid').boundingBox())!;
+  const form = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(form.width).toBeGreaterThan(grid.width - 4);
+  // The collapsed summary scrolls away with the page; it does not stick over the editor.
+  await page.evaluate(() => window.scrollTo(0, 400));
+  const sum = (await page.locator('.srcbox-wrap').boundingBox())!;
+  const ed = (await page.locator('.review-body .editor').first().boundingBox())!;
+  expect(sum.y + sum.height, 'summary stays out of the editor').toBeLessThanOrEqual(ed.y + 1);
+});
