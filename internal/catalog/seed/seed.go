@@ -23,7 +23,7 @@ import (
 	"fmt"
 )
 
-//go:embed ingredients.json units.json unit_additions.json equipment.json
+//go:embed ingredients.json units.json unit_additions.json equipment.json equipment_additions.json
 var files embed.FS
 
 // Ingredient is one curated canonical ingredient. DensityGPerML is grams per
@@ -49,6 +49,10 @@ type Unit struct {
 type Equipment struct {
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases"`
+	// Sized marks pans, tins and dishes whose size matters (ADR-00019). Only
+	// equipment additions set it; the first seed predates the flag and the
+	// operator marked those rows by hand.
+	Sized bool `json:"sized,omitempty"`
 }
 
 // UnitAdditions returns the units the first seed lacked: an entry whose name is
@@ -65,6 +69,12 @@ func Units() ([]Unit, error) { return load[Unit]("units.json") }
 
 // EquipmentList returns the seeded equipment list.
 func EquipmentList() ([]Equipment, error) { return load[Equipment]("equipment.json") }
+
+// EquipmentAdditions returns the equipment added after the first seed
+// (ADR-00024). They ship in a later migration, rendered by
+// EquipmentAdditionsSQL, because the first migration's SQL must stay what
+// EquipmentList() rendered when it was written.
+func EquipmentAdditions() ([]Equipment, error) { return load[Equipment]("equipment_additions.json") }
 
 func load[T any](name string) ([]T, error) {
 	raw, err := files.ReadFile(name)

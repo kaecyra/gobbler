@@ -278,7 +278,7 @@ func sizedKitchen(t *testing.T) (fakeRecipes, fakeCatalog) {
 func equipmentItems(t *testing.T, body string) map[string]string {
 	t.Helper()
 	items := map[string]string{}
-	for _, m := range regexp.MustCompile(`(?s)<li data-testid="equipment-item">(.*?)</li>`).FindAllStringSubmatch(body, -1) {
+	for _, m := range regexp.MustCompile(`(?s)<li class="equip-chip" data-testid="equipment-item">(.*?)</li>`).FindAllStringSubmatch(body, -1) {
 		for _, name := range []string{"9x13 pan", "whisk"} {
 			if strings.Contains(m[1], name) {
 				items[name] = m[1]
@@ -608,4 +608,24 @@ func devHousehold(t *testing.T, d *sql.DB) household.Household {
 		t.Fatalf("household of %s: %v", auth.DevEmail, err)
 	}
 	return h
+}
+
+// ADR-00024: equipment is a chip with an icon, the name and, when it applies,
+// the size hint.
+func TestEquipmentRendersAsChipsWithIcons(t *testing.T) {
+	recipes, cat := sizedKitchen(t)
+	rec := serveRequest(t, recipes, cat, httptest.NewRequest(http.MethodGet, "/recipes/7?scale=3", nil))
+	items := equipmentItems(t, rec.Body.String())
+	for _, name := range []string{"9x13 pan", "whisk"} {
+		if !strings.Contains(items[name], `<svg class="equip-ic"`) {
+			t.Errorf("%s chip has no icon: %s", name, items[name])
+		}
+	}
+	if !strings.Contains(items["9x13 pan"], `class="equip-hint"`) || strings.Contains(items["whisk"], `class="equip-hint"`) {
+		t.Errorf("hint should sit on the sized pan chip only: pan=%s whisk=%s", items["9x13 pan"], items["whisk"])
+	}
+	// "whisk" is central equipment, so it gets its own drawing, not the generic one.
+	if items["whisk"] == items["9x13 pan"] {
+		t.Error("chips for different equipment should not render identically")
+	}
 }

@@ -201,10 +201,11 @@ templ recipeBody(v view) {
 						<h2 id="equipment-h" class="eyebrow">Equipment</h2>
 						<ul data-testid="equipment">
 							for _, e := range v.Equipment {
-								<li data-testid="equipment-item">
-									{ e.Text }
+								<li class="equip-chip" data-testid="equipment-item">
+									@layout.EquipIcon(e.Name)
+									<span>{ e.Text }</span>
 									if e.Hint != "" {
-										<span class="muted" data-testid="equipment-hint"> ({ e.Hint })</span>
+										<span class="equip-hint" data-testid="equipment-hint">({ e.Hint })</span>
 									}
 								</li>
 							}

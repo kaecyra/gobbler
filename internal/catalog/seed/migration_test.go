@@ -3,6 +3,7 @@ package seed_test
 import (
 	"context"
 	"io/fs"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -89,5 +90,56 @@ func TestMigration00003AdoptsUnitsTheOldSaveFlowCreated(t *testing.T) {
 		if err := d.QueryRowContext(ctx, `SELECT count(*) FROM unit_aliases WHERE alias = ?`, alias).Scan(&n); err != nil || n != 0 {
 			t.Errorf("after Down, alias %q rows = %d (err %v), want removed", alias, n, err)
 		}
+	}
+}
+
+// Migration 00015 adds the common equipment (ADR-00024) to a database the
+// application has written to: a same-named row an ingest created unreviewed is
+// adopted, not a start-up failure, and a sized addition arrives sized.
+func TestMigration00015AddsEquipmentAndAdoptsExistingRows(t *testing.T) {
+	ctx := context.Background()
+	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+
+	before := fstest.MapFS{}
+	entries, err := fs.ReadDir(db.Migrations(), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name() >= "00015" || !strings.HasSuffix(e.Name(), ".sql") {
+			continue
+		}
+		b, err := fs.ReadFile(db.Migrations(), e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		before[e.Name()] = &fstest.MapFile{Data: b}
+	}
+	if err := db.Migrate(ctx, d, before); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.ExecContext(ctx, `INSERT INTO equipment (name, reviewed) VALUES ('tongs', 0)`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("migrating a database that already holds an unreviewed tongs: %v", err)
+	}
+	for name, wantSized := range map[string]int{"tongs": 0, "bundt pan": 1} {
+		var reviewed, sized, n int
+		if err := d.QueryRowContext(ctx, `SELECT reviewed, sized, (SELECT count(*) FROM equipment WHERE name = ?) FROM equipment WHERE name = ?`, name, name).Scan(&reviewed, &sized, &n); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if reviewed != 1 || n != 1 || sized != wantSized {
+			t.Errorf("equipment %q: reviewed = %d, rows = %d, sized = %d, want reviewed once with sized %d", name, reviewed, n, sized, wantSized)
+		}
+	}
+	var id int64
+	if err := d.QueryRowContext(ctx, `SELECT equipment_id FROM equipment_aliases WHERE alias = 'tin opener'`).Scan(&id); err != nil {
+		t.Errorf("alias of an added can opener missing: %v", err)
 	}
 }

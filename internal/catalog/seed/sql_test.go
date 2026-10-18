@@ -71,3 +71,76 @@ func TestAdditionsSQLToleratesExistingRows(t *testing.T) {
 		}
 	}
 }
+
+// The equipment additions ship in migration 00015 (ADR-00024). If the JSON or
+// the renderer changes, this fails until the migration is regenerated with
+// `go run ./internal/catalog/seed/genseed -equipment-additions`.
+func TestMigrationHoldsRenderedEquipmentAdditions(t *testing.T) {
+	raw, err := os.ReadFile("../../db/migrations/00015_equipment_additions.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := EquipmentAdditionsSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rendered == "" || !strings.Contains(string(raw), rendered) {
+		t.Error("migration 00015 does not contain the output of EquipmentAdditionsSQL()")
+	}
+}
+
+// An addition that repeats a name or alias of the first seed, or of another
+// addition, would silently lose its alias to ON CONFLICT DO NOTHING.
+func TestEquipmentAdditionsDoNotCollideWithTheSeed(t *testing.T) {
+	base, err := EquipmentList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	adds, err := EquipmentAdditions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(adds) == 0 {
+		t.Fatal("no equipment additions")
+	}
+	owner := map[string]string{}
+	claim := func(term, name string) {
+		term = strings.ToLower(term)
+		if prev, ok := owner[term]; ok {
+			t.Errorf("%q is claimed by both %q and %q", term, prev, name)
+		}
+		owner[term] = name
+	}
+	for _, e := range base {
+		claim(e.Name, e.Name)
+		for _, a := range e.Aliases {
+			claim(a, e.Name)
+		}
+	}
+	for _, e := range adds {
+		claim(e.Name, e.Name)
+		for _, a := range e.Aliases {
+			claim(a, e.Name)
+		}
+	}
+}
+
+func TestEquipmentAdditionsSQLSetsSizedAndToleratesExistingRows(t *testing.T) {
+	got, err := EquipmentAdditionsSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"INSERT INTO equipment (name, reviewed, sized) VALUES ('bundt pan', 1, 1) ON CONFLICT (name) DO UPDATE SET reviewed = 1;",
+		"INSERT INTO equipment (name, reviewed, sized) VALUES ('tongs', 1, 0) ON CONFLICT (name) DO UPDATE SET reviewed = 1;",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("EquipmentAdditionsSQL() lacks %q", want)
+		}
+	}
+	for _, stmt := range strings.Split(strings.TrimSpace(got), "\n") {
+		if strings.HasPrefix(stmt, "INSERT INTO equipment_aliases") && !strings.HasSuffix(stmt, "ON CONFLICT (alias) DO NOTHING;") {
+			t.Errorf("alias insert is not conflict-safe: %q", stmt)
+		}
+	}
+}

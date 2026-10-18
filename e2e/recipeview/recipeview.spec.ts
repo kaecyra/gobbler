@@ -229,6 +229,19 @@ test('a view scaled up hints at a larger pan on sized equipment only', async ({ 
   await expect(items.filter({ hasText: 'e2e whisk' })).not.toContainText('larger pan');
 });
 
+// ADR-00024: equipment is a chip with an icon, then the name.
+test('equipment shows as chips with an icon', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  const chips = page.getByTestId('equipment-item');
+  await expect(chips).toHaveCount(2);
+  for (const chip of await chips.all()) {
+    await expect(chip.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+    const box = await chip.locator('svg').boundingBox();
+    expect(box?.width).toBeGreaterThan(0);
+  }
+  await expect(chips.filter({ hasText: 'e2e whisk' })).toBeVisible();
+});
+
 test('a view scaled down has no larger-pan hint', async ({ page }) => {
   await page.goto(`/recipes/${id}?scale=1/2`);
   await expect(page.getByTestId('scaled-note')).toBeVisible();

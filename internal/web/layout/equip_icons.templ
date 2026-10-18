@@ -1,0 +1,11 @@
+package layout
+
+// EquipIcon draws the line icon for a piece of equipment, by its catalog name
+// (ADR-00024). It is decoration: the chip's text is the accessible name. The
+// drawings are constants in this package, never user input, so they are
+// emitted raw.
+templ EquipIcon(name string) {
+	<svg class="equip-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+		@templ.Raw(equipGlyph(name))
+	</svg>
+}
