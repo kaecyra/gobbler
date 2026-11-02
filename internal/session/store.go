@@ -108,18 +108,13 @@ func (s *Store) Lookup(ctx context.Context, token string) (string, error) {
 	}
 	h := hash(token)
 	now := s.now()
-	var row sessiondb.GetLiveSessionRow
-	found := true
-	err := db.WithReadTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
-		var err error
-		row, err = q.GetLiveSession(ctx, sessiondb.GetLiveSessionParams{TokenHash: h, Now: s.stamp(now)})
-		if errors.Is(err, sql.ErrNoRows) {
-			found = false
-			return nil
-		}
-		return err
-	})
-	if err != nil {
+	// One SELECT reads one snapshot, so it needs no transaction (household
+	// reads single rows the same way).
+	row, err := s.q.GetLiveSession(ctx, sessiondb.GetLiveSessionParams{TokenHash: h, Now: s.stamp(now)})
+	found := err == nil
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+	case err != nil:
 		return "", fmt.Errorf("look up session: %w", err)
 	}
 	if !found {
