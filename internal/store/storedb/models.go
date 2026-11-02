@@ -231,6 +231,14 @@ type RevisionIngredient struct {
 	IngredientID int64
 }
 
+type Session struct {
+	TokenHash  []byte
+	Email      string
+	CreatedAt  string
+	LastUsedAt string
+	ExpiresAt  string
+}
+
 type ShoppingCheck struct {
 	HouseholdID int64
 	ListID      int64

@@ -36,3 +36,11 @@ sql:
       go:
         package: householddb
         out: internal/household/householddb
+  - name: session
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/session/queries
+    gen:
+      go:
+        package: sessiondb
+        out: internal/session/sessiondb
