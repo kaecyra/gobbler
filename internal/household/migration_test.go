@@ -8,6 +8,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/db/dbtest"
 )
 
 // Invitations issued before 00018 are given codes by the migration, keep
@@ -20,7 +21,7 @@ func TestMigration00018GivesExistingInvitationsCodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	if err := db.Migrate(ctx, d, db.MigrationsBelow("00018")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00018")); err != nil {
 		t.Fatal(err)
 	}
 	const future = "2999-01-01T00:00:00.000000000Z"

@@ -26,6 +26,11 @@ export const DRAFT_TEXT = 'tenancy draft cinnamon';
 export const INVITEE = 'tenancy-invitee@e2e.example';
 export const MARKERS = ['E2E Shared Pie', 'e2e sender', LIST_NAME, MANUAL_ITEM, DRAFT_TEXT, INVITEE, DEV_HOUSEHOLD, DEV];
 
+/** An invitation code as ADR-00028 shapes it: eight base62 characters. */
+const INVITATION_CODE = '[0-9A-Za-z]{8}';
+/** The revoke action under prefix, capturing the invitation's code, for lastMatch. */
+const revokeLink = (prefix: string): RegExp => new RegExp(`${prefix}/invitations/(${INVITATION_CODE})/revoke`, 'g');
+
 /** Time for a server, its seed and its data to come up inside a hook or test. */
 export const SETUP_TIMEOUT_MS = 180_000;
 
@@ -254,9 +259,9 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   expect(token).toMatch(/^[0-9a-f]+$/);
 
   await ok(dev, 'POST', '/household/invitations', { email: INVITEE });
-  const joinInvitation = lastMatch(await page(dev, '/household'), /\/household\/invitations\/([0-9A-Za-z]{8})\/revoke/g, 'join invitation');
+  const joinInvitation = lastMatch(await page(dev, '/household'), revokeLink('/household'), 'join invitation');
   await ok(op, 'POST', '/operator/invitations', { email: uniqueEmail('founder') });
-  const operatorInvitation = lastMatch(await page(op, '/operator'), /\/operator\/invitations\/([0-9A-Za-z]{8})\/revoke/g, 'household invitation');
+  const operatorInvitation = lastMatch(await page(op, '/operator'), revokeLink('/operator'), 'household invitation');
 
   await ok(dev, 'POST', `/recipes/${recipe}/journal/made`, { comment: 'tenancy made-it' });
   await ok(dev, 'POST', `/recipes/${recipe}/journal/rating`, { rating: '4' });
@@ -268,7 +273,7 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
 export async function startHousehold(playwright: Playwright, s: Server, op: APIRequestContext, name: string): Promise<{ email: string; ctx: APIRequestContext }> {
   const email = uniqueEmail('third');
   await ok(op, 'POST', '/operator/invitations', { email });
-  const code = lastMatch(await page(op, '/operator'), /\/operator\/invitations\/([0-9A-Za-z]{8})\/revoke/g, 'household invitation');
+  const code = lastMatch(await page(op, '/operator'), revokeLink('/operator'), 'household invitation');
   const ctx = await as(playwright, s, email);
   await ok(ctx, 'POST', `/invitations/${code}/accept`, { name });
   return { email, ctx };

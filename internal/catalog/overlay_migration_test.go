@@ -9,6 +9,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/db/dbtest"
 	"github.com/kaecyra/gobbler/internal/household"
 )
 
@@ -21,7 +22,7 @@ func migrationDB(t *testing.T) (context.Context, *sql.DB) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	if err := db.Migrate(ctx, d, db.MigrationsBelow("00010")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00010")); err != nil {
 		t.Fatalf("migrate to the household shopping tables: %v", err)
 	}
 	return ctx, d

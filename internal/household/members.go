@@ -100,10 +100,10 @@ func (s *Store) PendingHouseholdInvitations(ctx context.Context, issuer string) 
 	return out, nil
 }
 
-// InvitationFor returns the invitation with code for the verified email it is addressed
-// to. A missing invitation and one addressed to someone else are both
-// ErrNotFound; one that can no longer be accepted is ErrUsed, ErrRevoked or
-// ErrExpired, as Accept would say.
+// InvitationFor returns the invitation named by code for the verified email
+// it is addressed to. A missing invitation and one addressed to someone else
+// are both ErrNotFound; one that can no longer be accepted is ErrUsed,
+// ErrRevoked or ErrExpired, as Accept would say.
 func (s *Store) InvitationFor(ctx context.Context, code, email string) (Invitation, error) {
 	e, err := NormalizeEmail(email)
 	if err != nil {

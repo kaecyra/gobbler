@@ -9,9 +9,10 @@
 -- ids. Nothing references invitations, so no other table is touched.
 --
 -- Existing rows get a code drawn here, from SQLite's random(): a ChaCha20
--- stream the SQLite library seeds from /dev/urandom. The draw is the same rejection sampling as the application's:
--- a random byte below 248 (four times 62) maps to alphabet[byte % 62] and any
--- other byte is discarded, so every character is equally likely. The
+-- stream the SQLite library seeds from /dev/urandom. The draw is the same
+-- rejection sampling as the application's: a random byte below 248 (four
+-- times 62) maps to alphabet[byte % 62] and any other byte is discarded, so
+-- every character is equally likely. The
 -- recursive CTE keeps drawing until each row has eight characters. A collision
 -- between two drawn codes fails UNIQUE and aborts the migration rather than
 -- inventing a fallback; at 47 bits a rerun is what would fix it.

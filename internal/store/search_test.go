@@ -9,6 +9,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/db/dbtest"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
@@ -276,7 +277,7 @@ func TestIndexFollowsCatalogRename(t *testing.T) {
 func TestMigrationIndexesExistingRecipes(t *testing.T) {
 	ctx := authedCtx(t)
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, db.MigrationsBelow("00004")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00004")); err != nil {
 		t.Fatal(err)
 	}
 	for _, q := range []string{
@@ -288,7 +289,7 @@ func TestMigrationIndexesExistingRecipes(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := db.Migrate(ctx, d, db.MigrationsBelow("00008")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00008")); err != nil {
 		t.Fatalf("apply search migration over existing data: %v", err)
 	}
 	if _, err := household.New(d).Create(ctx, "Home", auth.DevEmail); err != nil {

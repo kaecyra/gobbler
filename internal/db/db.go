@@ -16,8 +16,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
-	"testing/fstest"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite" // pure-Go driver, registers "sqlite"
@@ -87,30 +85,6 @@ func Migrations() fs.FS {
 		panic(fmt.Sprintf("embedded migrations directory missing: %v", err))
 	}
 	return sub
-}
-
-// MigrationsBelow returns the embedded migrations numbered below prefix (such
-// as "00018"): the schema as it stood before that migration, for a test that
-// writes rows in the older shape and then migrates over them. Later
-// migrations are left out too, since goose refuses to apply one out of order.
-func MigrationsBelow(prefix string) fs.FS {
-	all := Migrations()
-	entries, err := fs.ReadDir(all, ".")
-	if err != nil {
-		panic(fmt.Sprintf("read embedded migrations: %v", err))
-	}
-	out := fstest.MapFS{}
-	for _, e := range entries {
-		if e.Name() >= prefix || !strings.HasSuffix(e.Name(), ".sql") {
-			continue
-		}
-		b, err := fs.ReadFile(all, e.Name())
-		if err != nil {
-			panic(fmt.Sprintf("read embedded migration %s: %v", e.Name(), err))
-		}
-		out[e.Name()] = &fstest.MapFile{Data: b}
-	}
-	return out
 }
 
 // Migrate applies every pending goose migration found at the root of fsys.

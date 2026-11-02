@@ -274,9 +274,10 @@ func (s *Store) issue(ctx context.Context, insert func(q *householddb.Queries, c
 	return "", fmt.Errorf("insert invitation: %d codes in a row were already in use", codeDraws)
 }
 
-// Accept uses the invitation with code on behalf of the verified email, and returns the
-// household the person now belongs to. householdName names the new household
-// of a household invitation and is ignored for a join invitation.
+// Accept uses the invitation named by code on behalf of the verified email,
+// and returns the household the person now belongs to. householdName names
+// the new household of a household invitation and is ignored for a join
+// invitation.
 //
 // The invitation is claimed in one conditional UPDATE, so of two concurrent
 // accepts exactly one succeeds. When the person already belongs to a household
@@ -339,9 +340,9 @@ func (s *Store) whyNotAcceptable(ctx context.Context, q *householddb.Queries, co
 	}
 }
 
-// Revoke withdraws the invitation with code before it is accepted. Only the person who
-// issued it can; anyone else, and an invitation already used or revoked, gets
-// ErrNotFound.
+// Revoke withdraws the invitation named by code before it is accepted. Only
+// the person who issued it can; anyone else, and an invitation already used or
+// revoked, gets ErrNotFound.
 func (s *Store) Revoke(ctx context.Context, code, issuedBy string) error {
 	issuer, err := NormalizeEmail(issuedBy)
 	if err != nil {
