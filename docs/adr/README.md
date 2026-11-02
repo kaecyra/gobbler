@@ -31,7 +31,7 @@ index below in the same commit.
 | [00014](00014-sqlc-for-data-access.md) | Data access through sqlc-generated code | Accepted |
 | [00015](00015-immutability-at-the-store-api.md) | History immutability is enforced by the store API, not the database | Accepted |
 | [00016](00016-cross-origin-protection.md) | Cross-origin requests are refused by Fetch metadata, with SameSite=Lax at the edge | Accepted |
-| [00017](00017-cloudflared-on-the-guest.md) | cloudflared runs on the VM guest; Compose publishes gobbler on loopback only | Accepted |
+| [00017](00017-cloudflared-on-the-guest.md) | cloudflared runs on the VM guest; Compose publishes gobbler on loopback only | Amended by [00027](00027-publish-on-all-interfaces.md) |
 | [00018](00018-households-as-tenants.md) | Households are tenants; a household has several members | Accepted |
 | [00019](00019-sized-equipment-flag.md) | Equipment carries a hand-set `sized` flag that drives the scaled view's larger-pan hint | Accepted |
 | [00020](00020-ingest-step-graph-gap-fill-review.md) | Ingest infers the step graph by rules then LLM, the LLM fills only gaps, and review reuses the editor | Accepted |
@@ -41,6 +41,7 @@ index below in the same commit.
 | [00024](00024-equipment-chips-icons-and-catalog.md) | Equipment shows as chips with icons; the central catalog covers common kitchen equipment | Accepted |
 | [00025](00025-one-cuisine-per-recipe.md) | A recipe has at most one cuisine, from a fixed list | Accepted |
 | [00026](00026-publish-images-to-ghcr.md) | CI publishes the production image to a public GHCR package; the VM pulls it | Accepted |
+| [00027](00027-publish-on-all-interfaces.md) | Compose publishes gobbler on all interfaces of the VM | Accepted |
 
 ## What needs one
 
