@@ -43,7 +43,7 @@ index below in the same commit.
 | [00026](00026-publish-images-to-ghcr.md) | CI publishes the production image to a public GHCR package; the VM pulls it | Accepted |
 | [00027](00027-publish-on-all-interfaces.md) | Compose publishes gobbler on all interfaces of the VM | Accepted |
 | [00028](00028-invitation-codes.md) | An invitation is addressed by a random eight-character base62 code | Accepted |
-| [00029](00029-public-paths.md) | A fixed set of public paths is served without an identity | Accepted |
+| [00029](00029-public-paths.md) | A fixed set of public paths is served without an identity | Amended by [00030](00030-google-sign-in.md) |
 | [00030](00030-google-sign-in.md) | The app signs people in over OpenID Connect, with Google; Cloudflare Access is removed | Accepted |
 
 ## What needs one
