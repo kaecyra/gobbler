@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { STRANGER, asIdentity } from '../fixtures/identity';
 
-// /canada is a public path (ADR-00029). The e2e server runs the dev auth
-// bypass, which always supplies an identity, so serving it with no token at all
-// is covered by the Go tests against the real verifier; here it is opened by a
-// member and by a stranger who belongs to no household.
+// /canada is a public path (ADR-00029). This server runs the dev auth bypass,
+// which always supplies an identity, so here the page is opened by a member and
+// by a stranger who belongs to no household. Opening it with no token at all is
+// in health/health.spec.ts, against the server that verifies tokens.
 
 test('a member reaches /canada from the footer', async ({ page }) => {
   await page.goto('/');
