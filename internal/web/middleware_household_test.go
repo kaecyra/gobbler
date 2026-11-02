@@ -104,7 +104,7 @@ func TestNonMemberCanOpenHealthThePageAssetsAndInvitations(t *testing.T) {
 	}
 	// The lock does not turn the invitation path away: a missing invitation is
 	// a 404 page, not the not-a-member page.
-	rec = do(h, http.MethodGet, InvitationsPrefix+"1", strangerEmail)
+	rec = do(h, http.MethodGet, layout.InvitationsPath+"/1", strangerEmail)
 	if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), notAMemberText) {
 		t.Errorf("invitation path was refused as a non-member: %d", rec.Code)
 	}
@@ -130,6 +130,10 @@ func TestSettingsIsOperatorOnly(t *testing.T) {
 		{"operator with no household", operatorEmail, http.MethodGet, "/settings", http.StatusOK},
 		{"operator with no household, action", operatorEmail, http.MethodPost, "/settings/backup", http.StatusSeeOther},
 		{"non-member non-operator", strangerEmail, http.MethodGet, "/settings", http.StatusForbidden},
+		// The rule is applied to the escaped path as well as the decoded one.
+		{"non-operator member, encoded", auth.DevEmail, http.MethodGet, "/%73ettings", http.StatusForbidden},
+		{"operator with no household, encoded", operatorEmail, http.MethodGet, "/%6Fperator", http.StatusForbidden},
+		{"non-member, encoded not-a-member page", strangerEmail, http.MethodGet, "/not-a-m%65mber", http.StatusForbidden},
 	}
 	for _, c := range cases {
 		rec := do(h, c.method, c.path, c.email)
@@ -139,6 +143,10 @@ func TestSettingsIsOperatorOnly(t *testing.T) {
 	}
 	if body := do(h, http.MethodGet, "/settings", auth.DevEmail).Body.String(); !strings.Contains(body, "operator") || strings.Contains(body, "Backup") {
 		t.Errorf("refusal of a member should name the operator and show no settings:\n%s", body)
+	}
+	// The refusal carries the member's household, so its nav is a member's.
+	if body := do(h, http.MethodGet, "/settings", auth.DevEmail).Body.String(); !strings.Contains(body, `href="/recipes"`) {
+		t.Errorf("refusal of a member should keep the member nav:\n%s", body)
 	}
 }
 
@@ -236,19 +244,13 @@ func TestNavShowsSettingsToOperatorsOnly(t *testing.T) {
 }
 
 func TestSettingsIsAnOperatorPath(t *testing.T) {
-	if !slices.Contains(operatorPaths, settings.Pattern) {
-		t.Errorf("operatorPaths %v lacks the settings pattern %q", operatorPaths, settings.Pattern)
+	if !slices.Contains(layout.OperatorPaths, settings.Pattern) {
+		t.Errorf("layout.OperatorPaths %v lacks the settings pattern %q", layout.OperatorPaths, settings.Pattern)
 	}
 }
 
 func TestOperatorPagesAreOperatorPaths(t *testing.T) {
-	if !slices.Contains(operatorPaths, operator.Pattern) {
-		t.Errorf("operatorPaths %v lacks the operator pattern %q", operatorPaths, operator.Pattern)
-	}
-}
-
-func TestInvitationsPrefixIsTheInvitationsPath(t *testing.T) {
-	if InvitationsPrefix != layout.InvitationsPath+"/" {
-		t.Errorf("InvitationsPrefix = %q, want %q", InvitationsPrefix, layout.InvitationsPath+"/")
+	if !slices.Contains(layout.OperatorPaths, operator.Pattern) {
+		t.Errorf("layout.OperatorPaths %v lacks the operator pattern %q", layout.OperatorPaths, operator.Pattern)
 	}
 }

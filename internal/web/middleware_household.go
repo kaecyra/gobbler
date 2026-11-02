@@ -16,15 +16,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
 )
 
-// InvitationsPrefix is where invitation acceptance lives. A verified non-member
-// can reach it (layout.Admits).
-const InvitationsPrefix = layout.InvitationsPath + "/"
-
-// operatorPaths are the operator's pages (ADR-00018, Invitations). The list is
-// the layout's, which admits only an operator to them and hides the nav link
-// to each from everyone else.
-var operatorPaths = layout.OperatorPaths
-
 // memberLookup finds the household of a verified email. *household.Store
 // satisfies it.
 type memberLookup interface {
