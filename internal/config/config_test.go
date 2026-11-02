@@ -44,7 +44,7 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Video.ThumbnailHost != "" {
 		t.Errorf("thumbnail host default = %q, want empty (YouTube's, chosen by the fetcher)", c.Video.ThumbnailHost)
 	}
-	if c.LLM.Configured() || c.Backup.S3.Configured() {
+	if c.LLM.Configured() || c.Backup.S3.Configured() || c.OIDC.Configured() {
 		t.Error("optional groups must default to unconfigured")
 	}
 	if c.LLM.TextModel != "" || c.LLM.VisionModel != "" {
@@ -53,12 +53,20 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Backup.Schedule != "03:00" || c.Backup.LocalRetention != 7 || c.Backup.RemoteRetention != 30 {
 		t.Errorf("backup defaults: %+v", c.Backup)
 	}
+	if c.OIDC != (OIDC{}) {
+		t.Errorf("no OIDC setting may be defaulted, least of all a provider's issuer: %+v", c.OIDC)
+	}
+	if c.Session.Lifetime != 720*time.Hour {
+		t.Errorf("session lifetime default = %s, want 30 days", c.Session.Lifetime)
+	}
 }
 
 func TestLoadCompleteEnvironment(t *testing.T) {
 	c, err := loadFrom(env(map[string]string{
 		EnvListenAddr: "0.0.0.0:9000", EnvDataDir: "/var/lib/gobbler", EnvLogLevel: "DEBUG",
 		EnvAccessTeamDomain: "t.example.com", EnvAccessAUD: "aud",
+		EnvOIDCIssuer: "https://issuer.example.com", EnvOIDCClientID: "cid", EnvOIDCClientSecret: "cs",
+		EnvPublicBaseURL: "https://gobbler.example.com/", EnvSessionLifetime: "168h",
 		EnvConfidenceThreshold: "0.55", EnvFetchTimeout: "20s", EnvUserAgent: "ua",
 		EnvLLMProvider: "gemini", EnvLLMTextModel: "tm", EnvLLMVisionModel: "vm", EnvLLMTimeout: "90s",
 		EnvGeminiAPIKey: "gk", EnvAnthropicAPIKey: "ak",
@@ -74,6 +82,13 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 	}
 	if c.Access.TeamDomain != "t.example.com" || c.Access.AUD != "aud" {
 		t.Errorf("access: %+v", c.Access)
+	}
+	if o := c.OIDC; !o.Configured() || o.Issuer != "https://issuer.example.com" || o.ClientID != "cid" ||
+		o.ClientSecret.Reveal() != "cs" || o.PublicBaseURL != "https://gobbler.example.com" {
+		t.Errorf("oidc: %+v", c.OIDC)
+	}
+	if c.Session.Lifetime != 168*time.Hour {
+		t.Errorf("session lifetime = %s", c.Session.Lifetime)
 	}
 	if c.Ingestion.ConfidenceThreshold != 0.55 || c.Ingestion.FetchTimeout != 20*time.Second || c.Ingestion.UserAgent != "ua" {
 		t.Errorf("ingestion: %+v", c.Ingestion)
@@ -102,6 +117,12 @@ func TestClaudeProviderSelectsAnthropicKey(t *testing.T) {
 
 func TestValidationErrorsNameVariable(t *testing.T) {
 	llm := []string{EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v"}
+	oidc := func(kv ...string) map[string]string {
+		return with(append([]string{
+			EnvOIDCIssuer, "https://issuer.example.com", EnvOIDCClientID, "c", EnvOIDCClientSecret, "s",
+			EnvPublicBaseURL, "https://gobbler.example.com",
+		}, kv...)...)
+	}
 	tests := []struct {
 		name string
 		env  map[string]string
@@ -141,6 +162,23 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"s3 credentials without secret", with(EnvS3Endpoint, "e", EnvS3Region, "r", EnvS3Bucket, "b", EnvS3AccessKeyID, "i"), EnvS3SecretAccessKey},
 		{"s3 bucket without endpoint", with(EnvS3Bucket, "b", EnvS3Region, "r", EnvS3AccessKeyID, "i", EnvS3SecretAccessKey, "s"), EnvS3Endpoint},
 		{"s3 prefix alone", with(EnvS3Prefix, "p"), EnvS3Endpoint},
+		{"oidc issuer alone", with(EnvOIDCIssuer, "https://issuer.example.com"), EnvOIDCClientID},
+		{"oidc without secret", oidc(EnvOIDCClientSecret, ""), EnvOIDCClientSecret},
+		{"oidc without issuer", oidc(EnvOIDCIssuer, ""), EnvOIDCIssuer},
+		{"oidc without base url", oidc(EnvPublicBaseURL, ""), EnvPublicBaseURL},
+		{"oidc base url alone", with(EnvPublicBaseURL, "https://gobbler.example.com"), EnvOIDCIssuer},
+		{"issuer over http", oidc(EnvOIDCIssuer, "http://issuer.example.com"), EnvOIDCIssuer},
+		{"issuer bare host", oidc(EnvOIDCIssuer, "issuer.example.com"), EnvOIDCIssuer},
+		{"issuer with query", oidc(EnvOIDCIssuer, "https://issuer.example.com?x=1"), EnvOIDCIssuer},
+		{"issuer with fragment", oidc(EnvOIDCIssuer, "https://issuer.example.com#f"), EnvOIDCIssuer},
+		{"issuer with credentials", oidc(EnvOIDCIssuer, "https://u:p@issuer.example.com"), EnvOIDCIssuer},
+		{"base url over http", oidc(EnvPublicBaseURL, "http://gobbler.example.com"), EnvPublicBaseURL},
+		{"base url with path", oidc(EnvPublicBaseURL, "https://example.com/gobbler"), EnvPublicBaseURL},
+		{"base url with query", oidc(EnvPublicBaseURL, "https://example.com?x=1"), EnvPublicBaseURL},
+		{"base url bare host", oidc(EnvPublicBaseURL, "gobbler.example.com"), EnvPublicBaseURL},
+		{"session lifetime zero", with(EnvSessionLifetime, "0s"), EnvSessionLifetime},
+		{"session lifetime negative", with(EnvSessionLifetime, "-1h"), EnvSessionLifetime},
+		{"session lifetime in days", with(EnvSessionLifetime, "30d"), EnvSessionLifetime},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -233,9 +271,10 @@ func TestIsLoopbackAddr(t *testing.T) {
 }
 
 const (
-	secretLLM = "sk-ant-LLMSECRET"
-	secretID  = "S3IDSECRET"
-	secretKey = "S3KEYSECRET"
+	secretLLM  = "sk-ant-LLMSECRET"
+	secretID   = "S3IDSECRET"
+	secretKey  = "S3KEYSECRET"
+	secretOIDC = "OIDCCLIENTSECRET"
 )
 
 func secretConfig(t *testing.T) Config {
@@ -243,6 +282,8 @@ func secretConfig(t *testing.T) Config {
 	c, err := loadFrom(env(with(
 		EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v", EnvAnthropicAPIKey, secretLLM,
 		EnvS3Endpoint, "e", EnvS3Region, "r", EnvS3Bucket, "b", EnvS3AccessKeyID, secretID, EnvS3SecretAccessKey, secretKey,
+		EnvOIDCIssuer, "https://issuer.example.com", EnvOIDCClientID, "c", EnvOIDCClientSecret, secretOIDC,
+		EnvPublicBaseURL, "https://gobbler.example.com",
 	)))
 	if err != nil {
 		t.Fatal(err)
@@ -252,7 +293,7 @@ func secretConfig(t *testing.T) Config {
 
 func assertNoSecrets(t *testing.T, how, out string) {
 	t.Helper()
-	for _, s := range []string{secretLLM, secretID, secretKey} {
+	for _, s := range []string{secretLLM, secretID, secretKey, secretOIDC} {
 		if strings.Contains(out, s) {
 			t.Errorf("%s leaks %q: %s", how, s, out)
 		}
@@ -270,9 +311,9 @@ func TestSecretsRedacted(t *testing.T) {
 		if verb == "%T" || verb == "%p" {
 			continue
 		}
-		for _, v := range []any{c, &c, c.LLM, c.Backup.S3, c.LLM.APIKey, &c.LLM.APIKey} {
+		for _, v := range []any{c, &c, c.LLM, c.Backup.S3, c.OIDC, c.LLM.APIKey, &c.LLM.APIKey, c.OIDC.ClientSecret} {
 			out := fmt.Sprintf(verb, v)
-			for _, s := range []string{secretLLM, secretID, secretKey} {
+			for _, s := range []string{secretLLM, secretID, secretKey, secretOIDC} {
 				if strings.Contains(out, s) {
 					t.Errorf("%s of %T leaks %q: %s", verb, v, s, out)
 				}
@@ -384,5 +425,35 @@ func TestThumbnailHostIsAnOriginWithoutTrailingSlash(t *testing.T) {
 	}
 	if c.Video.ThumbnailHost != "http://127.0.0.1:41700" {
 		t.Errorf("thumbnail host = %q", c.Video.ThumbnailHost)
+	}
+}
+
+// The issuer is compared with the ID token's iss claim character for
+// character, so it is kept exactly as given, path and trailing slash included.
+func TestOIDCIssuerKeptVerbatim(t *testing.T) {
+	for _, issuer := range []string{"https://issuer.example.com", "https://broker.example.com/dex/", "https://issuer.example.com:8443/realms/home"} {
+		c, err := loadFrom(env(with(EnvOIDCIssuer, issuer, EnvOIDCClientID, "c", EnvOIDCClientSecret, "s",
+			EnvPublicBaseURL, "https://gobbler.example.com")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.OIDC.Issuer != issuer {
+			t.Errorf("issuer = %q, want %q", c.OIDC.Issuer, issuer)
+		}
+	}
+}
+
+// With the loopback-only dev bypass on, a local test issuer and base URL may
+// be plain http.
+func TestOIDCAllowsHTTPUnderDevBypass(t *testing.T) {
+	c, err := loadFrom(env(map[string]string{
+		EnvDevAuthBypass: "true", EnvOIDCIssuer: "http://127.0.0.1:41800", EnvOIDCClientID: "c",
+		EnvOIDCClientSecret: "s", EnvPublicBaseURL: "http://127.0.0.1:8080",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.OIDC.Configured() || c.OIDC.Issuer != "http://127.0.0.1:41800" || c.OIDC.PublicBaseURL != "http://127.0.0.1:8080" {
+		t.Errorf("oidc under bypass: %+v", c.OIDC)
 	}
 }

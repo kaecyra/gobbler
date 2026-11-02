@@ -143,6 +143,11 @@ the container runs in UTC.
 |---|---|---|---|
 | `GOBBLER_ACCESS_TEAM_DOMAIN` | none | no | Bare host, e.g. `team.cloudflareaccess.com`: no `https://`, path or spaces. Required unless the dev bypass is on. `config.Load` only checks it is set; `auth.New` rejects a malformed value, so a bad value fails at `serve` start-up. |
 | `GOBBLER_ACCESS_AUD` | none | no | Application AUD tag. Required unless the dev bypass is on. |
+| `GOBBLER_OIDC_ISSUER` | none | no | OpenID Connect issuer URL, `https://accounts.google.com` for Google ([ADR-00030](./adr/00030-google-sign-in.md)). Kept exactly as written, because ID tokens are matched against it character for character. `https://` is required unless the dev bypass is on. Validated when set; used from the sign-in switch-over, and until then Access is the identity source. |
+| `GOBBLER_OIDC_CLIENT_ID` | none | no | OAuth client ID issued by the provider. Validated when set; used from the sign-in switch-over. |
+| `GOBBLER_OIDC_CLIENT_SECRET` | none | yes | OAuth client secret. Validated when set; used from the sign-in switch-over. |
+| `GOBBLER_PUBLIC_BASE_URL` | none | no | Origin the site is reached at, e.g. `https://gobbler.example.com`, with no path. The sign-in redirect URI is built from it. `https://` is required unless the dev bypass is on. Validated when set; used from the sign-in switch-over. |
+| `GOBBLER_SESSION_LIFETIME` | `720h` (30 days) | no | Go duration, positive. A session ends this long after sign-in, however recently it was used. Used from the sign-in switch-over. |
 | `GOBBLER_OPERATOR_EMAILS` | empty (no operator) | no | Comma-separated bare email addresses, case-insensitive. Each is an operator: it reaches `/settings` and the other operator pages without being a household member ([ADR-00018](./adr/00018-households-as-tenants.md)). A malformed entry is an error. |
 | `GOBBLER_LISTEN_ADDR` | `127.0.0.1:8080` | no | |
 | `GOBBLER_DATA_DIR` | `data` | no | Holds `gobbler.db` and `backups/`. |
@@ -174,6 +179,9 @@ Cross-field rules enforced at start-up:
   too; settings that would be silently ignored are an error.
 - If any S3 variable is set, endpoint, region, bucket, access key id and secret
   access key are all required. Only the prefix is optional.
+- If any of `GOBBLER_OIDC_ISSUER`, `GOBBLER_OIDC_CLIENT_ID`,
+  `GOBBLER_OIDC_CLIENT_SECRET` and `GOBBLER_PUBLIC_BASE_URL` is set, all four
+  are required.
 
 Secrets live only in `.env`, which is never committed. Credentials are redacted
 in logs.

@@ -25,6 +25,11 @@ const (
 	EnvDevAuthBypass       = "GOBBLER_DEV_AUTH_BYPASS"
 	EnvAccessTeamDomain    = "GOBBLER_ACCESS_TEAM_DOMAIN"
 	EnvAccessAUD           = "GOBBLER_ACCESS_AUD"
+	EnvOIDCIssuer          = "GOBBLER_OIDC_ISSUER"
+	EnvOIDCClientID        = "GOBBLER_OIDC_CLIENT_ID"
+	EnvOIDCClientSecret    = "GOBBLER_OIDC_CLIENT_SECRET"
+	EnvPublicBaseURL       = "GOBBLER_PUBLIC_BASE_URL"
+	EnvSessionLifetime     = "GOBBLER_SESSION_LIFETIME"
 	EnvOperatorEmails      = "GOBBLER_OPERATOR_EMAILS"
 	EnvConfidenceThreshold = "GOBBLER_INGEST_CONFIDENCE_THRESHOLD"
 	EnvFetchTimeout        = "GOBBLER_INGEST_FETCH_TIMEOUT"
@@ -67,6 +72,7 @@ const (
 	defaultLLMTimeout          = 60 * time.Second
 	defaultLocalRetention      = 7
 	defaultRemoteRetention     = 30
+	defaultSessionLifetime     = 30 * 24 * time.Hour
 )
 
 // Config is the validated application configuration. Load returns it by value
@@ -75,6 +81,8 @@ const (
 type Config struct {
 	Server    Server
 	Access    Access
+	OIDC      OIDC
+	Session   Session
 	Operator  Operator
 	Ingestion Ingestion
 	LLM       LLM
@@ -97,6 +105,39 @@ type Server struct {
 type Access struct {
 	TeamDomain string
 	AUD        string
+}
+
+// OIDC holds the sign-in settings (ADR-00030): the one OpenID Connect issuer
+// the app signs people in with, its client credentials, and the public base
+// URL the redirect URI is built from. No default names a provider; the issuer
+// is whatever the environment says.
+//
+// None of it is required at start-up yet: Cloudflare Access stays the
+// identity source until the sign-in switch-over, which requires Configured.
+// Until then each value is validated when set, and setting any of them
+// requires all four, so a half-configured sign-in fails at start-up rather
+// than at the first sign-in.
+type OIDC struct {
+	// Issuer is the issuer URL exactly as given. ID tokens are checked
+	// against it character for character, so it is not normalised. It must
+	// be https unless DevAuthBypass is on.
+	Issuer       string
+	ClientID     string
+	ClientSecret Secret
+	// PublicBaseURL is the origin the site is reached at, with no trailing
+	// slash and no path. It must be https unless DevAuthBypass is on.
+	PublicBaseURL string
+}
+
+// Configured reports whether sign-in is configured. Load guarantees that it
+// is all or nothing.
+func (o OIDC) Configured() bool { return o.Issuer != "" }
+
+// Session holds sign-in session settings (ADR-00030).
+type Session struct {
+	// Lifetime is how long a session lasts from sign-in. Use never extends
+	// it.
+	Lifetime time.Duration
 }
 
 // Operator holds the operator identities (ADR-00018). The operator is defined
@@ -193,6 +234,9 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 		r.require(EnvAccessAUD, c.Access.AUD, "required unless "+EnvDevAuthBypass+" is set")
 	}
 
+	r.oidc(&c.OIDC, c.Server.DevAuthBypass)
+	c.Session.Lifetime = r.duration(EnvSessionLifetime, defaultSessionLifetime)
+
 	c.Operator.Emails = r.emails(EnvOperatorEmails)
 
 	c.Ingestion.ConfidenceThreshold = r.float(EnvConfidenceThreshold, defaultConfidenceThreshold, 0, 1)
@@ -209,6 +253,44 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 	return c, nil
+}
+
+// oidc reads the sign-in settings. Plain http is accepted only with the dev
+// bypass on, whose listener is loopback, for a local or test issuer.
+func (r *reader) oidc(o *OIDC, devBypass bool) {
+	o.Issuer = r.str(EnvOIDCIssuer, "")
+	o.ClientID = r.str(EnvOIDCClientID, "")
+	o.ClientSecret = Secret{r.str(EnvOIDCClientSecret, "")}
+	o.PublicBaseURL = r.httpOrigin(EnvPublicBaseURL)
+
+	schemes := "https://"
+	if devBypass {
+		schemes = "http:// or https://"
+	}
+	if o.Issuer != "" {
+		u, err := url.Parse(o.Issuer)
+		schemeOK := err == nil && (u.Scheme == "https" || (devBypass && u.Scheme == "http"))
+		if !schemeOK || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+			r.fail(EnvOIDCIssuer, "invalid issuer URL %q (want %s and a host, with no query or fragment)", o.Issuer, schemes)
+		}
+	}
+	if !devBypass && strings.HasPrefix(o.PublicBaseURL, "http://") {
+		r.fail(EnvPublicBaseURL, "invalid base URL %q (want https:// unless %s is set)", o.PublicBaseURL, EnvDevAuthBypass)
+	}
+
+	// PublicBaseURL is empty both when unset and when invalid, so an invalid
+	// one alone is reported once, by httpOrigin, rather than as missing.
+	baseSet := r.str(EnvPublicBaseURL, "") != ""
+	if o.Issuer == "" && o.ClientID == "" && !o.ClientSecret.IsSet() && !baseSet {
+		return // sign-in not configured
+	}
+	const why = "required when any OIDC setting is set"
+	r.require(EnvOIDCIssuer, o.Issuer, why)
+	r.require(EnvOIDCClientID, o.ClientID, why)
+	r.require(EnvOIDCClientSecret, o.ClientSecret.value, why)
+	if !baseSet {
+		r.fail(EnvPublicBaseURL, "%s", why)
+	}
 }
 
 func (r *reader) llm(l *LLM) {
