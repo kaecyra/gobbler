@@ -1,6 +1,6 @@
 # ADR-00003: Identity from verified Cloudflare Access JWT; single user
 
-**Status:** Amended by [ADR-00018](00018-households-as-tenants.md)
+**Status:** Amended by [ADR-00018](00018-households-as-tenants.md), [ADR-00029](00029-public-paths.md)
 
 **Date:** 2026-10-06
 
@@ -62,5 +62,8 @@ personal tool. Moving off Cloudflare means replacing this middleware.
 1. Requests with a missing, unsigned, expired, or wrong-`aud` token receive
    `403`, each covered by a test.
 2. The health check is the only unauthenticated route.
+
+   > Amended by [ADR-00029](00029-public-paths.md): a fixed set of public
+   > paths, which includes the health check, is served without a token.
 3. The development bypass refuses to start on a non-loopback listen address.
 4. No log line contains the JWT or the cookie value.
