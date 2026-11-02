@@ -16,22 +16,37 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
 	"github.com/kaecyra/gobbler/internal/web/settings"
+	"github.com/kaecyra/gobbler/internal/web/signin"
 )
+
+// Identity establishes the identity of every request, refusing one without
+// an identity unless public says its path is public. *auth.Authenticator
+// satisfies it.
+type Identity interface {
+	Middleware(public func(path string) bool) func(http.Handler) http.Handler
+}
 
 // Deps is everything the server and the feature packages mounted on it need.
 type Deps struct {
 	Config config.Config
 	DB     *sql.DB
-	// Auth verifies the Access JWT on every request but the public paths
-	// (layout.IsPublic, ADR-00029), where a token is optional.
-	Auth *auth.Authenticator
+	// Auth establishes identity on every request but the public paths
+	// (layout.IsPublic, ADR-00029), where it is optional.
+	Auth Identity
+	// SignIn serves sign-in, its callback and sign-out (ADR-00030). It is
+	// required when sign-in is configured (Config.OIDC.Configured) and must
+	// be nil otherwise; with it the header offers "Sign in" and "Sign out".
+	SignIn *signin.Service
+	// Sessions, when set, has removing a member, or leaving, end that
+	// person's sessions in the same transaction (ADR-00030).
+	Sessions *session.Store
 	// Logger receives request logs; the default is slog.Default().
 	Logger *slog.Logger
 	// HealthDetails, when set, adds its entries to the health response under
@@ -46,7 +61,8 @@ type Deps struct {
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
-// panic recovery, then authentication, then household membership
+// panic recovery, then (with sign-in) the layout's sign-in marker, then
+// authentication, then household membership
 // (ADR-00018), then cross-origin protection (ADR-00016), then the handlers.
 // Logging is outermost so refused requests (unauthenticated, not a member or
 // cross-origin) and recovered panics (logged as 500) each get an access line,
@@ -62,6 +78,9 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	if d.DB == nil {
 		return nil, errors.New("web: a database is required")
 	}
+	if d.Config.OIDC.Configured() != (d.SignIn != nil) {
+		return nil, errors.New("web: the sign-in routes are required exactly when sign-in is configured")
+	}
 	log := d.Logger
 	if log == nil {
 		log = slog.Default()
@@ -75,7 +94,12 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	r := chi.NewRouter()
 	// No trusted origins and no bypass patterns: no handler opts out (ADR-00016).
 	cop := http.NewCrossOriginProtection()
-	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(layout.IsPublic), membership(members, d.Config.Operator), cop.Handler)
+	r.Use(requestLogger(log), recoverer(log))
+	if d.SignIn != nil {
+		// Before identity, so the pages that refuse a request show it too.
+		r.Use(markSignIn)
+	}
+	r.Use(d.Auth.Middleware(layout.IsPublic), membership(members, d.Config.Operator), cop.Handler)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})
@@ -86,9 +110,22 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	r.Get(HealthPath, healthHandler(d.HealthDetails))
 	r.Mount(nonmember.Pattern, nonmember.Routes())
 	r.Get(canada.Pattern, canada.Handler)
+	if d.SignIn != nil {
+		r.Get(layout.SignInPath, d.SignIn.SignIn)
+		r.Get(layout.CallbackPath, d.SignIn.Callback)
+		r.Post(layout.SignOutPath, d.SignIn.SignOut)
+	}
 	r.Handle("/static/*", staticHandler())
 	mountFeatures(r, d)
 	return r, nil
+}
+
+// markSignIn tells the layout that people sign in to this deployment, so the
+// header offers sign-in and sign-out (layout.WithSignIn).
+func markSignIn(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(layout.WithSignIn(r.Context())))
+	})
 }
 
 // staticHandler serves the embedded assets under /static/.

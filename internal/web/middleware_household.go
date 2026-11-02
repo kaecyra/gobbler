@@ -22,9 +22,9 @@ type memberLookup interface {
 	ForEmail(ctx context.Context, email string) (household.Household, error)
 }
 
-// membership decides admission, after Access has verified the identity. It is
-// the only lock now that Access admits any email that authenticates
-// (ADR-00018), so it fails closed: a request with no verified identity, or
+// membership decides admission, after the identity middleware has verified
+// the identity. It is the only lock, since any email that can authenticate
+// gets an identity (ADR-00018, ADR-00030), so it fails closed: a request with no verified identity, or
 // whose membership cannot be read, never reaches a handler, unless its path is
 // public (ADR-00029). What it admits is
 // layout.Admits, the rule the nav also reads; a member's request carries its
@@ -50,7 +50,7 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 			}
 			email, ok := auth.EmailFromContext(r.Context())
 			if !ok {
-				// No identity: the Access middleware let the request through
+				// No identity: the identity middleware let the request through
 				// only because its path is public (ADR-00029). Check that
 				// again, on both forms of the path, rather than trust it.
 				if layout.IsPublic(r.URL.Path) && layout.IsPublic(r.URL.EscapedPath()) {

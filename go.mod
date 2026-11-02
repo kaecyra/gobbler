@@ -11,10 +11,12 @@ tool (
 require (
 	github.com/a-h/templ v0.3.1070
 	github.com/anthropics/anthropic-sdk-go v1.80.0
+	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/pressly/goose/v3 v3.28.0
 	golang.org/x/net v0.61.0
+	golang.org/x/oauth2 v0.37.0
 	google.golang.org/genai v1.73.0
 	modernc.org/sqlite v1.60.1
 )
@@ -41,6 +43,7 @@ require (
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.8 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.10.0 // indirect

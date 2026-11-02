@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/db"
 )
 
 // testContext bounds a test so a regression that blocks fails instead of
@@ -87,6 +88,34 @@ func TestServeRunsHealthAndStopsOnCancel(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("serve did not stop after cancel")
+	}
+}
+
+// With sign-in configured, serve wires the session store, the identity
+// middleware and sign-in before it listens (ADR-00030); the issuer is not
+// contacted at start-up.
+func TestServeWiresSignIn(t *testing.T) {
+	cfg := config.Config{
+		Server:  config.Server{ListenAddr: "0.0.0.0:0", DataDir: t.TempDir()},
+		OIDC:    config.OIDC{Issuer: "https://issuer.invalid", ClientID: "c", PublicBaseURL: "https://gobbler.test"},
+		Session: config.Session{Lifetime: time.Hour},
+	}
+	stop := errors.New("listening")
+	listen := func(context.Context, string) (net.Listener, error) { return nil, stop }
+	if err := serve(testContext(t), cfg, db.Migrations(), listen); !errors.Is(err, stop) {
+		t.Fatalf("err = %v, want serve to reach listen", err)
+	}
+
+	for name, edit := range map[string]func(c *config.Config){
+		"no lifetime": func(c *config.Config) { c.Session.Lifetime = 0 },
+		"no base URL": func(c *config.Config) { c.OIDC.PublicBaseURL = "" },
+	} {
+		bad := cfg
+		bad.Server.DataDir = t.TempDir()
+		edit(&bad)
+		if err := serve(testContext(t), bad, db.Migrations(), listen); err == nil || errors.Is(err, stop) {
+			t.Errorf("%s: err = %v, want a start-up error before listening", name, err)
+		}
 	}
 }
 
