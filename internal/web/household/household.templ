@@ -48,7 +48,7 @@ templ membersPage(v pageView) {
 									<span class="muted"> expires { p.Expires }</span>
 								</span>
 								if p.Mine {
-									<form class="row-form" method="post" action={ templ.SafeURL(revokePath(p.ID)) }>
+									<form class="row-form" method="post" action={ templ.SafeURL(revokePath(p.Code)) }>
 										<button type="submit" class="btn" aria-label={ "Revoke the invitation of " + p.Email }>Revoke</button>
 									</form>
 								}

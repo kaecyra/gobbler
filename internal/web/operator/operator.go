@@ -2,9 +2,7 @@ package operator
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -20,8 +18,8 @@ const Pattern = "/operator"
 // Households is what the pages use from the household store.
 // *household.Store satisfies it.
 type Households interface {
-	Invite(ctx context.Context, in household.Invite) (int64, error)
-	Revoke(ctx context.Context, id int64, issuedBy string) error
+	Invite(ctx context.Context, in household.Invite) (string, error)
+	Revoke(ctx context.Context, code, issuedBy string) error
 	PendingHouseholdInvitations(ctx context.Context, issuer string) ([]household.Invitation, error)
 }
 
@@ -38,7 +36,7 @@ func Routes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.show)
 	r.Post("/invitations", h.invite)
-	r.Post("/invitations/{id}/revoke", h.revoke)
+	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/revoke", h.revoke)
 	return r
 }
 
@@ -83,12 +81,12 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil || id <= 0 {
-		layout.Fail(w, r, fmt.Errorf("invitation id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
+	code, err := layout.InvitationCode(r)
+	if err != nil {
+		layout.Fail(w, r, err)
 		return
 	}
-	redirect(w, r, h.Households.Revoke(r.Context(), id, email))
+	redirect(w, r, h.Households.Revoke(r.Context(), code, email))
 }
 
 func redirect(w http.ResponseWriter, r *http.Request, err error) {

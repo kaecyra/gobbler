@@ -81,7 +81,7 @@ func TestWriteErrorMapsStatusAndHidesInternals(t *testing.T) {
 		{"catalog conflict", catalog.ErrConflict, http.StatusConflict, "already in use", ""},
 		{"wrapped keeps sentinel text only", fmt.Errorf("recipe 7: %w", ErrNotFound), http.StatusNotFound, "not found", "recipe 7"},
 		{"driver text under a conflict", fmt.Errorf("insert ingredient: %w: constraint failed: UNIQUE constraint failed: ingredient.name (2067)", catalog.ErrConflict), http.StatusConflict, "catalog name or alias already in use", "UNIQUE constraint"},
-		{"household not found", fmt.Errorf("invitation 3: %w", household.ErrNotFound), http.StatusNotFound, "not found", "invitation 3"},
+		{"household not found", fmt.Errorf("invitation aZ09bY18: %w", household.ErrNotFound), http.StatusNotFound, "not found", "aZ09bY18"},
 		{"household invalid", household.ErrInvalid, http.StatusBadRequest, "invalid input", ""},
 		{"wrong confirmation", household.ErrConfirmation, http.StatusBadRequest, "does not match", ""},
 		{"already a member", household.ErrAlreadyMember, http.StatusConflict, "leave the current household first", ""},

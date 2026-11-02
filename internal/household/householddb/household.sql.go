@@ -12,14 +12,14 @@ import (
 
 const claimInvitation = `-- name: ClaimInvitation :one
 UPDATE invitations SET accepted_at = ?1
-WHERE id = ?2 AND email = ?3
+WHERE code = ?2 AND email = ?3
   AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?1
 RETURNING kind, household_id
 `
 
 type ClaimInvitationParams struct {
 	Now   sql.NullString
-	ID    int64
+	Code  string
 	Email string
 }
 
@@ -33,7 +33,7 @@ type ClaimInvitationRow struct {
 // concurrent accepts. It runs first in the accepting transaction so a failed
 // claim ends the accept before anything else is read or written.
 func (q *Queries) ClaimInvitation(ctx context.Context, arg ClaimInvitationParams) (ClaimInvitationRow, error) {
-	row := q.db.QueryRowContext(ctx, claimInvitation, arg.Now, arg.ID, arg.Email)
+	row := q.db.QueryRowContext(ctx, claimInvitation, arg.Now, arg.Code, arg.Email)
 	var i ClaimInvitationRow
 	err := row.Scan(&i.Kind, &i.HouseholdID)
 	return i, err
@@ -65,15 +65,27 @@ func (q *Queries) GetHouseholdByMemberEmail(ctx context.Context, email string) (
 }
 
 const getInvitation = `-- name: GetInvitation :one
-SELECT id, kind, email, household_id, issued_by, created_at, expires_at, accepted_at, revoked_at
-FROM invitations WHERE id = ?
+SELECT code, kind, email, household_id, issued_by, created_at, expires_at, accepted_at, revoked_at
+FROM invitations WHERE code = ?
 `
 
-func (q *Queries) GetInvitation(ctx context.Context, id int64) (Invitation, error) {
-	row := q.db.QueryRowContext(ctx, getInvitation, id)
-	var i Invitation
+type GetInvitationRow struct {
+	Code        string
+	Kind        string
+	Email       string
+	HouseholdID sql.NullInt64
+	IssuedBy    string
+	CreatedAt   string
+	ExpiresAt   string
+	AcceptedAt  sql.NullString
+	RevokedAt   sql.NullString
+}
+
+func (q *Queries) GetInvitation(ctx context.Context, code string) (GetInvitationRow, error) {
+	row := q.db.QueryRowContext(ctx, getInvitation, code)
+	var i GetInvitationRow
 	err := row.Scan(
-		&i.ID,
+		&i.Code,
 		&i.Kind,
 		&i.Email,
 		&i.HouseholdID,
@@ -103,11 +115,12 @@ func (q *Queries) InsertHousehold(ctx context.Context, arg InsertHouseholdParams
 }
 
 const insertInvitation = `-- name: InsertInvitation :one
-INSERT INTO invitations (kind, email, household_id, issued_by, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?) RETURNING id
+INSERT INTO invitations (code, kind, email, household_id, issued_by, created_at, expires_at)
+VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING code
 `
 
 type InsertInvitationParams struct {
+	Code        string
 	Kind        string
 	Email       string
 	HouseholdID sql.NullInt64
@@ -116,8 +129,9 @@ type InsertInvitationParams struct {
 	ExpiresAt   string
 }
 
-func (q *Queries) InsertInvitation(ctx context.Context, arg InsertInvitationParams) (int64, error) {
+func (q *Queries) InsertInvitation(ctx context.Context, arg InsertInvitationParams) (string, error) {
 	row := q.db.QueryRowContext(ctx, insertInvitation,
+		arg.Code,
 		arg.Kind,
 		arg.Email,
 		arg.HouseholdID,
@@ -125,9 +139,9 @@ func (q *Queries) InsertInvitation(ctx context.Context, arg InsertInvitationPara
 		arg.CreatedAt,
 		arg.ExpiresAt,
 	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
+	var code string
+	err := row.Scan(&code)
+	return code, err
 }
 
 const insertMember = `-- name: InsertMember :exec
@@ -174,20 +188,20 @@ func (q *Queries) ListMemberEmails(ctx context.Context, householdID int64) ([]st
 
 const revokeInvitation = `-- name: RevokeInvitation :execrows
 UPDATE invitations SET revoked_at = ?1
-WHERE id = ?2 AND issued_by = ?3
+WHERE code = ?2 AND issued_by = ?3
   AND accepted_at IS NULL AND revoked_at IS NULL
 `
 
 type RevokeInvitationParams struct {
 	Now      sql.NullString
-	ID       int64
+	Code     string
 	IssuedBy string
 }
 
 // RevokeInvitation withdraws an invitation its issuer has not yet seen
 // accepted.
 func (q *Queries) RevokeInvitation(ctx context.Context, arg RevokeInvitationParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, revokeInvitation, arg.Now, arg.ID, arg.IssuedBy)
+	result, err := q.db.ExecContext(ctx, revokeInvitation, arg.Now, arg.Code, arg.IssuedBy)
 	if err != nil {
 		return 0, err
 	}

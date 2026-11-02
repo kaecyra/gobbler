@@ -43,13 +43,13 @@ func (f *fixture) create(name, email string) Household {
 	return h
 }
 
-func (f *fixture) invite(in Invite) int64 {
+func (f *fixture) invite(in Invite) string {
 	f.t.Helper()
-	id, err := f.s.Invite(context.Background(), in)
+	code, err := f.s.Invite(context.Background(), in)
 	if err != nil {
 		f.t.Fatalf("Invite(%+v): %v", in, err)
 	}
-	return id
+	return code
 }
 
 func TestForEmailFindsOnlyOwnHousehold(t *testing.T) {
@@ -85,13 +85,13 @@ func TestOneHouseholdPerEmail(t *testing.T) {
 		{"create a second household", func() error { _, err := f.s.Create(ctx, "Other", "ANN@example.com"); return err }},
 		{"join another by invitation", func() error {
 			other := f.create("Beta", "bob@example.com")
-			id := f.invite(Invite{Kind: KindJoin, Email: "ann@example.com", HouseholdID: other.ID, IssuedBy: "bob@example.com"})
-			_, err := f.s.Accept(ctx, id, "ann@example.com", "")
+			code := f.invite(Invite{Kind: KindJoin, Email: "ann@example.com", HouseholdID: other.ID, IssuedBy: "bob@example.com"})
+			_, err := f.s.Accept(ctx, code, "ann@example.com", "")
 			return err
 		}},
 		{"start a household by invitation", func() error {
-			id := f.invite(Invite{Kind: KindHousehold, Email: "ann@example.com", IssuedBy: "op@example.com"})
-			_, err := f.s.Accept(ctx, id, "ann@example.com", "Third")
+			code := f.invite(Invite{Kind: KindHousehold, Email: "ann@example.com", IssuedBy: "op@example.com"})
+			_, err := f.s.Accept(ctx, code, "ann@example.com", "Third")
 			return err
 		}},
 	}
@@ -113,12 +113,12 @@ func TestRefusedAcceptLeavesInvitationUsable(t *testing.T) {
 	ctx := context.Background()
 	f.create("Alpha", "ann@example.com")
 	target := f.create("Beta", "bob@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "ann@example.com", HouseholdID: target.ID, IssuedBy: "bob@example.com"})
-	if _, err := f.s.Accept(ctx, id, "ann@example.com", ""); !errors.Is(err, ErrAlreadyMember) {
+	code := f.invite(Invite{Kind: KindJoin, Email: "ann@example.com", HouseholdID: target.ID, IssuedBy: "bob@example.com"})
+	if _, err := f.s.Accept(ctx, code, "ann@example.com", ""); !errors.Is(err, ErrAlreadyMember) {
 		t.Fatalf("first accept = %v, want ErrAlreadyMember", err)
 	}
 	// The claim was rolled back: the invitation is not spent by a refusal.
-	if _, err := f.s.Accept(ctx, id, "ann@example.com", ""); !errors.Is(err, ErrAlreadyMember) {
+	if _, err := f.s.Accept(ctx, code, "ann@example.com", ""); !errors.Is(err, ErrAlreadyMember) {
 		t.Fatalf("second accept = %v, want ErrAlreadyMember again, not ErrUsed", err)
 	}
 }
@@ -127,9 +127,9 @@ func TestAcceptJoinAddsMember(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
 	h := f.create("Alpha", "ann@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "Cy@Example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	code := f.invite(Invite{Kind: KindJoin, Email: "Cy@Example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
 
-	got, err := f.s.Accept(ctx, id, "cy@example.com", "ignored")
+	got, err := f.s.Accept(ctx, code, "cy@example.com", "ignored")
 	if err != nil || got.ID != h.ID || got.Name != "Alpha" {
 		t.Fatalf("Accept = %+v, %v; want household %d", got, err, h.ID)
 	}
@@ -142,12 +142,12 @@ func TestAcceptJoinAddsMember(t *testing.T) {
 func TestAcceptHouseholdInvitationCreatesHousehold(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
-	id := f.invite(Invite{Kind: KindHousehold, Email: "new@example.com", IssuedBy: "op@example.com"})
+	code := f.invite(Invite{Kind: KindHousehold, Email: "new@example.com", IssuedBy: "op@example.com"})
 
-	if _, err := f.s.Accept(ctx, id, "new@example.com", "  "); !errors.Is(err, ErrInvalid) {
+	if _, err := f.s.Accept(ctx, code, "new@example.com", "  "); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("blank name = %v, want ErrInvalid", err)
 	}
-	got, err := f.s.Accept(ctx, id, "new@example.com", "Newcomers")
+	got, err := f.s.Accept(ctx, code, "new@example.com", "Newcomers")
 	if err != nil || got.Name != "Newcomers" {
 		t.Fatalf("Accept = %+v, %v", got, err)
 	}
@@ -160,32 +160,32 @@ func TestInvitationLifecycle(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name  string
-		setup func(f *fixture, id int64)
+		setup func(f *fixture, code string)
 		who   string
 		want  error
 	}{
-		{"valid", func(*fixture, int64) {}, "cy@example.com", nil},
-		{"expired", func(f *fixture, _ int64) { f.now = f.now.Add(DefaultInvitationTTL + time.Second) }, "cy@example.com", ErrExpired},
-		{"expires exactly at the deadline", func(f *fixture, _ int64) { f.now = f.now.Add(DefaultInvitationTTL) }, "cy@example.com", ErrExpired},
-		{"used", func(f *fixture, id int64) {
-			if _, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil {
+		{"valid", func(*fixture, string) {}, "cy@example.com", nil},
+		{"expired", func(f *fixture, _ string) { f.now = f.now.Add(DefaultInvitationTTL + time.Second) }, "cy@example.com", ErrExpired},
+		{"expires exactly at the deadline", func(f *fixture, _ string) { f.now = f.now.Add(DefaultInvitationTTL) }, "cy@example.com", ErrExpired},
+		{"used", func(f *fixture, code string) {
+			if _, err := f.s.Accept(ctx, code, "cy@example.com", ""); err != nil {
 				t.Fatal(err)
 			}
 		}, "cy@example.com", ErrUsed},
-		{"revoked", func(f *fixture, id int64) {
-			if err := f.s.Revoke(ctx, id, "ann@example.com"); err != nil {
+		{"revoked", func(f *fixture, code string) {
+			if err := f.s.Revoke(ctx, code, "ann@example.com"); err != nil {
 				t.Fatal(err)
 			}
 		}, "cy@example.com", ErrRevoked},
-		{"addressed to someone else", func(*fixture, int64) {}, "dee@example.com", ErrNotFound},
+		{"addressed to someone else", func(*fixture, string) {}, "dee@example.com", ErrNotFound},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			f := newFixture(t)
 			h := f.create("Alpha", "ann@example.com")
-			id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
-			c.setup(f, id)
-			_, err := f.s.Accept(ctx, id, c.who, "")
+			code := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+			c.setup(f, code)
+			_, err := f.s.Accept(ctx, code, c.who, "")
 			if c.want == nil && err != nil || c.want != nil && !errors.Is(err, c.want) {
 				t.Fatalf("Accept = %v, want %v", err, c.want)
 			}
@@ -200,7 +200,7 @@ func TestInvitationLifecycle(t *testing.T) {
 
 func TestMissingInvitationIsNotFound(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.s.Accept(context.Background(), 999, "cy@example.com", ""); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.Accept(context.Background(), "Zz000000", "cy@example.com", ""); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("Accept(missing) = %v, want ErrNotFound", err)
 	}
 }
@@ -210,15 +210,15 @@ func TestRevoke(t *testing.T) {
 	ctx := context.Background()
 	h := f.create("Alpha", "ann@example.com")
 	f.create("Beta", "bob@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	code := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
 
-	if err := f.s.Revoke(ctx, id, "bob@example.com"); !errors.Is(err, ErrNotFound) {
+	if err := f.s.Revoke(ctx, code, "bob@example.com"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("revoke by a non-issuer = %v, want ErrNotFound", err)
 	}
-	if err := f.s.Revoke(ctx, id, "ann@example.com"); err != nil {
+	if err := f.s.Revoke(ctx, code, "ann@example.com"); err != nil {
 		t.Fatalf("revoke by issuer: %v", err)
 	}
-	if err := f.s.Revoke(ctx, id, "ann@example.com"); !errors.Is(err, ErrNotFound) {
+	if err := f.s.Revoke(ctx, code, "ann@example.com"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("second revoke = %v, want ErrNotFound", err)
 	}
 
@@ -262,9 +262,9 @@ func TestInviteValidation(t *testing.T) {
 func TestCustomLifetime(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
-	id := f.invite(Invite{Kind: KindHousehold, Email: "cy@example.com", IssuedBy: "op@example.com", TTL: time.Hour})
+	code := f.invite(Invite{Kind: KindHousehold, Email: "cy@example.com", IssuedBy: "op@example.com", TTL: time.Hour})
 	f.now = f.now.Add(2 * time.Hour)
-	if _, err := f.s.Accept(ctx, id, "cy@example.com", "X"); !errors.Is(err, ErrExpired) {
+	if _, err := f.s.Accept(ctx, code, "cy@example.com", "X"); !errors.Is(err, ErrExpired) {
 		t.Fatalf("Accept after custom ttl = %v, want ErrExpired", err)
 	}
 }
@@ -325,12 +325,12 @@ func TestInviteAndRevokeUnderConcurrentWriters(t *testing.T) {
 			if _, err := f.s.Invite(ctx, Invite{Kind: KindHousehold, Email: email, IssuedBy: "ann@example.com"}); err != nil {
 				errs <- fmt.Errorf("household invite %d: %w", i, err)
 			}
-			id, err := f.s.Invite(ctx, Invite{Kind: KindJoin, Email: email, HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+			code, err := f.s.Invite(ctx, Invite{Kind: KindJoin, Email: email, HouseholdID: h.ID, IssuedBy: "ann@example.com"})
 			if err != nil {
 				errs <- fmt.Errorf("join invite %d: %w", i, err)
 				return
 			}
-			if err := f.s.Revoke(ctx, id, "ann@example.com"); err != nil {
+			if err := f.s.Revoke(ctx, code, "ann@example.com"); err != nil {
 				errs <- fmt.Errorf("revoke %d: %w", i, err)
 			}
 		}()

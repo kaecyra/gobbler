@@ -12,8 +12,8 @@ func TestRemoveMember(t *testing.T) {
 	f := newFixture(t)
 	a := f.create("Alpha", "ann@example.com")
 	b := f.create("Beta", "bob@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: a.ID, IssuedBy: "ann@example.com"})
-	if _, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil {
+	code := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: a.ID, IssuedBy: "ann@example.com"})
+	if _, err := f.s.Accept(ctx, code, "cy@example.com", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,8 +54,8 @@ func TestLeave(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	h := f.create("Alpha", "ann@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
-	if _, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil {
+	code := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	if _, err := f.s.Accept(ctx, code, "cy@example.com", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -76,8 +76,8 @@ func TestLeave(t *testing.T) {
 	}
 	// Having left, a person can take another household.
 	other := f.create("Beta", "bob@example.com")
-	id = f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: other.ID, IssuedBy: "bob@example.com"})
-	if got, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil || got.ID != other.ID {
+	code = f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: other.ID, IssuedBy: "bob@example.com"})
+	if got, err := f.s.Accept(ctx, code, "cy@example.com", ""); err != nil || got.ID != other.ID {
 		t.Errorf("accept after leaving = %+v, %v", got, err)
 	}
 }
@@ -86,8 +86,8 @@ func TestDeleteRequiresLastMemberAndTypedName(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	h := f.create("Alpha Kitchen", "ann@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
-	if _, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil {
+	code := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	if _, err := f.s.Accept(ctx, code, "cy@example.com", ""); err != nil {
 		t.Fatal(err)
 	}
 	f.create("Beta", "bob@example.com")
@@ -143,8 +143,8 @@ func TestPendingInvitations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != keep || got[0].Email != "cy@example.com" || got[0].IssuedBy != "ann@example.com" || got[0].Kind != KindJoin {
-		t.Fatalf("pending for Alpha = %+v, want only invitation %d", got, keep)
+	if len(got) != 1 || got[0].Code != keep || got[0].Email != "cy@example.com" || got[0].IssuedBy != "ann@example.com" || got[0].Kind != KindJoin {
+		t.Fatalf("pending for Alpha = %+v, want only invitation %s", got, keep)
 	}
 }
 
@@ -160,8 +160,8 @@ func TestPendingHouseholdInvitationsAreTheIssuers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != mine || got[0].HouseholdID != 0 || got[0].Kind != KindHousehold {
-		t.Fatalf("pending = %+v, want only invitation %d", got, mine)
+	if len(got) != 1 || got[0].Code != mine || got[0].HouseholdID != 0 || got[0].Kind != KindHousehold {
+		t.Fatalf("pending = %+v, want only invitation %s", got, mine)
 	}
 }
 
@@ -169,22 +169,22 @@ func TestInvitationFor(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	h := f.create("Alpha", "ann@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	code := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
 
-	got, err := f.s.InvitationFor(ctx, id, "Cy@example.com")
+	got, err := f.s.InvitationFor(ctx, code, "Cy@example.com")
 	if err != nil || got.HouseholdName != "Alpha" || got.IssuedBy != "ann@example.com" || got.Kind != KindJoin {
 		t.Fatalf("InvitationFor = %+v, %v", got, err)
 	}
-	if _, err := f.s.InvitationFor(ctx, id, "dee@example.com"); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.InvitationFor(ctx, code, "dee@example.com"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("someone else's invitation = %v, want ErrNotFound", err)
 	}
-	if _, err := f.s.InvitationFor(ctx, 999, "cy@example.com"); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.InvitationFor(ctx, "Zz000000", "cy@example.com"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing invitation = %v, want ErrNotFound", err)
 	}
-	if err := f.s.Revoke(ctx, id, "ann@example.com"); err != nil {
+	if err := f.s.Revoke(ctx, code, "ann@example.com"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.s.InvitationFor(ctx, id, "cy@example.com"); !errors.Is(err, ErrRevoked) {
+	if _, err := f.s.InvitationFor(ctx, code, "cy@example.com"); !errors.Is(err, ErrRevoked) {
 		t.Errorf("revoked invitation = %v, want ErrRevoked", err)
 	}
 	exp := f.invite(Invite{Kind: KindHousehold, Email: "cy@example.com", IssuedBy: "op@example.com"})
@@ -232,11 +232,11 @@ func TestRefusedLeaveKeepsTheLastMembersInvitations(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	h := f.create("Alpha", "ann@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	code := f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
 	if err := f.s.Leave(ctx, "ann@example.com"); !errors.Is(err, ErrLastMember) {
 		t.Fatalf("Leave = %v, want ErrLastMember", err)
 	}
-	if _, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil {
+	if _, err := f.s.Accept(ctx, code, "cy@example.com", ""); err != nil {
 		t.Errorf("the refused leaver's invitation was revoked: %v", err)
 	}
 }
@@ -257,8 +257,8 @@ func TestDepartedIssuerWritesNoInvitation(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	h := f.create("Alpha", "ann@example.com")
-	id := f.invite(Invite{Kind: KindJoin, Email: "bea@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
-	if _, err := f.s.Accept(ctx, id, "bea@example.com", ""); err != nil {
+	code := f.invite(Invite{Kind: KindJoin, Email: "bea@example.com", HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+	if _, err := f.s.Accept(ctx, code, "bea@example.com", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.s.Remove(ctx, h.ID, "ann@example.com", "bea@example.com"); err != nil {

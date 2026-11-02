@@ -3,15 +3,13 @@ package store
 import (
 	"context"
 	"database/sql"
-	"io/fs"
-	"strings"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/db/dbtest"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
@@ -271,31 +269,6 @@ func TestIndexFollowsCatalogRename(t *testing.T) {
 	}
 }
 
-// migrationsBelow returns the embedded migrations numbered below prefix, as
-// the database stood before that migration. Migrations above it are left out
-// too: applying a later one first would put prefix out of order, and goose
-// refuses that. The README sorts after the numbered files, so it is left out.
-func migrationsBelow(t *testing.T, prefix string) fstest.MapFS {
-	t.Helper()
-	all := db.Migrations()
-	out := fstest.MapFS{}
-	entries, err := fs.ReadDir(all, ".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if e.Name() >= prefix || !strings.HasSuffix(e.Name(), ".sql") {
-			continue
-		}
-		b, err := fs.ReadFile(all, e.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
-		out[e.Name()] = &fstest.MapFile{Data: b}
-	}
-	return out
-}
-
 // TestMigrationIndexesExistingRecipes applies the schema without the search
 // migration, writes recipes, then applies it: rows that predate it are found.
 // The recipes are written with SQL because the store writes the current shape,
@@ -304,7 +277,7 @@ func migrationsBelow(t *testing.T, prefix string) fstest.MapFS {
 func TestMigrationIndexesExistingRecipes(t *testing.T) {
 	ctx := authedCtx(t)
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, migrationsBelow(t, "00004")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00004")); err != nil {
 		t.Fatal(err)
 	}
 	for _, q := range []string{
@@ -316,7 +289,7 @@ func TestMigrationIndexesExistingRecipes(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := db.Migrate(ctx, d, migrationsBelow(t, "00008")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00008")); err != nil {
 		t.Fatalf("apply search migration over existing data: %v", err)
 	}
 	if _, err := household.New(d).Create(ctx, "Home", auth.DevEmail); err != nil {

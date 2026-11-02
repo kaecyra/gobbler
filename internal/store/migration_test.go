@@ -10,6 +10,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/db/dbtest"
 	"github.com/kaecyra/gobbler/internal/household"
 )
 
@@ -50,7 +51,7 @@ func seedPre00008(t *testing.T, d *sql.DB) {
 func migratedTo7(t *testing.T) *sql.DB {
 	t.Helper()
 	d := openRaw(t)
-	if err := db.Migrate(context.Background(), d, migrationsBelow(t, "00008")); err != nil {
+	if err := db.Migrate(context.Background(), d, dbtest.MigrationsBelow("00008")); err != nil {
 		t.Fatal(err)
 	}
 	return d
@@ -185,7 +186,7 @@ func TestMigration00008LeavesNoStagingNames(t *testing.T) {
 func TestMigration00012KeepsOldSnapshotsWithUnknownParserVersion(t *testing.T) {
 	ctx := context.Background()
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, migrationsBelow(t, "00012")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00012")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {
@@ -212,7 +213,7 @@ func TestMigration00012KeepsOldSnapshotsWithUnknownParserVersion(t *testing.T) {
 func TestMigration00013GivesOldRecipesNoVideoAndRollsBack(t *testing.T) {
 	ctx := context.Background()
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, migrationsBelow(t, "00013")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00013")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {
@@ -254,7 +255,7 @@ func TestMigration00013GivesOldRecipesNoVideoAndRollsBack(t *testing.T) {
 func TestMigration00014GivesOldRowsNoFieldsAndRollsBack(t *testing.T) {
 	ctx := context.Background()
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, migrationsBelow(t, "00014")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00014")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {
@@ -305,7 +306,7 @@ func TestMigration00014GivesOldRowsNoFieldsAndRollsBack(t *testing.T) {
 func TestMigration00016GivesOldRowsNoCuisineAndRollsBack(t *testing.T) {
 	ctx := context.Background()
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, migrationsBelow(t, "00016")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00016")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := household.New(d).Create(ctx, "First", auth.DevEmail); err != nil {

@@ -104,7 +104,7 @@ func TestNonMemberCanOpenHealthThePageAssetsAndInvitations(t *testing.T) {
 	}
 	// The lock does not turn the invitation path away: a missing invitation is
 	// a 404 page, not the not-a-member page.
-	rec = do(h, http.MethodGet, layout.InvitationsPath+"/1", strangerEmail)
+	rec = do(h, http.MethodGet, layout.InvitationsPath+"/Zz000000", strangerEmail)
 	if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), notAMemberText) {
 		t.Errorf("invitation path was refused as a non-member: %d", rec.Code)
 	}

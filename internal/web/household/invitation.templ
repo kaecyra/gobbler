@@ -14,12 +14,12 @@ templ acceptPage(v acceptView) {
 					<p><a class="link" href="/household">Your household</a></p>
 				} else if v.Kind == domain.KindJoin {
 					<p data-testid="invitation-join">{ v.IssuedBy } invited you to join <strong>{ v.Household }</strong>. The invitation expires { v.Expires }.</p>
-					<form method="post" action={ templ.SafeURL(acceptPath(v.ID)) }>
+					<form method="post" action={ templ.SafeURL(acceptPath(v.Code)) }>
 						<button type="submit" class="btn accent">Join { v.Household }</button>
 					</form>
 				} else {
 					<p data-testid="invitation-new">You are invited to start a household. The invitation expires { v.Expires }.</p>
-					<form class="fields" method="post" action={ templ.SafeURL(acceptPath(v.ID)) }>
+					<form class="fields" method="post" action={ templ.SafeURL(acceptPath(v.Code)) }>
 						<label>Household name <input type="text" name="name" required/></label>
 						<button type="submit" class="btn accent">Start the household</button>
 					</form>

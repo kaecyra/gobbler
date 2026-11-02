@@ -1,8 +1,6 @@
 package household
 
 import (
-	"strconv"
-
 	domain "github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -20,13 +18,13 @@ type pageView struct {
 // cannot leave and alone may delete it.
 func (v pageView) OnlyMember() bool { return len(v.Members) == 1 }
 
-func revokePath(id int64) string {
-	return Pattern + "/invitations/" + strconv.FormatInt(id, 10) + "/revoke"
+func revokePath(code string) string {
+	return Pattern + "/invitations/" + code + "/revoke"
 }
 
 // acceptView is the page an invitee opens.
 type acceptView struct {
-	ID        int64
+	Code      string
 	Self      string
 	Kind      domain.Kind
 	Household string
@@ -37,6 +35,6 @@ type acceptView struct {
 	Member bool
 }
 
-func acceptPath(id int64) string {
-	return InvitationsPattern + "/" + strconv.FormatInt(id, 10) + "/accept"
+func acceptPath(code string) string {
+	return InvitationsPattern + "/" + code + "/accept"
 }

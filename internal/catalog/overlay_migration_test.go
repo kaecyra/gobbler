@@ -3,37 +3,15 @@ package catalog
 import (
 	"context"
 	"database/sql"
-	"io/fs"
 	"testing"
-	"testing/fstest"
 
 	"github.com/pressly/goose/v3"
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/db/dbtest"
 	"github.com/kaecyra/gobbler/internal/household"
 )
-
-func migrationsBelow(t *testing.T, first string) fs.FS {
-	t.Helper()
-	older := fstest.MapFS{}
-	all := db.Migrations()
-	entries, err := fs.ReadDir(all, ".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if e.IsDir() || e.Name() >= first {
-			continue
-		}
-		body, err := fs.ReadFile(all, e.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
-		older[e.Name()] = &fstest.MapFile{Data: body}
-	}
-	return older
-}
 
 // migrationDB opens a database migrated to just before the overlay migration.
 func migrationDB(t *testing.T) (context.Context, *sql.DB) {
@@ -44,7 +22,7 @@ func migrationDB(t *testing.T) (context.Context, *sql.DB) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	if err := db.Migrate(ctx, d, migrationsBelow(t, "00010")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00010")); err != nil {
 		t.Fatalf("migrate to the household shopping tables: %v", err)
 	}
 	return ctx, d

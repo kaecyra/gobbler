@@ -18,7 +18,7 @@ test.describe('the operator', () => {
     await page.getByLabel('Email address').fill(email);
     await page.getByRole('button', { name: 'Invite' }).click();
     await expect(page).toHaveURL(/\/operator\/?$/);
-    expect(await linkFor(page, email)).toMatch(/^\/invitations\/\d+$/);
+    expect(await linkFor(page, email)).toMatch(/^\/invitations\/[0-9A-Za-z]{8}$/);
     await expect(page.locator('body')).not.toContainText('Dev household');
     await expect(page.locator('body')).not.toContainText('Other household');
   });
@@ -51,19 +51,21 @@ test.describe('the operator', () => {
 test('a household invitation is for one email, once, and starts a household', async ({ browser, baseURL }) => {
   const email = uniqueEmail('founder');
   const link = await issueHouseholdInvitation(browser, baseURL, email);
-  const id = link.split('/').pop();
+  const code = link.split('/').pop();
 
   // Nobody else can open or accept it, whoever they are.
   for (const who of [STRANGER, OTHER, OPERATOR]) {
     const ctx = await as(browser, baseURL, who);
-    expect((await ctx.request.get(`/invitations/${id}`)).status(), `${who} opens`).toBe(404);
-    expect((await ctx.request.post(`/invitations/${id}/accept`, { form: { name: 'Hijack' } })).status(), `${who} accepts`).toBe(404);
+    expect((await ctx.request.get(`/invitations/${code}`)).status(), `${who} opens`).toBe(404);
+    expect((await ctx.request.post(`/invitations/${code}/accept`, { form: { name: 'Hijack' } })).status(), `${who} accepts`).toBe(404);
+    // A code nobody was issued gets the same answer (ADR-00028).
+    expect((await ctx.request.get('/invitations/Zz000000')).status(), `${who} opens an unknown code`).toBe(404);
     await ctx.close();
   }
 
   const ctx = await as(browser, baseURL, email);
   const page = await ctx.newPage();
-  await page.goto(`/invitations/${id}`);
+  await page.goto(`/invitations/${code}`);
   await expect(page.getByTestId('invitation-email')).toContainText(email);
   await page.getByLabel('Household name').fill('Founders');
   await page.getByRole('button', { name: 'Start the household' }).click();
@@ -72,7 +74,7 @@ test('a household invitation is for one email, once, and starts a household', as
   await expect(page.getByTestId('member')).toContainText(email);
 
   // Single use.
-  const again = await ctx.request.post(`/invitations/${id}/accept`, { form: { name: 'Twice' } });
+  const again = await ctx.request.post(`/invitations/${code}/accept`, { form: { name: 'Twice' } });
   expect(again.status()).toBe(410);
   await ctx.close();
 });
@@ -83,7 +85,7 @@ test.describe('a member who is not an operator, and a non-member', () => {
       const ctx = await as(browser, baseURL, who);
       expect((await ctx.request.get('/operator')).status()).toBe(403);
       expect((await ctx.request.post('/operator/invitations', { form: { email: uniqueEmail('x') } })).status()).toBe(403);
-      expect((await ctx.request.post('/operator/invitations/1/revoke')).status()).toBe(403);
+      expect((await ctx.request.post('/operator/invitations/aZ09bY18/revoke')).status()).toBe(403);
       const page = await ctx.newPage();
       await page.goto('/operator');
       await expect(page.locator('body')).not.toContainText('Pending invitations');

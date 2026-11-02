@@ -32,7 +32,7 @@ templ invitationsPage(v invitationsView) {
 									{ p.Email }: <a href={ templ.SafeURL(p.Path) }>{ p.Path }</a>
 									<span class="muted"> expires { p.Expires }</span>
 								</span>
-								<form class="row-form" method="post" action={ templ.SafeURL(revokePath(p.ID)) }>
+								<form class="row-form" method="post" action={ templ.SafeURL(revokePath(p.Code)) }>
 									<button type="submit" class="btn" aria-label={ "Revoke the invitation of " + p.Email }>Revoke</button>
 								</form>
 							</li>

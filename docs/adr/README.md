@@ -42,6 +42,7 @@ index below in the same commit.
 | [00025](00025-one-cuisine-per-recipe.md) | A recipe has at most one cuisine, from a fixed list | Accepted |
 | [00026](00026-publish-images-to-ghcr.md) | CI publishes the production image to a public GHCR package; the VM pulls it | Accepted |
 | [00027](00027-publish-on-all-interfaces.md) | Compose publishes gobbler on all interfaces of the VM | Accepted |
+| [00028](00028-invitation-codes.md) | An invitation is addressed by a random eight-character base62 code | Accepted |
 
 ## What needs one
 

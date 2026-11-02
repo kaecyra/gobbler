@@ -179,7 +179,7 @@ test.describe('the members routes, as a non-member and as a member of another ho
     expect((await ctx.request.get('/household')).status()).toBe(403);
     for (const [path, form] of [
       ['/household/invitations', { email: uniqueEmail('x') }],
-      ['/household/invitations/1/revoke', {}],
+      ['/household/invitations/aZ09bY18/revoke', {}],
       ['/household/members/remove', { email: OTHER }],
       ['/household/leave', {}],
       ['/household/delete', { confirm: 'Other household' }],
@@ -200,14 +200,14 @@ test.describe('the members routes, as a non-member and as a member of another ho
     await myPage.getByLabel('Email address').fill(guest);
     await myPage.getByRole('button', { name: 'Invite' }).click();
     const link = await linkFor(myPage, guest);
-    const id = link.split('/').pop();
+    const code = link.split('/').pop();
 
     const theirPage = await theirs.ctx.newPage();
     await theirPage.goto('/household');
     await expect(theirPage.locator('body')).not.toContainText(mine.email);
     await expect(theirPage.locator('body')).not.toContainText(guest);
     expect((await theirs.ctx.request.get(link)).status()).toBe(404);
-    expect((await theirs.ctx.request.post(`/household/invitations/${id}/revoke`)).status()).toBe(404);
+    expect((await theirs.ctx.request.post(`/household/invitations/${code}/revoke`)).status()).toBe(404);
     expect((await theirs.ctx.request.post('/household/members/remove', { form: { email: mine.email } })).status()).toBe(404);
 
     // Nothing of that changed in the household they tried it on.

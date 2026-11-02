@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -24,13 +23,13 @@ const (
 type Store interface {
 	Members(ctx context.Context, householdID int64) ([]string, error)
 	PendingForHousehold(ctx context.Context, householdID int64) ([]domain.Invitation, error)
-	Invite(ctx context.Context, in domain.Invite) (int64, error)
-	Revoke(ctx context.Context, id int64, issuedBy string) error
+	Invite(ctx context.Context, in domain.Invite) (string, error)
+	Revoke(ctx context.Context, code, issuedBy string) error
 	Remove(ctx context.Context, householdID int64, by, target string) error
 	Leave(ctx context.Context, email string) error
 	Delete(ctx context.Context, householdID int64, by, confirm string) error
-	InvitationFor(ctx context.Context, id int64, email string) (domain.Invitation, error)
-	Accept(ctx context.Context, id int64, email, householdName string) (domain.Household, error)
+	InvitationFor(ctx context.Context, code, email string) (domain.Invitation, error)
+	Accept(ctx context.Context, code, email, householdName string) (domain.Household, error)
 }
 
 // Deps is what the routes need.
@@ -48,7 +47,7 @@ func MemberRoutes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.show)
 	r.Post("/invitations", h.invite)
-	r.Post("/invitations/{id}/revoke", h.revoke)
+	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/revoke", h.revoke)
 	r.Post("/members/remove", h.remove)
 	r.Post("/leave", h.leave)
 	r.Post("/delete", h.delete)
@@ -60,8 +59,8 @@ func MemberRoutes(d Deps) chi.Router {
 func InvitationRoutes(d Deps) chi.Router {
 	h := &handler{d}
 	r := chi.NewRouter()
-	r.Get("/{id}", h.showInvitation)
-	r.Post("/{id}/accept", h.accept)
+	r.Get("/{"+layout.InvitationCodeParam+"}", h.showInvitation)
+	r.Post("/{"+layout.InvitationCodeParam+"}/accept", h.accept)
 	return r
 }
 
@@ -75,14 +74,6 @@ func actor(r *http.Request) (email string, hh domain.Household, err error) {
 		return "", domain.Household{}, fmt.Errorf("no member on the request: %w", layout.ErrNotFound)
 	}
 	return email, hh, nil
-}
-
-func idParam(r *http.Request) (int64, error) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil || id <= 0 {
-		return 0, fmt.Errorf("invitation id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound)
-	}
-	return id, nil
 }
 
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
@@ -133,12 +124,12 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	id, err := idParam(r)
+	code, err := layout.InvitationCode(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	done(w, r, h.Households.Revoke(r.Context(), id, email))
+	done(w, r, h.Households.Revoke(r.Context(), code, email))
 }
 
 func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
@@ -183,19 +174,19 @@ func (h *handler) showInvitation(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, fmt.Errorf("no identity on the request: %w", layout.ErrNotFound))
 		return
 	}
-	id, err := idParam(r)
+	code, err := layout.InvitationCode(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	inv, err := h.Households.InvitationFor(r.Context(), id, email)
+	inv, err := h.Households.InvitationFor(r.Context(), code, email)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
 	_, member := domain.FromContext(r.Context())
 	layout.Render(w, r, http.StatusOK, acceptPage(acceptView{
-		ID: inv.ID, Self: email, Kind: inv.Kind, Household: inv.HouseholdName,
+		Code: inv.Code, Self: email, Kind: inv.Kind, Household: inv.HouseholdName,
 		IssuedBy: inv.IssuedBy, Expires: layout.FormatTime(inv.ExpiresAt), Member: member,
 	}))
 }
@@ -206,12 +197,12 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, fmt.Errorf("no identity on the request: %w", layout.ErrNotFound))
 		return
 	}
-	id, err := idParam(r)
+	code, err := layout.InvitationCode(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	if _, err := h.Households.Accept(r.Context(), id, email, r.PostFormValue("name")); err != nil {
+	if _, err := h.Households.Accept(r.Context(), code, email, r.PostFormValue("name")); err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
