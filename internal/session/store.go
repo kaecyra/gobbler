@@ -60,6 +60,9 @@ func hash(token string) []byte {
 
 func (s *Store) stamp(t time.Time) string { return t.UTC().Format(timeLayout) }
 
+// parse reads a time stamp written by stamp.
+func (s *Store) parse(v string) (time.Time, error) { return time.Parse(timeLayout, v) }
+
 // Create starts a session for the verified email and returns its token, for
 // the cookie and nowhere else: it is not stored, and must never be logged.
 // The email is trimmed and lower-cased, the form every table stores.
@@ -88,42 +91,60 @@ func (s *Store) Create(ctx context.Context, email string) (string, error) {
 	return token, nil
 }
 
+// touchEvery is how stale last_used_at may get before Lookup writes it again.
+// Every private request looks its session up, and SQLite has one writer, so
+// writing on each would queue page loads behind any long write; ADR-00030 asks
+// for when a session was last used, not for every use.
+const touchEvery = time.Minute
+
 // Lookup returns the email of the live session the token names, and records
-// that it was used. It never extends the session (ADR-00030). An unknown,
-// deleted, expired or malformed token is ErrNoSession; an expired session's
-// row is deleted on the way. No error it returns contains the token.
+// that it was used, at most once per touchEvery. It never extends the session
+// (ADR-00030). An unknown, deleted, expired or malformed token is
+// ErrNoSession; an expired session's row is deleted on the way. No error it
+// returns contains the token.
 func (s *Store) Lookup(ctx context.Context, token string) (string, error) {
 	if b, err := encoding.DecodeString(token); err != nil || len(b) != tokenBytes {
 		return "", fmt.Errorf("look up session: malformed token: %w", ErrNoSession)
 	}
 	h := hash(token)
-	var email string
-	found := false
-	err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
-		now := s.stamp(s.now())
+	now := s.now()
+	var row sessiondb.GetLiveSessionRow
+	found := true
+	err := db.WithReadTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
 		var err error
-		email, err = q.UseSession(ctx, sessiondb.UseSessionParams{Now: now, TokenHash: h})
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			// Not an error inside the transaction: returning one would roll
-			// back the delete of an expired row.
-			if err := q.DeleteExpiredSession(ctx, sessiondb.DeleteExpiredSessionParams{TokenHash: h, Now: now}); err != nil {
-				return fmt.Errorf("delete expired session: %w", err)
-			}
+		row, err = q.GetLiveSession(ctx, sessiondb.GetLiveSessionParams{TokenHash: h, Now: s.stamp(now)})
+		if errors.Is(err, sql.ErrNoRows) {
+			found = false
 			return nil
-		case err != nil:
-			return fmt.Errorf("look up session: %w", err)
 		}
-		found = true
-		return nil
+		return err
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("look up session: %w", err)
 	}
 	if !found {
+		// An expired row, if that is what this was, is of no further use.
+		err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
+			return q.DeleteExpiredSession(ctx, sessiondb.DeleteExpiredSessionParams{TokenHash: h, Now: s.stamp(now)})
+		})
+		if err != nil {
+			return "", fmt.Errorf("delete expired session: %w", err)
+		}
 		return "", fmt.Errorf("look up session: %w", ErrNoSession)
 	}
-	return email, nil
+	used, err := s.parse(row.LastUsedAt)
+	if err != nil {
+		return "", fmt.Errorf("look up session: last used: %w", err)
+	}
+	if now.Sub(used) >= touchEvery {
+		err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
+			return q.TouchSession(ctx, sessiondb.TouchSessionParams{Now: s.stamp(now), TokenHash: h})
+		})
+		if err != nil {
+			return "", fmt.Errorf("record session use: %w", err)
+		}
+	}
+	return row.Email, nil
 }
 
 // Delete ends the session the token names: signing out. A token that names
@@ -143,6 +164,11 @@ func (s *Store) Delete(ctx context.Context, token string) error {
 // Create stores it.
 func (s *Store) DeleteForEmail(ctx context.Context, email string) (int, error) {
 	e := strings.ToLower(strings.TrimSpace(email))
+	if e == "" {
+		// No session has an empty email, so this can only be a caller that
+		// lost the address it meant to end sessions for.
+		return 0, errors.New("delete sessions: empty email")
+	}
 	var n int64
 	err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
 		var err error

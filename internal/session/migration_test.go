@@ -54,10 +54,10 @@ func TestMigration00019AddsAndDropsSessions(t *testing.T) {
 	}
 
 	for _, bad := range []string{
-		`INSERT INTO sessions VALUES (randomblob(32), 'Ann@example.com', 't', 't', 't')`,
-		`INSERT INTO sessions VALUES (randomblob(32), '', 't', 't', 't')`,
-		`INSERT INTO sessions VALUES (randomblob(16), 'ann@example.com', 't', 't', 't')`,
-		`INSERT INTO sessions VALUES (NULL, 'ann@example.com', 't', 't', 't')`,
+		`INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at) VALUES (randomblob(32), 'Ann@example.com', 't', 't', 't')`,
+		`INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at) VALUES (randomblob(32), '', 't', 't', 't')`,
+		`INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at) VALUES (randomblob(16), 'ann@example.com', 't', 't', 't')`,
+		`INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at) VALUES (NULL, 'ann@example.com', 't', 't', 't')`,
 	} {
 		if _, err := d.ExecContext(ctx, bad); err == nil {
 			t.Errorf("schema accepted %s", bad)

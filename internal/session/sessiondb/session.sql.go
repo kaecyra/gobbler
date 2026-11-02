@@ -56,6 +56,30 @@ func (q *Queries) DeleteSessionsForEmail(ctx context.Context, email string) (int
 	return result.RowsAffected()
 }
 
+const getLiveSession = `-- name: GetLiveSession :one
+SELECT email, last_used_at FROM sessions
+WHERE token_hash = ?1 AND expires_at > ?2
+`
+
+type GetLiveSessionParams struct {
+	TokenHash []byte
+	Now       string
+}
+
+type GetLiveSessionRow struct {
+	Email      string
+	LastUsedAt string
+}
+
+// GetLiveSession reads a session that has not expired. A session past its
+// expiry matches nothing.
+func (q *Queries) GetLiveSession(ctx context.Context, arg GetLiveSessionParams) (GetLiveSessionRow, error) {
+	row := q.db.QueryRowContext(ctx, getLiveSession, arg.TokenHash, arg.Now)
+	var i GetLiveSessionRow
+	err := row.Scan(&i.Email, &i.LastUsedAt)
+	return i, err
+}
+
 const insertSession = `-- name: InsertSession :exec
 INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at)
 VALUES (?, ?, ?, ?, ?)
@@ -80,23 +104,18 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) er
 	return err
 }
 
-const useSession = `-- name: UseSession :one
-UPDATE sessions SET last_used_at = ?1
-WHERE token_hash = ?2 AND expires_at > ?1
-RETURNING email
+const touchSession = `-- name: TouchSession :exec
+UPDATE sessions SET last_used_at = ?1 WHERE token_hash = ?2
 `
 
-type UseSessionParams struct {
+type TouchSessionParams struct {
 	Now       string
 	TokenHash []byte
 }
 
-// UseSession records that a live session was used and returns its email. A
-// session past its expiry matches nothing, and the expiry itself is never
+// TouchSession records that a session was used. The expiry itself is never
 // moved: a session lasts a fixed time from sign-in (ADR-00030).
-func (q *Queries) UseSession(ctx context.Context, arg UseSessionParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, useSession, arg.Now, arg.TokenHash)
-	var email string
-	err := row.Scan(&email)
-	return email, err
+func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) error {
+	_, err := q.db.ExecContext(ctx, touchSession, arg.Now, arg.TokenHash)
+	return err
 }

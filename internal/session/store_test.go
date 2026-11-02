@@ -314,8 +314,8 @@ func TestDeleteExpired(t *testing.T) {
 	if err != nil || n != 2 {
 		t.Fatalf("DeleteExpired = %d, %v; want 2", n, err)
 	}
-	if f.count() != 1 {
-		t.Errorf("sessions left = %d, want 1", f.count())
+	if n := f.count(); n != 1 {
+		t.Errorf("sessions left = %d, want 1", n)
 	}
 	if email, err := f.lookup(fresh); err != nil || email != "cy@example.com" {
 		t.Errorf("unexpired session = %q, %v", email, err)
@@ -327,5 +327,42 @@ func TestNewRefusesNonPositiveLifetime(t *testing.T) {
 		if _, err := New(nil, d); err == nil {
 			t.Errorf("New(lifetime %s) succeeded", d)
 		}
+	}
+}
+
+// Lookup writes last_used_at at most once per touchEvery, so every private
+// request does not queue on SQLite's single writer.
+func TestLookupTouchesAtMostOncePerInterval(t *testing.T) {
+	f := newFixture(t)
+	start := f.now
+	token := f.create("ann@example.com")
+
+	f.now = start.Add(touchEvery - time.Second)
+	if _, err := f.lookup(token); err != nil {
+		t.Fatal(err)
+	}
+	if _, l, _, _ := f.row(token); l != start.Format(timeLayout) {
+		t.Errorf("last_used_at moved within touchEvery: %s, want %s", l, start.Format(timeLayout))
+	}
+
+	f.now = start.Add(touchEvery)
+	if _, err := f.lookup(token); err != nil {
+		t.Fatal(err)
+	}
+	if _, l, _, _ := f.row(token); l != f.now.Format(timeLayout) {
+		t.Errorf("last_used_at = %s after touchEvery, want %s", l, f.now.Format(timeLayout))
+	}
+}
+
+func TestDeleteForEmailRefusesAnEmptyEmail(t *testing.T) {
+	f := newFixture(t)
+	f.create("ann@example.com")
+	for _, e := range []string{"", "   "} {
+		if _, err := f.s.DeleteForEmail(context.Background(), e); err == nil {
+			t.Errorf("DeleteForEmail(%q) = nil error, want one", e)
+		}
+	}
+	if n := f.count(); n != 1 {
+		t.Errorf("sessions left = %d, want 1", n)
 	}
 }
