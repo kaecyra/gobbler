@@ -26,3 +26,6 @@ const (
 	RepositoryURL     = "https://github.com/kaecyra/gobbler"
 	RepositoryDisplay = "github.com/kaecyra/gobbler"
 )
+
+// MakerURL is where the footer's "kaecyra" links: the maker's resume.
+const MakerURL = "https://resume.timgunter.ca"

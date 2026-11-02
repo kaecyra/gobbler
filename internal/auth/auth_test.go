@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -206,14 +207,14 @@ func newHarness(t *testing.T, extra ...Option) *harness {
 
 // serve runs one request through the middleware wrapping a handler that
 // records the context email, and returns the status and that email.
-func serve(h *harness, req *http.Request, exempt ...string) (int, string) {
+func serve(h *harness, req *http.Request, public ...string) (int, string) {
 	var got string
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got, _ = EmailFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
 	rec := httptest.NewRecorder()
-	h.auth.Middleware(exempt...)(next).ServeHTTP(rec, req)
+	h.auth.Middleware(func(p string) bool { return slices.Contains(public, p) })(next).ServeHTTP(rec, req)
 	return rec.Code, got
 }
 
@@ -429,19 +430,40 @@ func TestJWKSFailureThenRecovery(t *testing.T) {
 	}
 }
 
-func TestExemptPath(t *testing.T) {
+func TestPublicPath(t *testing.T) {
 	h := newHarness(t)
-	r := httptest.NewRequest(http.MethodGet, "/healthz", nil)
-	if code, _ := serve(h, r, "/healthz"); code != http.StatusOK {
-		t.Fatalf("exempt path without token: %d", code)
+	_, other := testKeys(t)
+	cases := []struct {
+		name, path string
+		req        *http.Request
+		wantCode   int
+		wantEmail  string
+	}{
+		{"public, no token", "/canada", nil, http.StatusOK, ""},
+		{"public, valid token keeps the identity", "/canada", withHeader(goodToken(t, nil)), http.StatusOK, "tim@example.com"},
+		{"public, bad token is served without identity", "/canada", withHeader(goodToken(t, func(s *tokenSpec) { s.key = other })), http.StatusOK, ""},
+		{"not public, no token", "/recipes", nil, http.StatusForbidden, ""},
+		{"not public, bad token", "/recipes", withHeader(goodToken(t, func(s *tokenSpec) { s.key = other })), http.StatusForbidden, ""},
 	}
-	r = httptest.NewRequest(http.MethodGet, "/recipes", nil)
-	if code, _ := serve(h, r, "/healthz"); code != http.StatusForbidden {
-		t.Fatalf("non-exempt path without token: %d", code)
+	for _, c := range cases {
+		req := c.req
+		if req == nil {
+			req = httptest.NewRequest(http.MethodGet, "/", nil)
+		}
+		req.URL.Path = c.path
+		code, email := serve(h, req, "/canada")
+		if code != c.wantCode || email != c.wantEmail {
+			t.Errorf("%s: = %d %q, want %d %q", c.name, code, email, c.wantCode, c.wantEmail)
+		}
 	}
-	r = httptest.NewRequest(http.MethodGet, "/healthz/extra", nil)
-	if code, _ := serve(h, r, "/healthz"); code != http.StatusForbidden {
-		t.Fatalf("exemption must be an exact match: %d", code)
+}
+
+func TestNilPublicMakesNothingPublic(t *testing.T) {
+	h := newHarness(t)
+	rec := httptest.NewRecorder()
+	h.auth.Middleware(nil)(http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("no token with nil public = %d, want 403", rec.Code)
 	}
 }
 
@@ -493,7 +515,7 @@ func TestDevBypass(t *testing.T) {
 	}
 	var got string
 	rec := httptest.NewRecorder()
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got, _ = EmailFromContext(r.Context())
 	})).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	if rec.Code != http.StatusOK || got != DevEmail {
@@ -562,7 +584,7 @@ func TestBadJWKSDocuments(t *testing.T) {
 				t.Fatal(err)
 			}
 			rec := httptest.NewRecorder()
-			a.Middleware()(http.NotFoundHandler()).ServeHTTP(rec, withHeader(goodToken(t, nil)))
+			a.Middleware(nil)(http.NotFoundHandler()).ServeHTTP(rec, withHeader(goodToken(t, nil)))
 			if rec.Code != http.StatusForbidden {
 				t.Fatalf("got %d, want 403", rec.Code)
 			}
@@ -679,7 +701,7 @@ func identityOf(a *Authenticator, header string) (int, string) {
 		req.Header.Set(DevIdentityHeader, header)
 	}
 	rec := httptest.NewRecorder()
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got, _ = EmailFromContext(r.Context())
 	})).ServeHTTP(rec, req)
 	return rec.Code, got

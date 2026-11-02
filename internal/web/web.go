@@ -19,6 +19,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
 	"github.com/kaecyra/gobbler/internal/web/settings"
@@ -28,7 +29,8 @@ import (
 type Deps struct {
 	Config config.Config
 	DB     *sql.DB
-	// Auth verifies the Access JWT on every request but the health check.
+	// Auth verifies the Access JWT on every request but the public paths
+	// (layout.IsPublic, ADR-00029), where a token is optional.
 	Auth *auth.Authenticator
 	// Logger receives request logs; the default is slog.Default().
 	Logger *slog.Logger
@@ -73,7 +75,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	r := chi.NewRouter()
 	// No trusted origins and no bypass patterns: no handler opts out (ADR-00016).
 	cop := http.NewCrossOriginProtection()
-	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(HealthPath), membership(members, d.Config.Operator), cop.Handler)
+	r.Use(requestLogger(log), recoverer(log), d.Auth.Middleware(layout.IsPublic), membership(members, d.Config.Operator), cop.Handler)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})
@@ -83,6 +85,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 
 	r.Get(HealthPath, healthHandler(d.HealthDetails))
 	r.Mount(nonmember.Pattern, nonmember.Routes())
+	r.Get(canada.Pattern, canada.Handler)
 	r.Handle("/static/*", staticHandler())
 	mountFeatures(r, d)
 	return r, nil

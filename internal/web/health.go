@@ -7,7 +7,8 @@ import (
 	"net/http"
 )
 
-// HealthPath is the only route served without authentication (ADR-00003).
+// HealthPath is the health check, one of the public paths served without
+// authentication (layout.IsPublic, ADR-00029).
 const HealthPath = "/healthz"
 
 type healthBody struct {

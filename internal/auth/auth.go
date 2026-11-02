@@ -113,28 +113,33 @@ func New(cfg config.Config, opts ...Option) (*Authenticator, error) {
 }
 
 // Middleware returns net/http middleware that rejects, with 403, any request
-// without a valid token. Requests whose URL path exactly equals one of exempt
-// skip verification entirely; the router passes the health check here and
-// nothing else (ADR-00003 obligation 2).
-func (a *Authenticator) Middleware(exempt ...string) func(http.Handler) http.Handler {
-	skip := make(map[string]struct{}, len(exempt))
-	for _, p := range exempt {
-		skip[p] = struct{}{}
-	}
+// without a valid token, unless public reports that its URL path is public
+// (ADR-00029). A public request is served either way: with the verified email
+// when it carries a valid token, and with no identity when it carries none or
+// one that fails to verify. A nil public makes no path public. The router
+// passes the public-path list here; nothing else is exempt. public is checked
+// against the raw path, so it only decides whether a token is required.
+// Admission stays with the membership middleware, which re-checks the path.
+func (a *Authenticator) Middleware(public func(path string) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if _, ok := skip[r.URL.Path]; ok {
-				next.ServeHTTP(w, r)
-				return
-			}
 			email, err := a.authenticate(r)
-			if err != nil {
+			switch {
+			case err == nil:
+				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, email)))
+			case public != nil && public(r.URL.Path):
+				if !errors.Is(err, errNoToken) {
+					// A public page is served regardless, so a bad token costs
+					// the visitor nothing but their identity; log it all the same.
+					a.log.InfoContext(r.Context(), "public request served without identity",
+						"reason", err.Error(), "method", r.Method, "path", r.URL.Path)
+				}
+				next.ServeHTTP(w, r)
+			default:
 				a.log.WarnContext(r.Context(), "access denied",
 					"reason", err.Error(), "method", r.Method, "path", r.URL.Path, "remote_addr", r.RemoteAddr)
 				http.Error(w, "forbidden", http.StatusForbidden)
-				return
 			}
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, email)))
 		})
 	}
 }
@@ -150,7 +155,7 @@ func (a *Authenticator) authenticate(r *http.Request) (string, error) {
 		}
 	}
 	if token == "" {
-		return "", reject("no token")
+		return "", errNoToken
 	}
 	return a.verify(r.Context(), token)
 }

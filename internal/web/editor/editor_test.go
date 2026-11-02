@@ -55,7 +55,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("auth.New: %v", err)
 	}
 	var authed context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authed = r.Context() })).
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authed = r.Context() })).
 		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	if authed == nil {
 		t.Fatal("auth middleware did not call the handler")
@@ -69,7 +69,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("create recipe: %v", err)
 	}
 	r := chi.NewRouter()
-	r.Use(a.Middleware(), asMember(hh))
+	r.Use(a.Middleware(nil), asMember(hh))
 	r.Mount(Pattern, Routes(Deps{Recipes: s, Catalog: c, Thumbnails: e.thumbs}))
 	e.h = r
 	return e

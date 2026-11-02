@@ -65,7 +65,7 @@ func fill(t *testing.T, d *sql.DB, h household.Household, name string) {
 		t.Fatal(err)
 	}
 	var ctx context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { ctx = r.Context() })).
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { ctx = r.Context() })).
 		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	ctx = household.WithContext(ctx, h)
 

@@ -25,12 +25,16 @@ type memberLookup interface {
 // membership decides admission, after Access has verified the identity. It is
 // the only lock now that Access admits any email that authenticates
 // (ADR-00018), so it fails closed: a request with no verified identity, or
-// whose membership cannot be read, never reaches a handler. What it admits is
+// whose membership cannot be read, never reaches a handler, unless its path is
+// public (ADR-00029). What it admits is
 // layout.Admits, the rule the nav also reads; a member's request carries its
 // household.
 func membership(members memberLookup, ops config.Operator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// The health check is public, and it must answer whatever the
+			// state of the database or the identity on the request, so it
+			// skips the membership lookup entirely.
 			if r.URL.Path == HealthPath {
 				next.ServeHTTP(w, r)
 				return
@@ -46,6 +50,13 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 			}
 			email, ok := auth.EmailFromContext(r.Context())
 			if !ok {
+				// No identity: the Access middleware let the request through
+				// only because its path is public (ADR-00029). Check that
+				// again, on both forms of the path, rather than trust it.
+				if layout.IsPublic(r.URL.Path) && layout.IsPublic(r.URL.EscapedPath()) {
+					next.ServeHTTP(w, r)
+					return
+				}
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}

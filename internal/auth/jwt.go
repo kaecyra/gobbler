@@ -23,6 +23,10 @@ var errToken = errors.New("invalid access token")
 
 func reject(reason string) error { return fmt.Errorf("%w: %s", errToken, reason) }
 
+// errNoToken is a request that carries no token at all, as opposed to one whose
+// token failed. A public path serves the first quietly (ADR-00029).
+var errNoToken = reject("no token")
+
 type header struct {
 	Alg string `json:"alg"`
 	Kid string `json:"kid"`
