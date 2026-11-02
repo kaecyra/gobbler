@@ -48,8 +48,10 @@ import {
 //     operator, and these pages show no household data to anyone (ADR-00018).
 //   - invitation routes: an invitation names the one email it is for, so both
 //     identities get 404 for DEV's invitation, as for one that does not exist.
-//   - public routes (/healthz, /canada, /static; ADR-00029): reachable by both and tenant-free, so
-//     the same checks apply: no marker of DEV's data in the response.
+//   - public routes (/healthz, /canada, /static; ADR-00029; and sign-in with its callback,
+//     ADR-00030): reachable by both and tenant-free, so the same checks apply: no marker of
+//     DEV's data in the response.
+//   - sign-out: any identity may sign itself out, and is sent home.
 //   - the not-a-member page: shown to the non-member, and a member is sent home.
 //
 // The data needs a seeded recipe, so this spec starts its own gobbler on a data
@@ -109,6 +111,12 @@ const PROBES: Probe[] = [
   { method: 'GET', path: () => '/healthz', stranger: 200, other: 200 },
   { method: 'GET', path: () => '/static/app.css', stranger: 200, other: 200 },
   { method: 'GET', path: () => '/canada', stranger: 200, other: 200 },
+  // Sign-in (ADR-00030): public, and it reads no household. Starting one sends
+  // anyone to the issuer; a callback with no sign-in in progress is refused.
+  { method: 'GET', path: () => '/login', stranger: 303, other: 303 },
+  { method: 'GET', path: () => '/auth/callback', stranger: 400, other: 400 },
+  // Sign-out ends the requester's own session, member or not, and goes home.
+  { method: 'POST', path: () => '/logout', stranger: 303, other: 303, otherLocation: '/' },
   // The not-a-member page: shown to the non-member, a member is sent home.
   { method: 'GET', path: () => '/not-a-member', stranger: 200, other: 303, otherLocation: '/' },
 

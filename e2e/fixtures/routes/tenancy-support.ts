@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { issuerEnv, startIssuer } from '../issuer.mjs';
 import { freePorts } from '../ports.mjs';
 import { DEV, OTHER, OPERATOR, asIdentity } from '../identity';
 
@@ -61,6 +62,8 @@ export interface Server {
   child: ChildProcess;
   /** The id of the seeded recipe, or 0 when the server was not seeded. */
   recipe: number;
+  /** The local fake issuer the server's sign-in is configured with (ADR-00030). */
+  issuer: { origin: string; close: () => Promise<unknown> };
 }
 
 /**
@@ -77,16 +80,24 @@ export async function startServer(w: Workdir, port: number, seed: boolean): Prom
   const dataDir = mkdtempSync(join(w.dir, 'data-'));
   let recipe = 0;
   if (seed) ({ recipe } = JSON.parse(execFileSync(w.seed, [dataDir], { encoding: 'utf8' })));
+  // Sign-in is configured as in production, so its routes are probed too; it
+  // signs in with a local fake issuer, and the bypass still decides identity.
+  const issuer = await startIssuer();
   const attempts = 3;
   const failures: string[] = [];
-  for (let attempt = 1; ; attempt++) {
-    const s = await tryStart(dataDir, port, recipe);
-    if ('child' in s) return s;
-    failures.push(`port ${port}: ${s.exit}`);
-    if (attempt === attempts) {
-      throw new Error(`the tenancy server did not start after ${attempts} attempts (${failures.join('; ')}); its own log is above`);
+  try {
+    for (let attempt = 1; ; attempt++) {
+      const s = await tryStart(dataDir, port, recipe, issuer);
+      if ('child' in s) return s;
+      failures.push(`port ${port}: ${s.exit}`);
+      if (attempt === attempts) {
+        throw new Error(`the tenancy server did not start after ${attempts} attempts (${failures.join('; ')}); its own log is above`);
+      }
+      [port] = await freePorts(1);
     }
-    [port] = await freePorts(1);
+  } catch (err) {
+    await issuer.close();
+    throw err;
   }
 }
 
@@ -95,7 +106,7 @@ export async function startServer(w: Workdir, port: number, seed: boolean): Prom
  * was. An early exit may be a taken port or a real crash; the caller retries
  * and reports every exit, so a crash is not mistaken for a collision.
  */
-async function tryStart(dataDir: string, port: number, recipe: number): Promise<Server | { exit: string }> {
+async function tryStart(dataDir: string, port: number, recipe: number, issuer: Server['issuer']): Promise<Server | { exit: string }> {
   const origin = `http://127.0.0.1:${port}`;
   const child = spawn(bin!, ['serve'], {
     env: {
@@ -105,6 +116,7 @@ async function tryStart(dataDir: string, port: number, recipe: number): Promise<
       GOBBLER_LOG_LEVEL: 'warn',
       GOBBLER_DEV_AUTH_BYPASS: 'true',
       GOBBLER_OPERATOR_EMAILS: OPERATOR,
+      ...issuerEnv(issuer.origin, origin),
     },
     stdio: 'inherit',
   });
@@ -130,15 +142,18 @@ async function tryStart(dataDir: string, port: number, recipe: number): Promise<
     }
     await new Promise((r) => setTimeout(r, 100));
   }
-  return { dataDir, origin, child, recipe };
+  return { dataDir, origin, child, recipe, issuer };
 }
 
-/** Stops the server and waits for it, so SQLite has checkpointed its WAL. */
+/** Stops the server and waits for it, so SQLite has checkpointed its WAL, then its issuer. */
 export async function stopServer(s: Server | undefined): Promise<void> {
-  if (!s || s.child.exitCode !== null) return;
-  const exited = new Promise((resolve) => s.child.once('exit', resolve));
-  s.child.kill('SIGTERM');
-  await exited;
+  if (!s) return;
+  if (s.child.exitCode === null) {
+    const exited = new Promise((resolve) => s.child.once('exit', resolve));
+    s.child.kill('SIGTERM');
+    await exited;
+  }
+  await s.issuer.close();
 }
 
 /** A request context whose every request is made by email. */
