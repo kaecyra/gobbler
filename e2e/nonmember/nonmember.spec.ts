@@ -28,6 +28,13 @@ test.describe('an authenticated non-member', () => {
     expect((await request.get('/healthz')).status()).toBe(200);
   });
 
+  test('is offered no section of the app in the nav', async ({ page }) => {
+    await page.goto('/not-a-member');
+    const nav = page.getByRole('navigation', { name: 'Primary' });
+    await expect(nav.getByRole('link')).toHaveCount(0);
+    await expect(nav.getByRole('button', { name: 'More sections' })).toHaveCount(0);
+  });
+
   test('is refused a write as well', async ({ request }) => {
     const res = await request.post('/settings/backup');
     expect(res.status()).toBe(403);

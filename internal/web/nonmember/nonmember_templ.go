@@ -81,7 +81,7 @@ func page(email string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p>gobbler is by invitation. Ask a member of a household to invite this email address, then open the link in the invitation.</p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p>gobbler is by invitation. Ask a member of a household to invite this email address, then open the link in the invitation.</p><p>To start a new household, ask the person who runs this gobbler for a household invitation.</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

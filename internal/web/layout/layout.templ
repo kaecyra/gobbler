@@ -34,27 +34,29 @@ templ Page(title string) {
 								@navLink(ctx, item)
 							}
 						}
-						<details class="menu" data-menu>
-							<summary
-								class="tab"
-								role="button"
-								aria-label="More sections"
-								title="More sections"
-								if menuCurrent(ctx) {
-									data-current="true"
-								}
-							>
-								@icon("menu")
-								<span class="lbl-phone">More</span>
-							</summary>
-							<ul class="menu-list">
-								for _, item := range navItems {
-									if item.Menu && visible(ctx, item) {
-										<li>@navLink(ctx, item)</li>
+						if hasMenu(ctx) {
+							<details class="menu" data-menu>
+								<summary
+									class="tab"
+									role="button"
+									aria-label="More sections"
+									title="More sections"
+									if menuCurrent(ctx) {
+										data-current="true"
 									}
-								}
-							</ul>
-						</details>
+								>
+									@icon("menu")
+									<span class="lbl-phone">More</span>
+								</summary>
+								<ul class="menu-list">
+									for _, item := range navItems {
+										if item.Menu && visible(ctx, item) {
+											<li>@navLink(ctx, item)</li>
+										}
+									}
+								</ul>
+							</details>
+						}
 					</nav>
 					<button type="button" class="modebtn" data-theme-toggle aria-pressed="false" aria-label="Switch to dark" title="Dark mode">
 						@icon("moon")

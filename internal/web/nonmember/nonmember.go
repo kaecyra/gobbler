@@ -10,8 +10,9 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-// Pattern is where the router mounts Routes.
-const Pattern = "/not-a-member"
+// Pattern is where the router mounts Routes. The layout owns the path, since
+// its admission rule lets a non-member open it (layout.Admits).
+const Pattern = layout.NotAMemberPath
 
 // Routes returns the page's route, relative to Pattern. A household member who
 // opens it has no use for it and is sent home.

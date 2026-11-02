@@ -144,15 +144,29 @@ func TestRenderWritesStatusAndBody(t *testing.T) {
 // way package web mounts features, so the layout sees real chi route state.
 func renderAt(t *testing.T, path string) string {
 	t.Helper()
-	return renderAtAs(t, path, true)
+	return renderAtAs(t, path, memberOperator)
 }
 
-// renderAtAs is renderAt for a request that is, or is not, an operator's.
-func renderAtAs(t *testing.T, path string, operator bool) string {
+// identity is who a rendered request comes from: a household member or not,
+// an operator or not.
+type identity struct{ member, operator bool }
+
+var (
+	memberOperator    = identity{member: true, operator: true}
+	memberOnly        = identity{member: true}
+	nonMember         = identity{}
+	nonMemberOperator = identity{operator: true}
+)
+
+// renderAtAs is renderAt for a request from who.
+func renderAtAs(t *testing.T, path string, who identity) string {
 	t.Helper()
 	page := func(w http.ResponseWriter, r *http.Request) {
-		if operator {
+		if who.operator {
 			r = r.WithContext(WithOperator(r.Context()))
+		}
+		if who.member {
+			r = r.WithContext(household.WithContext(r.Context(), household.Household{ID: 1, Name: "Probe"}))
 		}
 		Render(w, r, http.StatusOK, Page("Probe"))
 	}
@@ -173,7 +187,7 @@ func renderAtAs(t *testing.T, path string, operator bool) string {
 }
 
 func TestNavLinksEveryTopLevelPage(t *testing.T) {
-	got := renderAtAs(t, "/", true)
+	got := renderAtAs(t, "/", memberOperator)
 	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/shares", "/household", "/operator", "/settings"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("nav missing link to %s in:\n%s", href, got)
@@ -223,17 +237,82 @@ func TestNavWithoutRouterMarksNothing(t *testing.T) {
 
 func TestNavHidesOperatorLinksFromEveryoneElse(t *testing.T) {
 	for _, op := range OperatorPaths {
-		if got := renderAtAs(t, "/", false); strings.Contains(got, `href="`+op+`"`) {
+		if got := renderAtAs(t, "/", memberOnly); strings.Contains(got, `href="`+op+`"`) {
 			t.Errorf("non-operator nav links operator page %s:\n%s", op, got)
 		}
-		if got := renderAtAs(t, "/", true); !strings.Contains(got, `href="`+op+`"`) {
+		if got := renderAtAs(t, "/", memberOperator); !strings.Contains(got, `href="`+op+`"`) {
 			t.Errorf("operator nav missing operator page %s:\n%s", op, got)
 		}
 	}
-	got := renderAtAs(t, "/", false)
+	got := renderAtAs(t, "/", memberOnly)
 	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/shares", "/household"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("non-operator nav lost %s:\n%s", href, got)
+		}
+	}
+}
+
+// The nav and the membership middleware read one rule, Admits: every identity
+// sees a link exactly when it may open the page.
+func TestNavShowsExactlyTheLinksAdmitsAdmits(t *testing.T) {
+	for name, who := range map[string]identity{
+		"member operator":     memberOperator,
+		"member":              memberOnly,
+		"non-member":          nonMember,
+		"non-member operator": nonMemberOperator,
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := renderAtAs(t, "/", who)
+			for _, item := range navItems {
+				want := Admits(item.Path, who.member, who.operator)
+				if has := strings.Contains(got, `href="`+item.Path+`"`); has != want {
+					t.Errorf("link to %s shown = %v, want %v:\n%s", item.Path, has, want, got)
+				}
+			}
+		})
+	}
+}
+
+func TestNavHidesMemberLinksFromANonMember(t *testing.T) {
+	got := renderAtAs(t, "/", nonMember)
+	for _, item := range navItems {
+		if strings.Contains(got, `href="`+item.Path+`"`) {
+			t.Errorf("non-member nav links %s:\n%s", item.Path, got)
+		}
+	}
+	got = renderAtAs(t, "/", nonMemberOperator)
+	for _, item := range navItems {
+		want := isOperatorPath(item.Path)
+		if has := strings.Contains(got, `href="`+item.Path+`"`); has != want {
+			t.Errorf("non-member operator: link to %s shown = %v, want %v", item.Path, has, want)
+		}
+	}
+}
+
+func TestAdmits(t *testing.T) {
+	cases := []struct {
+		path             string
+		member, operator bool
+		want             bool
+	}{
+		{"/recipes", true, false, true},
+		{"/recipes", false, false, false},
+		{"/recipes", false, true, false},
+		{"/settings", true, false, false},
+		{"/settings", true, true, true},
+		{"/operator/invitations", false, true, true},
+		{"/operator/invitations", false, false, false},
+		{"//operator", true, false, false},
+		{NotAMemberPath, false, false, true},
+		{InvitationsPath + "/7", false, false, true},
+		{InvitationsPath, false, false, false},
+		{"/static/app.css", false, false, true},
+		{"/", false, false, false},
+		{"/", true, false, true},
+	}
+	for _, tc := range cases {
+		if got := Admits(tc.path, tc.member, tc.operator); got != tc.want {
+			t.Errorf("Admits(%q, member=%v, operator=%v) = %v, want %v", tc.path, tc.member, tc.operator, got, tc.want)
 		}
 	}
 }
