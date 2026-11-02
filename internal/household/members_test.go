@@ -2,6 +2,7 @@ package household
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -79,6 +80,65 @@ func TestLeave(t *testing.T) {
 	code = f.invite(Invite{Kind: KindJoin, Email: "cy@example.com", HouseholdID: other.ID, IssuedBy: "bob@example.com"})
 	if got, err := f.s.Accept(ctx, code, "cy@example.com", ""); err != nil || got.ID != other.ID {
 		t.Errorf("accept after leaving = %+v, %v", got, err)
+	}
+}
+
+// The leave hooks run for exactly the person who stopped being a member, in
+// the transaction that took them out, so a failing hook keeps them in.
+func TestLeaveHooks(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	h := f.create("Alpha", "ann@example.com")
+	for _, e := range []string{"cy@example.com", "di@example.com"} {
+		code := f.invite(Invite{Kind: KindJoin, Email: e, HouseholdID: h.ID, IssuedBy: "ann@example.com"})
+		if _, err := f.s.Accept(ctx, code, e, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var left []string
+	fail := false
+	f.s.OnMemberLeave(func(_ context.Context, tx *sql.Tx, email string) error {
+		if tx == nil {
+			t.Error("hook called outside a transaction")
+		}
+		if fail {
+			return errors.New("hook failed")
+		}
+		left = append(left, email)
+		return nil
+	})
+
+	// Refused attempts run no hook.
+	if err := f.s.Remove(ctx, h.ID, "ann@example.com", "nobody@example.com"); !errors.Is(err, ErrNotFound) {
+		t.Fatal(err)
+	}
+	if err := f.s.Leave(ctx, "nobody@example.com"); !errors.Is(err, ErrNotFound) {
+		t.Fatal(err)
+	}
+	if len(left) != 0 {
+		t.Fatalf("hooks ran for refused attempts: %v", left)
+	}
+
+	fail = true
+	if err := f.s.Remove(ctx, h.ID, "ann@example.com", "cy@example.com"); err == nil {
+		t.Fatal("a failing hook must fail the removal")
+	}
+	if err := f.s.Leave(ctx, "di@example.com"); err == nil {
+		t.Fatal("a failing hook must fail leaving")
+	}
+	if got, _ := f.s.Members(ctx, h.ID); len(got) != 3 {
+		t.Fatalf("a failed hook did not roll back: members %v", got)
+	}
+
+	fail = false
+	if err := f.s.Remove(ctx, h.ID, "ann@example.com", "Cy@Example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.Leave(ctx, "DI@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if len(left) != 2 || left[0] != "cy@example.com" || left[1] != "di@example.com" {
+		t.Errorf("hooks ran for %v, want the normalised emails of the removed and the leaver", left)
 	}
 }
 

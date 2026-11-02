@@ -135,7 +135,9 @@ func (s *Store) InvitationFor(ctx context.Context, code, email string) (Invitati
 // Remove takes target out of the household on behalf of by, who must be
 // another member of it. A target that is not in the household, and a remover
 // who is not, are both ErrNotFound, so the answer says nothing about other
-// households; removing oneself is ErrInvalid (that is Leave).
+// households; removing oneself is ErrInvalid (that is Leave). The target's
+// invitations into the household are withdrawn and the leave hooks run
+// (OnMemberLeave), all in one transaction.
 func (s *Store) Remove(ctx context.Context, householdID int64, by, target string) error {
 	remover, err := NormalizeEmail(by)
 	if err != nil {
@@ -148,7 +150,7 @@ func (s *Store) Remove(ctx context.Context, householdID int64, by, target string
 	if remover == t {
 		return fmt.Errorf("%w: use leave to remove yourself", ErrInvalid)
 	}
-	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, tx *sql.Tx) error {
 		n, err := q.RemoveMember(ctx, householddb.RemoveMemberParams{HouseholdID: householdID, Target: t, RemovedBy: remover})
 		if err != nil {
 			return fmt.Errorf("remove %s from household %d: %w", t, householdID, err)
@@ -156,7 +158,10 @@ func (s *Store) Remove(ctx context.Context, householdID int64, by, target string
 		if n == 0 {
 			return fmt.Errorf("%w: %s is not in household %d", ErrNotFound, t, householdID)
 		}
-		return s.revokeIssued(ctx, q, t, householdID)
+		if err := s.revokeIssued(ctx, q, t, householdID); err != nil {
+			return err
+		}
+		return s.runLeaveHooks(ctx, tx, t)
 	})
 	return err
 }
@@ -173,8 +178,8 @@ func (s *Store) revokeIssued(ctx context.Context, q *householddb.Queries, issuer
 	return nil
 }
 
-// Leave takes the email out of its household and withdraws the invitations it
-// issued into it. The household's last member is refused with ErrLastMember;
+// Leave takes the email out of its household, withdraws the invitations it
+// issued into it and runs the leave hooks (OnMemberLeave). The household's last member is refused with ErrLastMember;
 // someone in no household gets ErrNotFound.
 func (s *Store) Leave(ctx context.Context, email string) error {
 	e, err := NormalizeEmail(email)
@@ -182,7 +187,7 @@ func (s *Store) Leave(ctx context.Context, email string) error {
 		return err
 	}
 	left := true
-	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, tx *sql.Tx) error {
 		hid, err := q.LeaveHousehold(ctx, e)
 		if errors.Is(err, sql.ErrNoRows) {
 			left = false
@@ -191,7 +196,10 @@ func (s *Store) Leave(ctx context.Context, email string) error {
 		if err != nil {
 			return fmt.Errorf("leave household as %s: %w", e, err)
 		}
-		return s.revokeIssued(ctx, q, e, hid)
+		if err := s.revokeIssued(ctx, q, e, hid); err != nil {
+			return err
+		}
+		return s.runLeaveHooks(ctx, tx, e)
 	})
 	if err != nil || left {
 		return err
