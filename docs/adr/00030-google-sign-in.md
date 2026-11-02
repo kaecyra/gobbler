@@ -26,7 +26,7 @@ anonymous traffic to private paths. What it costs:
 The owner wants Google sign-in and a single, clear line between the public and
 private parts of the site.
 
-Four options were considered:
+Five options were considered:
 
 - **Keep Access, with Google as its only login method.** This is still Google
   sign-in, done by Cloudflare. It was rejected because the line between public
@@ -133,3 +133,5 @@ address.
    name Google sign-in and this ADR.
 8. Library versions come from the module proxy at implementation time, never
    from memory.
+9. In the change that removes Access, ADR-00003's status line reads
+   "Superseded by ADR-00030", and so does its row in the ADR index.
