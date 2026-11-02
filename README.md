@@ -17,7 +17,8 @@ cp .env.example .env   # set GOBBLER_VERSION, the Access team domain and AUD
 docker compose pull && docker compose up -d
 ```
 
-Compose runs `gobbler` alone, from the image CI publishes to
+The package must be public for the VM to pull it; see Bring it up in
+[docs/operations.md](./docs/operations.md). Compose runs `gobbler` alone, from the image CI publishes to
 `ghcr.io/kaecyra/gobbler` ([ADR-00026](./docs/adr/00026-publish-images-to-ghcr.md)). The database lives on the named volume
 `gobbler-data`, migrations apply at start-up, and `gobbler` publishes port 8080
 on host loopback only (`127.0.0.1:8080`). `cloudflared` runs on the VM guest,

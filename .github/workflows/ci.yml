@@ -8,6 +8,14 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels that PR's superseded run. A push to main
+# gets a group of its own (the SHA) and is never cancelled: each merge carries
+# its own VERSION, and cancelling one would leave that version unpublished
+# (ADR-00026).
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -77,12 +85,21 @@ jobs:
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
           docker build -t "$IMAGE:$GITHUB_SHA" .
+          # The contents check runs on the very image that is about to ship,
+          # not only on the one the image job built.
+          bash .github/scripts/check-image.sh "$IMAGE:$GITHUB_SHA"
           docker push "$IMAGE:$GITHUB_SHA"
           # A published version tag is never moved: a merge without a bump
-          # (documentation only) publishes the SHA tag and nothing more.
-          if docker manifest inspect "$IMAGE:$version" >/dev/null 2>&1; then
+          # (documentation only) publishes the SHA tag and nothing more. Only
+          # an explicit "no such manifest" means unpublished; any other
+          # failure (registry error, auth) fails the job rather than risk
+          # moving a published tag.
+          if out="$(docker manifest inspect "$IMAGE:$version" 2>&1)"; then
             echo "$IMAGE:$version already published; leaving it"
-          else
+          elif printf '%s' "$out" | grep -qiE 'no such manifest|manifest unknown'; then
             docker tag "$IMAGE:$GITHUB_SHA" "$IMAGE:$version"
             docker push "$IMAGE:$version"
+          else
+            echo "cannot tell whether $IMAGE:$version exists: $out" >&2
+            exit 1
           fi

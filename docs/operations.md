@@ -105,6 +105,7 @@ in, and the app should load.
 ### Upgrade
 
 ```sh
+git pull                 # compose.yaml and .env.example can change between releases
 # set GOBBLER_VERSION in .env to the new version, then:
 docker compose pull
 docker compose up -d
@@ -205,6 +206,10 @@ Design and reasoning: [ADR-00010](./adr/00010-backups.md).
 
 Recovery point: up to a day, the time since the last snapshot. Anything written
 after it is lost.
+
+Every `docker compose` command below reads `compose.yaml`, which refuses to run
+without `GOBBLER_VERSION` in `.env`, even for steps that do not start the app.
+Keep it set to the version you are running.
 
 ### 1. Choose a snapshot
 
