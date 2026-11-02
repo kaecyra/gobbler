@@ -3,12 +3,14 @@
 # the network cannot reach it, but other guest processes can; the Access JWT
 # check guards every route except the health check (ADR-00003).
 #
-# Usage: copy .env.example to .env, fill it in, then `docker compose up -d`.
+# Usage: copy .env.example to .env, fill it in, then
+# `docker compose pull && docker compose up -d`.
 
 services:
   gobbler:
-    build: .
-    image: gobbler:local
+    # Published by CI on every merge to main (ADR-00026). Set GOBBLER_VERSION
+    # in .env to a version from ghcr.io/kaecyra/gobbler; there is no default.
+    image: ghcr.io/kaecyra/gobbler:${GOBBLER_VERSION:?set GOBBLER_VERSION in .env to a published version}
     restart: unless-stopped
     environment:
       # The container's interface must accept the published traffic; publishing
