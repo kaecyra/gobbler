@@ -43,6 +43,17 @@ func menuCurrent(ctx context.Context) bool {
 	return false
 }
 
+// hasMenu reports whether any section behind the menu button is visible to the
+// request in ctx, so a non-member is not offered an empty menu.
+func hasMenu(ctx context.Context) bool {
+	for _, item := range navItems {
+		if item.Menu && visible(ctx, item) {
+			return true
+		}
+	}
+	return false
+}
+
 // isCurrent reports whether the page being rendered belongs to item's section.
 // The section is the first path segment of the outermost chi route pattern the
 // request matched, so /recipes/{id}/cook is part of Recipes. A context with no

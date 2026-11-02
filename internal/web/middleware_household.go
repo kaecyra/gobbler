@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
 	"slices"
 	"strings"
 	"sync"
@@ -18,16 +17,12 @@ import (
 )
 
 // InvitationsPrefix is where invitation acceptance lives. A verified non-member
-// can reach it, and nothing else but the health check, the not-a-member page
-// and the embedded assets that page is drawn with (ADR-00018, Admission).
+// can reach it (layout.Admits).
 const InvitationsPrefix = layout.InvitationsPath + "/"
 
-// operatorPaths are the operator's pages (ADR-00018, Invitations): deployment
-// settings and the household invitations now, and later the review of overlay
-// entries suggested for central. A path under one of them is open to an
-// operator email, member or not, and closed to everyone else. The list is the
-// layout's, which also hides the nav link to each from everyone else, so a new
-// operator page is added in layout.OperatorPaths.
+// operatorPaths are the operator's pages (ADR-00018, Invitations). The list is
+// the layout's, which admits only an operator to them and hides the nav link
+// to each from everyone else.
 var operatorPaths = layout.OperatorPaths
 
 // memberLookup finds the household of a verified email. *household.Store
@@ -39,13 +34,9 @@ type memberLookup interface {
 // membership decides admission, after Access has verified the identity. It is
 // the only lock now that Access admits any email that authenticates
 // (ADR-00018), so it fails closed: a request with no verified identity, or
-// whose membership cannot be read, never reaches a handler.
-//
-//   - A member reaches every page but the operator's, and the request carries
-//     its household.
-//   - An operator email reaches the operator's pages, member or not.
-//   - A non-member reaches only the invitation routes, the not-a-member page
-//     and the assets, and gets the not-a-member page for anything else.
+// whose membership cannot be read, never reaches a handler. What it admits is
+// layout.Admits, the rule the nav also reads; a member's request carries its
+// household.
 func membership(members memberLookup, ops config.Operator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +47,7 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 			// chi routes the raw path, so "/settings/.." is dispatched into the
 			// /settings mount while its cleaned form "/" names no operator page.
 			// No page lives behind a dot segment, so refuse one before any
-			// admission decision, whoever asks, and the checks below can read
+			// admission decision, whoever asks, and the rule below can read
 			// the path as written.
 			if hasDotSegment(r) {
 				layout.WriteError(w, r, fmt.Errorf("dot segment in %q: %w", r.URL.Path, layout.ErrNotFound))
@@ -68,7 +59,6 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 				return
 			}
 			operator := ops.IsOperator(email)
-			onOperatorPage := isOperatorPath(r)
 			if operator {
 				// Presentation only: the nav shows operator links. The checks
 				// below stay the lock.
@@ -76,32 +66,36 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 			}
 
 			h, err := members.ForEmail(r.Context(), email)
+			member := err == nil
 			switch {
-			case err == nil:
-				if onOperatorPage && !operator {
-					layout.Render(w, r, http.StatusForbidden, layout.ErrorPage(http.StatusForbidden, "This page is for the operator."))
-					return
-				}
-				next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+			case member:
+				r = r.WithContext(household.WithContext(r.Context(), h))
 			case errors.Is(err, household.ErrNotFound), errors.Is(err, household.ErrInvalid):
 				// ErrInvalid is an identity that is not a plain address, which
 				// cannot be a member.
-				if (onOperatorPage && operator) || nonMemberMay(r.URL.Path) {
-					next.ServeHTTP(w, r)
-					return
-				}
-				nonmember.Refuse(w, r)
 			default:
 				layout.WriteError(w, r, err)
+				return
+			}
+
+			switch {
+			case admits(r, member, operator):
+				next.ServeHTTP(w, r)
+			case member:
+				// A member is refused only an operator page.
+				layout.Render(w, r, http.StatusForbidden, layout.ErrorPage(http.StatusForbidden, "This page is for the operator."))
+			default:
+				nonmember.Refuse(w, r)
 			}
 		})
 	}
 }
 
-// nonMemberMay reports whether a verified non-member may open p. The caller
-// has already refused dot segments, so the prefixes mean what they say.
-func nonMemberMay(p string) bool {
-	return p == nonmember.Pattern || strings.HasPrefix(p, InvitationsPrefix) || strings.HasPrefix(p, "/static/")
+// admits applies layout.Admits to the request's decoded and escaped paths and
+// admits only what both forms allow, so an encoding cannot carry a request past
+// the operator check.
+func admits(r *http.Request, member, operator bool) bool {
+	return layout.Admits(r.URL.Path, member, operator) && layout.Admits(r.URL.EscapedPath(), member, operator)
 }
 
 // hasDotSegment reports whether the request path has a "." or ".." segment,
@@ -113,22 +107,6 @@ func hasDotSegment(r *http.Request) bool {
 				strings.EqualFold(seg, ".%2e") || strings.EqualFold(seg, "%2e.")
 		}) {
 			return true
-		}
-	}
-	return false
-}
-
-// isOperatorPath reports whether the request is for an operator page: its
-// decoded or its escaped path, cleaned, is an operator root or lies under one.
-// Dot segments never get this far (hasDotSegment), so cleaning changes nothing
-// on a request that reaches it; it only normalises repeated slashes.
-func isOperatorPath(r *http.Request) bool {
-	for _, p := range []string{r.URL.Path, r.URL.EscapedPath()} {
-		p = path.Clean("/" + p)
-		for _, op := range operatorPaths {
-			if p == op || strings.HasPrefix(p, op+"/") {
-				return true
-			}
 		}
 	}
 	return false

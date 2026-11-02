@@ -219,4 +219,11 @@ test.describe('an operator who belongs to no household', () => {
     await expect(nav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
     await expect(nav(page).getByRole('link', { name: 'Invitations' })).toHaveAttribute('href', '/operator');
   });
+
+  test('is offered only the operator pages', async ({ page }) => {
+    await page.goto('/operator');
+    await openMenu(page);
+    const hrefs = await nav(page).getByRole('link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    expect(hrefs.sort()).toEqual(['/operator', '/settings']);
+  });
 });
