@@ -1,6 +1,6 @@
 # ADR-00017: cloudflared runs on the VM guest; Compose publishes gobbler on loopback only
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00027](00027-publish-on-all-interfaces.md)
 
 **Date:** 2026-10-12
 
@@ -45,6 +45,9 @@ This repository defines no tunnel container. The tunnel runs on the VM guest
 and is managed by the owner's infrastructure code. Compose publishes gobbler on
 the guest loopback only, at `127.0.0.1:8080`; the guest tunnel's service URL is
 `http://127.0.0.1:8080`.
+
+> Amended by [ADR-00027](00027-publish-on-all-interfaces.md): Compose publishes
+> on all interfaces, not loopback only. The tunnel's service URL is unchanged.
 
 ## Consequences
 

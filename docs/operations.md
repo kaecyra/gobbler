@@ -12,9 +12,13 @@ that matters. Run through them once on the real host and correct this file.
 
 One Ubuntu VM, Docker Compose, a Cloudflare tunnel. `cloudflared` runs on the
 VM guest, configured outside this repository by the owner's infrastructure
-code, not in Compose. The app publishes `127.0.0.1:8080` only, so the network
-reaches it only through the tunnel, behind Cloudflare Access. Other processes
-on the guest can reach `127.0.0.1:8080`; the Access JWT check stops them
+code, not in Compose. The app publishes port 8080 on every interface of the VM so a monitoring stack
+can reach `/healthz` ([ADR-00027](./adr/00027-publish-on-all-interfaces.md)).
+Anything that can reach the VM's address can reach the app without passing
+Cloudflare, so restrict port 8080 to the monitoring host in the VM firewall or
+cloud security group. `ufw` rules do not filter Docker-published ports unless
+written for Docker's `DOCKER-USER` chain. The Access JWT check stops anything
+else that gets through
 ([ADR-00003](./adr/00003-cloudflare-access-identity.md),
 [ADR-00002](./adr/00002-single-binary-go-stack.md),
 [ADR-00017](./adr/00017-cloudflared-on-the-guest.md)).
@@ -31,7 +35,7 @@ on the guest can reach `127.0.0.1:8080`; the Access JWT check stops them
 1. The guest's tunnel is managed by your infrastructure code, not by this
    repository.
 2. That code must route the public hostname to `http://127.0.0.1:8080` (the
-   loopback port Compose publishes).
+   port Compose publishes; the same binding serves loopback).
 3. Create a self-hosted Access application for that hostname with a policy that
    **admits any email that can authenticate** (for example an Allow rule that
    includes Everyone, with the One-time PIN identity provider enabled). Do not restrict it to your own address: Access
@@ -83,7 +87,7 @@ docker compose pull && docker compose up -d
 `.env` is the only file you create. Set `GOBBLER_VERSION` in it to a version
 published at `ghcr.io/kaecyra/gobbler`; Compose refuses to start without it.
 Compose pulls that image, starts `gobbler`, and publishes it on
-`127.0.0.1:8080`. CI publishes the image on every merge to `main`, tagged with
+port 8080. CI publishes the image on every merge to `main`, tagged with
 `VERSION` and the commit SHA ([ADR-00026](./adr/00026-publish-images-to-ghcr.md)).
 The package is created private by the first publish; the owner sets it public
 once in GitHub's package settings, after which the pull needs no login. Migrations apply at start-up before the

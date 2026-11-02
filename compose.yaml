@@ -1,7 +1,8 @@
 # gobbler. cloudflared runs on the VM guest, not in Compose, and reaches
-# gobbler at http://127.0.0.1:8080. The port is published on loopback only, so
-# the network cannot reach it, but other guest processes can; the Access JWT
-# check guards every route except the health check (ADR-00003).
+# gobbler at http://127.0.0.1:8080. The port is published on every interface of
+# the VM so the monitoring stack can reach the health check (ADR-00027); the
+# network, not this file, decides who may connect. The Access JWT check guards
+# every route except the health check (ADR-00003).
 #
 # Usage: copy .env.example to .env, fill it in, then
 # `docker compose pull && docker compose up -d`.
@@ -13,8 +14,7 @@ services:
     image: ghcr.io/kaecyra/gobbler:${GOBBLER_VERSION:?set GOBBLER_VERSION in .env to a published version}
     restart: unless-stopped
     environment:
-      # The container's interface must accept the published traffic; publishing
-      # on host loopback below is what keeps it off the network. Access
+      # The container's interface must accept the published traffic. Access
       # verification is on: the dev bypass is forced off whatever .env says.
       GOBBLER_LISTEN_ADDR: 0.0.0.0:8080
       GOBBLER_DEV_AUTH_BYPASS: "false"
@@ -47,7 +47,7 @@ services:
     volumes:
       - gobbler-data:/data
     ports:
-      - "127.0.0.1:8080:8080"
+      - "8080:8080"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
       interval: 30s
