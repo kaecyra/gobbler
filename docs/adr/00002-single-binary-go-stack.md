@@ -58,6 +58,9 @@ gobbler is one Go binary serving server-rendered HTML.
   > Amended by [ADR-00017](00017-cloudflared-on-the-guest.md): `cloudflared`
   > runs on the VM guest, not as a Compose service.
 
+  > Amended by [ADR-00026](00026-publish-images-to-ghcr.md): CI publishes the
+  > image to GHCR and the host pulls it; Compose no longer builds it.
+
 - **Layout:** `cmd/gobbler/` for the entry point, `internal/<package>/` for all
   other application code. Test tooling for the end-to-end suite lives under
   `e2e/` (ADR-00013).

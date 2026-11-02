@@ -8,6 +8,14 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels that PR's superseded run. A push to main
+# gets a group of its own (the SHA) and is never cancelled: each merge carries
+# its own VERSION, and cancelling one would leave that version unpublished
+# (ADR-00026).
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -52,3 +60,46 @@ jobs:
         run: docker build -t gobbler:ci .
       - name: check image contents
         run: bash .github/scripts/check-image.sh gobbler:ci
+
+  publish:
+    # ADR-00026: publish the checked image to the public GHCR package. Only a
+    # push to main publishes; a pull request never does. This is the one job
+    # with packages: write. No new actions: docker is preinstalled on the
+    # runner and GITHUB_TOKEN is the credential.
+    needs: [check, image]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/kaecyra/gobbler
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: log in to ghcr.io
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: build and push
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          docker build -t "$IMAGE:$GITHUB_SHA" .
+          # The contents check runs on the very image that is about to ship,
+          # not only on the one the image job built.
+          bash .github/scripts/check-image.sh "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:$GITHUB_SHA"
+          # A published version tag is never moved: a merge without a bump
+          # (documentation only) publishes the SHA tag and nothing more. Only
+          # an explicit "no such manifest" means unpublished; any other
+          # failure (registry error, auth) fails the job rather than risk
+          # moving a published tag.
+          if out="$(docker manifest inspect "$IMAGE:$version" 2>&1)"; then
+            echo "$IMAGE:$version already published; leaving it"
+          elif printf '%s' "$out" | grep -qiE 'no such manifest|manifest unknown'; then
+            docker tag "$IMAGE:$GITHUB_SHA" "$IMAGE:$version"
+            docker push "$IMAGE:$version"
+          else
+            echo "cannot tell whether $IMAGE:$version exists: $out" >&2
+            exit 1
+          fi

@@ -77,11 +77,16 @@ inviting an email (their own, if they want to use it) to start one.
 ```sh
 git clone https://github.com/kaecyra/gobbler.git && cd gobbler
 cp .env.example .env     # fill in the team domain and AUD at least
-docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
 
-`.env` is the only file you create. Compose builds the image, starts `gobbler`,
-and publishes it on `127.0.0.1:8080`. Migrations apply at start-up before the
+`.env` is the only file you create. Set `GOBBLER_VERSION` in it to a version
+published at `ghcr.io/kaecyra/gobbler`; Compose refuses to start without it.
+Compose pulls that image, starts `gobbler`, and publishes it on
+`127.0.0.1:8080`. CI publishes the image on every merge to `main`, tagged with
+`VERSION` and the commit SHA ([ADR-00026](./adr/00026-publish-images-to-ghcr.md)).
+The package is created private by the first publish; the owner sets it public
+once in GitHub's package settings, after which the pull needs no login. Migrations apply at start-up before the
 server listens.
 
 Verify:
@@ -100,9 +105,15 @@ in, and the app should load.
 ### Upgrade
 
 ```sh
-git pull
-docker compose up -d --build
+git pull                 # compose.yaml and .env.example can change between releases
+# set GOBBLER_VERSION in .env to the new version, then:
+docker compose pull
+docker compose up -d
 ```
+
+Rolling back is the same with the previous version in `GOBBLER_VERSION`. A
+rollback does not undo migrations; see Restore if the newer version migrated
+the database.
 
 Pending migrations apply at start-up. If one fails, `gobbler` exits non-zero
 before listening (ADR-00002 obligation 4); with `restart: unless-stopped`
@@ -195,6 +206,10 @@ Design and reasoning: [ADR-00010](./adr/00010-backups.md).
 
 Recovery point: up to a day, the time since the last snapshot. Anything written
 after it is lost.
+
+Every `docker compose` command below reads `compose.yaml`, which refuses to run
+without `GOBBLER_VERSION` in `.env`, even for steps that do not start the app.
+Keep it set to the version you are running.
 
 ### 1. Choose a snapshot
 
