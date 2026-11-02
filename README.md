@@ -21,7 +21,8 @@ The package must be public for the VM to pull it; see Bring it up in
 [docs/operations.md](./docs/operations.md). Compose runs `gobbler` alone, from the image CI publishes to
 `ghcr.io/kaecyra/gobbler` ([ADR-00026](./docs/adr/00026-publish-images-to-ghcr.md)). The database lives on the named volume
 `gobbler-data`, migrations apply at start-up, and `gobbler` publishes port 8080
-on host loopback only (`127.0.0.1:8080`). `cloudflared` runs on the VM guest,
+on every interface of the VM ([ADR-00027](./docs/adr/00027-publish-on-all-interfaces.md)),
+so restrict it in the VM firewall. `cloudflared` runs on the VM guest,
 outside Compose, and its tunnel's public hostname should point at
 `http://127.0.0.1:8080`. The image has no Node runtime and
 nothing from `e2e/`.
