@@ -57,6 +57,7 @@ dependencies.
 | `config` | Environment-driven configuration, validated at start-up | — |
 | `db` | SQLite connection, WAL setup, embedded `goose` migrations, the shared transaction helpers (`WithTx`, `WithReadTx`) and constraint-error wrapper (`WrapWrite`) | `config` |
 | `auth` | Access JWT verification middleware, dev bypass | `config` |
+| `session` | Server-side sign-in sessions named by a random cookie token, stored as its SHA-256; queries in `queries/`, sqlc-generated `sessiondb` ([ADR-00030](adr/00030-google-sign-in.md)) | `db` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types (with the closed sets of meal types, cuisines and stage kinds), step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
 | `video` | Reading a pasted YouTube link into the video ID a recipe stores, the thumbnail and embed addresses, and the thumbnail download ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)) | — |
@@ -80,6 +81,8 @@ Secrets are never in the repository.
 |---|---|
 | Server | listen address, data directory, log level, dev-auth bypass flag |
 | Access | team domain, application AUD tag |
+| OIDC | issuer URL, client ID, client secret, public base URL ([ADR-00030](adr/00030-google-sign-in.md); read and validated, used from the sign-in switch-over) |
+| Session | session lifetime, fixed from sign-in ([ADR-00030](adr/00030-google-sign-in.md)) |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
 | LLM | provider, text model, vision model, per-provider API key, timeout |
