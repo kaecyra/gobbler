@@ -40,6 +40,7 @@ index below in the same commit.
 | [00023](00023-video-from-a-page-embed.md) | Ingest falls back to the first YouTube embed on the page when the Recipe markup has none | Accepted |
 | [00024](00024-equipment-chips-icons-and-catalog.md) | Equipment shows as chips with icons; the central catalog covers common kitchen equipment | Accepted |
 | [00025](00025-one-cuisine-per-recipe.md) | A recipe has at most one cuisine, from a fixed list | Accepted |
+| [00026](00026-publish-images-to-ghcr.md) | CI publishes the production image to a public GHCR package; the VM pulls it | Accepted |
 
 ## What needs one
 
