@@ -2,9 +2,11 @@ package household
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"net/mail"
 	"strings"
 	"time"
@@ -17,7 +19,7 @@ import (
 var (
 	// ErrNotFound is returned when no household has the member, or when an
 	// invitation does not exist or is not addressed to the caller. The two
-	// invitation cases are one error so a stranger cannot probe for ids.
+	// invitation cases are one error so a stranger cannot probe for codes.
 	ErrNotFound = errors.New("not found")
 	// ErrInvalid is returned for input the store refuses, such as a blank
 	// household name or a malformed email.
@@ -83,11 +85,13 @@ type Store struct {
 	db  *sql.DB
 	q   *householddb.Queries
 	now func() time.Time
+	// rand is where invitation codes are drawn from.
+	rand io.Reader
 }
 
 // New returns a Store over d, which must already be migrated.
 func New(d *sql.DB) *Store {
-	return &Store{db: d, q: householddb.New(d), now: time.Now}
+	return &Store{db: d, q: householddb.New(d), now: time.Now, rand: rand.Reader}
 }
 
 // NormalizeEmail trims and lower-cases an email and checks it is a bare
@@ -194,20 +198,21 @@ func (s *Store) addMember(ctx context.Context, q *householddb.Queries, household
 	return db.WrapWrite("add member "+email, err, ErrAlreadyMember, db.ConstraintUnique)
 }
 
-// Invite issues an invitation and returns its id.
-func (s *Store) Invite(ctx context.Context, in Invite) (int64, error) {
+// Invite issues an invitation and returns its code, the only name the
+// invitation has outside the database (ADR-00028).
+func (s *Store) Invite(ctx context.Context, in Invite) (string, error) {
 	e, err := NormalizeEmail(in.Email)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	issuer, err := NormalizeEmail(in.IssuedBy)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	ttl := in.TTL
 	switch {
 	case ttl < 0:
-		return 0, fmt.Errorf("%w: invitation lifetime %s is negative", ErrInvalid, ttl)
+		return "", fmt.Errorf("%w: invitation lifetime %s is negative", ErrInvalid, ttl)
 	case ttl == 0:
 		ttl = DefaultInvitationTTL
 	}
@@ -216,49 +221,60 @@ func (s *Store) Invite(ctx context.Context, in Invite) (int64, error) {
 	switch in.Kind {
 	case KindJoin:
 		if in.HouseholdID == 0 {
-			return 0, fmt.Errorf("%w: a join invitation names a household", ErrInvalid)
+			return "", fmt.Errorf("%w: a join invitation names a household", ErrInvalid)
 		}
 		// Membership is checked by the INSERT itself, so the issuer cannot be
 		// removed between the check and the write. Only a member can invite
 		// into a household; say so without revealing whether it exists.
-		var id int64
-		err := db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
-			var err error
-			id, err = q.InsertJoinInvitation(ctx, householddb.InsertJoinInvitationParams{
-				Email: e, HouseholdID: sql.NullInt64{Int64: in.HouseholdID, Valid: true}, IssuedBy: issuer,
+		code, err := s.issue(ctx, func(q *householddb.Queries, code string) (string, error) {
+			return q.InsertJoinInvitation(ctx, householddb.InsertJoinInvitationParams{
+				Code: code, Email: e, HouseholdID: sql.NullInt64{Int64: in.HouseholdID, Valid: true}, IssuedBy: issuer,
 				CreatedAt: created, ExpiresAt: expires,
 			})
-			return err
 		})
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, fmt.Errorf("%w: %s is not a member of household %d", ErrNotFound, issuer, in.HouseholdID)
+			return "", fmt.Errorf("%w: %s is not a member of household %d", ErrNotFound, issuer, in.HouseholdID)
 		}
-		if err != nil {
-			return 0, fmt.Errorf("insert invitation: %w", err)
-		}
-		return id, nil
+		return code, err
 	case KindHousehold:
 		if in.HouseholdID != 0 {
-			return 0, fmt.Errorf("%w: a household invitation names no household", ErrInvalid)
+			return "", fmt.Errorf("%w: a household invitation names no household", ErrInvalid)
 		}
 	default:
-		return 0, fmt.Errorf("%w: unknown invitation kind %q", ErrInvalid, in.Kind)
+		return "", fmt.Errorf("%w: unknown invitation kind %q", ErrInvalid, in.Kind)
 	}
-	var id int64
-	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
-		var err error
-		id, err = q.InsertInvitation(ctx, householddb.InsertInvitationParams{
-			Kind: string(in.Kind), Email: e, IssuedBy: issuer, CreatedAt: created, ExpiresAt: expires,
+	return s.issue(ctx, func(q *householddb.Queries, code string) (string, error) {
+		return q.InsertInvitation(ctx, householddb.InsertInvitationParams{
+			Code: code, Kind: string(in.Kind), Email: e, IssuedBy: issuer, CreatedAt: created, ExpiresAt: expires,
 		})
-		return err
 	})
-	if err != nil {
-		return 0, fmt.Errorf("insert invitation: %w", err)
-	}
-	return id, nil
 }
 
-// Accept uses invitation id on behalf of the verified email, and returns the
+// issue runs insert with a freshly drawn code and returns the code it
+// stored. A code already taken is redrawn, never reported (ADR-00028). The
+// code is the only UNIQUE column of invitations besides the key the database
+// assigns, so a UNIQUE violation here is a code collision.
+func (s *Store) issue(ctx context.Context, insert func(q *householddb.Queries, code string) (string, error)) (string, error) {
+	for range codeDraws {
+		code, err := newCode(s.rand)
+		if err != nil {
+			return "", err
+		}
+		var got string
+		err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+			var err error
+			got, err = insert(q, code)
+			return db.WrapWrite("insert invitation", err, errCodeTaken, db.ConstraintUnique)
+		})
+		if errors.Is(err, errCodeTaken) {
+			continue
+		}
+		return got, err
+	}
+	return "", fmt.Errorf("insert invitation: %d codes in a row were already in use", codeDraws)
+}
+
+// Accept uses the invitation with code on behalf of the verified email, and returns the
 // household the person now belongs to. householdName names the new household
 // of a household invitation and is ignored for a join invitation.
 //
@@ -266,7 +282,7 @@ func (s *Store) Invite(ctx context.Context, in Invite) (int64, error) {
 // accepts exactly one succeeds. When the person already belongs to a household
 // the claim is rolled back with the rest, leaving the invitation usable after
 // they leave.
-func (s *Store) Accept(ctx context.Context, id int64, email, householdName string) (Household, error) {
+func (s *Store) Accept(ctx context.Context, code, email, householdName string) (Household, error) {
 	e, err := NormalizeEmail(email)
 	if err != nil {
 		return Household{}, err
@@ -274,16 +290,16 @@ func (s *Store) Accept(ctx context.Context, id int64, email, householdName strin
 	var h Household
 	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
 		claim, err := q.ClaimInvitation(ctx, householddb.ClaimInvitationParams{
-			Now: sql.NullString{String: s.stamp(), Valid: true}, ID: id, Email: e,
+			Now: sql.NullString{String: s.stamp(), Valid: true}, Code: code, Email: e,
 		})
 		if errors.Is(err, sql.ErrNoRows) {
-			return s.whyNotAcceptable(ctx, q, id, e)
+			return s.whyNotAcceptable(ctx, q, code, e)
 		}
 		if err != nil {
-			return fmt.Errorf("claim invitation %d: %w", id, err)
+			return fmt.Errorf("claim invitation %s: %w", code, err)
 		}
 		if _, err := lookup(ctx, q, e); err == nil {
-			return fmt.Errorf("accept invitation %d: %w", id, ErrAlreadyMember)
+			return fmt.Errorf("accept invitation %s: %w", code, ErrAlreadyMember)
 		} else if !errors.Is(err, ErrNotFound) {
 			return err
 		}
@@ -293,7 +309,7 @@ func (s *Store) Accept(ctx context.Context, id int64, email, householdName strin
 		}
 		row, err := q.GetHouseholdByID(ctx, claim.HouseholdID.Int64)
 		if err != nil {
-			return fmt.Errorf("load household %d of invitation %d: %w", claim.HouseholdID.Int64, id, err)
+			return fmt.Errorf("load household %d of invitation %s: %w", claim.HouseholdID.Int64, code, err)
 		}
 		if h, err = toHousehold(row); err != nil {
 			return err
@@ -305,28 +321,28 @@ func (s *Store) Accept(ctx context.Context, id int64, email, householdName strin
 
 // whyNotAcceptable explains a claim that matched nothing. An invitation that
 // is missing or addressed to someone else is ErrNotFound either way.
-func (s *Store) whyNotAcceptable(ctx context.Context, q *householddb.Queries, id int64, email string) error {
-	inv, err := q.GetInvitation(ctx, id)
+func (s *Store) whyNotAcceptable(ctx context.Context, q *householddb.Queries, code, email string) error {
+	inv, err := q.GetInvitation(ctx, code)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && inv.Email != email) {
-		return fmt.Errorf("%w: invitation %d", ErrNotFound, id)
+		return fmt.Errorf("%w: invitation %s", ErrNotFound, code)
 	}
 	if err != nil {
-		return fmt.Errorf("load invitation %d: %w", id, err)
+		return fmt.Errorf("load invitation %s: %w", code, err)
 	}
 	switch {
 	case inv.AcceptedAt.Valid:
-		return fmt.Errorf("invitation %d: %w", id, ErrUsed)
+		return fmt.Errorf("invitation %s: %w", code, ErrUsed)
 	case inv.RevokedAt.Valid:
-		return fmt.Errorf("invitation %d: %w", id, ErrRevoked)
+		return fmt.Errorf("invitation %s: %w", code, ErrRevoked)
 	default:
-		return fmt.Errorf("invitation %d: %w", id, ErrExpired)
+		return fmt.Errorf("invitation %s: %w", code, ErrExpired)
 	}
 }
 
-// Revoke withdraws an invitation before it is accepted. Only the person who
+// Revoke withdraws the invitation with code before it is accepted. Only the person who
 // issued it can; anyone else, and an invitation already used or revoked, gets
 // ErrNotFound.
-func (s *Store) Revoke(ctx context.Context, id int64, issuedBy string) error {
+func (s *Store) Revoke(ctx context.Context, code, issuedBy string) error {
 	issuer, err := NormalizeEmail(issuedBy)
 	if err != nil {
 		return err
@@ -335,15 +351,15 @@ func (s *Store) Revoke(ctx context.Context, id int64, issuedBy string) error {
 	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
 		var err error
 		n, err = q.RevokeInvitation(ctx, householddb.RevokeInvitationParams{
-			Now: sql.NullString{String: s.stamp(), Valid: true}, ID: id, IssuedBy: issuer,
+			Now: sql.NullString{String: s.stamp(), Valid: true}, Code: code, IssuedBy: issuer,
 		})
 		return err
 	})
 	if err != nil {
-		return fmt.Errorf("revoke invitation %d: %w", id, err)
+		return fmt.Errorf("revoke invitation %s: %w", code, err)
 	}
 	if n == 0 {
-		return fmt.Errorf("%w: invitation %d", ErrNotFound, id)
+		return fmt.Errorf("%w: invitation %s", ErrNotFound, code)
 	}
 	return nil
 }

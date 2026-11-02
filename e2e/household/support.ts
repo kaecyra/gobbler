@@ -40,7 +40,7 @@ export async function linkFor(page: Page, email: string): Promise<string> {
   const row = page.getByTestId('pending-invitation').filter({ hasText: email });
   await expect(row).toHaveCount(1);
   const href = await row.getByRole('link').getAttribute('href');
-  expect(href).toMatch(/^\/invitations\/\d+$/);
+  expect(href).toMatch(/^\/invitations\/[0-9A-Za-z]{8}$/);
   return href!;
 }
 

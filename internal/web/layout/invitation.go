@@ -1,14 +1,32 @@
 package layout
 
 import (
-	"strconv"
+	"fmt"
+	"net/http"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/household"
 )
 
-// InvitationsPath is where an invitee opens the invitation with a given id.
+// InvitationsPath is where an invitee opens an invitation, by its code
+// (ADR-00028).
 const InvitationsPath = "/invitations"
+
+// InvitationCodeParam is the route parameter that names an invitation.
+const InvitationCodeParam = "code"
+
+// InvitationCode returns the invitation code the request's route names. A
+// value not shaped like a code is ErrNotFound, the answer an unknown code
+// gets, so the shape check reveals nothing either (ADR-00028).
+func InvitationCode(r *http.Request) (string, error) {
+	code := chi.URLParam(r, InvitationCodeParam)
+	if !household.ValidCode(code) {
+		return "", fmt.Errorf("invitation code %q: %w", code, ErrNotFound)
+	}
+	return code, nil
+}
 
 // timeLayout is how an invitation time is shown; UTC, so the page does not
 // depend on the server's zone.
@@ -20,7 +38,8 @@ func FormatTime(t time.Time) string { return t.UTC().Format(timeLayout) }
 // PendingInvitation is one waiting invitation as the household and operator
 // pages list it.
 type PendingInvitation struct {
-	ID      int64
+	// Code names the invitation in its link and its revoke form.
+	Code    string
 	Email   string
 	Expires string
 	// Path is where the invitee opens the invitation.
@@ -34,10 +53,10 @@ func NewPendingInvitations(self string, in []household.Invitation) []PendingInvi
 	out := make([]PendingInvitation, 0, len(in))
 	for _, i := range in {
 		out = append(out, PendingInvitation{
-			ID:      i.ID,
+			Code:    i.Code,
 			Email:   i.Email,
 			Expires: FormatTime(i.ExpiresAt),
-			Path:    InvitationsPath + "/" + strconv.FormatInt(i.ID, 10),
+			Path:    InvitationsPath + "/" + i.Code,
 			Mine:    i.IssuedBy == self,
 		})
 	}

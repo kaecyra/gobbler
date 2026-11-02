@@ -23,12 +23,12 @@ func TestFormatTimeIsUTC(t *testing.T) {
 func TestNewPendingInvitationsViewsEachInvitation(t *testing.T) {
 	exp := time.Date(2026, 3, 4, 8, 5, 0, 0, time.UTC)
 	got := NewPendingInvitations("me@example.com", []household.Invitation{
-		{ID: 7, Email: "a@example.com", IssuedBy: "me@example.com", ExpiresAt: exp},
-		{ID: 8, Email: "b@example.com", IssuedBy: "other@example.com", ExpiresAt: exp},
+		{Code: "aZ09bY18", Email: "a@example.com", IssuedBy: "me@example.com", ExpiresAt: exp},
+		{Code: "Zz000000", Email: "b@example.com", IssuedBy: "other@example.com", ExpiresAt: exp},
 	})
 	want := []PendingInvitation{
-		{ID: 7, Email: "a@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/7", Mine: true},
-		{ID: 8, Email: "b@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/8", Mine: false},
+		{Code: "aZ09bY18", Email: "a@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/aZ09bY18", Mine: true},
+		{Code: "Zz000000", Email: "b@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/Zz000000", Mine: false},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d views, want %d", len(got), len(want))

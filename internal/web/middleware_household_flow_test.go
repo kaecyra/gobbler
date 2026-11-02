@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -22,20 +21,17 @@ func post(h http.Handler, path, email string, form url.Values) *httptest.Respons
 	return rec
 }
 
-var invitationPath = regexp.MustCompile(`/invitations/(\d+)`)
+var invitationPath = regexp.MustCompile(`/invitations/([0-9A-Za-z]{8})\b`)
 
-// lastInvitationID reads the newest invitation id off a page that lists them.
-func lastInvitationID(t *testing.T, body string) int64 {
+// lastInvitationCode reads the newest invitation code off a page that lists
+// them.
+func lastInvitationCode(t *testing.T, body string) string {
 	t.Helper()
 	all := invitationPath.FindAllStringSubmatch(body, -1)
 	if len(all) == 0 {
 		t.Fatalf("no invitation link in:\n%s", body)
 	}
-	id, err := strconv.ParseInt(all[len(all)-1][1], 10, 64)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return id
+	return all[len(all)-1][1]
 }
 
 func wantStatus(t *testing.T, what string, rec *httptest.ResponseRecorder, want int) {
@@ -55,8 +51,8 @@ func TestInvitationFlowFromOperatorToSecondMember(t *testing.T) {
 	wantStatus(t, "operator invites", post(h, "/operator/invitations", operatorEmail, url.Values{"email": {newcomer}}), http.StatusSeeOther)
 	page := do(h, http.MethodGet, "/operator/", operatorEmail)
 	wantStatus(t, "operator page", page, http.StatusOK)
-	id := lastInvitationID(t, page.Body.String())
-	link := "/invitations/" + strconv.FormatInt(id, 10)
+	code := lastInvitationCode(t, page.Body.String())
+	link := "/invitations/" + code
 	if !strings.Contains(page.Body.String(), newcomer) {
 		t.Errorf("operator page does not list the pending invitation for %s", newcomer)
 	}
@@ -84,14 +80,14 @@ func TestInvitationFlowFromOperatorToSecondMember(t *testing.T) {
 	// A member invites a guest; a member of another household cannot see or
 	// revoke the invitation.
 	wantStatus(t, "member invites", post(h, "/household/invitations", newcomer, url.Values{"email": {guest}}), http.StatusSeeOther)
-	joinID := lastInvitationID(t, do(h, http.MethodGet, "/household/", newcomer).Body.String())
+	joinCode := lastInvitationCode(t, do(h, http.MethodGet, "/household/", newcomer).Body.String())
 	if body := do(h, http.MethodGet, "/household/", auth.DevEmail).Body.String(); strings.Contains(body, guest) {
 		t.Errorf("another household's members page lists the guest invitation:\n%s", body)
 	}
-	revoke := "/household/invitations/" + strconv.FormatInt(joinID, 10) + "/revoke"
+	revoke := "/household/invitations/" + joinCode + "/revoke"
 	wantStatus(t, "other household revokes", post(h, revoke, auth.DevEmail, nil), http.StatusNotFound)
 
-	joinLink := "/invitations/" + strconv.FormatInt(joinID, 10)
+	joinLink := "/invitations/" + joinCode
 	wantStatus(t, "a member of another household opens a join invitation", do(h, http.MethodGet, joinLink, auth.DevEmail), http.StatusNotFound)
 	wantStatus(t, "guest accepts", post(h, joinLink+"/accept", guest, nil), http.StatusSeeOther)
 	if body := do(h, http.MethodGet, "/household/", guest).Body.String(); !strings.Contains(body, newcomer) || !strings.Contains(body, "Newcomers") {
@@ -102,14 +98,16 @@ func TestInvitationFlowFromOperatorToSecondMember(t *testing.T) {
 func TestRevokedExpiredAndRefusedInvitations(t *testing.T) {
 	h := tenantRouter(t)
 	wantStatus(t, "invite", post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {"rev@example.com"}}), http.StatusSeeOther)
-	id := lastInvitationID(t, do(h, http.MethodGet, "/household/", auth.DevEmail).Body.String())
-	link := "/invitations/" + strconv.FormatInt(id, 10)
-	revoke := "/household/invitations/" + strconv.FormatInt(id, 10) + "/revoke"
+	code := lastInvitationCode(t, do(h, http.MethodGet, "/household/", auth.DevEmail).Body.String())
+	link := "/invitations/" + code
+	revoke := "/household/invitations/" + code + "/revoke"
 
 	wantStatus(t, "revoke", post(h, revoke, auth.DevEmail, nil), http.StatusSeeOther)
 	wantStatus(t, "open revoked", do(h, http.MethodGet, link, "rev@example.com"), http.StatusGone)
 	wantStatus(t, "accept revoked", post(h, link+"/accept", "rev@example.com", nil), http.StatusGone)
-	wantStatus(t, "bad id", do(h, http.MethodGet, "/invitations/abc", "rev@example.com"), http.StatusNotFound)
+	for _, bad := range []string{"abc", "1", "abcdefg-", "abcdefghi"} {
+		wantStatus(t, "malformed code "+bad, do(h, http.MethodGet, "/invitations/"+bad, "rev@example.com"), http.StatusNotFound)
+	}
 	bad := post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {"nope"}})
 	wantStatus(t, "bad email", bad, http.StatusBadRequest)
 	if !strings.Contains(bad.Body.String(), `&#34;nope&#34; is not an email address`) {
@@ -123,8 +121,8 @@ func TestRevokedExpiredAndRefusedInvitations(t *testing.T) {
 
 	// A person who already has a household is told to leave it first.
 	wantStatus(t, "invite a member", post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {auth.DevOtherEmail}}), http.StatusSeeOther)
-	id = lastInvitationID(t, do(h, http.MethodGet, "/household/", auth.DevEmail).Body.String())
-	link = "/invitations/" + strconv.FormatInt(id, 10)
+	code = lastInvitationCode(t, do(h, http.MethodGet, "/household/", auth.DevEmail).Body.String())
+	link = "/invitations/" + code
 	page := do(h, http.MethodGet, link, auth.DevOtherEmail)
 	wantStatus(t, "member opens an invitation", page, http.StatusOK)
 	if !strings.Contains(page.Body.String(), "Leave it first") || strings.Contains(page.Body.String(), "<button") && strings.Contains(page.Body.String(), "Join ") {
@@ -145,10 +143,10 @@ func TestLeaveRemoveAndDelete(t *testing.T) {
 		wantStatus(t, "invite "+email, post(h, path, issuer, form), http.StatusSeeOther)
 	}
 	join(owner, url.Values{"email": {owner}}, "/operator/invitations", operatorEmail)
-	oid := strconv.FormatInt(lastInvitationID(t, do(h, http.MethodGet, "/operator/", operatorEmail).Body.String()), 10)
+	oid := lastInvitationCode(t, do(h, http.MethodGet, "/operator/", operatorEmail).Body.String())
 	wantStatus(t, "start", post(h, "/invitations/"+oid+"/accept", owner, url.Values{"name": {"Kitchen"}}), http.StatusSeeOther)
 	join(mate, url.Values{"email": {mate}}, "/household/invitations", owner)
-	mid := strconv.FormatInt(lastInvitationID(t, do(h, http.MethodGet, "/household/", owner).Body.String()), 10)
+	mid := lastInvitationCode(t, do(h, http.MethodGet, "/household/", owner).Body.String())
 	wantStatus(t, "join", post(h, "/invitations/"+mid+"/accept", mate, nil), http.StatusSeeOther)
 
 	// Neither the household's name nor a member of another household lets a
@@ -176,7 +174,7 @@ func TestHouseholdRoutesRefuseNonMembersAndOtherHouseholds(t *testing.T) {
 	for _, tc := range []struct{ method, path string }{
 		{http.MethodGet, "/household/"},
 		{http.MethodPost, "/household/invitations"},
-		{http.MethodPost, "/household/invitations/1/revoke"},
+		{http.MethodPost, "/household/invitations/aZ09bY18/revoke"},
 		{http.MethodPost, "/household/members/remove"},
 		{http.MethodPost, "/household/leave"},
 		{http.MethodPost, "/household/delete"},
@@ -204,7 +202,7 @@ func TestOperatorInvitationPageIsOperatorOnly(t *testing.T) {
 	}{
 		{"non-operator member", auth.DevEmail, http.MethodGet, "/operator", http.StatusForbidden},
 		{"non-operator member, issue", auth.DevEmail, http.MethodPost, "/operator/invitations", http.StatusForbidden},
-		{"non-operator member, revoke", auth.DevEmail, http.MethodPost, "/operator/invitations/1/revoke", http.StatusForbidden},
+		{"non-operator member, revoke", auth.DevEmail, http.MethodPost, "/operator/invitations/aZ09bY18/revoke", http.StatusForbidden},
 		{"non-member non-operator", strangerEmail, http.MethodGet, "/operator/", http.StatusForbidden},
 		{"non-member non-operator, issue", strangerEmail, http.MethodPost, "/operator/invitations", http.StatusForbidden},
 		{"operator with no household", operatorEmail, http.MethodGet, "/operator", http.StatusOK},
@@ -227,8 +225,8 @@ func TestOperatorInvitationPageIsOperatorOnly(t *testing.T) {
 func TestOperatorRevokesOnlyOwnInvitations(t *testing.T) {
 	h := tenantRouter(t)
 	wantStatus(t, "issue", post(h, "/operator/invitations", operatorEmail, url.Values{"email": {"a@example.com"}}), http.StatusSeeOther)
-	id := strconv.FormatInt(lastInvitationID(t, do(h, http.MethodGet, "/operator/", operatorEmail).Body.String()), 10)
-	revoke := "/operator/invitations/" + id + "/revoke"
+	code := lastInvitationCode(t, do(h, http.MethodGet, "/operator/", operatorEmail).Body.String())
+	revoke := "/operator/invitations/" + code + "/revoke"
 
 	wantStatus(t, "another operator's page", do(h, http.MethodGet, "/operator/", auth.DevOtherEmail), http.StatusOK)
 	if strings.Contains(do(h, http.MethodGet, "/operator/", auth.DevOtherEmail).Body.String(), "a@example.com") {
@@ -237,7 +235,7 @@ func TestOperatorRevokesOnlyOwnInvitations(t *testing.T) {
 	wantStatus(t, "another operator revokes", post(h, revoke, auth.DevOtherEmail, nil), http.StatusNotFound)
 	wantStatus(t, "revoke", post(h, revoke, operatorEmail, nil), http.StatusSeeOther)
 	wantStatus(t, "revoke twice", post(h, revoke, operatorEmail, nil), http.StatusNotFound)
-	wantStatus(t, "bad id", post(h, "/operator/invitations/x/revoke", operatorEmail, nil), http.StatusNotFound)
+	wantStatus(t, "malformed code", post(h, "/operator/invitations/1/revoke", operatorEmail, nil), http.StatusNotFound)
 	if strings.Contains(do(h, http.MethodGet, "/operator/", operatorEmail).Body.String(), "a@example.com") {
 		t.Error("a revoked invitation is still listed")
 	}
@@ -249,5 +247,43 @@ func TestOperatorInvitationShowsWhyInputWasRefused(t *testing.T) {
 	wantStatus(t, "bad email", rec, http.StatusBadRequest)
 	if !strings.Contains(rec.Body.String(), `&#34;nope&#34; is not an email address`) {
 		t.Errorf("a mistyped invitee gets no reason:\n%s", rec.Body.String())
+	}
+}
+
+var integerInvitationLink = regexp.MustCompile(`/invitations/\d{1,7}\b`)
+
+// An invitation is named by its code and nothing else (ADR-00028): the pages
+// that list invitations link codes, never the integer key, and a code nobody
+// was issued gets exactly the answer a code addressed to someone else gets, so
+// the accept route cannot be used to learn which codes exist.
+func TestInvitationsAreNamedOnlyByCode(t *testing.T) {
+	h := tenantRouter(t)
+	wantStatus(t, "invite", post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {"cy@example.com"}}), http.StatusSeeOther)
+	wantStatus(t, "operator invites", post(h, "/operator/invitations", operatorEmail, url.Values{"email": {"dee@example.com"}}), http.StatusSeeOther)
+	members := do(h, http.MethodGet, "/household/", auth.DevEmail).Body.String()
+	operator := do(h, http.MethodGet, "/operator/", operatorEmail).Body.String()
+	for page, body := range map[string]string{"members": members, "operator": operator} {
+		if integerInvitationLink.MatchString(body) {
+			t.Errorf("%s page names an invitation by its integer key:\n%s", page, body)
+		}
+	}
+	code := lastInvitationCode(t, members)
+	link := "/invitations/" + code
+
+	unknown := "Zz000000"
+	if unknown == code {
+		unknown = "Zz000001"
+	}
+	for _, path := range []string{"", "/accept"} {
+		method := http.MethodGet
+		if path != "" {
+			method = http.MethodPost
+		}
+		other := do(h, method, link+path, "someone@example.com")
+		missing := do(h, method, "/invitations/"+unknown+path, "someone@example.com")
+		if other.Code != http.StatusNotFound || missing.Code != other.Code || missing.Body.String() != other.Body.String() {
+			t.Errorf("%s %s: unknown code got %d, another's code got %d; want the same 404 page",
+				method, path, missing.Code, other.Code)
+		}
 	}
 }

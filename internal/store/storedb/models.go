@@ -83,6 +83,7 @@ type IngredientLine struct {
 
 type Invitation struct {
 	ID          int64
+	Code        string
 	Kind        string
 	Email       string
 	HouseholdID sql.NullInt64

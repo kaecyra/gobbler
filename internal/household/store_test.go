@@ -43,13 +43,13 @@ func (f *fixture) create(name, email string) Household {
 	return h
 }
 
-func (f *fixture) invite(in Invite) int64 {
+func (f *fixture) invite(in Invite) string {
 	f.t.Helper()
-	id, err := f.s.Invite(context.Background(), in)
+	code, err := f.s.Invite(context.Background(), in)
 	if err != nil {
 		f.t.Fatalf("Invite(%+v): %v", in, err)
 	}
-	return id
+	return code
 }
 
 func TestForEmailFindsOnlyOwnHousehold(t *testing.T) {
@@ -160,24 +160,24 @@ func TestInvitationLifecycle(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name  string
-		setup func(f *fixture, id int64)
+		setup func(f *fixture, code string)
 		who   string
 		want  error
 	}{
-		{"valid", func(*fixture, int64) {}, "cy@example.com", nil},
-		{"expired", func(f *fixture, _ int64) { f.now = f.now.Add(DefaultInvitationTTL + time.Second) }, "cy@example.com", ErrExpired},
-		{"expires exactly at the deadline", func(f *fixture, _ int64) { f.now = f.now.Add(DefaultInvitationTTL) }, "cy@example.com", ErrExpired},
-		{"used", func(f *fixture, id int64) {
+		{"valid", func(*fixture, string) {}, "cy@example.com", nil},
+		{"expired", func(f *fixture, _ string) { f.now = f.now.Add(DefaultInvitationTTL + time.Second) }, "cy@example.com", ErrExpired},
+		{"expires exactly at the deadline", func(f *fixture, _ string) { f.now = f.now.Add(DefaultInvitationTTL) }, "cy@example.com", ErrExpired},
+		{"used", func(f *fixture, id string) {
 			if _, err := f.s.Accept(ctx, id, "cy@example.com", ""); err != nil {
 				t.Fatal(err)
 			}
 		}, "cy@example.com", ErrUsed},
-		{"revoked", func(f *fixture, id int64) {
+		{"revoked", func(f *fixture, id string) {
 			if err := f.s.Revoke(ctx, id, "ann@example.com"); err != nil {
 				t.Fatal(err)
 			}
 		}, "cy@example.com", ErrRevoked},
-		{"addressed to someone else", func(*fixture, int64) {}, "dee@example.com", ErrNotFound},
+		{"addressed to someone else", func(*fixture, string) {}, "dee@example.com", ErrNotFound},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestInvitationLifecycle(t *testing.T) {
 
 func TestMissingInvitationIsNotFound(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.s.Accept(context.Background(), 999, "cy@example.com", ""); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.Accept(context.Background(), "Zz000000", "cy@example.com", ""); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("Accept(missing) = %v, want ErrNotFound", err)
 	}
 }

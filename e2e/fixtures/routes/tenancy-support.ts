@@ -161,9 +161,14 @@ export async function page(ctx: APIRequestContext, path: string): Promise<string
 
 /** The last capture of re in text, as a number. */
 export function lastId(text: string, re: RegExp, what: string): number {
+  return Number(lastMatch(text, re, what));
+}
+
+/** The first group of the last match of re in text, as written. */
+export function lastMatch(text: string, re: RegExp, what: string): string {
   const all = [...text.matchAll(re)];
   if (all.length === 0) throw new Error(`no ${what} found on the page`);
-  return Number(all[all.length - 1][1]);
+  return all[all.length - 1][1];
 }
 
 let emailCounter = 0;
@@ -179,8 +184,9 @@ export interface Ids {
   manual: number;
   ingredient: number;
   token: string;
-  joinInvitation: number;
-  operatorInvitation: number;
+  /** Invitations are named by their code (ADR-00028). */
+  joinInvitation: string;
+  operatorInvitation: string;
   promotion: number;
   share: number;
 }
@@ -190,7 +196,7 @@ export interface Ids {
  * with a recipe entry, a manual item and a check, a pantry item, a suggested
  * overlay ingredient, a pending ingestion draft, a join invitation, a made-it
  * entry and a rating, and a share of the seeded recipe to shareTo. The operator
- * issues a household invitation. Returns the ids the probes address.
+ * issues a household invitation. Returns the ids and codes the probes address.
  */
 export async function populate(dev: APIRequestContext, op: APIRequestContext, recipe: number, shareTo: string): Promise<Ids> {
   // One save through the editor adds what the seed lacks: tags, a line
@@ -248,9 +254,9 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   expect(token).toMatch(/^[0-9a-f]+$/);
 
   await ok(dev, 'POST', '/household/invitations', { email: INVITEE });
-  const joinInvitation = lastId(await page(dev, '/household'), /\/household\/invitations\/(\d+)\/revoke/g, 'join invitation');
+  const joinInvitation = lastMatch(await page(dev, '/household'), /\/household\/invitations\/([0-9A-Za-z]{8})\/revoke/g, 'join invitation');
   await ok(op, 'POST', '/operator/invitations', { email: uniqueEmail('founder') });
-  const operatorInvitation = lastId(await page(op, '/operator'), /\/operator\/invitations\/(\d+)\/revoke/g, 'household invitation');
+  const operatorInvitation = lastMatch(await page(op, '/operator'), /\/operator\/invitations\/([0-9A-Za-z]{8})\/revoke/g, 'household invitation');
 
   await ok(dev, 'POST', `/recipes/${recipe}/journal/made`, { comment: 'tenancy made-it' });
   await ok(dev, 'POST', `/recipes/${recipe}/journal/rating`, { rating: '4' });
@@ -262,9 +268,9 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
 export async function startHousehold(playwright: Playwright, s: Server, op: APIRequestContext, name: string): Promise<{ email: string; ctx: APIRequestContext }> {
   const email = uniqueEmail('third');
   await ok(op, 'POST', '/operator/invitations', { email });
-  const id = lastId(await page(op, '/operator'), /\/operator\/invitations\/(\d+)\/revoke/g, 'household invitation');
+  const code = lastMatch(await page(op, '/operator'), /\/operator\/invitations\/([0-9A-Za-z]{8})\/revoke/g, 'household invitation');
   const ctx = await as(playwright, s, email);
-  await ok(ctx, 'POST', `/invitations/${id}/accept`, { name });
+  await ok(ctx, 'POST', `/invitations/${code}/accept`, { name });
   return { email, ctx };
 }
 

@@ -143,8 +143,8 @@ func TestPendingInvitations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != keep || got[0].Email != "cy@example.com" || got[0].IssuedBy != "ann@example.com" || got[0].Kind != KindJoin {
-		t.Fatalf("pending for Alpha = %+v, want only invitation %d", got, keep)
+	if len(got) != 1 || got[0].Code != keep || got[0].Email != "cy@example.com" || got[0].IssuedBy != "ann@example.com" || got[0].Kind != KindJoin {
+		t.Fatalf("pending for Alpha = %+v, want only invitation %s", got, keep)
 	}
 }
 
@@ -160,8 +160,8 @@ func TestPendingHouseholdInvitationsAreTheIssuers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != mine || got[0].HouseholdID != 0 || got[0].Kind != KindHousehold {
-		t.Fatalf("pending = %+v, want only invitation %d", got, mine)
+	if len(got) != 1 || got[0].Code != mine || got[0].HouseholdID != 0 || got[0].Kind != KindHousehold {
+		t.Fatalf("pending = %+v, want only invitation %s", got, mine)
 	}
 }
 
@@ -178,7 +178,7 @@ func TestInvitationFor(t *testing.T) {
 	if _, err := f.s.InvitationFor(ctx, id, "dee@example.com"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("someone else's invitation = %v, want ErrNotFound", err)
 	}
-	if _, err := f.s.InvitationFor(ctx, 999, "cy@example.com"); !errors.Is(err, ErrNotFound) {
+	if _, err := f.s.InvitationFor(ctx, "Zz000000", "cy@example.com"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing invitation = %v, want ErrNotFound", err)
 	}
 	if err := f.s.Revoke(ctx, id, "ann@example.com"); err != nil {

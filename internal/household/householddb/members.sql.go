@@ -36,20 +36,20 @@ func (q *Queries) DeleteHousehold(ctx context.Context, id int64) (int64, error) 
 }
 
 const getInvitationFor = `-- name: GetInvitationFor :one
-SELECT i.id, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
        i.accepted_at, i.revoked_at, COALESCE(h.name, '') AS household_name
 FROM invitations i
 LEFT JOIN households h ON h.id = i.household_id
-WHERE i.id = ?1 AND i.email = ?2
+WHERE i.code = ?1 AND i.email = ?2
 `
 
 type GetInvitationForParams struct {
-	ID    int64
+	Code  string
 	Email string
 }
 
 type GetInvitationForRow struct {
-	ID            int64
+	Code          string
 	Kind          string
 	Email         string
 	HouseholdID   sql.NullInt64
@@ -64,10 +64,10 @@ type GetInvitationForRow struct {
 // GetInvitationFor reads an invitation only if it is addressed to email, with
 // the name of the household a join invitation leads to.
 func (q *Queries) GetInvitationFor(ctx context.Context, arg GetInvitationForParams) (GetInvitationForRow, error) {
-	row := q.db.QueryRowContext(ctx, getInvitationFor, arg.ID, arg.Email)
+	row := q.db.QueryRowContext(ctx, getInvitationFor, arg.Code, arg.Email)
 	var i GetInvitationForRow
 	err := row.Scan(
-		&i.ID,
+		&i.Code,
 		&i.Kind,
 		&i.Email,
 		&i.HouseholdID,
@@ -82,14 +82,15 @@ func (q *Queries) GetInvitationFor(ctx context.Context, arg GetInvitationForPara
 }
 
 const insertJoinInvitation = `-- name: InsertJoinInvitation :one
-INSERT INTO invitations (kind, email, household_id, issued_by, created_at, expires_at)
-SELECT 'join', ?1, ?2, ?3, ?4, ?5
+INSERT INTO invitations (code, kind, email, household_id, issued_by, created_at, expires_at)
+SELECT ?1, 'join', ?2, ?3, ?4, ?5, ?6
 WHERE EXISTS (SELECT 1 FROM household_members m
-              WHERE m.household_id = ?2 AND m.email = ?3)
-RETURNING id
+              WHERE m.household_id = ?3 AND m.email = ?4)
+RETURNING code
 `
 
 type InsertJoinInvitationParams struct {
+	Code        string
 	Email       string
 	HouseholdID sql.NullInt64
 	IssuedBy    string
@@ -100,17 +101,18 @@ type InsertJoinInvitationParams struct {
 // InsertJoinInvitation issues a join invitation only while the issuer is a
 // member of the household, in the one statement, so an invitation racing the
 // issuer's own removal cannot leave a live invitation from a departed member.
-func (q *Queries) InsertJoinInvitation(ctx context.Context, arg InsertJoinInvitationParams) (int64, error) {
+func (q *Queries) InsertJoinInvitation(ctx context.Context, arg InsertJoinInvitationParams) (string, error) {
 	row := q.db.QueryRowContext(ctx, insertJoinInvitation,
+		arg.Code,
 		arg.Email,
 		arg.HouseholdID,
 		arg.IssuedBy,
 		arg.CreatedAt,
 		arg.ExpiresAt,
 	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
+	var code string
+	err := row.Scan(&code)
+	return code, err
 }
 
 const leaveHousehold = `-- name: LeaveHousehold :one
@@ -132,7 +134,7 @@ func (q *Queries) LeaveHousehold(ctx context.Context, email string) (int64, erro
 }
 
 const listPendingHouseholdInvitations = `-- name: ListPendingHouseholdInvitations :many
-SELECT i.id, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
 FROM invitations i
 WHERE i.kind = 'household' AND i.issued_by = ?1
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?2
@@ -145,7 +147,7 @@ type ListPendingHouseholdInvitationsParams struct {
 }
 
 type ListPendingHouseholdInvitationsRow struct {
-	ID          int64
+	Code        string
 	Kind        string
 	Email       string
 	HouseholdID sql.NullInt64
@@ -164,7 +166,7 @@ func (q *Queries) ListPendingHouseholdInvitations(ctx context.Context, arg ListP
 	for rows.Next() {
 		var i ListPendingHouseholdInvitationsRow
 		if err := rows.Scan(
-			&i.ID,
+			&i.Code,
 			&i.Kind,
 			&i.Email,
 			&i.HouseholdID,
@@ -186,7 +188,7 @@ func (q *Queries) ListPendingHouseholdInvitations(ctx context.Context, arg ListP
 }
 
 const listPendingJoinInvitations = `-- name: ListPendingJoinInvitations :many
-SELECT i.id, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
 FROM invitations i
 WHERE i.household_id = ?1 AND i.kind = 'join'
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?2
@@ -199,7 +201,7 @@ type ListPendingJoinInvitationsParams struct {
 }
 
 type ListPendingJoinInvitationsRow struct {
-	ID          int64
+	Code        string
 	Kind        string
 	Email       string
 	HouseholdID sql.NullInt64
@@ -218,7 +220,7 @@ func (q *Queries) ListPendingJoinInvitations(ctx context.Context, arg ListPendin
 	for rows.Next() {
 		var i ListPendingJoinInvitationsRow
 		if err := rows.Scan(
-			&i.ID,
+			&i.Code,
 			&i.Kind,
 			&i.Email,
 			&i.HouseholdID,

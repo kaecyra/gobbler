@@ -27,7 +27,9 @@ var (
 
 // Invitation is an invitation as the pages show it.
 type Invitation struct {
-	ID   int64
+	// Code is the invitation's only identifier outside the database
+	// (ADR-00028); links and forms name it.
+	Code string
 	Kind Kind
 	// Email is the address the invitation is for.
 	Email    string
@@ -41,7 +43,7 @@ type Invitation struct {
 	ExpiresAt     time.Time
 }
 
-func toInvitation(id int64, kind, email string, household sql.NullInt64, issuedBy, created, expires string) (Invitation, error) {
+func toInvitation(code, kind, email string, household sql.NullInt64, issuedBy, created, expires string) (Invitation, error) {
 	c, err := parseTime(created)
 	if err != nil {
 		return Invitation{}, err
@@ -50,7 +52,7 @@ func toInvitation(id int64, kind, email string, household sql.NullInt64, issuedB
 	if err != nil {
 		return Invitation{}, err
 	}
-	return Invitation{ID: id, Kind: Kind(kind), Email: email, HouseholdID: household.Int64, IssuedBy: issuedBy, CreatedAt: c, ExpiresAt: e}, nil
+	return Invitation{Code: code, Kind: Kind(kind), Email: email, HouseholdID: household.Int64, IssuedBy: issuedBy, CreatedAt: c, ExpiresAt: e}, nil
 }
 
 // PendingForHousehold returns the join invitations into the household that can
@@ -64,7 +66,7 @@ func (s *Store) PendingForHousehold(ctx context.Context, householdID int64) ([]I
 	}
 	out := make([]Invitation, 0, len(rows))
 	for _, r := range rows {
-		inv, err := toInvitation(r.ID, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
+		inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +91,7 @@ func (s *Store) PendingHouseholdInvitations(ctx context.Context, issuer string) 
 	}
 	out := make([]Invitation, 0, len(rows))
 	for _, r := range rows {
-		inv, err := toInvitation(r.ID, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
+		inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
 		if err != nil {
 			return nil, err
 		}
@@ -98,34 +100,34 @@ func (s *Store) PendingHouseholdInvitations(ctx context.Context, issuer string) 
 	return out, nil
 }
 
-// InvitationFor returns invitation id for the verified email it is addressed
+// InvitationFor returns the invitation with code for the verified email it is addressed
 // to. A missing invitation and one addressed to someone else are both
 // ErrNotFound; one that can no longer be accepted is ErrUsed, ErrRevoked or
 // ErrExpired, as Accept would say.
-func (s *Store) InvitationFor(ctx context.Context, id int64, email string) (Invitation, error) {
+func (s *Store) InvitationFor(ctx context.Context, code, email string) (Invitation, error) {
 	e, err := NormalizeEmail(email)
 	if err != nil {
 		return Invitation{}, err
 	}
-	r, err := s.q.GetInvitationFor(ctx, householddb.GetInvitationForParams{ID: id, Email: e})
+	r, err := s.q.GetInvitationFor(ctx, householddb.GetInvitationForParams{Code: code, Email: e})
 	if errors.Is(err, sql.ErrNoRows) {
-		return Invitation{}, fmt.Errorf("%w: invitation %d", ErrNotFound, id)
+		return Invitation{}, fmt.Errorf("%w: invitation %s", ErrNotFound, code)
 	}
 	if err != nil {
-		return Invitation{}, fmt.Errorf("load invitation %d: %w", id, err)
+		return Invitation{}, fmt.Errorf("load invitation %s: %w", code, err)
 	}
-	inv, err := toInvitation(r.ID, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
+	inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
 	if err != nil {
 		return Invitation{}, err
 	}
 	inv.HouseholdName = r.HouseholdName
 	switch {
 	case r.AcceptedAt.Valid:
-		return Invitation{}, fmt.Errorf("invitation %d: %w", id, ErrUsed)
+		return Invitation{}, fmt.Errorf("invitation %s: %w", code, ErrUsed)
 	case r.RevokedAt.Valid:
-		return Invitation{}, fmt.Errorf("invitation %d: %w", id, ErrRevoked)
+		return Invitation{}, fmt.Errorf("invitation %s: %w", code, ErrRevoked)
 	case !inv.ExpiresAt.After(s.now()):
-		return Invitation{}, fmt.Errorf("invitation %d: %w", id, ErrExpired)
+		return Invitation{}, fmt.Errorf("invitation %s: %w", code, ErrExpired)
 	}
 	return inv, nil
 }

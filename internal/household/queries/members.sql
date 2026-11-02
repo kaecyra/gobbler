@@ -42,14 +42,14 @@ UPDATE households SET name = name WHERE id = ?;
 DELETE FROM households WHERE id = ?;
 
 -- name: ListPendingJoinInvitations :many
-SELECT i.id, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
 FROM invitations i
 WHERE i.household_id = sqlc.arg(household_id) AND i.kind = 'join'
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > sqlc.arg(now)
 ORDER BY i.id;
 
 -- name: ListPendingHouseholdInvitations :many
-SELECT i.id, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
 FROM invitations i
 WHERE i.kind = 'household' AND i.issued_by = sqlc.arg(issued_by)
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > sqlc.arg(now)
@@ -58,18 +58,18 @@ ORDER BY i.id;
 -- GetInvitationFor reads an invitation only if it is addressed to email, with
 -- the name of the household a join invitation leads to.
 -- name: GetInvitationFor :one
-SELECT i.id, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
        i.accepted_at, i.revoked_at, COALESCE(h.name, '') AS household_name
 FROM invitations i
 LEFT JOIN households h ON h.id = i.household_id
-WHERE i.id = sqlc.arg(id) AND i.email = sqlc.arg(email);
+WHERE i.code = sqlc.arg(code) AND i.email = sqlc.arg(email);
 
 -- InsertJoinInvitation issues a join invitation only while the issuer is a
 -- member of the household, in the one statement, so an invitation racing the
 -- issuer's own removal cannot leave a live invitation from a departed member.
 -- name: InsertJoinInvitation :one
-INSERT INTO invitations (kind, email, household_id, issued_by, created_at, expires_at)
-SELECT 'join', sqlc.arg(email), sqlc.arg(household_id), sqlc.arg(issued_by), sqlc.arg(created_at), sqlc.arg(expires_at)
+INSERT INTO invitations (code, kind, email, household_id, issued_by, created_at, expires_at)
+SELECT sqlc.arg(code), 'join', sqlc.arg(email), sqlc.arg(household_id), sqlc.arg(issued_by), sqlc.arg(created_at), sqlc.arg(expires_at)
 WHERE EXISTS (SELECT 1 FROM household_members m
               WHERE m.household_id = sqlc.arg(household_id) AND m.email = sqlc.arg(issued_by))
-RETURNING id;
+RETURNING code;

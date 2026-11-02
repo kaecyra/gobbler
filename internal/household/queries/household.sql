@@ -17,12 +17,12 @@ SELECT id, name, created_at FROM households WHERE id = ?;
 SELECT email FROM household_members WHERE household_id = ? ORDER BY id;
 
 -- name: InsertInvitation :one
-INSERT INTO invitations (kind, email, household_id, issued_by, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?) RETURNING id;
+INSERT INTO invitations (code, kind, email, household_id, issued_by, created_at, expires_at)
+VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING code;
 
 -- name: GetInvitation :one
-SELECT id, kind, email, household_id, issued_by, created_at, expires_at, accepted_at, revoked_at
-FROM invitations WHERE id = ?;
+SELECT code, kind, email, household_id, issued_by, created_at, expires_at, accepted_at, revoked_at
+FROM invitations WHERE code = ?;
 
 -- ClaimInvitation marks an invitation accepted only while it is addressed to
 -- email, unused, unrevoked and unexpired, so single use holds under
@@ -30,7 +30,7 @@ FROM invitations WHERE id = ?;
 -- claim ends the accept before anything else is read or written.
 -- name: ClaimInvitation :one
 UPDATE invitations SET accepted_at = sqlc.arg(now)
-WHERE id = sqlc.arg(id) AND email = sqlc.arg(email)
+WHERE code = sqlc.arg(code) AND email = sqlc.arg(email)
   AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > sqlc.arg(now)
 RETURNING kind, household_id;
 
@@ -38,5 +38,5 @@ RETURNING kind, household_id;
 -- accepted.
 -- name: RevokeInvitation :execrows
 UPDATE invitations SET revoked_at = sqlc.arg(now)
-WHERE id = sqlc.arg(id) AND issued_by = sqlc.arg(issued_by)
+WHERE code = sqlc.arg(code) AND issued_by = sqlc.arg(issued_by)
   AND accepted_at IS NULL AND revoked_at IS NULL;
