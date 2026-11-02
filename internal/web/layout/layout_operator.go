@@ -35,9 +35,11 @@ var publicPages = []string{"/healthz", CanadaPath}
 const staticPrefix = "/static/"
 
 // IsPublic reports whether p is a public path (ADR-00029): one of publicPages
-// exactly, or under staticPrefix. The Access middleware serves such a request
-// without a token, and the membership middleware admits it without an
-// identity. The caller has refused dot segments.
+// exactly, or under staticPrefix. It matches p as written. The identity
+// middleware calls it on the raw path, before any dot-segment check, so on its
+// own it is not a lock: "/static/../recipes" is public here. The membership
+// middleware is the lock. It refuses dot segments first, and admits a request
+// with no identity only when both the decoded and the escaped path are public.
 func IsPublic(p string) bool {
 	return slices.Contains(publicPages, p) || strings.HasPrefix(p, staticPrefix)
 }

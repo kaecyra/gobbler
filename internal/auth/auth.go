@@ -117,7 +117,9 @@ func New(cfg config.Config, opts ...Option) (*Authenticator, error) {
 // (ADR-00029). A public request is served either way: with the verified email
 // when it carries a valid token, and with no identity when it carries none or
 // one that fails to verify. A nil public makes no path public. The router
-// passes the public-path list here; nothing else is exempt.
+// passes the public-path list here; nothing else is exempt. public is checked
+// against the raw path, so it only decides whether a token is required.
+// Admission stays with the membership middleware, which re-checks the path.
 func (a *Authenticator) Middleware(public func(path string) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
