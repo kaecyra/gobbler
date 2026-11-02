@@ -96,7 +96,7 @@ func identityCtx(t *testing.T) context.Context {
 		t.Fatalf("auth.New: %v", err)
 	}
 	var got context.Context
-	h := a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() }))
+	h := a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() }))
 	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	if got == nil {
 		t.Fatal("middleware did not call the handler")

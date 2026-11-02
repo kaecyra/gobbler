@@ -7,8 +7,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/backup"
 )
 
-// Health detail keys and values. The health route is the only one served
-// without authentication (ADR-00003), so the entries carry a status word and a
+// Health detail keys and values. The health route is served without
+// authentication (ADR-00029), so the entries carry a status word and a
 // timestamp and nothing else: never a path, bucket, endpoint or error text.
 const (
 	HealthBackupKey     = "backup"

@@ -16,6 +16,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/web/canada"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/layout/layouttest"
 )
 
@@ -103,9 +105,10 @@ func TestHealthBodyOmitsDetailsByDefault(t *testing.T) {
 	}
 }
 
-// Every registered route except health refuses a request with no token; an
-// unregistered path is refused too, so route existence is not disclosed.
-func TestEveryRouteButHealthRequiresAToken(t *testing.T) {
+// Every registered route except the public paths (ADR-00029) refuses a request
+// with no token; an unregistered path is refused too, so route existence is not
+// disclosed. A public path is served without one.
+func TestEveryRouteButThePublicPathsRequiresAToken(t *testing.T) {
 	r := testRouter(t, prodConfig(), Deps{})
 	var checked int
 	err := chi.Walk(r, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
@@ -113,12 +116,11 @@ func TestEveryRouteButHealthRequiresAToken(t *testing.T) {
 		req := httptest.NewRequest(method, path, nil)
 		rec := httptest.NewRecorder()
 		r.ServeHTTP(rec, req)
-		want := http.StatusForbidden
-		if route == HealthPath {
-			want = http.StatusOK
-		}
-		if rec.Code != want {
-			t.Errorf("%s %s = %d, want %d", method, route, rec.Code, want)
+		switch public := layout.IsPublic(path); {
+		case public && rec.Code == http.StatusForbidden:
+			t.Errorf("%s %s = 403, want it served without a token", method, route)
+		case !public && rec.Code != http.StatusForbidden:
+			t.Errorf("%s %s = %d, want 403", method, route, rec.Code)
 		}
 		checked++
 		return nil
@@ -269,5 +271,49 @@ func TestStaticDirectoriesAreNotListed(t *testing.T) {
 		if strings.Contains(rec.Body.String(), "htmx.VERSION.txt") {
 			t.Errorf("%s lists directory contents", path)
 		}
+	}
+}
+
+func TestHealthAndCanadaArePublic(t *testing.T) {
+	for _, p := range []string{HealthPath, canada.Pattern} {
+		if !layout.IsPublic(p) {
+			t.Errorf("%s is not on the public list", p)
+		}
+	}
+}
+
+// Without a token, only the public paths are served, checked on both forms of
+// the path, and a bad token is no better than none off them (ADR-00029).
+func TestNoTokenReachesOnlyThePublicPaths(t *testing.T) {
+	r := testRouter(t, prodConfig(), Deps{})
+	cases := []struct {
+		path string
+		want int
+	}{
+		{"/canada", http.StatusOK},
+		{"/static/app.css", http.StatusOK},
+		{HealthPath, http.StatusOK},
+		{"/c%61nada", http.StatusForbidden},
+		{"/canada/", http.StatusForbidden},
+		{"/recipes", http.StatusForbidden},
+		{"/settings", http.StatusForbidden},
+		{layout.InvitationsPath + "/1", http.StatusForbidden},
+		{layout.NotAMemberPath, http.StatusForbidden},
+	}
+	for _, c := range cases {
+		if got := get(r, c.path).Code; got != c.want {
+			t.Errorf("GET %s with no token = %d, want %d", c.path, got, c.want)
+		}
+		req := httptest.NewRequest(http.MethodGet, c.path, nil)
+		req.Header.Set(auth.HeaderName, "not-a-token")
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		if rec.Code != c.want {
+			t.Errorf("GET %s with a bad token = %d, want %d", c.path, rec.Code, c.want)
+		}
+	}
+	body := get(r, "/canada").Body.String()
+	if !strings.Contains(body, "Made in Canada") || strings.Contains(body, `href="/recipes"`) {
+		t.Errorf("anonymous /canada should render the page with an empty nav:\n%s", body)
 	}
 }

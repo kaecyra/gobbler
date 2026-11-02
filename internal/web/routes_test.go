@@ -69,7 +69,7 @@ func verifiedContext(t *testing.T, email string) context.Context {
 	var ctx context.Context
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(auth.DevIdentityHeader, email)
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { ctx = r.Context() })).ServeHTTP(httptest.NewRecorder(), req)
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { ctx = r.Context() })).ServeHTTP(httptest.NewRecorder(), req)
 	if ctx == nil {
 		t.Fatal("auth middleware did not pass the request on")
 	}

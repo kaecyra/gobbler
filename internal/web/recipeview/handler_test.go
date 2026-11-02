@@ -496,7 +496,7 @@ func storeEnv(t *testing.T) (context.Context, *store.Store, *catalog.Store) {
 		t.Fatalf("auth.New: %v", err)
 	}
 	var authed context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authed = r.Context() })).
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authed = r.Context() })).
 		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	if authed == nil {
 		t.Fatal("auth middleware did not call the handler")

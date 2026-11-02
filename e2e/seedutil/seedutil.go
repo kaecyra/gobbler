@@ -81,7 +81,7 @@ func identityContext(cfg config.Config) (context.Context, error) {
 		return nil, err
 	}
 	var got context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
 		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	if got == nil {
 		return nil, fmt.Errorf("auth middleware did not pass the request on")

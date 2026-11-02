@@ -56,15 +56,18 @@ else that gets through
    `ERR_TOO_MANY_REDIRECTS`. See
    [ADR-00016](./adr/00016-cross-origin-protection.md).
 
-gobbler verifies the Access JWT on every request except `/healthz`; without
-both values it refuses to start.
+gobbler verifies the Access JWT on every request except the public paths
+(`/healthz`, `/canada` and `/static/*`; [ADR-00029](./adr/00029-public-paths.md)),
+where a token is optional; without both values it refuses to start. Access
+itself still asks for a sign-in on the public paths unless an Access
+application with a Bypass policy covers them.
 
 ### Admission and the first household
 
 Admission is decided in the app, not in Access. A verified email that is a
-member of a household reaches the app. One that is not reaches only `/healthz`,
-the "not a member" page, invitation acceptance and `/static/*` (the embedded
-assets that page is drawn with; it serves no household data). Nobody joins or starts a
+member of a household reaches the app. One that is not reaches only the public
+paths (`/healthz`, `/canada` and `/static/*`, which serve no household data),
+the "not a member" page and invitation acceptance. Nobody joins or starts a
 household without an invitation addressed to their email.
 
 The **operator** is whoever `GOBBLER_OPERATOR_EMAILS` lists (comma-separated).
@@ -102,8 +105,8 @@ docker compose exec gobbler wget -q -O - http://127.0.0.1:8080/healthz
 curl -fsS http://127.0.0.1:8080/healthz             # from the host: the published port
 ```
 
-`/healthz` returns `{"status":"ok"}` and is the only route served without
-authentication. Then open the public hostname: Access should prompt you to log
+`/healthz` returns `{"status":"ok"}` and is one of the public paths served
+without authentication (ADR-00029). Then open the public hostname: Access should prompt you to log
 in, and the app should load.
 
 ### Upgrade

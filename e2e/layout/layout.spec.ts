@@ -91,6 +91,8 @@ test('the footer links the repository and credits the maker', async ({ page }) =
     'https://github.com/kaecyra/gobbler',
   );
   await expect(footer.getByText('Made by kaecyra in Canada')).toBeVisible();
+  await expect(footer.getByRole('link', { name: 'kaecyra', exact: true })).toHaveAttribute('href', 'https://resume.timgunter.ca');
+  await expect(footer.getByRole('link', { name: 'Canada', exact: true })).toHaveAttribute('href', '/canada');
 });
 
 test('every mascot drawing is served as a cached SVG', async ({ request }) => {

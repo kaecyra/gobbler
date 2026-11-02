@@ -48,7 +48,7 @@ import {
 //     operator, and these pages show no household data to anyone (ADR-00018).
 //   - invitation routes: an invitation names the one email it is for, so both
 //     identities get 404 for DEV's invitation, as for one that does not exist.
-//   - public routes (/healthz, /static): reachable by both and tenant-free, so
+//   - public routes (/healthz, /canada, /static; ADR-00029): reachable by both and tenant-free, so
 //     the same checks apply: no marker of DEV's data in the response.
 //   - the not-a-member page: shown to the non-member, and a member is sent home.
 //
@@ -108,6 +108,7 @@ const PROBES: Probe[] = [
   // Public: no household data, whoever asks.
   { method: 'GET', path: () => '/healthz', stranger: 200, other: 200 },
   { method: 'GET', path: () => '/static/app.css', stranger: 200, other: 200 },
+  { method: 'GET', path: () => '/canada', stranger: 200, other: 200 },
   // The not-a-member page: shown to the non-member, a member is sent home.
   { method: 'GET', path: () => '/not-a-member', stranger: 200, other: 303, otherLocation: '/' },
 
@@ -264,7 +265,7 @@ test.describe('every route, as a non-member and as a member of another household
     }
   }
 
-  test('an authenticated non-member reaches nothing but the health check, static assets and the not-a-member page', async () => {
+  test('an authenticated non-member reaches nothing but the public paths and the not-a-member page', async () => {
     await run('stranger', strangerCtx, (p) => p.stranger);
   });
 

@@ -90,7 +90,7 @@ func identity(t *testing.T) context.Context {
 		t.Fatal(err)
 	}
 	var got context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
 		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	if got == nil {
 		t.Fatal("middleware did not call the handler")

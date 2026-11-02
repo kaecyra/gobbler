@@ -60,7 +60,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("auth.New: %v", err)
 	}
 	var authed context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authed = r.Context() })).
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authed = r.Context() })).
 		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	if authed == nil {
 		t.Fatal("auth middleware did not pass the request on")

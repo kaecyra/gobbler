@@ -89,7 +89,7 @@ func verified(t *testing.T, req *http.Request) context.Context {
 		t.Fatal(err)
 	}
 	var got context.Context
-	a.Middleware()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
 		ServeHTTP(httptest.NewRecorder(), req)
 	if got == nil {
 		t.Fatal("auth middleware did not pass the request on")

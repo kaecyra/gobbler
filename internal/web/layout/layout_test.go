@@ -36,7 +36,7 @@ func TestPageRendersTitleNavAndContentSlot(t *testing.T) {
 		`<main id="content">`,
 		`src="` + ThemePath + `"`,
 		`data-theme-toggle`,
-		"Made by kaecyra in Canada",
+		`Made by <a href="` + MakerURL + `" target="_blank" rel="noopener">kaecyra</a> in <a href="` + CanadaPath + `">Canada</a>`,
 		"<p>slot content</p>",
 		`href="` + StylesheetPath + `"`,
 		`src="` + HTMXPath + `"`,
