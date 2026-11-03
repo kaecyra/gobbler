@@ -79,6 +79,7 @@ func (h *handler) selfRoutes(r chi.Router) {
 	h.nameRoutes(r)
 	h.sessionsRoutes(r)
 	h.keysRoutes(r)
+	h.grantsRoutes(r)
 	h.avatarRoutes(r)
 }
 

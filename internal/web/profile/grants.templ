@@ -1,0 +1,43 @@
+package profile
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// grantsSection is the profile page's entry to the apps connected over OAuth.
+templ grantsSection(v pageView) {
+	<section class="panel" aria-labelledby="grants-h" data-testid="profile-grants">
+		<h2 id="grants-h">Connected apps</h2>
+		<p class="muted">An app you allowed to use gobbler as you, such as an AI assistant, appears here. It reaches only what you can reach, and stops working when you leave your household.</p>
+		<p><a class="btn" href={ templ.SafeURL(v.sectionPath("grants")) }>Manage connected apps</a></p>
+	</section>
+}
+
+// grantsPage lists the person's grants, each with a revoke button.
+templ grantsPage(v pageView, rows []grantRow) {
+	@layout.Page("Connected apps") {
+		<div class="pg profile">
+			<section class="panel" aria-labelledby="grants-page-h" data-testid="profile-grants-page">
+				<p class="eyebrow">Your profile</p>
+				<h1 id="grants-page-h">Your connected apps</h1>
+				<p class="muted">Only you see this list. Revoking an app ends its access at once, and it has to ask you again to get it back.</p>
+				if len(rows) > 0 {
+					<ul class="list" data-testid="grant-list">
+						for _, g := range rows {
+							<li data-testid="grant">
+								<span class="grow">
+									<strong data-testid="grant-name">{ g.Name }</strong>
+									<span class="muted">{ " Returns to " + g.ReturnHost + ". Allowed " + g.Made + "." }</span>
+								</span>
+								<form class="row-form" method="post" action={ templ.SafeURL(g.RevokePath) }>
+									<button type="submit" class="btn" aria-label={ "Revoke access for " + g.Name }>Revoke</button>
+								</form>
+							</li>
+						}
+					</ul>
+				} else {
+					<p data-testid="grants-empty">No apps are connected.</p>
+				}
+				<p><a class="link" href={ templ.SafeURL(Pattern + "/" + v.Address) }>Back to your profile</a></p>
+			</section>
+		</div>
+	}
+}
