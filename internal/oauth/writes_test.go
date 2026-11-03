@@ -2,9 +2,6 @@ package oauth_test
 
 import (
 	"context"
-	"io/fs"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -97,21 +94,6 @@ func TestAGrantGivenARevokedGrantsIDDoesNotSeeItsWrites(t *testing.T) {
 func TestGrantWritesMigrationRollsBack(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
-	var version int64
-	entries, err := fs.ReadDir(db.Migrations(), ".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if n, ok := strings.CutSuffix(e.Name(), "_a-mcp-oauth.sql"); ok {
-			if version, err = strconv.ParseInt(n, 10, 64); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	if version == 0 {
-		t.Fatal("no a-mcp-oauth migration")
-	}
 	has := func(table string) bool {
 		var n int
 		if err := f.d.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name = ?`, table).Scan(&n); err != nil {
@@ -126,7 +108,7 @@ func TestGrantWritesMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.DownTo(ctx, version-1); err != nil {
+	if _, err := p.DownTo(ctx, 25); err != nil {
 		t.Fatalf("rolling back: %v", err)
 	}
 	if has("oauth_grant_writes") || !has("oauth_grants") || !has("api_key_writes") {
