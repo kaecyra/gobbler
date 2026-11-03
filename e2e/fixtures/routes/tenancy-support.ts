@@ -30,6 +30,9 @@ export const MARKERS = ['E2E Shared Pie', 'e2e sender', LIST_NAME, MANUAL_ITEM, 
 /** The name of the household API key populate makes, which only DEV's household may see (ADR-00031). */
 export const KEY_NAME = 'tenancy household key';
 MARKERS.push(KEY_NAME);
+/** The name of DEV's personal API key, which only DEV may see (ADR-00031). */
+export const PERSONAL_KEY_NAME = 'tenancy personal key';
+MARKERS.push(PERSONAL_KEY_NAME);
 
 /** An invitation code as ADR-00028 shapes it: eight base62 characters. */
 const INVITATION_CODE = '[0-9A-Za-z]{8}';
@@ -215,6 +218,9 @@ export interface Ids {
   share: number;
   /** The id of DEV's household API key. */
   key: number;
+  /** DEV's profile address, and the id of DEV's personal API key on it. */
+  profile: string;
+  personalKey: number;
 }
 
 /**
@@ -289,7 +295,12 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   await ok(dev, 'POST', `/shares/new/${recipe}`, { email: shareTo });
   await ok(dev, 'POST', '/household/keys', { name: KEY_NAME, lifetime: '30d' });
   const key = lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
-  return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key };
+  const mine = await send(dev, 'GET', '/profile');
+  const profile = (mine.headers().location ?? '').replace('/profile/', '');
+  expect(profile, 'the address /profile sends DEV to').toMatch(/^[A-Za-z0-9_-]{22}$/);
+  await ok(dev, 'POST', `/profile/${profile}/keys`, { name: PERSONAL_KEY_NAME, lifetime: '30d' });
+  const personalKey = lastId(await page(dev, `/profile/${profile}/keys`), /\/keys\/(\d+)\/revoke/g, 'personal key');
+  return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key, profile, personalKey };
 }
 
 /** Starts a household named name for a new email, through the operator, and returns its member's context. */
@@ -331,6 +342,11 @@ export async function expectUntouched(ids: Ids, who: { dev: APIRequestContext; o
   expect(household).toContain(INVITEE);
   expect(household).toContain(DEV);
   expect(household).toContain(`/household/keys/${ids.key}/revoke`);
+  // DEV's personal key is still on DEV's profile, and nobody made another there.
+  const keys = await page(dev, `/profile/${ids.profile}/keys`);
+  expect(keys).toContain(PERSONAL_KEY_NAME);
+  expect(keys).toContain(`/profile/${ids.profile}/keys/${ids.personalKey}/revoke`);
+  expect(keys).not.toContain('Hijack');
   expect(await page(op, '/operator')).toContain(`/operator/invitations/${ids.operatorInvitation}/revoke`);
   expect(await page(op, '/operator/promotions')).toContain(`/operator/promotions/${ids.promotion}`);
   // The share is still pending for the household it was sent to.

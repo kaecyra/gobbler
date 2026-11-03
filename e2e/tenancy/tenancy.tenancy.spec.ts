@@ -242,10 +242,11 @@ const PROBES: Probe[] = [
   unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/sessions`),
   unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end`),
   unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end-others`),
-  // Personal API keys hang off a profile, so they are as hidden as its sections.
-  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/keys`),
-  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/keys`),
-  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/keys/1/revoke`),
+  // Personal API keys (ADR-00031) are self-only. These probe DEV's real profile address and
+  // real key, so the 404 comes from the self-only check and not from an address nobody has.
+  unaddressed('GET', (i) => `/profile/${i.profile}/keys`),
+  { ...unaddressed('POST', (i) => `/profile/${i.profile}/keys`), form: () => ({ name: 'Hijack', lifetime: '30d' }) },
+  unaddressed('POST', (i) => `/profile/${i.profile}/keys/${i.personalKey}/revoke`),
 ];
 
 let work: Workdir | undefined;
