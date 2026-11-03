@@ -1,61 +1,53 @@
 # gobbler
 
-A self-hosted recipe manager for households. It ingests recipes from URLs, pasted
-text and photos, stores them as structured data, and builds merged,
-aisle-grouped shopping lists from them. One Go binary over a SQLite file.
+A self-hosted recipe manager for households. It imports recipes from URLs,
+pasted text and photos, stores them as structured data, and builds merged,
+aisle-grouped shopping lists. One Go binary over a SQLite file.
 
-The design is in [docs/design.md](./docs/design.md) and the decisions in
-[docs/adr/](./docs/adr/README.md). Contributor and agent rules are in
-[AGENTS.md](./AGENTS.md).
+| To learn about | Read |
+|---|---|
+| Deploying, configuring, backups and restore | [docs/operations.md](./docs/operations.md) |
+| How it fits together | [docs/design.md](./docs/design.md) |
+| What was decided, and why | [docs/adr/](./docs/adr/README.md) |
+| Rules for contributors and agents | [AGENTS.md](./AGENTS.md) |
 
-Deploying, configuring and restoring from a backup: [docs/operations.md](./docs/operations.md).
-
-## Running with Docker Compose
+## Run
 
 ```sh
-cp .env.example .env   # set GOBBLER_VERSION and the GOBBLER_OIDC_* sign-in settings
+cp .env.example .env   # set GOBBLER_VERSION and the GOBBLER_OIDC_* settings
 docker compose pull && docker compose up -d
 ```
 
-The package must be public for the VM to pull it; see Bring it up in
-[docs/operations.md](./docs/operations.md). Compose runs `gobbler` alone, from the image CI publishes to
-`ghcr.io/kaecyra/gobbler` ([ADR-00026](./docs/adr/00026-publish-images-to-ghcr.md)). The database lives on the named volume
-`gobbler-data`, migrations apply at start-up, and `gobbler` publishes port 8080
-on every interface of the VM ([ADR-00027](./docs/adr/00027-publish-on-all-interfaces.md)),
-so restrict it in the VM firewall. `cloudflared` runs on the VM guest,
-outside Compose, and its tunnel's public hostname should point at
-`http://127.0.0.1:8080`. The image has no Node runtime and
-nothing from `e2e/`.
+Port 8080 is published on every interface of the host. Restrict it in the
+firewall. See [docs/operations.md](./docs/operations.md) for the rest.
 
-## Development
+## Develop
 
-Requires Go (the version in `go.mod`) and [golangci-lint](https://golangci-lint.run/) v2.14.0.
-Run `make tools` to install the pinned version (set by `GOLANGCI_LINT_VERSION` in the `Makefile`);
-`make lint` fails if a different version is on `PATH`.
+You need Go at the version in `go.mod`, Node 22 or later for the end-to-end
+suite, and [lefthook](https://lefthook.dev/). Set up once per clone:
 
 ```sh
-make fmt    # gofmt and goimports, rewrites files
-make lint   # golangci-lint and go vet
-make test   # go test; fails below 70% line coverage
-make e2e    # builds gobbler, runs the Playwright suite in e2e/ (installs nothing)
-make generate  # regenerate the sqlc data-access code and the templ output
-make check  # fmt-check, generate-check, lint, test, test-scripts, e2e and version-check
+make tools                                               # pinned golangci-lint
+(cd e2e && npm ci && npx playwright install chromium)    # end-to-end suite
+lefthook install                                         # git hooks
 ```
 
-The end-to-end suite needs Node (ADR-00013). Provision a checkout once; `make e2e`
-fails with a pointer here if it was skipped:
+Run it locally without sign-in, as a seeded household member, at
+http://127.0.0.1:8080. The database goes in `./data/`.
 
 ```sh
-cd e2e && npm ci && npx playwright install chromium
+GOBBLER_DEV_AUTH_BYPASS=true go run ./cmd/gobbler serve
 ```
 
-`make version-check` fails when source changed against `origin/main` without a
-`VERSION` bump; docs, ADRs, Markdown, `.memory/` and `.gitignore` never need one.
+| Command | Does |
+|---|---|
+| `make fmt` | `gofmt` and `goimports`, rewriting files |
+| `make generate` | Regenerates the sqlc and templ output |
+| `make lint` | `golangci-lint` and `go vet` |
+| `make test` | `go test`, failing below 70% line coverage |
+| `make e2e` | Builds gobbler and runs the Playwright suite |
+| `make check` | Everything above, plus the staleness and version checks |
 
-Install the git hooks once per clone with [lefthook](https://lefthook.dev/):
-
-```sh
-lefthook install
-```
-
-Pre-commit runs `make fmt`; pre-push runs `make lint`, `make test`, `make e2e` and `make version-check`.
+The pre-commit hook runs `make fmt`. The pre-push hook runs `lint`, `test`,
+`e2e` and `version-check`. A source change needs a `VERSION` bump. Docs and
+ADRs don't.
