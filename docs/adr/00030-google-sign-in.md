@@ -1,6 +1,6 @@
 # ADR-00030: The app signs people in over OpenID Connect, with Google; Cloudflare Access is removed
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00031](00031-api-keys.md), [ADR-00032](00032-profiles.md)
 
 **Date:** 2026-11-02
 

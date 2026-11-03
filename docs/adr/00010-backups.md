@@ -1,6 +1,6 @@
 # ADR-00010: Nightly SQLite snapshot to S3-compatible storage
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00033](00033-media-object-storage.md)
 
 **Date:** 2026-10-06
 
