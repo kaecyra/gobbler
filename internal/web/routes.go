@@ -10,6 +10,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
+	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/sharing"
 	"github.com/kaecyra/gobbler/internal/shopping"
@@ -22,6 +23,7 @@ import (
 	webhousehold "github.com/kaecyra/gobbler/internal/web/household"
 	webingest "github.com/kaecyra/gobbler/internal/web/ingest"
 	"github.com/kaecyra/gobbler/internal/web/journal"
+	weboauth "github.com/kaecyra/gobbler/internal/web/oauth"
 	"github.com/kaecyra/gobbler/internal/web/operator"
 	webprofile "github.com/kaecyra/gobbler/internal/web/profile"
 	"github.com/kaecyra/gobbler/internal/web/recipes"
@@ -60,6 +62,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountEquipment(r, d)
 	mountProfile(r, d)
 	mountMCP(r, d)
+	mountOAuth(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -99,6 +102,8 @@ func mountHouseholds(r chi.Router, d Deps) {
 	// transaction (ADR-00031).
 	keys := apikey.New(d.DB)
 	hs.OnMemberLeave(keys.RevokeForMember)
+	// And their OAuth grants (ADR-00034), in that same transaction.
+	hs.OnMemberLeave(oauth.New(d.DB).RevokeForMember)
 	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs, Keys: keys}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
@@ -170,4 +175,16 @@ func mountMCP(r chi.Router, d Deps) {
 	r.Mount(mcp.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "the MCP endpoint is not available: "+err.Error(), http.StatusInternalServerError)
 	}))
+}
+
+// mountOAuth mounts the OAuth authorization server for MCP clients (ADR-00034):
+// the discovery documents, client registration and the token endpoint are
+// public (layout.IsPublic), and the authorization endpoint needs a session.
+func mountOAuth(r chi.Router, d Deps) {
+	deps := weboauth.Deps{
+		OAuth: oauth.New(d.DB), Metadata: oauth.NewMetadataFetcher(),
+		PublicBaseURL: d.Config.OIDC.PublicBaseURL, DevBypass: d.Config.Server.DevAuthBypass, Logger: d.Logger,
+	}
+	r.Mount(weboauth.WellKnownPattern, weboauth.WellKnownRoutes(deps))
+	r.Mount(weboauth.Pattern, weboauth.Routes(deps))
 }

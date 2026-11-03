@@ -1,0 +1,46 @@
+package oauth
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// consentView is what the consent page shows and carries.
+type consentView struct {
+	Client     string
+	ClientID   string
+	ReturnHost string
+	Email      string
+	// Fields are the authorization request, carried through the form so the
+	// decision is checked against the same request.
+	Fields  map[string]string
+	Action  string
+	Profile string
+}
+
+// consentOrder is the order the hidden fields are written in.
+var consentOrder = []string{"response_type", "client_id", "redirect_uri", "code_challenge", "code_challenge_method", "state", "resource"}
+
+// consentPage asks the signed-in person to allow or deny a client. The client's
+// name is the client's own word, so the page also names the host the browser
+// returns to and the id the client is known by.
+templ consentPage(v consentView) {
+	@layout.Page("Connect an app") {
+		<div class="pg">
+			<section class="panel" aria-labelledby="consent-h" data-testid="oauth-consent">
+				<p class="eyebrow">Connect an app</p>
+				<h1 id="consent-h">Allow <span data-testid="consent-client">{ v.Client }</span> to use gobbler as you?</h1>
+				<p>You are signed in as <strong data-testid="consent-email">{ v.Email }</strong>. If you allow it, this app can read and change what you can reach in gobbler through MCP: your household's recipes, shopping lists and pantry. Changes to a recipe wait on a review screen until you confirm them.</p>
+				<p>After you decide, your browser goes back to <strong data-testid="consent-return-host">{ v.ReturnHost }</strong>. The app chose its own name, so allow it only if you started this connection from <strong>{ v.ReturnHost }</strong> or from an app you recognise.</p>
+				<p class="muted">The app is known to gobbler as <span data-testid="consent-client-id">{ v.ClientID }</span>.</p>
+				<form class="fields" method="post" action={ templ.SafeURL(v.Action) }>
+					for _, k := range consentOrder {
+						<input type="hidden" name={ k } value={ v.Fields[k] }/>
+					}
+					<p>
+						<button type="submit" name="decision" value="allow" class="btn accent" data-testid="consent-allow">Allow</button>
+						<button type="submit" name="decision" value="deny" class="btn" data-testid="consent-deny">Deny</button>
+					</p>
+				</form>
+				<p class="muted">You can end this access at any time from <a class="link" href={ templ.SafeURL(v.Profile) }>your profile</a>.</p>
+			</section>
+		</div>
+	}
+}

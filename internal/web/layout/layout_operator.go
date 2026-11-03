@@ -165,3 +165,22 @@ const BearerPath = "/mcp"
 func IsBearerPath(p string) bool {
 	return p == BearerPath || strings.HasPrefix(p, BearerPath+"/")
 }
+
+// oauthPublicPages are the OAuth server's endpoints that are served without an
+// identity (ADR-00034, amending ADR-00029): the discovery documents, client
+// registration and the token endpoint. A client calls them before any person has
+// signed in, and the token endpoint authenticates by the code or refresh token
+// it is given. The authorization endpoint, /oauth/authorize, is not here: it
+// needs a session. Package web/oauth serves them and checks this list against
+// its routes.
+var oauthPublicPages = []string{
+	"/.well-known/oauth-protected-resource",
+	"/.well-known/oauth-protected-resource/mcp",
+	"/.well-known/oauth-authorization-server",
+	"/oauth/register",
+	"/oauth/token",
+}
+
+// init adds the OAuth endpoints to publicPages. The wave-11 nodes each add
+// their own paths in their own init, so none edits another's line.
+func init() { publicPages = append(publicPages, oauthPublicPages...) }

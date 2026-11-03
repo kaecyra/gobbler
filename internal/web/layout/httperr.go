@@ -15,6 +15,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
+	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
@@ -63,6 +64,7 @@ var statusTable = []struct {
 	{profile.ErrInvalid, http.StatusBadRequest},
 	{apikey.ErrNotFound, http.StatusNotFound},
 	{apikey.ErrInvalid, http.StatusBadRequest},
+	{oauth.ErrNotFound, http.StatusNotFound},
 }
 
 // classify returns the table row err matches. ok is false for an unmapped
