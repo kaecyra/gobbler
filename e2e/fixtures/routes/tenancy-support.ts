@@ -411,7 +411,10 @@ function counts(db: DatabaseSync): Record<string, number> {
 export const UNPOPULATED: Record<string, string> = {
   api_key_writes:
     'only an MCP tool writes it, with an API key as its bearer credential (e2e/mcp), and populate() drives the HTML pages. ' +
-    'Household deletion reaches it through the household_id cascade (internal/apikey/lookup_test.go).',
+    'Household deletion reaches it through the household_id cascade (TestDeletingAHouseholdDeletesItsKeyWrites in internal/apikey/lookup_test.go).',
+  oauth_grant_writes:
+    'only an MCP tool writes it, with an OAuth access token as its bearer credential (e2e/mcp), and populate() drives the HTML pages. ' +
+    'Household deletion reaches it through the household_id cascade (TestDeletingAHouseholdDeletesItsGrantWrites in internal/oauth/writes_test.go).',
   recipe_special_times:
     'no web form creates special times: the editor only preserves them and an LLM draft is the only source, which e2e never runs. ' +
     'Deleting a recipe empties the table (internal/store/recipe_test.go), and household deletion reaches it through the same cascade from recipes.',

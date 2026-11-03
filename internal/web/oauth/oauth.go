@@ -97,17 +97,29 @@ func WellKnownRoutes(d Deps) chi.Router {
 
 // baseURL is the origin gobbler is reached at.
 func (h *handler) baseURL(r *http.Request) (string, error) {
-	if h.PublicBaseURL != "" {
-		return strings.TrimRight(h.PublicBaseURL, "/"), nil
+	return Origin(h.PublicBaseURL, h.DevBypass, r)
+}
+
+// ErrNoOrigin is returned by Origin when the origin is not known.
+var ErrNoOrigin = errors.New("the public base URL is not configured")
+
+// Origin is the origin gobbler is reached at, with no trailing slash: the
+// configured public base URL, or with none, and only under the development
+// bypass (loopback only, ADR-00003), the one the request arrived at. The MCP
+// endpoint uses it too, so a token is checked against the origin it was issued
+// for.
+func Origin(publicBaseURL string, devBypass bool, r *http.Request) (string, error) {
+	if publicBaseURL != "" {
+		return strings.TrimRight(publicBaseURL, "/"), nil
 	}
-	if h.DevBypass {
+	if devBypass {
 		scheme := "http"
 		if r.TLS != nil {
 			scheme = "https"
 		}
 		return scheme + "://" + r.Host, nil
 	}
-	return "", errors.New("the public base URL is not configured")
+	return "", ErrNoOrigin
 }
 
 // writeJSON writes v as the response.

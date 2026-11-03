@@ -135,3 +135,27 @@ func TestAKeyGivenARevokedKeysIDDoesNotSeeItsWrites(t *testing.T) {
 		t.Error("a write of a key that does not exist was recorded")
 	}
 }
+
+// Deleting a household deletes its history (ADR-00018): the key write log goes
+// with it by the schema's cascade.
+func TestDeletingAHouseholdDeletesItsKeyWrites(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	hs := f.house
+	h, err := hs.Create(ctx, "Solo", "ann@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret, _ := f.keys.CreatePersonal(ctx, "ann@example.com", "k", 0)
+	p, _ := f.keys.Lookup(ctx, secret)
+	if err := f.keys.RecordWrite(ctx, p.KeyID, h.ID, "add_manual_item", "list 1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := hs.Delete(ctx, h.ID, "ann@example.com", "Solo"); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := f.d.QueryRowContext(ctx, `SELECT count(*) FROM api_key_writes`).Scan(&n); err != nil || n != 0 {
+		t.Errorf("%d key write rows survived the household (%v)", n, err)
+	}
+}

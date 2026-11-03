@@ -3,7 +3,6 @@ package web
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
@@ -45,23 +44,13 @@ func onSession(session func(http.Handler) http.Handler) func(http.Handler) http.
 	}
 }
 
-// siteOf works out where the bearer endpoint is reached, from the configured
-// public base URL. With none, only the development bypass (loopback, ADR-00003)
-// takes it from the request, as the OAuth endpoints do (weboauth.Deps), so a
-// token issued there is checked against the origin it was issued for. Otherwise
-// the origin is unknown and the site carries nothing: no token is accepted and
-// a refusal names no metadata.
+// siteOf works out where the bearer endpoint is reached (weboauth.Origin). When
+// the origin is unknown the site carries nothing: no token is accepted and a
+// refusal names no metadata.
 func siteOf(cfg config.Config) func(*http.Request) mcp.Site {
 	return func(r *http.Request) mcp.Site {
-		origin := strings.TrimRight(cfg.OIDC.PublicBaseURL, "/")
-		if origin == "" && cfg.Server.DevAuthBypass {
-			scheme := "http"
-			if r.TLS != nil {
-				scheme = "https"
-			}
-			origin = scheme + "://" + r.Host
-		}
-		if origin == "" {
+		origin, err := weboauth.Origin(cfg.OIDC.PublicBaseURL, cfg.Server.DevAuthBypass, r)
+		if err != nil {
 			return mcp.Site{}
 		}
 		return mcp.Site{Origin: origin, MetadataURL: origin + weboauth.ResourceMetadataPath}
