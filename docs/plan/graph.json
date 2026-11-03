@@ -2818,7 +2818,7 @@
       "wave": 11,
       "track": null,
       "issue": 335,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "k-api-keys"
       ],
@@ -2840,7 +2840,7 @@
       "wave": 11,
       "track": null,
       "issue": 336,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "a-mcp-endpoint",
         "a-oauth-server"
@@ -3870,6 +3870,12 @@
       "title": "MCP endpoint with API-key auth and recipe and shopping tools",
       "merged": "5f304ae",
       "note": "ADR-00034. Recipe writes create and import drafts for review only; editing an existing recipe is a-mcp-recipe-edit (#353); shopping writes apply. Meal-plan tools wait for l-meal-planning. Credential checking goes behind an interface that a-mcp-oauth adds a token verifier to. /mcp is never a public path: bearer authentication is wired through the membership middleware (internal/web/middleware_household*.go, in this lane) and may edit the one line of web.go that installs the identity and membership middleware; web.go is otherwise append-only."
+    },
+    {
+      "id": "a-oauth-server",
+      "title": "OAuth 2.1 authorization server for MCP clients",
+      "merged": "a3bd17a",
+      "note": "ADR-00034, Credentials. Security-critical: review with --deep. Grant revocation on member leave registers through the OnMemberLeave hook in routes.go."
     }
   ],
   "adr_sequence": {
