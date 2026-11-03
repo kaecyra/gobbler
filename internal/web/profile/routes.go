@@ -75,6 +75,7 @@ func Routes(d Deps) chi.Router {
 func (h *handler) selfRoutes(r chi.Router) {
 	h.nameRoutes(r)
 	h.sessionsRoutes(r)
+	h.keysRoutes(r)
 }
 
 // redirectTo sends the browser to a profile page.

@@ -57,6 +57,7 @@ templ membersPage(v pageView) {
 					</ul>
 				}
 			</section>
+			@keysSection(v)
 			<section class="panel" aria-labelledby="leave-h" data-testid="leave">
 				<h2 id="leave-h">Leave</h2>
 				if v.OnlyMember() {

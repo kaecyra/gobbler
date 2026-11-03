@@ -8,6 +8,19 @@ import (
 	"database/sql"
 )
 
+type ApiKey struct {
+	ID          int64
+	TokenHash   []byte
+	Prefix      string
+	Name        string
+	OwnerEmail  sql.NullString
+	HouseholdID sql.NullInt64
+	CreatedBy   string
+	CreatedAt   string
+	ExpiresAt   sql.NullString
+	LastUsedAt  sql.NullString
+}
+
 type Component struct {
 	ID          int64
 	HouseholdID int64

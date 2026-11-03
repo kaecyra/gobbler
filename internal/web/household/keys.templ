@@ -1,0 +1,69 @@
+package household
+
+import (
+	"strconv"
+
+	"github.com/kaecyra/gobbler/internal/apikey"
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+// keysSection lists the household's API keys and makes new ones. A household
+// key acts for the household, not as a member (ADR-00031).
+templ keysSection(v pageView) {
+	<section class="panel" aria-labelledby="keys-h" data-testid="household-keys">
+		<h2 id="keys-h">API keys</h2>
+		<p class="muted">A household key lets an agent or script read and write this household's recipes and shopping lists. It keeps working when the person who made it is away, but not after they leave the household. Any member can make or revoke one.</p>
+		if len(v.Keys) > 0 {
+			<ul class="list" data-testid="household-key-list">
+				for _, k := range v.Keys {
+					<li data-testid="household-key">
+						<span class="grow">
+							<strong>{ k.Name }</strong>
+							<span class="muted"> { k.Prefix }&hellip; made by { k.CreatedBy } on { k.Created }. { k.Expiry }. { k.Used }.</span>
+						</span>
+						<form class="row-form" method="post" action={ templ.SafeURL(keyRevokePath(k.ID)) }>
+							<button type="submit" class="btn" aria-label={ "Revoke the key " + k.Name }>Revoke</button>
+						</form>
+					</li>
+				}
+			</ul>
+		} else {
+			<p data-testid="household-keys-empty">This household has no keys.</p>
+		}
+		<form class="fields" method="post" action="/household/keys">
+			<label>
+				Name
+				<input type="text" name="name" required maxlength={ strconv.Itoa(apikey.MaxNameRunes) } autocomplete="off" placeholder="Kitchen assistant"/>
+			</label>
+			<label>
+				Expires
+				<select name="lifetime">
+					for _, l := range apikey.Lifetimes {
+						<option value={ l.Value } selected?={ l.Value == apikey.DefaultLifetime }>{ l.Label }</option>
+					}
+				</select>
+			</label>
+			<button type="submit" class="btn accent">Make a key</button>
+		</form>
+	</section>
+}
+
+// keyCreatedPage shows the secret of a key just made. It is the only time the
+// secret is shown; nothing keeps it.
+templ keyCreatedPage(v createdView) {
+	@layout.Page("New API key") {
+		<div class="pg">
+			<section class="panel" aria-labelledby="key-new-h" data-testid="key-created">
+				<h1 id="key-new-h">Copy the key now</h1>
+				<p>Here is the key <strong>{ v.Name }</strong>, made for the household <strong>{ v.Household }</strong>. It is shown only once. Gobbler keeps no copy that can be shown again, so make a new key if you lose this one.</p>
+				<div class="fields">
+					<label>
+						Key
+						<input type="text" readonly value={ v.Secret } data-testid="key-secret" autocomplete="off"/>
+					</label>
+				</div>
+				<p><a class="btn accent" href="/household">Back to the household</a></p>
+			</section>
+		</div>
+	}
+}

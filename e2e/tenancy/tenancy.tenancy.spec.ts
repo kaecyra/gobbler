@@ -227,6 +227,10 @@ const PROBES: Probe[] = [
   { ...hidden('POST', () => '/household/members/remove', () => ({ email: DEV })), other: NOT_FOUND },
   { ...hidden('POST', () => '/household/invitations', () => ({ email: uniqueEmail('invitee') })), other: 303 },
   hidden('POST', (i) => `/household/invitations/${i.joinInvitation}/revoke`),
+  // API keys (ADR-00031): a household's keys are its own. Another household's member makes
+  // a key of its own household and cannot revoke DEV's, which is 404 as for any unknown id.
+  { ...hidden('POST', () => '/household/keys', () => ({ name: 'other bot', lifetime: '30d' })), other: 200 },
+  hidden('POST', (i) => `/household/keys/${i.key}/revoke`),
 
   // Profiles (ADR-00032): every signed-in person has one, so a non-member is admitted
   // where it is refused the rest. /profile sends each to their own profile. A page is
@@ -238,6 +242,10 @@ const PROBES: Probe[] = [
   unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/sessions`),
   unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end`),
   unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end-others`),
+  // Personal API keys hang off a profile, so they are as hidden as its sections.
+  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/keys`),
+  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/keys`),
+  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/keys/1/revoke`),
 ];
 
 let work: Workdir | undefined;

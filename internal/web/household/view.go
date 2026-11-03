@@ -12,6 +12,8 @@ type pageView struct {
 	Self    string
 	Members []string
 	Pending []layout.PendingInvitation
+	// Keys are the household's API keys (keys.go).
+	Keys []keyRow
 }
 
 // OnlyMember reports whether the reader is the household's last member, who

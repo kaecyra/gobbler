@@ -27,6 +27,10 @@ export const DRAFT_TEXT = 'tenancy draft cinnamon';
 export const INVITEE = 'tenancy-invitee@e2e.example';
 export const MARKERS = ['E2E Shared Pie', 'e2e sender', LIST_NAME, MANUAL_ITEM, DRAFT_TEXT, INVITEE, DEV_HOUSEHOLD, DEV];
 
+/** The name of the household API key populate makes, which only DEV's household may see (ADR-00031). */
+export const KEY_NAME = 'tenancy household key';
+MARKERS.push(KEY_NAME);
+
 /** An invitation code as ADR-00028 shapes it: eight base62 characters. */
 const INVITATION_CODE = '[0-9A-Za-z]{8}';
 /** The revoke action under prefix, capturing the invitation's code, for lastMatch. */
@@ -209,6 +213,8 @@ export interface Ids {
   operatorInvitation: string;
   promotion: number;
   share: number;
+  /** The id of DEV's household API key. */
+  key: number;
 }
 
 /**
@@ -281,7 +287,9 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   await ok(dev, 'POST', `/recipes/${recipe}/journal/made`, { comment: 'tenancy made-it' });
   await ok(dev, 'POST', `/recipes/${recipe}/journal/rating`, { rating: '4' });
   await ok(dev, 'POST', `/shares/new/${recipe}`, { email: shareTo });
-  return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0 };
+  await ok(dev, 'POST', '/household/keys', { name: KEY_NAME, lifetime: '30d' });
+  const key = lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
+  return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key };
 }
 
 /** Starts a household named name for a new email, through the operator, and returns its member's context. */
@@ -322,6 +330,7 @@ export async function expectUntouched(ids: Ids, who: { dev: APIRequestContext; o
   const household = await page(dev, '/household');
   expect(household).toContain(INVITEE);
   expect(household).toContain(DEV);
+  expect(household).toContain(`/household/keys/${ids.key}/revoke`);
   expect(await page(op, '/operator')).toContain(`/operator/invitations/${ids.operatorInvitation}/revoke`);
   expect(await page(op, '/operator/promotions')).toContain(`/operator/promotions/${ids.promotion}`);
   // The share is still pending for the household it was sent to.
