@@ -78,7 +78,7 @@ func New(d *sql.DB) *Store {
 func normalise(email string) (string, error) {
 	e := strings.ToLower(strings.TrimSpace(email))
 	if e == "" {
-		return "", fmt.Errorf("profile of an empty email: %w", ErrInvalid)
+		return "", fmt.Errorf("%w: a profile needs an email", ErrInvalid)
 	}
 	return e, nil
 }
@@ -147,11 +147,11 @@ func (s *Store) Rename(ctx context.Context, email, name string) error {
 	name = strings.TrimSpace(name)
 	switch {
 	case !utf8.ValidString(name):
-		return fmt.Errorf("the name is not valid text: %w", ErrInvalid)
+		return fmt.Errorf("%w: the name is not valid text", ErrInvalid)
 	case utf8.RuneCountInString(name) > MaxNameRunes:
-		return fmt.Errorf("the name can be at most %d characters: %w", MaxNameRunes, ErrInvalid)
+		return fmt.Errorf("%w: the name can be at most %d characters", ErrInvalid, MaxNameRunes)
 	case strings.ContainsFunc(name, unicode.IsControl):
-		return fmt.Errorf("the name cannot contain control characters: %w", ErrInvalid)
+		return fmt.Errorf("%w: the name cannot contain control characters", ErrInvalid)
 	}
 	err = db.WithTx(ctx, s.db, s.q, func(q *profiledb.Queries, _ *sql.Tx) error {
 		n, err := q.SetDisplayName(ctx, profiledb.SetDisplayNameParams{
