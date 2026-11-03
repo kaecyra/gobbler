@@ -1,0 +1,86 @@
+package profile
+
+import (
+	"time"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+// sessionsSection is the section on the page: a slot that loads the list, so
+// it needs nothing from the page's view beyond the address. A browser without
+// scripts gets the link and opens the list as a page.
+templ sessionsSection(v pageView) {
+	<section class="panel" aria-labelledby="sessions-h" data-testid="profile-sessions">
+		<h2 id="sessions-h">Sessions</h2>
+		<div data-testid="sessions-slot" hx-get={ v.sectionPath("sessions") } hx-trigger="load" hx-swap="outerHTML">
+			<a href={ templ.SafeURL(v.sectionPath("sessions")) } class="btn">Show my sessions</a>
+		</div>
+	</section>
+}
+
+// sessionsPage is the list on a page of its own, for a browser that opened it
+// directly.
+templ sessionsPage(pv pageView, v sessionsView) {
+	@layout.Page("Sessions") {
+		<div class="pg profile">
+			<section class="panel" aria-labelledby="sessions-h" data-testid="profile-sessions">
+				<h2 id="sessions-h">Sessions</h2>
+				@sessionList(v)
+			</section>
+			<p><a href={ templ.SafeURL(Pattern + "/" + pv.Address) } class="link">Back to your profile</a></p>
+		</div>
+	}
+}
+
+// sessionList is the person's sessions, the current one marked, with the
+// buttons that end them.
+templ sessionList(v sessionsView) {
+	<div data-testid="sessions-list">
+		if !v.Kept {
+			<p class="muted">Sign-in sessions are not in use here, so there are none to show.</p>
+		} else if len(v.Rows) == 0 {
+			<p class="muted">No sessions.</p>
+		} else {
+			<ul class="list">
+				for _, s := range v.Rows {
+					<li data-testid="session" data-current={ boolAttr(s.Current) }>
+						<span class="grow">
+							<strong data-testid="session-device">{ s.Device }</strong>
+							if s.Current {
+								<span class="muted" data-testid="session-current">(this session)</span>
+							}
+							<span class="hint">
+								<span data-testid="session-ip">
+									if s.IP == "" {
+										IP unknown
+									} else {
+										{ s.IP }
+									}
+								</span>
+								{ " · started " }
+								@stamp(s.Started)
+								{ " · last used " }
+								@stamp(s.LastUsed)
+							</span>
+						</span>
+						if !s.Current {
+							<form class="row-form" method="post" action={ templ.SafeURL(v.path("/end")) }>
+								<input type="hidden" name="id" value={ s.ID }/>
+								<button type="submit" class="btn" data-testid="session-end">End this session</button>
+							</form>
+						}
+					</li>
+				}
+			</ul>
+			if v.others() > 0 {
+				<form method="post" action={ templ.SafeURL(v.path("/end-others")) }>
+					<button type="submit" class="btn" data-testid="sessions-end-others">End every other session</button>
+				</form>
+			}
+		}
+	</div>
+}
+
+templ stamp(t time.Time) {
+	<time datetime={ t.UTC().Format(time.RFC3339) }>{ t.UTC().Format("2 Jan 2006 15:04") } UTC</time>
+}

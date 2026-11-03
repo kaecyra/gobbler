@@ -82,9 +82,22 @@ page opened without a session sends the browser to `/login`, which
 goes to the issuer and comes back to `/auth/callback` and then to the page
 that was asked for; any other request without a session gets `401`. Only an
 email the issuer reports as verified is accepted.
-"Sign out" in the nav menu ends the session at once, and so does removing a
+"Sign out" in the account (avatar) menu ends the session at once, and so does removing a
 member from their household. Sessions last `GOBBLER_SESSION_LIFETIME` from
 sign-in, however recently they were used.
+
+A session row records, beside its start, last use and expiry, the browser's
+user agent and the client IP address, both taken when the session starts
+([ADR-00032](./adr/00032-profiles.md)). Behind the Cloudflare tunnel the
+address is the `CF-Connecting-IP` header, and the connection's remote address
+when that header is missing or is not an IP address. The person sees them, with
+the browser and system read from the user agent, in the Sessions section of
+their own profile, where they can end one session or every session but the
+current one; nobody else sees them. The address is for display only and never
+admits or refuses anyone: anything that reaches the app's port directly can set
+that header to any value ([ADR-00027](./adr/00027-publish-on-all-interfaces.md)). Both are deleted with
+the row when the session ends or expires. Sessions that began before the app recorded
+these details show them empty.
 
 **Upgrading from a release that used Cloudflare Access** (0.84.x or earlier)
 is a one-time step. Cut over to sign-in on 0.84.x first, following the

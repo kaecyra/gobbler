@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -65,9 +66,10 @@ func (s *Store) parse(v string) (time.Time, error) { return time.Parse(timeLayou
 
 // Create starts a session for the verified email and returns its token, for
 // the cookie and nowhere else: it is not stored, and must never be logged.
-// The email is trimmed and lower-cased, the form every table stores.
-func (s *Store) Create(ctx context.Context, email string) (string, error) {
-	e := strings.ToLower(strings.TrimSpace(email))
+// The email is trimmed and lower-cased, the form every table stores. The
+// client is recorded with the session for the person to see (ADR-00032).
+func (s *Store) Create(ctx context.Context, email string, c Client) (string, error) {
+	e := normalise(email)
 	if e == "" {
 		return "", errors.New("create session: no email")
 	}
@@ -80,7 +82,7 @@ func (s *Store) Create(ctx context.Context, email string) (string, error) {
 	err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
 		return q.InsertSession(ctx, sessiondb.InsertSessionParams{
 			TokenHash: hash(token), Email: e, CreatedAt: s.stamp(now), LastUsedAt: s.stamp(now),
-			ExpiresAt: s.stamp(now.Add(s.lifetime)),
+			ExpiresAt: s.stamp(now.Add(s.lifetime)), UserAgent: c.UserAgent, ClientIp: c.IP,
 		})
 	})
 	// A primary-key clash on a 256-bit random token means the random source
@@ -178,7 +180,7 @@ func (s *Store) EndForEmail(ctx context.Context, tx *sql.Tx, email string) error
 }
 
 func deleteForEmail(ctx context.Context, q *sessiondb.Queries, email string) (int, error) {
-	e := strings.ToLower(strings.TrimSpace(email))
+	e := normalise(email)
 	if e == "" {
 		// No session has an empty email, so this can only be a caller that
 		// lost the address it meant to end sessions for.
@@ -206,3 +208,93 @@ func (s *Store) DeleteExpired(ctx context.Context) (int, error) {
 	}
 	return int(n), nil
 }
+
+// Info is one live session as its person sees it (ADR-00032). It holds no
+// token: ID names the session to End, and opens nothing.
+type Info struct {
+	// ID is the SHA-256 of the session token in hex, which is what the
+	// database stores and not the token itself.
+	ID         string
+	Client     Client
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	// Current is whether this is the session the list was asked for.
+	Current bool
+}
+
+// ListForEmail returns the email's live sessions, newest first, with the one
+// the current token names marked. An empty or unknown token marks none.
+func (s *Store) ListForEmail(ctx context.Context, email, currentToken string) ([]Info, error) {
+	e := normalise(email)
+	rows, err := s.q.ListLiveSessionsForEmail(ctx, sessiondb.ListLiveSessionsForEmailParams{Email: e, Now: s.stamp(s.now())})
+	if err != nil {
+		return nil, fmt.Errorf("list sessions of %s: %w", e, err)
+	}
+	cur := ""
+	if currentToken != "" {
+		cur = hex.EncodeToString(hash(currentToken))
+	}
+	out := make([]Info, 0, len(rows))
+	for _, r := range rows {
+		created, err := s.parse(r.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("list sessions of %s: created: %w", e, err)
+		}
+		used, err := s.parse(r.LastUsedAt)
+		if err != nil {
+			return nil, fmt.Errorf("list sessions of %s: last used: %w", e, err)
+		}
+		id := hex.EncodeToString(r.TokenHash)
+		out = append(out, Info{
+			ID: id, Client: Client{UserAgent: r.UserAgent, IP: r.ClientIp},
+			CreatedAt: created, LastUsedAt: used, Current: cur != "" && id == cur,
+		})
+	}
+	return out, nil
+}
+
+// End ends the email's session that id names and reports whether there was
+// one. A session of another email is never touched, whatever the id: the
+// email comes from the verified identity, the id from the request.
+func (s *Store) End(ctx context.Context, email, id string) (bool, error) {
+	h, err := hex.DecodeString(id)
+	if err != nil || len(h) != sha256.Size {
+		return false, nil
+	}
+	var n int64
+	err = db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
+		var err error
+		n, err = q.DeleteSessionOfEmail(ctx, sessiondb.DeleteSessionOfEmailParams{TokenHash: h, Email: normalise(email)})
+		return err
+	})
+	if err != nil {
+		return false, fmt.Errorf("end session of %s: %w", normalise(email), err)
+	}
+	return n > 0, nil
+}
+
+// EndOthers ends every session of the email except the one the token names and
+// returns how many it ended. The token must be the caller's own, already
+// checked to be one of the email's live sessions; an empty one is refused,
+// since keeping nothing is DeleteForEmail.
+func (s *Store) EndOthers(ctx context.Context, email, keepToken string) (int, error) {
+	e := normalise(email)
+	if e == "" {
+		return 0, errors.New("end other sessions: empty email")
+	}
+	if keepToken == "" {
+		return 0, errors.New("end other sessions: no current session")
+	}
+	var n int64
+	err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
+		var err error
+		n, err = q.DeleteOtherSessionsOfEmail(ctx, sessiondb.DeleteOtherSessionsOfEmailParams{Email: e, KeepHash: hash(keepToken)})
+		return err
+	})
+	if err != nil {
+		return 0, fmt.Errorf("end other sessions of %s: %w", e, err)
+	}
+	return int(n), nil
+}
+
+func normalise(email string) string { return strings.ToLower(strings.TrimSpace(email)) }

@@ -45,7 +45,7 @@ func TestMigration00019AddsAndDropsSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := s.Create(ctx, "ann@example.com")
+	token, err := s.Create(ctx, "ann@example.com", Client{})
 	if err != nil {
 		t.Fatalf("Create after the migration: %v", err)
 	}
@@ -77,5 +77,52 @@ func TestMigration00019AddsAndDropsSessions(t *testing.T) {
 	var n int
 	if err := d.QueryRowContext(ctx, `SELECT COUNT(*) FROM households`).Scan(&n); err != nil || n != 1 {
 		t.Errorf("households after the rollback = %d, %v; want 1 kept", n, err)
+	}
+}
+
+// The session-details migration adds the user agent and the IP to sessions
+// that already exist, as empty, and rolling it back drops only those columns.
+func TestMigrationSessionDetailsKeepsExistingSessions(t *testing.T) {
+	ctx := context.Background()
+	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00021")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.ExecContext(ctx, `INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at) VALUES (randomblob(32), 'ann@example.com', '2026-11-02T12:00:00.000000000Z', '2026-11-02T12:00:00.000000000Z', '2999-01-01T00:00:00.000000000Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	var ua, ip string
+	if err := d.QueryRowContext(ctx, `SELECT user_agent, client_ip FROM sessions`).Scan(&ua, &ip); err != nil || ua != "" || ip != "" {
+		t.Fatalf("existing session = %q, %q, %v; want empty details", ua, ip, err)
+	}
+	s, err := New(d, lifetime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.ListForEmail(ctx, "ann@example.com", "")
+	if err != nil || len(list) != 1 {
+		t.Fatalf("ListForEmail = %v, %v", list, err)
+	}
+
+	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Down(ctx); err != nil {
+		t.Fatalf("rolling back: %v", err)
+	}
+	var n int
+	if err := d.QueryRowContext(ctx, `SELECT COUNT(*) FROM sessions`).Scan(&n); err != nil || n != 1 {
+		t.Errorf("sessions after the rollback = %d, %v; want 1 kept", n, err)
+	}
+	if _, err := d.ExecContext(ctx, `SELECT client_ip FROM sessions`); err == nil {
+		t.Error("client_ip survived the rollback")
 	}
 }

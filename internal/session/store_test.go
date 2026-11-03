@@ -46,7 +46,7 @@ func newFixture(t *testing.T) *fixture {
 
 func (f *fixture) create(email string) string {
 	f.t.Helper()
-	token, err := f.s.Create(context.Background(), email)
+	token, err := f.s.Create(context.Background(), email, Client{})
 	if err != nil {
 		f.t.Fatalf("Create(%q): %v", email, err)
 	}
@@ -101,7 +101,7 @@ func TestCreateThenLookup(t *testing.T) {
 
 func TestCreateRefusesBlankEmail(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.s.Create(context.Background(), "   "); err == nil {
+	if _, err := f.s.Create(context.Background(), "   ", Client{}); err == nil {
 		t.Fatal("Create(blank) succeeded")
 	}
 	if n := f.count(); n != 0 {
@@ -112,7 +112,7 @@ func TestCreateRefusesBlankEmail(t *testing.T) {
 func TestCreateFailsWhenRandomSourceFails(t *testing.T) {
 	f := newFixture(t)
 	f.s.rand = iotest.ErrReader(errors.New("entropy gone"))
-	if _, err := f.s.Create(context.Background(), "ann@example.com"); err == nil || !strings.Contains(err.Error(), "entropy gone") {
+	if _, err := f.s.Create(context.Background(), "ann@example.com", Client{}); err == nil || !strings.Contains(err.Error(), "entropy gone") {
 		t.Fatalf("Create = %v, want the random source's error", err)
 	}
 	if n := f.count(); n != 0 {
