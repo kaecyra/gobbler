@@ -40,7 +40,7 @@ test.describe('discovery', () => {
 });
 
 test.describe('connecting an app', () => {
-  test('a client registers, the person approves it on the consent page, and a reused code revokes the grant', async ({ page, request }) => {
+  test('a client registers, the person approves it on the consent page, and a reused code revokes the grant', async ({ page, request, baseURL }) => {
     const resource = await resourceOf(request);
     const name = uniqueName('Kitchen agent');
     const callback = await startCallback();
@@ -57,7 +57,7 @@ test.describe('connecting an app', () => {
     await page.waitForURL(`${callback.redirect}?**`);
     const back = new URL(page.url());
     expect(back.searchParams.get('state')).toBe('st4te');
-    expect(back.searchParams.get('iss')).toBeTruthy();
+    expect(back.searchParams.get('iss')).toBe(baseURL);
     const code = back.searchParams.get('code')!;
     await callback.close();
 
@@ -136,6 +136,7 @@ test.describe('connecting an app', () => {
     expect(res.status()).toBe(303);
     expect(new URL(res.headers()['location']).searchParams.get('error')).toBe('invalid_request');
     res = await request.get(`/oauth/authorize?${new URLSearchParams({ ...authParams(clientId, resource), resource: 'https://other.example/mcp' })}`, { maxRedirects: 0 });
+    expect(res.status()).toBe(303);
     expect(new URL(res.headers()['location']).searchParams.get('error')).toBe('invalid_target');
   });
 

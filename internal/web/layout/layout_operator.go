@@ -171,8 +171,8 @@ func IsBearerPath(p string) bool {
 // registration and the token endpoint. A client calls them before any person has
 // signed in, and the token endpoint authenticates by the code or refresh token
 // it is given. The authorization endpoint, /oauth/authorize, is not here: it
-// needs a session. Package web/oauth serves them and checks this list against
-// its routes.
+// needs a session. Package web/oauth serves them, and its tests check that each
+// of its routes but that one is public.
 var oauthPublicPages = []string{
 	"/.well-known/oauth-protected-resource",
 	"/.well-known/oauth-protected-resource/mcp",

@@ -41,11 +41,11 @@ CREATE INDEX oauth_grants_client ON oauth_grants (client_id);
 CREATE TABLE oauth_codes (
     code_hash      BLOB PRIMARY KEY CHECK (length(code_hash) = 32),
     owner_email    TEXT NOT NULL CHECK (owner_email <> '' AND owner_email = lower(owner_email)),
-    client_id      TEXT NOT NULL,
+    client_id      TEXT NOT NULL CHECK (client_id <> ''),
     client_name    TEXT NOT NULL,
-    redirect_uri   TEXT NOT NULL,
+    redirect_uri   TEXT NOT NULL CHECK (redirect_uri <> ''),
     code_challenge TEXT NOT NULL,
-    resource       TEXT NOT NULL,
+    resource       TEXT NOT NULL CHECK (resource <> ''),
     created_at     TEXT NOT NULL,
     expires_at     TEXT NOT NULL,
     grant_id       INTEGER REFERENCES oauth_grants (id) ON DELETE CASCADE

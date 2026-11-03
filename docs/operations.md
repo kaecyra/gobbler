@@ -76,7 +76,8 @@ GOBBLER_PUBLIC_BASE_URL=https://gobbler.example.com
 ```
 
 gobbler verifies the session on every request except the public paths
-(`/healthz`, `/canada`, `/static/*`, `/login` and `/auth/callback`;
+(`/healthz`, `/canada`, `/static/*`, `/login`, `/auth/callback`, the OAuth
+discovery documents under `/.well-known/`, `/oauth/register` and `/oauth/token`;
 [ADR-00029](./adr/00029-public-paths.md)), where it is optional. A private
 page opened without a session sends the browser to `/login`, which
 goes to the issuer and comes back to `/auth/callback` and then to the page

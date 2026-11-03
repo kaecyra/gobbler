@@ -50,7 +50,7 @@ func ValidateMetadataURL(raw string) (*url.URL, error) {
 		return nil, fmt.Errorf("%w: the client_id has no host", ErrMetadata)
 	case u.User != nil:
 		return nil, fmt.Errorf("%w: the client_id must not carry user information", ErrMetadata)
-	case u.Fragment != "" || strings.Contains(raw, "#"):
+	case strings.Contains(raw, "#"):
 		return nil, fmt.Errorf("%w: the client_id must not have a fragment", ErrMetadata)
 	case u.Path == "" || u.Path == "/":
 		return nil, fmt.Errorf("%w: the client_id needs a path", ErrMetadata)

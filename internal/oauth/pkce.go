@@ -19,10 +19,16 @@ func ValidChallenge(s string) bool {
 	return err == nil && len(b) == sha256.Size
 }
 
+// The length bounds of a code verifier (RFC 7636 section 4.1).
+const (
+	minVerifierLen = 43
+	maxVerifierLen = 128
+)
+
 // ValidVerifier reports whether s is a code verifier as RFC 7636 section 4.1
 // allows: 43 to 128 characters of the unreserved set.
 func ValidVerifier(s string) bool {
-	if len(s) < 43 || len(s) > 128 {
+	if len(s) < minVerifierLen || len(s) > maxVerifierLen {
 		return false
 	}
 	return !strings.ContainsFunc(s, func(r rune) bool {
@@ -40,9 +46,7 @@ func VerifyPKCE(challenge, verifier string) bool {
 	if !ValidChallenge(challenge) || !ValidVerifier(verifier) {
 		return false
 	}
-	sum := sha256.Sum256([]byte(verifier))
-	want := base64.RawURLEncoding.EncodeToString(sum[:])
-	return subtle.ConstantTimeCompare([]byte(want), []byte(challenge)) == 1
+	return subtle.ConstantTimeCompare([]byte(Challenge(verifier)), []byte(challenge)) == 1
 }
 
 // Challenge returns the S256 challenge for verifier. Clients make this; the

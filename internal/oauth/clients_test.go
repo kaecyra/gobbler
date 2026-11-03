@@ -23,8 +23,11 @@ func TestRegisterClientStoresAndReturnsItByID(t *testing.T) {
 	if !strings.HasPrefix(c.ID, "gobc_") || c.Name != "My agent" {
 		t.Fatalf("client = %+v", c)
 	}
+	if c.CreatedAt.IsZero() {
+		t.Fatal("a registered client has no registration time")
+	}
 	got, err := f.store.Client(ctx, c.ID)
-	if err != nil || got.Name != "My agent" || len(got.RedirectURIs) != 2 {
+	if err != nil || got.Name != "My agent" || len(got.RedirectURIs) != 2 || !got.CreatedAt.Equal(c.CreatedAt) {
 		t.Fatalf("Client = %+v, %v", got, err)
 	}
 	if !got.AllowsRedirect("http://127.0.0.1:51234/cb") || got.AllowsRedirect("http://127.0.0.1:51234/other") || got.AllowsRedirect("https://app.example/cb2") {
@@ -93,14 +96,14 @@ func TestRegistrationIsCappedAndPrunesClientsThatNeverGotAGrant(t *testing.T) {
 func TestRedirectURIRules(t *testing.T) {
 	ok := []string{
 		"https://app.example/cb", "http://127.0.0.1:8080/cb", "http://localhost/cb", "http://[::1]:9/cb",
-		"cursor://anysphere.cursor-retrieval/oauth/callback", "com.example.app:/oauth2redirect",
+		"com.example.app:/oauth2redirect", "io.cursor.app://oauth/callback",
 	}
 	for _, u := range ok {
 		if err := oauth.ValidateRedirectURI(u); err != nil {
 			t.Errorf("%s refused: %v", u, err)
 		}
 	}
-	bad := []string{"", "http://app.example/cb", "https:///cb", "https://app.example/cb#f", "data:text/html,x", "file:///etc/passwd", "javascript://x", "foo", "https://app.example/c b", "app://"}
+	bad := []string{"", "http://app.example/cb", "https:///cb", "https://app.example/cb#f", "data:text/html,x", "file:///etc/passwd", "intent://scan/x", "ms-settings://network", "tel://5555550100", "cursor://anysphere/cb", "javascript://x", "foo", "https://app.example/c b", "app://"}
 	for _, u := range bad {
 		if err := oauth.ValidateRedirectURI(u); !errors.Is(err, oauth.ErrInvalidRedirectURI) {
 			t.Errorf("%q accepted (%v)", u, err)
@@ -113,7 +116,7 @@ func TestRedirectURIRules(t *testing.T) {
 		t.Fatal("MatchRedirectURI is wrong")
 	}
 	for uri, want := range map[string]string{
-		"https://app.example:8443/cb": "app.example:8443", "cursor://anysphere/cb": "cursor://anysphere", "com.example.app:/redirect": "com.example.app:/redirect",
+		"https://app.example:8443/cb": "app.example:8443", "io.cursor.app://oauth/cb": "io.cursor.app://oauth", "com.example.app:/redirect": "com.example.app:/redirect",
 	} {
 		if got := oauth.ReturnHost(uri); got != want {
 			t.Errorf("ReturnHost(%q) = %q, want %q", uri, got, want)

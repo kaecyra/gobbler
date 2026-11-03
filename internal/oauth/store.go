@@ -68,7 +68,7 @@ func hash(secret string) []byte {
 	return h[:]
 }
 
-func (s *Store) stamp(t time.Time) string { return t.UTC().Format(timeLayout) }
+func stamp(t time.Time) string { return t.UTC().Format(timeLayout) }
 
 // draw returns a new random secret that starts with prefix. It is never logged.
 func (s *Store) draw(prefix string) (string, error) {
@@ -109,13 +109,13 @@ func (s *Store) IssueCode(ctx context.Context, r AuthRequest) (string, error) {
 	}
 	now := s.now()
 	err = db.WithTx(ctx, s.db, s.q, func(q *oauthdb.Queries, _ *sql.Tx) error {
-		if err := q.PruneCodes(ctx, s.stamp(now)); err != nil {
+		if err := q.PruneCodes(ctx, stamp(now)); err != nil {
 			return fmt.Errorf("prune codes: %w", err)
 		}
 		return q.InsertCode(ctx, oauthdb.InsertCodeParams{
 			CodeHash: hash(code), OwnerEmail: owner, ClientID: r.ClientID, ClientName: cleanName(r.ClientName),
 			RedirectUri: r.RedirectURI, CodeChallenge: r.CodeChallenge, Resource: r.Resource,
-			CreatedAt: s.stamp(now), ExpiresAt: s.stamp(now.Add(CodeLifetime)),
+			CreatedAt: stamp(now), ExpiresAt: stamp(now.Add(CodeLifetime)),
 		})
 	})
 	if err != nil {
@@ -200,7 +200,7 @@ func (s *Store) ExchangeCode(ctx context.Context, r ExchangeRequest) (Tokens, er
 		}
 		gid, err := q.InsertGrant(ctx, oauthdb.InsertGrantParams{
 			OwnerEmail: c.OwnerEmail, ClientID: c.ClientID, ClientName: c.ClientName,
-			ReturnHost: ReturnHost(c.RedirectUri), Resource: c.Resource, CreatedAt: s.stamp(now),
+			ReturnHost: ReturnHost(c.RedirectUri), Resource: c.Resource, CreatedAt: stamp(now),
 		})
 		if err != nil {
 			return fmt.Errorf("insert grant: %w", err)
@@ -235,7 +235,7 @@ func (s *Store) issue(ctx context.Context, q *oauthdb.Queries, grantID int64, no
 		life         time.Duration
 	}{{"access", access, AccessLifetime}, {"refresh", refresh, RefreshLifetime}} {
 		err := q.InsertToken(ctx, oauthdb.InsertTokenParams{
-			GrantID: grantID, Kind: t.kind, TokenHash: hash(t.secret), ExpiresAt: s.stamp(now.Add(t.life)),
+			GrantID: grantID, Kind: t.kind, TokenHash: hash(t.secret), ExpiresAt: stamp(now.Add(t.life)),
 		})
 		if err != nil {
 			return Tokens{}, fmt.Errorf("insert %s token: %w", t.kind, err)
@@ -293,10 +293,10 @@ func (s *Store) Refresh(ctx context.Context, r RefreshRequest) (Tokens, error) {
 			refusal = refuse(CodeInvalidTarget, "resource does not match the grant")
 			return nil
 		}
-		if err := q.MarkTokenUsed(ctx, oauthdb.MarkTokenUsedParams{UsedAt: sql.NullString{String: s.stamp(now), Valid: true}, ID: t.ID}); err != nil {
+		if err := q.MarkTokenUsed(ctx, oauthdb.MarkTokenUsedParams{UsedAt: sql.NullString{String: stamp(now), Valid: true}, ID: t.ID}); err != nil {
 			return fmt.Errorf("retire refresh token: %w", err)
 		}
-		if err := q.PruneTokens(ctx, oauthdb.PruneTokensParams{GrantID: t.GrantID, Now: s.stamp(now)}); err != nil {
+		if err := q.PruneTokens(ctx, oauthdb.PruneTokensParams{GrantID: t.GrantID, Now: stamp(now)}); err != nil {
 			return fmt.Errorf("prune tokens: %w", err)
 		}
 		toks, err = s.issue(ctx, q, t.GrantID, now)

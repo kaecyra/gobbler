@@ -3,7 +3,7 @@ INSERT INTO oauth_clients (client_id, client_name, redirect_uris, created_at)
 VALUES (sqlc.arg(client_id), sqlc.arg(client_name), sqlc.arg(redirect_uris), sqlc.arg(created_at));
 
 -- name: GetClient :one
-SELECT client_id, client_name, redirect_uris FROM oauth_clients WHERE client_id = ?;
+SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients WHERE client_id = ?;
 
 -- PruneClients deletes clients that registered before the cutoff and never
 -- received a grant, so the anonymous registration endpoint cannot fill the

@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -98,7 +99,10 @@ func (s *site) postForm(target, email string, form url.Values) *httptest.Respons
 }
 
 func (s *site) postJSON(target string, body any) *httptest.ResponseRecorder {
-	b, _ := json.Marshal(body)
+	b, err := json.Marshal(body)
+	if err != nil {
+		s.t.Fatal(err)
+	}
 	req := httptest.NewRequest(http.MethodPost, target, bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
 	return s.do(req, "")
@@ -150,6 +154,16 @@ func (s *site) approve(q url.Values, email string) *url.URL {
 	return u
 }
 
+// codes is how many authorization codes are stored.
+func (s *site) codes() int {
+	s.t.Helper()
+	var n int
+	if err := s.d.QueryRow(`SELECT count(*) FROM oauth_codes`).Scan(&n); err != nil {
+		s.t.Fatal(err)
+	}
+	return n
+}
+
 func (s *site) token(form url.Values) *httptest.ResponseRecorder {
 	return s.postForm(weboauth.TokenPath, "", form)
 }
@@ -186,14 +200,29 @@ func TestDiscoveryDocumentsArePublicAndDescribeTheServer(t *testing.T) {
 	}
 }
 
-func TestPublicPathsAreExactlyTheOnesThatNeedNoSession(t *testing.T) {
-	for _, p := range []string{weboauth.ResourceMetadataPath, weboauth.WellKnownPattern + "/oauth-protected-resource", weboauth.ServerMetadataPath, weboauth.RegisterPath, weboauth.TokenPath} {
-		if !layout.IsPublic(p) {
-			t.Errorf("%s is not public", p)
+// Every route this package serves is public except the authorization endpoint,
+// which needs a session. The routes come from the routers, so a route added
+// here without a line in layout, or dropped from layout, fails this test.
+func TestEveryRouteButAuthorizeIsPublic(t *testing.T) {
+	r := chi.NewRouter()
+	d := weboauth.Deps{}
+	r.Mount(weboauth.WellKnownPattern, weboauth.WellKnownRoutes(d))
+	r.Mount(weboauth.Pattern, weboauth.Routes(d))
+	seen := map[string]bool{}
+	err := chi.Walk(r, func(_, pattern string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		seen[pattern] = true
+		if want := pattern != weboauth.AuthorizePath; layout.IsPublic(pattern) != want {
+			t.Errorf("IsPublic(%s) = %v, want %v", pattern, !want, want)
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if layout.IsPublic(weboauth.AuthorizePath) {
-		t.Error("the authorization endpoint is public")
+	for _, p := range []string{weboauth.ResourceMetadataPath, weboauth.WellKnownPattern + "/oauth-protected-resource", weboauth.ServerMetadataPath, weboauth.RegisterPath, weboauth.TokenPath, weboauth.AuthorizePath} {
+		if !seen[p] {
+			t.Errorf("%s is not a route", p)
+		}
 	}
 }
 
@@ -276,9 +305,7 @@ func TestDenyingReturnsAccessDeniedAndIssuesNothing(t *testing.T) {
 	if rec := s.postForm(weboauth.AuthorizePath, ann, q); !strings.Contains(rec.Header().Get("Location"), "access_denied") {
 		t.Fatalf("empty decision = %d to %s", rec.Code, rec.Header().Get("Location"))
 	}
-	var n int
-	_ = s.d.QueryRow(`SELECT count(*) FROM oauth_codes`).Scan(&n)
-	if n != 0 {
+	if n := s.codes(); n != 0 {
 		t.Fatalf("%d codes issued", n)
 	}
 }
@@ -348,10 +375,8 @@ func TestUntrustedClientsAndRedirectsGetAPageNotARedirect(t *testing.T) {
 			if rec.Code != http.StatusBadRequest || rec.Header().Get("Location") != "" {
 				t.Fatalf("POST = %d, location %q", rec.Code, rec.Header().Get("Location"))
 			}
-			var n int
-			_ = s.d.QueryRow(`SELECT count(*) FROM oauth_codes`).Scan(&n)
-			if n != 0 {
-				t.Fatal("a code was issued")
+			if n := s.codes(); n != 0 {
+				t.Fatalf("%d codes issued", n)
 			}
 		})
 	}
@@ -472,6 +497,14 @@ func TestRegistrationIssuesNoSecret(t *testing.T) {
 	s := newSite(t, stubMetadata{})
 	rec := s.postJSON(weboauth.RegisterPath, map[string]any{"client_name": "A", "redirect_uris": []string{redirect}})
 	m := jsonOf(t, rec)
+	var created string
+	if err := s.d.QueryRow(`SELECT created_at FROM oauth_clients WHERE client_id = ?`, m["client_id"]).Scan(&created); err != nil {
+		t.Fatal(err)
+	}
+	when, err := time.Parse("2006-01-02T15:04:05.000000000Z", created)
+	if err != nil || m["client_id_issued_at"] != float64(when.Unix()) {
+		t.Fatalf("client_id_issued_at = %v, stored created_at = %q (%v)", m["client_id_issued_at"], created, err)
+	}
 	if _, has := m["client_secret"]; has || m["token_endpoint_auth_method"] != "none" || !strings.HasPrefix(m["client_id"].(string), "gobc_") {
 		t.Fatalf("registration = %v", m)
 	}

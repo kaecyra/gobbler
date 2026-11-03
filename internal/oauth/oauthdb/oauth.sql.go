@@ -70,19 +70,18 @@ func (q *Queries) GetAccessToken(ctx context.Context, tokenHash []byte) (GetAcce
 }
 
 const getClient = `-- name: GetClient :one
-SELECT client_id, client_name, redirect_uris FROM oauth_clients WHERE client_id = ?
+SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients WHERE client_id = ?
 `
 
-type GetClientRow struct {
-	ClientID     string
-	ClientName   string
-	RedirectUris string
-}
-
-func (q *Queries) GetClient(ctx context.Context, clientID string) (GetClientRow, error) {
+func (q *Queries) GetClient(ctx context.Context, clientID string) (OauthClient, error) {
 	row := q.db.QueryRowContext(ctx, getClient, clientID)
-	var i GetClientRow
-	err := row.Scan(&i.ClientID, &i.ClientName, &i.RedirectUris)
+	var i OauthClient
+	err := row.Scan(
+		&i.ClientID,
+		&i.ClientName,
+		&i.RedirectUris,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 

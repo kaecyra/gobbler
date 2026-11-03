@@ -53,13 +53,16 @@ func TestMigrationAddsAndDropsTheOAuthTables(t *testing.T) {
 		}
 		return n
 	}
-	if tables() != 4 {
-		t.Fatalf("oauth tables = %d, want 4", tables())
+	if n := tables(); n != 4 {
+		t.Fatalf("oauth tables = %d, want 4", n)
 	}
 	for _, bad := range []string{
 		`INSERT INTO oauth_grants (owner_email, client_id, client_name, return_host, resource, created_at) VALUES ('Ann@Example.com', 'c', 'n', 'h', 'r', 't')`,
 		`INSERT INTO oauth_grants (owner_email, client_id, client_name, return_host, resource, created_at) VALUES ('', 'c', 'n', 'h', 'r', 't')`,
 		`INSERT INTO oauth_tokens (grant_id, kind, token_hash, expires_at) VALUES (999, 'access', randomblob(32), 't')`,
+		`INSERT INTO oauth_codes (code_hash, owner_email, client_id, client_name, redirect_uri, code_challenge, resource, created_at, expires_at) VALUES (randomblob(32), 'a@b.c', '', 'n', 'u', 'x', 'r', 't', 't')`,
+		`INSERT INTO oauth_codes (code_hash, owner_email, client_id, client_name, redirect_uri, code_challenge, resource, created_at, expires_at) VALUES (randomblob(32), 'a@b.c', 'c', 'n', '', 'x', 'r', 't', 't')`,
+		`INSERT INTO oauth_codes (code_hash, owner_email, client_id, client_name, redirect_uri, code_challenge, resource, created_at, expires_at) VALUES (randomblob(32), 'a@b.c', 'c', 'n', 'u', 'x', '', 't', 't')`,
 		`INSERT INTO oauth_codes (code_hash, owner_email, client_id, client_name, redirect_uri, code_challenge, resource, created_at, expires_at) VALUES (randomblob(8), 'a@b.c', 'c', 'n', 'u', 'x', 'r', 't', 't')`,
 	} {
 		if _, err := d.ExecContext(ctx, bad); err == nil {

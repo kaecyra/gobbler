@@ -24,6 +24,9 @@ func (h *handler) grantsRoutes(r chi.Router) {
 	r.Post("/grants/{"+grantIDParam+"}/revoke", h.revokeGrant)
 }
 
+// grants is the grant store over the page's database.
+func (h *handler) grants() *oauth.Store { return oauth.New(h.DB) }
+
 // grantRow is one grant as the list shows it.
 type grantRow struct {
 	Name       string
@@ -39,7 +42,7 @@ func (h *handler) grantsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := newView(s)
-	grants, err := oauth.New(h.DB).ListGrants(r.Context(), s.Profile.Email)
+	grants, err := h.grants().ListGrants(r.Context(), s.Profile.Email)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -65,7 +68,7 @@ func (h *handler) revokeGrant(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("grant id %q: %w", chi.URLParam(r, grantIDParam), layout.ErrNotFound))
 		return
 	}
-	if err := oauth.New(h.DB).RevokeGrant(r.Context(), s.Profile.Email, id); err != nil {
+	if err := h.grants().RevokeGrant(r.Context(), s.Profile.Email, id); err != nil {
 		layout.WriteError(w, r, err)
 		return
 	}

@@ -59,7 +59,10 @@ func TestSecretsAreStoredOnlyAsHashes(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cols, _ := rows.Columns()
+		cols, err := rows.Columns()
+		if err != nil {
+			t.Fatal(err)
+		}
 		for rows.Next() {
 			vals := make([]any, len(cols))
 			ptrs := make([]any, len(cols))
@@ -83,6 +86,9 @@ func TestSecretsAreStoredOnlyAsHashes(t *testing.T) {
 					}
 				}
 			}
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
 		}
 		_ = rows.Close()
 	}

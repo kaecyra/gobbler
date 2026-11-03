@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -112,10 +111,13 @@ func (h *handler) baseURL(r *http.Request) (string, error) {
 }
 
 // writeJSON writes v as the response.
-func writeJSON(w http.ResponseWriter, status int, v any) {
+func (h *handler) writeJSON(w http.ResponseWriter, r *http.Request, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		// The status is sent already, so all that is left is to say so.
+		h.log.WarnContext(r.Context(), "write oauth response", "path", r.URL.Path, "error", err.Error())
+	}
 }
 
 type errorBody struct {
@@ -130,7 +132,7 @@ func (h *handler) writeOAuthError(w http.ResponseWriter, r *http.Request, err er
 	var oe *oauth.Error
 	if !errors.As(err, &oe) {
 		h.log.ErrorContext(r.Context(), "oauth request failed", "path", r.URL.Path, "error", err.Error())
-		writeJSON(w, http.StatusInternalServerError, errorBody{Error: "server_error", Description: "gobbler could not complete the request"})
+		h.writeJSON(w, r, http.StatusInternalServerError, errorBody{Error: "server_error", Description: "gobbler could not complete the request"})
 		return
 	}
 	status := http.StatusBadRequest
@@ -141,7 +143,7 @@ func (h *handler) writeOAuthError(w http.ResponseWriter, r *http.Request, err er
 		status = http.StatusServiceUnavailable
 	}
 	h.log.InfoContext(r.Context(), "oauth request refused", "path", r.URL.Path, "error_code", oe.Code, "reason", oe.Description)
-	writeJSON(w, status, errorBody{Error: oe.Code, Description: oe.Description})
+	h.writeJSON(w, r, status, errorBody{Error: oe.Code, Description: oe.Description})
 }
 
 // discovery adds the headers of a public, cacheable document that any client,
@@ -159,7 +161,7 @@ func (h *handler) resourceMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	discovery(w)
-	writeJSON(w, http.StatusOK, map[string]any{
+	h.writeJSON(w, r, http.StatusOK, map[string]any{
 		"resource":                 oauth.ResourceURL(base),
 		"authorization_servers":    []string{base},
 		"bearer_methods_supported": []string{"header"},
@@ -175,7 +177,7 @@ func (h *handler) serverMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	discovery(w)
-	writeJSON(w, http.StatusOK, map[string]any{
+	h.writeJSON(w, r, http.StatusOK, map[string]any{
 		"issuer":                                base,
 		"authorization_endpoint":                base + AuthorizePath,
 		"token_endpoint":                        base + TokenPath,
@@ -229,9 +231,9 @@ func (h *handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.log.InfoContext(r.Context(), "oauth client registered", "client_id", c.ID)
-	writeJSON(w, http.StatusCreated, map[string]any{
+	h.writeJSON(w, r, http.StatusCreated, map[string]any{
 		"client_id":                  c.ID,
-		"client_id_issued_at":        time.Now().Unix(),
+		"client_id_issued_at":        c.CreatedAt.Unix(),
 		"client_name":                c.Name,
 		"redirect_uris":              c.RedirectURIs,
 		"token_endpoint_auth_method": "none",
@@ -275,7 +277,7 @@ func (h *handler) token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.log.InfoContext(r.Context(), "oauth tokens issued", "grant_type", form.Get("grant_type"), "client_id", truncate(form.Get("client_id")))
-	writeJSON(w, http.StatusOK, map[string]any{
+	h.writeJSON(w, r, http.StatusOK, map[string]any{
 		"access_token":  toks.Access,
 		"token_type":    "Bearer",
 		"expires_in":    int(toks.ExpiresIn.Seconds()),

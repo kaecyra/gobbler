@@ -40,6 +40,9 @@ type Client struct {
 	ID           string
 	Name         string
 	RedirectURIs []string
+	// CreatedAt is when a registered client registered; it is zero for a
+	// metadata-document client, which is not stored.
+	CreatedAt time.Time
 }
 
 // AllowsRedirect reports whether uri is one of the client's redirect URIs
@@ -126,7 +129,7 @@ func (s *Store) RegisterClient(ctx context.Context, m ClientMetadata) (Client, e
 	now := s.now()
 	full := false
 	err = db.WithTx(ctx, s.db, s.q, func(q *oauthdb.Queries, _ *sql.Tx) error {
-		if _, err := q.PruneClients(ctx, s.stamp(now.Add(-ClientRetention))); err != nil {
+		if _, err := q.PruneClients(ctx, stamp(now.Add(-ClientRetention))); err != nil {
 			return fmt.Errorf("prune clients: %w", err)
 		}
 		n, err := q.CountClients(ctx)
@@ -137,7 +140,7 @@ func (s *Store) RegisterClient(ctx context.Context, m ClientMetadata) (Client, e
 			full = true
 			return nil
 		}
-		return q.InsertClient(ctx, oauthdb.InsertClientParams{ClientID: id, ClientName: m.Name, RedirectUris: string(uris), CreatedAt: s.stamp(now)})
+		return q.InsertClient(ctx, oauthdb.InsertClientParams{ClientID: id, ClientName: m.Name, RedirectUris: string(uris), CreatedAt: stamp(now)})
 	})
 	if err != nil {
 		return Client{}, fmt.Errorf("register client: %w", err)
@@ -145,7 +148,12 @@ func (s *Store) RegisterClient(ctx context.Context, m ClientMetadata) (Client, e
 	if full {
 		return Client{}, refuse(CodeTemporarilyBusy, "gobbler is not taking new client registrations right now")
 	}
-	return Client{ID: id, Name: m.Name, RedirectURIs: slices.Clone(m.RedirectURIs)}, nil
+	// The stamp is stored at nanosecond precision, so read it back the same way.
+	created, err := time.Parse(timeLayout, stamp(now))
+	if err != nil {
+		return Client{}, fmt.Errorf("parse registration time: %w", err)
+	}
+	return Client{ID: id, Name: m.Name, RedirectURIs: slices.Clone(m.RedirectURIs), CreatedAt: created}, nil
 }
 
 // Client returns the registered client with the id, or ErrUnknownClient.
@@ -158,6 +166,9 @@ func (s *Store) Client(ctx context.Context, id string) (Client, error) {
 		return Client{}, fmt.Errorf("get client: %w", err)
 	}
 	c := Client{ID: row.ClientID, Name: row.ClientName}
+	if c.CreatedAt, err = time.Parse(timeLayout, row.CreatedAt); err != nil {
+		return Client{}, fmt.Errorf("parse registration time of client %s: %w", row.ClientID, err)
+	}
 	if err := json.Unmarshal([]byte(row.RedirectUris), &c.RedirectURIs); err != nil {
 		return Client{}, fmt.Errorf("decode redirect URIs of client %s: %w", row.ClientID, err)
 	}

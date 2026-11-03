@@ -27,7 +27,8 @@ func isLoopbackHost(host string) bool {
 
 // ValidateRedirectURI refuses a redirect URI that a client may not register
 // (OAuth 2.1 section 2.3.1, RFC 8252). It accepts an absolute https URL, an
-// http URL on a loopback host, and the private-use scheme of a native app. It
+// http URL on a loopback host, and the reverse-domain private-use scheme of a
+// native app. It
 // refuses a fragment, user information, plain http to any other host and the
 // schemes that run script.
 func ValidateRedirectURI(raw string) error {
@@ -38,7 +39,7 @@ func ValidateRedirectURI(raw string) error {
 	if err != nil || u.Scheme == "" || u.Opaque != "" {
 		return refuse(CodeInvalidRedirectURI, "a redirect URI must be an absolute URI")
 	}
-	if u.Fragment != "" || strings.Contains(raw, "#") {
+	if strings.Contains(raw, "#") {
 		return refuse(CodeInvalidRedirectURI, "a redirect URI must not have a fragment")
 	}
 	if u.User != nil {
@@ -56,6 +57,12 @@ func ValidateRedirectURI(raw string) error {
 	case deniedSchemes[u.Scheme]:
 		return refuse(CodeInvalidRedirectURI, fmt.Sprintf("the %s scheme is not allowed in a redirect URI", u.Scheme))
 	default:
+		// RFC 8252 section 7.1: a private-use scheme is a reverse domain name,
+		// which keeps it from being one of the schemes other apps and the
+		// system already handle (intent, tel, ms-settings).
+		if !strings.Contains(u.Scheme, ".") {
+			return refuse(CodeInvalidRedirectURI, "a private-use scheme must be a reverse domain name, such as com.example.app")
+		}
 		if u.Host == "" && u.Path == "" {
 			return refuse(CodeInvalidRedirectURI, "a redirect URI with a private-use scheme needs a host or a path")
 		}
