@@ -25,25 +25,25 @@ test('a member makes a household key with an expiry, sees its secret once, and r
   const { ctx } = await startHousehold(browser, baseURL, 'Key makers');
   const page = await ctx.newPage();
   await page.goto('/household');
-  await expect(page.getByTestId('household-keys-empty')).toBeVisible();
+  await expect(page.getByTestId('api-keys-empty')).toBeVisible();
 
   const secret = await makeKey(page, 'Kitchen bot', '90 days');
   await page.screenshot({ path: `${SHOTS}keys-household-created.png` });
   await page.getByRole('link', { name: 'Back to the household' }).click();
   expect(await page.content()).not.toContain(secret);
 
-  const row = page.getByTestId('household-key').filter({ hasText: 'Kitchen bot' });
+  const row = page.getByTestId('api-key').filter({ hasText: 'Kitchen bot' });
   await expect(row).toContainText(secret.slice(0, 12));
   await expect(row).toContainText('Expires');
   await expect(row).toContainText('Never used');
 
   await makeKey(page, 'Evergreen', 'No expiry');
   await page.getByRole('link', { name: 'Back to the household' }).click();
-  await expect(page.getByTestId('household-key').filter({ hasText: 'Evergreen' })).toContainText('No expiry');
+  await expect(page.getByTestId('api-key').filter({ hasText: 'Evergreen' })).toContainText('No expiry');
 
   await page.getByRole('button', { name: 'Revoke the key Kitchen bot' }).click();
-  await expect(page.getByTestId('household-key').filter({ hasText: 'Kitchen bot' })).toHaveCount(0);
-  await expect(page.getByTestId('household-key').filter({ hasText: 'Evergreen' })).toHaveCount(1);
+  await expect(page.getByTestId('api-key').filter({ hasText: 'Kitchen bot' })).toHaveCount(0);
+  await expect(page.getByTestId('api-key').filter({ hasText: 'Evergreen' })).toHaveCount(1);
   await ctx.close();
 });
 
@@ -53,7 +53,7 @@ test('another household cannot see or revoke the keys', async ({ browser, baseUR
   await page.goto('/household');
   await makeKey(page, 'Keepers only', '30 days');
   await page.getByRole('link', { name: 'Back to the household' }).click();
-  const revoke = await page.getByTestId('household-key').locator('form').getAttribute('action');
+  const revoke = await page.getByTestId('api-key').locator('form').getAttribute('action');
   expect(revoke).toMatch(/^\/household\/keys\/\d+\/revoke$/);
 
   const otherCtx = await as(browser, baseURL, OTHER);
@@ -62,7 +62,7 @@ test('another household cannot see or revoke the keys', async ({ browser, baseUR
   await expect(otherPage.getByText('Keepers only')).toHaveCount(0);
   expect((await otherCtx.request.post(revoke!, { maxRedirects: 0 })).status()).toBe(404);
   await page.reload();
-  await expect(page.getByTestId('household-key').filter({ hasText: 'Keepers only' })).toHaveCount(1);
+  await expect(page.getByTestId('api-key').filter({ hasText: 'Keepers only' })).toHaveCount(1);
   await otherCtx.close();
   await ctx.close();
 });
@@ -89,18 +89,18 @@ test('removing a member revokes the household keys they made, and leaving does t
     joiners.push({ email: guest, page: guestPage, close: () => guestCtx.close() });
   }
   await founder.goto('/household');
-  await expect(founder.getByTestId('household-key')).toHaveCount(3);
+  await expect(founder.getByTestId('api-key')).toHaveCount(3);
 
   const [removed, leaver] = joiners;
   await founder.getByRole('button', { name: `Remove ${removed.email}` }).click();
-  await expect(founder.getByTestId('household-key')).toHaveCount(2);
-  await expect(founder.getByTestId('household-key').filter({ hasText: 'removed key' })).toHaveCount(0);
+  await expect(founder.getByTestId('api-key')).toHaveCount(2);
+  await expect(founder.getByTestId('api-key').filter({ hasText: 'removed key' })).toHaveCount(0);
 
   await leaver.page.goto('/household');
   await leaver.page.getByRole('button', { name: 'Leave this household' }).click();
   await founder.reload();
-  await expect(founder.getByTestId('household-key')).toHaveCount(1);
-  await expect(founder.getByTestId('household-key')).toContainText('Founder key');
+  await expect(founder.getByTestId('api-key')).toHaveCount(1);
+  await expect(founder.getByTestId('api-key')).toContainText('Founder key');
   await Promise.all(joiners.map((j) => j.close()));
   await ctx.close();
 });

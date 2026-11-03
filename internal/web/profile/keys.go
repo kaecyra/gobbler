@@ -44,20 +44,14 @@ func (h *handler) keysPage(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
+	v := newView(s)
 	keys, err := h.keys().ListPersonal(r.Context(), s.Profile.Email)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
 	}
-	now := time.Now()
-	rows := make([]keyRow, 0, len(keys))
-	for _, k := range keys {
-		rows = append(rows, keyRow{
-			ID: k.ID, Name: k.Name, Prefix: k.Prefix,
-			Created: k.CreatedText(), Expiry: k.ExpiryText(now), Used: k.UsedText(),
-		})
-	}
-	layout.Render(w, r, http.StatusOK, keysPage(newView(s), rows))
+	rows := layout.NewAPIKeyRows(keys, time.Now(), false, v.keyRevokePath)
+	layout.Render(w, r, http.StatusOK, keysPage(v, rows))
 }
 
 func (h *handler) createKey(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +76,10 @@ func (h *handler) createKey(w http.ResponseWriter, r *http.Request) {
 	// The secret is on this response only: it must not be stored by a cache or
 	// the browser's history.
 	w.Header().Set("Cache-Control", "no-store")
-	layout.Render(w, r, http.StatusOK, keyCreatedPage(newView(s), r.PostFormValue("name"), secret))
+	layout.Render(w, r, http.StatusOK, layout.APIKeyCreatedPage(layout.APIKeyCreated{
+		Name: r.PostFormValue("name"), Secret: secret,
+		BackHref: newView(s).sectionPath("keys"), BackLabel: "Back to your keys",
+	}))
 }
 
 func (h *handler) revokeKey(w http.ResponseWriter, r *http.Request) {
@@ -101,16 +98,6 @@ func (h *handler) revokeKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, Pattern+"/"+s.Profile.Address+"/keys", http.StatusSeeOther)
-}
-
-// keyRow is one key as the page lists it.
-type keyRow struct {
-	ID      int64
-	Name    string
-	Prefix  string
-	Created string
-	Expiry  string
-	Used    string
 }
 
 func (v pageView) keyRevokePath(id int64) string {

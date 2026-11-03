@@ -3,7 +3,6 @@ package household
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -48,7 +47,10 @@ func (h *handler) createKey(w http.ResponseWriter, r *http.Request) {
 	// The secret is on this response only: it must not be stored by a cache or
 	// the browser's history.
 	w.Header().Set("Cache-Control", "no-store")
-	layout.Render(w, r, http.StatusOK, keyCreatedPage(createdView{Name: r.PostFormValue("name"), Secret: secret, Household: hh.Name}))
+	layout.Render(w, r, http.StatusOK, layout.APIKeyCreatedPage(layout.APIKeyCreated{
+		Name: r.PostFormValue("name"), Secret: secret, For: "for the household " + hh.Name,
+		BackHref: Pattern, BackLabel: "Back to the household",
+	}))
 }
 
 // keyRefused answers input the store refused with its reason, and anything
@@ -73,33 +75,4 @@ func (h *handler) revokeKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	done(w, r, h.Keys.RevokeHousehold(r.Context(), hh.ID, id))
-}
-
-// keyRow is one key as the section lists it.
-type keyRow struct {
-	ID        int64
-	Name      string
-	Prefix    string
-	CreatedBy string
-	Created   string
-	Expiry    string
-	Used      string
-}
-
-func newKeyRows(keys []apikey.Key, now time.Time) []keyRow {
-	rows := make([]keyRow, 0, len(keys))
-	for _, k := range keys {
-		rows = append(rows, keyRow{
-			ID: k.ID, Name: k.Name, Prefix: k.Prefix, CreatedBy: k.CreatedBy,
-			Created: k.CreatedText(), Expiry: k.ExpiryText(now), Used: k.UsedText(),
-		})
-	}
-	return rows
-}
-
-// createdView is the page that shows a new key's secret, once.
-type createdView struct {
-	Name      string
-	Secret    string
-	Household string
 }

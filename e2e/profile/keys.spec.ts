@@ -49,13 +49,13 @@ test.describe('your own keys', () => {
 
   test('are made with a name and an expiry, shown once, listed without the secret, and revoked', async ({ page }) => {
     await openKeys(page);
-    await expect(page.getByTestId('keys-empty')).toBeVisible();
+    await expect(page.getByTestId('api-keys-empty')).toBeVisible();
 
     const secret = await makeKey(page, 'Laptop agent', '30 days');
     await page.screenshot({ path: `${SHOTS}keys-profile-created.png` });
     await page.getByRole('link', { name: 'Back to your keys' }).click();
 
-    const row = page.getByTestId('key').filter({ hasText: 'Laptop agent' });
+    const row = page.getByTestId('api-key').filter({ hasText: 'Laptop agent' });
     await expect(row).toHaveCount(1);
     await expect(row).toContainText(secret.slice(0, 12));
     await expect(row).toContainText('Expires');
@@ -68,12 +68,12 @@ test.describe('your own keys', () => {
     await openKeys(page);
     await makeKey(page, 'Forever', 'No expiry');
     await page.getByRole('link', { name: 'Back to your keys' }).click();
-    await expect(page.getByTestId('key').filter({ hasText: 'Forever' })).toContainText('No expiry');
+    await expect(page.getByTestId('api-key').filter({ hasText: 'Forever' })).toContainText('No expiry');
     await page.screenshot({ path: `${SHOTS}keys-profile-list.png`, fullPage: true });
 
     await page.getByRole('button', { name: 'Revoke the key Laptop agent' }).click();
-    await expect(page.getByTestId('key').filter({ hasText: 'Laptop agent' })).toHaveCount(0);
-    await expect(page.getByTestId('key').filter({ hasText: 'Forever' })).toHaveCount(1);
+    await expect(page.getByTestId('api-key').filter({ hasText: 'Laptop agent' })).toHaveCount(0);
+    await expect(page.getByTestId('api-key').filter({ hasText: 'Forever' })).toHaveCount(1);
   });
 
   test('refuse a blank name and say why', async ({ page }) => {
