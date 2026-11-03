@@ -215,8 +215,8 @@ func TestEveryRouteButThePublicPathsRequiresASession(t *testing.T) {
 			}
 		case layout.IsBearerPath(path):
 			// The bearer endpoint never redirects to sign-in: it is 401 with the
-			// Bearer challenge (ADR-00034).
-			if rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") != "Bearer" || rec.Header().Get("Location") != "" {
+			// Bearer challenge, which names the Protected Resource Metadata (ADR-00034).
+			if rec.Code != http.StatusUnauthorized || !strings.HasPrefix(rec.Header().Get("WWW-Authenticate"), "Bearer") || rec.Header().Get("Location") != "" {
 				t.Errorf("%s %s = %d (%q), want 401 with WWW-Authenticate: Bearer", method, route, rec.Code, rec.Header().Get("WWW-Authenticate"))
 			}
 		case method == http.MethodGet:

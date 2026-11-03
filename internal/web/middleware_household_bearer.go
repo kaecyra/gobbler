@@ -8,6 +8,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/web/layout"
+	weboauth "github.com/kaecyra/gobbler/internal/web/oauth"
 )
 
 // The machine-facing endpoint (layout.BearerPath) has its own identity source
@@ -43,14 +44,28 @@ func onSession(session func(http.Handler) http.Handler) func(http.Handler) http.
 	}
 }
 
+// siteOf works out where the bearer endpoint is reached (weboauth.Origin). When
+// the origin is unknown the site carries nothing: no token is accepted and a
+// refusal names no metadata.
+func siteOf(cfg config.Config) func(*http.Request) mcp.Site {
+	return func(r *http.Request) mcp.Site {
+		origin, err := weboauth.Origin(cfg.OIDC.PublicBaseURL, cfg.Server.DevAuthBypass, r)
+		if err != nil {
+			return mcp.Site{}
+		}
+		return mcp.Site{Origin: origin, MetadataURL: origin + weboauth.ResourceMetadataPath}
+	}
+}
+
 // onBearer applies the bearer authenticator to the bearer endpoint's requests
-// and passes every other request through.
-func onBearer(bearer func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+// and passes every other request through. The request's site is on the context
+// for the authenticator, the credential verifiers and every refusal after it.
+func onBearer(site func(*http.Request) mcp.Site, bearer func(http.Handler) http.Handler) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		withBearer := bearer(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if bearerRequest(r) {
-				withBearer.ServeHTTP(w, r)
+				withBearer.ServeHTTP(w, r.WithContext(mcp.WithSite(r.Context(), site(r))))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -62,15 +77,15 @@ func onBearer(bearer func(http.Handler) http.Handler) func(http.Handler) http.Ha
 // the credential. A personal credential is admitted exactly as a session of
 // its owner would be: by the owner's membership, found by members. A household
 // credential acts for its household, which exists while the credential does
-// (deleting a household deletes its keys). Refusals are plain text, since the
+// (deleting a household deletes its keys). An OAuth token is personal: it acts
+// as its grant's owner. Refusals are plain text, since the
 // caller is a program. The caller has refused dot segments.
 func admitBearer(members memberLookup, ops config.Operator, next http.Handler, w http.ResponseWriter, r *http.Request) {
 	c, ok := mcp.CredentialFrom(r.Context())
 	if !ok {
 		// onBearer runs first; reaching here is a wiring fault, and failing
 		// closed is the only safe answer.
-		w.Header().Set("WWW-Authenticate", "Bearer")
-		http.Error(w, "a valid API key is required", http.StatusUnauthorized)
+		mcp.Unauthorized(w, r)
 		return
 	}
 	if !layout.IsBearerPath(r.URL.Path) || !layout.IsBearerPath(r.URL.EscapedPath()) {
@@ -84,7 +99,7 @@ func admitBearer(members memberLookup, ops config.Operator, next http.Handler, w
 		switch {
 		case err == nil:
 		case errors.Is(err, household.ErrNotFound), errors.Is(err, household.ErrInvalid):
-			http.Error(w, "this key's owner is not a member of a household", http.StatusForbidden)
+			http.Error(w, "this credential's owner is not a member of a household", http.StatusForbidden)
 			return
 		default:
 			layout.WriteError(w, r, err)

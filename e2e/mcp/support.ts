@@ -28,6 +28,9 @@ export interface McpServer {
   stop(): Promise<void>;
 }
 
+/** The Protected Resource Metadata path every 401 from the endpoint points at (RFC 9728). */
+export const META_PATH = '/.well-known/oauth-protected-resource/mcp';
+
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 export async function startMcpServer(portEnv: string): Promise<McpServer> {

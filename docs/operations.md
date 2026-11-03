@@ -303,14 +303,18 @@ What a client can do:
 | `list_shopping_lists`, `get_shopping_list`, `get_pantry` | Read shopping lists and the pantry. |
 | `create_shopping_list`, `add_recipe_to_shopping_list`, `add_manual_shopping_item`, `check_shopping_item` | Change shopping lists. These **apply at once**. |
 
-Every write is recorded against the key's id in the `api_key_writes` table,
-which outlives the key. No tool edits an existing recipe: editing as a draft is not built yet.
+Every write is recorded in the `api_key_writes` table (for a key) or the
+`oauth_grant_writes` table (for an OAuth client, see below). Each row names the
+credential by its id and by a snapshot of it (a key's prefix, owner and creation
+time; a grant's client, owner and creation time), because SQLite reuses the id of
+a revoked credential for a later one. The rows outlive the credential. No tool edits an existing recipe: editing as a draft is not built yet.
 A tool that lists things returns one page of at most 50
 and a `next_cursor` for the next.
 
 A key that is missing, unknown, expired or revoked gets `401` with
-`WWW-Authenticate: Bearer`. A key whose owner belongs to no household gets
-`403`. A session cookie never opens `/mcp`.
+`WWW-Authenticate: Bearer resource_metadata="<GOBBLER_PUBLIC_BASE_URL>/.well-known/oauth-protected-resource/mcp"`,
+which is where an OAuth client learns how to sign in. A key whose owner belongs
+to no household gets `403`. A session cookie never opens `/mcp`.
 
 Each credential has its own leaky bucket: `GOBBLER_MCP_RATE` requests per
 second drain it, and `GOBBLER_MCP_BURST` requests fit at once. A request past
@@ -343,6 +347,14 @@ token fail its audience check and every client has to be allowed again.
   to a private, loopback or link-local address, follows no redirect, and gives up
   after 5 seconds or 16 KiB. A client that lives on your own network is refused
   this way and has to register instead.
+- **Using a token.** `/mcp` accepts an access token as `Authorization: Bearer
+  goa_...` beside API keys. The token acts as the person who allowed the app, in
+  their household, with the reach of a personal key: the same tools, the same
+  paging, the same rate limit (a bucket for each grant) and the same rule that
+  recipe changes wait on the review screen as drafts. Every write is recorded in
+  `oauth_grant_writes` against the grant. A missing, unknown, expired or revoked
+  token, or one issued for another address, gets `401` with the same
+  `WWW-Authenticate` header as a key. A token never opens an HTML page.
 - **Lifetimes.** A code lasts 5 minutes and works once. An access token lasts 1
   hour. A refresh token lasts 30 days and is replaced each time it is used. If a
   replaced refresh token, or a used code, is presented again, gobbler revokes the

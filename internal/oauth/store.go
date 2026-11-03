@@ -316,6 +316,9 @@ type Principal struct {
 	GrantID  int64
 	Email    string
 	ClientID string
+	// GrantCreatedAt, with the client and owner, tells this grant from a later
+	// one that was given its id; the write log is read by all of them (Writes).
+	GrantCreatedAt time.Time
 }
 
 // Verify checks an access token for the resource and returns who it acts as.
@@ -344,7 +347,11 @@ func (s *Store) Verify(ctx context.Context, token, resource string) (Principal, 
 	case resource == "" || row.Resource != resource:
 		return Principal{}, fmt.Errorf("%w: issued for another audience", ErrInvalidToken)
 	}
-	return Principal{GrantID: row.GrantID, Email: row.OwnerEmail, ClientID: row.ClientID}, nil
+	created, err := time.Parse(timeLayout, row.GrantCreatedAt)
+	if err != nil {
+		return Principal{}, fmt.Errorf("parse creation time of oauth grant %d: %w", row.GrantID, err)
+	}
+	return Principal{GrantID: row.GrantID, Email: row.OwnerEmail, ClientID: row.ClientID, GrantCreatedAt: created}, nil
 }
 
 // Grant is a person's approval of a client, as the profile lists it.

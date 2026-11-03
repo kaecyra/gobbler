@@ -105,8 +105,8 @@ func TestMCPWithoutAValidKeyIs401NotARedirect(t *testing.T) {
 	time.Sleep(2 * time.Millisecond)
 	for name, secret := range map[string]string{"missing": "", "unknown": "gob_unknown", "expired": expired} {
 		rec := s.mcp(secret, nil)
-		if rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") != "Bearer" || rec.Header().Get("Location") != "" {
-			t.Errorf("%s: = %d, WWW-Authenticate %q, Location %q; want 401 Bearer and no redirect", name, rec.Code, rec.Header().Get("WWW-Authenticate"), rec.Header().Get("Location"))
+		if rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") != metadataChallenge || rec.Header().Get("Location") != "" {
+			t.Errorf("%s: = %d, WWW-Authenticate %q, Location %q; want 401 %s and no redirect", name, rec.Code, rec.Header().Get("WWW-Authenticate"), rec.Header().Get("Location"), metadataChallenge)
 		}
 	}
 	// A GET, which the session layer would redirect to sign-in, is the same.
@@ -128,8 +128,8 @@ func TestASessionCookieAloneNeverAuthenticatesMCP(t *testing.T) {
 	if rec := s.do(http.MethodGet, "/recipes", cookie); rec.Code != http.StatusOK {
 		t.Fatalf("control: GET /recipes with the cookie = %d, want 200", rec.Code)
 	}
-	if rec := s.mcp("", cookie); rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") != "Bearer" {
-		t.Errorf("POST /mcp with a session cookie = %d (%q), want 401 Bearer", rec.Code, rec.Header().Get("WWW-Authenticate"))
+	if rec := s.mcp("", cookie); rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") != metadataChallenge {
+		t.Errorf("POST /mcp with a session cookie = %d (%q), want 401 %s", rec.Code, rec.Header().Get("WWW-Authenticate"), metadataChallenge)
 	}
 }
 

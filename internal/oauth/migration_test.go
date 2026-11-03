@@ -42,7 +42,13 @@ func TestMigrationAddsAndDropsTheOAuthTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+	// Up to this migration only, so later migrations do not change what it is
+	// tested for.
+	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, oauthMigration(t)); err != nil {
 		t.Fatal(err)
 	}
 	tables := func() int {
@@ -68,10 +74,6 @@ func TestMigrationAddsAndDropsTheOAuthTables(t *testing.T) {
 		if _, err := d.ExecContext(ctx, bad); err == nil {
 			t.Errorf("schema accepted %s", bad)
 		}
-	}
-	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
-	if err != nil {
-		t.Fatal(err)
 	}
 	if _, err := p.DownTo(ctx, oauthMigration(t)-1); err != nil {
 		t.Fatalf("rolling back: %v", err)

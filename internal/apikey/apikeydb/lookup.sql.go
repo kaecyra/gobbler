@@ -11,13 +11,15 @@ import (
 )
 
 const findKeyByHash = `-- name: FindKeyByHash :one
-SELECT k.id, k.owner_email, k.household_id, k.expires_at, h.name AS household_name
+SELECT k.id, k.prefix, k.created_at, k.owner_email, k.household_id, k.expires_at, h.name AS household_name
 FROM api_keys k LEFT JOIN households h ON h.id = k.household_id
 WHERE k.token_hash = ?1
 `
 
 type FindKeyByHashRow struct {
 	ID            int64
+	Prefix        string
+	CreatedAt     string
 	OwnerEmail    sql.NullString
 	HouseholdID   sql.NullInt64
 	ExpiresAt     sql.NullString
@@ -31,6 +33,8 @@ func (q *Queries) FindKeyByHash(ctx context.Context, tokenHash []byte) (FindKeyB
 	var i FindKeyByHashRow
 	err := row.Scan(
 		&i.ID,
+		&i.Prefix,
+		&i.CreatedAt,
 		&i.OwnerEmail,
 		&i.HouseholdID,
 		&i.ExpiresAt,
@@ -40,21 +44,30 @@ func (q *Queries) FindKeyByHash(ctx context.Context, tokenHash []byte) (FindKeyB
 }
 
 const insertKeyWrite = `-- name: InsertKeyWrite :exec
-INSERT INTO api_key_writes (key_id, household_id, tool, target, created_at)
-VALUES (?1, ?2, ?3, ?4, ?5)
+INSERT INTO api_key_writes (key_id, key_prefix, key_owner, key_created_at, household_id, tool, target, created_at)
+VALUES (?1, ?2, ?3, ?4,
+        ?5, ?6, ?7, ?8)
 `
 
 type InsertKeyWriteParams struct {
-	KeyID       int64
-	HouseholdID int64
-	Tool        string
-	Target      string
-	CreatedAt   string
+	KeyID        int64
+	KeyPrefix    string
+	KeyOwner     string
+	KeyCreatedAt string
+	HouseholdID  int64
+	Tool         string
+	Target       string
+	CreatedAt    string
 }
 
+// InsertKeyWrite records a write with the snapshot of the key taken when its
+// secret was looked up, so a key revoked since is still logged.
 func (q *Queries) InsertKeyWrite(ctx context.Context, arg InsertKeyWriteParams) error {
 	_, err := q.db.ExecContext(ctx, insertKeyWrite,
 		arg.KeyID,
+		arg.KeyPrefix,
+		arg.KeyOwner,
+		arg.KeyCreatedAt,
 		arg.HouseholdID,
 		arg.Tool,
 		arg.Target,
@@ -65,18 +78,44 @@ func (q *Queries) InsertKeyWrite(ctx context.Context, arg InsertKeyWriteParams) 
 
 const listKeyWrites = `-- name: ListKeyWrites :many
 SELECT id, key_id, household_id, tool, target, created_at
-FROM api_key_writes WHERE key_id = ? ORDER BY id
+FROM api_key_writes
+WHERE key_id = ?1 AND key_prefix = ?2
+  AND key_owner = ?3 AND key_created_at = ?4
+ORDER BY id
 `
 
-func (q *Queries) ListKeyWrites(ctx context.Context, keyID int64) ([]ApiKeyWrite, error) {
-	rows, err := q.db.QueryContext(ctx, listKeyWrites, keyID)
+type ListKeyWritesParams struct {
+	KeyID        int64
+	KeyPrefix    string
+	KeyOwner     string
+	KeyCreatedAt string
+}
+
+type ListKeyWritesRow struct {
+	ID          int64
+	KeyID       int64
+	HouseholdID int64
+	Tool        string
+	Target      string
+	CreatedAt   string
+}
+
+// ListKeyWrites matches the snapshot as well as the id, so a key given a
+// revoked key's id does not list that key's writes.
+func (q *Queries) ListKeyWrites(ctx context.Context, arg ListKeyWritesParams) ([]ListKeyWritesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listKeyWrites,
+		arg.KeyID,
+		arg.KeyPrefix,
+		arg.KeyOwner,
+		arg.KeyCreatedAt,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ApiKeyWrite
+	var items []ListKeyWritesRow
 	for rows.Next() {
-		var i ApiKeyWrite
+		var i ListKeyWritesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.KeyID,

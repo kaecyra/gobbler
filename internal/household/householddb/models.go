@@ -22,12 +22,15 @@ type ApiKey struct {
 }
 
 type ApiKeyWrite struct {
-	ID          int64
-	KeyID       int64
-	HouseholdID int64
-	Tool        string
-	Target      string
-	CreatedAt   string
+	ID           int64
+	KeyID        int64
+	HouseholdID  int64
+	Tool         string
+	Target       string
+	CreatedAt    string
+	KeyPrefix    string
+	KeyOwner     string
+	KeyCreatedAt string
 }
 
 type AvatarJob struct {
@@ -186,6 +189,18 @@ type OauthGrant struct {
 	ReturnHost string
 	Resource   string
 	CreatedAt  string
+}
+
+type OauthGrantWrite struct {
+	ID             int64
+	GrantID        int64
+	GrantClientID  string
+	GrantOwner     string
+	GrantCreatedAt string
+	HouseholdID    int64
+	Tool           string
+	Target         string
+	CreatedAt      string
 }
 
 type OauthToken struct {
