@@ -2937,7 +2937,7 @@
     {
       "path": "internal/web/web.go",
       "mode": "open",
-      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries. One exception: a-mcp-endpoint may edit the single line that installs the identity and membership middleware, to wire bearer authentication for /mcp (its node note)."
     },
     {
       "path": "internal/web/profile/page.templ",
