@@ -12,8 +12,9 @@ type part struct {
 // deployment changes.
 var parts = []part{
 	{"The app and its database", "A VM in Montréal, Québec", "Canada"},
-	{"Backups", "A second machine on the same network", "Canada"},
-	{"Front door: secure tunnel and sign-in", "Cloudflare (a US company)", "Carries traffic in transit; not where recipes are kept"},
+	{"Backups", "Nightly snapshots on the same machine", "Canada; a second machine on the same network is planned"},
+	{"Front door: secure tunnel", "Cloudflare (a US company)", "Carries traffic in transit; not where recipes are kept"},
+	{"Sign-in", "Google (US)", "Confirms your email address; gobbler keeps only the email and its own session"},
 	{"Reading a recipe the built-in parser can't", "Anthropic Claude or Google Gemini (US)", "Only the text or photo being imported, only when the rule-based parser gives up, and nothing is saved until you review it"},
 	{"Recipe videos", "YouTube (US)", "Loaded only when you press play"},
 }
@@ -35,7 +36,7 @@ templ page() {
 			</div>
 			<div class="panel">
 				<h2>Why small, and not a hyperscaler</h2>
-				<p>The giant clouds are remarkable at what they do, but a household recipe box doesn't need them. A small, unglamorous machine is easier to reason about: you know where the disk is, who holds the keys, and what happens when the power goes out. Backups go to a second machine on the same network, not someone else's cloud. Staying small also means your kitchen isn't feeding an advertising business. gobbler has no ads, no trackers and no analytics.</p>
+				<p>The giant clouds are remarkable at what they do, but a household recipe box doesn't need them. A small, unglamorous machine is easier to reason about: you know where the disk is, who holds the keys, and what happens when the power goes out. Backups stay on hardware here, not in someone else's cloud. Staying small also means your kitchen isn't feeding an advertising business. gobbler has no ads, no trackers and no analytics.</p>
 			</div>
 			<div class="panel">
 				<h2>Where each part runs</h2>
@@ -51,7 +52,7 @@ templ page() {
 						</tbody>
 					</table>
 				</div>
-				<p>I'd rather list the American pieces than pretend they aren't there. Cloudflare gives a home server a safe front door without opening a port to the internet. I'd like to replace it and the AI fallback with Canadian or self-hosted options. Until then, this page says so.</p>
+				<p>I'd rather list the American pieces than pretend they aren't there. Cloudflare gives a home server a safe front door without opening a port to the internet. Google confirms who you are when you sign in, and gobbler can use another sign-in provider without code changes. I'd like to replace Cloudflare, Google sign-in and the AI fallback with Canadian or self-hosted options. Until then, this page says so.</p>
 			</div>
 		</div>
 	}

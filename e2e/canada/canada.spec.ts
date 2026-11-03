@@ -4,14 +4,14 @@ import { STRANGER, asIdentity } from '../fixtures/identity';
 // /canada is a public path (ADR-00029). This server runs the dev auth bypass,
 // which always supplies an identity, so here the page is opened by a member and
 // by a stranger who belongs to no household. Opening it with no token at all is
-// in health/health.spec.ts, against the server that verifies tokens.
+// in health/health.spec.ts, against the server without the bypass.
 
 test('a member reaches /canada from the footer', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('contentinfo').getByRole('link', { name: 'Canada', exact: true }).click();
   await expect(page).toHaveURL(/\/canada$/);
   await expect(page.getByRole('heading', { name: 'Made in Canada', level: 1 })).toBeVisible();
-  await expect(page.getByTestId('canada-parts').getByRole('row')).toHaveCount(6);
+  await expect(page.getByTestId('canada-parts').getByRole('row')).toHaveCount(7);
 });
 
 test.describe('a stranger who belongs to no household', () => {
