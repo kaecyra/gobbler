@@ -234,7 +234,7 @@ func newFixture(t *testing.T) *fixture {
 		drafter: d,
 		saver:   ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
 		unsaved: editor.NewUnsaved(st),
-		pending: newPendingDrafts(time.Now),
+		pending: ingestcore.NewPending(time.Now),
 		log:     slog.New(slog.NewJSONHandler(io.Discard, nil)),
 	}
 	return &fixture{h: h, srv: asMember(householdA)(h.routes()), drafter: d, store: st}
@@ -345,7 +345,7 @@ func TestSubmitFetchErrorShowsOnFormAndRendersNoDraft(t *testing.T) {
 	if strings.Contains(body, "Review recipe") {
 		t.Error("a draft was rendered for a failed fetch")
 	}
-	if len(f.h.pending.entries) != 0 {
+	if f.h.pending.Len() != 0 {
 		t.Error("a failed ingest left a pending draft")
 	}
 }
@@ -581,36 +581,6 @@ func TestIncompleteProblemsUnwrapsEachProblem(t *testing.T) {
 	want := []string{"The recipe has no name.", "Line one\nline two."}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Errorf("problems = %q, want %q", got, want)
-	}
-}
-func TestPendingExpiresAndIsBounded(t *testing.T) {
-	now := time.Now()
-	p := newPendingDrafts(func() time.Time { return now })
-	first, err := p.add(householdA.ID, sampleDraft())
-	if err != nil {
-		t.Fatal(err)
-	}
-	now = now.Add(pendingTTL + time.Second)
-	if _, ok := p.get(householdA.ID, first); ok {
-		t.Error("an expired draft is still available")
-	}
-	var tokens []string
-	for i := 0; i < pendingMax+3; i++ {
-		now = now.Add(time.Second)
-		tok, err := p.add(householdA.ID, sampleDraft())
-		if err != nil {
-			t.Fatal(err)
-		}
-		tokens = append(tokens, tok)
-	}
-	if len(p.entries) != pendingMax {
-		t.Errorf("entries = %d, want the bound %d", len(p.entries), pendingMax)
-	}
-	if _, ok := p.get(householdA.ID, tokens[0]); ok {
-		t.Error("the oldest draft was kept over newer ones")
-	}
-	if _, ok := p.get(householdA.ID, tokens[len(tokens)-1]); !ok {
-		t.Error("the newest draft was dropped")
 	}
 }
 

@@ -6,7 +6,7 @@
 // internal/ingest (FromURL, FromText or FromOCR, then Confirm, then Saver.Save) and
 // never saves anything itself.
 //
-// A draft waits in memory under a random token between ingest and confirm.
+// A draft waits in memory (ingest.Pending) under a random token between ingest and confirm.
 // Only the confirm route saves, and only through ingest.Confirm, so no route
 // stores an ingested recipe without the review step.
 package ingest
@@ -72,6 +72,10 @@ type Deps struct {
 	// Thumbnails downloads the preview image of a saved recipe's video; nil
 	// means YouTube's image host. Tests substitute a fake here (ADR-00021).
 	Thumbnails video.ThumbnailSource
+	// Pending holds the drafts that wait for review. Sharing one table with
+	// the MCP endpoint is what lets an agent's draft open here (ADR-00034); nil
+	// means a table of this package's own.
+	Pending *ingestcore.Pending
 }
 
 type handler struct {
@@ -79,7 +83,7 @@ type handler struct {
 	saver   Saver
 	// unsaved is the recipe editor over the unsaved draft.
 	unsaved editor.Unsaved
-	pending *pendingDrafts
+	pending *ingestcore.Pending
 	retrier Retrier
 	// photos drafts from a photo's OCR text, and ocr reads the photo.
 	photos PhotoDrafter
@@ -99,7 +103,10 @@ type handler struct {
 // d.Provider or is selected from d.LLM; a provider that cannot be built does
 // not take the rule-based path down (see handler.llmInitErr).
 func Routes(d Deps) http.Handler {
-	h := &handler{pending: newPendingDrafts(time.Now), log: d.Logger}
+	h := &handler{pending: d.Pending, log: d.Logger}
+	if h.pending == nil {
+		h.pending = ingestcore.NewPending(time.Now)
+	}
 	if h.log == nil {
 		h.log = slog.Default()
 	}
@@ -244,7 +251,7 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		layout.Render(w, r, status, formPage(v))
 		return
 	}
-	token, err := h.pending.add(householdID(r), draft)
+	token, err := h.pending.Add(householdID(r), draft)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -272,7 +279,7 @@ func isWebURL(s string) bool {
 
 func (h *handler) review(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	d, ok := h.pending.get(householdID(r), token)
+	d, ok := h.pending.Get(householdID(r), token)
 	if !ok {
 		layout.WriteError(w, r, errGone)
 		return
@@ -325,7 +332,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("read form: %w", layout.ErrInvalid))
 		return
 	}
-	base, ok := h.pending.get(householdID(r), token)
+	base, ok := h.pending.Get(householdID(r), token)
 	if !ok {
 		layout.WriteError(w, r, errGone)
 		return
@@ -343,18 +350,18 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		h.renderReview(w, r, status, token, base, &out.Form)
 		return
 	}
-	if _, ok := h.pending.take(householdID(r), token); !ok {
+	if _, ok := h.pending.Take(householdID(r), token); !ok {
 		layout.WriteError(w, r, errGone)
 		return
 	}
 	d := out.Draft
 	retry := func(problems []string) {
-		h.pending.put(householdID(r), token, d)
+		h.pending.Put(householdID(r), token, d)
 		form := out.Form.WithProblems(problems...)
 		h.renderReview(w, r, http.StatusUnprocessableEntity, token, d, &form)
 	}
 	fail := func(err error) {
-		h.pending.put(householdID(r), token, d)
+		h.pending.Put(householdID(r), token, d)
 		layout.WriteError(w, r, err)
 	}
 
@@ -421,6 +428,6 @@ func leaves(err error) []error {
 
 // cancel discards the draft. Nothing was saved, so there is nothing to undo.
 func (h *handler) cancel(w http.ResponseWriter, r *http.Request) {
-	h.pending.discard(householdID(r), chi.URLParam(r, "token"))
+	h.pending.Discard(householdID(r), chi.URLParam(r, "token"))
 	http.Redirect(w, r, "/ingest", http.StatusSeeOther)
 }

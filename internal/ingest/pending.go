@@ -126,3 +126,10 @@ func (p *Pending) dropOldest() {
 	}
 	delete(p.entries, oldest)
 }
+
+// Len is how many drafts are held, expired ones not yet dropped included.
+func (p *Pending) Len() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.entries)
+}

@@ -50,4 +50,7 @@ func TestPendingDraftsExpireAndAreBounded(t *testing.T) {
 	if _, ok := p.Get(1, first); ok {
 		t.Error("the oldest draft was kept past the bound")
 	}
+	if p.Len() != pendingMax {
+		t.Errorf("held %d drafts, want the bound %d", p.Len(), pendingMax)
+	}
 }

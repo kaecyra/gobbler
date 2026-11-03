@@ -298,12 +298,13 @@ What a client can do:
 | Tools | Effect |
 |---|---|
 | `search_recipes`, `list_recipes`, `get_recipe` | Read recipes as structured data. |
-| `import_recipe` (a URL or pasted text), `create_recipe_draft` | Produce a **draft** through the rule-first pipeline. It waits on the review screen (`/ingest/<token>`, returned as `review_path`) for a person to confirm; nothing is saved until then. A draft is held in memory for an hour. |
+| `import_recipe` (a URL or pasted text), `create_recipe_draft` | Produce a **draft** through the rule-first pipeline. It waits on the review screen (`/ingest/<token>`, returned as `review_path`) for a person to confirm; nothing is saved until then. A draft is held in memory for an hour, shared with the web ingest form, and opens for the members of its household only. |
 | `list_shopping_lists`, `get_shopping_list`, `get_pantry` | Read shopping lists and the pantry. |
 | `create_shopping_list`, `add_recipe_to_shopping_list`, `add_manual_shopping_item`, `check_shopping_item` | Change shopping lists. These **apply at once**. |
 
 Every write is recorded against the key's id in the `api_key_writes` table,
-which outlives the key. A tool that lists things returns one page of at most 50
+which outlives the key. No tool edits an existing recipe: editing as a draft is not built yet.
+A tool that lists things returns one page of at most 50
 and a `next_cursor` for the next.
 
 A key that is missing, unknown, expired or revoked gets `401` with

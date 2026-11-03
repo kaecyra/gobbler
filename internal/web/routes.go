@@ -42,7 +42,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	// One fetcher, built from configuration, serves every save path that
 	// downloads a video thumbnail, so the image host is set in one place.
 	thumbs := video.NewFetcherAt(d.Config.Video.ThumbnailHost)
-	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Thumbnails: thumbs, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
+	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Thumbnails: thumbs, Pending: d.Drafts, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
 	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: store.New(d.DB)}))
 	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))

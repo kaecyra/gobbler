@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -216,5 +217,49 @@ func TestMCPIsABearerPathAndNotAPublicOne(t *testing.T) {
 		if layout.IsBearerPath(p) {
 			t.Errorf("%s is a bearer path", p)
 		}
+	}
+}
+
+// A draft an agent makes over MCP waits on the ingest review screen for the
+// members of its household, and for nobody else (ADR-00006, ADR-00018,
+// ADR-00034). The router shares one pending table between the two.
+func TestAnMCPDraftOpensOnTheReviewScreenOfItsHouseholdOnly(t *testing.T) {
+	cfg := devConfig()
+	cfg.Ingestion = config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "test"}
+	cfg.MCP = config.MCP{Rate: 100, Burst: 100}
+	d := testDB(t)
+	r := testRouter(t, cfg, Deps{DB: d})
+	do(r, http.MethodGet, "/healthz", auth.DevEmail)
+	// The dev households are seeded by the first request that needs them.
+	if rec := do(r, http.MethodGet, "/", auth.DevEmail); rec.Code != http.StatusOK {
+		t.Fatalf("seed: %d", rec.Code)
+	}
+	secret, err := apikey.New(d).CreatePersonal(context.Background(), auth.DevEmail, "agent", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_recipe_draft","arguments":{"name":"Agent flour toast","ingredients":["2 cups flour"],"steps":["Mix well."]}}}`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(call))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	var out struct {
+		Result struct {
+			StructuredContent struct {
+				ReviewPath string `json:"review_path"`
+			} `json:"structuredContent"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || !strings.HasPrefix(out.Result.StructuredContent.ReviewPath, "/ingest/") {
+		t.Fatalf("create_recipe_draft = %d %s (%v)", rec.Code, rec.Body.String(), err)
+	}
+	path := out.Result.StructuredContent.ReviewPath
+	if rec := do(r, http.MethodGet, path, auth.DevEmail); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Agent flour toast") {
+		t.Errorf("the draft's own household: GET %s = %d", path, rec.Code)
+	}
+	if rec := do(r, http.MethodGet, path, auth.DevOtherEmail); rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "Agent flour toast") {
+		t.Errorf("another household: GET %s = %d, want 404 without the draft", path, rec.Code)
 	}
 }
