@@ -2741,7 +2741,7 @@
       "wave": 11,
       "track": null,
       "issue": 333,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "p-profiles"
       ],
@@ -3824,6 +3824,12 @@
       "title": "personal and household API keys",
       "merged": "4656f16",
       "note": "ADR-00031 as amended by ADR-00034. Management only; no route accepts a key until a-mcp-endpoint."
+    },
+    {
+      "id": "m-avatar-media",
+      "title": "avatar upload, crop and WebP processing in object storage",
+      "merged": "e396a5d",
+      "note": "ADR-00033. Encoder deepteams/webp (fallback gen2brain/webp); build stays cgo-free. Local-directory store without S3."
     }
   ],
   "adr_sequence": {

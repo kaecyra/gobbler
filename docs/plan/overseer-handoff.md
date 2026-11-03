@@ -14,29 +14,57 @@ This file holds the volatile state the graph does not. The durable record is `do
 - #327: README.
 - #329, #331: ADR-00031 to 00034.
 
-VERSION on main is 0.85.0.
+VERSION on main was 0.85.0 at the start of the round; see below.
 
 **Deployed:** 0.84.0 at `https://gobbler.okperfect.ca`, on the owner's basement VM, with Google sign-in live and Access deleted. The owner's tooling manages `.env`. 0.85.0 is safe to deploy.
 
-**In flight (round 17 dispatcher session, 2026-11-03):**
-- **Merged:**
-  - p-profiles #340 (04aced8, schema 00020, VERSION 0.86.0).
-  - Graph PR #339: p-profiles' lane gained `e2e/signin/signin.spec.ts`; `sessiondb/**` and `profiledb/**` became shared generated output.
-- **In flight. Workers have no PRs yet. A fresh session cannot message these workers; for any fix, re-dispatch a fresh worker into the same worktree.**
+**Round 17 dispatcher session (2026-11-03), closed for a container restart.**
 
-  | Node | Issue | Worktree | Branch | e2e port base |
-  |---|---|---|---|---|
-  | p-session-details | #332 | `wt-332` | `feat/332-session-details` | 41200 |
-  | m-avatar-media | #333 | `wt-333` | `feat/333-avatar-media` | 41300 |
-  | k-api-keys | #334 | `wt-334` | `feat/334-api-keys` | 41400 |
+**Merged** (squash SHA; all under the standing authority, review-clean):
 
-  - All three migrations are named `99999_*`. Merge them one at a time. Each takes the next schema number at merge (00021 upward), then rebases and runs `make generate`.
-  - p-session-details was granted the edit to the existing `docs/operations.md:85` Sign-out line.
-  - m-avatar-media was told to stop if the header avatar (`internal/web/layout/avatar*`), or a non-self route outside the seam, needs a lane widening.
-- **Next after these three:**
-  - a-mcp-endpoint (#330) and a-oauth-server (#335) once k-api-keys merges. a-oauth-server gets a `--deep` review.
-  - Then a-mcp-oauth (#336).
-- Plugin tooling: `bun` now runs in the container against the 0.20.1 plugin at `~/.claude/plugins/cache/market/overseer/0.20.1`. The host has only 0.18.2, and the old `.odette/base/.marketplace-cache` mirror is gone. `render.ts --refresh-state` needs `gh`, which works only on the host.
+| Node | PR | SHA | Schema | VERSION |
+|---|---|---|---|---|
+| p-profiles | #340 | 04aced8 | 00020 | 0.86.0 |
+| p-session-details | #343 | eb83830 | 00021 | 0.88.0 |
+| k-api-keys | #346 | 4656f16 | 00022 | 0.89.0 |
+| m-avatar-media | #347 | e396a5d | 00023 | 0.90.0 |
+
+- 0.87.0 was #341 (the owner's /canada redesign, outside the fleet).
+- Graph PRs, all mechanical: #339, #342, #344, #345, #349, #350 and #351. They are lane widenings plus `sessiondb`, `profiledb` and `apikeydb` as shared generated output.
+- #349 merged before its CI registered, on the validator alone; main's CI on 68251dc was in progress at the next check. Wait for checks to exist before `--watch`.
+
+**Nothing is in flight:** no open PRs, no worktrees, no workers. VERSION on main is 0.90.0; schema `last_used` is 00023.
+
+**Next, after the restart (the owner asked to restart first):**
+1. Confirm the gates in the container (below).
+2. Dispatch a-mcp-endpoint (#330) and a-oauth-server (#335) in one message. Both are dispatchable now, their lanes are disjoint, and both add a migration (`99999_*`, numbered at merge).
+   - Suggested e2e port bases are 41500 and 41600.
+   - Both may need an admission or middleware change in `internal/web/*.go`. Since #342 that glob is also in m-avatar-media's (merged) lane, so a widening is safe. Tell each worker to stop and report if it needs one.
+   - a-oauth-server gets a `--deep` review: it is the new security boundary.
+3. Then a-mcp-oauth (#336).
+
+**Filed this round:** #348. `internal/backup/s3.go`'s `parseEndpoint` duplicates `config.S3.HostTLS`, which #347 added. No node yet.
+
+**For the owner to check:**
+- `docs/operations.md`'s Garage commands are marked unverified, written from memory by the #347 worker. Check them against Garage's docs before using them. Garage is not in `compose.yaml`; only `GOBBLER_S3_MEDIA_BUCKET` is passed through.
+- A profile row is created the first time `/profile` is opened, not at sign-in (#340).
+- A lost media object shows a broken image (404). ADR-00033 accepts that loss; the doc says so.
+- Personal keys are on a profile subpage, `/profile/{addr}/keys` (#346).
+
+**Lessons from this round:**
+- **Every new sqlc package needs a `shared_files` entry as generated output, in the node that creates it.** This was missed twice, `sessiondb` and `apikeydb`, and cost a graph PR each time. a-mcp-endpoint and a-oauth-server will each add one (likely `mcpdb`, `oauthdb`). Add those entries when the node's PR opens, not at the next migration.
+- **A migration test that rolls back with `p.Down(ctx)` breaks when a newer migration lands.** #346 fixed `internal/session/migration_test.go` to `DownTo(ctx, 20)`. Tell workers to use `DownTo`.
+- **A lane glob `dir/name*` does not match files under `dir/name-x/`.** Add `name*/**` when a node will create a fixtures directory (#345).
+- **Pre-empting an obvious review finding saved a round.** The duplicated key templ was sent back before review, via the #344 lane.
+- **Workers get a harness reminder to add `Co-Authored-By`.** All of them dropped it, because AGENTS.md forbids AI attribution. Keep saying so in the brief.
+
+**Tooling:**
+- `bun` runs in the container against the 0.20.1 plugin at `~/.claude/plugins/cache/market/overseer/0.20.1`.
+- The host has only 0.18.2, and odette removed the old `.odette/base/.marketplace-cache` mirror by design.
+- So `render.ts --refresh-state` and `node.ts status in_review|merged` can't run anywhere with `gh`. Render with `--local`, verify the closing PR via host `gh`, then run `status ... --force`.
+- A brief for the overseer plugin's agent is at `.cc-scratch/overseer-gh-brief.md` (gitignored).
+- `git push` from the container fails authentication; push through the bridge.
+- PR bodies and review scratch go in `.cc-scratch/`, not the container scratchpad, which the host cannot see.
 - **Gates move into the container after the next restart.** `.odette/Dockerfile` pins go 1.26.4, golangci-lint 2.14.0 (matches the `Makefile` pin) and Playwright, which becomes 1.64.0 (matching `e2e/package.json`) on restart. The host's golangci-lint is now 2.15.0, so `make lint` and `make check` fail there. After the restart, run `make e2e` once in the container to confirm. Then rewrite `.cc-scratch/worker-common.md`, `.cc-scratch/worker-ui-notes.md`, this file's "Gates on the host" line and `tooling_notes` in `.claude/overseer/config.json`: workers run `make check` in-container, and keep using the bridge for `gh` alone.
 
 **Wave 11 is ready, dispatched for maximum parallelism (the owner's instruction).** All issues are `dor:ready`:
