@@ -34,7 +34,7 @@
 
   "dispatcher_owned_globs": ["docs/plan/**", "docs/adr/**", ".claude/overseer/**"],
 
-  "worktree_setup_command": "",
+  "worktree_setup_command": "cd e2e && npm ci",
 
   "gates": {
     "always": ["make check"],
@@ -43,8 +43,8 @@
 
   "tooling_notes": {
     "command_bridge": "mcp__exec-daemon__execute_command runs on the host. Use it for every gh call and for git fetch/push/ls-remote: origin is https://github.com/kaecyra/gobbler.git authenticated by the host gh credential helper (gh auth setup-git), and the container has no GitHub credentials. Container git can also refuse a worktree that host git has touched (dubious ownership); run git for that worktree through the bridge.",
-    "worktree_setup": "worktree_setup_command is empty until w0-scaffold and w0-e2e-harness land. Then set it to go mod download plus npm ci and a Playwright browser install in e2e/.",
-    "gates_before_w0": "make check does not exist until the foundation track lands. W0 workers report which targets exist rather than claiming gates passed."
+    "worktree_setup": "worktree_setup_command runs in a shell from the worktree root, in the container. Playwright browsers are in the image, so npm ci is the whole install.",
+    "gates": "Since the round 17 container restart, make check runs in the container (go 1.26.4, golangci-lint 2.14.0 and Playwright 1.64.0 pinned in .odette/Dockerfile); the bridge is for gh and remote git only (see command_bridge). In the primary checkout fmt-check fails on stray .go files under .cc-scratch/, so run gates from a worktree."
   },
 
   "concurrency": {
