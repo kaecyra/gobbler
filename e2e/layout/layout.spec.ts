@@ -243,7 +243,8 @@ test.describe('the account menu', () => {
     await profile.click();
     await expect(page).toHaveURL(/\/profile\/[A-Za-z0-9_-]{22}$/);
     await openAccount(page);
-    await expect(header(page).getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page');
+    // Never marked current: the page may be someone else's profile.
+    await expect(header(page).getByRole('link', { name: 'Profile' })).not.toHaveAttribute('aria-current');
   });
 
   test('closes on Escape and on a click elsewhere, and leaves the sections menu alone', async ({ page }) => {

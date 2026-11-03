@@ -234,3 +234,23 @@ func TestHeaderShowsAvatarMenuSignedInAndFigureSignedOut(t *testing.T) {
 		}
 	}
 }
+
+// The account menu's Profile link is never marked current: on /profile/{address}
+// the page may be someone else's, and the layout cannot tell cheaply.
+func TestAccountMenuProfileLinkIsNotCurrentOnAnyProfile(t *testing.T) {
+	h := tenantRouter(t)
+	mine := profileOf(t, h, auth.DevEmail)
+	for who, path := range map[string]string{"own": mine, "someone else's": mine} {
+		viewer := auth.DevEmail
+		if who != "own" {
+			viewer = auth.DevOtherEmail
+		}
+		body := as(h, http.MethodGet, path, viewer, nil).Body.String()
+		if !strings.Contains(body, `href="/profile" aria-label="Profile"`) {
+			t.Fatalf("%s profile: no Profile link:\n%s", who, body)
+		}
+		if regexp.MustCompile(`href="/profile"[^>]*aria-current`).MatchString(body) {
+			t.Errorf("%s profile: the Profile link is marked current", who)
+		}
+	}
+}

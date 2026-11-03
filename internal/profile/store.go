@@ -175,13 +175,10 @@ func (s *Store) Rename(ctx context.Context, email, name string) error {
 // name that is too long, and whether err is one. Those messages are written by
 // the store for the person who typed the input; nothing else is safe to show.
 func InvalidReason(err error) (string, bool) {
-	if !errors.Is(err, ErrInvalid) {
-		return "", false
+	if errors.Is(err, ErrInvalid) {
+		return err.Error(), true
 	}
-	msg := err.Error()
-	// The sentinel's text trails each message ("...: invalid profile"); the
-	// person needs only what came before it.
-	return strings.TrimSuffix(msg, ": "+ErrInvalid.Error()), true
+	return "", false
 }
 
 func convert(row profiledb.Profile) (Profile, error) {

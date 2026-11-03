@@ -56,7 +56,12 @@ templ accountMenu(ctx context.Context) {
 				</button>
 			</li>
 			if signedIn && profileAdmitted(ctx) {
-				<li>@navLink(ctx, profileItem)</li>
+				<li>
+					<a class="tab" href={ templ.SafeURL(ProfilePath) } aria-label="Profile" title="Profile">
+						@icon("user")
+						<span class="lbl">Profile</span>
+					</a>
+				</li>
 			}
 			if offerSignOut(ctx) {
 				<li>

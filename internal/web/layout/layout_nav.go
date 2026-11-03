@@ -32,9 +32,11 @@ var navItems = []navItem{
 	{Label: "Settings", Path: "/settings", Icon: "gear", Menu: true},
 }
 
-// profileItem is the account menu's link to the person's own profile. It is
-// not in navItems, which are the sections of the nav bar and its menu.
-var profileItem = navItem{Label: "Profile", Path: ProfilePath, Icon: "user"}
+// profileIcon is the icon of the account menu's link to the person's own
+// profile. The link is not a navItem: it is never marked current, since the
+// layout cannot tell cheaply whose profile the page shows, and /profile/{address}
+// may be someone else's.
+const profileIcon = "user"
 
 // menuCurrent reports whether the page being rendered belongs to a section
 // behind the nav's menu button, so the button can say so while it is closed.

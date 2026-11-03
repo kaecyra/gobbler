@@ -149,7 +149,7 @@ func TestRenameRefusesBadNamesWithAReasonAndMissingProfiles(t *testing.T) {
 	} {
 		err := s.Rename(ctx, "ann@example.com", input)
 		reason, ok := InvalidReason(err)
-		if !ok || reason == "" || strings.Contains(reason, "invalid profile") {
+		if !ok || reason != err.Error() || !strings.Contains(reason, "name") {
 			t.Errorf("%s: InvalidReason(%v) = %q, %v", name, err, reason, ok)
 		}
 	}

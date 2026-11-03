@@ -395,7 +395,7 @@ func TestAdmits(t *testing.T) {
 // it has no case for, which once left the Profile link and the signed-out
 // figure without a picture.
 func TestEveryHeaderIconIsDrawn(t *testing.T) {
-	names := []string{"moon", "signin", "signout", profileItem.Icon}
+	names := []string{"moon", "signin", "signout", profileIcon}
 	for _, item := range navItems {
 		names = append(names, item.Icon)
 	}
