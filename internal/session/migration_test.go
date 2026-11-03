@@ -89,7 +89,7 @@ func TestMigrationSessionDetailsKeepsExistingSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("99999")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00021")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := d.ExecContext(ctx, `INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at) VALUES (randomblob(32), 'ann@example.com', '2026-11-02T12:00:00.000000000Z', '2026-11-02T12:00:00.000000000Z', '2999-01-01T00:00:00.000000000Z')`); err != nil {

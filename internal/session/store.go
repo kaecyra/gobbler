@@ -69,7 +69,7 @@ func (s *Store) parse(v string) (time.Time, error) { return time.Parse(timeLayou
 // The email is trimmed and lower-cased, the form every table stores. The
 // client is recorded with the session for the person to see (ADR-00032).
 func (s *Store) Create(ctx context.Context, email string, c Client) (string, error) {
-	e := strings.ToLower(strings.TrimSpace(email))
+	e := normalise(email)
 	if e == "" {
 		return "", errors.New("create session: no email")
 	}
@@ -180,7 +180,7 @@ func (s *Store) EndForEmail(ctx context.Context, tx *sql.Tx, email string) error
 }
 
 func deleteForEmail(ctx context.Context, q *sessiondb.Queries, email string) (int, error) {
-	e := strings.ToLower(strings.TrimSpace(email))
+	e := normalise(email)
 	if e == "" {
 		// No session has an empty email, so this can only be a caller that
 		// lost the address it meant to end sessions for.

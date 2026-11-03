@@ -168,7 +168,7 @@ func (h *handler) sessionEndOthers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !v.hasCurrent() {
-		layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest, errNoCurrent.Error()+": sign in again"))
+		layout.WriteError(w, r, fmt.Errorf("%w: %w", layout.ErrInvalid, errNoCurrent))
 		return
 	}
 	if _, err := h.Sessions.EndOthers(r.Context(), s.Profile.Email, currentToken(r)); err != nil {

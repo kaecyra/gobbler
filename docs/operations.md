@@ -96,8 +96,8 @@ their own profile, where they can end one session or every session but the
 current one; nobody else sees them. The address is for display only and never
 admits or refuses anyone: anything that reaches the app's port directly can set
 that header to any value ([ADR-00027](./adr/00027-publish-on-all-interfaces.md)). Both are deleted with
-the row when the session ends or expires. Sessions that began before 0.87.0 have
-neither.
+the row when the session ends or expires. Sessions that began before the app recorded
+these details show them empty.
 
 **Upgrading from a release that used Cloudflare Access** (0.84.x or earlier)
 is a one-time step. Cut over to sign-in on 0.84.x first, following the
