@@ -23,9 +23,11 @@ glitch is cosmetic.
 - **Sign-in is Google over OpenID Connect, and no passwords are stored.**
   Identity comes only from a verified sign-in session
   ([ADR-00030](./docs/adr/00030-google-sign-in.md)).
-- **The LLM never runs before the rule-based path has been tried, and its
-  output is never saved without the review screen**
-  ([ADR-00006](./docs/adr/00006-rule-first-ingestion.md)).
+- **The LLM never runs before the rule-based path has been tried, and LLM
+  output never changes a recipe without the review screen**, whether it comes
+  from ingestion or from an agent over MCP
+  ([ADR-00006](./docs/adr/00006-rule-first-ingestion.md),
+  [ADR-00034](./docs/adr/00034-mcp-server.md)).
 - **No third-party trackers, analytics, ads or remotely loaded scripts.**
   Frontend assets are embedded in the binary. The one exception is a recipe's
   YouTube player, loaded only when its play button is pressed

@@ -1,6 +1,6 @@
 # ADR-00029: A fixed set of public paths is served without an identity
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00030](00030-google-sign-in.md), [ADR-00034](00034-mcp-server.md)
 
 **Date:** 2026-11-02
 

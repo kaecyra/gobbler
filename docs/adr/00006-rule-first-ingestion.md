@@ -1,6 +1,6 @@
 # ADR-00006: Rule-first ingestion with confidence-gated LLM fallback and mandatory review
 
-**Status:** Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md)
+**Status:** Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md), [ADR-00034](00034-mcp-server.md)
 
 **Date:** 2026-10-06
 

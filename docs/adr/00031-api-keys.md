@@ -1,6 +1,6 @@
 # ADR-00031: Personal and household API keys authenticate the machine-facing surface
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00034](00034-mcp-server.md)
 
 **Date:** 2026-11-03
 
