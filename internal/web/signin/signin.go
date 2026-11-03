@@ -40,6 +40,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -56,7 +57,7 @@ const issuerTimeout = 10 * time.Second
 // Sessions is what sign-in needs from the session store. *session.Store
 // satisfies it.
 type Sessions interface {
-	Create(ctx context.Context, email string) (string, error)
+	Create(ctx context.Context, email string, c session.Client) (string, error)
 	Delete(ctx context.Context, token string) error
 }
 
@@ -232,7 +233,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	token, err := s.sessions.Create(r.Context(), email)
+	token, err := s.sessions.Create(r.Context(), email, session.ClientOf(r))
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return

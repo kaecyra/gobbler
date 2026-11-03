@@ -497,3 +497,26 @@ func TestLocalPath(t *testing.T) {
 		}
 	}
 }
+
+// ADR-00032: the callback records the browser's user agent and its address,
+// the address from CF-Connecting-IP behind the tunnel.
+func TestSignInRecordsTheUserAgentAndIP(t *testing.T) {
+	h := newHarness(t)
+	authURL, pending := h.start(t, "/")
+	r := httptest.NewRequest(http.MethodGet, h.iss.Authorize(t, authURL).RequestURI(), nil)
+	r.AddCookie(&http.Cookie{Name: pending.Name, Value: pending.Value})
+	r.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0")
+	r.Header.Set("CF-Connecting-IP", "203.0.113.9")
+	r.RemoteAddr = "172.18.0.2:44000"
+	c := cookieNamed(h.serve(r).Result(), auth.SessionCookie)
+	if c == nil {
+		t.Fatal("no session cookie")
+	}
+	got, err := h.sessions.ListForEmail(context.Background(), "member@example.com", c.Value)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("sessions = %v, %v", got, err)
+	}
+	if got[0].Client.IP != "203.0.113.9" || !strings.Contains(got[0].Client.UserAgent, "Firefox/130.0") || !got[0].Current {
+		t.Errorf("recorded %+v", got[0])
+	}
+}

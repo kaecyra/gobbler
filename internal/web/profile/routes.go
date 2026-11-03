@@ -74,6 +74,7 @@ func Routes(d Deps) chi.Router {
 // member or not, finds nothing.
 func (h *handler) selfRoutes(r chi.Router) {
 	h.nameRoutes(r)
+	h.sessionsRoutes(r)
 }
 
 // redirectTo sends the browser to a profile page.

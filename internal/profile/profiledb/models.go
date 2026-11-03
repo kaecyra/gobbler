@@ -246,6 +246,8 @@ type Session struct {
 	CreatedAt  string
 	LastUsedAt string
 	ExpiresAt  string
+	UserAgent  string
+	ClientIp   string
 }
 
 type ShoppingCheck struct {

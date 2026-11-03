@@ -235,6 +235,9 @@ const PROBES: Probe[] = [
   { method: 'GET', path: () => '/profile', stranger: 303, other: 303 },
   unaddressed('GET', () => `/profile/${GUESSED_PROFILE}`),
   unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/name`),
+  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/sessions`),
+  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end`),
+  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end-others`),
 ];
 
 let work: Workdir | undefined;

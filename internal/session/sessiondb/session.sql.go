@@ -35,6 +35,24 @@ func (q *Queries) DeleteExpiredSessions(ctx context.Context, now string) (int64,
 	return result.RowsAffected()
 }
 
+const deleteOtherSessionsOfEmail = `-- name: DeleteOtherSessionsOfEmail :execrows
+DELETE FROM sessions WHERE email = ?1 AND token_hash <> ?2
+`
+
+type DeleteOtherSessionsOfEmailParams struct {
+	Email    string
+	KeepHash []byte
+}
+
+// DeleteOtherSessionsOfEmail ends every session of the email but one.
+func (q *Queries) DeleteOtherSessionsOfEmail(ctx context.Context, arg DeleteOtherSessionsOfEmailParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteOtherSessionsOfEmail, arg.Email, arg.KeepHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions WHERE token_hash = ?
 `
@@ -42,6 +60,24 @@ DELETE FROM sessions WHERE token_hash = ?
 func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 	_, err := q.db.ExecContext(ctx, deleteSession, tokenHash)
 	return err
+}
+
+const deleteSessionOfEmail = `-- name: DeleteSessionOfEmail :execrows
+DELETE FROM sessions WHERE token_hash = ?1 AND email = ?2
+`
+
+type DeleteSessionOfEmailParams struct {
+	TokenHash []byte
+	Email     string
+}
+
+// DeleteSessionOfEmail ends one session, and only if it is the email's.
+func (q *Queries) DeleteSessionOfEmail(ctx context.Context, arg DeleteSessionOfEmailParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteSessionOfEmail, arg.TokenHash, arg.Email)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const deleteSessionsForEmail = `-- name: DeleteSessionsForEmail :execrows
@@ -81,8 +117,8 @@ func (q *Queries) GetLiveSession(ctx context.Context, arg GetLiveSessionParams) 
 }
 
 const insertSession = `-- name: InsertSession :exec
-INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO sessions (token_hash, email, created_at, last_used_at, expires_at, user_agent, client_ip)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertSessionParams struct {
@@ -91,6 +127,8 @@ type InsertSessionParams struct {
 	CreatedAt  string
 	LastUsedAt string
 	ExpiresAt  string
+	UserAgent  string
+	ClientIp   string
 }
 
 func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) error {
@@ -100,8 +138,63 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) er
 		arg.CreatedAt,
 		arg.LastUsedAt,
 		arg.ExpiresAt,
+		arg.UserAgent,
+		arg.ClientIp,
 	)
 	return err
+}
+
+const listLiveSessionsForEmail = `-- name: ListLiveSessionsForEmail :many
+SELECT token_hash, created_at, last_used_at, expires_at, user_agent, client_ip FROM sessions
+WHERE email = ?1 AND expires_at > ?2
+ORDER BY created_at DESC, token_hash
+`
+
+type ListLiveSessionsForEmailParams struct {
+	Email string
+	Now   string
+}
+
+type ListLiveSessionsForEmailRow struct {
+	TokenHash  []byte
+	CreatedAt  string
+	LastUsedAt string
+	ExpiresAt  string
+	UserAgent  string
+	ClientIp   string
+}
+
+// ListLiveSessionsForEmail is the person's sessions that have not expired,
+// newest first. The token hash is selected so the caller can mark the current
+// one and name a session to end; it is not a token and opens nothing.
+func (q *Queries) ListLiveSessionsForEmail(ctx context.Context, arg ListLiveSessionsForEmailParams) ([]ListLiveSessionsForEmailRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLiveSessionsForEmail, arg.Email, arg.Now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLiveSessionsForEmailRow
+	for rows.Next() {
+		var i ListLiveSessionsForEmailRow
+		if err := rows.Scan(
+			&i.TokenHash,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.UserAgent,
+			&i.ClientIp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const touchSession = `-- name: TouchSession :exec
