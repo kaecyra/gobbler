@@ -10,8 +10,8 @@ test('a member reaches /canada from the footer', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('contentinfo').getByRole('link', { name: 'Canada', exact: true }).click();
   await expect(page).toHaveURL(/\/canada$/);
-  await expect(page.getByRole('heading', { name: 'Made in Canada', level: 1 })).toBeVisible();
-  await expect(page.getByTestId('canada-parts').getByRole('row')).toHaveCount(7);
+  await expect(page.getByRole('heading', { name: 'Your recipes stay in Canada', level: 1 })).toBeVisible();
+  await expect(page.getByTestId('canada-parts').getByRole('listitem')).toHaveCount(6);
 });
 
 test.describe('a stranger who belongs to no household', () => {
@@ -20,7 +20,7 @@ test.describe('a stranger who belongs to no household', () => {
   test('can open /canada, and the nav offers nothing', async ({ page }) => {
     const res = await page.goto('/canada');
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole('heading', { name: 'Made in Canada', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your recipes stay in Canada', level: 1 })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link')).toHaveCount(0);
   });
 });

@@ -1,0 +1,55 @@
+/* The /canada page (docs/ui/design.md, Screens: pages with no mockup). It
+   takes the full content width; there is no sidebar. Colours come from the
+   tokens in app.css, with --maple for the Canadian marks. */
+
+.canada { display: grid; gap: 56px; padding-top: 8px; }
+.canada h2 { font-size: 21px; font-weight: 650; margin-bottom: 10px; }
+.canada p { margin: 0; text-wrap: pretty; }
+
+/* Hero: the statement on the left, the leaf and the mascot on the right. */
+.ca-hero { display: grid; gap: 24px; align-items: end; }
+@media (min-width: 800px) { .ca-hero { grid-template-columns: 1fr 300px; gap: 48px; } }
+.ca-kicker {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--maple-ink); font-size: 14px; font-weight: 750;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.ca-kicker-leaf { width: 18px; height: 18px; color: var(--maple); }
+.ca-hero h1 {
+  font-size: clamp(36px, 6vw, 60px); font-weight: 750; line-height: 1.05;
+  letter-spacing: -0.02em; margin: 14px 0 18px; max-width: 14ch;
+}
+.ca-lede { font-size: clamp(18px, 2.1vw, 21px); color: var(--ink-2); max-width: 46ch; }
+
+/* The mascot stands whole on the baseline, in front of the leaf. */
+.ca-hero-art { position: relative; justify-self: center; width: 240px; height: 260px; border-bottom: 1px solid var(--line); }
+@media (min-width: 800px) { .ca-hero-art { width: 300px; height: 320px; } }
+.ca-big-leaf { position: absolute; inset: 0 0 auto; width: 100%; height: auto; color: var(--maple); opacity: 0.9; }
+.ca-mascot { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: auto; height: 68%; filter: var(--mascot-fx); }
+
+/* Reasons: side by side from tablet width, stacked on a phone. */
+.ca-reasons { display: grid; gap: 32px; }
+@media (min-width: 900px) { .ca-reasons { grid-template-columns: repeat(3, 1fr); gap: 40px; } }
+.ca-reasons > div { border-top: 1px solid var(--line); padding-top: 18px; }
+.ca-reasons p { color: var(--ink-2); }
+
+/* Where each part runs: one row per part, stacked on a phone. */
+.ca-parts > p { color: var(--ink-2); max-width: 62ch; margin-bottom: 18px; }
+.ca-parts ul { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); }
+.ca-parts li { display: grid; gap: 8px; padding: 16px; }
+.ca-parts li + li { border-top: 1px solid var(--line); }
+@media (min-width: 760px) {
+  .ca-parts li { grid-template-columns: minmax(0, 1.1fr) 9.5rem minmax(0, 2fr); gap: 20px; align-items: start; padding: 18px 20px; }
+}
+.ca-part { display: grid; gap: 2px; }
+.ca-part span { color: var(--ink-2); font-size: 15px; }
+.ca-note { color: var(--ink-2); font-size: 15px; }
+
+.ca-badge {
+  display: inline-flex; align-items: center; gap: 6px; justify-self: start;
+  padding: 2px 10px; border-radius: var(--r-sm); border: 1px solid;
+  font-size: 13px; font-weight: 650; white-space: nowrap;
+}
+.ca-badge-ca { background: var(--maple-soft); color: var(--maple-ink); border-color: color-mix(in srgb, var(--maple) 35%, transparent); }
+.ca-badge-us { background: var(--sunk); color: var(--ink-2); border-color: var(--line); }
+.ca-badge-leaf { width: 13px; height: 13px; color: var(--maple); }

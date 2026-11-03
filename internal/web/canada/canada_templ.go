@@ -12,21 +12,23 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-// part is one row of the "where each part runs" table.
+// part is one row of the "Where it runs" list.
 type part struct {
-	Part, Where, Notes string
+	Part, Where string
+	InCanada    bool
+	Note        string
 }
 
 // parts says where each part of gobbler runs. The rows name the US companies
 // still in the path as plainly as the Canadian ones; keep them true when the
 // deployment changes.
 var parts = []part{
-	{"The app and its database", "A VM in Montréal, Québec", "Canada"},
-	{"Backups", "Nightly snapshots on the same machine", "Canada; a second machine on the same network is planned"},
-	{"Front door: secure tunnel", "Cloudflare (a US company)", "Carries traffic in transit; not where recipes are kept"},
-	{"Sign-in", "Google (US)", "Confirms your email address; gobbler keeps only the email and its own session"},
-	{"Reading a recipe the built-in parser can't", "Anthropic Claude or Google Gemini (US)", "Only the text or photo being imported, only when the rule-based parser gives up, and nothing is saved until you review it"},
-	{"Recipe videos", "YouTube (US)", "Loaded only when you press play"},
+	{"The app and its database", "A virtual machine in Montréal, Québec", true, "Everything you save is stored here."},
+	{"Backups", "Nightly snapshots on the same machine", true, "A second machine on the same network is planned."},
+	{"Secure tunnel", "Cloudflare", false, "Connects the home server to the internet without opening a port. It carries traffic between your browser and the server and can read it in transit. Recipes are not stored there."},
+	{"Sign-in", "Google", false, "Confirms your email address when you sign in. gobbler keeps only that address and its own session."},
+	{"LLM recipe parsing", "Anthropic Claude or Google Gemini", false, "Sees only the text or photo being imported, and only after the built-in parser has tried. Nothing it returns is saved until you review it."},
+	{"Recipe videos", "YouTube", false, "Loads only when you press play."},
 }
 
 func page() templ.Component {
@@ -62,56 +64,112 @@ func page() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\" data-testid=\"canada\"><div class=\"panel\"><h1>Made in Canada</h1><p>gobbler was written in Canada and runs on a computer in a basement in Montréal, Québec. Your recipes, notes and shopping lists live on hardware I own, under Canadian law.</p></div><div class=\"panel\"><h2>Why it matters right now</h2><p>As of November 2026, Canada and the United States are in an uneasy détente. US tariffs on Canadian steel and autos are still in place. Talks speed up, then stall, and Ottawa has said plainly it will only sign a deal that works for Canadians. Nobody is putting tariffs on recipes. But the past two years have shown how fast things can change between friends, and that <em>who</em> holds your data matters as much as <em>where</em> it sits.</p></div><div class=\"panel\"><h2>Residency is not sovereignty</h2><p>A \"Canadian region\" of an American cloud is still an American company. Under the US CLOUD Act, US authorities can compel a US provider to hand over data it controls, wherever in the world that data is stored. Sovereignty means the people running the service answer to one country's courts, and here that country is Canada.</p></div><div class=\"panel\"><h2>Why small, and not a hyperscaler</h2><p>The giant clouds are remarkable at what they do, but a household recipe box doesn't need them. A small, unglamorous machine is easier to reason about: you know where the disk is, who holds the keys, and what happens when the power goes out. Backups stay on hardware here, not in someone else's cloud. Staying small also means your kitchen isn't feeding an advertising business. gobbler has no ads, no trackers and no analytics.</p></div><div class=\"panel\"><h2>Where each part runs</h2><div class=\"table-wrap\"><table data-testid=\"canada-parts\"><thead><tr><th scope=\"col\">Part</th><th scope=\"col\">Where</th><th scope=\"col\">Notes</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = styles().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"canada\" data-testid=\"canada\"><section class=\"ca-hero\"><div class=\"ca-hero-text\"><p class=\"ca-kicker\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = layout.MapleLeaf("ca-kicker-leaf").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span>Made in Canada</span></p><h1>Your recipes stay in Canada</h1><p class=\"ca-lede\">gobbler was written in Canada and runs on a computer I own in Montréal, Québec. Your recipes, notes and shopping lists are stored on that machine, under Canadian law.</p></div><div class=\"ca-hero-art\" aria-hidden=\"true\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = layout.MapleLeaf("ca-big-leaf").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<img class=\"ca-mascot\" src=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var3 string
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(layout.MascotPie)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 39, Col: 50}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" alt=\"\" width=\"834\" height=\"1084\"></div></section><section class=\"ca-reasons\"><div><h2>Who holds your data</h2><p>Several American cloud providers offer a Canadian region. The data in that region still belongs to an American company, and the <a href=\"https://www.eff.org/deeplinks/2018/02/cloud-act-dangerous-expansion-police-snooping-cross-border-data\" target=\"_blank\" rel=\"noopener\">US CLOUD Act</a> lets US authorities compel a US provider to hand over data it controls, wherever that data is stored. gobbler is run by a Canadian on a machine in Canada, so a legal demand for its data has to come through a Canadian court.</p></div><div><h2>This should matter to you</h2><p>Trade between Canada and the United States has been in dispute for several years, and the terms have changed more than once with little warning. I want a household's recipes and notes to stay where they are, whatever happens in those talks.</p></div><div><h2>Small on purpose</h2><p>A household recipe box fits on one small machine, which makes it easy to reason about: I know where the disk is, who holds the keys, and what happens when the power goes out. The nightly backups stay on hardware here as well. gobbler has no ads, trackers or analytics.</p></div></section><section class=\"ca-parts\"><h2>Where it runs</h2><p>Most of gobbler runs in Canada. A few parts still depend on American companies, and each one is listed here with what it can see.</p><ul data-testid=\"canada-parts\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, p := range parts {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<tr><td>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var3 string
-				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.Part)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 50, Col: 24}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</td><td>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li><div class=\"ca-part\"><b>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.Where)
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.Part)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 50, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 63, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</td><td>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</b> <span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Notes)
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Where)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 50, Col: 64}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 64, Col: 23}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</td></tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</span></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if p.InCanada {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"ca-badge ca-badge-ca\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = layout.MapleLeaf("ca-badge-leaf").Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span>Canada</span></span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"ca-badge ca-badge-us\">United States</span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"ca-note\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var6 string
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(p.Note)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 74, Col: 34}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p></li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</tbody></table></div><p>I'd rather list the American pieces than pretend they aren't there. Cloudflare gives a home server a safe front door without opening a port to the internet. Google confirms who you are when you sign in, and gobbler can use another sign-in provider without code changes. I'd like to replace Cloudflare, Google sign-in and the AI fallback with Canadian or self-hosted options. Until then, this page says so.</p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</ul></section></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
