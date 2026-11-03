@@ -13,11 +13,15 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
@@ -65,6 +69,13 @@ type Deps struct {
 	// before mounting the pages, and a nil one would mean a store chosen here,
 	// not by the configuration.
 	Avatars *profile.Avatars
+	// MCPVerifier checks the bearer credential of the MCP endpoint (ADR-00034).
+	// Nil means API keys (ADR-00031); a node that adds another kind of
+	// credential passes a verifier that accepts both.
+	MCPVerifier mcp.Verifier
+	// Drafts holds the drafts that wait on the review screen. Nil means a table
+	// of its own.
+	Drafts *ingest.Pending
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -101,6 +112,13 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		log = slog.Default()
 	}
 
+	if d.MCPVerifier == nil {
+		d.MCPVerifier = mcp.KeyVerifier{Keys: apikey.New(d.DB)}
+	}
+	if d.Drafts == nil {
+		d.Drafts = ingest.NewPending(time.Now)
+	}
+
 	var members memberLookup = household.New(d.DB)
 	if d.Config.Server.DevAuthBypass {
 		members = &devSeeded{store: household.New(d.DB)}
@@ -114,7 +132,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		// Before identity, so the pages that refuse a request show it too.
 		r.Use(markSignIn)
 	}
-	r.Use(d.Auth.Middleware(layout.IsPublic), membership(members, d.Config.Operator), cop.Handler)
+	r.Use(onSession(d.Auth.Middleware(layout.IsPublic)), onBearer(mcp.Bearer(d.MCPVerifier, log)), membership(members, d.Config.Operator), cop.Handler)
 	r.Use(avatarSource(d.DB, log))
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)

@@ -61,6 +61,8 @@ dependencies.
 | `auth` | The identity middleware: the sign-in session cookie, or the dev bypass on a loopback listener | `config`, `session` |
 | `session` | Server-side sign-in sessions named by a random cookie token, stored as its SHA-256; queries in `queries/`, sqlc-generated `sessiondb` ([ADR-00030](adr/00030-google-sign-in.md)) | `db` |
 | `profile` | A person's profile keyed by email (display name, avatar reference) at an opaque random address; the one visibility rule keyed on the viewer's relation (`Visible`); the default avatar drawn from a hash of the email (`NewIdenticon`); queries in `queries/`, sqlc-generated `profiledb` ([ADR-00032](adr/00032-profiles.md)) | `db` |
+| `apikey` | Personal and household API keys: a random secret shown once, stored as its SHA-256; lookup by secret (`Lookup`) for the MCP endpoint, and the write log that records which key made each MCP write; queries in `queries/`, sqlc-generated `apikeydb` ([ADR-00031](adr/00031-api-keys.md)) | `db` |
+| `mcp` | The MCP server at `/mcp` over Streamable HTTP, on the official Go SDK ([ADR-00034](adr/00034-mcp-server.md)): the bearer check behind a `Verifier` interface (API keys today), the per-credential leaky-bucket rate limit, paged list tools, and the recipe, import and shopping tools. Recipe writes become drafts for the review screen; shopping writes apply and are recorded against the credential | `apikey`, `store`, `shopping`, `catalog`, `ingest`, `recipe/display`, `household` |
 | `media` | Uploaded media (ADR-00033): the storage interface with S3 and local-directory implementations, and the image pipeline that decodes JPEG, PNG, GIF, WebP, HEIC and AVIF, crops, bounds to 1024 by 1024 and encodes metadata-free lossy WebP (pure Go, no cgo) ([ADR-00033](adr/00033-media-object-storage.md)) | `config` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types (with the closed sets of meal types, cuisines and stage kinds), step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
@@ -74,7 +76,7 @@ dependencies.
 | `shopping` | List generation, merging, pantry, check state, text export | `quantity`, `recipe`, `catalog` |
 | `sharing` | Sending a copy of a recipe to another household and accepting or declining the offers received ([ADR-00018](adr/00018-households-as-tenants.md)) | `household`, `catalog`, `shopping`, `store` |
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
-| `web` | Server, chi router, middleware, health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; `web/signin` OpenID Connect sign-in, its callback and sign-out ([ADR-00030](adr/00030-google-sign-in.md)), with `web/signin/signintest` the fake issuer its tests sign in against; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
+| `web` | Server, chi router, middleware (including the bearer path that keeps `/mcp` off the session), health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; `web/signin` OpenID Connect sign-in, its callback and sign-out ([ADR-00030](adr/00030-google-sign-in.md)), with `web/signin/signintest` the fake issuer its tests sign in against; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
 
 ## Configuration
 
@@ -86,6 +88,7 @@ Secrets are never in the repository.
 | Server | listen address, data directory, log level, dev-auth bypass flag |
 | OIDC | issuer URL, client ID, client secret, public base URL ([ADR-00030](adr/00030-google-sign-in.md); required unless the dev bypass is on) |
 | Session | session lifetime, fixed from sign-in ([ADR-00030](adr/00030-google-sign-in.md)) |
+| MCP | requests per second and burst allowed each credential at `/mcp` ([ADR-00034](adr/00034-mcp-server.md)) |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
 | LLM | provider, text model, vision model, per-provider API key, timeout |

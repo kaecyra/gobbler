@@ -152,3 +152,16 @@ func visible(ctx context.Context, item navItem) bool {
 	_, member := household.FromContext(ctx)
 	return Admits(item.Path, member, IsOperator(ctx))
 }
+
+// BearerPath is the machine-facing endpoint (ADR-00031, ADR-00034). It is not
+// public: it reads household data, so it admits only a member (Admits). It skips
+// the session, because a browser cookie never authenticates it, and
+// authenticates by bearer credential instead; package web wires that, and
+// package mcp serves it.
+const BearerPath = "/mcp"
+
+// IsBearerPath reports whether p is the bearer-authenticated endpoint or lies
+// under it. It matches p as written, like IsPublic.
+func IsBearerPath(p string) bool {
+	return p == BearerPath || strings.HasPrefix(p, BearerPath+"/")
+}

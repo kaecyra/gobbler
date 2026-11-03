@@ -213,6 +213,12 @@ func TestEveryRouteButThePublicPathsRequiresASession(t *testing.T) {
 			if rec.Code == http.StatusUnauthorized || (rec.Code == http.StatusSeeOther && strings.HasPrefix(rec.Header().Get("Location"), layout.SignInPath+"?")) {
 				t.Errorf("%s %s = %d, want it served without a session", method, route, rec.Code)
 			}
+		case layout.IsBearerPath(path):
+			// The bearer endpoint never redirects to sign-in: it is 401 with the
+			// Bearer challenge (ADR-00034).
+			if rec.Code != http.StatusUnauthorized || rec.Header().Get("WWW-Authenticate") != "Bearer" || rec.Header().Get("Location") != "" {
+				t.Errorf("%s %s = %d (%q), want 401 with WWW-Authenticate: Bearer", method, route, rec.Code, rec.Header().Get("WWW-Authenticate"))
+			}
 		case method == http.MethodGet:
 			if want := layout.SignInPath + "?next=" + url.QueryEscape(path); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != want {
 				t.Errorf("GET %s = %d to %q, want 303 to %q", route, rec.Code, rec.Header().Get("Location"), want)

@@ -209,6 +209,8 @@ the container runs in UTC.
 | `GOBBLER_LLM_VISION_MODEL` | none | no | Required with a provider. |
 | `GOBBLER_LLM_TIMEOUT` | `60s` | no | Go duration, positive. |
 | `GOBBLER_VIDEO_THUMBNAIL_HOST` | `https://i.ytimg.com` | no | Origin a recipe video's thumbnail is downloaded from when a recipe with that video is saved ([ADR-00021](./adr/00021-youtube-video-on-a-recipe.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fixture so no test reaches YouTube. |
+| `GOBBLER_MCP_RATE` | `2` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
+| `GOBBLER_MCP_BURST` | `20` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |
@@ -241,9 +243,8 @@ in logs.
 
 An API key is a credential for the machine-facing surface, so an agent or script
 can act without a browser ([ADR-00031](adr/00031-api-keys.md)). There are two
-kinds. No route accepts a key yet: until the MCP endpoint exists
-([ADR-00034](adr/00034-mcp-server.md)) keys can be made, listed and revoked, and
-nothing more.
+kinds. The one route that accepts a key is the MCP endpoint
+([ADR-00034](adr/00034-mcp-server.md)); the HTML pages ignore keys.
 
 | Kind | Acts | Managed on |
 |---|---|---|
@@ -261,6 +262,59 @@ nothing more.
   household keys they made are revoked in the same change, because they have seen
   those secrets. Deleting a household revokes its household keys.
 - **Logs.** No log line contains a key.
+
+### Connect an MCP client with a key
+
+gobbler serves the Model Context Protocol at `/mcp` over Streamable HTTP
+([ADR-00034](adr/00034-mcp-server.md)). There is no stdio server. A client
+sends the key as `Authorization: Bearer <key>`.
+
+1. Make a key (see above). A personal key acts as that person; a household key
+   acts for the household. Either reaches only that household's recipes,
+   shopping lists and pantry. No key can manage keys, sessions, membership,
+   invitations or operator pages.
+2. Point the client at `https://<your host>/mcp` and give it the key as a
+   header. A client that reads a JSON configuration of HTTP servers takes an entry
+   like this one (an example shape; check your client's documentation for its
+   exact field names):
+
+   ```json
+   {
+     "mcpServers": {
+       "gobbler": {
+         "type": "http",
+         "url": "https://gobbler.example.com/mcp",
+         "headers": { "Authorization": "Bearer gob_..." }
+       }
+     }
+   }
+   ```
+
+   The field names differ between clients; what gobbler needs is the URL and
+   that one header. Keep the key out of anything committed.
+
+What a client can do:
+
+| Tools | Effect |
+|---|---|
+| `search_recipes`, `list_recipes`, `get_recipe` | Read recipes as structured data. |
+| `import_recipe` (a URL or pasted text), `create_recipe_draft` | Produce a **draft** through the rule-first pipeline. It waits on the review screen (`/ingest/<token>`, returned as `review_path`) for a person to confirm; nothing is saved until then. A draft is held in memory for an hour, shared with the web ingest form, and opens for the members of its household only. |
+| `list_shopping_lists`, `get_shopping_list`, `get_pantry` | Read shopping lists and the pantry. |
+| `create_shopping_list`, `add_recipe_to_shopping_list`, `add_manual_shopping_item`, `check_shopping_item` | Change shopping lists. These **apply at once**. |
+
+Every write is recorded against the key's id in the `api_key_writes` table,
+which outlives the key. No tool edits an existing recipe: editing as a draft is not built yet.
+A tool that lists things returns one page of at most 50
+and a `next_cursor` for the next.
+
+A key that is missing, unknown, expired or revoked gets `401` with
+`WWW-Authenticate: Bearer`. A key whose owner belongs to no household gets
+`403`. A session cookie never opens `/mcp`.
+
+Each credential has its own leaky bucket: `GOBBLER_MCP_RATE` requests per
+second drain it, and `GOBBLER_MCP_BURST` requests fit at once. A request past
+that gets `429` with `Retry-After` in seconds. The defaults (2 a second, a burst
+of 20) suit one home server and a few agents; raise them for a busy automation.
 
 ## Backups
 

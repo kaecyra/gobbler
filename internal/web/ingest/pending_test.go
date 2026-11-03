@@ -5,36 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
-
-// A draft belongs to the household that created it (ADR-00018): another
-// household holding its token can neither read, consume nor cancel it, and its
-// failed attempts leave the draft for the owner.
-func TestPendingDraftBelongsToItsHousehold(t *testing.T) {
-	p := newPendingDrafts(time.Now)
-	token, err := p.add(householdA.ID, sampleDraft())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := p.get(householdB.ID, token); ok {
-		t.Error("household B read household A's draft")
-	}
-	if _, ok := p.take(householdB.ID, token); ok {
-		t.Error("household B took household A's draft")
-	}
-	p.discard(householdB.ID, token)
-	p.put(householdB.ID, "elsewhere", sampleDraft())
-	if _, ok := p.get(householdA.ID, "elsewhere"); ok {
-		t.Error("a draft put by household B is readable by household A")
-	}
-	if _, ok := p.get(householdA.ID, token); !ok {
-		t.Fatal("household B's refused attempts removed household A's draft")
-	}
-	if _, ok := p.take(householdA.ID, token); !ok {
-		t.Error("the owner cannot take its own draft")
-	}
-}
 
 // The same holds through the routes: B's request for A's token is a 404 like
 // an unknown token, saves nothing, and A can still review and confirm.
@@ -89,7 +60,7 @@ func TestIngestRoutesRefuseARequestWithNoHousehold(t *testing.T) {
 			t.Errorf("%s %s with no household = %d, want 500", c.method, c.path, rec.Code)
 		}
 	}
-	if len(f.h.pending.entries) != 0 {
+	if f.h.pending.Len() != 0 {
 		t.Error("a request with no household left a pending draft")
 	}
 }

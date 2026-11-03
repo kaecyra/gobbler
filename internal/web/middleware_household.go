@@ -48,6 +48,10 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 				layout.WriteError(w, r, fmt.Errorf("dot segment in %q: %w", r.URL.Path, layout.ErrNotFound))
 				return
 			}
+			if bearerRequest(r) {
+				admitBearer(members, ops, next, w, r)
+				return
+			}
 			email, ok := auth.EmailFromContext(r.Context())
 			if !ok {
 				// No identity: the identity middleware let the request through
