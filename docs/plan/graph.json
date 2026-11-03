@@ -2847,11 +2847,14 @@
       ],
       "owns": [
         "internal/mcp/**",
-        "e2e/mcp/**"
+        "e2e/mcp/**",
+        "internal/oauth/**",
+        "internal/web/middleware_household_bearer*.go",
+        "internal/apikey/**"
       ],
-      "needs_migration": null,
+      "needs_migration": "schema",
       "adrs": [],
-      "note": "ADR-00034. Small wiring node; no migration."
+      "note": "ADR-00034. Wires the OAuth token verifier into /mcp. Writes made with a token are logged in a new oauth_grant_writes table owned by internal/oauth, not in api_key_writes. Credential rows are deleted on revocation, and a bare INTEGER PRIMARY KEY reuses the newest freed id, so a credential id alone can name a later, unrelated credential. Each write row therefore also stores a snapshot that is never reused: for a grant, its client_id, owner email and created_at; for a key, the same fix applies to api_key_writes (its non-secret prefix, owner and created_at), in the same migration. Every lookup of a credential's writes (apikey.Store.Writes and its grant counterpart) matches on the snapshot as well as the id, and each log has a test that revokes the newest credential, issues a new one with the same id, and shows the old writes are not returned. May edit, as exceptions to append-only: the web.go r.Use line and the MCPVerifier default line, and the routes.go mountMCP line that builds the audit."
     },
     {
       "id": "a-mcp-recipe-edit",
@@ -2905,7 +2908,7 @@
     {
       "path": "internal/web/routes.go",
       "mode": "open",
-      "note": "APPEND-ONLY by convention: add new lines only, never edit existing ones; the dispatcher enforces this in diff review. mode is open only because overseer graph-core partition_by_lane exempts open shared entries alone and counts append_only as outside every lane, which would fail record-done; switch back to append_only when the plugin honours it."
+      "note": "APPEND-ONLY by convention: add new lines only, never edit existing ones; the dispatcher enforces this in diff review. mode is open only because overseer graph-core partition_by_lane exempts open shared entries alone and counts append_only as outside every lane, which would fail record-done; switch back to append_only when the plugin honours it. Exception: a-mcp-oauth may edit the mountMCP line that builds the MCP audit, so writes made with an OAuth token are logged against their grant (its node note)."
     },
     {
       "path": "internal/web/layout/httperr.go",
@@ -2960,7 +2963,7 @@
     {
       "path": "internal/web/web.go",
       "mode": "open",
-      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries. One exception: a-mcp-endpoint may edit the single line that installs the identity and membership middleware, to wire bearer authentication for /mcp (its node note)."
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries. One exception: a-mcp-endpoint may edit the single line that installs the identity and membership middleware, to wire bearer authentication for /mcp (its node note). a-mcp-oauth may edit that same r.Use line and the line that defaults MCPVerifier, to accept OAuth tokens at /mcp (its node note)."
     },
     {
       "path": "internal/web/profile/page.templ",
