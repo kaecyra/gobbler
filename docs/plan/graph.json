@@ -2804,7 +2804,9 @@
         "internal/shopping/*.go",
         "internal/store/*.go",
         "e2e/mcp/**",
-        "internal/web/middleware_household*.go"
+        "internal/web/middleware_household*.go",
+        "internal/web/signin_flow_test.go",
+        "internal/web/ingest/**"
       ],
       "needs_migration": "schema",
       "adrs": [],
