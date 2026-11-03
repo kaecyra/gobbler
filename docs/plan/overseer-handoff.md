@@ -21,6 +21,7 @@ VERSION on main is 0.85.0.
 **In flight (round 17 dispatcher session, 2026-11-03):**
 - p-profiles (#328): worker dispatched into `.claude/worktrees/wt-328`, branch `feat/328-profiles`, e2e port base 41100. No PR yet. A fresh session cannot message this worker; re-dispatch a fresh one into the same worktree.
 - Plugin tooling: `bun` now runs in the container against the 0.20.1 plugin at `~/.claude/plugins/cache/market/overseer/0.20.1`. The host has only 0.18.2, and the old `.odette/base/.marketplace-cache` mirror is gone. `render.ts --refresh-state` needs `gh`, which works only on the host.
+- **Gates move into the container after the next restart.** `.odette/Dockerfile` pins go 1.26.4, golangci-lint 2.14.0 (matches the `Makefile` pin) and Playwright, which becomes 1.64.0 (matching `e2e/package.json`) on restart. The host's golangci-lint is now 2.15.0, so `make lint` and `make check` fail there. After the restart, run `make e2e` once in the container to confirm. Then rewrite `.cc-scratch/worker-common.md`, `.cc-scratch/worker-ui-notes.md`, this file's "Gates on the host" line and `tooling_notes` in `.claude/overseer/config.json`: workers run `make check` in-container, and keep using the bridge for `gh` alone.
 
 **Wave 11 is ready, dispatched for maximum parallelism (the owner's instruction).** All issues are `dor:ready`:
 
