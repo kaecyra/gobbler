@@ -43,9 +43,13 @@ func menuCurrent(ctx context.Context) bool {
 	return false
 }
 
-// hasMenu reports whether any section behind the menu button is visible to the
-// request in ctx, so a non-member is not offered an empty menu.
+// hasMenu reports whether anything behind the menu button is visible to the
+// request in ctx, a section or "Sign out", so a non-member is not offered an
+// empty menu.
 func hasMenu(ctx context.Context) bool {
+	if offerSignOut(ctx) {
+		return true
+	}
 	for _, item := range navItems {
 		if item.Menu && visible(ctx, item) {
 			return true

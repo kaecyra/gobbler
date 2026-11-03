@@ -289,6 +289,29 @@ func TestNavHidesMemberLinksFromANonMember(t *testing.T) {
 	}
 }
 
+// Sign-in and sign-out are offered only where people sign in to the app
+// (ADR-00030); with identity from in front of it, neither is. The signed-in
+// case is rendered through the router in package web, which owns identity.
+func TestHeaderOffersSignInOnlyWithSignIn(t *testing.T) {
+	render := func(ctx context.Context) string {
+		var b strings.Builder
+		if err := Page("Probe").Render(ctx, &b); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	if got := render(context.Background()); strings.Contains(got, `href="/login"`) || strings.Contains(got, `action="/logout"`) {
+		t.Errorf("without sign-in the header offers it:\n%s", got)
+	}
+	got := render(WithSignIn(context.Background()))
+	if !strings.Contains(got, `href="/login"`) || strings.Contains(got, `action="/logout"`) {
+		t.Errorf("an anonymous visitor is not offered sign-in alone:\n%s", got)
+	}
+	if strings.Contains(got, "<details") {
+		t.Error("an anonymous visitor is offered a menu")
+	}
+}
+
 func TestAdmits(t *testing.T) {
 	cases := []struct {
 		path             string
@@ -309,6 +332,10 @@ func TestAdmits(t *testing.T) {
 		{"/static/app.css", false, false, true},
 		{"/", false, false, false},
 		{"/", true, false, true},
+		{SignInPath, false, false, true},
+		{CallbackPath, false, false, true},
+		{SignOutPath, false, false, true},
+		{SignOutPath + "/x", false, false, false},
 	}
 	for _, tc := range cases {
 		if got := Admits(tc.path, tc.member, tc.operator); got != tc.want {

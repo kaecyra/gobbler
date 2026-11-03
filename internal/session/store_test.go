@@ -354,6 +354,49 @@ func TestLookupTouchesAtMostOncePerInterval(t *testing.T) {
 	}
 }
 
+// EndForEmail works inside the caller's transaction: it ends the sessions
+// only when that transaction commits.
+func TestEndForEmailFollowsTheCallersTransaction(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	ann := f.create("ann@example.com")
+	bob := f.create("bob@example.com")
+
+	tx, err := f.d.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.EndForEmail(ctx, tx, "Ann@Example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.lookup(ann); err != nil {
+		t.Fatalf("a rolled-back end still ended the session: %v", err)
+	}
+
+	tx, err = f.d.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.EndForEmail(ctx, tx, " ANN@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.EndForEmail(ctx, tx, " "); err == nil {
+		t.Error("EndForEmail of an empty email: want an error")
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.lookup(ann); !errors.Is(err, ErrNoSession) {
+		t.Errorf("Ann's session survived: %v", err)
+	}
+	if _, err := f.lookup(bob); err != nil {
+		t.Errorf("Bob's session ended: %v", err)
+	}
+}
+
 func TestDeleteForEmailRefusesAnEmptyEmail(t *testing.T) {
 	f := newFixture(t)
 	f.create("ann@example.com")

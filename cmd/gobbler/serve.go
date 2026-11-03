@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -11,8 +12,11 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/settings"
+	"github.com/kaecyra/gobbler/internal/web/signin"
 )
 
 // listenFunc opens the listener for addr; a parameter so tests can observe
@@ -63,11 +67,18 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	// backups.Runner is the live job: hand it to anything that triggers a
 	// backup or reads its status, never build a second Runner.
 
-	authn, err := auth.New(cfg)
-	if err != nil {
+	deps := web.Deps{Config: cfg, DB: d, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)}
+	var authOpts []auth.Option
+	if cfg.OIDC.Configured() {
+		if deps.Sessions, deps.SignIn, err = newSignIn(cfg, d); err != nil {
+			return err
+		}
+		authOpts = append(authOpts, auth.WithSessions(deps.Sessions, layout.SignInPath))
+	}
+	if deps.Auth, err = auth.New(cfg, authOpts...); err != nil {
 		return err
 	}
-	handler, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)})
+	handler, err := web.New(deps)
 	if err != nil {
 		return err
 	}
@@ -77,4 +88,21 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	}
 	slog.InfoContext(ctx, "listening", "addr", ln.Addr().String())
 	return web.Serve(ctx, ln, handler)
+}
+
+// newSignIn builds the session store and sign-in from the configuration
+// (ADR-00030). Call it only when sign-in is configured.
+func newSignIn(cfg config.Config, d *sql.DB) (*session.Store, *signin.Service, error) {
+	sessions, err := session.New(d, cfg.Session.Lifetime)
+	if err != nil {
+		return nil, nil, err
+	}
+	s, err := signin.New(signin.Settings{
+		Issuer: cfg.OIDC.Issuer, ClientID: cfg.OIDC.ClientID, ClientSecret: cfg.OIDC.ClientSecret.Reveal(),
+		PublicBaseURL: cfg.OIDC.PublicBaseURL, Lifetime: cfg.Session.Lifetime,
+	}, sessions)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sessions, s, nil
 }

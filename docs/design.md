@@ -40,7 +40,9 @@ browser ──► Cloudflare Access ──► cloudflared ──► gobbler (Go 
 
 Docker Compose runs `gobbler` on the Ubuntu VM and publishes its port on
 all interfaces ([ADR-00027](adr/00027-publish-on-all-interfaces.md)). `cloudflared` runs on the VM guest, outside Compose, and reaches
-it at `http://127.0.0.1:8080`. gobbler verifies the Access JWT on every request
+it at `http://127.0.0.1:8080`. gobbler verifies identity itself on every
+request: its own sign-in session when sign-in is configured
+([ADR-00030](adr/00030-google-sign-in.md)), otherwise the Access JWT
 ([ADR-00003](adr/00003-cloudflare-access-identity.md)). The stack is
 [ADR-00002](adr/00002-single-binary-go-stack.md).
 
@@ -56,7 +58,7 @@ dependencies.
 | `cmd/gobbler` | Entry point, wiring, subcommands (`serve`, `migrate`, `import-usda`, `backup`) | everything below |
 | `config` | Environment-driven configuration, validated at start-up | — |
 | `db` | SQLite connection, WAL setup, embedded `goose` migrations, the shared transaction helpers (`WithTx`, `WithReadTx`) and constraint-error wrapper (`WrapWrite`) | `config` |
-| `auth` | Access JWT verification middleware, dev bypass | `config` |
+| `auth` | The identity middleware: the sign-in session cookie when sign-in is configured, otherwise Access JWT verification; dev bypass | `config`, `session` |
 | `session` | Server-side sign-in sessions named by a random cookie token, stored as its SHA-256; queries in `queries/`, sqlc-generated `sessiondb` ([ADR-00030](adr/00030-google-sign-in.md)) | `db` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types (with the closed sets of meal types, cuisines and stage kinds), step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
@@ -70,7 +72,7 @@ dependencies.
 | `shopping` | List generation, merging, pantry, check state, text export | `quantity`, `recipe`, `catalog` |
 | `sharing` | Sending a copy of a recipe to another household and accepting or declining the offers received ([ADR-00018](adr/00018-households-as-tenants.md)) | `household`, `catalog`, `shopping`, `store` |
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
-| `web` | Server, chi router, middleware, health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
+| `web` | Server, chi router, middleware, health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; `web/signin` OpenID Connect sign-in, its callback and sign-out ([ADR-00030](adr/00030-google-sign-in.md)), with `web/signin/signintest` the fake issuer its tests sign in against; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
 
 ## Configuration
 
@@ -80,8 +82,8 @@ Secrets are never in the repository.
 | Area | Settings |
 |---|---|
 | Server | listen address, data directory, log level, dev-auth bypass flag |
-| Access | team domain, application AUD tag |
-| OIDC | issuer URL, client ID, client secret, public base URL ([ADR-00030](adr/00030-google-sign-in.md); read and validated, used from the sign-in switch-over) |
+| Access | team domain, application AUD tag (unset when sign-in is configured) |
+| OIDC | issuer URL, client ID, client secret, public base URL ([ADR-00030](adr/00030-google-sign-in.md); setting them turns sign-in on, which replaces Access) |
 | Session | session lifetime, fixed from sign-in ([ADR-00030](adr/00030-google-sign-in.md)) |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |

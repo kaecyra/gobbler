@@ -6,10 +6,15 @@
 //                        sends X-Gobbler-Dev-Identity; the dev households are seeded)
 //   serve.mjs --access   Access verification ON with a fake team domain and AUD,
 //                        so a request without a valid token is refused (ADR-00003)
+//   serve.mjs --signin   dev-auth bypass on, with sign-in configured against the
+//                        local fake issuer (fixtures/issuer.mjs), so the sign-in
+//                        routes run their whole flow (ADR-00030). The bypass still
+//                        decides every request's identity.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { issuerEnv, startIssuer } from './issuer.mjs';
 import { startThumbnailHost, THUMBNAIL_HOST_ENV } from './thumbnails.mjs';
 
 const bin = process.env.GOBBLER_E2E_BIN;
@@ -18,13 +23,20 @@ if (!bin) {
   process.exit(1);
 }
 const access = process.argv.includes('--access');
-const port = access ? process.env.GOBBLER_E2E_ACCESS_PORT : process.env.GOBBLER_E2E_PORT;
+const signin = process.argv.includes('--signin');
+const port = access
+  ? process.env.GOBBLER_E2E_ACCESS_PORT
+  : signin
+    ? process.env.GOBBLER_E2E_SIGNIN_PORT
+    : process.env.GOBBLER_E2E_PORT;
 if (!port) {
   console.error('the listen port is not set; run the suite through playwright.config.ts');
   process.exit(1);
 }
 // Video thumbnails come from a local fixture, never from i.ytimg.com.
 const thumbnails = await startThumbnailHost();
+// Sign-in goes to a local fake issuer, never to a real provider.
+const issuer = signin ? await startIssuer() : undefined;
 const dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-'));
 
 // Only what the server needs plus the fixed settings: nothing from the
@@ -43,6 +55,7 @@ const env = {
   ...(access
     ? { GOBBLER_ACCESS_TEAM_DOMAIN: 'e2e.invalid', GOBBLER_ACCESS_AUD: 'e2e-fake-aud' }
     : { GOBBLER_DEV_AUTH_BYPASS: 'true' }),
+  ...(issuer ? issuerEnv(issuer.origin, `http://127.0.0.1:${port}`) : {}),
 };
 
 const child = spawn(bin, ['serve'], { env, stdio: 'inherit' });
@@ -54,6 +67,7 @@ function cleanup() {
   cleaned = true;
   rmSync(dataDir, { recursive: true, force: true });
   void thumbnails.close();
+  void issuer?.close();
 }
 
 for (const sig of ['SIGTERM', 'SIGINT']) {

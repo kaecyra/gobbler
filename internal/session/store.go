@@ -158,18 +158,33 @@ func (s *Store) Delete(ctx context.Context, token string) error {
 // removed, and returns how many it ended. The email is matched in the form
 // Create stores it.
 func (s *Store) DeleteForEmail(ctx context.Context, email string) (int, error) {
+	var n int
+	err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
+		var err error
+		n, err = deleteForEmail(ctx, q, email)
+		return err
+	})
+	return n, err
+}
+
+// EndForEmail is DeleteForEmail inside a transaction someone else owns. It is
+// the hook that makes removing a member end their sessions at once
+// (ADR-00030): the router registers it with household.Store.OnMemberLeave, so
+// a failure here rolls the removal back. household's hook type is matched by
+// signature, so neither store imports the other.
+func (s *Store) EndForEmail(ctx context.Context, tx *sql.Tx, email string) error {
+	_, err := deleteForEmail(ctx, s.q.WithTx(tx), email)
+	return err
+}
+
+func deleteForEmail(ctx context.Context, q *sessiondb.Queries, email string) (int, error) {
 	e := strings.ToLower(strings.TrimSpace(email))
 	if e == "" {
 		// No session has an empty email, so this can only be a caller that
 		// lost the address it meant to end sessions for.
 		return 0, errors.New("delete sessions: empty email")
 	}
-	var n int64
-	err := db.WithTx(ctx, s.db, s.q, func(q *sessiondb.Queries, _ *sql.Tx) error {
-		var err error
-		n, err = q.DeleteSessionsForEmail(ctx, e)
-		return err
-	})
+	n, err := q.DeleteSessionsForEmail(ctx, e)
 	if err != nil {
 		return 0, fmt.Errorf("delete sessions of %s: %w", e, err)
 	}

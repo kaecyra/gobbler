@@ -76,8 +76,16 @@ func mountCatalog(r chi.Router, d Deps) {
 
 // mountHouseholds mounts the members page, invitation acceptance (reachable by
 // a verified non-member) and the operator's invitation page (ADR-00018).
+//
+// It is the only household store that removes members, so it is the one that
+// ends a former member's sessions (ADR-00030).
 func mountHouseholds(r chi.Router, d Deps) {
 	hs := household.New(d.DB)
+	// Nil exactly when sign-in is not mounted (newRouter checks), and then
+	// there are no sessions to end.
+	if d.Sessions != nil {
+		hs.OnMemberLeave(d.Sessions.EndForEmail)
+	}
 	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))

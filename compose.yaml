@@ -1,8 +1,9 @@
 # gobbler. cloudflared runs on the VM guest, not in Compose, and reaches
 # gobbler at http://127.0.0.1:8080. The port is published on every interface of
 # the VM so the monitoring stack can reach the health check (ADR-00027); the
-# network, not this file, decides who may connect. The Access JWT check guards
-# every route except the public paths (ADR-00029).
+# network, not this file, decides who may connect. The app's identity check,
+# the sign-in session (ADR-00030) or the Access JWT, guards every route except
+# the public paths (ADR-00029).
 #
 # Usage: copy .env.example to .env, fill it in, then
 # `docker compose pull && docker compose up -d`.

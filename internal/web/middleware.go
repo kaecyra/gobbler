@@ -32,7 +32,8 @@ func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter 
 
 // requestLogger logs one line per request. It records method, path, status,
 // duration and remote address only: never a header, cookie or query string,
-// so the Access JWT and the Authorization header cannot reach the log.
+// so the Access JWT, the session cookie, the Authorization header and the
+// sign-in callback's code cannot reach the log.
 func requestLogger(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

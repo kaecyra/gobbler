@@ -2,7 +2,9 @@
 // JSON, for the e2e route-coverage check (ADR-00013 obligation 2). It builds
 // the router the way `gobbler serve` does, with the dev auth bypass and a
 // throwaway database, then walks it with chi, so mounted feature routes appear
-// with their full paths.
+// with their full paths. Sign-in is configured too (ADR-00030), as it is in
+// production, so its routes are listed; its issuer is never contacted, since
+// discovery waits for the first sign-in.
 package main
 
 import (
@@ -12,13 +14,16 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web"
+	"github.com/kaecyra/gobbler/internal/web/signin"
 )
 
 type route struct {
@@ -45,11 +50,15 @@ func run() error {
 		}
 	}()
 
-	cfg := config.Config{Server: config.Server{
-		ListenAddr:    "127.0.0.1:0",
-		DataDir:       dir,
-		DevAuthBypass: true,
-	}}
+	cfg := config.Config{
+		Server: config.Server{
+			ListenAddr:    "127.0.0.1:0",
+			DataDir:       dir,
+			DevAuthBypass: true,
+		},
+		OIDC:    config.OIDC{Issuer: "http://127.0.0.1:1", ClientID: "routes", PublicBaseURL: "http://127.0.0.1:0"},
+		Session: config.Session{Lifetime: time.Hour},
+	}
 	d, err := db.Open(ctx, cfg)
 	if err != nil {
 		return err
@@ -63,7 +72,17 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	h, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn})
+	sessions, err := session.New(d, cfg.Session.Lifetime)
+	if err != nil {
+		return err
+	}
+	signIn, err := signin.New(signin.Settings{
+		Issuer: cfg.OIDC.Issuer, ClientID: cfg.OIDC.ClientID, PublicBaseURL: cfg.OIDC.PublicBaseURL, Lifetime: cfg.Session.Lifetime,
+	}, sessions)
+	if err != nil {
+		return err
+	}
+	h, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn, SignIn: signIn, Sessions: sessions})
 	if err != nil {
 		return err
 	}

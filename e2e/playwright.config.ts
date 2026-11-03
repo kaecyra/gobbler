@@ -7,13 +7,16 @@ import { portsFromEnv } from './fixtures/ports.mjs';
 // Free ports from the kernel, not fixed ones in its ephemeral range (#257).
 // Written back to the environment so a worker that loads this file again, and
 // the specs, see the same ports.
-const [port, accessPort] = await portsFromEnv(process.env, ['GOBBLER_E2E_PORT', 'GOBBLER_E2E_ACCESS_PORT']);
+const [port, accessPort, signinPort] = await portsFromEnv(process.env, ['GOBBLER_E2E_PORT', 'GOBBLER_E2E_ACCESS_PORT', 'GOBBLER_E2E_SIGNIN_PORT']);
 process.env.GOBBLER_E2E_PORT = String(port);
 process.env.GOBBLER_E2E_ACCESS_PORT = String(accessPort);
+process.env.GOBBLER_E2E_SIGNIN_PORT = String(signinPort);
 const baseURL = `http://127.0.0.1:${port}`;
 const accessURL = `http://127.0.0.1:${accessPort}`;
-// Read by specs that talk to the Access-on instance.
+const signinURL = `http://127.0.0.1:${signinPort}`;
+// Read by specs that talk to the Access-on and sign-in instances.
 process.env.GOBBLER_E2E_ACCESS_URL = accessURL;
+process.env.GOBBLER_E2E_SIGNIN_URL = signinURL;
 const serverEnv = { GOBBLER_E2E_BIN: process.env.GOBBLER_E2E_BIN ?? '' };
 
 export default defineConfig({
@@ -48,6 +51,16 @@ export default defineConfig({
       timeout: 30_000,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
       env: { ...serverEnv, GOBBLER_E2E_ACCESS_PORT: String(accessPort) },
+    },
+    {
+      // Sign-in configured against a local fake issuer (ADR-00030), with the
+      // dev bypass still deciding identity.
+      command: 'node fixtures/serve.mjs --signin',
+      url: `${signinURL}/healthz`,
+      reuseExistingServer: false,
+      timeout: 30_000,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
+      env: { ...serverEnv, GOBBLER_E2E_SIGNIN_PORT: String(signinPort) },
     },
   ],
 });

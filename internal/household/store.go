@@ -87,11 +87,37 @@ type Store struct {
 	now func() time.Time
 	// rand is where invitation codes are drawn from.
 	rand io.Reader
+	// leaveHooks run whenever a member stops being one (OnMemberLeave).
+	leaveHooks []LeaveHook
 }
 
 // New returns a Store over d, which must already be migrated.
 func New(d *sql.DB) *Store {
 	return &Store{db: d, q: householddb.New(d), now: time.Now, rand: rand.Reader}
+}
+
+// LeaveHook acts on an email that has just stopped being a member: removed by
+// another member, or left. It runs inside the transaction that took the
+// member out and must use tx for every statement, so a failure anywhere
+// leaves the member in the household. The email is in its normalised form.
+type LeaveHook func(ctx context.Context, tx *sql.Tx, email string) error
+
+// OnMemberLeave registers a hook that Remove and Leave call for the person
+// who is no longer a member. Ending that person's sign-in sessions is one
+// (ADR-00030): removing a member ends their sessions at once. Register at
+// start-up, before the store is shared between goroutines.
+func (s *Store) OnMemberLeave(h LeaveHook) {
+	s.leaveHooks = append(s.leaveHooks, h)
+}
+
+// runLeaveHooks runs the leave hooks for email inside tx.
+func (s *Store) runLeaveHooks(ctx context.Context, tx *sql.Tx, email string) error {
+	for _, h := range s.leaveHooks {
+		if err := h(ctx, tx, email); err != nil {
+			return fmt.Errorf("after %s left: %w", email, err)
+		}
+	}
+	return nil
 }
 
 // NormalizeEmail trims and lower-cases an email and checks it is a bare

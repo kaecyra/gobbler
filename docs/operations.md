@@ -17,9 +17,11 @@ can reach `/healthz` ([ADR-00027](./adr/00027-publish-on-all-interfaces.md)).
 Anything that can reach the VM's address can reach the app without passing
 Cloudflare, so restrict port 8080 to the monitoring host in the VM firewall or
 cloud security group. `ufw` rules do not filter Docker-published ports unless
-written for Docker's `DOCKER-USER` chain. The Access JWT check stops anything
+written for Docker's `DOCKER-USER` chain. The app's own identity check, the
+sign-in session or, until the cut-over below, the Access JWT, stops anything
 else that gets through
-([ADR-00003](./adr/00003-cloudflare-access-identity.md),
+([ADR-00030](./adr/00030-google-sign-in.md),
+[ADR-00003](./adr/00003-cloudflare-access-identity.md),
 [ADR-00002](./adr/00002-single-binary-go-stack.md),
 [ADR-00017](./adr/00017-cloudflared-on-the-guest.md)).
 
@@ -56,18 +58,84 @@ else that gets through
    `ERR_TOO_MANY_REDIRECTS`. See
    [ADR-00016](./adr/00016-cross-origin-protection.md).
 
-gobbler verifies the Access JWT on every request except the public paths
-(`/healthz`, `/canada` and `/static/*`; [ADR-00029](./adr/00029-public-paths.md)),
+Until sign-in is configured (next section), gobbler verifies the Access JWT on
+every request except the public paths (`/healthz`, `/canada`, `/static/*`,
+`/login` and `/auth/callback`; [ADR-00029](./adr/00029-public-paths.md)),
 where a token is optional; without both values it refuses to start. Access
 itself still asks for a sign-in on the public paths unless an Access
 application with a Bypass policy covers them.
+
+### Sign-in with Google (OpenID Connect)
+
+gobbler signs people in itself, as an OpenID Connect client of one issuer
+([ADR-00030](./adr/00030-google-sign-in.md)). The issuer is configuration: the
+steps below set it up with Google, and another OpenID Connect issuer (a
+self-hosted broker, for example) needs only different values for the same
+four variables. Once these are set, the session cookie is the identity and
+the Access settings must be removed from `.env`.
+
+**Google Cloud Console** (unverified: console labels change; Google has been
+moving these pages under "Google Auth Platform"):
+
+1. Create or pick a project for gobbler.
+2. Configure the **OAuth consent screen**: user type **External**, an app name
+   and support email. Add the scopes **`openid`** and **`email`**, nothing
+   else. These are not sensitive scopes, so no Google verification is needed,
+   but while the app's publishing status is **Testing** only the listed test
+   users can sign in: add them, or publish the app to **In production**.
+3. Create an **OAuth client ID** of type **Web application**. Add one
+   **authorised redirect URI**: `<GOBBLER_PUBLIC_BASE_URL>/auth/callback`, for
+   example `https://gobbler.example.com/auth/callback`, exactly, with no
+   trailing slash. No JavaScript origin is needed.
+4. Note the **client ID** and **client secret** for `.env`.
+
+**`.env`:**
+
+```sh
+GOBBLER_OIDC_ISSUER=https://accounts.google.com
+GOBBLER_OIDC_CLIENT_ID=<client ID>
+GOBBLER_OIDC_CLIENT_SECRET=<client secret>
+GOBBLER_PUBLIC_BASE_URL=https://gobbler.example.com
+# Optional; 720h (30 days) unless set.
+# GOBBLER_SESSION_LIFETIME=720h
+```
+
+A private page opened without a session sends the browser to `/login`, which
+goes to the issuer and comes back to `/auth/callback` and then to the page
+that was asked for. Only an email the issuer reports as verified is accepted.
+"Sign out" in the nav menu ends the session at once, and so does removing a
+member from their household. Sessions last `GOBBLER_SESSION_LIFETIME` from
+sign-in, however recently they were used.
+
+The email is the identity, as it was under Access. Anyone who reached gobbler
+through Access with a non-Google address (the one-time PIN) must be invited
+again under their Google address.
+
+**Cut-over from Cloudflare Access**, in this order:
+
+1. Deploy the version that has sign-in, with `.env` unchanged. Access is still
+   the identity. If you set the `GOBBLER_OIDC_*` variables ahead of time,
+   remove them before this deploy: gobbler refuses to start with them beside
+   the Access ones.
+2. In `.env`, set the three `GOBBLER_OIDC_*` variables and
+   `GOBBLER_PUBLIC_BASE_URL` as above, and remove `GOBBLER_ACCESS_TEAM_DOMAIN` and
+   `GOBBLER_ACCESS_AUD`. gobbler refuses to start with both sets present.
+3. Restart: `docker compose up -d`.
+4. Confirm sign-in works: open a private page in a private window, sign in
+   with Google, and land back on that page. Check `/canada` shows "Sign in"
+   when signed out. Cloudflare Access still sits in front at this point, so
+   you may be asked to pass it first.
+5. Only then remove the Cloudflare Access application for the hostname. The
+   tunnel stays. To roll back before this step, restore the two Access
+   variables, remove the sign-in ones and restart.
 
 ### Admission and the first household
 
 Admission is decided in the app, not in Access. A verified email that is a
 member of a household reaches the app. One that is not reaches only the public
-paths (`/healthz`, `/canada` and `/static/*`, which serve no household data),
-the "not a member" page and invitation acceptance. Nobody joins or starts a
+paths (`/healthz`, `/canada`, `/static/*`, `/login` and `/auth/callback`,
+which serve no household data), the "not a member" page, invitation
+acceptance and sign-out. Nobody joins or starts a
 household without an invitation addressed to their email.
 
 The **operator** is whoever `GOBBLER_OPERATOR_EMAILS` lists (comma-separated).
@@ -141,18 +209,18 @@ the container runs in UTC.
 
 | Variable | Default | Secret | Notes |
 |---|---|---|---|
-| `GOBBLER_ACCESS_TEAM_DOMAIN` | none | no | Bare host, e.g. `team.cloudflareaccess.com`: no `https://`, path or spaces. Required unless the dev bypass is on. `config.Load` only checks it is set; `auth.New` rejects a malformed value, so a bad value fails at `serve` start-up. |
-| `GOBBLER_ACCESS_AUD` | none | no | Application AUD tag. Required unless the dev bypass is on. |
-| `GOBBLER_OIDC_ISSUER` | none | no | OpenID Connect issuer URL, `https://accounts.google.com` for Google ([ADR-00030](./adr/00030-google-sign-in.md)). Kept exactly as written, because ID tokens are matched against it character for character. `https://` is required unless the dev bypass is on. Validated when set; used from the sign-in switch-over, and until then Access is the identity source. |
-| `GOBBLER_OIDC_CLIENT_ID` | none | no | OAuth client ID issued by the provider. Validated when set; used from the sign-in switch-over. |
-| `GOBBLER_OIDC_CLIENT_SECRET` | none | yes | OAuth client secret. Validated when set; used from the sign-in switch-over. |
-| `GOBBLER_PUBLIC_BASE_URL` | none | no | Origin the site is reached at, e.g. `https://gobbler.example.com`, with no path. The sign-in redirect URI is built from it. `https://` is required unless the dev bypass is on. Validated when set; used from the sign-in switch-over. |
-| `GOBBLER_SESSION_LIFETIME` | `720h` (30 days) | no | Go duration, positive. A session ends this long after sign-in, however recently it was used. Used from the sign-in switch-over. |
+| `GOBBLER_ACCESS_TEAM_DOMAIN` | none | no | Bare host, e.g. `team.cloudflareaccess.com`: no `https://`, path or spaces. Required unless the dev bypass is on or sign-in is configured, and must be unset when sign-in is configured. `config.Load` only checks it is set; `auth.New` rejects a malformed value, so a bad value fails at `serve` start-up. |
+| `GOBBLER_ACCESS_AUD` | none | no | Application AUD tag. Required unless the dev bypass is on or sign-in is configured, and must be unset when sign-in is configured. |
+| `GOBBLER_OIDC_ISSUER` | none | no | OpenID Connect issuer URL, `https://accounts.google.com` for Google ([ADR-00030](./adr/00030-google-sign-in.md)). Kept exactly as written, because ID tokens are matched against it character for character, and its discovery document must name it the same way. `https://` is required unless the dev bypass is on. Setting it turns sign-in on, which replaces Access as the identity. gobbler contacts the issuer at the first sign-in, not at start-up. |
+| `GOBBLER_OIDC_CLIENT_ID` | none | no | OAuth client ID issued by the provider. |
+| `GOBBLER_OIDC_CLIENT_SECRET` | none | yes | OAuth client secret. |
+| `GOBBLER_PUBLIC_BASE_URL` | none | no | Origin the site is reached at, e.g. `https://gobbler.example.com`, with no path. The sign-in redirect URI is it plus `/auth/callback`, and must be registered with the issuer exactly. `https://` is required unless the dev bypass is on. |
+| `GOBBLER_SESSION_LIFETIME` | `720h` (30 days) | no | Go duration, positive. A session ends this long after sign-in, however recently it was used. |
 | `GOBBLER_OPERATOR_EMAILS` | empty (no operator) | no | Comma-separated bare email addresses, case-insensitive. Each is an operator: it reaches `/settings` and the other operator pages without being a household member ([ADR-00018](./adr/00018-households-as-tenants.md)). A malformed entry is an error. |
 | `GOBBLER_LISTEN_ADDR` | `127.0.0.1:8080` | no | |
 | `GOBBLER_DATA_DIR` | `data` | no | Holds `gobbler.db` and `backups/`. |
 | `GOBBLER_LOG_LEVEL` | `info` | no | `debug`, `info`, `warn` or `error`. |
-| `GOBBLER_DEV_AUTH_BYPASS` | `false` | no | Skips Access verification; refuses to start unless the listen address is loopback. Development only. Every request acts as `dev@localhost` unless it sends `X-Gobbler-Dev-Identity`, and `dev@localhost` and `other@localhost` are seeded as members of two separate households. None of this exists with the bypass off. |
+| `GOBBLER_DEV_AUTH_BYPASS` | `false` | no | Skips identity verification; refuses to start unless the listen address is loopback. Development only. Every request acts as `dev@localhost` unless it sends `X-Gobbler-Dev-Identity`, and `dev@localhost` and `other@localhost` are seeded as members of two separate households. With sign-in configured as well (an `http://` issuer is allowed then), the sign-in routes work against that issuer but the bypass still decides every request's identity. None of this exists with the bypass off. |
 | `GOBBLER_INGEST_CONFIDENCE_THRESHOLD` | `0.7` | no | 0 to 1. Drafts below it fall back to the LLM ([ADR-00006](./adr/00006-rule-first-ingestion.md)). |
 | `GOBBLER_INGEST_FETCH_TIMEOUT` | `15s` | no | Go duration, positive. |
 | `GOBBLER_INGEST_USER_AGENT` | `gobbler (self-hosted recipe manager)` | no | |
@@ -182,6 +250,8 @@ Cross-field rules enforced at start-up:
 - If any of `GOBBLER_OIDC_ISSUER`, `GOBBLER_OIDC_CLIENT_ID`,
   `GOBBLER_OIDC_CLIENT_SECRET` and `GOBBLER_PUBLIC_BASE_URL` is set, all four
   are required.
+- With sign-in configured, `GOBBLER_ACCESS_TEAM_DOMAIN` and
+  `GOBBLER_ACCESS_AUD` must be unset; they would be silently ignored.
 
 Secrets live only in `.env`, which is never committed. Credentials are redacted
 in logs.

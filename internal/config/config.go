@@ -101,7 +101,8 @@ type Server struct {
 }
 
 // Access holds the Cloudflare Access settings (ADR-00003). Both are empty
-// when DevAuthBypass is on.
+// when DevAuthBypass is on, and when sign-in is configured, which replaces
+// Access as the identity source.
 type Access struct {
 	TeamDomain string
 	AUD        string
@@ -112,11 +113,11 @@ type Access struct {
 // URL the redirect URI is built from. No default names a provider; the issuer
 // is whatever the environment says.
 //
-// None of it is required at start-up yet: Cloudflare Access stays the
-// identity source until the sign-in switch-over, which requires Configured.
-// Until then each value is validated when set, and setting any of them
-// requires all four, so a half-configured sign-in fails at start-up rather
-// than at the first sign-in.
+// None of it is required at start-up yet. When it is set, sign-in is the
+// identity source and the Access settings must be unset; when it is not,
+// Cloudflare Access stays the identity source until it is removed. Each value
+// is validated when set, and setting any of them requires all four, so a
+// half-configured sign-in fails at start-up rather than at the first sign-in.
 type OIDC struct {
 	// Issuer is the issuer URL exactly as given. ID tokens are checked
 	// against it character for character, so it is not normalised. It must
@@ -225,16 +226,26 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 		r.fail(EnvDevAuthBypass, "refusing to start: dev auth bypass requires a loopback %s, got %q", EnvListenAddr, c.Server.ListenAddr)
 	}
 
+	r.oidc(&c.OIDC, c.Server.DevAuthBypass)
+
 	c.Access.TeamDomain = r.str(EnvAccessTeamDomain, "")
 	c.Access.AUD = r.str(EnvAccessAUD, "")
-	if c.Server.DevAuthBypass {
+	switch {
+	case c.Server.DevAuthBypass:
 		c.Access = Access{}
-	} else {
-		r.require(EnvAccessTeamDomain, c.Access.TeamDomain, "required unless "+EnvDevAuthBypass+" is set")
-		r.require(EnvAccessAUD, c.Access.AUD, "required unless "+EnvDevAuthBypass+" is set")
+	case c.OIDC.Configured():
+		// Sign-in replaces Access as the identity source (ADR-00030), so an
+		// Access setting would be silently ignored.
+		for _, s := range []struct{ env, v string }{{EnvAccessTeamDomain, c.Access.TeamDomain}, {EnvAccessAUD, c.Access.AUD}} {
+			if s.v != "" {
+				r.fail(s.env, "set but sign-in (%s) is configured, which replaces Access; unset it", EnvOIDCIssuer)
+			}
+		}
+	default:
+		const why = "required unless " + EnvDevAuthBypass + " or sign-in (" + EnvOIDCIssuer + ") is set"
+		r.require(EnvAccessTeamDomain, c.Access.TeamDomain, why)
+		r.require(EnvAccessAUD, c.Access.AUD, why)
 	}
-
-	r.oidc(&c.OIDC, c.Server.DevAuthBypass)
 	c.Session.Lifetime = r.duration(EnvSessionLifetime, defaultSessionLifetime)
 
 	c.Operator.Emails = r.emails(EnvOperatorEmails)
