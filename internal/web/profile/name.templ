@@ -1,0 +1,23 @@
+package profile
+
+import (
+	"strconv"
+
+	domain "github.com/kaecyra/gobbler/internal/profile"
+)
+
+// nameSection is the form that sets the display name. Saving it empty makes the
+// page show the start of the email again.
+templ nameSection(v pageView) {
+	<section class="panel" aria-labelledby="name-h" data-testid="profile-name-form">
+		<h2 id="name-h">Display name</h2>
+		<form class="fields" method="post" action={ templ.SafeURL(v.sectionPath("name")) }>
+			<label>
+				Name
+				<input type="text" name="name" value={ v.OwnName } placeholder={ v.DefaultName } maxlength={ strconv.Itoa(domain.MaxNameRunes) } autocomplete="off"/>
+			</label>
+			<button type="submit" class="btn accent">Save</button>
+		</form>
+		<p class="muted">Leave it empty to show the start of your email address instead.</p>
+	</section>
+}

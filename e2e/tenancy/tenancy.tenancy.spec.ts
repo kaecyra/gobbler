@@ -83,6 +83,8 @@ interface Probe {
 
 const NOT_MEMBER = 403;
 const NOT_FOUND = 404;
+// A profile address is 22 characters of base64url; this one was never issued.
+const GUESSED_PROFILE = 'AAAAAAAAAAAAAAAAAAAAAA';
 
 const own = (method: 'GET' | 'POST', path: string): Probe => ({ method, path: () => path, stranger: NOT_MEMBER, other: 200 });
 const hidden = (method: 'GET' | 'POST', path: (ids: Ids) => string, form?: (ids: Ids) => Record<string, string>): Probe => ({
@@ -225,6 +227,14 @@ const PROBES: Probe[] = [
   { ...hidden('POST', () => '/household/members/remove', () => ({ email: DEV })), other: NOT_FOUND },
   { ...hidden('POST', () => '/household/invitations', () => ({ email: uniqueEmail('invitee') })), other: 303 },
   hidden('POST', (i) => `/household/invitations/${i.joinInvitation}/revoke`),
+
+  // Profiles (ADR-00032): every signed-in person has one, so a non-member is admitted
+  // where it is refused the rest. /profile sends each to their own profile. A page is
+  // found only by its random address, so a guessed one finds nothing for either, on a
+  // read and on a change; DEV's real address is checked in e2e/profile.
+  { method: 'GET', path: () => '/profile', stranger: 303, other: 303 },
+  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}`),
+  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/name`),
 ];
 
 let work: Workdir | undefined;

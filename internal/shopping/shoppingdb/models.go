@@ -123,6 +123,15 @@ type Note struct {
 	Pinned      int64
 }
 
+type Profile struct {
+	Email       string
+	Address     string
+	DisplayName string
+	Avatar      string
+	CreatedAt   string
+	UpdatedAt   string
+}
+
 type Recipe struct {
 	ID                 int64
 	HouseholdID        int64

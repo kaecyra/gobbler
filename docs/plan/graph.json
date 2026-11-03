@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00019",
+      "last_used": "00020",
       "contiguous": true
     }
   },
@@ -2692,7 +2692,7 @@
       "wave": 11,
       "track": null,
       "issue": 328,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/profile/**",
@@ -2707,7 +2707,8 @@
         "internal/web/*.go",
         "e2e/profile/**",
         "e2e/layout/**",
-        "docs/ui/design.md"
+        "docs/ui/design.md",
+        "e2e/signin/signin.spec.ts"
       ],
       "needs_migration": "schema",
       "adrs": [],
@@ -2719,7 +2720,7 @@
       "wave": 11,
       "track": null,
       "issue": 332,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "p-profiles"
       ],
@@ -2740,7 +2741,7 @@
       "wave": 11,
       "track": null,
       "issue": 333,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "p-profiles"
       ],
@@ -2750,7 +2751,10 @@
         "internal/web/profile/avatar*",
         "internal/web/static/vendor/**",
         "internal/web/static/avatar*",
-        "e2e/profile/avatar*"
+        "e2e/profile/avatar*",
+        "internal/web/layout/avatar*",
+        "internal/web/layout/layout.templ",
+        "internal/web/*.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
@@ -2762,7 +2766,7 @@
       "wave": 11,
       "track": null,
       "issue": 334,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "p-profiles"
       ],
@@ -2978,6 +2982,16 @@
       "path": "internal/config/**",
       "mode": "open",
       "note": "APPEND-ONLY by convention (wave 11): add your own settings and their parsing; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/session/sessiondb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/profile/profiledb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
     }
   ],
   "done": [
@@ -3782,6 +3796,12 @@
       "id": "u-recipe-timers",
       "title": "recipe page step tags and passive steps",
       "merged": "be04277"
+    },
+    {
+      "id": "p-profiles",
+      "title": "profile page, avatar menu and nav spacing",
+      "merged": "04aced8",
+      "note": "ADR-00032. Builds the profile page as a composition of sections, in internal/web/profile/page.templ and routes.go (shared, append-only), so the three nodes after it each add one section in parallel."
     }
   ],
   "adr_sequence": {

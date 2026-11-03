@@ -44,3 +44,11 @@ sql:
       go:
         package: sessiondb
         out: internal/session/sessiondb
+  - name: profile
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/profile/queries
+    gen:
+      go:
+        package: profiledb
+        out: internal/profile/profiledb

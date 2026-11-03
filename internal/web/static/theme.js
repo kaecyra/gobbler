@@ -1,4 +1,6 @@
-// Light/dark toggle and the nav menu (docs/ui/design.md, Light always).
+// Light/dark toggle and the header menus (docs/ui/design.md, Light always).
+// The toggle lives in the account menu, for a signed-in person and for a
+// signed-out visitor alike.
 //
 // Loaded in the head without defer so a remembered dark choice is on the root
 // element before the first paint. Light is the default and nothing here reads
@@ -36,6 +38,10 @@
     button.setAttribute('aria-pressed', dark ? 'true' : 'false');
     button.setAttribute('aria-label', dark ? 'Switch to light' : 'Switch to dark');
     button.setAttribute('title', dark ? 'Light mode' : 'Dark mode');
+    var label = button.querySelector('[data-theme-label]');
+    if (label) {
+      label.textContent = dark ? 'Light mode' : 'Dark mode';
+    }
   }
 
   apply(stored());
@@ -53,18 +59,26 @@
       });
     }
 
-    var menu = document.querySelector('[data-menu]');
-    if (menu) {
+    // The nav's "More sections" menu and the account menu are both [data-menu].
+    var menus = Array.prototype.slice.call(document.querySelectorAll('[data-menu]'));
+    if (menus.length) {
       document.addEventListener('click', function (e) {
-        if (menu.open && !menu.contains(e.target)) {
-          menu.open = false;
-        }
+        menus.forEach(function (menu) {
+          if (menu.open && !menu.contains(e.target)) {
+            menu.open = false;
+          }
+        });
       });
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && menu.open) {
-          menu.open = false;
-          menu.querySelector('summary').focus();
+        if (e.key !== 'Escape') {
+          return;
         }
+        menus.forEach(function (menu) {
+          if (menu.open) {
+            menu.open = false;
+            menu.querySelector('summary').focus();
+          }
+        });
       });
     }
   });
