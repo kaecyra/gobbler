@@ -1,8 +1,65 @@
-# Overseer handoff: 2026-10-18, round 16
+# Overseer handoff: 2026-11-03, round 17
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 17 (2026-11-03): sign-in, then wave 11 planned and ready
+
+**Done outside the fleet, in one owner session.** No nodes:
+- #316: the nav shows only what admission admits (`layout.Admits`).
+- #318: invitation codes, ADR-00028.
+- #320: the public `/canada` page and public paths, ADR-00029.
+- #322, #324, #326: Google sign-in over OIDC, which replaces Cloudflare Access. ADR-00030; ADR-00003 is superseded, and stale ADRs were corrected in place on the owner's say-so.
+- #327: README.
+- #329, #331: ADR-00031 to 00034.
+
+VERSION on main is 0.85.0.
+
+**Deployed:** 0.84.0 at `https://gobbler.okperfect.ca`, on the owner's basement VM, with Google sign-in live and Access deleted. The owner's tooling manages `.env`. 0.85.0 is safe to deploy.
+
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
+
+**Wave 11 is ready, dispatched for maximum parallelism (the owner's instruction).** All issues are `dor:ready`:
+
+| Node | Issue | After | ADR |
+|---|---|---|---|
+| p-profiles | #328 | none | 00032 |
+| p-session-details | #332 | p-profiles | 00032 |
+| m-avatar-media | #333 | p-profiles | 00033 |
+| k-api-keys | #334 | p-profiles | 00031 |
+| a-mcp-endpoint | #330 | k-api-keys | 00034 |
+| a-oauth-server | #335 | k-api-keys | 00034 |
+| a-mcp-oauth | #336 | a-mcp-endpoint, a-oauth-server | 00034 |
+
+Shape: one node, then three in parallel, then two in parallel (OAuth can start once keys merge), then a small wiring node. Every node except a-mcp-oauth adds a schema migration.
+
+**Rules changed this round (graph notes and `shared_files`):**
+- **Migrations are numbered at merge, not dispatch.** A worker names its file `99999_<node-id>.sql`. Before merging, run `graph-node migration <id>`, rename the file, rebase on main and run `make generate`. Merge migration nodes one at a time, in any order. Schema is at 00019 on main.
+- **New shared append-only files:**
+  - `internal/web/web.go`
+  - `internal/web/profile/page.templ` and `internal/web/profile/routes.go`, which p-profiles must create as the section composition the next three nodes append to
+  - `internal/config/**`
+  - `docs/operations.md`, `docs/design.md`
+  - `e2e/tenancy/tenancy.tenancy.spec.ts`, `e2e/fixtures/routes/*`
+  - `.env.example`, `compose.yaml`
+
+  Check in diff review that each node only added lines to these.
+
+**Review:** use `--deep` for a-oauth-server; it is the new security boundary. For p-profiles, check `docs/ui/design.md` and the mockup, and that only the named header elements and spacing changed (frontend.md).
+
+**Owner calls already made, so don't re-ask:**
+- Keys: personal and household, with no scopes and configurable expiry including none. Removing a member revokes their personal keys and the household keys they created.
+- MCP accepts keys and OAuth. Recipe writes go to the review screen, shopping writes apply directly. A leaky-bucket rate limit per credential, and paged results.
+- Media: Garage (S3), with a local-directory fallback; WebP via `deepteams/webp`; HEIC and AVIF via gen2brain. The build stays cgo-free.
+- Profiles: everyone has one, behind one visibility rule that today allows everything. The default avatar is generated in the app; never fetch vanillicon or similar.
+- The test VM counts as "not yet in production" for ADR in-place corrections. Prefer correcting a stale ADR in place over writing an amending one.
+
+**Still parked:** i-site-extractors (#193) and l-meal-planning (#38). Meal-plan MCP tools wait on #38.
+
+**Process notes:**
+- The e2e suite runs three servers: dev bypass, sign-in, and anonymous (no bypass). The worker brief's port block is updated: `GOBBLER_E2E_PORT`, `_SIGNIN_PORT`, `_ANONYMOUS_PORT`.
+- The Garage machine for media does not exist yet. m-avatar-media builds and tests against the local store and a fake S3, so it is not blocked.
 
 ## Round 16 (2026-10-18), closed: round 15 leftovers
 
