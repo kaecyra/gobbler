@@ -21,8 +21,15 @@ import (
 // is, so a stranger cannot cancel or consume it.
 const (
 	pendingTTL = time.Hour
-	// pendingMax bounds memory: the oldest draft is dropped to admit a new one.
-	pendingMax = 20
+	// pendingPerHousehold bounds what one household holds: past it, that
+	// household's own oldest draft is dropped to admit a new one. A household
+	// cannot push out another's draft, however fast its key calls Add
+	// (ADR-00018).
+	pendingPerHousehold = 20
+	// pendingMax bounds memory across every household. It is a ceiling on the
+	// whole table, well above what the households' caps allow a few of them to
+	// hold; only when it is reached is the oldest draft of all dropped.
+	pendingMax = 500
 )
 
 type pendingEntry struct {
@@ -54,8 +61,11 @@ func (p *Pending) Add(hid int64, d Draft) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.expire()
+	for p.heldBy(hid) >= pendingPerHousehold {
+		p.dropOldest(hid)
+	}
 	for len(p.entries) >= pendingMax {
-		p.dropOldest()
+		p.dropOldest(0)
 	}
 	p.entries[token] = pendingEntry{draft: d, created: p.now(), household: hid}
 	return token, nil
@@ -115,11 +125,26 @@ func (p *Pending) expire() {
 	}
 }
 
-// dropOldest removes the oldest entry; the caller holds mu.
-func (p *Pending) dropOldest() {
+// heldBy counts the drafts of household hid; the caller holds mu.
+func (p *Pending) heldBy(hid int64) int {
+	n := 0
+	for _, e := range p.entries {
+		if e.household == hid {
+			n++
+		}
+	}
+	return n
+}
+
+// dropOldest removes the oldest entry of household hid, or the oldest of all
+// when hid is zero; the caller holds mu.
+func (p *Pending) dropOldest(hid int64) {
 	var oldest string
 	var at time.Time
 	for k, e := range p.entries {
+		if hid != 0 && e.household != hid {
+			continue
+		}
 		if oldest == "" || e.created.Before(at) {
 			oldest, at = k, e.created
 		}

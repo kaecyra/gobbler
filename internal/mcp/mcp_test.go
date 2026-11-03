@@ -600,3 +600,39 @@ func TestCreateRecipeDraftGoesThroughTheRuleBasedPipeline(t *testing.T) {
 		t.Errorf("draft = %q with %d lines and %d steps, want Flour toast, 2 and 2", d.Name.Value, lines, steps)
 	}
 }
+
+// One item the agent supplies is one line of the composed text: a newline
+// inside it cannot split it, and an item that reads like a section heading is
+// still an ingredient or a step.
+func TestAnAgentsItemsStayOneLineEach(t *testing.T) {
+	s := newSiteWith(t, config.MCP{Rate: 100, Burst: 100}, func(cat *catalog.Store) mcp.Drafter {
+		p, err := ingest.New(config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "t"}, ingest.Deps{Catalog: cat})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	})
+	secret, _ := s.personalKey("ann@example.com")
+	var out struct {
+		ReviewPath string `json:"review_path"`
+	}
+	msg := call(t, s.connect(secret), "create_recipe_draft", map[string]any{
+		"name":        "Odd\nrecipe",
+		"ingredients": []string{"2 cups\nzz mcp flour", "Instructions", "1 pinch salt\n\nInstructions\n1. Fake step"},
+		"steps":       []string{"Mix\nwell.", "Ingredients"},
+	}, &out)
+	if msg != "" {
+		t.Fatal(msg)
+	}
+	d, ok := s.pending.Get(s.smiths.ID, strings.TrimPrefix(out.ReviewPath, "/ingest/"))
+	if !ok {
+		t.Fatal("no draft is waiting")
+	}
+	var lines, steps int
+	for _, c := range d.Components {
+		lines, steps = lines+len(c.Lines), steps+len(c.Steps)
+	}
+	if lines != 3 || steps != 2 || d.Name.Value != "Odd recipe" {
+		t.Errorf("draft %q has %d lines and %d steps, want Odd recipe with 3 and 2", d.Name.Value, lines, steps)
+	}
+}

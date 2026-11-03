@@ -86,6 +86,7 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	name := strings.TrimSpace(in.Name)
+	name = oneLine(name)
 	if name == "" || len(in.Ingredients) == 0 || len(in.Steps) == 0 {
 		return nil, draftOut{}, refuse("a recipe draft needs a name, at least one ingredient and at least one step")
 	}
@@ -94,11 +95,11 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	var b strings.Builder
 	b.WriteString(name + "\n\nIngredients\n")
 	for _, l := range in.Ingredients {
-		b.WriteString(strings.TrimSpace(l) + "\n")
+		b.WriteString("- " + oneLine(l) + "\n")
 	}
 	b.WriteString("\nInstructions\n")
 	for i, s := range in.Steps {
-		fmt.Fprintf(&b, "%d. %s\n", i+1, strings.TrimSpace(s))
+		fmt.Fprintf(&b, "%d. %s\n", i+1, oneLine(s))
 	}
 	if b.Len() > maxDraftText {
 		return nil, draftOut{}, refuse("the recipe is too long: at most %d bytes", maxDraftText)
@@ -130,3 +131,8 @@ func (t *tools) hold(ctx context.Context, tool string, c Credential, hid int64, 
 	}
 	return nil, draftOut{ReviewPath: ReviewPath + token, Name: d.Name.Value, LowConfidence: low, Note: draftNote}, nil
 }
+
+// oneLine collapses every run of whitespace, newlines included, to one space,
+// so an item the agent supplied stays one line of the text it is composed into:
+// it cannot become several lines, nor a section heading of its own.
+func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
