@@ -2778,7 +2778,8 @@
         "internal/web/profile/keys*",
         "e2e/profile/keys*",
         "e2e/household/**",
-        "internal/web/layout/apikey*"
+        "internal/web/layout/apikey*",
+        "internal/session/migration_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
