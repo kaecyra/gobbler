@@ -4,8 +4,10 @@
 //
 //   serve.mjs            dev-auth bypass on (a request is the dev identity unless it
 //                        sends X-Gobbler-Dev-Identity; the dev households are seeded)
-//   serve.mjs --access   Access verification ON with a fake team domain and AUD,
-//                        so a request without a valid token is refused (ADR-00003)
+//   serve.mjs --anonymous  dev-auth bypass OFF, as in production: sign-in is
+//                        configured against an issuer that does not exist and is
+//                        never contacted, so the identity middleware judges every
+//                        request and one without a session is refused (ADR-00030)
 //   serve.mjs --signin   dev-auth bypass on, with sign-in configured against the
 //                        local fake issuer (fixtures/issuer.mjs), so the sign-in
 //                        routes run their whole flow (ADR-00030). The bypass still
@@ -22,10 +24,10 @@ if (!bin) {
   console.error('GOBBLER_E2E_BIN is not set; run the suite through `make e2e`, which builds the binary.');
   process.exit(1);
 }
-const access = process.argv.includes('--access');
+const anonymous = process.argv.includes('--anonymous');
 const signin = process.argv.includes('--signin');
-const port = access
-  ? process.env.GOBBLER_E2E_ACCESS_PORT
+const port = anonymous
+  ? process.env.GOBBLER_E2E_ANONYMOUS_PORT
   : signin
     ? process.env.GOBBLER_E2E_SIGNIN_PORT
     : process.env.GOBBLER_E2E_PORT;
@@ -40,7 +42,7 @@ const issuer = signin ? await startIssuer() : undefined;
 const dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-'));
 
 // Only what the server needs plus the fixed settings: nothing from the
-// developer's environment (API keys, real Access settings) reaches the binary.
+// developer's environment (API keys, real sign-in settings) reaches the binary.
 const env = {
   PATH: process.env.PATH ?? '',
   GOBBLER_LISTEN_ADDR: `127.0.0.1:${port}`,
@@ -52,8 +54,15 @@ const env = {
   // layout nav) keep working. Keep them in step with OPERATOR and DEV in
   // identity.ts. OTHER is a member who is not an operator.
   GOBBLER_OPERATOR_EMAILS: 'operator@e2e.example,dev@localhost',
-  ...(access
-    ? { GOBBLER_ACCESS_TEAM_DOMAIN: 'e2e.invalid', GOBBLER_ACCESS_AUD: 'e2e-fake-aud' }
+  // Without the bypass the issuer and base URL must be https. Nothing in the
+  // suite starts a sign-in here, so the .invalid issuer is never contacted.
+  ...(anonymous
+    ? {
+        GOBBLER_OIDC_ISSUER: 'https://issuer.e2e.invalid',
+        GOBBLER_OIDC_CLIENT_ID: 'gobbler-e2e-anonymous',
+        GOBBLER_OIDC_CLIENT_SECRET: 'e2e-fake-client-secret',
+        GOBBLER_PUBLIC_BASE_URL: 'https://gobbler.e2e.invalid',
+      }
     : { GOBBLER_DEV_AUTH_BYPASS: 'true' }),
   ...(issuer ? issuerEnv(issuer.origin, `http://127.0.0.1:${port}`) : {}),
 };

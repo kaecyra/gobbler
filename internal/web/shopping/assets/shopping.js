@@ -14,8 +14,8 @@
     status.textContent = text;
     status.setAttribute('data-state', state);
     // A reload is offered while the view is not live, because a stream that
-    // keeps failing may mean the Access session ended, which a new page load
-    // renews.
+    // keeps failing may mean the sign-in session ended, and a new page load
+    // sends the person to sign in again.
     if (reload) reload.hidden = state === 'live' || state === 'connecting';
   }
 
@@ -67,7 +67,7 @@
           return;
         }
         // The browser gave up: the answer was not an event stream (a 502 while
-        // the server restarts, or a redirect to the Access login). It never
+        // the server restarts, or a redirect to sign-in). It never
         // retries that, so do it here, slower each time up to a cap.
         source.close();
         setStatus('Reconnecting in ' + Math.round(delay / 1000) + 's', 'error');

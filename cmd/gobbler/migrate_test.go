@@ -21,8 +21,10 @@ func TestMigrateCommandSucceedsAgainstFreshDataDir(t *testing.T) {
 func TestMigrateCommandRejectsInvalidConfig(t *testing.T) {
 	t.Setenv(config.EnvDataDir, t.TempDir())
 	t.Setenv(config.EnvDevAuthBypass, "")
-	t.Setenv(config.EnvAccessTeamDomain, "")
-	t.Setenv(config.EnvAccessAUD, "")
+	t.Setenv(config.EnvOIDCIssuer, "")
+	t.Setenv(config.EnvOIDCClientID, "")
+	t.Setenv(config.EnvOIDCClientSecret, "")
+	t.Setenv(config.EnvPublicBaseURL, "")
 	var out bytes.Buffer
 	if code := execute([]string{"migrate"}, []command{migrateCommand}, &out); code == 0 {
 		t.Fatal("want non-zero exit on invalid config")

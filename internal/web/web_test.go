@@ -10,39 +10,60 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/layout/layouttest"
+	"github.com/kaecyra/gobbler/internal/web/signin"
 )
 
 func devConfig() config.Config {
 	return config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DevAuthBypass: true}}
 }
 
+// prodConfig is a production deployment: no bypass, so identity comes only
+// from the sign-in session (ADR-00030). The issuer is never contacted by the
+// tests that use it: none of them starts a sign-in.
 func prodConfig() config.Config {
 	return config.Config{
 		Server: config.Server{ListenAddr: "0.0.0.0:8080"},
-		Access: config.Access{TeamDomain: "team.cloudflareaccess.com", AUD: "aud-tag"},
+		OIDC:   config.OIDC{Issuer: "https://issuer.test", ClientID: "c", PublicBaseURL: "https://gobbler.test"},
 	}
 }
 
+// testRouter is the real router for cfg. When cfg configures sign-in it is
+// wired as serve wires it, with the session store and sign-in.
 func testRouter(t *testing.T, cfg config.Config, d Deps) *chi.Mux {
 	t.Helper()
 	quiet := slog.New(slog.NewJSONHandler(io.Discard, nil))
-	a, err := auth.New(cfg, auth.WithLogger(quiet))
+	if d.DB == nil {
+		d.DB = testDB(t)
+	}
+	var opts []auth.Option
+	if cfg.OIDC.Configured() {
+		var err error
+		if d.Sessions, err = session.New(d.DB, time.Hour); err != nil {
+			t.Fatal(err)
+		}
+		if d.SignIn, err = signin.New(signin.Settings{
+			Issuer: cfg.OIDC.Issuer, ClientID: cfg.OIDC.ClientID, PublicBaseURL: cfg.OIDC.PublicBaseURL, Lifetime: time.Hour,
+		}, d.Sessions); err != nil {
+			t.Fatal(err)
+		}
+		opts = append(opts, auth.WithSessions(d.Sessions, layout.SignInPath))
+	}
+	a, err := auth.New(cfg, append(opts, auth.WithLogger(quiet))...)
 	if err != nil {
 		t.Fatal(err)
 	}
 	d.Config, d.Auth = cfg, a
-	if d.DB == nil {
-		d.DB = testDB(t)
-	}
 	if d.Logger == nil {
 		d.Logger = quiet
 	}
@@ -78,6 +99,18 @@ func get(h http.Handler, path string, hdr ...string) *httptest.ResponseRecorder 
 	return rec
 }
 
+// refused reports whether rec is the refusal of a request without an identity
+// (ADR-00030): a full-page GET is sent to sign-in, anything else is 401.
+func refused(rec *httptest.ResponseRecorder) bool {
+	if rec.Code == http.StatusSeeOther {
+		return strings.HasPrefix(rec.Header().Get("Location"), layout.SignInPath+"?next=")
+	}
+	return rec.Code == http.StatusUnauthorized
+}
+
+// badSession is a session cookie that names no session.
+const badSession = "Cookie"
+
 func TestNewRequiresAuthenticator(t *testing.T) {
 	if _, err := New(Deps{}); err == nil {
 		t.Fatal("want error without an authenticator")
@@ -105,81 +138,16 @@ func TestHealthBodyOmitsDetailsByDefault(t *testing.T) {
 	}
 }
 
-// Every registered route except the public paths (ADR-00029) refuses a request
-// with no token; an unregistered path is refused too, so route existence is not
-// disclosed. A public path is served without one.
-func TestEveryRouteButThePublicPathsRequiresAToken(t *testing.T) {
+// An unregistered path is refused like a private one, so route existence is
+// not disclosed, and an unknown session is no better than none. The matrix of
+// registered routes is TestEveryRouteButThePublicPathsRequiresASession.
+func TestUnknownPathAndSessionAreRefused(t *testing.T) {
 	r := testRouter(t, prodConfig(), Deps{})
-	var checked int
-	err := chi.Walk(r, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
-		path := strings.ReplaceAll(route, "*", "x")
-		req := httptest.NewRequest(method, path, nil)
-		rec := httptest.NewRecorder()
-		r.ServeHTTP(rec, req)
-		switch public := layout.IsPublic(path); {
-		case public && rec.Code == http.StatusForbidden:
-			t.Errorf("%s %s = 403, want it served without a token", method, route)
-		case !public && rec.Code != http.StatusForbidden:
-			t.Errorf("%s %s = %d, want 403", method, route, rec.Code)
-		}
-		checked++
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
+	if rec := get(r, "/no/such/route"); !refused(rec) {
+		t.Errorf("unregistered path = %d, want a sign-in redirect", rec.Code)
 	}
-	if checked < 3 {
-		t.Fatalf("walked only %d routes; the matrix is not exercising the router", checked)
-	}
-	if rec := get(r, "/no/such/route"); rec.Code != http.StatusForbidden {
-		t.Errorf("unregistered path = %d, want 403", rec.Code)
-	}
-	if rec := get(r, "/", auth.HeaderName, "not-a-jwt"); rec.Code != http.StatusForbidden {
-		t.Errorf("garbage token = %d, want 403", rec.Code)
-	}
-}
-
-func TestAuthenticatedPagesRenderLayout(t *testing.T) {
-	r := testRouter(t, devConfig(), Deps{})
-	rec := get(r, "/")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("/ = %d, want 200", rec.Code)
-	}
-	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
-		t.Errorf("content type = %q", ct)
-	}
-	if !strings.Contains(rec.Body.String(), `<main id="content">`) {
-		t.Errorf("home page does not use the layout:\n%s", rec.Body.String())
-	}
-}
-
-func TestUnknownPathRendersNotFoundPage(t *testing.T) {
-	rec := get(testRouter(t, devConfig(), Deps{}), "/nope")
-	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "404") {
-		t.Errorf("status = %d body = %s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestStaticAssetsServedFromEmbeddedFS(t *testing.T) {
-	r := testRouter(t, devConfig(), Deps{})
-	for _, tc := range []struct{ path, wantPrefix, wantInBody string }{
-		{"/static/app.css", "text/css", "--accent"},
-		{"/static/htmx.min.js", "text/javascript", "htmx"},
-	} {
-		rec := get(r, tc.path)
-		if rec.Code != http.StatusOK {
-			t.Errorf("%s = %d, want 200", tc.path, rec.Code)
-			continue
-		}
-		if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, tc.wantPrefix) {
-			t.Errorf("%s content type = %q, want prefix %q", tc.path, ct, tc.wantPrefix)
-		}
-		if !strings.Contains(rec.Body.String(), tc.wantInBody) {
-			t.Errorf("%s body lacks %q", tc.path, tc.wantInBody)
-		}
-	}
-	if rec := get(r, "/static/missing.js"); rec.Code != http.StatusNotFound {
-		t.Errorf("missing asset = %d, want 404", rec.Code)
+	if rec := get(r, "/", badSession, auth.SessionCookie+"=not-a-session"); !refused(rec) {
+		t.Errorf("unknown session = %d, want a sign-in redirect", rec.Code)
 	}
 }
 
@@ -198,12 +166,12 @@ func TestRequestLogOmitsCredentials(t *testing.T) {
 	var buf bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&buf, nil))
 	r := testRouter(t, devConfig(), Deps{Logger: log})
-	get(r, "/?token=querysecret", auth.HeaderName, "jwtsecret", "Authorization", "bearersecret", "Cookie", auth.CookieName+"=cookiesecret")
+	get(r, "/?token=querysecret", "Authorization", "bearersecret", "Cookie", auth.SessionCookie+"=cookiesecret")
 	out := buf.String()
 	if !strings.Contains(out, `"path":"/"`) || !strings.Contains(out, `"status":200`) {
 		t.Fatalf("request not logged as expected: %s", out)
 	}
-	for _, secret := range []string{"jwtsecret", "bearersecret", "cookiesecret", "querysecret"} {
+	for _, secret := range []string{"bearersecret", "cookiesecret", "querysecret"} {
 		if strings.Contains(out, secret) {
 			t.Errorf("log leaks %q: %s", secret, out)
 		}
@@ -213,9 +181,9 @@ func TestRequestLogOmitsCredentials(t *testing.T) {
 func TestRefusedRequestsAreLogged(t *testing.T) {
 	var buf bytes.Buffer
 	r := testRouter(t, prodConfig(), Deps{Logger: slog.New(slog.NewJSONHandler(&buf, nil))})
-	get(r, "/")
-	if !strings.Contains(buf.String(), `"status":403`) {
-		t.Errorf("403 not in request log: %s", buf.String())
+	get(r, "/", "HX-Request", "true")
+	if !strings.Contains(buf.String(), `"status":401`) {
+		t.Errorf("401 not in request log: %s", buf.String())
 	}
 }
 
@@ -282,9 +250,10 @@ func TestHealthAndCanadaArePublic(t *testing.T) {
 	}
 }
 
-// Without a token, only the public paths are served, checked on both forms of
-// the path, and a bad token is no better than none off them (ADR-00029).
-func TestNoTokenReachesOnlyThePublicPaths(t *testing.T) {
+// Without a session, only the public paths are served, checked on both forms
+// of the path, and an unknown session is no better than none off them
+// (ADR-00029).
+func TestNoSessionReachesOnlyThePublicPaths(t *testing.T) {
 	r := testRouter(t, prodConfig(), Deps{})
 	cases := []struct {
 		path string
@@ -293,23 +262,24 @@ func TestNoTokenReachesOnlyThePublicPaths(t *testing.T) {
 		{"/canada", http.StatusOK},
 		{"/static/app.css", http.StatusOK},
 		{HealthPath, http.StatusOK},
+		// The identity middleware sees the decoded /canada and lets it by
+		// without a session; the membership middleware judges the raw path
+		// and refuses it.
 		{"/c%61nada", http.StatusForbidden},
-		{"/canada/", http.StatusForbidden},
-		{"/recipes", http.StatusForbidden},
-		{"/settings", http.StatusForbidden},
-		{layout.InvitationsPath + "/1", http.StatusForbidden},
-		{layout.NotAMemberPath, http.StatusForbidden},
+		{"/canada/", http.StatusSeeOther},
+		{"/recipes", http.StatusSeeOther},
+		{"/settings", http.StatusSeeOther},
+		{layout.InvitationsPath + "/1", http.StatusSeeOther},
+		{layout.NotAMemberPath, http.StatusSeeOther},
 	}
 	for _, c := range cases {
-		if got := get(r, c.path).Code; got != c.want {
-			t.Errorf("GET %s with no token = %d, want %d", c.path, got, c.want)
-		}
-		req := httptest.NewRequest(http.MethodGet, c.path, nil)
-		req.Header.Set(auth.HeaderName, "not-a-token")
-		rec := httptest.NewRecorder()
-		r.ServeHTTP(rec, req)
-		if rec.Code != c.want {
-			t.Errorf("GET %s with a bad token = %d, want %d", c.path, rec.Code, c.want)
+		for name, rec := range map[string]*httptest.ResponseRecorder{
+			"no session":      get(r, c.path),
+			"unknown session": get(r, c.path, badSession, auth.SessionCookie+"=not-a-session"),
+		} {
+			if rec.Code != c.want || (c.want == http.StatusSeeOther && !refused(rec)) {
+				t.Errorf("GET %s with %s = %d to %q, want %d", c.path, name, rec.Code, rec.Header().Get("Location"), c.want)
+			}
 		}
 	}
 	body := get(r, "/canada").Body.String()

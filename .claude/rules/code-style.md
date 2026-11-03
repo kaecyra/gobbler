@@ -41,7 +41,8 @@ The tools cannot enforce layout and shape, so these are the rules:
 ## Logging
 
 `log/slog` with the JSON handler. Key–value pairs with lowercase snake_case
-keys. Never log an API key, the Cloudflare Access JWT or cookie, or S3
+keys. Never log an API key, a session cookie or token, an authorization code,
+an ID token, or S3
 credentials.
 
 ## Never type a version or an identifier from memory

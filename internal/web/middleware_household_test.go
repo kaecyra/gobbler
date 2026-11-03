@@ -184,7 +184,7 @@ func TestDevHouseholdsAreNotSeededOutsideTheBypass(t *testing.T) {
 	d := testDB(t)
 	testRouter(t, prodConfig(), Deps{DB: d})
 	if _, err := household.New(d).ForEmail(context.Background(), auth.DevEmail); err == nil {
-		t.Fatal("a deployment behind Access got the dev member")
+		t.Fatal("a deployment with sign-in got the dev member")
 	}
 }
 

@@ -9,19 +9,20 @@ equipment, a step dependency graph, times — and generates merged,
 aisle-grouped shopping lists from them.
 
 It is one Go binary (chi, templ, HTMX) over a SQLite file, run with Docker
-Compose on an Ubuntu VM and reached only through a Cloudflare tunnel behind
-Cloudflare Access. Ingestion is rule-based first, with Claude or Gemini as a
-fallback. The design and build order are in [docs/design.md](./docs/design.md).
+Compose on an Ubuntu VM and reached only through a Cloudflare tunnel, and it
+signs people in itself with Google. Ingestion is rule-based first, with Claude
+or Gemini as a fallback. The design and build order are in [docs/design.md](./docs/design.md).
 
 The stakes are personal data: notes, edits and history that cannot be
 recreated from the source sites. A bug that loses or silently corrupts a
-recipe, or exposes the app without Access verification, is expensive. A layout
+recipe, or exposes a private page without a verified session, is expensive. A layout
 glitch is cosmetic.
 
 ## Boundaries
 
-- **No in-app login and no password storage.** Identity comes only from a
-  verified Cloudflare Access JWT ([ADR-00003](./docs/adr/00003-cloudflare-access-identity.md)).
+- **Sign-in is Google over OpenID Connect, and no passwords are stored.**
+  Identity comes only from a verified sign-in session
+  ([ADR-00030](./docs/adr/00030-google-sign-in.md)).
 - **The LLM never runs before the rule-based path has been tried, and its
   output is never saved without the review screen**
   ([ADR-00006](./docs/adr/00006-rule-first-ingestion.md)).

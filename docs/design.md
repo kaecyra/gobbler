@@ -30,20 +30,20 @@ and this document is wrong.
 ## Runtime
 
 ```
-browser ──► Cloudflare Access ──► cloudflared ──► gobbler (Go binary) ──► SQLite file
-                                                      │
-                                                      ├──► recipe sites (URL ingest)
-                                                      ├──► tesseract (local OCR)
-                                                      ├──► Claude / Gemini APIs (fallback only)
-                                                      └──► S3-compatible storage (backups)
+browser ──► cloudflared ──► gobbler (Go binary) ──► SQLite file
+                                 │
+                                 ├──► OpenID Connect issuer (sign-in)
+                                 ├──► recipe sites (URL ingest)
+                                 ├──► tesseract (local OCR)
+                                 ├──► Claude / Gemini APIs (fallback only)
+                                 └──► S3-compatible storage (backups)
 ```
 
 Docker Compose runs `gobbler` on the Ubuntu VM and publishes its port on
 all interfaces ([ADR-00027](adr/00027-publish-on-all-interfaces.md)). `cloudflared` runs on the VM guest, outside Compose, and reaches
 it at `http://127.0.0.1:8080`. gobbler verifies identity itself on every
-request: its own sign-in session when sign-in is configured
-([ADR-00030](adr/00030-google-sign-in.md)), otherwise the Access JWT
-([ADR-00003](adr/00003-cloudflare-access-identity.md)). The stack is
+request, from its own sign-in session
+([ADR-00030](adr/00030-google-sign-in.md)). The stack is
 [ADR-00002](adr/00002-single-binary-go-stack.md).
 
 ## Package map
@@ -58,7 +58,7 @@ dependencies.
 | `cmd/gobbler` | Entry point, wiring, subcommands (`serve`, `migrate`, `import-usda`, `backup`) | everything below |
 | `config` | Environment-driven configuration, validated at start-up | — |
 | `db` | SQLite connection, WAL setup, embedded `goose` migrations, the shared transaction helpers (`WithTx`, `WithReadTx`) and constraint-error wrapper (`WrapWrite`) | `config` |
-| `auth` | The identity middleware: the sign-in session cookie when sign-in is configured, otherwise Access JWT verification; dev bypass | `config`, `session` |
+| `auth` | The identity middleware: the sign-in session cookie, or the dev bypass on a loopback listener | `config`, `session` |
 | `session` | Server-side sign-in sessions named by a random cookie token, stored as its SHA-256; queries in `queries/`, sqlc-generated `sessiondb` ([ADR-00030](adr/00030-google-sign-in.md)) | `db` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types (with the closed sets of meal types, cuisines and stage kinds), step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
@@ -82,8 +82,7 @@ Secrets are never in the repository.
 | Area | Settings |
 |---|---|
 | Server | listen address, data directory, log level, dev-auth bypass flag |
-| Access | team domain, application AUD tag (unset when sign-in is configured) |
-| OIDC | issuer URL, client ID, client secret, public base URL ([ADR-00030](adr/00030-google-sign-in.md); setting them turns sign-in on, which replaces Access) |
+| OIDC | issuer URL, client ID, client secret, public base URL ([ADR-00030](adr/00030-google-sign-in.md); required unless the dev bypass is on) |
 | Session | session lifetime, fixed from sign-in ([ADR-00030](adr/00030-google-sign-in.md)) |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |

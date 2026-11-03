@@ -14,11 +14,12 @@ func env(m map[string]string) func(string) (string, bool) {
 	return func(k string) (string, bool) { v, ok := m[k]; return v, ok }
 }
 
-// base is the smallest valid production environment.
+// base is the smallest valid production environment: sign-in, the only
+// identity source without the dev bypass (ADR-00030).
 func base() map[string]string {
 	return map[string]string{
-		EnvAccessTeamDomain: "team.cloudflareaccess.com",
-		EnvAccessAUD:        "aud-tag",
+		EnvOIDCIssuer: "https://issuer.example.com", EnvOIDCClientID: "c", EnvOIDCClientSecret: "s",
+		EnvPublicBaseURL: "https://gobbler.example.com",
 	}
 }
 
@@ -30,26 +31,29 @@ func with(kv ...string) map[string]string {
 	return m
 }
 
-// signIn is the smallest valid production environment with sign-in, which
-// needs no Access settings (ADR-00030), plus kv.
-func signIn(kv ...string) map[string]string {
-	m := map[string]string{
-		EnvOIDCIssuer: "https://issuer.example.com", EnvOIDCClientID: "c", EnvOIDCClientSecret: "s",
-		EnvPublicBaseURL: "https://gobbler.example.com",
+// Without the dev bypass, sign-in is required: a bare environment fails to
+// start, naming every GOBBLER_OIDC_* variable and the public base URL.
+func TestNoIdentitySourceNamesOIDCVariables(t *testing.T) {
+	_, err := loadFrom(env(map[string]string{}))
+	if err == nil {
+		t.Fatal("want an error without the dev bypass or sign-in")
 	}
-	for i := 0; i < len(kv); i += 2 {
-		m[kv[i]] = kv[i+1]
+	for _, v := range []string{EnvOIDCIssuer, EnvOIDCClientID, EnvOIDCClientSecret, EnvPublicBaseURL, EnvDevAuthBypass} {
+		if !strings.Contains(err.Error(), v) {
+			t.Errorf("error does not name %s: %v", v, err)
+		}
 	}
-	return m
 }
 
-func TestSignInReplacesAccess(t *testing.T) {
-	c, err := loadFrom(env(signIn()))
+// With the dev bypass, sign-in is optional and nothing in it is defaulted,
+// least of all a provider's issuer.
+func TestDevBypassNeedsNoSignIn(t *testing.T) {
+	c, err := loadFrom(env(map[string]string{EnvDevAuthBypass: "true"}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !c.OIDC.Configured() || c.Access != (Access{}) {
-		t.Errorf("oidc %+v, access %+v", c.OIDC, c.Access)
+	if c.OIDC.Configured() || c.OIDC != (OIDC{}) {
+		t.Errorf("oidc under bypass: %+v", c.OIDC)
 	}
 }
 
@@ -67,7 +71,7 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Video.ThumbnailHost != "" {
 		t.Errorf("thumbnail host default = %q, want empty (YouTube's, chosen by the fetcher)", c.Video.ThumbnailHost)
 	}
-	if c.LLM.Configured() || c.Backup.S3.Configured() || c.OIDC.Configured() {
+	if c.LLM.Configured() || c.Backup.S3.Configured() {
 		t.Error("optional groups must default to unconfigured")
 	}
 	if c.LLM.TextModel != "" || c.LLM.VisionModel != "" {
@@ -75,9 +79,6 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if c.Backup.Schedule != "03:00" || c.Backup.LocalRetention != 7 || c.Backup.RemoteRetention != 30 {
 		t.Errorf("backup defaults: %+v", c.Backup)
-	}
-	if c.OIDC != (OIDC{}) {
-		t.Errorf("no OIDC setting may be defaulted, least of all a provider's issuer: %+v", c.OIDC)
 	}
 	if c.Session.Lifetime != 720*time.Hour {
 		t.Errorf("session lifetime default = %s, want 30 days", c.Session.Lifetime)
@@ -101,9 +102,6 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 	}
 	if c.Server.ListenAddr != "0.0.0.0:9000" || c.Server.DataDir != "/var/lib/gobbler" || c.Server.LogLevel != slog.LevelDebug {
 		t.Errorf("server: %+v", c.Server)
-	}
-	if c.Access != (Access{}) {
-		t.Errorf("access with sign-in configured: %+v", c.Access)
 	}
 	if o := c.OIDC; !o.Configured() || o.Issuer != "https://issuer.example.com" || o.ClientID != "cid" ||
 		o.ClientSecret.Reveal() != "cs" || o.PublicBaseURL != "https://gobbler.example.com" {
@@ -144,8 +142,6 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		env  map[string]string
 		want string
 	}{
-		{"missing team domain", map[string]string{EnvAccessAUD: "a"}, EnvAccessTeamDomain},
-		{"missing aud", map[string]string{EnvAccessTeamDomain: "t"}, EnvAccessAUD},
 		{"bad log level", with(EnvLogLevel, "loud"), EnvLogLevel},
 		{"bad bool", with(EnvDevAuthBypass, "maybe"), EnvDevAuthBypass},
 		{"bad fetch duration", with(EnvFetchTimeout, "soon"), EnvFetchTimeout},
@@ -178,25 +174,24 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"s3 credentials without secret", with(EnvS3Endpoint, "e", EnvS3Region, "r", EnvS3Bucket, "b", EnvS3AccessKeyID, "i"), EnvS3SecretAccessKey},
 		{"s3 bucket without endpoint", with(EnvS3Bucket, "b", EnvS3Region, "r", EnvS3AccessKeyID, "i", EnvS3SecretAccessKey, "s"), EnvS3Endpoint},
 		{"s3 prefix alone", with(EnvS3Prefix, "p"), EnvS3Endpoint},
-		{"oidc issuer alone", with(EnvOIDCIssuer, "https://issuer.example.com"), EnvOIDCClientID},
-		{"oidc without secret", signIn(EnvOIDCClientSecret, ""), EnvOIDCClientSecret},
-		{"oidc without issuer", signIn(EnvOIDCIssuer, ""), EnvOIDCIssuer},
-		{"oidc without base url", signIn(EnvPublicBaseURL, ""), EnvPublicBaseURL},
-		{"oidc base url alone", with(EnvPublicBaseURL, "https://gobbler.example.com"), EnvOIDCIssuer},
-		{"issuer over http", signIn(EnvOIDCIssuer, "http://issuer.example.com"), EnvOIDCIssuer},
-		{"issuer bare host", signIn(EnvOIDCIssuer, "issuer.example.com"), EnvOIDCIssuer},
-		{"issuer with query", signIn(EnvOIDCIssuer, "https://issuer.example.com?x=1"), EnvOIDCIssuer},
-		{"issuer with fragment", signIn(EnvOIDCIssuer, "https://issuer.example.com#f"), EnvOIDCIssuer},
-		{"issuer with credentials", signIn(EnvOIDCIssuer, "https://u:p@issuer.example.com"), EnvOIDCIssuer},
-		{"base url over http", signIn(EnvPublicBaseURL, "http://gobbler.example.com"), EnvPublicBaseURL},
-		{"base url with path", signIn(EnvPublicBaseURL, "https://example.com/gobbler"), EnvPublicBaseURL},
-		{"base url with query", signIn(EnvPublicBaseURL, "https://example.com?x=1"), EnvPublicBaseURL},
-		{"base url bare host", signIn(EnvPublicBaseURL, "gobbler.example.com"), EnvPublicBaseURL},
+		{"oidc issuer alone", map[string]string{EnvOIDCIssuer: "https://issuer.example.com"}, EnvOIDCClientID},
+		{"oidc issuer alone under bypass", map[string]string{EnvDevAuthBypass: "true", EnvOIDCIssuer: "http://127.0.0.1:1"}, EnvOIDCClientID},
+		{"oidc without secret", with(EnvOIDCClientSecret, ""), EnvOIDCClientSecret},
+		{"oidc without issuer", with(EnvOIDCIssuer, ""), EnvOIDCIssuer},
+		{"oidc without base url", with(EnvPublicBaseURL, ""), EnvPublicBaseURL},
+		{"oidc base url alone", map[string]string{EnvPublicBaseURL: "https://gobbler.example.com"}, EnvOIDCIssuer},
+		{"issuer over http", with(EnvOIDCIssuer, "http://issuer.example.com"), EnvOIDCIssuer},
+		{"issuer bare host", with(EnvOIDCIssuer, "issuer.example.com"), EnvOIDCIssuer},
+		{"issuer with query", with(EnvOIDCIssuer, "https://issuer.example.com?x=1"), EnvOIDCIssuer},
+		{"issuer with fragment", with(EnvOIDCIssuer, "https://issuer.example.com#f"), EnvOIDCIssuer},
+		{"issuer with credentials", with(EnvOIDCIssuer, "https://u:p@issuer.example.com"), EnvOIDCIssuer},
+		{"base url over http", with(EnvPublicBaseURL, "http://gobbler.example.com"), EnvPublicBaseURL},
+		{"base url with path", with(EnvPublicBaseURL, "https://example.com/gobbler"), EnvPublicBaseURL},
+		{"base url with query", with(EnvPublicBaseURL, "https://example.com?x=1"), EnvPublicBaseURL},
+		{"base url bare host", with(EnvPublicBaseURL, "gobbler.example.com"), EnvPublicBaseURL},
 		{"session lifetime zero", with(EnvSessionLifetime, "0s"), EnvSessionLifetime},
 		{"session lifetime negative", with(EnvSessionLifetime, "-1h"), EnvSessionLifetime},
 		{"session lifetime in days", with(EnvSessionLifetime, "30d"), EnvSessionLifetime},
-		{"access team domain with sign-in", signIn(EnvAccessTeamDomain, "t"), EnvAccessTeamDomain},
-		{"access aud with sign-in", signIn(EnvAccessAUD, "a"), EnvAccessAUD},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -216,7 +211,7 @@ func TestAllProblemsReportedTogether(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	for _, v := range []string{EnvLogLevel, EnvFetchTimeout, EnvAccessTeamDomain, EnvAccessAUD} {
+	for _, v := range []string{EnvLogLevel, EnvFetchTimeout, EnvOIDCIssuer, EnvOIDCClientID} {
 		if !strings.Contains(err.Error(), v) {
 			t.Errorf("error does not name %s: %v", v, err)
 		}
@@ -243,7 +238,7 @@ func TestDevBypass(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.addr, func(t *testing.T) {
-			// Access settings deliberately absent: not required with bypass.
+			// Sign-in settings deliberately absent: not required with bypass.
 			c, err := loadFrom(env(map[string]string{EnvDevAuthBypass: "true", EnvListenAddr: tt.addr}))
 			if tt.wantErr {
 				if err == nil || !strings.Contains(err.Error(), EnvDevAuthBypass) {
@@ -267,16 +262,6 @@ func TestNonLoopbackAllowedWithoutBypass(t *testing.T) {
 	}
 }
 
-func TestDevBypassIgnoresAccessSettings(t *testing.T) {
-	c, err := loadFrom(env(map[string]string{EnvDevAuthBypass: "1", EnvAccessAUD: "a"}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c.Access != (Access{}) {
-		t.Errorf("access should be cleared under bypass: %+v", c.Access)
-	}
-}
-
 func TestIsLoopbackAddr(t *testing.T) {
 	for addr, want := range map[string]bool{
 		"127.0.0.1:1": true, "[::1]:1": true, "localhost:1": true, "[::1%lo0]:1": true,
@@ -297,7 +282,7 @@ const (
 
 func secretConfig(t *testing.T) Config {
 	t.Helper()
-	c, err := loadFrom(env(signIn(
+	c, err := loadFrom(env(with(
 		EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v", EnvAnthropicAPIKey, secretLLM,
 		EnvS3Endpoint, "e", EnvS3Region, "r", EnvS3Bucket, "b", EnvS3AccessKeyID, secretID, EnvS3SecretAccessKey, secretKey,
 		EnvOIDCClientSecret, secretOIDC,
@@ -376,8 +361,9 @@ func TestErrorsDoNotContainSecrets(t *testing.T) {
 }
 
 func TestLoadReadsProcessEnvironment(t *testing.T) {
-	t.Setenv(EnvAccessTeamDomain, "team")
-	t.Setenv(EnvAccessAUD, "aud")
+	for k, v := range base() {
+		t.Setenv(k, v)
+	}
 	t.Setenv(EnvDataDir, "/d")
 	c, err := Load()
 	if err != nil {
@@ -449,7 +435,7 @@ func TestThumbnailHostIsAnOriginWithoutTrailingSlash(t *testing.T) {
 // character, so it is kept exactly as given, path and trailing slash included.
 func TestOIDCIssuerKeptVerbatim(t *testing.T) {
 	for _, issuer := range []string{"https://issuer.example.com", "https://broker.example.com/dex/", "https://issuer.example.com:8443/realms/home"} {
-		c, err := loadFrom(env(signIn(EnvOIDCIssuer, issuer)))
+		c, err := loadFrom(env(with(EnvOIDCIssuer, issuer)))
 		if err != nil {
 			t.Fatal(err)
 		}

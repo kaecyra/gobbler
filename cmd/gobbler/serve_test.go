@@ -164,10 +164,15 @@ func TestServeRejectsListenFailure(t *testing.T) {
 	}
 }
 
-func TestServeRejectsBadAccessConfig(t *testing.T) {
+// Without the dev bypass the sign-in session is the only identity source
+// (ADR-00030): a configuration with neither never gets as far as listening.
+func TestServeRejectsNoIdentitySource(t *testing.T) {
 	cfg := serveConfig(t)
-	cfg.Server.DevAuthBypass = false // no team domain or AUD
-	if err := serve(testContext(t), cfg, fstest.MapFS{}, tcpListen); err == nil {
-		t.Fatal("want error without Access settings")
+	cfg.Server.DevAuthBypass = false // and no sign-in
+	stop := errors.New("listening")
+	listen := func(context.Context, string) (net.Listener, error) { return nil, stop }
+	err := serve(testContext(t), cfg, fstest.MapFS{}, listen)
+	if err == nil || errors.Is(err, stop) || !strings.Contains(err.Error(), "no identity source") {
+		t.Fatalf("err = %v, want a start-up error naming no identity source", err)
 	}
 }
