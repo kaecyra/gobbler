@@ -221,7 +221,7 @@ func TestHealthDetails(t *testing.T) {
 	}
 }
 
-// The health route is unauthenticated (ADR-00003): whatever the job recorded,
+// The health route is unauthenticated (ADR-00029): whatever the job recorded,
 // only a status word and a timestamp may come out.
 func TestHealthDetailsLeakNothing(t *testing.T) {
 	secrets := []string{"/data/backups/db-2026.sqlite", "my-bucket", "https://s3.example.internal:9000", "AccessDenied: invalid key"}

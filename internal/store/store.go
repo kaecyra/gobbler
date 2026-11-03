@@ -6,7 +6,7 @@
 // storedb by sqlc (ADR-00014).
 //
 // Every write records the verified identity found on the request context
-// (ADR-00003) and fails with ErrNoIdentity when there is none. Every call,
+// (ADR-00030) and fails with ErrNoIdentity when there is none. Every call,
 // read or write, is scoped to the household on the request context
 // (household.FromContext, ADR-00018) and fails with ErrNoHousehold when there
 // is none; a recipe of another household is ErrNotFound, never found. The
