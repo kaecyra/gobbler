@@ -60,3 +60,11 @@ sql:
       go:
         package: apikeydb
         out: internal/apikey/apikeydb
+  - name: oauth
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/oauth/queries
+    gen:
+      go:
+        package: oauthdb
+        out: internal/oauth/oauthdb

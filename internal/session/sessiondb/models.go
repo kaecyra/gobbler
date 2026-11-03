@@ -158,6 +158,45 @@ type Note struct {
 	Pinned      int64
 }
 
+type OauthClient struct {
+	ClientID     string
+	ClientName   string
+	RedirectUris string
+	CreatedAt    string
+}
+
+type OauthCode struct {
+	CodeHash      []byte
+	OwnerEmail    string
+	ClientID      string
+	ClientName    string
+	RedirectUri   string
+	CodeChallenge string
+	Resource      string
+	CreatedAt     string
+	ExpiresAt     string
+	GrantID       sql.NullInt64
+}
+
+type OauthGrant struct {
+	ID         int64
+	OwnerEmail string
+	ClientID   string
+	ClientName string
+	ReturnHost string
+	Resource   string
+	CreatedAt  string
+}
+
+type OauthToken struct {
+	ID        int64
+	GrantID   int64
+	Kind      string
+	TokenHash []byte
+	ExpiresAt string
+	UsedAt    sql.NullString
+}
+
 type Profile struct {
 	Email       string
 	Address     string

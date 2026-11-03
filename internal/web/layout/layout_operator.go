@@ -44,7 +44,8 @@ const ProfilePath = "/profile"
 
 // publicPages are the exact paths served to a request without an identity
 // (ADR-00029): the health check, /canada, and sign-in with its callback
-// (ADR-00030). Paths are written out, not imported, for the same reason
+// (ADR-00030); the OAuth endpoints (ADR-00034) are appended by the init below.
+// Paths are written out, not imported, for the same reason
 // navItems' are (ADR-00012); package web checks that its health route is
 // listed.
 var publicPages = []string{"/healthz", CanadaPath, SignInPath, CallbackPath}
@@ -165,3 +166,22 @@ const BearerPath = "/mcp"
 func IsBearerPath(p string) bool {
 	return p == BearerPath || strings.HasPrefix(p, BearerPath+"/")
 }
+
+// oauthPublicPages are the OAuth server's endpoints that are served without an
+// identity (ADR-00034, amending ADR-00029): the discovery documents, client
+// registration and the token endpoint. A client calls them before any person has
+// signed in, and the token endpoint authenticates by the code or refresh token
+// it is given. The authorization endpoint, /oauth/authorize, is not here: it
+// needs a session. Package web/oauth serves them, and its tests check that each
+// of its routes but that one is public.
+var oauthPublicPages = []string{
+	"/.well-known/oauth-protected-resource",
+	"/.well-known/oauth-protected-resource/mcp",
+	"/.well-known/oauth-authorization-server",
+	"/oauth/register",
+	"/oauth/token",
+}
+
+// init adds the OAuth endpoints to publicPages. The wave-11 nodes each add
+// their own paths in their own init, so none edits another's line.
+func init() { publicPages = append(publicPages, oauthPublicPages...) }
