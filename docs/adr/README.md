@@ -24,7 +24,7 @@ index below in the same commit.
 | [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Accepted |
 | [00008](00008-ingredient-catalog.md) | Canonical ingredient catalog: curated seed plus USDA FoodData Central | Accepted |
 | [00009](00009-shopping-list.md) | Shopping list aggregation, pantry, live view, Todoist push | Amended by [00018](00018-households-as-tenants.md) |
-| [00010](00010-backups.md) | Nightly SQLite snapshot to S3-compatible storage | Accepted |
+| [00010](00010-backups.md) | Nightly SQLite snapshot to S3-compatible storage | Amended by [00033](00033-media-object-storage.md) |
 | [00011](00011-v1-scope-and-deferrals.md) | Scope and deferrals | Amended by [00018](00018-households-as-tenants.md), [00021](00021-youtube-video-on-a-recipe.md) |
 | [00012](00012-web-subpackage-per-feature.md) | Web layer as a server package plus one subpackage per feature area | Accepted |
 | [00013](00013-playwright-e2e-in-node.md) | End-to-end tests with Node Playwright under e2e/ | Accepted |
@@ -32,7 +32,7 @@ index below in the same commit.
 | [00015](00015-immutability-at-the-store-api.md) | History immutability is enforced by the store API, not the database | Accepted |
 | [00016](00016-cross-origin-protection.md) | Cross-origin requests are refused by Fetch metadata, with a SameSite=Lax session cookie | Accepted |
 | [00017](00017-cloudflared-on-the-guest.md) | cloudflared runs on the VM guest; Compose publishes gobbler on loopback only | Amended by [00027](00027-publish-on-all-interfaces.md) |
-| [00018](00018-households-as-tenants.md) | Households are tenants; a household has several members | Accepted |
+| [00018](00018-households-as-tenants.md) | Households are tenants; a household has several members | Amended by [00031](00031-api-keys.md), [00032](00032-profiles.md) |
 | [00019](00019-sized-equipment-flag.md) | Equipment carries a hand-set `sized` flag that drives the scaled view's larger-pan hint | Accepted |
 | [00020](00020-ingest-step-graph-gap-fill-review.md) | Ingest infers the step graph by rules then LLM, the LLM fills only gaps, and review reuses the editor | Accepted |
 | [00021](00021-youtube-video-on-a-recipe.md) | A recipe may carry a YouTube video, played only on click, with its thumbnail stored in SQLite | Amended by [00023](00023-video-from-a-page-embed.md) |
@@ -44,7 +44,10 @@ index below in the same commit.
 | [00027](00027-publish-on-all-interfaces.md) | Compose publishes gobbler on all interfaces of the VM | Accepted |
 | [00028](00028-invitation-codes.md) | An invitation is addressed by a random eight-character base62 code | Accepted |
 | [00029](00029-public-paths.md) | A fixed set of public paths is served without an identity | Amended by [00030](00030-google-sign-in.md) |
-| [00030](00030-google-sign-in.md) | The app signs people in over OpenID Connect, with Google; Cloudflare Access is removed | Accepted |
+| [00030](00030-google-sign-in.md) | The app signs people in over OpenID Connect, with Google; Cloudflare Access is removed | Amended by [00031](00031-api-keys.md), [00032](00032-profiles.md) |
+| [00031](00031-api-keys.md) | Personal and household API keys authenticate the machine-facing surface | Accepted |
+| [00032](00032-profiles.md) | Everyone has a profile, and one visibility rule decides what a viewer sees | Accepted |
+| [00033](00033-media-object-storage.md) | Uploaded media is processed to WebP and kept in S3-compatible object storage | Accepted |
 
 ## What needs one
 

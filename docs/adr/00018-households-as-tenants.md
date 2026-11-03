@@ -1,6 +1,6 @@
 # ADR-00018: Households are tenants; a household has several members
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00031](00031-api-keys.md), [ADR-00032](00032-profiles.md)
 
 **Date:** 2026-10-12
 
