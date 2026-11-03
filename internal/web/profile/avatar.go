@@ -229,8 +229,10 @@ func (h *handler) avatarPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 // avatarStatus is the fragment the section loads and, while a picture is being
-// processed, polls. When a job it was told was queued has finished, it asks
-// htmx to reload the page so the new avatar shows.
+// processed, polls. The page says which avatar it was drawn with (has, the key
+// or empty); when the profile's has moved on, the page is stale and the
+// response asks htmx to reload it. Comparing, rather than watching for a job to
+// finish, covers a job that finished before the page's first request.
 func (h *handler) avatarStatus(w http.ResponseWriter, r *http.Request) {
 	s, ok := self(w, r)
 	if !ok {
@@ -241,8 +243,9 @@ func (h *handler) avatarStatus(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
-	if !found && r.URL.Query().Get("was") == domain.JobQueued {
+	has := r.URL.Query().Get("has")
+	if has != s.Profile.Avatar {
 		w.Header().Set("HX-Refresh", "true")
 	}
-	layout.Render(w, r, http.StatusOK, statusFragment(newStatusView(s.Profile.Address, j, found)))
+	layout.Render(w, r, http.StatusOK, statusFragment(newStatusView(s.Profile.Address, j, found, has)))
 }

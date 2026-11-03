@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"net/url"
 	"strconv"
 
 	"github.com/kaecyra/gobbler/internal/media"
@@ -14,17 +15,28 @@ type statusView struct {
 	State string
 	// Error is why the last attempt failed, for the person.
 	Error string
+	// Has is the avatar key the page was drawn with, echoed back on each poll.
+	Has string
 }
 
-func newStatusView(address string, j domain.Job, found bool) statusView {
+func newStatusView(address string, j domain.Job, found bool, has string) statusView {
 	if !found {
-		return statusView{Address: address}
+		return statusView{Address: address, Has: has}
 	}
-	return statusView{Address: address, State: j.State, Error: j.Error}
+	return statusView{Address: address, State: j.State, Error: j.Error, Has: has}
 }
 
-func (v statusView) statusPath() string { return v.path("avatar/status") }
-func (v statusView) cropPath() string   { return v.path("avatar/crop") }
+// statusPath is the status fragment's address, carrying the avatar the page
+// shows so the server can tell when the page is out of date.
+func (v statusView) statusPath() string {
+	return v.path("avatar/status") + "?has=" + url.QueryEscape(v.Has)
+}
+
+// statusSrc is the same address for the section's first request.
+func statusSrc(v pageView) string {
+	return v.sectionPath("avatar/status") + "?has=" + url.QueryEscape(v.Shown.Avatar)
+}
+func (v statusView) cropPath() string { return v.path("avatar/crop") }
 func (v statusView) path(section string) string {
 	return Pattern + "/" + v.Address + "/" + section
 }

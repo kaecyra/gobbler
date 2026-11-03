@@ -284,13 +284,18 @@ func TestStatusFragmentFollowsTheJobAndRefreshesWhenItIsDone(t *testing.T) {
 	if body := frag("").Body.String(); !strings.Contains(body, `data-state="uploaded"`) || !strings.Contains(body, path+"/avatar/crop") {
 		t.Errorf("uploaded: %s", body)
 	}
-	// Finished while the page was polling: ask htmx to reload.
+	// The job finishes while the page, drawn without an avatar, is still
+	// loading: its status request must tell it to reload, not leave it stale.
 	a.uploadAndCrop(t, auth.DevEmail, path)
-	rec := frag("?was=queued")
-	if rec.Header().Get("HX-Refresh") != "true" {
-		t.Errorf("a finished job did not ask for a refresh; headers = %v", rec.Header())
+	if rec := frag("?has="); rec.Header().Get("HX-Refresh") != "true" {
+		t.Errorf("a page drawn before the avatar was not told to reload; headers = %v", rec.Header())
 	}
-	if frag("").Header().Get("HX-Refresh") != "" {
-		t.Error("a plain status request asked for a refresh")
+	page := as(a.h, http.MethodGet, path, auth.DevEmail, nil).Body.String()
+	m := regexp.MustCompile(`avatar/status\?has=([^"]+)"`).FindStringSubmatch(page)
+	if m == nil {
+		t.Fatalf("the page's status request names no avatar:\n%s", page)
+	}
+	if rec := frag("?has=" + m[1]); rec.Header().Get("HX-Refresh") != "" {
+		t.Error("a page drawn with the current avatar was told to reload")
 	}
 }

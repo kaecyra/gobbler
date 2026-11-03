@@ -159,9 +159,18 @@ func TestAvatarRoutesTakeAPictureThroughCropToAServedWebP(t *testing.T) {
 	if body := s.get(path, "bob@example.com").Body.String(); !strings.Contains(body, `data-testid="profile-avatar-img"`) {
 		t.Errorf("another person's view of the profile has no uploaded avatar:\n%s", body)
 	}
-	// Once processed, the status fragment of a polling page asks for a reload.
-	if rec := s.get(path+"/avatar/status?was=queued", me); rec.Header().Get("HX-Refresh") != "true" {
-		t.Error("a finished job did not ask the polling page to reload")
+	// A page drawn before the avatar existed is stale, even if the job finished
+	// before its first status request; one drawn with the current avatar is not.
+	if rec := s.get(path+"/avatar/status?has=", me); rec.Header().Get("HX-Refresh") != "true" {
+		t.Error("a stale page was not told to reload")
+	}
+	own := s.get(path, me).Body.String()
+	has := regexp.MustCompile(`avatar/status\?has=([^"]+)"`).FindStringSubmatch(own)
+	if has == nil {
+		t.Fatalf("the page's status request names no avatar:\n%s", own)
+	}
+	if rec := s.get(path+"/avatar/status?has="+has[1], me); rec.Header().Get("HX-Refresh") != "" {
+		t.Error("an up-to-date page was told to reload")
 	}
 	// Revalidation.
 	req := httptest.NewRequest(http.MethodGet, path+"/avatar", nil)
@@ -241,7 +250,7 @@ func TestStatusFragmentShowsEachState(t *testing.T) {
 		domain.JobQueued: `hx-trigger="every 2s"`, domain.JobFailed: "Try the crop again",
 	} {
 		var body bytes.Buffer
-		v := newStatusView("addr", domain.Job{State: state, Error: "boom"}, state != "")
+		v := newStatusView("addr", domain.Job{State: state, Error: "boom"}, state != "", "")
 		if err := statusFragment(v).Render(context.Background(), &body); err != nil {
 			t.Fatal(err)
 		}

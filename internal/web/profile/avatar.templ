@@ -17,7 +17,7 @@ templ avatarSection(v pageView) {
 			<button type="submit" class="btn accent">Upload</button>
 		</form>
 		<p class="muted">JPEG, PNG, GIF, WebP, HEIC or AVIF, up to { maxUploadMB } MB. You choose the square to keep on the next step.</p>
-		<div id="avatar-status" data-testid="avatar-status" hx-get={ v.sectionPath("avatar/status") } hx-trigger="load" hx-swap="outerHTML"></div>
+		<div id="avatar-status" data-testid="avatar-status" hx-get={ statusSrc(v) } hx-trigger="load" hx-swap="outerHTML"></div>
 	</section>
 }
 
@@ -26,7 +26,7 @@ templ avatarSection(v pageView) {
 templ statusFragment(v statusView) {
 	switch v.State {
 		case "queued":
-			<div id="avatar-status" data-testid="avatar-status" data-state="queued" role="status" hx-get={ v.statusPath() + "?was=queued" } hx-trigger="every 2s" hx-swap="outerHTML">
+			<div id="avatar-status" data-testid="avatar-status" data-state="queued" role="status" hx-get={ v.statusPath() } hx-trigger="every 2s" hx-swap="outerHTML">
 				<p>Processing your picture. This page updates when it is ready.</p>
 			</div>
 		case "uploaded":

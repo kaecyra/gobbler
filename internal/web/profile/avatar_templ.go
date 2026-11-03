@@ -80,9 +80,9 @@ func avatarSection(v pageView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.sectionPath("avatar/status"))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(statusSrc(v))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/avatar.templ`, Line: 20, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/avatar.templ`, Line: 20, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -126,9 +126,9 @@ func statusFragment(v statusView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.statusPath() + "?was=queued")
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.statusPath())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/avatar.templ`, Line: 29, Col: 128}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/avatar.templ`, Line: 29, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
