@@ -17,6 +17,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/media"
+	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -45,6 +47,9 @@ func testRouter(t *testing.T, cfg config.Config, d Deps) *chi.Mux {
 	quiet := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	if d.DB == nil {
 		d.DB = testDB(t)
+	}
+	if d.Avatars == nil {
+		d.Avatars = testAvatars(t, d.DB)
 	}
 	var opts []auth.Option
 	if cfg.OIDC.Configured() {
@@ -75,6 +80,13 @@ func testRouter(t *testing.T, cfg config.Config, d Deps) *chi.Mux {
 }
 
 // testDB is a real SQLite file migrated as the binary does.
+// testAvatars is the avatar service over a media directory of the test's own,
+// the explicit store every test router is given (the router requires one).
+func testAvatars(t *testing.T, d *sql.DB) *profile.Avatars {
+	t.Helper()
+	return profile.NewAvatars(context.Background(), profile.New(d), media.NewLocal(t.TempDir()), slog.New(slog.NewJSONHandler(io.Discard, nil)))
+}
+
 func testDB(t *testing.T) *sql.DB {
 	t.Helper()
 	ctx := context.Background()

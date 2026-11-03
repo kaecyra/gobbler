@@ -15,6 +15,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/media"
+	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/web"
 )
 
@@ -41,7 +43,7 @@ func TestPromotionRepointsTheDuplicatesRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router, err := web.New(web.Deps{Config: cfg, DB: d, Auth: a})
+	router, err := web.New(web.Deps{Config: cfg, DB: d, Auth: a, Avatars: profile.NewAvatars(ctx, profile.New(d), media.NewLocal(t.TempDir()), nil)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -78,6 +78,10 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	if deps.Auth, err = auth.New(cfg, authOpts...); err != nil {
 		return err
 	}
+	if deps.Avatars, err = startAvatars(ctx, cfg, d); err != nil {
+		return err
+	}
+	defer deps.Avatars.Wait() // before the database closes
 	handler, err := web.New(deps)
 	if err != nil {
 		return err

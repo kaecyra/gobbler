@@ -252,6 +252,14 @@ const PROBES: Probe[] = [
   // Through OTHER's own profile the self-only check passes, so the key's owner is what refuses it
   // (and for STRANGER it is not their address, so the self-only check does).
   unaddressed('POST', (i) => `/profile/${i.otherProfile}/keys/${i.personalKey}/revoke`),
+  // The avatar (ADR-00033): the picture is served to anyone the visibility rule shows
+  // it to, the rest is the person's own; a guessed address finds nothing on any of them.
+  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/avatar`),
+  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/avatar`),
+  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/avatar/crop`),
+  unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/avatar/crop`),
+  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/avatar/preview/${GUESSED_PROFILE}`),
+  unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/avatar/status`),
 ];
 
 let work: Workdir | undefined;

@@ -48,6 +48,7 @@ const (
 	EnvS3Prefix            = "GOBBLER_S3_PREFIX"
 	EnvS3AccessKeyID       = "GOBBLER_S3_ACCESS_KEY_ID"
 	EnvS3SecretAccessKey   = "GOBBLER_S3_SECRET_ACCESS_KEY"
+	EnvS3MediaBucket       = "GOBBLER_S3_MEDIA_BUCKET"
 )
 
 // LLM provider names accepted by EnvLLMProvider.
@@ -190,10 +191,28 @@ type S3 struct {
 	Prefix          string
 	AccessKeyID     Secret
 	SecretAccessKey Secret
+	// MediaBucket is the bucket uploaded media lives in (ADR-00033), on the
+	// same endpoint and credentials as the backups. Empty keeps media in a
+	// directory under the data directory.
+	MediaBucket string
 }
 
 // Configured reports whether remote backups are enabled.
 func (s S3) Configured() bool { return s.Endpoint != "" }
+
+// HostTLS splits Endpoint into the host and whether to use TLS. The endpoint
+// may carry an http:// or https:// scheme; without one TLS is used.
+func (s S3) HostTLS() (host string, secure bool, err error) {
+	switch {
+	case strings.HasPrefix(s.Endpoint, "https://"):
+		return strings.TrimPrefix(s.Endpoint, "https://"), true, nil
+	case strings.HasPrefix(s.Endpoint, "http://"):
+		return strings.TrimPrefix(s.Endpoint, "http://"), false, nil
+	case strings.Contains(s.Endpoint, "://"):
+		return "", false, fmt.Errorf("S3 endpoint %q: only http and https are supported", s.Endpoint)
+	}
+	return s.Endpoint, true, nil
+}
 
 // Load reads the process environment and validates it. The error names every
 // offending variable.
@@ -329,8 +348,9 @@ func (r *reader) backup(b *Backup) {
 	s.Prefix = r.str(EnvS3Prefix, "")
 	s.AccessKeyID = Secret{r.str(EnvS3AccessKeyID, "")}
 	s.SecretAccessKey = Secret{r.str(EnvS3SecretAccessKey, "")}
+	s.MediaBucket = r.str(EnvS3MediaBucket, "")
 
-	anySet := s.Endpoint != "" || s.Region != "" || s.Bucket != "" || s.Prefix != "" ||
+	anySet := s.Endpoint != "" || s.Region != "" || s.Bucket != "" || s.Prefix != "" || s.MediaBucket != "" ||
 		s.AccessKeyID.IsSet() || s.SecretAccessKey.IsSet()
 	if !anySet {
 		return // local-only backups

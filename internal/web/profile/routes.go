@@ -42,6 +42,8 @@ type Deps struct {
 	Config     config.Config
 	// Sessions is nil when sign-in is not mounted (package web checks).
 	Sessions *session.Store
+	// Avatars runs avatar uploads and serves their pictures (ADR-00033).
+	Avatars *domain.Avatars
 }
 
 type handler struct{ Deps }
@@ -61,6 +63,7 @@ func Routes(d Deps) chi.Router {
 	r.Route("/{address}", func(r chi.Router) {
 		r.Use(h.subject)
 		r.Get("/", h.show)
+		h.avatarServeRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(selfOnly)
 			h.selfRoutes(r)
@@ -76,6 +79,7 @@ func (h *handler) selfRoutes(r chi.Router) {
 	h.nameRoutes(r)
 	h.sessionsRoutes(r)
 	h.keysRoutes(r)
+	h.avatarRoutes(r)
 }
 
 // redirectTo sends the browser to a profile page.

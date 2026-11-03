@@ -21,6 +21,19 @@ type ApiKey struct {
 	LastUsedAt  sql.NullString
 }
 
+type AvatarJob struct {
+	Email     string
+	ID        string
+	State     string
+	CropX     float64
+	CropY     float64
+	CropW     float64
+	CropH     float64
+	Error     string
+	CreatedAt string
+	UpdatedAt string
+}
+
 type Component struct {
 	ID          int64
 	HouseholdID int64

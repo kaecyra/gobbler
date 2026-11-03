@@ -18,6 +18,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -59,6 +60,11 @@ type Deps struct {
 	// BackupSecrets are the credential values redacted from the backup error
 	// the settings page shows.
 	BackupSecrets []string
+	// Avatars runs avatar uploads (ADR-00033). It is required: the server
+	// builds it over the configured media store and resumes interrupted jobs
+	// before mounting the pages, and a nil one would mean a store chosen here,
+	// not by the configuration.
+	Avatars *profile.Avatars
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -78,6 +84,9 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 	if d.DB == nil {
 		return nil, errors.New("web: a database is required")
+	}
+	if d.Avatars == nil {
+		return nil, errors.New("web: the avatar service is required")
 	}
 	if d.Config.OIDC.Configured() != (d.SignIn != nil) {
 		return nil, errors.New("web: the sign-in routes are required exactly when sign-in is configured")
@@ -106,6 +115,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		r.Use(markSignIn)
 	}
 	r.Use(d.Auth.Middleware(layout.IsPublic), membership(members, d.Config.Operator), cop.Handler)
+	r.Use(avatarSource(d.DB, log))
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})

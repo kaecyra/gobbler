@@ -136,6 +136,24 @@ func (s *Store) ByAddress(ctx context.Context, address string) (Profile, error) 
 	return convert(row)
 }
 
+// ByEmail returns the profile of the email, or ErrNotFound when the person has
+// not opened theirs yet. Unlike Ensure it never writes, so a page that only
+// wants the avatar can ask on every request.
+func (s *Store) ByEmail(ctx context.Context, email string) (Profile, error) {
+	e, err := normalise(email)
+	if err != nil {
+		return Profile{}, err
+	}
+	row, err := s.q.GetProfileByEmail(ctx, e)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Profile{}, fmt.Errorf("profile of %s: %w", e, ErrNotFound)
+	}
+	if err != nil {
+		return Profile{}, fmt.Errorf("read profile of %s: %w", e, err)
+	}
+	return convert(row)
+}
+
 // Rename sets the display name of the email's profile. The name is trimmed;
 // an empty one clears it, so the page shows the email's local part again. A
 // name longer than MaxNameRunes or holding a control character is ErrInvalid.
