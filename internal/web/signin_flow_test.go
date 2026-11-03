@@ -60,7 +60,7 @@ func newSignInSite(t *testing.T, bypass bool, lifetime time.Duration) *signInSit
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.r, err = newRouter(Deps{Config: cfg, DB: s.db, Auth: a, SignIn: si, Sessions: s.sessions, Logger: logger}); err != nil {
+	if s.r, err = newRouter(Deps{Config: cfg, DB: s.db, Avatars: testAvatars(t, s.db), Auth: a, SignIn: si, Sessions: s.sessions, Logger: logger}); err != nil {
 		t.Fatal(err)
 	}
 	return s
@@ -362,13 +362,14 @@ func TestRouterLogsNoSignInSecrets(t *testing.T) {
 
 func TestNewRequiresSignInExactlyWhenConfigured(t *testing.T) {
 	d := testDB(t)
+	av := testAvatars(t, d)
 	a, err := auth.New(devConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg := devConfig()
 	cfg.OIDC = config.OIDC{Issuer: "https://issuer.test", ClientID: "c", PublicBaseURL: "https://gobbler.test"}
-	if _, err := newRouter(Deps{Config: cfg, DB: d, Auth: a}); err == nil {
+	if _, err := newRouter(Deps{Config: cfg, DB: d, Avatars: av, Auth: a}); err == nil {
 		t.Error("sign-in configured without its routes: want an error")
 	}
 	sessions, err := session.New(d, time.Hour)
@@ -379,17 +380,33 @@ func TestNewRequiresSignInExactlyWhenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Auth: a, SignIn: si, Sessions: sessions}); err == nil {
+	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Avatars: av, Auth: a, SignIn: si, Sessions: sessions}); err == nil {
 		t.Error("sign-in routes without sign-in configured: want an error")
 	}
 	// Without the store, removing a member would leave their sessions alive.
-	if _, err := newRouter(Deps{Config: cfg, DB: d, Auth: a, SignIn: si}); err == nil {
+	if _, err := newRouter(Deps{Config: cfg, DB: d, Avatars: av, Auth: a, SignIn: si}); err == nil {
 		t.Error("sign-in without its session store: want an error")
 	}
-	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Auth: a, Sessions: sessions}); err == nil {
+	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Avatars: av, Auth: a, Sessions: sessions}); err == nil {
 		t.Error("a session store without sign-in: want an error")
 	}
-	if _, err := newRouter(Deps{Config: cfg, DB: d, Auth: a, SignIn: si, Sessions: sessions}); err != nil {
+	if _, err := newRouter(Deps{Config: cfg, DB: d, Avatars: av, Auth: a, SignIn: si, Sessions: sessions}); err != nil {
 		t.Errorf("sign-in with its routes and store: %v", err)
+	}
+}
+
+// There is no default media store: one the configuration did not choose would
+// ignore a media bucket and never resume interrupted jobs (ADR-00033).
+func TestNewRequiresTheAvatarService(t *testing.T) {
+	d := testDB(t)
+	a, err := auth.New(devConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Auth: a}); err == nil || !strings.Contains(err.Error(), "avatar") {
+		t.Errorf("no avatar service: err = %v, want one naming it", err)
+	}
+	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Auth: a, Avatars: testAvatars(t, d)}); err != nil {
+		t.Errorf("with the avatar service: %v", err)
 	}
 }

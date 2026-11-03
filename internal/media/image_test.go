@@ -3,12 +3,14 @@ package media
 import (
 	"bytes"
 	"encoding/binary"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -120,7 +122,7 @@ func TestAvatarIsLossyWebPWithinBoundsAndHasNoMetadata(t *testing.T) {
 			t.Errorf("stored avatar has a %q chunk; chunks = %v", c, chunks)
 		}
 	}
-	if !slicesContains(chunks, "VP8 ") {
+	if !slices.Contains(chunks, "VP8 ") {
 		t.Errorf("want a lossy VP8 chunk, chunks = %v", chunks)
 	}
 	for _, leak := range []string{"Exif", "GPS", "ICC_PROFILE", "xmpmeta", "SECRETPLACE"} {
@@ -135,15 +137,6 @@ func TestAvatarIsLossyWebPWithinBoundsAndHasNoMetadata(t *testing.T) {
 	if got.Width != 1024 || got.Height != 683 {
 		t.Errorf("size = %dx%d, want 1024x683", got.Width, got.Height)
 	}
-}
-
-func slicesContains(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }
 
 func TestAvatarAppliesTheCropAndNeverScalesUp(t *testing.T) {
@@ -221,6 +214,44 @@ func TestDecodeRefusals(t *testing.T) {
 		}
 		if msg, ok := RefusalText(err); !ok || !strings.Contains(msg, tc.want) {
 			t.Errorf("%s: %v, want a refusal mentioning %q", name, err, tc.want)
+		}
+	}
+}
+
+// hugePNG is a few dozen bytes whose header declares w by h pixels. Decoding it
+// for real would allocate hundreds of megabytes, which is what the check must
+// prevent.
+func hugePNG(w, h uint32) []byte {
+	ihdr := make([]byte, 13)
+	binary.BigEndian.PutUint32(ihdr[0:], w)
+	binary.BigEndian.PutUint32(ihdr[4:], h)
+	ihdr[8], ihdr[9] = 8, 2 // 8 bits per channel, truecolour
+	chunk := func(name string, data []byte) []byte {
+		out := binary.BigEndian.AppendUint32(nil, uint32(len(data)))
+		out = append(out, name...)
+		out = append(out, data...)
+		return binary.BigEndian.AppendUint32(out, crc32.ChecksumIEEE(append([]byte(name), data...)))
+	}
+	b := []byte("\x89PNG\r\n\x1a\n")
+	b = append(b, chunk("IHDR", ihdr)...)
+	return append(b, chunk("IEND", nil)...)
+}
+
+func TestDecodeRefusesAPictureThatDeclaresTooManyPixels(t *testing.T) {
+	data := hugePNG(8000, 8000) // 64 million pixels in 57 bytes
+	if len(data) > 100 {
+		t.Fatalf("fixture is %d bytes, want a tiny file", len(data))
+	}
+	_, err := Decode(data)
+	msg, ok := RefusalText(err)
+	if !ok || !strings.Contains(msg, "too large") {
+		t.Errorf("Decode = %v, want a refusal saying it is too large", err)
+	}
+	// Just inside the limit gets past the check (and fails later, as the file
+	// has no pixel data): the limit is on pixels, not on the header.
+	if _, err := Decode(hugePNG(5000, 5000)); err != nil {
+		if msg, _ := RefusalText(err); strings.Contains(msg, "too large") {
+			t.Errorf("25 million pixels refused as too large: %q", msg)
 		}
 	}
 }

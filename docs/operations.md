@@ -311,8 +311,7 @@ interface with two implementations:
   bucket), media is kept under `<data dir>/media/`, which is `/data/media/` in
   the container, on the `gobbler-data` volume. Development, the e2e suite and a
   deployment with no S3 work this way. Moving to S3 later does not copy what is
-  already there: an avatar not in the bucket shows as the default one until it
-  is uploaded again.
+  already there; those avatars are as good as lost (see below).
 
 The storage server is never exposed. gobbler reads the bytes itself and serves
 them after the same admission as the page that shows them, so no URL points at
@@ -322,8 +321,11 @@ the bucket; keep the endpoint reachable from the gobbler host only.
 `gobbler.db` alone (see [Backups](#backups)), so a restore brings back every
 profile and its avatar reference but not the pictures. If the storage server or
 the local volume is lost, the pictures are lost with it. For avatars that is
-accepted: people upload them again. The local directory sits on the same volume
-as the database, so it protects against nothing that the volume does not.
+accepted: people upload them again. Until they do, a profile whose avatar
+object is gone shows a broken image where the avatar was (the app answers 404
+for it); uploading a new picture replaces the reference and fixes it. The local
+directory sits on the same volume as the database, so it protects against
+nothing that the volume does not.
 
 A job the app was stopped in the middle of, a picture cropped but not yet
 processed, runs again when `gobbler serve` starts; the original upload is kept

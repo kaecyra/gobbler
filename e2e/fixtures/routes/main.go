@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -21,6 +22,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/media"
+	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web"
 	"github.com/kaecyra/gobbler/internal/web/signin"
@@ -82,7 +85,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	h, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn, SignIn: signIn, Sessions: sessions})
+	h, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn, SignIn: signIn, Sessions: sessions,
+		Avatars: profile.NewAvatars(ctx, profile.New(d), media.NewLocal(filepath.Join(dir, media.LocalDirName)), nil)})
 	if err != nil {
 		return err
 	}

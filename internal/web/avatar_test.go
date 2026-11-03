@@ -150,20 +150,25 @@ func TestAvatarFlowStoresAWebPThatTheAppServes(t *testing.T) {
 	}
 }
 
+// ADR-00033 obligation 4: a member of another household fetches a person's
+// avatar by its address only where the visibility rule allows it. The expected
+// status comes from the rule itself, so the test says 404 the day the rule
+// hides the avatar and 200 while it does not; it never skips.
 func TestAnotherHouseholdsMemberFetchesTheAvatarOnlyWhereTheRuleAllows(t *testing.T) {
 	a := newAvatarRig(t)
 	path := profileOf(t, a.h, auth.DevEmail)
 	a.uploadAndCrop(t, auth.DevEmail, path)
 
-	// Today the rule shows the avatar to every relation that reaches a profile;
-	// the handler asks it, so this is the rule's answer, not a bypass.
-	if !profile.Visible(profile.Other, profile.FieldAvatar) {
-		t.Skip("the visibility rule hides the avatar from other people; the next assertions assume it does not")
+	for viewer, rel := range map[string]profile.Relation{auth.DevEmail: profile.Self, auth.DevOtherEmail: profile.Other} {
+		want := http.StatusNotFound
+		if profile.Visible(rel, profile.FieldAvatar) {
+			want = http.StatusOK
+		}
+		if rec := as(a.h, http.MethodGet, path+"/avatar", viewer, nil); rec.Code != want {
+			t.Errorf("%s (%s) GET avatar = %d, want %d from the visibility rule", viewer, rel, rec.Code, want)
+		}
 	}
-	if rec := as(a.h, http.MethodGet, path+"/avatar", auth.DevOtherEmail, nil); rec.Code != http.StatusOK {
-		t.Errorf("another household's member = %d, want 200 where Visible allows", rec.Code)
-	}
-	// By address only: a guessed one, and the storage key, give nothing.
+	// By address only: a guessed one, and a storage key, give nothing.
 	for _, p := range []string{"/profile/AAAAAAAAAAAAAAAAAAAAAA/avatar", "/profile/" + strings.Repeat("A", 22) + "/avatar/../../x", "/profile/not-an-address/avatar"} {
 		if rec := as(a.h, http.MethodGet, p, auth.DevOtherEmail, nil); rec.Code != http.StatusNotFound {
 			t.Errorf("GET %s = %d, want 404", p, rec.Code)

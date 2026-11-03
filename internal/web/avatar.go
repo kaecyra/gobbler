@@ -6,10 +6,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 
 	"github.com/kaecyra/gobbler/internal/auth"
-	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	webprofile "github.com/kaecyra/gobbler/internal/web/profile"
@@ -46,15 +44,4 @@ func avatarSource(d *sql.DB, log *slog.Logger) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(layout.WithAvatarSource(r.Context(), find)))
 		})
 	}
-}
-
-// avatarsFor is the avatar service of the profile pages: the one the server
-// built and started, or a local-directory one with no resumption when the
-// caller gave none.
-func avatarsFor(d Deps) *profile.Avatars {
-	if d.Avatars != nil {
-		return d.Avatars
-	}
-	local := media.NewLocal(filepath.Join(d.Config.Server.DataDir, media.LocalDirName))
-	return profile.NewAvatars(context.Background(), profile.New(d.DB), local, d.Logger)
 }

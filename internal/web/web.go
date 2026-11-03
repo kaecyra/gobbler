@@ -60,9 +60,10 @@ type Deps struct {
 	// BackupSecrets are the credential values redacted from the backup error
 	// the settings page shows.
 	BackupSecrets []string
-	// Avatars runs avatar uploads (ADR-00033); the server starts it so it can
-	// resume interrupted jobs. When nil, the profile pages use a local
-	// directory under the data directory.
+	// Avatars runs avatar uploads (ADR-00033). It is required: the server
+	// builds it over the configured media store and resumes interrupted jobs
+	// before mounting the pages, and a nil one would mean a store chosen here,
+	// not by the configuration.
 	Avatars *profile.Avatars
 }
 
@@ -83,6 +84,9 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 	if d.DB == nil {
 		return nil, errors.New("web: a database is required")
+	}
+	if d.Avatars == nil {
+		return nil, errors.New("web: the avatar service is required")
 	}
 	if d.Config.OIDC.Configured() != (d.SignIn != nil) {
 		return nil, errors.New("web: the sign-in routes are required exactly when sign-in is configured")

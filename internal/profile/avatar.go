@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 
 	"github.com/kaecyra/gobbler/internal/db"
@@ -275,7 +276,7 @@ func (a *Avatars) run(ctx context.Context, email string) {
 	if j.State != JobQueued {
 		return
 	}
-	key, err := a.process(ctx, email, j)
+	key, err := a.safeProcess(ctx, email, j)
 	if err != nil {
 		if ctx.Err() != nil {
 			// Stopping, not failing: the job stays queued and runs on the next start.
@@ -299,6 +300,21 @@ func (a *Avatars) fail(ctx context.Context, email, id, msg string) error {
 	return db.WithTx(ctx, a.s.db, a.s.q, func(q *profiledb.Queries, _ *sql.Tx) error {
 		return q.FailAvatarJob(ctx, profiledb.FailAvatarJobParams{Error: msg, Now: a.s.stamp(), Email: email, ID: id})
 	})
+}
+
+// safeProcess is process with a panic turned into an error. A decoder or
+// encoder that panics on a hostile or odd file must fail that job, not the
+// server: Resume would run the same job again at every start and the app would
+// crash-loop. The original is untouched, since process only discards it after
+// the result is recorded.
+func (a *Avatars) safeProcess(ctx context.Context, email string, j Job) (key string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			a.log.ErrorContext(ctx, "avatar processing panicked", "upload_id", j.ID, "panic", fmt.Sprint(r), "stack", string(debug.Stack()))
+			key, err = "", fmt.Errorf("panic while processing avatar: %v", r)
+		}
+	}()
+	return a.process(ctx, email, j)
 }
 
 func (a *Avatars) process(ctx context.Context, email string, j Job) (string, error) {

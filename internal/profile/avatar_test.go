@@ -280,3 +280,50 @@ func TestAnUploadBelongsToItsPersonAlone(t *testing.T) {
 		t.Error("a crop outside the picture was accepted")
 	}
 }
+
+// panicking panics on Get of an original, as a decoder might on a hostile file.
+type panicking struct{ media.Store }
+
+func (p panicking) Get(ctx context.Context, key string) ([]byte, error) {
+	if strings.HasSuffix(key, originalSuffix) {
+		panic("decoder blew up")
+	}
+	return p.Store.Get(ctx, key)
+}
+
+// A panic while processing fails that job and keeps the original; it does not
+// take the process down, and it is not run again at every start.
+func TestAPanicWhileProcessingFailsTheJobAndKeepsTheOriginal(t *testing.T) {
+	m := media.NewLocal(t.TempDir())
+	s := newStore(t)
+	ctx := context.Background()
+	a := NewAvatars(ctx, s, panicking{m}, nil)
+	if _, err := s.Ensure(ctx, "ann@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	j, err := a.Upload(ctx, "ann@example.com", testJPEG(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Crop(ctx, "ann@example.com", j.ID, media.Full); err != nil {
+		t.Fatal(err)
+	}
+	a.Wait() // returns: the goroutine recovered instead of crashing the test binary
+
+	got, ok, err := a.Job(ctx, "ann@example.com")
+	if err != nil || !ok || got.State != JobFailed || got.Error == "" {
+		t.Fatalf("Job = %+v, %v, %v, want a failed job with a message", got, ok, err)
+	}
+	if _, err := m.Get(ctx, uploadKey(j.ID, originalSuffix)); err != nil {
+		t.Errorf("the original was not kept: %v", err)
+	}
+	// Not queued any more, so the next start does not run it again.
+	next := NewAvatars(ctx, s, m, nil)
+	if err := next.Resume(ctx); err != nil {
+		t.Fatal(err)
+	}
+	next.Wait()
+	if got, _, _ := next.Job(ctx, "ann@example.com"); got.State != JobFailed {
+		t.Errorf("State after a restart = %q, want failed", got.State)
+	}
+}
