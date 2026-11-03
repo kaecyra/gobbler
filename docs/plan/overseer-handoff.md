@@ -19,7 +19,23 @@ VERSION on main is 0.85.0.
 **Deployed:** 0.84.0 at `https://gobbler.okperfect.ca`, on the owner's basement VM, with Google sign-in live and Access deleted. The owner's tooling manages `.env`. 0.85.0 is safe to deploy.
 
 **In flight (round 17 dispatcher session, 2026-11-03):**
-- p-profiles (#328): worker dispatched into `.claude/worktrees/wt-328`, branch `feat/328-profiles`, e2e port base 41100. No PR yet. A fresh session cannot message this worker; re-dispatch a fresh one into the same worktree.
+- **Merged:**
+  - p-profiles #340 (04aced8, schema 00020, VERSION 0.86.0).
+  - Graph PR #339: p-profiles' lane gained `e2e/signin/signin.spec.ts`; `sessiondb/**` and `profiledb/**` became shared generated output.
+- **In flight. Workers have no PRs yet. A fresh session cannot message these workers; for any fix, re-dispatch a fresh worker into the same worktree.**
+
+  | Node | Issue | Worktree | Branch | e2e port base |
+  |---|---|---|---|---|
+  | p-session-details | #332 | `wt-332` | `feat/332-session-details` | 41200 |
+  | m-avatar-media | #333 | `wt-333` | `feat/333-avatar-media` | 41300 |
+  | k-api-keys | #334 | `wt-334` | `feat/334-api-keys` | 41400 |
+
+  - All three migrations are named `99999_*`. Merge them one at a time. Each takes the next schema number at merge (00021 upward), then rebases and runs `make generate`.
+  - p-session-details was granted the edit to the existing `docs/operations.md:85` Sign-out line.
+  - m-avatar-media was told to stop if the header avatar (`internal/web/layout/avatar*`), or a non-self route outside the seam, needs a lane widening.
+- **Next after these three:**
+  - a-mcp-endpoint (#330) and a-oauth-server (#335) once k-api-keys merges. a-oauth-server gets a `--deep` review.
+  - Then a-mcp-oauth (#336).
 - Plugin tooling: `bun` now runs in the container against the 0.20.1 plugin at `~/.claude/plugins/cache/market/overseer/0.20.1`. The host has only 0.18.2, and the old `.odette/base/.marketplace-cache` mirror is gone. `render.ts --refresh-state` needs `gh`, which works only on the host.
 - **Gates move into the container after the next restart.** `.odette/Dockerfile` pins go 1.26.4, golangci-lint 2.14.0 (matches the `Makefile` pin) and Playwright, which becomes 1.64.0 (matching `e2e/package.json`) on restart. The host's golangci-lint is now 2.15.0, so `make lint` and `make check` fail there. After the restart, run `make e2e` once in the container to confirm. Then rewrite `.cc-scratch/worker-common.md`, `.cc-scratch/worker-ui-notes.md`, this file's "Gates on the host" line and `tooling_notes` in `.claude/overseer/config.json`: workers run `make check` in-container, and keep using the bridge for `gh` alone.
 

@@ -2692,7 +2692,7 @@
       "wave": 11,
       "track": null,
       "issue": 328,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/profile/**",
@@ -2720,7 +2720,7 @@
       "wave": 11,
       "track": null,
       "issue": 332,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "p-profiles"
       ],
@@ -2741,7 +2741,7 @@
       "wave": 11,
       "track": null,
       "issue": 333,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "p-profiles"
       ],
@@ -2763,7 +2763,7 @@
       "wave": 11,
       "track": null,
       "issue": 334,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "p-profiles"
       ],
@@ -3793,6 +3793,12 @@
       "id": "u-recipe-timers",
       "title": "recipe page step tags and passive steps",
       "merged": "be04277"
+    },
+    {
+      "id": "p-profiles",
+      "title": "profile page, avatar menu and nav spacing",
+      "merged": "04aced8",
+      "note": "ADR-00032. Builds the profile page as a composition of sections, in internal/web/profile/page.templ and routes.go (shared, append-only), so the three nodes after it each add one section in parallel."
     }
   ],
   "adr_sequence": {
