@@ -114,7 +114,9 @@ again under their Google address.
 **Cut-over from Cloudflare Access**, in this order:
 
 1. Deploy the version that has sign-in, with `.env` unchanged. Access is still
-   the identity.
+   the identity. If you set the `GOBBLER_OIDC_*` variables ahead of time,
+   remove them before this deploy: gobbler refuses to start with them beside
+   the Access ones.
 2. In `.env`, set the three `GOBBLER_OIDC_*` variables and
    `GOBBLER_PUBLIC_BASE_URL` as above, and remove `GOBBLER_ACCESS_TEAM_DOMAIN` and
    `GOBBLER_ACCESS_AUD`. gobbler refuses to start with both sets present.

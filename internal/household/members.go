@@ -179,8 +179,9 @@ func (s *Store) revokeIssued(ctx context.Context, q *householddb.Queries, issuer
 }
 
 // Leave takes the email out of its household, withdraws the invitations it
-// issued into it and runs the leave hooks (OnMemberLeave). The household's last member is refused with ErrLastMember;
-// someone in no household gets ErrNotFound.
+// issued into it and runs the leave hooks (OnMemberLeave). The household's
+// last member is refused with ErrLastMember; someone in no household gets
+// ErrNotFound.
 func (s *Store) Leave(ctx context.Context, email string) error {
 	e, err := NormalizeEmail(email)
 	if err != nil {

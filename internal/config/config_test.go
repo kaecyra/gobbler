@@ -139,7 +139,6 @@ func TestClaudeProviderSelectsAnthropicKey(t *testing.T) {
 
 func TestValidationErrorsNameVariable(t *testing.T) {
 	llm := []string{EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v"}
-	oidc := func(kv ...string) map[string]string { return signIn(kv...) }
 	tests := []struct {
 		name string
 		env  map[string]string
@@ -180,24 +179,24 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"s3 bucket without endpoint", with(EnvS3Bucket, "b", EnvS3Region, "r", EnvS3AccessKeyID, "i", EnvS3SecretAccessKey, "s"), EnvS3Endpoint},
 		{"s3 prefix alone", with(EnvS3Prefix, "p"), EnvS3Endpoint},
 		{"oidc issuer alone", with(EnvOIDCIssuer, "https://issuer.example.com"), EnvOIDCClientID},
-		{"oidc without secret", oidc(EnvOIDCClientSecret, ""), EnvOIDCClientSecret},
-		{"oidc without issuer", oidc(EnvOIDCIssuer, ""), EnvOIDCIssuer},
-		{"oidc without base url", oidc(EnvPublicBaseURL, ""), EnvPublicBaseURL},
+		{"oidc without secret", signIn(EnvOIDCClientSecret, ""), EnvOIDCClientSecret},
+		{"oidc without issuer", signIn(EnvOIDCIssuer, ""), EnvOIDCIssuer},
+		{"oidc without base url", signIn(EnvPublicBaseURL, ""), EnvPublicBaseURL},
 		{"oidc base url alone", with(EnvPublicBaseURL, "https://gobbler.example.com"), EnvOIDCIssuer},
-		{"issuer over http", oidc(EnvOIDCIssuer, "http://issuer.example.com"), EnvOIDCIssuer},
-		{"issuer bare host", oidc(EnvOIDCIssuer, "issuer.example.com"), EnvOIDCIssuer},
-		{"issuer with query", oidc(EnvOIDCIssuer, "https://issuer.example.com?x=1"), EnvOIDCIssuer},
-		{"issuer with fragment", oidc(EnvOIDCIssuer, "https://issuer.example.com#f"), EnvOIDCIssuer},
-		{"issuer with credentials", oidc(EnvOIDCIssuer, "https://u:p@issuer.example.com"), EnvOIDCIssuer},
-		{"base url over http", oidc(EnvPublicBaseURL, "http://gobbler.example.com"), EnvPublicBaseURL},
-		{"base url with path", oidc(EnvPublicBaseURL, "https://example.com/gobbler"), EnvPublicBaseURL},
-		{"base url with query", oidc(EnvPublicBaseURL, "https://example.com?x=1"), EnvPublicBaseURL},
-		{"base url bare host", oidc(EnvPublicBaseURL, "gobbler.example.com"), EnvPublicBaseURL},
+		{"issuer over http", signIn(EnvOIDCIssuer, "http://issuer.example.com"), EnvOIDCIssuer},
+		{"issuer bare host", signIn(EnvOIDCIssuer, "issuer.example.com"), EnvOIDCIssuer},
+		{"issuer with query", signIn(EnvOIDCIssuer, "https://issuer.example.com?x=1"), EnvOIDCIssuer},
+		{"issuer with fragment", signIn(EnvOIDCIssuer, "https://issuer.example.com#f"), EnvOIDCIssuer},
+		{"issuer with credentials", signIn(EnvOIDCIssuer, "https://u:p@issuer.example.com"), EnvOIDCIssuer},
+		{"base url over http", signIn(EnvPublicBaseURL, "http://gobbler.example.com"), EnvPublicBaseURL},
+		{"base url with path", signIn(EnvPublicBaseURL, "https://example.com/gobbler"), EnvPublicBaseURL},
+		{"base url with query", signIn(EnvPublicBaseURL, "https://example.com?x=1"), EnvPublicBaseURL},
+		{"base url bare host", signIn(EnvPublicBaseURL, "gobbler.example.com"), EnvPublicBaseURL},
 		{"session lifetime zero", with(EnvSessionLifetime, "0s"), EnvSessionLifetime},
 		{"session lifetime negative", with(EnvSessionLifetime, "-1h"), EnvSessionLifetime},
 		{"session lifetime in days", with(EnvSessionLifetime, "30d"), EnvSessionLifetime},
-		{"access team domain with sign-in", oidc(EnvAccessTeamDomain, "t"), EnvAccessTeamDomain},
-		{"access aud with sign-in", oidc(EnvAccessAUD, "a"), EnvAccessAUD},
+		{"access team domain with sign-in", signIn(EnvAccessTeamDomain, "t"), EnvAccessTeamDomain},
+		{"access aud with sign-in", signIn(EnvAccessAUD, "a"), EnvAccessAUD},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

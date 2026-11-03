@@ -81,6 +81,8 @@ func mountCatalog(r chi.Router, d Deps) {
 // ends a former member's sessions (ADR-00030).
 func mountHouseholds(r chi.Router, d Deps) {
 	hs := household.New(d.DB)
+	// Nil exactly when sign-in is not mounted (newRouter checks), and then
+	// there are no sessions to end.
 	if d.Sessions != nil {
 		hs.OnMemberLeave(d.Sessions.EndForEmail)
 	}

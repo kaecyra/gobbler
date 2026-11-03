@@ -379,7 +379,17 @@ func TestNewRequiresSignInExactlyWhenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Auth: a, SignIn: si}); err == nil {
+	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Auth: a, SignIn: si, Sessions: sessions}); err == nil {
 		t.Error("sign-in routes without sign-in configured: want an error")
+	}
+	// Without the store, removing a member would leave their sessions alive.
+	if _, err := newRouter(Deps{Config: cfg, DB: d, Auth: a, SignIn: si}); err == nil {
+		t.Error("sign-in without its session store: want an error")
+	}
+	if _, err := newRouter(Deps{Config: devConfig(), DB: d, Auth: a, Sessions: sessions}); err == nil {
+		t.Error("a session store without sign-in: want an error")
+	}
+	if _, err := newRouter(Deps{Config: cfg, DB: d, Auth: a, SignIn: si, Sessions: sessions}); err != nil {
+		t.Errorf("sign-in with its routes and store: %v", err)
 	}
 }

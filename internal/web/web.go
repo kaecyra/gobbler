@@ -44,8 +44,9 @@ type Deps struct {
 	// required when sign-in is configured (Config.OIDC.Configured) and must
 	// be nil otherwise; with it the header offers "Sign in" and "Sign out".
 	SignIn *signin.Service
-	// Sessions, when set, has removing a member, or leaving, end that
-	// person's sessions in the same transaction (ADR-00030).
+	// Sessions has removing a member, or leaving, end that person's
+	// sessions in the same transaction (ADR-00030). It is required exactly
+	// when SignIn is set.
 	Sessions *session.Store
 	// Logger receives request logs; the default is slog.Default().
 	Logger *slog.Logger
@@ -80,6 +81,11 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 	if d.Config.OIDC.Configured() != (d.SignIn != nil) {
 		return nil, errors.New("web: the sign-in routes are required exactly when sign-in is configured")
+	}
+	if (d.SignIn != nil) != (d.Sessions != nil) {
+		// Without the store, removing a member would leave their sessions
+		// alive (ADR-00030).
+		return nil, errors.New("web: the session store is required exactly when sign-in is mounted")
 	}
 	log := d.Logger
 	if log == nil {

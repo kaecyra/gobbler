@@ -290,7 +290,6 @@ func TestCallbackRefuses(t *testing.T) {
 			if n, err := h.sessions.DeleteForEmail(context.Background(), "member@example.com"); err != nil || n != 0 {
 				t.Errorf("a refused sign-in left %d sessions (%v)", n, err)
 			}
-			t.Log(h.logs.String())
 			if !strings.Contains(h.logs.String(), "sign-in failed") {
 				t.Errorf("the refusal was not logged: %s", h.logs)
 			}
@@ -341,6 +340,53 @@ func TestSignInUnavailableWhenDiscoveryFails(t *testing.T) {
 	}
 	if !strings.Contains(h.logs.String(), "sign-in unavailable") {
 		t.Errorf("not logged: %s", h.logs)
+	}
+}
+
+// refuseToken fails every request to the issuer's token endpoint, as a
+// network fault would, and passes the rest through.
+type refuseToken struct{}
+
+func (refuseToken) RoundTrip(r *http.Request) (*http.Response, error) {
+	if r.URL.Path == "/token" {
+		return nil, errors.New("connection refused")
+	}
+	return http.DefaultTransport.RoundTrip(r)
+}
+
+// A token endpoint that cannot be reached is a 502, and the log says why
+// without quoting the code.
+func TestCallbackLogsWhyTheTokenEndpointIsUnreachable(t *testing.T) {
+	h := newHarness(t)
+	svc, err := New(Settings{
+		Issuer: h.iss.URL, ClientID: signintest.ClientID, ClientSecret: signintest.ClientSecret,
+		PublicBaseURL: baseURL, Lifetime: 24 * time.Hour,
+	}, h.sessions, WithLogger(slog.New(slog.NewJSONHandler(h.logs, nil))),
+		WithHTTPClient(&http.Client{Transport: refuseToken{}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := httptest.NewRecorder()
+	svc.SignIn(start, httptest.NewRequest(http.MethodGet, layout.SignInPath, nil))
+	pending := cookieNamed(start.Result(), PendingCookie)
+	if pending == nil {
+		t.Fatalf("login: status %d, no sign-in cookie", start.Code)
+	}
+	back := h.iss.Authorize(t, start.Header().Get("Location"))
+	r := httptest.NewRequest(http.MethodGet, back.RequestURI(), nil)
+	r.AddCookie(&http.Cookie{Name: pending.Name, Value: pending.Value})
+	rec := httptest.NewRecorder()
+	svc.Callback(rec, r)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want 502", rec.Code)
+	}
+	logs := h.logs.String()
+	if !strings.Contains(logs, "token endpoint unreachable") || !strings.Contains(logs, "connection refused") {
+		t.Errorf("the log does not say why: %s", logs)
+	}
+	if code := back.Query().Get("code"); code == "" || strings.Contains(logs, code) {
+		t.Errorf("the log quotes the code %q, or there was none: %s", code, logs)
 	}
 }
 

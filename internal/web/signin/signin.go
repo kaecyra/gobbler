@@ -121,11 +121,15 @@ func New(st Settings, sessions Sessions, opts ...Option) (*Service, error) {
 
 // discover returns the OAuth client and ID token verifier for the issuer,
 // fetching its discovery document the first time. A failure is not cached.
+// The lock is not held across the fetch, so while the issuer is down each
+// waiting sign-in times out on its own rather than queueing behind the others;
+// the first fetch to finish is the one kept.
 func (s *Service) discover() (*oauth2.Config, *oidc.IDTokenVerifier, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.oauth != nil {
-		return s.oauth, s.verifier, nil
+	oc, v := s.oauth, s.verifier
+	s.mu.Unlock()
+	if oc != nil {
+		return oc, v, nil
 	}
 	// Not the request's context: the provider keeps it to fetch rotated keys
 	// long after this request has ended. The client's timeout bounds it.
@@ -133,14 +137,18 @@ func (s *Service) discover() (*oauth2.Config, *oidc.IDTokenVerifier, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("discover issuer %s: %w", s.settings.Issuer, err)
 	}
-	s.oauth = &oauth2.Config{
-		ClientID:     s.settings.ClientID,
-		ClientSecret: s.settings.ClientSecret,
-		Endpoint:     p.Endpoint(),
-		RedirectURL:  s.settings.PublicBaseURL + layout.CallbackPath,
-		Scopes:       []string{oidc.ScopeOpenID, "email"},
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.oauth == nil {
+		s.oauth = &oauth2.Config{
+			ClientID:     s.settings.ClientID,
+			ClientSecret: s.settings.ClientSecret,
+			Endpoint:     p.Endpoint(),
+			RedirectURL:  s.settings.PublicBaseURL + layout.CallbackPath,
+			Scopes:       []string{oidc.ScopeOpenID, "email"},
+		}
+		s.verifier = p.Verifier(&oidc.Config{ClientID: s.settings.ClientID})
 	}
-	s.verifier = p.Verifier(&oidc.Config{ClientID: s.settings.ClientID})
 	return s.oauth, s.verifier, nil
 }
 
@@ -254,7 +262,9 @@ func (s *Service) exchange(ctx context.Context, code string, p pending) (string,
 			// Only the error code: the body is the issuer's to fill.
 			return "", http.StatusBadRequest, fmt.Errorf("token endpoint refused the code: %.40q", re.ErrorCode)
 		}
-		return "", http.StatusBadGateway, errors.New("token endpoint unreachable")
+		// The code travels in the POST body, so a transport error names the
+		// token URL and never the code or the client secret.
+		return "", http.StatusBadGateway, fmt.Errorf("token endpoint unreachable: %w", err)
 	}
 	raw, ok := tok.Extra("id_token").(string)
 	if !ok || raw == "" {
