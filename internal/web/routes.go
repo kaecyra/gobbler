@@ -3,7 +3,6 @@ package web
 import (
 	"log/slog"
 	"net/http"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
 
@@ -104,7 +103,7 @@ func mountHouseholds(r chi.Router, d Deps) {
 	keys := apikey.New(d.DB)
 	hs.OnMemberLeave(keys.RevokeForMember)
 	// And their OAuth grants (ADR-00034), in that same transaction.
-	hs.OnMemberLeave(oauthStore(d).RevokeForMember)
+	hs.OnMemberLeave(oauth.New(d.DB).RevokeForMember)
 	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs, Keys: keys}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
@@ -183,18 +182,9 @@ func mountMCP(r chi.Router, d Deps) {
 // public (layout.IsPublic), and the authorization endpoint needs a session.
 func mountOAuth(r chi.Router, d Deps) {
 	deps := weboauth.Deps{
-		OAuth: oauthStore(d), Metadata: oauth.NewMetadataFetcher(),
+		OAuth: oauth.New(d.DB), Metadata: oauth.NewMetadataFetcher(),
 		PublicBaseURL: d.Config.OIDC.PublicBaseURL, DevBypass: d.Config.Server.DevAuthBypass, Logger: d.Logger,
 	}
 	r.Mount(weboauth.WellKnownPattern, weboauth.WellKnownRoutes(deps))
 	r.Mount(weboauth.Pattern, weboauth.Routes(deps))
-}
-
-// oauthStores holds the one OAuth store of each database, so the leave hook in
-// mountHouseholds and the endpoints in mountOAuth share it.
-var oauthStores sync.Map // *sql.DB -> *oauth.Store
-
-func oauthStore(d Deps) *oauth.Store {
-	s, _ := oauthStores.LoadOrStore(d.DB, oauth.New(d.DB))
-	return s.(*oauth.Store)
 }
