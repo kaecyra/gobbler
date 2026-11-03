@@ -35,6 +35,13 @@ const (
 // session to end, but every identity may open it, member or not.
 const SignOutPath = "/logout"
 
+// ProfilePath is the root of the profile pages (ADR-00032). Every signed-in
+// person may open their own profile, member or not, so Admits admits a
+// non-member to it and to everything under it. Package profile mounts it here.
+// Whose profile a path under it shows is decided by that package, not by
+// admission.
+const ProfilePath = "/profile"
+
 // publicPages are the exact paths served to a request without an identity
 // (ADR-00029): the health check, /canada, and sign-in with its callback
 // (ADR-00030). Paths are written out, not imported, for the same reason
@@ -67,7 +74,7 @@ func IsPublic(p string) bool {
 //   - An operator page admits an operator, member or not, and nobody else.
 //   - Every other page admits a member.
 //   - A non-member may also open the not-a-member page, the invitation
-//     routes and sign-out.
+//     routes, sign-out and the profile pages.
 //
 // The caller has refused dot segments, so the prefixes mean what they say.
 func Admits(p string, member, operator bool) bool {
@@ -79,7 +86,8 @@ func Admits(p string, member, operator bool) bool {
 	case member:
 		return true
 	default:
-		return p == NotAMemberPath || p == SignOutPath || strings.HasPrefix(p, InvitationsPath+"/")
+		return p == NotAMemberPath || p == SignOutPath || p == ProfilePath ||
+			strings.HasPrefix(p, ProfilePath+"/") || strings.HasPrefix(p, InvitationsPath+"/")
 	}
 }
 
@@ -113,7 +121,7 @@ func IsOperator(ctx context.Context) bool {
 type signInKey struct{}
 
 // WithSignIn marks ctx as served by a deployment where people sign in to the
-// app itself (ADR-00030), so the header offers "Sign in" and "Sign out".
+// app itself (ADR-00030), so the account menu offers "Sign in" and "Sign out".
 // Without it, identity comes from in front of the app and neither is shown.
 func WithSignIn(ctx context.Context) context.Context {
 	return context.WithValue(ctx, signInKey{}, true)
@@ -124,14 +132,14 @@ func signInOn(ctx context.Context) bool {
 	return v
 }
 
-// offerSignIn reports whether the header shows "Sign in": sign-in is on and
+// offerSignIn reports whether the account menu shows "Sign in": sign-in is on and
 // the request carries no identity, which only a public page is served without.
 func offerSignIn(ctx context.Context) bool {
 	_, signedIn := auth.EmailFromContext(ctx)
 	return signInOn(ctx) && !signedIn
 }
 
-// offerSignOut reports whether the nav menu shows "Sign out": sign-in is on
+// offerSignOut reports whether the account menu shows "Sign out": sign-in is on
 // and the request carries an identity.
 func offerSignOut(ctx context.Context) bool {
 	_, signedIn := auth.EmailFromContext(ctx)

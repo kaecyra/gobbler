@@ -12,7 +12,7 @@ wins.
   targets are at least `--tap` (44px). Text is larger on the recipe and cook
   views, so it reads at arm's length.
 - **Light always.** Nothing keys off `prefers-color-scheme`. Dark is opt-in
-  from the header toggle, which sets `data-mode="dark"` on the root element
+  from the toggle in the account menu, which sets `data-mode="dark"` on the root element
   and remembers the choice in `localStorage`. The page renders correctly when
   storage is unavailable.
 - **Nothing remote.** Fonts are system stacks. Icons and mascots are SVG
@@ -48,7 +48,32 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   Library, Shopping list, and Add recipe as the coral action. The other
   sections (catalog, shared, household, invitations, settings) sit behind one
   menu button at the end of the nav. Below 560px the nav becomes a fixed bottom
-  bar. The dark-mode toggle sits in the header.
+  bar. The account button ends the header (below).
+- **Header spacing.** Every item in the header's right-hand group, the nav
+  entries, the coral action and the account button, is separated by the same
+  gap, the `--nav-gap` token (8px), at every width. No item adds a margin of
+  its own to stand apart.
+- **Account button and menu.** The person's avatar sits at the end of the
+  header, where the light and dark button used to be. It is a `--tap` square
+  with the `--r` corner, never a circle. Pressing it opens a menu, in this order:
+  - the light and dark toggle, labelled with the mode it switches to ("Dark
+    mode" or "Light mode");
+  - **Profile**, the link to the person's own profile;
+  - **Sign out**, shown where people sign in to the app
+    ([ADR-00030](../adr/00030-google-sign-in.md)). It is not in the "More
+    sections" menu.
+
+  The avatar is the one the person uploaded or, until then, a default drawn in
+  the app: a mirrored five by five pattern from a hash of the email, coloured by
+  a pair of tokens (`av-bg-N`, `av-fg-N`), with nothing fetched from outside
+  ([ADR-00032](../adr/00032-profiles.md)). The same avatar heads the profile
+  page at 96px.
+- **Signed-out figure.** A visitor with no identity, such as one on a public
+  page ([ADR-00029](../adr/00029-public-paths.md)), gets a neutral figure in
+  the account button's place: the same size and menu, holding the light and dark
+  toggle and, where people sign in to the app, **Sign in**. The toggle works from
+  both, remembers its choice in `localStorage` and never follows the system
+  setting (see Principles).
 - **Footer.** It links the repository and says "Made by kaecyra in Canada"
   with a red maple leaf.
 - **Mascots.** Each drawing is its own embedded SVG file, served cached:
@@ -123,6 +148,6 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 - **Editor save bar:** Save and Cancel sit in a bar stuck to the bottom of the
   viewport while the form scrolls, above the bottom tab bar on a phone.
 - **Pages with no mockup** take the same tokens and components: the editor,
-  settings, household and invitations, sharing, catalog, pantry, shopping
+  settings, household and invitations, the profile page, sharing, catalog, pantry, shopping
   build and export, and the operator pages. They are reviewed from screenshots
   in their pull requests.

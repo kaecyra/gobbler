@@ -39,6 +39,8 @@
   --tap: 44px;
   --tabs-h: 60px;
   --gutter: 1rem;
+  /* The space between header items, at every width. */
+  --nav-gap: 8px;
 
   /* Names the pages not yet restyled (cook.css, video.css, page rules) still
      use. Each page node moves to the tokens above; the last one removes these. */
@@ -130,7 +132,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
-.top .wrap { display: flex; align-items: center; gap: 18px; padding-block: 10px; }
+.top .wrap { display: flex; align-items: center; gap: var(--nav-gap); padding-block: 10px; }
 
 /* The mascot stands free, his feet on the header's bottom line. */
 .brand {
@@ -155,7 +157,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .brand b { font-family: var(--f-display); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .brand small { display: block; font-size: 13px; color: var(--ink-3); margin-top: -2px; }
 
-.tabs { display: flex; gap: 2px; flex: 0 1 auto; min-width: 0; margin-left: auto; position: relative; }
+.tabs { display: flex; gap: var(--nav-gap); flex: 0 1 auto; min-width: 0; margin-left: auto; position: relative; }
 .tab {
   display: inline-flex;
   align-items: center;
@@ -179,7 +181,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* A label shown only in the phone bar, where every entry has one. */
 .tab .lbl-phone { display: none; }
 .tab[aria-current="page"], .tab[data-current="true"] { background: var(--ink); color: var(--paper); }
-.tab.cta { background: var(--wattle-ink); color: var(--on-accent); margin-left: 6px; }
+.tab.cta { background: var(--wattle-ink); color: var(--on-accent); }
 .tab.cta:hover { background: color-mix(in srgb, var(--wattle-ink) 88%, var(--shade)); }
 .tab.cta[aria-current="page"] { box-shadow: inset 0 0 0 2px var(--on-accent), 0 0 0 2px var(--wattle-ink); }
 
@@ -205,23 +207,42 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .menu-list .tab { display: flex; justify-content: flex-start; width: 100%; }
 .menu-list .lbl { display: inline; }
 
-.modebtn {
+/* The account button: the person's avatar, or the signed-out figure, opening a
+   menu (docs/ui/design.md). The avatar picture itself is .avatar below. */
+.avatar-btn {
   flex: none;
+  display: grid;
+  place-items: center;
   width: var(--tap);
   height: var(--tap);
-  border-radius: var(--r);
+  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
+  border-radius: var(--r);
   background: var(--card);
   color: var(--ink-2);
   cursor: pointer;
-  display: grid;
-  place-items: center;
 }
-.modebtn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-.modebtn svg { width: 20px; height: 20px; }
+.menu[open] > .avatar-btn { border-color: var(--ink-3); }
+.avatar-menu .menu-list { top: calc(100% + 6px); bottom: auto; }
+.avatar-menu .menu-list .lbl { display: inline; }
+
+/* The default avatar is inline SVG drawn from a hash of the email; the classes
+   pick a palette pair from the tokens (internal/profile/identicon.go). */
+.avatar { display: block; width: 100%; height: 100%; }
+.avatar-btn .avatar { border-radius: 0; }
+.avatar.figure { display: grid; place-items: center; background: var(--sunk); color: var(--ink-3); }
+.avatar.figure svg { width: 24px; height: 24px; }
+.av-bg-0 { background: var(--wattle-soft); }
+.av-bg-1 { background: var(--grain-soft); }
+.av-bg-2 { background: var(--sunk); }
+.av-fg-0 { fill: var(--wattle-ink); }
+.av-fg-1 { fill: var(--grain-ink); }
+.av-fg-2 { fill: var(--walnut); }
+.av-fg-3 { fill: var(--ok); }
+.av-fg-4 { fill: var(--ink-2); }
 
 @media (max-width: 1060px) {
-  .top .wrap { gap: 12px; }
   .tab { padding: 8px 9px; gap: 6px; font-size: 15px; }
   .brand small { display: none; }
 }
@@ -232,7 +253,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* Phone: the nav becomes a fixed bar along the bottom. */
 @media (max-width: 560px) {
   .top { backdrop-filter: none; background: var(--card); }
-  .modebtn { margin-left: auto; }
+  .avatar-menu { margin-left: auto; }
   .tabs {
     position: fixed;
     left: 0;
@@ -250,7 +271,6 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
   }
   .tabs > .tab, .menu > .tab { flex-direction: column; gap: 2px; padding: 4px 6px; font-size: 11px; min-width: 56px; }
   .tabs .tab .lbl, .tabs .tab .lbl-phone { display: block; }
-  .tab.cta { margin-left: 0; }
   .menu-list { top: auto; bottom: calc(100% + 10px); }
   body { padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px) + 24px); }
 }
@@ -459,3 +479,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .pg th, .pg td { text-align: left; padding: 6px 12px 6px 0; border-top: 1px solid var(--line); vertical-align: middle; }
 .pg thead th { border-top: 0; color: var(--ink-3); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
 .pg td form { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; }
+
+/* ---- profile page (internal/web/profile) ---- */
+
+.profile-head { display: flex; align-items: center; gap: 16px; }
+.profile-avatar { flex: none; width: 96px; height: 96px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.profile-avatar .avatar { border-radius: 0; }
+.profile-who { min-width: 0; }
+.profile-who h1 { font-size: clamp(24px, 4vw, 30px); overflow-wrap: anywhere; }
+.profile-who p { margin: 0; overflow-wrap: anywhere; }

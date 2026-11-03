@@ -106,9 +106,9 @@ test('a cross-site sign-out is refused', async () => {
   expect(res.status).toBe(403);
 });
 
-test('the nav menu offers sign-out as a form button', async ({ page }) => {
+test('the account menu offers sign-out as a form button', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'More sections' }).click();
+  await page.getByRole('button', { name: 'Account menu' }).click();
   const signOut = page.getByRole('button', { name: 'Sign out' });
   await expect(signOut).toBeVisible();
   await signOut.click();

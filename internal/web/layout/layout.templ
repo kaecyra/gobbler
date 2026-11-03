@@ -54,29 +54,11 @@ templ Page(title string) {
 											<li>@navLink(ctx, item)</li>
 										}
 									}
-									if offerSignOut(ctx) {
-										<li>
-											<form method="post" action={ templ.SafeURL(SignOutPath) }>
-												<button type="submit" class="tab" aria-label="Sign out" title="Sign out">
-													@icon("signout")
-													<span class="lbl">Sign out</span>
-												</button>
-											</form>
-										</li>
-									}
 								</ul>
 							</details>
 						}
 					</nav>
-					if offerSignIn(ctx) {
-						<a class="tab" href={ templ.SafeURL(SignInPath) } aria-label="Sign in" title="Sign in">
-							@icon("signin")
-							<span class="lbl">Sign in</span>
-						</a>
-					}
-					<button type="button" class="modebtn" data-theme-toggle aria-pressed="false" aria-label="Switch to dark" title="Dark mode">
-						@icon("moon")
-					</button>
+					@accountMenu(ctx)
 				</div>
 			</header>
 			<main id="content">
@@ -149,6 +131,9 @@ templ icon(name string) {
 				<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path>
 			case "signin":
 				<path d="M14 4h5v16h-5M3 12h11M10 8l4 4-4 4"></path>
+			case "user":
+				<circle cx="12" cy="8.5" r="3.5"></circle>
+				<path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"></path>
 			case "signout":
 				<path d="M10 4H5v16h5M9 12h11M16 8l4 4-4 4"></path>
 			case "code":
