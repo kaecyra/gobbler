@@ -1,0 +1,15 @@
+package household
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// keysSection lists the household's API keys and makes new ones, with the
+// shared key components. A household key acts for the household, not as a
+// member (ADR-00031).
+templ keysSection(v pageView) {
+	<section class="panel" aria-labelledby="keys-h" data-testid="household-keys">
+		<h2 id="keys-h">API keys</h2>
+		<p class="muted">A household key lets an agent or script read and write this household's recipes and shopping lists. It keeps working when the person who made it is away, but not after they leave the household. Any member can make or revoke one.</p>
+		@layout.APIKeyList(v.Keys, "This household has no keys.")
+		@layout.APIKeyForm(keysPath, "Kitchen assistant")
+	</section>
+}

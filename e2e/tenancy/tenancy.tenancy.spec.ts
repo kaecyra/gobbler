@@ -16,6 +16,8 @@ import {
   makeWorkdir,
   pendingShare,
   populate,
+  populatePersonalKey,
+  profileAddress,
   removeWorkdir,
   send,
   startHousehold,
@@ -227,6 +229,10 @@ const PROBES: Probe[] = [
   { ...hidden('POST', () => '/household/members/remove', () => ({ email: DEV })), other: NOT_FOUND },
   { ...hidden('POST', () => '/household/invitations', () => ({ email: uniqueEmail('invitee') })), other: 303 },
   hidden('POST', (i) => `/household/invitations/${i.joinInvitation}/revoke`),
+  // API keys (ADR-00031): a household's keys are its own. Another household's member makes
+  // a key of its own household and cannot revoke DEV's, which is 404 as for any unknown id.
+  { ...hidden('POST', () => '/household/keys', () => ({ name: 'other bot', lifetime: '30d' })), other: 200 },
+  hidden('POST', (i) => `/household/keys/${i.key}/revoke`),
 
   // Profiles (ADR-00032): every signed-in person has one, so a non-member is admitted
   // where it is refused the rest. /profile sends each to their own profile. A page is
@@ -238,6 +244,14 @@ const PROBES: Probe[] = [
   unaddressed('GET', () => `/profile/${GUESSED_PROFILE}/sessions`),
   unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end`),
   unaddressed('POST', () => `/profile/${GUESSED_PROFILE}/sessions/end-others`),
+  // Personal API keys (ADR-00031) are self-only. These probe DEV's real profile address and
+  // real key, so the 404 comes from the self-only check and not from an address nobody has.
+  unaddressed('GET', (i) => `/profile/${i.profile}/keys`),
+  { ...unaddressed('POST', (i) => `/profile/${i.profile}/keys`), form: () => ({ name: 'Hijack', lifetime: '30d' }) },
+  unaddressed('POST', (i) => `/profile/${i.profile}/keys/${i.personalKey}/revoke`),
+  // Through OTHER's own profile the self-only check passes, so the key's owner is what refuses it
+  // (and for STRANGER it is not their address, so the self-only check does).
+  unaddressed('POST', (i) => `/profile/${i.otherProfile}/keys/${i.personalKey}/revoke`),
 ];
 
 let work: Workdir | undefined;
@@ -264,6 +278,8 @@ test.describe('every route, as a non-member and as a member of another household
     thirdCtx = third.ctx;
     ids = await populate(devCtx, opCtx, routes.recipe, third.email);
     ids.share = await pendingShare(thirdCtx);
+    Object.assign(ids, await populatePersonalKey(devCtx));
+    ids.otherProfile = await profileAddress(otherCtx);
   });
 
   test.afterAll(async () => {

@@ -3,6 +3,7 @@ package web
 import (
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/profile"
@@ -89,7 +90,11 @@ func mountHouseholds(r chi.Router, d Deps) {
 	if d.Sessions != nil {
 		hs.OnMemberLeave(d.Sessions.EndForEmail)
 	}
-	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs}))
+	// Removing a member, or their leaving, revokes their API keys in the same
+	// transaction (ADR-00031).
+	keys := apikey.New(d.DB)
+	hs.OnMemberLeave(keys.RevokeForMember)
+	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs, Keys: keys}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
 }

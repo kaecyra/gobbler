@@ -1,0 +1,65 @@
+package layout
+
+import "github.com/kaecyra/gobbler/internal/apikey"
+
+// APIKeyList lists keys, each with its revoke button, or says empty when there
+// are none.
+templ APIKeyList(rows []APIKeyRow, empty string) {
+	if len(rows) > 0 {
+		<ul class="list" data-testid="api-key-list">
+			for _, k := range rows {
+				<li data-testid="api-key">
+					<span class="grow">
+						<strong>{ k.Name }</strong>
+						<span class="muted"> { k.Detail }</span>
+					</span>
+					<form class="row-form" method="post" action={ templ.SafeURL(k.RevokePath) }>
+						<button type="submit" class="btn" aria-label={ "Revoke the key " + k.Name }>Revoke</button>
+					</form>
+				</li>
+			}
+		</ul>
+	} else {
+		<p data-testid="api-keys-empty">{ empty }</p>
+	}
+}
+
+// APIKeyForm is the form that makes a key: a name and an expiry, with "no
+// expiry" among the choices (ADR-00031). It posts to action.
+templ APIKeyForm(action, placeholder string) {
+	<form class="fields" method="post" action={ templ.SafeURL(action) }>
+		<label>
+			Name
+			<input type="text" name="name" required maxlength={ APIKeyCreated{}.nameMaxLength() } autocomplete="off" placeholder={ placeholder }/>
+		</label>
+		<label>
+			Expires
+			<select name="lifetime">
+				for _, l := range apikey.Lifetimes {
+					<option value={ l.Value } selected?={ l.Value == apikey.DefaultLifetime }>{ l.Label }</option>
+				}
+			</select>
+		</label>
+		<button type="submit" class="btn accent">Make a key</button>
+	</form>
+}
+
+// APIKeyCreatedPage shows the secret of a key just made. It is the only time
+// the secret is shown; nothing keeps it.
+templ APIKeyCreatedPage(c APIKeyCreated) {
+	@Page("New API key") {
+		<div class="pg">
+			<section class="panel" aria-labelledby="key-new-h" data-testid="key-created">
+				<h1 id="key-new-h">Copy the key now</h1>
+				<p>Here is the key <strong>{ c.Name }</strong>{ c.forText() }. It is shown only once. Gobbler keeps no copy that can be shown again, so make a new key if you lose this one.</p>
+				<div class="fields">
+					<label>
+						Key
+						<input type="text" readonly value={ c.Secret } data-testid="key-secret" autocomplete="off"/>
+					</label>
+				</div>
+				<p><a class="btn accent" href={ templ.SafeURL(c.BackHref) }>{ c.BackLabel }</a></p>
+			</section>
+		</div>
+	}
+}

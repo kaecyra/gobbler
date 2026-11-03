@@ -1,0 +1,29 @@
+package profile
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// keysSection is the profile page's entry to the personal API keys.
+templ keysSection(v pageView) {
+	<section class="panel" aria-labelledby="keys-h" data-testid="profile-keys">
+		<h2 id="keys-h">API keys</h2>
+		<p class="muted">A personal key lets an agent or script act as you. It reaches only what you can reach, and stops working when you leave your household.</p>
+		<p><a class="btn" href={ templ.SafeURL(v.sectionPath("keys")) }>Manage your API keys</a></p>
+	</section>
+}
+
+// keysPage lists the person's keys and makes new ones, with the shared key
+// components.
+templ keysPage(v pageView, keys []layout.APIKeyRow) {
+	@layout.Page("API keys") {
+		<div class="pg profile">
+			<section class="panel" aria-labelledby="keys-page-h" data-testid="profile-keys-page">
+				<p class="eyebrow">Your profile</p>
+				<h1 id="keys-page-h">Your API keys</h1>
+				<p class="muted">A personal key acts as you. Only you see this list. A key is shown once, when you make it, and can be revoked here at any time.</p>
+				@layout.APIKeyList(keys, "You have no keys.")
+				@layout.APIKeyForm(v.sectionPath("keys"), "Laptop agent")
+				<p><a class="link" href={ templ.SafeURL(Pattern + "/" + v.Address) }>Back to your profile</a></p>
+			</section>
+		</div>
+	}
+}

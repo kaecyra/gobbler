@@ -52,3 +52,11 @@ sql:
       go:
         package: profiledb
         out: internal/profile/profiledb
+  - name: apikey
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/apikey/queries
+    gen:
+      go:
+        package: apikeydb
+        out: internal/apikey/apikeydb

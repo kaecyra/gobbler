@@ -115,7 +115,7 @@ func TestMigrationSessionDetailsKeepsExistingSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Down(ctx); err != nil {
+	if _, err := p.DownTo(ctx, 20); err != nil {
 		t.Fatalf("rolling back: %v", err)
 	}
 	var n int

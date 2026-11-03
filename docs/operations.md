@@ -235,6 +235,31 @@ Cross-field rules enforced at start-up:
 Secrets live only in `.env`, which is never committed. Credentials are redacted
 in logs.
 
+## API keys
+
+An API key is a credential for the machine-facing surface, so an agent or script
+can act without a browser ([ADR-00031](adr/00031-api-keys.md)). There are two
+kinds. No route accepts a key yet: until the MCP endpoint exists
+([ADR-00034](adr/00034-mcp-server.md)) keys can be made, listed and revoked, and
+nothing more.
+
+| Kind | Acts | Managed on |
+|---|---|---|
+| Personal | as one person, reaching their household | that person's profile page, under "API keys" (only they see it) |
+| Household | for the household, not as a member | the household page, under "API keys" (any member may make or revoke one) |
+
+- **Making a key.** Give it a name and an expiry: 30 days, 90 days (the
+  default), 1 year, or no expiry. The secret, which starts `gob_`, is shown once,
+  on the page that makes the key. Only its SHA-256 and a short prefix, which
+  identifies the key in the list, are stored. A lost secret cannot be shown
+  again: revoke the key and make another.
+- **Revoking.** Revoking a key deletes it. A person revokes their own personal
+  keys; any member revokes a household key.
+- **Leaving.** When a member is removed or leaves, their personal keys and the
+  household keys they made are revoked in the same change, because they have seen
+  those secrets. Deleting a household revokes its household keys.
+- **Logs.** No log line contains a key.
+
 ## Backups
 
 Design and reasoning: [ADR-00010](./adr/00010-backups.md).

@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/auth"
 	domain "github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -32,9 +34,18 @@ type Store interface {
 	Accept(ctx context.Context, code, email, householdName string) (domain.Household, error)
 }
 
-// Deps is what the routes need.
+// KeyStore is what the household keys section uses from the API key store
+// (ADR-00031). *apikey.Store satisfies it.
+type KeyStore interface {
+	ListHousehold(ctx context.Context, householdID int64) ([]apikey.Key, error)
+	CreateHousehold(ctx context.Context, householdID int64, by, name string, lifetime time.Duration) (string, error)
+	RevokeHousehold(ctx context.Context, householdID, id int64) error
+}
+
+// Deps is what the routes need. Keys is required by MemberRoutes.
 type Deps struct {
 	Households Store
+	Keys       KeyStore
 }
 
 type handler struct{ Deps }
@@ -51,6 +62,7 @@ func MemberRoutes(d Deps) chi.Router {
 	r.Post("/members/remove", h.remove)
 	r.Post("/leave", h.leave)
 	r.Post("/delete", h.delete)
+	h.keyRoutes(r)
 	return r
 }
 
@@ -92,8 +104,14 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
+	keys, err := h.Keys.ListHousehold(r.Context(), hh.ID)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
 	layout.Render(w, r, http.StatusOK, membersPage(pageView{
 		Name: hh.Name, Self: email, Members: members, Pending: layout.NewPendingInvitations(email, pending),
+		Keys: layout.NewAPIKeyRows(keys, time.Now(), true, keyRevokePath),
 	}))
 }
 
