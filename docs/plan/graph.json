@@ -2850,7 +2850,9 @@
         "e2e/mcp/**",
         "internal/oauth/**",
         "internal/web/middleware_household_bearer*.go",
-        "internal/apikey/**"
+        "internal/apikey/**",
+        "internal/web/signin_flow_test.go",
+        "internal/web/oauth/**"
       ],
       "needs_migration": "schema",
       "adrs": [],
