@@ -2803,11 +2803,14 @@
         "internal/ingest/*.go",
         "internal/shopping/*.go",
         "internal/store/*.go",
-        "e2e/mcp/**"
+        "e2e/mcp/**",
+        "internal/web/middleware_household*.go",
+        "internal/web/signin_flow_test.go",
+        "internal/web/ingest/**"
       ],
       "needs_migration": "schema",
       "adrs": [],
-      "note": "ADR-00034. Recipe writes are drafts for review; shopping writes apply. Meal-plan tools wait for l-meal-planning. Credential checking goes behind an interface that a-mcp-oauth adds a token verifier to."
+      "note": "ADR-00034. Recipe writes create and import drafts for review only; editing an existing recipe is a-mcp-recipe-edit (#353); shopping writes apply. Meal-plan tools wait for l-meal-planning. Credential checking goes behind an interface that a-mcp-oauth adds a token verifier to. /mcp is never a public path: bearer authentication is wired through the membership middleware (internal/web/middleware_household*.go, in this lane) and may edit the one line of web.go that installs the identity and membership middleware; web.go is otherwise append-only."
     },
     {
       "id": "a-oauth-server",
@@ -2849,6 +2852,27 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00034. Small wiring node; no migration."
+    },
+    {
+      "id": "a-mcp-recipe-edit",
+      "title": "edit an existing recipe over MCP as a draft for review",
+      "wave": 11,
+      "track": null,
+      "issue": 353,
+      "status": "todo",
+      "depends_on": [
+        "a-mcp-endpoint",
+        "a-mcp-oauth"
+      ],
+      "owns": [
+        "internal/mcp/**",
+        "internal/web/ingest/**",
+        "e2e/mcp/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "needs an ADR on how an MCP edit is reviewed and applied (diff, conflict with a newer version, history)",
+      "note": "Split from a-mcp-endpoint on the owner's call (2026-11-03). ADR-00034 holds recipe writes for review; the review screen only takes new recipes."
     }
   ],
   "shared_files": [
@@ -2936,7 +2960,7 @@
     {
       "path": "internal/web/web.go",
       "mode": "open",
-      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries. One exception: a-mcp-endpoint may edit the single line that installs the identity and membership middleware, to wire bearer authentication for /mcp (its node note)."
     },
     {
       "path": "internal/web/profile/page.templ",
@@ -3002,6 +3026,11 @@
       "path": "internal/apikey/apikeydb/**",
       "mode": "open",
       "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/web/layout/layout_operator.go",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, constants or predicates; never edit another node's. a-oauth-server adds its discovery, registration and token endpoints to publicPages (ADR-00034 amends ADR-00029 for those alone). a-mcp-endpoint adds its own bearer-path predicate and never adds /mcp to publicPages: /mcp reads household data, so ADR-00029 keeps it non-public and ADR-00034 applies the ADR-00018 membership check to the credential's owner. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
     }
   ],
   "done": [
