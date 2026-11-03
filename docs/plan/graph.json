@@ -2852,6 +2852,27 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00034. Small wiring node; no migration."
+    },
+    {
+      "id": "a-mcp-recipe-edit",
+      "title": "edit an existing recipe over MCP as a draft for review",
+      "wave": 11,
+      "track": null,
+      "issue": 353,
+      "status": "todo",
+      "depends_on": [
+        "a-mcp-endpoint",
+        "a-mcp-oauth"
+      ],
+      "owns": [
+        "internal/mcp/**",
+        "internal/web/ingest/**",
+        "e2e/mcp/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "needs an ADR on how an MCP edit is reviewed and applied (diff, conflict with a newer version, history)",
+      "note": "Split from a-mcp-endpoint on the owner's call (2026-11-03). ADR-00034 holds recipe writes for review; the review screen only takes new recipes."
     }
   ],
   "shared_files": [
