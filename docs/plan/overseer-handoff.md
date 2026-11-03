@@ -18,7 +18,9 @@ VERSION on main is 0.85.0.
 
 **Deployed:** 0.84.0 at `https://gobbler.okperfect.ca`, on the owner's basement VM, with Google sign-in live and Access deleted. The owner's tooling manages `.env`. 0.85.0 is safe to deploy.
 
-**Nothing is in flight:** no open PRs, no worktrees, no workers.
+**In flight (round 17 dispatcher session, 2026-11-03):**
+- p-profiles (#328): worker dispatched into `.claude/worktrees/wt-328`, branch `feat/328-profiles`, e2e port base 41100. No PR yet. A fresh session cannot message this worker; re-dispatch a fresh one into the same worktree.
+- Plugin tooling: `bun` now runs in the container against the 0.20.1 plugin at `~/.claude/plugins/cache/market/overseer/0.20.1`. The host has only 0.18.2, and the old `.odette/base/.marketplace-cache` mirror is gone. `render.ts --refresh-state` needs `gh`, which works only on the host.
 
 **Wave 11 is ready, dispatched for maximum parallelism (the owner's instruction).** All issues are `dor:ready`:
 
