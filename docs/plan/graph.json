@@ -2803,11 +2803,12 @@
         "internal/ingest/*.go",
         "internal/shopping/*.go",
         "internal/store/*.go",
-        "e2e/mcp/**"
+        "e2e/mcp/**",
+        "internal/web/middleware_household*.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
-      "note": "ADR-00034. Recipe writes are drafts for review; shopping writes apply. Meal-plan tools wait for l-meal-planning. Credential checking goes behind an interface that a-mcp-oauth adds a token verifier to."
+      "note": "ADR-00034. Recipe writes are drafts for review; shopping writes apply. Meal-plan tools wait for l-meal-planning. Credential checking goes behind an interface that a-mcp-oauth adds a token verifier to. /mcp is never a public path: bearer authentication is wired through the membership middleware (internal/web/middleware_household*.go, in this lane) and may edit the one line of web.go that installs the identity and membership middleware; web.go is otherwise append-only."
     },
     {
       "id": "a-oauth-server",
@@ -3006,7 +3007,7 @@
     {
       "path": "internal/web/layout/layout_operator.go",
       "mode": "open",
-      "note": "APPEND-ONLY by convention (wave 11): a node adds its own path to publicPages or its own predicate, and never edits another node's lines. a-mcp-endpoint adds /mcp (bearer-authenticated, so the session layer must pass it through); a-oauth-server adds its discovery, registration and token endpoints (ADR-00034)."
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, constants or predicates; never edit another node's. a-oauth-server adds its discovery, registration and token endpoints to publicPages (ADR-00034 amends ADR-00029 for those alone). a-mcp-endpoint adds its own bearer-path predicate and never adds /mcp to publicPages: /mcp reads household data, so ADR-00029 keeps it non-public and ADR-00034 applies the ADR-00018 membership check to the credential's owner. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
     }
   ],
   "done": [
