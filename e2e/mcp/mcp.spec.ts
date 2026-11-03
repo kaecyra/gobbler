@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startMcpServer, withKey, rpc, tool, toolError, type McpServer } from './support';
+import { META_PATH, startMcpServer, withKey, rpc, tool, toolError, type McpServer } from './support';
 
 // The MCP endpoint (ADR-00034) driven with real API keys over Streamable HTTP:
 // list the tools, search, read a recipe, put it on a shopping list, and see a
@@ -64,12 +64,12 @@ test('another household is not found, and an unknown list is refused', async () 
   await ctx.dispose();
 });
 
-test('a missing, unknown or expired key is 401 with WWW-Authenticate: Bearer, never a redirect', async () => {
+test('a missing, unknown or expired key is 401 with WWW-Authenticate: Bearer and the resource metadata, never a redirect', async () => {
   for (const key of [undefined, 'gob_not-a-real-key', server.seed.shortKey]) {
     const ctx = await withKey(server.origin, key);
     const res = await rpc(ctx, 'tools/list');
     expect(res.status(), String(key)).toBe(401);
-    expect(res.headers()['www-authenticate']).toBe('Bearer');
+    expect(res.headers()['www-authenticate']).toBe(`Bearer resource_metadata="${server.origin}${META_PATH}"`);
     expect(res.headers()['location']).toBeUndefined();
     await ctx.dispose();
   }
@@ -98,7 +98,8 @@ test('production mode: no session means 401 Bearer on /mcp', async ({ request })
   for (const method of ['GET', 'POST'] as const) {
     const res = await request.fetch(`${anonymous}/mcp`, { method, maxRedirects: 0 });
     expect(res.status()).toBe(401);
-    expect(res.headers()['www-authenticate']).toBe('Bearer');
+    // The production-mode server is configured with a public base URL.
+    expect(res.headers()['www-authenticate']).toBe(`Bearer resource_metadata="https://gobbler.e2e.invalid${META_PATH}"`);
   }
 });
 

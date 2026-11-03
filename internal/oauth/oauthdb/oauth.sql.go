@@ -43,17 +43,18 @@ func (q *Queries) DeleteGrant(ctx context.Context, id int64) (int64, error) {
 }
 
 const getAccessToken = `-- name: GetAccessToken :one
-SELECT g.id AS grant_id, g.owner_email, g.client_id, g.resource, t.expires_at
+SELECT g.id AS grant_id, g.owner_email, g.client_id, g.created_at AS grant_created_at, g.resource, t.expires_at
 FROM oauth_tokens t JOIN oauth_grants g ON g.id = t.grant_id
 WHERE t.kind = 'access' AND t.token_hash = ?
 `
 
 type GetAccessTokenRow struct {
-	GrantID    int64
-	OwnerEmail string
-	ClientID   string
-	Resource   string
-	ExpiresAt  string
+	GrantID        int64
+	OwnerEmail     string
+	ClientID       string
+	GrantCreatedAt string
+	Resource       string
+	ExpiresAt      string
 }
 
 func (q *Queries) GetAccessToken(ctx context.Context, tokenHash []byte) (GetAccessTokenRow, error) {
@@ -63,6 +64,7 @@ func (q *Queries) GetAccessToken(ctx context.Context, tokenHash []byte) (GetAcce
 		&i.GrantID,
 		&i.OwnerEmail,
 		&i.ClientID,
+		&i.GrantCreatedAt,
 		&i.Resource,
 		&i.ExpiresAt,
 	)
@@ -230,6 +232,36 @@ func (q *Queries) InsertGrant(ctx context.Context, arg InsertGrantParams) (int64
 	return id, err
 }
 
+const insertGrantWrite = `-- name: InsertGrantWrite :execrows
+INSERT INTO oauth_grant_writes (grant_id, grant_client_id, grant_owner, grant_created_at, household_id, tool, target, created_at)
+SELECT g.id, g.client_id, g.owner_email, g.created_at, ?1, ?2, ?3, ?4
+FROM oauth_grants g WHERE g.id = ?5
+`
+
+type InsertGrantWriteParams struct {
+	HouseholdID int64
+	Tool        string
+	Target      string
+	CreatedAt   string
+	GrantID     int64
+}
+
+// InsertGrantWrite records a write with a snapshot of the grant that made it,
+// read in the same statement. No row is inserted when the grant is gone.
+func (q *Queries) InsertGrantWrite(ctx context.Context, arg InsertGrantWriteParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertGrantWrite,
+		arg.HouseholdID,
+		arg.Tool,
+		arg.Target,
+		arg.CreatedAt,
+		arg.GrantID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const insertToken = `-- name: InsertToken :exec
 INSERT INTO oauth_tokens (grant_id, kind, token_hash, expires_at)
 VALUES (?1, ?2, ?3, ?4)
@@ -250,6 +282,67 @@ func (q *Queries) InsertToken(ctx context.Context, arg InsertTokenParams) error 
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const listGrantWrites = `-- name: ListGrantWrites :many
+SELECT id, grant_id, household_id, tool, target, created_at
+FROM oauth_grant_writes
+WHERE grant_id = ?1 AND grant_client_id = ?2
+  AND grant_owner = ?3 AND grant_created_at = ?4
+ORDER BY id
+`
+
+type ListGrantWritesParams struct {
+	GrantID        int64
+	ClientID       string
+	Owner          string
+	GrantCreatedAt string
+}
+
+type ListGrantWritesRow struct {
+	ID          int64
+	GrantID     int64
+	HouseholdID int64
+	Tool        string
+	Target      string
+	CreatedAt   string
+}
+
+// ListGrantWrites matches the snapshot as well as the id: a revoked grant's id
+// can be given to a later grant, which must not see the earlier one's writes.
+func (q *Queries) ListGrantWrites(ctx context.Context, arg ListGrantWritesParams) ([]ListGrantWritesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listGrantWrites,
+		arg.GrantID,
+		arg.ClientID,
+		arg.Owner,
+		arg.GrantCreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListGrantWritesRow
+	for rows.Next() {
+		var i ListGrantWritesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GrantID,
+			&i.HouseholdID,
+			&i.Tool,
+			&i.Target,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listGrants = `-- name: ListGrants :many

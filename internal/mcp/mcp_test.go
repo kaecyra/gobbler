@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -23,11 +24,16 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/mcp"
+	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 )
+
+// testSite is where the test endpoint claims to be reached; a token is bound to the
+// MCP endpoint under it.
+var testSite = mcp.Site{Origin: "https://gobbler.example", MetadataURL: "https://gobbler.example/.well-known/oauth-protected-resource/mcp"}
 
 // site is the MCP endpoint over real stores, behind the same two layers the
 // router puts in front of it: Bearer, and a membership step that puts the
@@ -36,6 +42,7 @@ type site struct {
 	t       *testing.T
 	d       *sql.DB
 	keys    *apikey.Store
+	oauth   *oauth.Store
 	pending *ingest.Pending
 	rec     *store.Store
 	srv     *httptest.Server
@@ -68,7 +75,7 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatal(err)
 	}
-	s := &site{t: t, d: d, keys: apikey.New(d), pending: ingest.NewPending(time.Now), rec: store.New(d), now: time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)}
+	s := &site{t: t, d: d, keys: apikey.New(d), oauth: oauth.New(d), pending: ingest.NewPending(time.Now), rec: store.New(d), now: time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)}
 	hs := household.New(d)
 	if s.smiths, err = hs.Create(ctx, "Smiths", "ann@example.com"); err != nil {
 		t.Fatal(err)
@@ -86,7 +93,7 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 	draft := ingest.Draft{Name: ingest.Field[string]{Value: "Drafted pie", Confidence: 1}}
 	deps := mcp.Deps{
 		Recipes: s.rec, Lists: shop, Catalog: cat, Drafter: fakeDrafter{draft}, Drafts: s.pending,
-		Audit: mcp.KeyAudit{Keys: s.keys}, Limits: limits, Logger: slog.New(slog.DiscardHandler), Now: func() time.Time { return s.now },
+		Audit: mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}, Limits: limits, Logger: slog.New(slog.DiscardHandler), Now: func() time.Time { return s.now },
 	}
 	if drafter != nil {
 		deps.Drafter = drafter(cat)
@@ -110,7 +117,14 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), hh)))
 		})
 	}
-	s.srv = httptest.NewServer(mcp.Bearer(mcp.KeyVerifier{Keys: s.keys}, log)(member(h)))
+	verifier := mcp.OAuthVerifier{Tokens: s.oauth, Next: mcp.KeyVerifier{Keys: s.keys}}
+	// Package web puts the site on the context before Bearer; so does this.
+	withSite := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(mcp.WithSite(r.Context(), testSite)))
+		})
+	}
+	s.srv = httptest.NewServer(withSite(mcp.Bearer(verifier, log)(member(h))))
 	t.Cleanup(s.srv.Close)
 	return s
 }
@@ -150,7 +164,7 @@ func (s *site) connect(secret string) *sdk.ClientSession {
 	return cs
 }
 
-func (s *site) personalKey(email string) (string, int64) {
+func (s *site) personalKey(email string) (string, apikey.Principal) {
 	s.t.Helper()
 	secret, err := s.keys.CreatePersonal(context.Background(), email, "test", 0)
 	if err != nil {
@@ -160,7 +174,7 @@ func (s *site) personalKey(email string) (string, int64) {
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	return secret, p.KeyID
+	return secret, p
 }
 
 // call runs a tool and decodes its structured result into out; it returns the
@@ -338,7 +352,7 @@ func TestListToolsReturnOnePageWithACursor(t *testing.T) {
 func TestShoppingWritesApplyAtOnceAndRecordTheKey(t *testing.T) {
 	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
 	rid := s.recipe(s.smiths, "ann@example.com", "Bread", s.flourLine(2))
-	secret, keyID := s.personalKey("ann@example.com")
+	secret, key := s.personalKey("ann@example.com")
 	cs := s.connect(secret)
 
 	var list struct {
@@ -387,7 +401,7 @@ func TestShoppingWritesApplyAtOnceAndRecordTheKey(t *testing.T) {
 		}
 	}
 
-	writes, err := s.keys.Writes(context.Background(), keyID)
+	writes, err := s.keys.Writes(context.Background(), key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +419,7 @@ func TestShoppingWritesApplyAtOnceAndRecordTheKey(t *testing.T) {
 	// Reads are not writes.
 	var lists pageOf[struct{}]
 	call(t, cs, "list_shopping_lists", nil, &lists)
-	if after, _ := s.keys.Writes(context.Background(), keyID); len(after) != len(writes) {
+	if after, _ := s.keys.Writes(context.Background(), key); len(after) != len(writes) {
 		t.Errorf("a read was recorded as a write")
 	}
 }
@@ -439,7 +453,7 @@ func TestAnotherHouseholdsListAndRecipeCannotBeTouched(t *testing.T) {
 func TestARecipeWriteIsADraftAndChangesNoRecipe(t *testing.T) {
 	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
 	before := s.recipe(s.smiths, "ann@example.com", "Existing")
-	secret, keyID := s.personalKey("ann@example.com")
+	secret, key := s.personalKey("ann@example.com")
 	cs := s.connect(secret)
 
 	var out struct {
@@ -467,7 +481,7 @@ func TestARecipeWriteIsADraftAndChangesNoRecipe(t *testing.T) {
 	if err != nil || len(all) != 1 || all[0].ID != before {
 		t.Errorf("recipes after two drafts = %+v, %v; want only the original", all, err)
 	}
-	if w, _ := s.keys.Writes(context.Background(), keyID); len(w) != 2 || w[0].Tool != "import_recipe" || w[1].Tool != "create_recipe_draft" {
+	if w, _ := s.keys.Writes(context.Background(), key); len(w) != 2 || w[0].Tool != "import_recipe" || w[1].Tool != "create_recipe_draft" {
 		t.Errorf("recorded writes = %+v", w)
 	}
 	for name, args := range map[string]map[string]any{
@@ -539,6 +553,10 @@ func TestABurstPastTheLimitGets429WithRetryAfter(t *testing.T) {
 	}
 }
 
+// wantChallenge is the 401 header of every refusal: Bearer, pointing at the
+// Protected Resource Metadata (RFC 9728).
+const wantChallenge = `Bearer resource_metadata="https://gobbler.example/.well-known/oauth-protected-resource/mcp"`
+
 func TestEveryRefusedCredentialIs401(t *testing.T) {
 	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
 	ctx := context.Background()
@@ -551,8 +569,8 @@ func TestEveryRefusedCredentialIs401(t *testing.T) {
 	time.Sleep(2 * time.Millisecond)
 	for name, secret := range map[string]string{"none": "", "unknown": "gob_x", "revoked": revoked, "expired": expired} {
 		res := rawPost(t, s.srv.URL, secret)
-		if res.StatusCode != http.StatusUnauthorized || res.Header.Get("WWW-Authenticate") != "Bearer" {
-			t.Errorf("%s: %d %q, want 401 Bearer", name, res.StatusCode, res.Header.Get("WWW-Authenticate"))
+		if res.StatusCode != http.StatusUnauthorized || res.Header.Get("WWW-Authenticate") != wantChallenge {
+			t.Errorf("%s: %d %q, want 401 %s", name, res.StatusCode, res.Header.Get("WWW-Authenticate"), wantChallenge)
 		}
 	}
 	// A valid key whose owner is in no household is refused, not served.
@@ -635,4 +653,148 @@ func TestAnAgentsItemsStayOneLineEach(t *testing.T) {
 	if lines != 3 || steps != 2 || d.Name.Value != "Odd recipe" {
 		t.Errorf("draft %q has %d lines and %d steps, want Odd recipe with 3 and 2", d.Name.Value, lines, steps)
 	}
+}
+
+// token makes a grant for email and returns its access token, bound to the
+// resource. The grant is approved and exchanged as the OAuth endpoints do.
+func (s *site) token(email, resource string) (string, oauth.Principal) {
+	s.t.Helper()
+	ctx := context.Background()
+	const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	code, err := s.oauth.IssueCode(ctx, oauth.AuthRequest{
+		Owner: email, ClientID: "gobc_test", ClientName: "Test client", RedirectURI: "https://app.example/cb",
+		CodeChallenge: oauth.Challenge(verifier), Resource: resource,
+	})
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	toks, err := s.oauth.ExchangeCode(ctx, oauth.ExchangeRequest{Code: code, ClientID: "gobc_test", RedirectURI: "https://app.example/cb", Verifier: verifier, Resource: resource})
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	p, err := s.oauth.Verify(ctx, toks.Access, resource)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	return toks.Access, p
+}
+
+const mcpResource = "https://gobbler.example/mcp"
+
+func TestOAuthTokenActsAsItsOwnerAndWritesRecordTheGrant(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	tok, grant := s.token("ann@example.com", mcpResource)
+	cs := s.connect(tok)
+
+	var list struct {
+		ID int64 `json:"id"`
+	}
+	if msg := call(t, cs, "create_shopping_list", map[string]any{"name": "Via OAuth"}, &list); msg != "" {
+		t.Fatal(msg)
+	}
+	var lists pageOf[struct {
+		Name string `json:"name"`
+	}]
+	call(t, cs, "list_shopping_lists", nil, &lists)
+	found := false
+	for _, l := range lists.Items {
+		found = found || l.Name == "Via OAuth"
+	}
+	if !found {
+		t.Errorf("the token's owner does not see the list it made: %+v", lists.Items)
+	}
+	writes, err := s.oauth.Writes(context.Background(), grant)
+	if err != nil || len(writes) != 1 || writes[0].Tool != "create_shopping_list" || writes[0].HouseholdID != s.smiths.ID || writes[0].GrantID != grant.GrantID {
+		t.Errorf("grant writes = %+v, %v; want one create_shopping_list in the Smiths household", writes, err)
+	}
+	// An API key keeps working beside tokens.
+	secret, _ := s.personalKey("ann@example.com")
+	call(t, s.connect(secret), "list_shopping_lists", nil, &lists)
+}
+
+func TestOAuthTokenRefusals(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	ctx := context.Background()
+
+	otherAudience, _ := s.token("ann@example.com", "https://elsewhere.example/mcp")
+	expired, eg := s.token("ann@example.com", mcpResource)
+	if _, err := s.d.ExecContext(ctx, `UPDATE oauth_tokens SET expires_at = '2000-01-01T00:00:00.000000000Z' WHERE grant_id = ?`, eg.GrantID); err != nil {
+		t.Fatal(err)
+	}
+	revoked, rg := s.token("ann@example.com", mcpResource)
+	if err := s.oauth.RevokeGrant(ctx, "ann@example.com", rg.GrantID); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, secret := range map[string]string{
+		"another audience": otherAudience, "expired": expired, "revoked": revoked,
+		"unknown": oauth.AccessTokenPrefix + "not-a-real-token", "none": "",
+	} {
+		res := rawPost(t, s.srv.URL, secret)
+		if res.StatusCode != http.StatusUnauthorized || res.Header.Get("WWW-Authenticate") != wantChallenge {
+			t.Errorf("%s: %d %q, want 401 %s", name, res.StatusCode, res.Header.Get("WWW-Authenticate"), wantChallenge)
+		}
+	}
+}
+
+func TestOAuthTokenWithNoKnownAudienceIsRefused(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	tok, _ := s.token("ann@example.com", mcpResource)
+	v := mcp.OAuthVerifier{Tokens: s.oauth, Next: mcp.KeyVerifier{Keys: s.keys}}
+	if _, err := v.Verify(context.Background(), tok); !errors.Is(err, mcp.ErrInvalidCredential) {
+		t.Errorf("a token with no site on the context: %v, want ErrInvalidCredential", err)
+	}
+	// Even a store that accepts any audience is not asked without an origin.
+	lax := mcp.OAuthVerifier{Tokens: acceptsAnyAudience{s.oauth}, Next: mcp.KeyVerifier{Keys: s.keys}}
+	if _, err := lax.Verify(context.Background(), tok); !errors.Is(err, mcp.ErrInvalidCredential) {
+		t.Errorf("a token with no origin, lax store: %v, want ErrInvalidCredential", err)
+	}
+	if _, err := v.Verify(mcp.WithSite(context.Background(), testSite), tok); err != nil {
+		t.Errorf("the same token with the site: %v", err)
+	}
+}
+
+func TestOAuthTokenIsConfinedToItsOwnersHousehold(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	theirs := s.recipe(s.joneses, "jo@example.com", "Jones stew")
+	tok, _ := s.token("ann@example.com", mcpResource)
+	if msg := call(t, s.connect(tok), "get_recipe", map[string]any{"id": theirs}, nil); msg != "not found" {
+		t.Errorf("ann's token read the Joneses' recipe: %q", msg)
+	}
+	jo, _ := s.token("jo@example.com", mcpResource)
+	if msg := call(t, s.connect(jo), "get_recipe", map[string]any{"id": theirs}, nil); msg != "" {
+		t.Errorf("jo's token cannot read jo's recipe: %q", msg)
+	}
+}
+
+func TestOAuthTokenOfAnOutsiderIsForbidden(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	tok, _ := s.token("nobody@example.com", mcpResource)
+	if res := rawPost(t, s.srv.URL, tok); res.StatusCode != http.StatusForbidden {
+		t.Errorf("a token whose owner is in no household: %d, want 403", res.StatusCode)
+	}
+}
+
+func TestEachGrantHasItsOwnRateLimit(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 1, Burst: 2})
+	a, _ := s.token("ann@example.com", mcpResource)
+	b, _ := s.token("jo@example.com", mcpResource)
+	limited := false
+	for range 5 {
+		limited = limited || rawPost(t, s.srv.URL, a).StatusCode == http.StatusTooManyRequests
+	}
+	if !limited {
+		t.Error("a token was never limited")
+	}
+	if rawPost(t, s.srv.URL, b).StatusCode == http.StatusTooManyRequests {
+		t.Error("another grant was limited by the first one's burst")
+	}
+}
+
+// acceptsAnyAudience is a token store that checks the token against the
+// audience it was issued for, whatever the caller asks.
+type acceptsAnyAudience struct{ *oauth.Store }
+
+func (a acceptsAnyAudience) Verify(ctx context.Context, token, _ string) (oauth.Principal, error) {
+	return a.Store.Verify(ctx, token, mcpResource)
 }

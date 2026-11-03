@@ -21,8 +21,12 @@ const touchEvery = time.Minute
 // Principal is who a live key acts as (ADR-00031). Exactly one of Email and
 // HouseholdID is set.
 type Principal struct {
-	// KeyID identifies the key in the write log; it is not secret.
-	KeyID int64
+	// KeyID identifies the key in the write log; it is not secret. Ids are
+	// reused after a revocation, so the log is read with the whole Principal
+	// (Writes), whose Prefix and CreatedAt tell two keys of one id apart.
+	KeyID     int64
+	Prefix    string
+	CreatedAt time.Time
 	// Email is the owner of a personal key.
 	Email string
 	// HouseholdID and HouseholdName are the household a household key acts
@@ -52,7 +56,11 @@ func (s *Store) Lookup(ctx context.Context, secret string) (Principal, error) {
 			return Principal{}, ErrUnknownKey
 		}
 	}
-	p := Principal{KeyID: row.ID}
+	created, err := time.Parse(timeLayout, row.CreatedAt)
+	if err != nil {
+		return Principal{}, fmt.Errorf("parse creation time of api key %d: %w", row.ID, err)
+	}
+	p := Principal{KeyID: row.ID, Prefix: row.Prefix, CreatedAt: created}
 	switch {
 	case row.OwnerEmail.Valid:
 		p.Email = row.OwnerEmail.String
@@ -83,25 +91,43 @@ type Write struct {
 }
 
 // RecordWrite logs that the key made a write through tool, on target, for the
-// household (ADR-00031 obligation 5).
+// household (ADR-00031 obligation 5), with a snapshot of the key that Writes
+// matches. A key revoked meanwhile cannot be recorded, which is an error.
 func (s *Store) RecordWrite(ctx context.Context, keyID, householdID int64, tool, target string) error {
 	if tool == "" || keyID == 0 || householdID == 0 {
 		return errors.New("record api key write: a key, a household and a tool are required")
 	}
-	err := s.q.InsertKeyWrite(ctx, apikeydb.InsertKeyWriteParams{
+	n, err := s.q.InsertKeyWrite(ctx, apikeydb.InsertKeyWriteParams{
 		KeyID: keyID, HouseholdID: householdID, Tool: tool, Target: target, CreatedAt: s.stamp(s.now()),
 	})
 	if err != nil {
 		return fmt.Errorf("record write of api key %d: %w", keyID, err)
 	}
+	if n == 0 {
+		return fmt.Errorf("record write of api key %d: the key no longer exists", keyID)
+	}
 	return nil
 }
 
-// Writes returns what the key has written, oldest first.
-func (s *Store) Writes(ctx context.Context, keyID int64) ([]Write, error) {
-	rows, err := s.q.ListKeyWrites(ctx, keyID)
+// owner is how the write log names the key's owner: the email of a personal
+// key, or "household:<id>".
+func (p Principal) owner() string {
+	if p.Email != "" {
+		return p.Email
+	}
+	return fmt.Sprintf("household:%d", p.HouseholdID)
+}
+
+// Writes returns what the key p names has written, oldest first. It matches the
+// key's prefix, owner and creation time as well as its id, because SQLite gives
+// a revoked key's id to a later key and that key did not write the old one's
+// rows.
+func (s *Store) Writes(ctx context.Context, p Principal) ([]Write, error) {
+	rows, err := s.q.ListKeyWrites(ctx, apikeydb.ListKeyWritesParams{
+		KeyID: p.KeyID, KeyPrefix: p.Prefix, KeyOwner: p.owner(), KeyCreatedAt: s.stamp(p.CreatedAt),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("list writes of api key %d: %w", keyID, err)
+		return nil, fmt.Errorf("list writes of api key %d: %w", p.KeyID, err)
 	}
 	out := make([]Write, 0, len(rows))
 	for _, r := range rows {

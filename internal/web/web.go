@@ -22,6 +22,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/mcp"
+	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
@@ -70,8 +71,7 @@ type Deps struct {
 	// not by the configuration.
 	Avatars *profile.Avatars
 	// MCPVerifier checks the bearer credential of the MCP endpoint (ADR-00034).
-	// Nil means API keys (ADR-00031); a node that adds another kind of
-	// credential passes a verifier that accepts both.
+	// Nil means API keys (ADR-00031) and OAuth access tokens (ADR-00034).
 	MCPVerifier mcp.Verifier
 	// Drafts holds the drafts that wait on the review screen. Nil means a table
 	// of its own.
@@ -113,7 +113,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 
 	if d.MCPVerifier == nil {
-		d.MCPVerifier = mcp.KeyVerifier{Keys: apikey.New(d.DB)}
+		d.MCPVerifier = mcp.OAuthVerifier{Tokens: oauth.New(d.DB), Next: mcp.KeyVerifier{Keys: apikey.New(d.DB)}}
 	}
 	if d.Drafts == nil {
 		d.Drafts = ingest.NewPending(time.Now)
@@ -132,7 +132,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		// Before identity, so the pages that refuse a request show it too.
 		r.Use(markSignIn)
 	}
-	r.Use(onSession(d.Auth.Middleware(layout.IsPublic)), onBearer(mcp.Bearer(d.MCPVerifier, log)), membership(members, d.Config.Operator), cop.Handler)
+	r.Use(onSession(d.Auth.Middleware(layout.IsPublic)), onBearer(siteOf(d.Config), mcp.Bearer(d.MCPVerifier, log)), membership(members, d.Config.Operator), cop.Handler)
 	r.Use(avatarSource(d.DB, log))
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)

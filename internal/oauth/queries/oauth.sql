@@ -73,6 +73,22 @@ UPDATE oauth_tokens SET used_at = sqlc.arg(used_at) WHERE id = sqlc.arg(id);
 DELETE FROM oauth_tokens WHERE grant_id = sqlc.arg(grant_id) AND expires_at < sqlc.arg(now);
 
 -- name: GetAccessToken :one
-SELECT g.id AS grant_id, g.owner_email, g.client_id, g.resource, t.expires_at
+SELECT g.id AS grant_id, g.owner_email, g.client_id, g.created_at AS grant_created_at, g.resource, t.expires_at
 FROM oauth_tokens t JOIN oauth_grants g ON g.id = t.grant_id
 WHERE t.kind = 'access' AND t.token_hash = ?;
+
+-- InsertGrantWrite records a write with a snapshot of the grant that made it,
+-- read in the same statement. No row is inserted when the grant is gone.
+-- name: InsertGrantWrite :execrows
+INSERT INTO oauth_grant_writes (grant_id, grant_client_id, grant_owner, grant_created_at, household_id, tool, target, created_at)
+SELECT g.id, g.client_id, g.owner_email, g.created_at, sqlc.arg(household_id), sqlc.arg(tool), sqlc.arg(target), sqlc.arg(created_at)
+FROM oauth_grants g WHERE g.id = sqlc.arg(grant_id);
+
+-- ListGrantWrites matches the snapshot as well as the id: a revoked grant's id
+-- can be given to a later grant, which must not see the earlier one's writes.
+-- name: ListGrantWrites :many
+SELECT id, grant_id, household_id, tool, target, created_at
+FROM oauth_grant_writes
+WHERE grant_id = sqlc.arg(grant_id) AND grant_client_id = sqlc.arg(client_id)
+  AND grant_owner = sqlc.arg(owner) AND grant_created_at = sqlc.arg(grant_created_at)
+ORDER BY id;

@@ -100,8 +100,38 @@ func TestRecordWriteSurvivesRevocationOfTheKey(t *testing.T) {
 	if err := f.keys.RevokePersonal(ctx, "ann@example.com", p.KeyID); err != nil {
 		t.Fatal(err)
 	}
-	ws, err := f.keys.Writes(ctx, p.KeyID)
+	ws, err := f.keys.Writes(ctx, p)
 	if err != nil || len(ws) != 1 || ws[0].Tool != "add_manual_item" || ws[0].Target != "list 3" || ws[0].HouseholdID != h.ID {
 		t.Errorf("Writes = %+v, %v", ws, err)
+	}
+}
+
+// SQLite gives a revoked key's id to the next key. That key must not list the
+// revoked one's writes, which stay attributed to the key that made them.
+func TestAKeyGivenARevokedKeysIDDoesNotSeeItsWrites(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	h := f.join("Smiths", "ann@example.com", "bob@example.com")
+	secret, _ := f.keys.CreatePersonal(ctx, "ann@example.com", "old", 0)
+	old, _ := f.keys.Lookup(ctx, secret)
+	if err := f.keys.RecordWrite(ctx, old.KeyID, h.ID, "add_manual_item", "list 3"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.keys.RevokePersonal(ctx, "ann@example.com", old.KeyID); err != nil {
+		t.Fatal(err)
+	}
+	secret, _ = f.keys.CreatePersonal(ctx, "bob@example.com", "new", 0)
+	fresh, _ := f.keys.Lookup(ctx, secret)
+	if fresh.KeyID != old.KeyID {
+		t.Fatalf("the new key has id %d, not the revoked key's %d; this test no longer exercises id reuse", fresh.KeyID, old.KeyID)
+	}
+	if ws, err := f.keys.Writes(ctx, fresh); err != nil || len(ws) != 0 {
+		t.Errorf("the new key lists %+v, %v", ws, err)
+	}
+	if ws, err := f.keys.Writes(ctx, old); err != nil || len(ws) != 1 {
+		t.Errorf("the revoked key lists %+v, %v; want its one write", ws, err)
+	}
+	if err := f.keys.RecordWrite(ctx, old.KeyID+1000, h.ID, "t", ""); err == nil {
+		t.Error("a write of a key that does not exist was recorded")
 	}
 }

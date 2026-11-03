@@ -1,6 +1,6 @@
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test';
 import { OTHER, STRANGER, asIdentity } from '../fixtures/identity';
-import { startMcpServer, withKey, rpc, tool, toolError, type McpServer } from './support';
+import { META_PATH, startMcpServer, withKey, rpc, tool, toolError, type McpServer } from './support';
 
 // Cross-household tests for the MCP endpoint (ADR-00018 obligation 5,
 // ADR-00034). The endpoint's identity is a bearer key, not the session, so the
@@ -28,7 +28,7 @@ async function expectRefused(ctx: APIRequestContext) {
   for (const p of PROBES) {
     const res = await ctx.fetch(p.path, { method: p.method, data: p.method === 'POST' ? { jsonrpc: '2.0', id: 1, method: 'tools/list' } : undefined, maxRedirects: 0 });
     expect(res.status(), `${p.method} ${p.path}`).toBe(401);
-    expect(res.headers()['www-authenticate']).toBe('Bearer');
+    expect(res.headers()['www-authenticate']).toBe(`Bearer resource_metadata="${server.origin}${META_PATH}"`);
     expect(await res.text()).not.toContain('E2E MCP');
   }
   await ctx.dispose();

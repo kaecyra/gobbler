@@ -53,8 +53,9 @@ func TestMigrationAddsAndDropsTheOAuthTables(t *testing.T) {
 		}
 		return n
 	}
-	if n := tables(); n != 4 {
-		t.Fatalf("oauth tables = %d, want 4", n)
+	// The four of this migration and the grant write log of the next one.
+	if n := tables(); n != 5 {
+		t.Fatalf("oauth tables = %d, want 5", n)
 	}
 	for _, bad := range []string{
 		`INSERT INTO oauth_grants (owner_email, client_id, client_name, return_host, resource, created_at) VALUES ('Ann@Example.com', 'c', 'n', 'h', 'r', 't')`,
