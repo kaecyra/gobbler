@@ -17,9 +17,9 @@ clear line between those and the private rest of the site. The first is
 data lives and why. The not-a-member page is drawn with the embedded assets,
 and a public page needs them too.
 
-How identity is established is changing separately: Cloudflare Access today,
-and sign-in inside the app later. The public/private line must not depend on
-which of the two is in place.
+How identity is established was changing separately, from Cloudflare Access to
+sign-in inside the app ([ADR-00030](00030-google-sign-in.md)). The
+public/private line must not depend on how identity is established.
 
 Three options were considered:
 
@@ -27,8 +27,8 @@ Three options were considered:
   was rejected. The owner wants the page to be part of the app, styled like
   it, and versioned with the code it describes.
 - **Let whatever sits in front of the app decide what is public**, for example
-  an Access Bypass rule, with the app serving any request that arrives without
-  an identity. This was rejected. The line would then live outside this
+  a bypass rule at the edge, with the app serving any request that arrives
+  without an identity. This was rejected. The line would then live outside this
   repository, and a rule that is too broad would open every page without the
   app noticing.
 - **The app keeps its own fixed list of public paths.** This was chosen. The
@@ -63,17 +63,17 @@ that reads household data is never public.
 ADR-00003 obligation 2 is amended: the public paths, not the health check
 alone, are served without authentication.
 
-When something in front of the app also gates requests, such as Cloudflare
-Access, it must let the public paths through, or they still ask for a sign-in.
-That mismatch exposes nothing.
+When something in front of the app also gates requests, it must let the public
+paths through, or they still ask for a sign-in. That mismatch exposes nothing.
 
 **Obligations:**
 
 1. The public list is one declaration in `layout`, and both middlewares read
    it. A test checks that the health route and `/canada` are on it.
 2. Against the real identity verifier (not the development bypass), a request
-   with no identity gets each public path, and gets a 403 for a member page,
-   an operator page, invitation acceptance and the not-a-member page.
+   with no identity gets each public path, and is refused a member page, an
+   operator page, invitation acceptance and the not-a-member page: a full-page
+   GET is sent to sign-in and anything else gets 401 (ADR-00030).
 3. A request with invalid proof of identity is served without an identity on a
    public path, and refused on any other path.
 4. `docs/operations.md` no longer says that `/healthz` is the only route served

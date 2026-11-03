@@ -22,8 +22,9 @@ type part struct {
 // deployment changes.
 var parts = []part{
 	{"The app and its database", "A VM in Montréal, Québec", "Canada"},
-	{"Backups", "A second machine on the same network", "Canada"},
-	{"Front door: secure tunnel and sign-in", "Cloudflare (a US company)", "Carries traffic in transit; not where recipes are kept"},
+	{"Backups", "Nightly snapshots on the same machine", "Canada; a second machine on the same network is planned"},
+	{"Front door: secure tunnel", "Cloudflare (a US company)", "Carries traffic in transit; not where recipes are kept"},
+	{"Sign-in", "Google (US)", "Confirms your email address; gobbler keeps only the email and its own session"},
 	{"Reading a recipe the built-in parser can't", "Anthropic Claude or Google Gemini (US)", "Only the text or photo being imported, only when the rule-based parser gives up, and nothing is saved until you review it"},
 	{"Recipe videos", "YouTube (US)", "Loaded only when you press play"},
 }
@@ -61,7 +62,7 @@ func page() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\" data-testid=\"canada\"><div class=\"panel\"><h1>Made in Canada</h1><p>gobbler was written in Canada and runs on a computer in a basement in Montréal, Québec. Your recipes, notes and shopping lists live on hardware I own, under Canadian law.</p></div><div class=\"panel\"><h2>Why it matters right now</h2><p>As of November 2026, Canada and the United States are in an uneasy détente. US tariffs on Canadian steel and autos are still in place. Talks speed up, then stall, and Ottawa has said plainly it will only sign a deal that works for Canadians. Nobody is putting tariffs on recipes. But the past two years have shown how fast things can change between friends, and that <em>who</em> holds your data matters as much as <em>where</em> it sits.</p></div><div class=\"panel\"><h2>Residency is not sovereignty</h2><p>A \"Canadian region\" of an American cloud is still an American company. Under the US CLOUD Act, US authorities can compel a US provider to hand over data it controls, wherever in the world that data is stored. Sovereignty means the people running the service answer to one country's courts, and here that country is Canada.</p></div><div class=\"panel\"><h2>Why small, and not a hyperscaler</h2><p>The giant clouds are remarkable at what they do, but a household recipe box doesn't need them. A small, unglamorous machine is easier to reason about: you know where the disk is, who holds the keys, and what happens when the power goes out. Backups go to a second machine on the same network, not someone else's cloud. Staying small also means your kitchen isn't feeding an advertising business. gobbler has no ads, no trackers and no analytics.</p></div><div class=\"panel\"><h2>Where each part runs</h2><div class=\"table-wrap\"><table data-testid=\"canada-parts\"><thead><tr><th scope=\"col\">Part</th><th scope=\"col\">Where</th><th scope=\"col\">Notes</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\" data-testid=\"canada\"><div class=\"panel\"><h1>Made in Canada</h1><p>gobbler was written in Canada and runs on a computer in a basement in Montréal, Québec. Your recipes, notes and shopping lists live on hardware I own, under Canadian law.</p></div><div class=\"panel\"><h2>Why it matters right now</h2><p>As of November 2026, Canada and the United States are in an uneasy détente. US tariffs on Canadian steel and autos are still in place. Talks speed up, then stall, and Ottawa has said plainly it will only sign a deal that works for Canadians. Nobody is putting tariffs on recipes. But the past two years have shown how fast things can change between friends, and that <em>who</em> holds your data matters as much as <em>where</em> it sits.</p></div><div class=\"panel\"><h2>Residency is not sovereignty</h2><p>A \"Canadian region\" of an American cloud is still an American company. Under the US CLOUD Act, US authorities can compel a US provider to hand over data it controls, wherever in the world that data is stored. Sovereignty means the people running the service answer to one country's courts, and here that country is Canada.</p></div><div class=\"panel\"><h2>Why small, and not a hyperscaler</h2><p>The giant clouds are remarkable at what they do, but a household recipe box doesn't need them. A small, unglamorous machine is easier to reason about: you know where the disk is, who holds the keys, and what happens when the power goes out. Backups stay on hardware here, not in someone else's cloud. Staying small also means your kitchen isn't feeding an advertising business. gobbler has no ads, no trackers and no analytics.</p></div><div class=\"panel\"><h2>Where each part runs</h2><div class=\"table-wrap\"><table data-testid=\"canada-parts\"><thead><tr><th scope=\"col\">Part</th><th scope=\"col\">Where</th><th scope=\"col\">Notes</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -73,7 +74,7 @@ func page() templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.Part)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 49, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 50, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -86,7 +87,7 @@ func page() templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.Where)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 49, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 50, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -99,7 +100,7 @@ func page() templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Notes)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 49, Col: 64}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/canada/canada.templ`, Line: 50, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -110,7 +111,7 @@ func page() templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</tbody></table></div><p>I'd rather list the American pieces than pretend they aren't there. Cloudflare gives a home server a safe front door without opening a port to the internet. I'd like to replace it and the AI fallback with Canadian or self-hosted options. Until then, this page says so.</p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</tbody></table></div><p>I'd rather list the American pieces than pretend they aren't there. Cloudflare gives a home server a safe front door without opening a port to the internet. Google confirms who you are when you sign in, and gobbler can use another sign-in provider without code changes. I'd like to replace Cloudflare, Google sign-in and the AI fallback with Canadian or self-hosted options. Until then, this page says so.</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

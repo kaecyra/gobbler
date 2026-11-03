@@ -23,8 +23,6 @@ const (
 	EnvDataDir             = "GOBBLER_DATA_DIR"
 	EnvLogLevel            = "GOBBLER_LOG_LEVEL"
 	EnvDevAuthBypass       = "GOBBLER_DEV_AUTH_BYPASS"
-	EnvAccessTeamDomain    = "GOBBLER_ACCESS_TEAM_DOMAIN"
-	EnvAccessAUD           = "GOBBLER_ACCESS_AUD"
 	EnvOIDCIssuer          = "GOBBLER_OIDC_ISSUER"
 	EnvOIDCClientID        = "GOBBLER_OIDC_CLIENT_ID"
 	EnvOIDCClientSecret    = "GOBBLER_OIDC_CLIENT_SECRET"
@@ -80,7 +78,6 @@ const (
 // printing or logging a Config never reveals them.
 type Config struct {
 	Server    Server
-	Access    Access
 	OIDC      OIDC
 	Session   Session
 	Operator  Operator
@@ -95,17 +92,9 @@ type Server struct {
 	ListenAddr string
 	DataDir    string
 	LogLevel   slog.Level
-	// DevAuthBypass skips Access verification. Valid only on a loopback
-	// ListenAddr (ADR-00003).
+	// DevAuthBypass skips sign-in: every request is the dev identity. Valid
+	// only on a loopback ListenAddr (ADR-00003).
 	DevAuthBypass bool
-}
-
-// Access holds the Cloudflare Access settings (ADR-00003). Both are empty
-// when DevAuthBypass is on, and when sign-in is configured, which replaces
-// Access as the identity source.
-type Access struct {
-	TeamDomain string
-	AUD        string
 }
 
 // OIDC holds the sign-in settings (ADR-00030): the one OpenID Connect issuer
@@ -113,11 +102,10 @@ type Access struct {
 // URL the redirect URI is built from. No default names a provider; the issuer
 // is whatever the environment says.
 //
-// None of it is required at start-up yet. When it is set, sign-in is the
-// identity source and the Access settings must be unset; when it is not,
-// Cloudflare Access stays the identity source until it is removed. Each value
-// is validated when set, and setting any of them requires all four, so a
-// half-configured sign-in fails at start-up rather than at the first sign-in.
+// Sign-in is the only identity source, so all four are required unless
+// DevAuthBypass is on, when they are optional. Each value is validated when
+// set, and setting any of them requires all four, so a half-configured
+// sign-in fails at start-up rather than at the first sign-in.
 type OIDC struct {
 	// Issuer is the issuer URL exactly as given. ID tokens are checked
 	// against it character for character, so it is not normalised. It must
@@ -227,25 +215,6 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	r.oidc(&c.OIDC, c.Server.DevAuthBypass)
-
-	c.Access.TeamDomain = r.str(EnvAccessTeamDomain, "")
-	c.Access.AUD = r.str(EnvAccessAUD, "")
-	switch {
-	case c.Server.DevAuthBypass:
-		c.Access = Access{}
-	case c.OIDC.Configured():
-		// Sign-in replaces Access as the identity source (ADR-00030), so an
-		// Access setting would be silently ignored.
-		for _, s := range []struct{ env, v string }{{EnvAccessTeamDomain, c.Access.TeamDomain}, {EnvAccessAUD, c.Access.AUD}} {
-			if s.v != "" {
-				r.fail(s.env, "set but sign-in (%s) is configured, which replaces Access; unset it", EnvOIDCIssuer)
-			}
-		}
-	default:
-		const why = "required unless " + EnvDevAuthBypass + " or sign-in (" + EnvOIDCIssuer + ") is set"
-		r.require(EnvAccessTeamDomain, c.Access.TeamDomain, why)
-		r.require(EnvAccessAUD, c.Access.AUD, why)
-	}
 	c.Session.Lifetime = r.duration(EnvSessionLifetime, defaultSessionLifetime)
 
 	c.Operator.Emails = r.emails(EnvOperatorEmails)
@@ -266,8 +235,10 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	return c, nil
 }
 
-// oidc reads the sign-in settings. Plain http is accepted only with the dev
-// bypass on, whose listener is loopback, for a local or test issuer.
+// oidc reads the sign-in settings. Without the dev bypass they are the only
+// identity source (ADR-00030), so all of them are required. Plain http is
+// accepted only with the dev bypass on, whose listener is loopback, for a
+// local or test issuer.
 func (r *reader) oidc(o *OIDC, devBypass bool) {
 	o.Issuer = r.str(EnvOIDCIssuer, "")
 	o.ClientID = r.str(EnvOIDCClientID, "")
@@ -292,10 +263,13 @@ func (r *reader) oidc(o *OIDC, devBypass bool) {
 	// PublicBaseURL is empty both when unset and when invalid, so an invalid
 	// one alone is reported once, by httpOrigin, rather than as missing.
 	baseSet := r.str(EnvPublicBaseURL, "") != ""
-	if o.Issuer == "" && o.ClientID == "" && !o.ClientSecret.IsSet() && !baseSet {
-		return // sign-in not configured
+	why := "required unless " + EnvDevAuthBypass + " is set: sign-in is the only identity source"
+	if devBypass {
+		if o.Issuer == "" && o.ClientID == "" && !o.ClientSecret.IsSet() && !baseSet {
+			return // sign-in not configured
+		}
+		why = "required when any OIDC setting is set"
 	}
-	const why = "required when any OIDC setting is set"
 	r.require(EnvOIDCIssuer, o.Issuer, why)
 	r.require(EnvOIDCClientID, o.ClientID, why)
 	r.require(EnvOIDCClientSecret, o.ClientSecret.value, why)

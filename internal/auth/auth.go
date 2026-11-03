@@ -3,11 +3,9 @@
 // handlers read it through EmailFromContext and never parse a token or a
 // cookie themselves.
 //
-// The identity comes from one of three sources, chosen at start-up:
-//
-//   - the development bypass, on a loopback listener only (ADR-00003);
-//   - the sign-in session cookie, when sign-in is configured (ADR-00030);
-//   - otherwise the Cloudflare Access JWT (ADR-00003), until it is removed.
+// The identity comes from one of two sources, chosen at start-up: the
+// development bypass, on a loopback listener only (ADR-00003), or otherwise
+// the sign-in session cookie (ADR-00030).
 package auth
 
 import (
@@ -19,17 +17,12 @@ import (
 	"net/mail"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/session"
 )
 
 const (
-	// HeaderName carries the Access JWT.
-	HeaderName = "Cf-Access-Jwt-Assertion"
-	// CookieName is the fallback when the header is absent.
-	CookieName = "CF_Authorization"
 	// SessionCookie carries the sign-in session token (ADR-00030). The
 	// __Host- prefix makes the browser refuse it unless it is Secure, has
 	// Path=/ and names no domain, so no other host can set or read it.
@@ -43,11 +36,14 @@ const (
 	// DevIdentityHeader overrides the dev-bypass identity for one request, so
 	// tests can act as several members and non-members. It is read only when
 	// the bypass is on, which is valid only on a loopback listener; with
-	// Access verification on it is ignored like any other header.
+	// sessions it is ignored like any other header.
 	DevIdentityHeader = "X-Gobbler-Dev-Identity"
-
-	defaultMinRefresh = time.Minute
 )
+
+// errNoToken is a request that carries no session cookie at all, as opposed
+// to one whose session is refused. A public path serves the first quietly
+// (ADR-00029).
+var errNoToken = errors.New("no session token")
 
 type ctxKey struct{}
 
@@ -66,48 +62,27 @@ type SessionLookup interface {
 }
 
 // Authenticator establishes the identity of a request from the source New
-// chose: the dev bypass, a sign-in session, or an Access token for one team
-// and AUD tag.
+// chose: the dev bypass or a sign-in session.
 type Authenticator struct {
 	bypass bool
-	// sessions is set when identity comes from the sign-in session cookie.
+	// sessions is the identity source when the bypass is off.
 	sessions SessionLookup
-	// signIn is the path an unauthenticated full-page GET is sent to, with
-	// sessions.
+	// signIn is the path an unauthenticated full-page GET is sent to.
 	signIn string
-	issuer string
-	aud    string
-	keys   *keySet
-	now    func() time.Time
 	log    *slog.Logger
 }
 
-// Option adjusts an Authenticator. WithLogger and WithSessions are exported:
-// the certs URL, client, clock and refresh interval are fixed by production
-// code and adjustable only from this package's tests.
-type Option func(*Authenticator, *keySet)
-
-// withCertsURL replaces the JWKS URL derived from the team domain.
-func withCertsURL(u string) Option { return func(_ *Authenticator, k *keySet) { k.url = u } }
-
-// withClock replaces the time source.
-func withClock(now func() time.Time) Option {
-	return func(a *Authenticator, k *keySet) { a.now, k.now = now, now }
-}
-
-// withMinRefresh sets the shortest gap between JWKS fetches.
-func withMinRefresh(d time.Duration) Option {
-	return func(_ *Authenticator, k *keySet) { k.minRefresh = d }
-}
+// Option adjusts an Authenticator.
+type Option func(*Authenticator)
 
 // WithLogger sets the logger; the default is slog.Default().
-func WithLogger(l *slog.Logger) Option { return func(a *Authenticator, _ *keySet) { a.log = l } }
+func WithLogger(l *slog.Logger) Option { return func(a *Authenticator) { a.log = l } }
 
-// WithSessions supplies the session store that identity comes from when
-// sign-in is configured, and the sign-in path a full-page GET without a
-// session is redirected to. New requires it exactly then.
+// WithSessions supplies the session store that identity comes from, and the
+// sign-in path a full-page GET without a session is redirected to. New
+// requires it unless the dev bypass is on.
 func WithSessions(s SessionLookup, signInPath string) Option {
-	return func(a *Authenticator, _ *keySet) { a.sessions, a.signIn = s, signInPath }
+	return func(a *Authenticator) { a.sessions, a.signIn = s, signInPath }
 }
 
 // New builds an Authenticator from the validated configuration. With
@@ -115,43 +90,23 @@ func WithSessions(s SessionLookup, signInPath string) Option {
 // even though config.Load already does, so a hand-built Config cannot open
 // the app. The bypass wins over everything else: it stays as it is
 // (ADR-00030), so on a bypass listener a session is never consulted. Without
-// it, a configured sign-in (config.OIDC.Configured) makes the session cookie
-// the identity and requires WithSessions; otherwise Access is.
+// it, the session cookie is the only identity, and WithSessions is required.
 func New(cfg config.Config, opts ...Option) (*Authenticator, error) {
-	a := &Authenticator{now: time.Now, log: slog.Default()}
-	k := &keySet{client: http.DefaultClient, now: time.Now, minRefresh: defaultMinRefresh}
+	a := &Authenticator{log: slog.Default()}
 	for _, o := range opts {
-		o(a, k)
+		o(a)
 	}
 
-	switch {
-	case cfg.Server.DevAuthBypass:
+	if cfg.Server.DevAuthBypass {
 		if !config.IsLoopbackAddr(cfg.Server.ListenAddr) {
 			return nil, fmt.Errorf("auth: dev bypass requires a loopback listen address, got %q", cfg.Server.ListenAddr)
 		}
 		a.bypass, a.sessions = true, nil
-	case cfg.OIDC.Configured():
-		if a.sessions == nil || a.signIn == "" {
-			return nil, errors.New("auth: sign-in is configured but no session store was given")
-		}
-	default:
-		a.sessions = nil
-		host := cfg.Access.TeamDomain
-		if host == "" || cfg.Access.AUD == "" {
-			return nil, errors.New("auth: team domain and AUD tag are required")
-		}
-		if strings.ContainsAny(host, "/?#@ ") {
-			return nil, fmt.Errorf("auth: team domain %q must be a bare host name", host)
-		}
-		a.issuer = "https://" + host
-		a.aud = cfg.Access.AUD
-		if k.url == "" {
-			k.url = a.issuer + "/cdn-cgi/access/certs"
-		}
-	}
-	a.keys = k
-	if a.bypass {
 		a.log.Warn("dev auth bypass is on: requests are not verified", "identity", DevEmail)
+		return a, nil
+	}
+	if a.sessions == nil || a.signIn == "" {
+		return nil, errors.New("auth: no identity source: the dev bypass is off and no sign-in session store was given")
 	}
 	return a, nil
 }
@@ -165,10 +120,10 @@ func New(cfg config.Config, opts ...Option) (*Authenticator, error) {
 // raw path, so it only decides whether an identity is required. Admission
 // stays with the membership middleware, which re-checks the path.
 //
-// How a private request without an identity is refused depends on the source.
-// Under Access it is 403, as before. With sign-in (ADR-00030) a full-page GET
-// is redirected to sign-in, which returns to the page afterwards, and any
-// other request, including an HTMX one, is 401.
+// A private request without an identity is refused as ADR-00030 says: a
+// full-page GET is redirected to sign-in, which returns to the page
+// afterwards, and any other request, including an HTMX one, is 401. Under the
+// dev bypass the only refusal is a malformed dev identity, which is 403.
 func (a *Authenticator) Middleware(public func(path string) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -184,12 +139,12 @@ func (a *Authenticator) Middleware(public func(path string) bool) func(http.Hand
 						"reason", err.Error(), "method", r.Method, "path", r.URL.Path)
 				}
 				next.ServeHTTP(w, r)
-			case a.sessions != nil:
-				a.signInRequired(w, r, err)
-			default:
+			case a.bypass:
 				a.log.WarnContext(r.Context(), "access denied",
 					"reason", err.Error(), "method", r.Method, "path", r.URL.Path, "remote_addr", r.RemoteAddr)
 				http.Error(w, "forbidden", http.StatusForbidden)
+			default:
+				a.signInRequired(w, r, err)
 			}
 		})
 	}
@@ -216,19 +171,7 @@ func (a *Authenticator) authenticate(r *http.Request) (string, error) {
 	if a.bypass {
 		return devIdentity(r)
 	}
-	if a.sessions != nil {
-		return a.sessionIdentity(r)
-	}
-	token := r.Header.Get(HeaderName)
-	if token == "" {
-		if c, err := r.Cookie(CookieName); err == nil {
-			token = c.Value
-		}
-	}
-	if token == "" {
-		return "", errNoToken
-	}
-	return a.verify(r.Context(), token)
+	return a.sessionIdentity(r)
 }
 
 // sessionIdentity returns the email of the session the request's cookie
@@ -256,34 +199,7 @@ func devIdentity(r *http.Request) (string, error) {
 	}
 	a, err := mail.ParseAddress(v)
 	if err != nil || a.Address != v || v != strings.ToLower(v) {
-		return "", reject("malformed dev identity")
+		return "", errors.New("malformed dev identity")
 	}
 	return v, nil
-}
-
-// verify returns the email of a valid token. No error it returns contains any
-// part of the token.
-func (a *Authenticator) verify(ctx context.Context, token string) (string, error) {
-	p, err := parseToken(token)
-	if err != nil {
-		return "", err
-	}
-	if p.header.Alg != "RS256" {
-		return "", reject("unexpected algorithm")
-	}
-	if p.header.Kid == "" {
-		return "", reject("no kid")
-	}
-	key, err := a.keys.key(ctx, p.header.Kid)
-	switch {
-	case errors.Is(err, errUnknownKey):
-		return "", reject("unknown signing key")
-	case err != nil:
-		// Not the sender's fault, but still never admitted.
-		return "", fmt.Errorf("cannot verify token: %w", err)
-	}
-	if err := p.verifySignature(key); err != nil {
-		return "", err
-	}
-	return p.claims.check(a.issuer, a.aud, a.now())
 }

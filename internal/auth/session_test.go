@@ -65,12 +65,6 @@ func withSession(r *http.Request, token string) *http.Request {
 	return r
 }
 
-func TestSignInRequiresASessionStore(t *testing.T) {
-	if _, err := New(signInConfig()); err == nil {
-		t.Fatal("sign-in configured without a session store: want an error")
-	}
-}
-
 func TestSessionIdentity(t *testing.T) {
 	a, _ := sessionAuth(t, signInConfig(), fakeSessions{emails: map[string]string{"good": "tim@example.com"}})
 	for _, path := range []string{"/recipes", "/canada"} {
@@ -132,16 +126,6 @@ func TestSessionLookupFailure(t *testing.T) {
 	}
 }
 
-// With sign-in configured the Access token is not an identity.
-func TestSessionModeIgnoresAccessToken(t *testing.T) {
-	a, _ := sessionAuth(t, signInConfig(), fakeSessions{})
-	r := httptest.NewRequest(http.MethodPost, "/recipes", nil)
-	r.Header.Set(HeaderName, goodToken(t, nil))
-	if rec, email := sessionServe(a, r); rec.Code != http.StatusUnauthorized || email != "" {
-		t.Errorf("%d as %q", rec.Code, email)
-	}
-}
-
 // The dev bypass stays as it is (ADR-00030): it wins over a configured
 // sign-in, and a session is never consulted on a bypass listener.
 func TestBypassWinsOverSessions(t *testing.T) {
@@ -149,19 +133,6 @@ func TestBypassWinsOverSessions(t *testing.T) {
 	cfg.Server = config.Server{ListenAddr: "127.0.0.1:0", DevAuthBypass: true}
 	a, _ := sessionAuth(t, cfg, fakeSessions{err: errors.New("must not be called")})
 	if rec, email := sessionServe(a, httptest.NewRequest(http.MethodGet, "/recipes", nil)); rec.Code != http.StatusOK || email != DevEmail {
-		t.Errorf("%d as %q", rec.Code, email)
-	}
-}
-
-// Without sign-in, Access is the identity and a refusal stays 403, whatever
-// session store is given.
-func TestAccessModeIgnoresSessions(t *testing.T) {
-	a, err := New(prodConfig(), WithSessions(fakeSessions{emails: map[string]string{"good": "tim@example.com"}}, "/login"),
-		WithLogger(slog.New(slog.DiscardHandler)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rec, email := sessionServe(a, withSession(httptest.NewRequest(http.MethodGet, "/recipes", nil), "good")); rec.Code != http.StatusForbidden || email != "" {
 		t.Errorf("%d as %q", rec.Code, email)
 	}
 }

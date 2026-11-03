@@ -118,7 +118,7 @@ func hasDotSegment(r *http.Request) bool {
 // it gives the dev identities something to be a member of: DevEmail in one
 // household and DevOtherEmail in another. Only the bypass uses it, and the
 // bypass exists only on a loopback listener (ADR-00003), so a deployment
-// behind Access never has these members. Seeding waits for the first request,
+// with sign-in never has these members. Seeding waits for the first request,
 // not for construction, so building the router (the e2e route lister does)
 // needs no migrated database; a failed seed is retried by the next request and
 // fails the one that hit it.

@@ -2,8 +2,8 @@
 # gobbler at http://127.0.0.1:8080. The port is published on every interface of
 # the VM so the monitoring stack can reach the health check (ADR-00027); the
 # network, not this file, decides who may connect. The app's identity check,
-# the sign-in session (ADR-00030) or the Access JWT, guards every route except
-# the public paths (ADR-00029).
+# the sign-in session (ADR-00030), guards every route except the public paths
+# (ADR-00029).
 #
 # Usage: copy .env.example to .env, fill it in, then
 # `docker compose pull && docker compose up -d`.
@@ -15,8 +15,8 @@ services:
     image: ghcr.io/kaecyra/gobbler:${GOBBLER_VERSION:?set GOBBLER_VERSION in .env to a published version}
     restart: unless-stopped
     environment:
-      # The container's interface must accept the published traffic. Access
-      # verification is on: the dev bypass is forced off whatever .env says.
+      # The container's interface must accept the published traffic. Sign-in
+      # is the identity: the dev bypass is forced off whatever .env says.
       GOBBLER_LISTEN_ADDR: 0.0.0.0:8080
       GOBBLER_DEV_AUTH_BYPASS: "false"
       GOBBLER_DATA_DIR: /data
@@ -24,8 +24,6 @@ services:
       # not used, so nothing else in .env reaches this container. An empty
       # value counts as unset (internal/config). Add a new setting here too.
       GOBBLER_LOG_LEVEL: ${GOBBLER_LOG_LEVEL:-}
-      GOBBLER_ACCESS_TEAM_DOMAIN: ${GOBBLER_ACCESS_TEAM_DOMAIN:-}
-      GOBBLER_ACCESS_AUD: ${GOBBLER_ACCESS_AUD:-}
       GOBBLER_OIDC_ISSUER: ${GOBBLER_OIDC_ISSUER:-}
       GOBBLER_OIDC_CLIENT_ID: ${GOBBLER_OIDC_CLIENT_ID:-}
       GOBBLER_OIDC_CLIENT_SECRET: ${GOBBLER_OIDC_CLIENT_SECRET:-}

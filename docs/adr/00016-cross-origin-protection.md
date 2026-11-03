@@ -1,4 +1,4 @@
-# ADR-00016: Cross-origin requests are refused by Fetch metadata, with SameSite=Lax at the edge
+# ADR-00016: Cross-origin requests are refused by Fetch metadata, with a SameSite=Lax session cookie
 
 **Status:** Accepted
 
@@ -6,14 +6,13 @@
 
 ## Context
 
-Cloudflare Access proves who the browser belongs to (ADR-00003). It does not
-prove that the request came from gobbler's own pages: a page on another site
-can make the same logged-in browser send a cross-site POST, and Access passes
-it, because the browser attaches the Access cookie. The `CF_Authorization`
-cookie's SameSite attribute is an Access application setting, and its default
-is `None`, which sends the cookie on cross-site requests. The ingest form
-already accepts POSTs, and the editor, history, journal, catalog and settings
-pages will add more.
+The sign-in session ([ADR-00030](00030-google-sign-in.md)) proves who the
+browser belongs to. It does not prove that the request came from gobbler's own
+pages: a page on another site can make the same signed-in browser send a
+cross-site POST, and the session check passes it if the browser attaches the
+session cookie. Whether it does is the cookie's SameSite attribute: `None`
+sends the cookie on cross-site requests. The ingest form already accepts POSTs,
+and the editor, history, journal, catalog and settings pages will add more.
 
 gobbler is single-user, served over one hostname, with HTMX making same-origin
 requests. Go 1.25 added `net/http.CrossOriginProtection`, which rejects unsafe
@@ -28,19 +27,20 @@ Options considered:
   token, no state, nothing in templates or HTMX calls, and testable in the
   repository. A browser that sends neither `Sec-Fetch-Site` nor `Origin` is let
   through.
-- **SameSite on the Access cookie alone.** No code: with `Lax`, the browser
-  does not attach the cookie to a cross-site POST, so Access refuses the request
-  at the edge. But it is a dashboard setting. Nothing in the repository enforces
-  or tests it, and changing it back silently removes all protection.
+- **SameSite on the session cookie alone.** One attribute: with `Lax`, the
+  browser does not attach the cookie to a cross-site POST, so the request
+  arrives without a session and is refused. But SameSite judges the site, not
+  the origin: a page on another subdomain of the same domain is same-site, and
+  the browser attaches the cookie to its POST. Alone, it would also leave
+  nothing behind it if the attribute were ever changed.
 - **A synchronizer or double-submit token** (for example `gorilla/csrf`).
   Covers browsers that send no Fetch metadata. Costs a secret, a token in every
   form and an HTMX header on every request. That plumbing touches every page
   for a threat the two cheaper layers already cover for this one user's
   browsers.
-- **The middleware plus SameSite=Lax.** Chosen. The middleware is the
-  enforced, tested layer. The cookie setting stops the same requests at the
-  edge before they reach the tunnel, and covers what the middleware lets
-  through.
+- **The middleware plus SameSite=Lax.** Chosen. The middleware is the enforced,
+  tested layer. The cookie attribute strips the session from the same requests,
+  and covers what the middleware lets through.
 
 ## Decision
 
@@ -48,8 +48,9 @@ Options considered:
   trusted origins and no bypass patterns. No handler opts out.
 - State changes happen only on unsafe methods. A GET, HEAD or OPTIONS handler
   never changes state, because the middleware always allows those methods.
-- The Access application's cookie setting is SameSite **Lax**. `Strict` is not
-  used: Cloudflare documents that it can cause redirect loops during login.
+- The app sets its session and sign-in cookies SameSite **Lax** (ADR-00030).
+  `Strict` is not used: the browser would then withhold the cookies on the
+  redirect back from the issuer and on any link followed from another site.
 
 ## Consequences
 
@@ -64,7 +65,8 @@ new ADR before it can be allowed.
    `web.New`. A test proves that a POST with `Sec-Fetch-Site: cross-site` is
    refused with 403, and that a same-origin POST and a cross-site GET are
    allowed.
-2. `docs/operations.md`'s Cloudflare section tells the operator to set the
-   Access application's SameSite cookie setting to Lax, and says why.
+2. The app sets the session cookie SameSite=Lax itself, so no operator step is
+   needed. The e2e sign-in suite checks the attribute on the cookie the
+   callback sets.
 3. No route under `internal/web` changes state in response to GET, HEAD or
    OPTIONS.

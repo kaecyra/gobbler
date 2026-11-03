@@ -6,7 +6,7 @@
 // through the recipe store, which writes the revision holding the prior
 // document; the editor never writes SQL and never touches a source snapshot.
 // The author of an edit is the verified identity on the request context
-// (ADR-00003). It is mounted from internal/web (ADR-00012). The same form is
+// (ADR-00030). It is mounted from internal/web (ADR-00012). The same form is
 // the ingest review screen over an unsaved draft (Unsaved, ADR-00020 decision 3).
 package editor
 

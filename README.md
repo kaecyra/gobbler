@@ -13,7 +13,7 @@ Deploying, configuring and restoring from a backup: [docs/operations.md](./docs/
 ## Running with Docker Compose
 
 ```sh
-cp .env.example .env   # set GOBBLER_VERSION, the Access team domain and AUD
+cp .env.example .env   # set GOBBLER_VERSION and the GOBBLER_OIDC_* sign-in settings
 docker compose pull && docker compose up -d
 ```
 

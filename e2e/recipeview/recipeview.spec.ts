@@ -13,8 +13,8 @@ import { portFromEnv } from '../fixtures/ports.mjs';
 // reads the page through a browser. Loopback only, throwaway data.
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
-const accessURL = process.env.GOBBLER_E2E_ACCESS_URL;
-if (!accessURL) throw new Error('GOBBLER_E2E_ACCESS_URL is not set; run through playwright.config.ts');
+const anonymousURL = process.env.GOBBLER_E2E_ANONYMOUS_URL;
+if (!anonymousURL) throw new Error('GOBBLER_E2E_ANONYMOUS_URL is not set; run through playwright.config.ts');
 
 const port = await portFromEnv(process.env, 'GOBBLER_E2E_RECIPEVIEW_PORT');
 const origin = `http://127.0.0.1:${port}`;
@@ -176,9 +176,10 @@ test('a scale that cannot be shown is a 400 page', async ({ page }) => {
   expect(res?.status()).toBe(400);
 });
 
-test('the recipe is refused without an Access identity', async ({ request }) => {
-  const res = await request.get(`${accessURL}/recipes/${id}`);
-  expect(res.status()).toBe(403);
+test('the recipe is refused without a session', async ({ request }) => {
+  const res = await request.get(`${anonymousURL}/recipes/${id}`, { maxRedirects: 0 });
+  expect(res.status()).toBe(303);
+  expect(res.headers()['location']).toMatch(/^\/login\?next=/);
 });
 
 test('the journal loads into the recipe page', async ({ page }) => {

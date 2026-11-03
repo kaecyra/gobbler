@@ -6,12 +6,13 @@
 
 ## Context
 
-gobbler was built as a one-person recipe box. ADR-00003 has Cloudflare Access
-decide who reaches the app, and the app records the verified email on recipe
-writes (recipes, notes, the made-it log, revisions, source snapshots). It does
-not record it on shopping data: lists, entries, manual items, the pantry and
-check state carry no identity, and the pantry is one global set. The app keeps
-no user or membership records of its own.
+gobbler was built as a one-person recipe box. ADR-00003 had Cloudflare Access
+decide who reached the app (sign-in replaced it, ADR-00030), and the app
+records the verified email on recipe writes (recipes, notes, the made-it log,
+revisions, source snapshots). It does not record it on shopping data: lists,
+entries, manual items, the pantry and check state carry no identity, and the
+pantry is one global set. The app keeps no user or membership records of its
+own.
 
 ADR-00011 deferred "invitations and multiple users" on the premise that the
 recorded identity would make it a feature rather than a data migration. That
@@ -19,10 +20,11 @@ holds for recipe data and not for shopping data.
 
 Three shapes were considered:
 
-- **One shared household.** Everyone Access admits sees and edits everything,
-  and inviting someone is an Access policy change. This is nearly free and
-  matches one kitchen. It was rejected because the owner wants separate
-  households on one deployment, and that model has no boundary between them.
+- **One shared household.** Everyone the identity layer admits sees and edits
+  everything, and inviting someone is a change to its policy. This is nearly
+  free and matches one kitchen. It was rejected because the owner wants
+  separate households on one deployment, and that model has no boundary between
+  them.
 - **Per-person partitioning.** Each email owns its own recipes, lists and
   pantry, and sharing is explicit. This was rejected because a kitchen is
   shared: a household's members cook from, shop for and check off one set of
@@ -33,21 +35,22 @@ Three shapes were considered:
 
 Admission had three options:
 
-- **Access as a strict allowlist kept in infrastructure code, with the app
-  mapping emails to households.** This gives two locks, so a bug in the app's
-  membership check exposes nothing to people Access has not admitted. It was
-  rejected because every invitation would need an infrastructure deploy as
-  well as an in-app step, and the two lists drift apart.
-- **Access admits an email domain or group.** This was rejected because the
-  people a household invites rarely share a domain or group the owner
-  controls.
-- **Access authenticates any email, and the app decides everything.** This was
-  chosen, because inviting someone should be an act inside the app. The cost
-  is that the app's membership check becomes the only lock.
+- **A strict allowlist at the identity layer, kept in infrastructure code, with
+  the app mapping emails to households.** This gives two locks, so a bug in the
+  app's membership check exposes nothing to people the allowlist has not
+  admitted. It was rejected because every invitation would need an
+  infrastructure deploy as well as an in-app step, and the two lists drift
+  apart.
+- **The identity layer admits an email domain or group.** This was rejected
+  because the people a household invites rarely share a domain or group the
+  owner controls.
+- **Sign-in authenticates any email, and the app decides everything.** This was
+  chosen, because inviting someone should be an act inside the app. The cost is
+  that the app's membership check becomes the only lock.
 
 There were three options for who creates households:
 
-- **Open sign-up.** This was rejected. Once Access admits anyone, a stranger's
+- **Open sign-up.** This was rejected. Once sign-in admits anyone, a stranger's
   household would spend the operator's disk, backup storage and LLM API budget
   (ADR-00007), and containing that would take quotas this ADR does not design.
 - **The operator alone, from the command line.** This was rejected in favour
@@ -93,7 +96,7 @@ Three options were considered for sharing between households:
   a "shared with me" path, rendering the shared recipe's lines would expose the
   sender's overlay entries, and revoking a share another household has already
   read is cosmetic.
-- **Public or link sharing.** This was rejected. Access admits any email that
+- **Public or link sharing.** This was rejected. Sign-in admits any email that
   authenticates, so "anyone with the link" means anyone with an email address.
 - **Sending a copy to another household.** This was chosen. After the copy is
   made, each household again reads only its own rows.
@@ -127,7 +130,7 @@ A household's last member can leave in one of three ways:
 The tenant is the **household**. Every recipe-domain and shopping-domain row
 belongs to exactly one household, and a request can read or change only the
 data of a household its verified identity is a member of. A household has one
-or more members, identified by their verified Access email.
+or more members, identified by their verified email.
 
 An email belongs to **at most one household**, and the schema enforces this. A
 request's household is derived from its verified identity alone. No request
@@ -222,10 +225,10 @@ of the household's name, and it removes all of the household's data.
 
 ### Admission
 
-Cloudflare Access authenticates any email that can prove itself (for example
-with a one-time PIN). It no longer limits who may enter, and the app still
-verifies the Access JWT on every request (ADR-00003). Membership is held by the
-app and decided by the app.
+Sign-in ([ADR-00030](00030-google-sign-in.md)) accepts any email the issuer has
+verified, which today means any Google account. It does not limit who may
+enter, and the app verifies the sign-in session on every request. Membership is
+held by the app and decided by the app.
 
 A verified email that is neither a member of a household nor named by a
 pending invitation sees a "not a member" page and nothing else. No household
@@ -289,7 +292,8 @@ It returns with its own ADR.
 
 This reverses the single-user premise:
 
-- **ADR-00003.** Access still authenticates, but the app now authorises: it
+- **ADR-00003.** Identity is still established outside the household records
+  (today by the sign-in session, ADR-00030), but the app now authorises: it
   maps the verified email to household membership and scopes every query to it.
 - **ADR-00011.** "Invitations and multiple users" stops being a feature on top
   of existing data. It becomes a tenancy change to the schema. Todoist push
@@ -306,8 +310,8 @@ household invitation to themselves.
    Status to "Amended by ADR-00018" and update its index row.
 2. Amend ADR-00011's "Deferred, planned later" invitations bullet the same way.
 3. Amend the opening paragraph of `AGENTS.md`, which says "single-user".
-4. `docs/operations.md` states that the Access application must admit any
-   email that authenticates, and that admission is decided in the app.
+4. `docs/operations.md` states that any verified Google email can sign in, that
+   membership is the lock, and that admission is decided in the app.
 5. Every route has a test made as an authenticated non-member and as a member
    of another household. The e2e route-coverage gate checks both, as it checks
    route coverage today.

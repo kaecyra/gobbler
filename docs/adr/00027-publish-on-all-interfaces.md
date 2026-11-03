@@ -8,9 +8,9 @@
 
 [ADR-00017](00017-cloudflared-on-the-guest.md) has Compose publish gobbler on
 the guest loopback only, and rejects "publish on all interfaces" because the
-Access JWT check would then be the only thing between the network and the app.
-[ADR-00003](00003-cloudflare-access-identity.md) lists a published port among
-the misconfigurations the app must survive.
+app's identity check would then be the only thing between the network and the
+app. [ADR-00003](00003-cloudflare-access-identity.md) lists a published port
+among the misconfigurations the app must survive.
 
 The owner's monitoring stack runs on another machine in the same private
 network and needs to reach the health check. Loopback cannot serve it. The VM
@@ -34,9 +34,10 @@ Options considered:
 
 Compose publishes gobbler's port as `8080:8080`, on every interface of the VM.
 `cloudflared` still reaches it at `http://127.0.0.1:8080`, which the same
-binding serves. The Access JWT check remains the app's own guard on every route
-except the health check (ADR-00003), and the development bypass stays forced
-off in Compose.
+binding serves. The sign-in session check
+([ADR-00030](00030-google-sign-in.md)) remains the app's own guard on every
+route except the public paths ([ADR-00029](00029-public-paths.md)), and the
+development bypass stays forced off in Compose.
 
 ## Consequences
 

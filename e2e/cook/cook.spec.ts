@@ -13,8 +13,8 @@ import { portFromEnv } from '../fixtures/ports.mjs';
 // 1 mix, 2 rise (passive, 1 h), 3 bake, 4 chop, 5 simmer, 6 serve (1 min).
 const bin = process.env.GOBBLER_E2E_BIN;
 if (!bin) throw new Error('GOBBLER_E2E_BIN is not set; run through `make e2e`');
-const accessURL = process.env.GOBBLER_E2E_ACCESS_URL;
-if (!accessURL) throw new Error('GOBBLER_E2E_ACCESS_URL is not set; run through playwright.config.ts');
+const anonymousURL = process.env.GOBBLER_E2E_ANONYMOUS_URL;
+if (!anonymousURL) throw new Error('GOBBLER_E2E_ANONYMOUS_URL is not set; run through playwright.config.ts');
 
 const port = await portFromEnv(process.env, 'GOBBLER_E2E_COOK_PORT');
 const origin = `http://127.0.0.1:${port}`;
@@ -252,9 +252,10 @@ test('an unknown recipe is a 404 page and a step past the end is a 400 page', as
   expect((await page.goto(`/recipes/${pizza}/cook?step=0`))?.status()).toBe(400);
 });
 
-test('cook mode is refused without an Access identity', async ({ request }) => {
-  const res = await request.get(`${accessURL}/recipes/${pizza}/cook`);
-  expect(res.status()).toBe(403);
+test('cook mode is refused without a session', async ({ request }) => {
+  const res = await request.get(`${anonymousURL}/recipes/${pizza}/cook`, { maxRedirects: 0 });
+  expect(res.status()).toBe(303);
+  expect(res.headers()['location']).toMatch(/^\/login\?next=/);
 });
 
 test('timers run side by side, keep their steps, and finish by the clock', async ({ page }) => {

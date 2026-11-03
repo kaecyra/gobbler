@@ -17,7 +17,7 @@ index below in the same commit.
 |---|---|---|
 | [00001](00001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md), [00021](00021-youtube-video-on-a-recipe.md) |
-| [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Amended by [00018](00018-households-as-tenants.md), [00029](00029-public-paths.md) |
+| [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Superseded by [00030](00030-google-sign-in.md) |
 | [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md), [00025](00025-one-cuisine-per-recipe.md) |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
 | [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Amended by [00020](00020-ingest-step-graph-gap-fill-review.md) |
@@ -30,7 +30,7 @@ index below in the same commit.
 | [00013](00013-playwright-e2e-in-node.md) | End-to-end tests with Node Playwright under e2e/ | Accepted |
 | [00014](00014-sqlc-for-data-access.md) | Data access through sqlc-generated code | Accepted |
 | [00015](00015-immutability-at-the-store-api.md) | History immutability is enforced by the store API, not the database | Accepted |
-| [00016](00016-cross-origin-protection.md) | Cross-origin requests are refused by Fetch metadata, with SameSite=Lax at the edge | Accepted |
+| [00016](00016-cross-origin-protection.md) | Cross-origin requests are refused by Fetch metadata, with a SameSite=Lax session cookie | Accepted |
 | [00017](00017-cloudflared-on-the-guest.md) | cloudflared runs on the VM guest; Compose publishes gobbler on loopback only | Amended by [00027](00027-publish-on-all-interfaces.md) |
 | [00018](00018-households-as-tenants.md) | Households are tenants; a household has several members | Accepted |
 | [00019](00019-sized-equipment-flag.md) | Equipment carries a hand-set `sized` flag that drives the scaled view's larger-pan hint | Accepted |

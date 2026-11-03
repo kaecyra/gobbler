@@ -1,6 +1,6 @@
 # ADR-00003: Identity from verified Cloudflare Access JWT; single user
 
-**Status:** Amended by [ADR-00018](00018-households-as-tenants.md), [ADR-00029](00029-public-paths.md)
+**Status:** Superseded by [ADR-00030](00030-google-sign-in.md)
 
 **Date:** 2026-10-06
 

@@ -14,11 +14,11 @@ thing twice, and the two would drift. Compose also only exposed gobbler's port
 to its own network, so gobbler could not be reached by the guest's
 `cloudflared`.
 
-[ADR-00003](00003-cloudflare-access-identity.md) says gobbler is reached
-through a Cloudflare tunnel with an Access application in front of it. It
-rejects trusting the network, and lists "a published port" among the
-misconfigurations the app must survive by verifying the Access JWT itself on
-every request except the health check.
+gobbler is reached through a Cloudflare tunnel.
+[ADR-00003](00003-cloudflare-access-identity.md) rejects trusting the network,
+and lists "a published port" among the misconfigurations the app must survive
+by verifying identity itself on every request except the health check. That
+check is now the sign-in session ([ADR-00030](00030-google-sign-in.md)).
 
 Options considered:
 
@@ -26,9 +26,9 @@ Options considered:
   `cloudflared` image, so the repository deployed on its own. Rejected because
   it duplicates the tunnel the owner's infrastructure code already defines, and
   a token for a second tunnel would sit in `.env`.
-- **Publish on all interfaces.** Reachable from the network, so only the JWT
-  check would stand between the network and the app. ADR-00003 treats a
-  published port as a misconfiguration to survive, not a design to adopt.
+- **Publish on all interfaces.** Reachable from the network, so only the app's
+  identity check would stand between the network and the app. ADR-00003 treats
+  a published port as a misconfiguration to survive, not a design to adopt.
   Rejected.
 - **Host network mode.** Drops the container's network isolation, and makes
   the listen address, rather than the port mapping, carry the exposure
@@ -53,7 +53,8 @@ the guest loopback only, at `127.0.0.1:8080`; the guest tunnel's service URL is
 
 This amends ADR-00002, section Packaging: its bullet "`cloudflared` runs
 alongside as its own service" no longer holds, and ADR-00002 carries a note
-pointing here. The rest of ADR-00002 stands, as does ADR-00003.
+pointing here. The rest of ADR-00002 stands, as does the app's own identity
+check (ADR-00003, now the sign-in session of ADR-00030).
 
 **Obligations:**
 

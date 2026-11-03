@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { OPERATOR, OTHER, STRANGER, asIdentity } from '../fixtures/identity';
 import { expectTapTargets } from '../fixtures/tap';
 
-// Admission (ADR-00018): Access admits any email that authenticates, so the
+// Admission (ADR-00018): sign-in admits any email that authenticates, so the
 // app's membership check is the only lock. The dev-auth server seeds DEV and
 // OTHER as members of separate households and lists OPERATOR and DEV as operators.
 
