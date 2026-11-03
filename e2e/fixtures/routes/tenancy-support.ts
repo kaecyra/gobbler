@@ -221,6 +221,8 @@ export interface Ids {
   /** DEV's profile address, and the id of DEV's personal API key on it. */
   profile: string;
   personalKey: number;
+  /** OTHER's own profile address, to revoke DEV's key through a profile that is OTHER's. */
+  otherProfile: string;
 }
 
 /**
@@ -295,12 +297,27 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   await ok(dev, 'POST', `/shares/new/${recipe}`, { email: shareTo });
   await ok(dev, 'POST', '/household/keys', { name: KEY_NAME, lifetime: '30d' });
   const key = lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
-  const mine = await send(dev, 'GET', '/profile');
-  const profile = (mine.headers().location ?? '').replace('/profile/', '');
-  expect(profile, 'the address /profile sends DEV to').toMatch(/^[A-Za-z0-9_-]{22}$/);
+  return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key, profile: '', personalKey: 0, otherProfile: '' };
+}
+
+/** The address of the profile /profile sends ctx's person to. */
+export async function profileAddress(ctx: APIRequestContext): Promise<string> {
+  const address = ((await send(ctx, 'GET', '/profile')).headers().location ?? '').replace('/profile/', '');
+  expect(address, 'the address /profile sends a person to').toMatch(/^[A-Za-z0-9_-]{22}$/);
+  return address;
+}
+
+/**
+ * Gives DEV a personal API key, and returns DEV's profile address and the key's
+ * id (ADR-00031). It is not part of populate(): a personal key belongs to the
+ * person, not to the household, so it survives the household's deletion and
+ * would break the deletion check's comparison with an empty household.
+ */
+export async function populatePersonalKey(dev: APIRequestContext): Promise<Pick<Ids, 'profile' | 'personalKey'>> {
+  const profile = await profileAddress(dev);
   await ok(dev, 'POST', `/profile/${profile}/keys`, { name: PERSONAL_KEY_NAME, lifetime: '30d' });
   const personalKey = lastId(await page(dev, `/profile/${profile}/keys`), /\/keys\/(\d+)\/revoke/g, 'personal key');
-  return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key, profile, personalKey };
+  return { profile, personalKey };
 }
 
 /** Starts a household named name for a new email, through the operator, and returns its member's context. */

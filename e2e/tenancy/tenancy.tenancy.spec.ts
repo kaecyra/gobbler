@@ -16,6 +16,8 @@ import {
   makeWorkdir,
   pendingShare,
   populate,
+  populatePersonalKey,
+  profileAddress,
   removeWorkdir,
   send,
   startHousehold,
@@ -247,6 +249,9 @@ const PROBES: Probe[] = [
   unaddressed('GET', (i) => `/profile/${i.profile}/keys`),
   { ...unaddressed('POST', (i) => `/profile/${i.profile}/keys`), form: () => ({ name: 'Hijack', lifetime: '30d' }) },
   unaddressed('POST', (i) => `/profile/${i.profile}/keys/${i.personalKey}/revoke`),
+  // Through OTHER's own profile the self-only check passes, so the key's owner is what refuses it
+  // (and for STRANGER it is not their address, so the self-only check does).
+  unaddressed('POST', (i) => `/profile/${i.otherProfile}/keys/${i.personalKey}/revoke`),
 ];
 
 let work: Workdir | undefined;
@@ -273,6 +278,8 @@ test.describe('every route, as a non-member and as a member of another household
     thirdCtx = third.ctx;
     ids = await populate(devCtx, opCtx, routes.recipe, third.email);
     ids.share = await pendingShare(thirdCtx);
+    Object.assign(ids, await populatePersonalKey(devCtx));
+    ids.otherProfile = await profileAddress(otherCtx);
   });
 
   test.afterAll(async () => {
