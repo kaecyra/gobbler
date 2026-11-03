@@ -10,3 +10,6 @@ docs/plan/board-data.js
 .env
 .env.*
 !.env.example
+
+# Local database from `go run ./cmd/gobbler serve` (GOBBLER_DATA_DIR default)
+/data/
