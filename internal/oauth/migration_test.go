@@ -22,7 +22,7 @@ func oauthMigration(t *testing.T) int64 {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if n, ok := strings.CutSuffix(e.Name(), "_a-oauth-server.sql"); ok {
+		if n, ok := strings.CutSuffix(e.Name(), "_oauth_server.sql"); ok {
 			v, err := strconv.ParseInt(n, 10, 64)
 			if err != nil {
 				t.Fatal(err)
@@ -30,7 +30,7 @@ func oauthMigration(t *testing.T) int64 {
 			return v
 		}
 	}
-	t.Fatal("no a-oauth-server migration")
+	t.Fatal("no oauth_server migration")
 	return 0
 }
 
