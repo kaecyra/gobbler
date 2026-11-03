@@ -13,7 +13,7 @@ than one person at once.
 Options considered for getting the list onto a phone:
 
 - **Text export only.** Works anywhere, but checking items off is lost.
-- **A live list page in gobbler.** Works through the same Access protection,
+- **A live list page in gobbler.** Works behind the app's own sign-in,
   with checks shared across devices.
 - **Push to an external list app.** The owner wants Todoist. Apple Reminders
   was considered and dropped: it has no public web API, and an iOS Shortcut

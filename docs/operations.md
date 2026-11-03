@@ -99,7 +99,8 @@ must be invited again under their Google address.
 
 ### Admission and the first household
 
-Admission is decided in the app. A verified email that is a
+Admission is decided in the app. Any Google account with a verified email can
+sign in; membership is the lock. A verified email that is a
 member of a household reaches the app. One that is not reaches only the public
 paths (`/healthz`, `/canada`, `/static/*`, `/login` and `/auth/callback`,
 which serve no household data), the "not a member" page, invitation
