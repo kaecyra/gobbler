@@ -2776,7 +2776,8 @@
         "internal/web/household/**",
         "internal/web/profile/keys*",
         "e2e/profile/keys*",
-        "e2e/household/**"
+        "e2e/household/**",
+        "internal/web/layout/apikey*"
       ],
       "needs_migration": "schema",
       "adrs": [],
