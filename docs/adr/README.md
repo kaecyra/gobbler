@@ -20,7 +20,7 @@ index below in the same commit.
 | [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Superseded by [00030](00030-google-sign-in.md) |
 | [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md), [00025](00025-one-cuisine-per-recipe.md) |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
-| [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Amended by [00020](00020-ingest-step-graph-gap-fill-review.md) |
+| [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Amended by [00020](00020-ingest-step-graph-gap-fill-review.md), [00034](00034-mcp-server.md) |
 | [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Accepted |
 | [00008](00008-ingredient-catalog.md) | Canonical ingredient catalog: curated seed plus USDA FoodData Central | Accepted |
 | [00009](00009-shopping-list.md) | Shopping list aggregation, pantry, live view, Todoist push | Amended by [00018](00018-households-as-tenants.md) |
@@ -43,11 +43,12 @@ index below in the same commit.
 | [00026](00026-publish-images-to-ghcr.md) | CI publishes the production image to a public GHCR package; the VM pulls it | Accepted |
 | [00027](00027-publish-on-all-interfaces.md) | Compose publishes gobbler on all interfaces of the VM | Accepted |
 | [00028](00028-invitation-codes.md) | An invitation is addressed by a random eight-character base62 code | Accepted |
-| [00029](00029-public-paths.md) | A fixed set of public paths is served without an identity | Amended by [00030](00030-google-sign-in.md) |
+| [00029](00029-public-paths.md) | A fixed set of public paths is served without an identity | Amended by [00030](00030-google-sign-in.md), [00034](00034-mcp-server.md) |
 | [00030](00030-google-sign-in.md) | The app signs people in over OpenID Connect, with Google; Cloudflare Access is removed | Amended by [00031](00031-api-keys.md), [00032](00032-profiles.md) |
-| [00031](00031-api-keys.md) | Personal and household API keys authenticate the machine-facing surface | Accepted |
+| [00031](00031-api-keys.md) | Personal and household API keys authenticate the machine-facing surface | Amended by [00034](00034-mcp-server.md) |
 | [00032](00032-profiles.md) | Everyone has a profile, and one visibility rule decides what a viewer sees | Accepted |
 | [00033](00033-media-object-storage.md) | Uploaded media is processed to WebP and kept in S3-compatible object storage | Accepted |
+| [00034](00034-mcp-server.md) | gobbler serves MCP, authenticated by API keys or OAuth, with recipe writes held for review | Accepted |
 
 ## What needs one
 
