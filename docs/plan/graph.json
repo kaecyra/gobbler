@@ -2755,7 +2755,9 @@
         "internal/web/layout/avatar*",
         "internal/web/layout/layout.templ",
         "internal/web/*.go",
-        "e2e/profile/avatar*/**"
+        "e2e/profile/avatar*/**",
+        "internal/web/shopping/wiring_test.go",
+        "internal/web/operator/promotion_wiring_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
