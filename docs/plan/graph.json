@@ -2741,7 +2741,7 @@
       "wave": 11,
       "track": null,
       "issue": 333,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "p-profiles"
       ],
@@ -2766,7 +2766,7 @@
       "wave": 11,
       "track": null,
       "issue": 334,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "p-profiles"
       ],
