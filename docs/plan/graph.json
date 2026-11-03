@@ -3031,6 +3031,11 @@
       "path": "internal/web/layout/layout_operator.go",
       "mode": "open",
       "note": "APPEND-ONLY by convention (wave 11): add your own lines, constants or predicates; never edit another node's. a-oauth-server adds its discovery, registration and token endpoints to publicPages (ADR-00034 amends ADR-00029 for those alone). a-mcp-endpoint adds its own bearer-path predicate and never adds /mcp to publicPages: /mcp reads household data, so ADR-00029 keeps it non-public and ADR-00034 applies the ADR-00018 membership check to the credential's owner. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/oauth/oauthdb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
     }
   ],
   "done": [
