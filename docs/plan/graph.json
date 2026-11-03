@@ -9,13 +9,13 @@
   },
   "notes": [
     "internal/config is written whole by w0-config from the design.md configuration table, so later nodes do not edit it. A node that needs a new setting is a lane widening, not a silent edit.",
-    "Migrations are goose files in internal/db/migrations, numbered from the 'schema' sequence at dispatch. Workers never pick a number.",
     "VERSION is bumped by every source PR (git-workflow rule): every merge invalidates every open branch's VERSION line. Expect a one-line rebase per merge; do not sequence around it.",
     "internal/web is a server/router package plus one subpackage per feature area (internal/web/<area>/**), shared templ layout in internal/web/layout: ADR-00012.",
     "E2E runs @playwright/test from e2e/, test-only and never shipped: ADR-00013.",
     "Greenfield: every glob names a path that does not exist yet. Waves follow docs/design.md (W0-W7, W8 = households per ADR-00018, Later = wave 9).",
-    "Generated sqlc packages (storedb, catalogdb, shoppingdb, householddb) are never hand-edited; make generate rewrites them. Two nodes that write one package may share a round: they merge in sequence, and the later one rebases and runs make generate. Two nodes that each add a migration never share a round, because every migration regenerates every package's models.go and draws from the one schema sequence.",
-    "Wave 9 nodes are deferred and recorded blocked until their own ADR: meal planning by ADR-00011."
+    "Wave 9 nodes are deferred and recorded blocked until their own ADR: meal planning by ADR-00011.",
+    "Migrations are goose files in internal/db/migrations, numbered from the 'schema' sequence at merge, not at dispatch (owner, 2026-11-03: maximum parallel). A worker names its file 99999_<node-id>.sql; before merging, the dispatcher hands out the number with graph-node migration, renames the file, rebases on main and runs make generate. Workers never pick a number.",
+    "Generated sqlc packages are never hand-edited; make generate rewrites them. Nodes that write one package, or that each add a migration, may share a round: they merge one at a time, and each later one rebases on main, takes its migration number and runs make generate before it merges."
   ],
   "gates": {
     "always": [
@@ -2685,6 +2685,161 @@
       ],
       "needs_migration": "schema",
       "adrs": []
+    },
+    {
+      "id": "p-profiles",
+      "title": "profile page, avatar menu and nav spacing",
+      "wave": 11,
+      "track": null,
+      "issue": 328,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/profile/**",
+        "internal/web/profile/**",
+        "internal/web/layout/layout.templ",
+        "internal/web/layout/layout_nav.go",
+        "internal/web/layout/layout_operator.go",
+        "internal/web/layout/layout_test.go",
+        "internal/web/layout/avatar*",
+        "internal/web/static/app.css",
+        "internal/web/static/theme.js",
+        "internal/web/*.go",
+        "e2e/profile/**",
+        "e2e/layout/**",
+        "docs/ui/design.md"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "ADR-00032. Builds the profile page as a composition of sections, in internal/web/profile/page.templ and routes.go (shared, append-only), so the three nodes after it each add one section in parallel."
+    },
+    {
+      "id": "p-session-details",
+      "title": "session details on the profile",
+      "wave": 11,
+      "track": null,
+      "issue": 332,
+      "status": "todo",
+      "depends_on": [
+        "p-profiles"
+      ],
+      "owns": [
+        "internal/session/**",
+        "internal/web/signin/**",
+        "internal/web/profile/sessions*",
+        "e2e/profile/sessions*",
+        "e2e/signin/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "ADR-00032, Sessions on the profile."
+    },
+    {
+      "id": "m-avatar-media",
+      "title": "avatar upload, crop and WebP processing in object storage",
+      "wave": 11,
+      "track": null,
+      "issue": 333,
+      "status": "todo",
+      "depends_on": [
+        "p-profiles"
+      ],
+      "owns": [
+        "internal/media/**",
+        "internal/profile/**",
+        "internal/web/profile/avatar*",
+        "internal/web/static/vendor/**",
+        "internal/web/static/avatar*",
+        "e2e/profile/avatar*"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "ADR-00033. Encoder deepteams/webp (fallback gen2brain/webp); build stays cgo-free. Local-directory store without S3."
+    },
+    {
+      "id": "k-api-keys",
+      "title": "personal and household API keys",
+      "wave": 11,
+      "track": null,
+      "issue": 334,
+      "status": "todo",
+      "depends_on": [
+        "p-profiles"
+      ],
+      "owns": [
+        "internal/apikey/**",
+        "internal/household/**",
+        "internal/web/household/**",
+        "internal/web/profile/keys*",
+        "e2e/profile/keys*",
+        "e2e/household/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "ADR-00031 as amended by ADR-00034. Management only; no route accepts a key until a-mcp-endpoint."
+    },
+    {
+      "id": "a-mcp-endpoint",
+      "title": "MCP endpoint with API-key auth and recipe and shopping tools",
+      "wave": 11,
+      "track": null,
+      "issue": 330,
+      "status": "todo",
+      "depends_on": [
+        "k-api-keys"
+      ],
+      "owns": [
+        "internal/mcp/**",
+        "internal/apikey/**",
+        "internal/ingest/*.go",
+        "internal/shopping/*.go",
+        "internal/store/*.go",
+        "e2e/mcp/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "ADR-00034. Recipe writes are drafts for review; shopping writes apply. Meal-plan tools wait for l-meal-planning. Credential checking goes behind an interface that a-mcp-oauth adds a token verifier to."
+    },
+    {
+      "id": "a-oauth-server",
+      "title": "OAuth 2.1 authorization server for MCP clients",
+      "wave": 11,
+      "track": null,
+      "issue": 335,
+      "status": "todo",
+      "depends_on": [
+        "k-api-keys"
+      ],
+      "owns": [
+        "internal/oauth/**",
+        "internal/web/oauth/**",
+        "internal/web/profile/grants*",
+        "internal/web/layout/layout_operator.go",
+        "e2e/oauth/**",
+        "e2e/profile/grants*"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "ADR-00034, Credentials. Security-critical: review with --deep. Grant revocation on member leave registers through the OnMemberLeave hook in routes.go."
+    },
+    {
+      "id": "a-mcp-oauth",
+      "title": "accept OAuth access tokens at /mcp",
+      "wave": 11,
+      "track": null,
+      "issue": 336,
+      "status": "todo",
+      "depends_on": [
+        "a-mcp-endpoint",
+        "a-oauth-server"
+      ],
+      "owns": [
+        "internal/mcp/**",
+        "e2e/mcp/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00034. Small wiring node; no migration."
     }
   ],
   "shared_files": [
@@ -2768,6 +2923,61 @@
       "path": "internal/shopping/shoppingdb/**",
       "mode": "open",
       "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/web/web.go",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/web/profile/page.templ",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/web/profile/routes.go",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "docs/operations.md",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "docs/design.md",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "e2e/tenancy/tenancy.tenancy.spec.ts",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "e2e/fixtures/routes/main.go",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "e2e/fixtures/routes/tenancy-support.ts",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": ".env.example",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "compose.yaml",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own lines, struct fields, sections or probes; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/config/**",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): add your own settings and their parsing; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
     }
   ],
   "done": [
