@@ -42,7 +42,13 @@ func TestMigrationAddsAndDropsTheOAuthTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+	// Up to this migration only, so later migrations do not change what it is
+	// tested for.
+	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, oauthMigration(t)); err != nil {
 		t.Fatal(err)
 	}
 	tables := func() int {
@@ -53,9 +59,8 @@ func TestMigrationAddsAndDropsTheOAuthTables(t *testing.T) {
 		}
 		return n
 	}
-	// The four of this migration and the grant write log of the next one.
-	if n := tables(); n != 5 {
-		t.Fatalf("oauth tables = %d, want 5", n)
+	if n := tables(); n != 4 {
+		t.Fatalf("oauth tables = %d, want 4", n)
 	}
 	for _, bad := range []string{
 		`INSERT INTO oauth_grants (owner_email, client_id, client_name, return_host, resource, created_at) VALUES ('Ann@Example.com', 'c', 'n', 'h', 'r', 't')`,
@@ -69,10 +74,6 @@ func TestMigrationAddsAndDropsTheOAuthTables(t *testing.T) {
 		if _, err := d.ExecContext(ctx, bad); err == nil {
 			t.Errorf("schema accepted %s", bad)
 		}
-	}
-	p, err := goose.NewProvider(goose.DialectSQLite3, d, db.Migrations())
-	if err != nil {
-		t.Fatal(err)
 	}
 	if _, err := p.DownTo(ctx, oauthMigration(t)-1); err != nil {
 		t.Fatalf("rolling back: %v", err)

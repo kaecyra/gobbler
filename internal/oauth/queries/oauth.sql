@@ -77,12 +77,12 @@ SELECT g.id AS grant_id, g.owner_email, g.client_id, g.created_at AS grant_creat
 FROM oauth_tokens t JOIN oauth_grants g ON g.id = t.grant_id
 WHERE t.kind = 'access' AND t.token_hash = ?;
 
--- InsertGrantWrite records a write with a snapshot of the grant that made it,
--- read in the same statement. No row is inserted when the grant is gone.
--- name: InsertGrantWrite :execrows
+-- InsertGrantWrite records a write with the snapshot of the grant taken when
+-- its token was verified, so a grant revoked since is still logged.
+-- name: InsertGrantWrite :exec
 INSERT INTO oauth_grant_writes (grant_id, grant_client_id, grant_owner, grant_created_at, household_id, tool, target, created_at)
-SELECT g.id, g.client_id, g.owner_email, g.created_at, sqlc.arg(household_id), sqlc.arg(tool), sqlc.arg(target), sqlc.arg(created_at)
-FROM oauth_grants g WHERE g.id = sqlc.arg(grant_id);
+VALUES (sqlc.arg(grant_id), sqlc.arg(grant_client_id), sqlc.arg(grant_owner), sqlc.arg(grant_created_at),
+        sqlc.arg(household_id), sqlc.arg(tool), sqlc.arg(target), sqlc.arg(created_at));
 
 -- ListGrantWrites matches the snapshot as well as the id: a revoked grant's id
 -- can be given to a later grant, which must not see the earlier one's writes.

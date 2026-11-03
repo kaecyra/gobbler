@@ -777,8 +777,9 @@ func TestOAuthTokenOfAnOutsiderIsForbidden(t *testing.T) {
 
 func TestEachGrantHasItsOwnRateLimit(t *testing.T) {
 	s := newSite(t, config.MCP{Rate: 1, Burst: 2})
+	// Two grants of one person: the limit is per grant, not per owner.
 	a, _ := s.token("ann@example.com", mcpResource)
-	b, _ := s.token("jo@example.com", mcpResource)
+	b, _ := s.token("ann@example.com", mcpResource)
 	limited := false
 	for range 5 {
 		limited = limited || rawPost(t, s.srv.URL, a).StatusCode == http.StatusTooManyRequests
@@ -797,4 +798,42 @@ type acceptsAnyAudience struct{ *oauth.Store }
 
 func (a acceptsAnyAudience) Verify(ctx context.Context, token, _ string) (oauth.Principal, error) {
 	return a.Store.Verify(ctx, token, mcpResource)
+}
+
+// The audit logs a write with the credential as it was verified: revoked
+// between the verifier and the audit, a key and a grant are still logged, each
+// in its own table and under its own snapshot.
+func TestWritesOfCredentialsRevokedMidRequestAreStillLogged(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	ctx := mcp.WithSite(context.Background(), testSite)
+	verifier := mcp.OAuthVerifier{Tokens: s.oauth, Next: mcp.KeyVerifier{Keys: s.keys}}
+	audit := mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}
+
+	secret, key := s.personalKey("ann@example.com")
+	token, grant := s.token("ann@example.com", mcpResource)
+	ck, err := verifier.Verify(ctx, secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ct, err := verifier.Verify(ctx, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.keys.RevokePersonal(ctx, "ann@example.com", key.KeyID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.oauth.RevokeGrant(ctx, "ann@example.com", grant.GrantID); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []mcp.Credential{ck, ct} {
+		if err := audit.RecordWrite(ctx, c, s.smiths.ID, "check_shopping_item", "list 1"); err != nil {
+			t.Fatalf("%s: %v", c.Subject(), err)
+		}
+	}
+	if w, err := s.keys.Writes(ctx, key); err != nil || len(w) != 1 {
+		t.Errorf("key writes = %+v, %v", w, err)
+	}
+	if w, err := s.oauth.Writes(ctx, grant); err != nil || len(w) != 1 {
+		t.Errorf("grant writes = %+v, %v", w, err)
+	}
 }

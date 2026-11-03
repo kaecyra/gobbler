@@ -18,23 +18,22 @@ type Write struct {
 	At          time.Time
 }
 
-// RecordWrite logs that the grant made a write through tool, on target, for
-// the household (ADR-00031 obligation 5, applied to tokens by ADR-00034), with
-// a snapshot of the grant that Writes matches. The log outlives the grant:
-// revoking it deletes the grant and its tokens, not the record of what it
-// wrote. A grant revoked meanwhile cannot be recorded, which is an error.
-func (s *Store) RecordWrite(ctx context.Context, grantID, householdID int64, tool, target string) error {
-	if tool == "" || grantID == 0 || householdID == 0 {
-		return errors.New("record oauth grant write: a grant, a household and a tool are required")
+// RecordWrite logs that the grant p made a write through tool, on target, for
+// the household (ADR-00031 obligation 5, applied to tokens by ADR-00034). p is
+// the Principal Verify returned, so the row carries the grant as it was when the
+// request was authenticated: a grant revoked while the request ran is still
+// logged against itself, and Writes matches the snapshot. The log outlives the
+// grant: revoking it deletes the grant and its tokens, not this record.
+func (s *Store) RecordWrite(ctx context.Context, p Principal, householdID int64, tool, target string) error {
+	if tool == "" || p.GrantID == 0 || p.ClientID == "" || p.Email == "" || p.GrantCreatedAt.IsZero() || householdID == 0 {
+		return errors.New("record oauth grant write: a verified grant, a household and a tool are required")
 	}
-	n, err := s.q.InsertGrantWrite(ctx, oauthdb.InsertGrantWriteParams{
-		GrantID: grantID, HouseholdID: householdID, Tool: tool, Target: target, CreatedAt: stamp(s.now()),
+	err := s.q.InsertGrantWrite(ctx, oauthdb.InsertGrantWriteParams{
+		GrantID: p.GrantID, GrantClientID: p.ClientID, GrantOwner: p.Email, GrantCreatedAt: stamp(p.GrantCreatedAt),
+		HouseholdID: householdID, Tool: tool, Target: target, CreatedAt: stamp(s.now()),
 	})
 	if err != nil {
-		return fmt.Errorf("record write of oauth grant %d: %w", grantID, err)
-	}
-	if n == 0 {
-		return fmt.Errorf("record write of oauth grant %d: the grant no longer exists", grantID)
+		return fmt.Errorf("record write of oauth grant %d: %w", p.GrantID, err)
 	}
 	return nil
 }

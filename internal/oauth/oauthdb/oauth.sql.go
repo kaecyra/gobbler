@@ -232,34 +232,37 @@ func (q *Queries) InsertGrant(ctx context.Context, arg InsertGrantParams) (int64
 	return id, err
 }
 
-const insertGrantWrite = `-- name: InsertGrantWrite :execrows
+const insertGrantWrite = `-- name: InsertGrantWrite :exec
 INSERT INTO oauth_grant_writes (grant_id, grant_client_id, grant_owner, grant_created_at, household_id, tool, target, created_at)
-SELECT g.id, g.client_id, g.owner_email, g.created_at, ?1, ?2, ?3, ?4
-FROM oauth_grants g WHERE g.id = ?5
+VALUES (?1, ?2, ?3, ?4,
+        ?5, ?6, ?7, ?8)
 `
 
 type InsertGrantWriteParams struct {
-	HouseholdID int64
-	Tool        string
-	Target      string
-	CreatedAt   string
-	GrantID     int64
+	GrantID        int64
+	GrantClientID  string
+	GrantOwner     string
+	GrantCreatedAt string
+	HouseholdID    int64
+	Tool           string
+	Target         string
+	CreatedAt      string
 }
 
-// InsertGrantWrite records a write with a snapshot of the grant that made it,
-// read in the same statement. No row is inserted when the grant is gone.
-func (q *Queries) InsertGrantWrite(ctx context.Context, arg InsertGrantWriteParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertGrantWrite,
+// InsertGrantWrite records a write with the snapshot of the grant taken when
+// its token was verified, so a grant revoked since is still logged.
+func (q *Queries) InsertGrantWrite(ctx context.Context, arg InsertGrantWriteParams) error {
+	_, err := q.db.ExecContext(ctx, insertGrantWrite,
+		arg.GrantID,
+		arg.GrantClientID,
+		arg.GrantOwner,
+		arg.GrantCreatedAt,
 		arg.HouseholdID,
 		arg.Tool,
 		arg.Target,
 		arg.CreatedAt,
-		arg.GrantID,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	return err
 }
 
 const insertToken = `-- name: InsertToken :exec

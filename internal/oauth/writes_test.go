@@ -2,6 +2,7 @@ package oauth_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,10 +30,10 @@ func TestGrantWritesAreLoggedPerGrantAndOutliveTheGrant(t *testing.T) {
 	h := f.joined("ann@example.com", "bob@example.com")
 	ann, bob := f.principal(f.connect("ann@example.com")), f.principal(f.connect("bob@example.com"))
 
-	if err := f.store.RecordWrite(ctx, ann.GrantID, h.ID, "add_to_shopping_list", "list 3"); err != nil {
+	if err := f.store.RecordWrite(ctx, ann, h.ID, "add_to_shopping_list", "list 3"); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.store.RecordWrite(ctx, bob.GrantID, h.ID, "check_item", "milk"); err != nil {
+	if err := f.store.RecordWrite(ctx, bob, h.ID, "check_item", "milk"); err != nil {
 		t.Fatal(err)
 	}
 	got, err := f.store.Writes(ctx, ann)
@@ -46,20 +47,43 @@ func TestGrantWritesAreLoggedPerGrantAndOutliveTheGrant(t *testing.T) {
 	if err := f.store.RevokeGrant(ctx, "ann@example.com", ann.GrantID); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := f.store.Writes(ctx, ann); len(got) != 1 {
+	got, err = f.store.Writes(ctx, ann)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
 		t.Errorf("revoking the grant erased its writes: %+v", got)
 	}
-	if err := f.store.RecordWrite(ctx, ann.GrantID, h.ID, "t", ""); err == nil {
-		t.Error("a write of a revoked grant was recorded")
-	}
-	if err := f.store.RecordWrite(ctx, 0, h.ID, "t", ""); err == nil {
+	if err := f.store.RecordWrite(ctx, oauth.Principal{}, h.ID, "t", ""); err == nil {
 		t.Error("RecordWrite accepted no grant")
 	}
-	if err := f.store.RecordWrite(ctx, bob.GrantID, 0, "t", ""); err == nil {
+	if err := f.store.RecordWrite(ctx, oauth.Principal{GrantID: ann.GrantID, Email: ann.Email}, h.ID, "t", ""); err == nil {
+		t.Error("RecordWrite accepted a grant with no snapshot")
+	}
+	if err := f.store.RecordWrite(ctx, bob, 0, "t", ""); err == nil {
 		t.Error("RecordWrite accepted no household")
 	}
-	if err := f.store.RecordWrite(ctx, bob.GrantID, h.ID, "", ""); err == nil {
+	if err := f.store.RecordWrite(ctx, bob, h.ID, "", ""); err == nil {
 		t.Error("RecordWrite accepted an empty tool")
+	}
+}
+
+// A write is logged with the grant as it was when its token was verified, so a
+// grant revoked while the request ran still has its write recorded.
+func TestAGrantRevokedBetweenVerifyAndRecordIsStillLogged(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	h := f.joined("ann@example.com", "bob@example.com")
+	p := f.principal(f.connect("bob@example.com"))
+	if err := f.store.RevokeGrant(ctx, "bob@example.com", p.GrantID); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.RecordWrite(ctx, p, h.ID, "check_item", "milk"); err != nil {
+		t.Fatalf("the write of a grant revoked mid-request: %v", err)
+	}
+	got, err := f.store.Writes(ctx, p)
+	if err != nil || len(got) != 1 || got[0].GrantID != p.GrantID || got[0].Tool != "check_item" {
+		t.Errorf("writes = %+v, %v; want the one write under the original snapshot", got, err)
 	}
 }
 
@@ -70,7 +94,7 @@ func TestAGrantGivenARevokedGrantsIDDoesNotSeeItsWrites(t *testing.T) {
 	f := newFixture(t)
 	h := f.joined("ann@example.com", "bob@example.com")
 	old := f.principal(f.connect("bob@example.com"))
-	if err := f.store.RecordWrite(ctx, old.GrantID, h.ID, "check_item", "milk"); err != nil {
+	if err := f.store.RecordWrite(ctx, old, h.ID, "check_item", "milk"); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.store.RevokeGrant(ctx, "bob@example.com", old.GrantID); err != nil {
@@ -89,11 +113,13 @@ func TestAGrantGivenARevokedGrantsIDDoesNotSeeItsWrites(t *testing.T) {
 	}
 }
 
-// The write log is its own table: grant ids are not key ids, and rolling the
-// migration back drops it and nothing else.
+// The write log is its own table: grant ids are not key ids. Rolling the
+// migration back drops it and the three snapshot columns it added to
+// api_key_writes, and keeps the rows that table already held.
 func TestGrantWritesMigrationRollsBack(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
+	h := f.joined("ann@example.com", "bob@example.com")
 	has := func(table string) bool {
 		var n int
 		if err := f.d.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name = ?`, table).Scan(&n); err != nil {
@@ -101,8 +127,34 @@ func TestGrantWritesMigrationRollsBack(t *testing.T) {
 		}
 		return n == 1
 	}
+	snapshot := func() []string {
+		rows, err := f.d.QueryContext(ctx, `SELECT name FROM pragma_table_info('api_key_writes') WHERE name LIKE 'key\_%' ESCAPE '\' ORDER BY name`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = rows.Close() }()
+		var cols []string
+		for rows.Next() {
+			var c string
+			if err := rows.Scan(&c); err != nil {
+				t.Fatal(err)
+			}
+			cols = append(cols, c)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		return cols
+	}
 	if !has("oauth_grant_writes") {
 		t.Fatal("no oauth_grant_writes table")
+	}
+	if got := strings.Join(snapshot(), ","); got != "key_created_at,key_id,key_owner,key_prefix" {
+		t.Fatalf("api_key_writes key columns = %s", got)
+	}
+	if _, err := f.d.ExecContext(ctx, `INSERT INTO api_key_writes (key_id, key_prefix, key_owner, key_created_at, household_id, tool, target, created_at)
+		VALUES (7, 'gob_abc', 'ann@example.com', 't', ?, 'check_item', 'milk', 't')`, h.ID); err != nil {
+		t.Fatal(err)
 	}
 	p, err := goose.NewProvider(goose.DialectSQLite3, f.d, db.Migrations())
 	if err != nil {
@@ -113,6 +165,13 @@ func TestGrantWritesMigrationRollsBack(t *testing.T) {
 	}
 	if has("oauth_grant_writes") || !has("oauth_grants") || !has("api_key_writes") {
 		t.Error("the rollback dropped the wrong tables")
+	}
+	if got := strings.Join(snapshot(), ","); got != "key_id" {
+		t.Errorf("api_key_writes key columns after the rollback = %s, want only key_id", got)
+	}
+	var tool string
+	if err := f.d.QueryRowContext(ctx, `SELECT tool FROM api_key_writes WHERE key_id = 7`).Scan(&tool); err != nil || tool != "check_item" {
+		t.Errorf("the existing api_key_writes row after the rollback: %q, %v", tool, err)
 	}
 }
 
@@ -127,7 +186,7 @@ func TestDeletingAHouseholdDeletesItsGrantWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := f.principal(f.connect("ann@example.com"))
-	if err := f.store.RecordWrite(ctx, p.GrantID, h.ID, "check_item", "milk"); err != nil {
+	if err := f.store.RecordWrite(ctx, p, h.ID, "check_item", "milk"); err != nil {
 		t.Fatal(err)
 	}
 	if err := hs.Delete(ctx, h.ID, "ann@example.com", "Solo"); err != nil {

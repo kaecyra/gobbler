@@ -90,27 +90,28 @@ type Write struct {
 	At          time.Time
 }
 
-// RecordWrite logs that the key made a write through tool, on target, for the
-// household (ADR-00031 obligation 5), with a snapshot of the key that Writes
-// matches. A key revoked meanwhile cannot be recorded, which is an error.
-func (s *Store) RecordWrite(ctx context.Context, keyID, householdID int64, tool, target string) error {
-	if tool == "" || keyID == 0 || householdID == 0 {
-		return errors.New("record api key write: a key, a household and a tool are required")
+// RecordWrite logs that the key p made a write through tool, on target, for the
+// household (ADR-00031 obligation 5). p is the Principal Lookup returned, so the
+// row carries the key as it was when the request was authenticated: a key
+// revoked while the request ran is still logged against itself, and Writes
+// matches the snapshot.
+func (s *Store) RecordWrite(ctx context.Context, p Principal, householdID int64, tool, target string) error {
+	if tool == "" || p.KeyID == 0 || p.Prefix == "" || p.CreatedAt.IsZero() || (p.Email == "" && p.HouseholdID == 0) || householdID == 0 {
+		return errors.New("record api key write: a looked-up key, a household and a tool are required")
 	}
-	n, err := s.q.InsertKeyWrite(ctx, apikeydb.InsertKeyWriteParams{
-		KeyID: keyID, HouseholdID: householdID, Tool: tool, Target: target, CreatedAt: s.stamp(s.now()),
+	err := s.q.InsertKeyWrite(ctx, apikeydb.InsertKeyWriteParams{
+		KeyID: p.KeyID, KeyPrefix: p.Prefix, KeyOwner: p.owner(), KeyCreatedAt: s.stamp(p.CreatedAt),
+		HouseholdID: householdID, Tool: tool, Target: target, CreatedAt: s.stamp(s.now()),
 	})
 	if err != nil {
-		return fmt.Errorf("record write of api key %d: %w", keyID, err)
-	}
-	if n == 0 {
-		return fmt.Errorf("record write of api key %d: the key no longer exists", keyID)
+		return fmt.Errorf("record write of api key %d: %w", p.KeyID, err)
 	}
 	return nil
 }
 
 // owner is how the write log names the key's owner: the email of a personal
-// key, or "household:<id>".
+// key, or "household:<id>". It is the one place that builds the name, for
+// RecordWrite and Writes alike.
 func (p Principal) owner() string {
 	if p.Email != "" {
 		return p.Email

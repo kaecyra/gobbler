@@ -11,14 +11,12 @@ WHERE k.token_hash = sqlc.arg(token_hash);
 UPDATE api_keys SET last_used_at = sqlc.arg(now)
 WHERE id = sqlc.arg(id) AND (last_used_at IS NULL OR last_used_at < sqlc.arg(older_than));
 
--- InsertKeyWrite records a write with a snapshot of the key that made it, read
--- in the same statement: a revoked key's id can be given to a later key. No row
--- is inserted when the key is gone.
--- name: InsertKeyWrite :execrows
+-- InsertKeyWrite records a write with the snapshot of the key taken when its
+-- secret was looked up, so a key revoked since is still logged.
+-- name: InsertKeyWrite :exec
 INSERT INTO api_key_writes (key_id, key_prefix, key_owner, key_created_at, household_id, tool, target, created_at)
-SELECT k.id, k.prefix, coalesce(k.owner_email, 'household:' || k.household_id), k.created_at,
-       sqlc.arg(household_id), sqlc.arg(tool), sqlc.arg(target), sqlc.arg(created_at)
-FROM api_keys k WHERE k.id = sqlc.arg(key_id);
+VALUES (sqlc.arg(key_id), sqlc.arg(key_prefix), sqlc.arg(key_owner), sqlc.arg(key_created_at),
+        sqlc.arg(household_id), sqlc.arg(tool), sqlc.arg(target), sqlc.arg(created_at));
 
 -- ListKeyWrites matches the snapshot as well as the id, so a key given a
 -- revoked key's id does not list that key's writes.

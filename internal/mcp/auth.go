@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/oauth"
@@ -34,6 +35,13 @@ type Credential struct {
 	// kind's credentials. Neither is secret.
 	Kind string
 	ID   int64
+	// Ref and CreatedAt, with the owner below, are the snapshot of the
+	// credential taken when it was verified: a key's prefix, a grant's client
+	// id, and when it was made. The write log records them so that a credential
+	// revoked mid-request is still logged, and an id given to a later
+	// credential never shows the old one's writes.
+	Ref       string
+	CreatedAt time.Time
 
 	Email         string
 	HouseholdID   int64
@@ -157,7 +165,7 @@ func (k KeyVerifier) Verify(ctx context.Context, secret string) (Credential, err
 	if err != nil {
 		return Credential{}, err
 	}
-	return Credential{Kind: KindAPIKey, ID: p.KeyID, Email: p.Email, HouseholdID: p.HouseholdID, HouseholdName: p.HouseholdName}, nil
+	return Credential{Kind: KindAPIKey, ID: p.KeyID, Ref: p.Prefix, CreatedAt: p.CreatedAt, Email: p.Email, HouseholdID: p.HouseholdID, HouseholdName: p.HouseholdName}, nil
 }
 
 // TokenLookup is what OAuthVerifier calls on the OAuth store; *oauth.Store
@@ -191,7 +199,7 @@ func (o OAuthVerifier) Verify(ctx context.Context, secret string) (Credential, e
 	if err != nil {
 		return Credential{}, err
 	}
-	return Credential{Kind: KindOAuth, ID: p.GrantID, Email: p.Email}, nil
+	return Credential{Kind: KindOAuth, ID: p.GrantID, Ref: p.ClientID, CreatedAt: p.GrantCreatedAt, Email: p.Email}, nil
 }
 
 // Audit records the writes credentials make (ADR-00031 obligation 5).
@@ -203,7 +211,7 @@ type Audit interface {
 // credential of another kind needs its own Audit.
 type KeyAudit struct {
 	Keys interface {
-		RecordWrite(ctx context.Context, keyID, householdID int64, tool, target string) error
+		RecordWrite(ctx context.Context, p apikey.Principal, householdID int64, tool, target string) error
 	}
 }
 
@@ -212,13 +220,14 @@ func (a KeyAudit) RecordWrite(ctx context.Context, c Credential, householdID int
 	if c.Kind != KindAPIKey {
 		return fmt.Errorf("record write: no write log for %s credentials", c.Kind)
 	}
-	return a.Keys.RecordWrite(ctx, c.ID, householdID, tool, target)
+	p := apikey.Principal{KeyID: c.ID, Prefix: c.Ref, CreatedAt: c.CreatedAt, Email: c.Email, HouseholdID: c.HouseholdID, HouseholdName: c.HouseholdName}
+	return a.Keys.RecordWrite(ctx, p, householdID, tool, target)
 }
 
 // GrantAudit records the writes of OAuth grants in the OAuth store's write log.
 type GrantAudit struct {
 	Grants interface {
-		RecordWrite(ctx context.Context, grantID, householdID int64, tool, target string) error
+		RecordWrite(ctx context.Context, p oauth.Principal, householdID int64, tool, target string) error
 	}
 }
 
@@ -227,7 +236,8 @@ func (a GrantAudit) RecordWrite(ctx context.Context, c Credential, householdID i
 	if c.Kind != KindOAuth {
 		return fmt.Errorf("record write: no grant log for %s credentials", c.Kind)
 	}
-	return a.Grants.RecordWrite(ctx, c.ID, householdID, tool, target)
+	p := oauth.Principal{GrantID: c.ID, Email: c.Email, ClientID: c.Ref, GrantCreatedAt: c.CreatedAt}
+	return a.Grants.RecordWrite(ctx, p, householdID, tool, target)
 }
 
 // AuditByKind sends each write to the log of the credential's kind. A kind with

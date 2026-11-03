@@ -43,36 +43,37 @@ func (q *Queries) FindKeyByHash(ctx context.Context, tokenHash []byte) (FindKeyB
 	return i, err
 }
 
-const insertKeyWrite = `-- name: InsertKeyWrite :execrows
+const insertKeyWrite = `-- name: InsertKeyWrite :exec
 INSERT INTO api_key_writes (key_id, key_prefix, key_owner, key_created_at, household_id, tool, target, created_at)
-SELECT k.id, k.prefix, coalesce(k.owner_email, 'household:' || k.household_id), k.created_at,
-       ?1, ?2, ?3, ?4
-FROM api_keys k WHERE k.id = ?5
+VALUES (?1, ?2, ?3, ?4,
+        ?5, ?6, ?7, ?8)
 `
 
 type InsertKeyWriteParams struct {
-	HouseholdID int64
-	Tool        string
-	Target      string
-	CreatedAt   string
-	KeyID       int64
+	KeyID        int64
+	KeyPrefix    string
+	KeyOwner     string
+	KeyCreatedAt string
+	HouseholdID  int64
+	Tool         string
+	Target       string
+	CreatedAt    string
 }
 
-// InsertKeyWrite records a write with a snapshot of the key that made it, read
-// in the same statement: a revoked key's id can be given to a later key. No row
-// is inserted when the key is gone.
-func (q *Queries) InsertKeyWrite(ctx context.Context, arg InsertKeyWriteParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertKeyWrite,
+// InsertKeyWrite records a write with the snapshot of the key taken when its
+// secret was looked up, so a key revoked since is still logged.
+func (q *Queries) InsertKeyWrite(ctx context.Context, arg InsertKeyWriteParams) error {
+	_, err := q.db.ExecContext(ctx, insertKeyWrite,
+		arg.KeyID,
+		arg.KeyPrefix,
+		arg.KeyOwner,
+		arg.KeyCreatedAt,
 		arg.HouseholdID,
 		arg.Tool,
 		arg.Target,
 		arg.CreatedAt,
-		arg.KeyID,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	return err
 }
 
 const listKeyWrites = `-- name: ListKeyWrites :many
