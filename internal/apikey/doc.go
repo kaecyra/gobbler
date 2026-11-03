@@ -4,6 +4,6 @@
 // a short non-secret prefix and a name to tell keys apart. The SQL is in
 // queries/, generated into apikeydb (ADR-00014).
 //
-// This package manages keys. No route accepts one until the MCP endpoint
-// exists (ADR-00034), so there is no lookup by secret yet.
+// Lookup finds the live key a secret names, for the MCP endpoint (ADR-00034),
+// and RecordWrite logs the writes a key makes.
 package apikey

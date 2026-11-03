@@ -1,11 +1,15 @@
 package web
 
 import (
+	"log/slog"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/sharing"
 	"github.com/kaecyra/gobbler/internal/shopping"
@@ -55,6 +59,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountSharing(r, d, thumbs)
 	mountEquipment(r, d)
 	mountProfile(r, d)
+	mountMCP(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -132,5 +137,37 @@ func mountProfile(r chi.Router, d Deps) {
 	r.Mount(webprofile.Pattern, webprofile.Routes(webprofile.Deps{
 		Profiles: profile.New(d.DB), Households: household.New(d.DB),
 		DB: d.DB, Config: d.Config, Sessions: d.Sessions, Avatars: d.Avatars,
+	}))
+}
+
+// mountMCP mounts the MCP endpoint (ADR-00034). By the time a request reaches
+// it, newRouter has authenticated its bearer credential and applied the
+// membership check, so its tools run in the credential's household. Its stores
+// share the merging catalog's hooks like the shopping pages do.
+func mountMCP(r chi.Router, d Deps) {
+	cat, rec := catalog.New(d.DB), store.New(d.DB)
+	usage := catalog.NewUsage(cat)
+	rec.RegisterMergeHooks(cat)
+	rec.RegisterUsageCounters(usage)
+	shop := shopping.New(d.DB, rec, cat)
+	shop.RegisterMergeHooks(cat)
+	shop.RegisterUsageCounters(usage)
+	log := d.Logger
+	if log == nil {
+		log = slog.Default()
+	}
+	deps, err := mcp.NewDeps(rec, shop, cat, d.Drafts, mcp.KeyAudit{Keys: apikey.New(d.DB)}, d.Config, log)
+	if err == nil {
+		var h http.Handler
+		if h, err = mcp.Routes(deps); err == nil {
+			r.Mount(mcp.Pattern, h)
+			return
+		}
+	}
+	// Every route still exists and answers 500 with the cause, as the ingest
+	// routes do, so a bad configuration is a loud failure and not a missing page.
+	log.Error("mcp endpoint unavailable", "error", err.Error())
+	r.Mount(mcp.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "the MCP endpoint is not available: "+err.Error(), http.StatusInternalServerError)
 	}))
 }

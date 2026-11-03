@@ -49,6 +49,8 @@ const (
 	EnvS3AccessKeyID       = "GOBBLER_S3_ACCESS_KEY_ID"
 	EnvS3SecretAccessKey   = "GOBBLER_S3_SECRET_ACCESS_KEY"
 	EnvS3MediaBucket       = "GOBBLER_S3_MEDIA_BUCKET"
+	EnvMCPRate             = "GOBBLER_MCP_RATE"
+	EnvMCPBurst            = "GOBBLER_MCP_BURST"
 )
 
 // LLM provider names accepted by EnvLLMProvider.
@@ -72,6 +74,8 @@ const (
 	defaultLocalRetention      = 7
 	defaultRemoteRetention     = 30
 	defaultSessionLifetime     = 30 * 24 * time.Hour
+	defaultMCPRate             = 2.0
+	defaultMCPBurst            = 20
 )
 
 // Config is the validated application configuration. Load returns it by value
@@ -86,6 +90,7 @@ type Config struct {
 	LLM       LLM
 	Video     Video
 	Backup    Backup
+	MCP       MCP
 }
 
 // Server holds listener, storage and logging settings.
@@ -174,6 +179,16 @@ type Video struct {
 	ThumbnailHost string
 }
 
+// MCP holds the MCP endpoint's limits (ADR-00034). Each credential has its own
+// leaky bucket.
+type MCP struct {
+	// Rate is how many requests per second a credential may sustain.
+	Rate float64
+	// Burst is how many requests a credential may make at once before it is
+	// held to Rate.
+	Burst int
+}
+
 // Backup holds backup settings (ADR-00010).
 type Backup struct {
 	// Schedule is the daily run time as "HH:MM".
@@ -247,6 +262,9 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Video.ThumbnailHost = r.httpOrigin(EnvVideoThumbnailHost)
 
 	r.backup(&c.Backup)
+
+	c.MCP.Rate = r.float(EnvMCPRate, defaultMCPRate, 0.01, 1000)
+	c.MCP.Burst = r.integer(EnvMCPBurst, defaultMCPBurst, 1)
 
 	if err := errors.Join(r.errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
