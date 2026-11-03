@@ -2997,6 +2997,11 @@
       "path": "internal/profile/profiledb/**",
       "mode": "open",
       "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/apikey/apikeydb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
     }
   ],
   "done": [
