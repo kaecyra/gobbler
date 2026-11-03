@@ -2751,7 +2751,10 @@
         "internal/web/profile/avatar*",
         "internal/web/static/vendor/**",
         "internal/web/static/avatar*",
-        "e2e/profile/avatar*"
+        "e2e/profile/avatar*",
+        "internal/web/layout/avatar*",
+        "internal/web/layout/layout.templ",
+        "internal/web/*.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
