@@ -36,6 +36,7 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 | `--grain` `--grain-ink` `--grain-soft` | `#f2b85c` `#875a10` `#fef2d8` | timers, "needs a look" marks |
 | `--slate` | `#a3adaa` | waiting time |
 | `--ok` | `#3f8a57` | done, high confidence |
+| `--maple` `--maple-ink` `--maple-soft` | `#dd2e44` `#a51d30` `#fde8ea` | Canadian red: the footer leaf and the Canada marks on `/canada` |
 | `--f-display` | `ui-rounded`, then system stack | headings |
 | `--f-body` | system stack | body text, 17px with 1.55 line height |
 | `--r` | **6px** (the mockup's 12px is not carried over) | cards and inputs; never above 6px, never pill-shaped |

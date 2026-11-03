@@ -26,7 +26,7 @@ test('the public pages and assets are served without a session', async ({ reques
 test('an anonymous visitor reads /canada with an empty nav', async ({ page }) => {
   const res = await page.goto('/canada');
   expect(res?.status()).toBe(200);
-  await expect(page.getByRole('heading', { name: 'Made in Canada', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your recipes stay in Canada', level: 1 })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link')).toHaveCount(0);
 });
 

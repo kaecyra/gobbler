@@ -20,6 +20,10 @@
   --grain-soft: #fef2d8;
   --walnut: #7a5644;
   --ok: #3f8a57;
+  /* Canadian red: the maple leaf, and Canada marks on /canada. */
+  --maple: #dd2e44;
+  --maple-ink: #a51d30;
+  --maple-soft: #fde8ea;
   --on-accent: #ffffff;
   --mascot-fx: drop-shadow(0 1px 0 rgba(43, 54, 52, 0.06));
   /* time-stage families: translucent fill, same-hue 1px border, dark same-hue text */
@@ -60,6 +64,7 @@
   --grain: #e0b16c; --grain-ink: #efcb8a; --grain-soft: #3f3520;
   --walnut: #c9ab9b; --mascot-fx: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.55));
   --ok: #86b38f; --on-accent: #1d1715;
+  --maple: #e8606e; --maple-ink: #f4a6ae; --maple-soft: #3e2427;
   --st-active-b: #f08a74; --st-active-i: #ffc9bc; --st-active-a: 30%;
   --st-sky-b: #7fb0e3; --st-sky-i: #cfe3f7; --st-sky-a: 22%;
   --st-mint-b: #6cc39a; --st-mint-i: #c6f0da; --st-mint-a: 22%;
@@ -315,7 +320,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 }
 .foot a:hover { color: var(--wattle-ink); text-decoration: underline; }
 .made-by { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); }
-.leaf { width: 14px; height: 14px; flex: none; display: block; }
+.leaf { width: 14px; height: 14px; flex: none; display: block; color: var(--maple); }
 
 /* ---- shared components, named for what they are ---- */
 
