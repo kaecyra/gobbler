@@ -151,6 +151,50 @@ func TestUnknownPathAndSessionAreRefused(t *testing.T) {
 	}
 }
 
+func TestAuthenticatedPagesRenderLayout(t *testing.T) {
+	r := testRouter(t, devConfig(), Deps{})
+	rec := get(r, "/")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/ = %d, want 200", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Errorf("content type = %q", ct)
+	}
+	if !strings.Contains(rec.Body.String(), `<main id="content">`) {
+		t.Errorf("home page does not use the layout:\n%s", rec.Body.String())
+	}
+}
+
+func TestUnknownPathRendersNotFoundPage(t *testing.T) {
+	rec := get(testRouter(t, devConfig(), Deps{}), "/nope")
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "404") {
+		t.Errorf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestStaticAssetsServedFromEmbeddedFS(t *testing.T) {
+	r := testRouter(t, devConfig(), Deps{})
+	for _, tc := range []struct{ path, wantPrefix, wantInBody string }{
+		{"/static/app.css", "text/css", "--accent"},
+		{"/static/htmx.min.js", "text/javascript", "htmx"},
+	} {
+		rec := get(r, tc.path)
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s = %d, want 200", tc.path, rec.Code)
+			continue
+		}
+		if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, tc.wantPrefix) {
+			t.Errorf("%s content type = %q, want prefix %q", tc.path, ct, tc.wantPrefix)
+		}
+		if !strings.Contains(rec.Body.String(), tc.wantInBody) {
+			t.Errorf("%s body lacks %q", tc.path, tc.wantInBody)
+		}
+	}
+	if rec := get(r, "/static/missing.js"); rec.Code != http.StatusNotFound {
+		t.Errorf("missing asset = %d, want 404", rec.Code)
+	}
+}
+
 // ADR-00002 obligation 3: no page names a script, stylesheet, font or other
 // asset on another origin. A plain link to another site is navigation, not a
 // load, and is allowed.

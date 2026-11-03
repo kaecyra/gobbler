@@ -7,11 +7,12 @@
 ## Context
 
 gobbler was built as a one-person recipe box. ADR-00003 had Cloudflare Access
-decide who reached the app (sign-in replaced it, ADR-00030), and the app records the verified email on recipe
-writes (recipes, notes, the made-it log, revisions, source snapshots). It does
-not record it on shopping data: lists, entries, manual items, the pantry and
-check state carry no identity, and the pantry is one global set. The app keeps
-no user or membership records of its own.
+decide who reached the app (sign-in replaced it, ADR-00030), and the app
+records the verified email on recipe writes (recipes, notes, the made-it log,
+revisions, source snapshots). It does not record it on shopping data: lists,
+entries, manual items, the pantry and check state carry no identity, and the
+pantry is one global set. The app keeps no user or membership records of its
+own.
 
 ADR-00011 deferred "invitations and multiple users" on the premise that the
 recorded identity would make it a feature rather than a data migration. That
@@ -20,9 +21,10 @@ holds for recipe data and not for shopping data.
 Three shapes were considered:
 
 - **One shared household.** Everyone the identity layer admits sees and edits
-  everything, and inviting someone is a change to its policy. This is nearly free and
-  matches one kitchen. It was rejected because the owner wants separate
-  households on one deployment, and that model has no boundary between them.
+  everything, and inviting someone is a change to its policy. This is nearly
+  free and matches one kitchen. It was rejected because the owner wants
+  separate households on one deployment, and that model has no boundary between
+  them.
 - **Per-person partitioning.** Each email owns its own recipes, lists and
   pantry, and sharing is explicit. This was rejected because a kitchen is
   shared: a household's members cook from, shop for and check off one set of
@@ -33,18 +35,18 @@ Three shapes were considered:
 
 Admission had three options:
 
-- **A strict allowlist at the identity layer, kept in infrastructure code,
-  with the app mapping emails to households.** This gives two locks, so a bug
-  in the app's membership check exposes nothing to people the allowlist has not
-  admitted. It was
-  rejected because every invitation would need an infrastructure deploy as
-  well as an in-app step, and the two lists drift apart.
-- **The identity layer admits an email domain or group.** This was rejected because the
-  people a household invites rarely share a domain or group the owner
-  controls.
+- **A strict allowlist at the identity layer, kept in infrastructure code, with
+  the app mapping emails to households.** This gives two locks, so a bug in the
+  app's membership check exposes nothing to people the allowlist has not
+  admitted. It was rejected because every invitation would need an
+  infrastructure deploy as well as an in-app step, and the two lists drift
+  apart.
+- **The identity layer admits an email domain or group.** This was rejected
+  because the people a household invites rarely share a domain or group the
+  owner controls.
 - **Sign-in authenticates any email, and the app decides everything.** This was
-  chosen, because inviting someone should be an act inside the app. The cost
-  is that the app's membership check becomes the only lock.
+  chosen, because inviting someone should be an act inside the app. The cost is
+  that the app's membership check becomes the only lock.
 
 There were three options for who creates households:
 
@@ -223,8 +225,8 @@ of the household's name, and it removes all of the household's data.
 
 ### Admission
 
-Sign-in ([ADR-00030](00030-google-sign-in.md)) accepts any email the issuer
-has verified, which today means any Google account. It does not limit who may
+Sign-in ([ADR-00030](00030-google-sign-in.md)) accepts any email the issuer has
+verified, which today means any Google account. It does not limit who may
 enter, and the app verifies the sign-in session on every request. Membership is
 held by the app and decided by the app.
 
@@ -308,8 +310,8 @@ household invitation to themselves.
    Status to "Amended by ADR-00018" and update its index row.
 2. Amend ADR-00011's "Deferred, planned later" invitations bullet the same way.
 3. Amend the opening paragraph of `AGENTS.md`, which says "single-user".
-4. `docs/operations.md` states that any verified Google email can sign in,
-   that membership is the lock, and that admission is decided in the app.
+4. `docs/operations.md` states that any verified Google email can sign in, that
+   membership is the lock, and that admission is decided in the app.
 5. Every route has a test made as an authenticated non-member and as a member
    of another household. The e2e route-coverage gate checks both, as it checks
    route coverage today.

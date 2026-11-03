@@ -9,9 +9,8 @@
 [ADR-00017](00017-cloudflared-on-the-guest.md) has Compose publish gobbler on
 the guest loopback only, and rejects "publish on all interfaces" because the
 app's identity check would then be the only thing between the network and the
-app.
-[ADR-00003](00003-cloudflare-access-identity.md) lists a published port among
-the misconfigurations the app must survive.
+app. [ADR-00003](00003-cloudflare-access-identity.md) lists a published port
+among the misconfigurations the app must survive.
 
 The owner's monitoring stack runs on another machine in the same private
 network and needs to reach the health check. Loopback cannot serve it. The VM

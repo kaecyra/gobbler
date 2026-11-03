@@ -26,9 +26,9 @@ Options considered:
   `cloudflared` image, so the repository deployed on its own. Rejected because
   it duplicates the tunnel the owner's infrastructure code already defines, and
   a token for a second tunnel would sit in `.env`.
-- **Publish on all interfaces.** Reachable from the network, so only the
-  app's identity check would stand between the network and the app. ADR-00003 treats a
-  published port as a misconfiguration to survive, not a design to adopt.
+- **Publish on all interfaces.** Reachable from the network, so only the app's
+  identity check would stand between the network and the app. ADR-00003 treats
+  a published port as a misconfiguration to survive, not a design to adopt.
   Rejected.
 - **Host network mode.** Drops the container's network isolation, and makes
   the listen address, rather than the port mapping, carry the exposure

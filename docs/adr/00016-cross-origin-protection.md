@@ -11,9 +11,8 @@ browser belongs to. It does not prove that the request came from gobbler's own
 pages: a page on another site can make the same signed-in browser send a
 cross-site POST, and the session check passes it if the browser attaches the
 session cookie. Whether it does is the cookie's SameSite attribute: `None`
-sends the cookie on cross-site requests. The ingest form
-already accepts POSTs, and the editor, history, journal, catalog and settings
-pages will add more.
+sends the cookie on cross-site requests. The ingest form already accepts POSTs,
+and the editor, history, journal, catalog and settings pages will add more.
 
 gobbler is single-user, served over one hostname, with HTMX making same-origin
 requests. Go 1.25 added `net/http.CrossOriginProtection`, which rejects unsafe
@@ -30,16 +29,18 @@ Options considered:
   through.
 - **SameSite on the session cookie alone.** One attribute: with `Lax`, the
   browser does not attach the cookie to a cross-site POST, so the request
-  arrives without a session and is refused. But it is a single attribute on a
-  single cookie, and a change to it silently removes all protection.
+  arrives without a session and is refused. But SameSite judges the site, not
+  the origin: a page on another subdomain of the same domain is same-site, and
+  the browser attaches the cookie to its POST. Alone, it would also leave
+  nothing behind it if the attribute were ever changed.
 - **A synchronizer or double-submit token** (for example `gorilla/csrf`).
   Covers browsers that send no Fetch metadata. Costs a secret, a token in every
   form and an HTMX header on every request. That plumbing touches every page
   for a threat the two cheaper layers already cover for this one user's
   browsers.
-- **The middleware plus SameSite=Lax.** Chosen. The middleware is the
-  enforced, tested layer. The cookie attribute strips the session from the
-  same requests, and covers what the middleware lets through.
+- **The middleware plus SameSite=Lax.** Chosen. The middleware is the enforced,
+  tested layer. The cookie attribute strips the session from the same requests,
+  and covers what the middleware lets through.
 
 ## Decision
 
@@ -64,8 +65,8 @@ new ADR before it can be allowed.
    `web.New`. A test proves that a POST with `Sec-Fetch-Site: cross-site` is
    refused with 403, and that a same-origin POST and a cross-site GET are
    allowed.
-2. The app sets the session cookie SameSite=Lax itself, so no operator step
-   is needed. The e2e sign-in suite checks the attribute on the cookie the
+2. The app sets the session cookie SameSite=Lax itself, so no operator step is
+   needed. The e2e sign-in suite checks the attribute on the cookie the
    callback sets.
 3. No route under `internal/web` changes state in response to GET, HEAD or
    OPTIONS.
