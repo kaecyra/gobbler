@@ -8,7 +8,7 @@
 
 /* Hero: the statement on the left, the leaf and the mascot on the right. */
 .ca-hero { display: grid; gap: 24px; align-items: end; }
-@media (min-width: 800px) { .ca-hero { grid-template-columns: 1fr 300px; gap: 48px; } }
+@media (min-width: 768px) { .ca-hero { grid-template-columns: 1fr 300px; gap: 48px; } }
 .ca-kicker {
   display: inline-flex; align-items: center; gap: 8px;
   color: var(--maple-ink); font-size: 14px; font-weight: 750;
@@ -23,13 +23,13 @@
 
 /* The mascot stands whole on the baseline, in front of the leaf. */
 .ca-hero-art { position: relative; justify-self: center; width: 240px; height: 260px; border-bottom: 1px solid var(--line); }
-@media (min-width: 800px) { .ca-hero-art { width: 300px; height: 320px; } }
+@media (min-width: 768px) { .ca-hero-art { width: 300px; height: 320px; } }
 .ca-big-leaf { position: absolute; inset: 0 0 auto; width: 100%; height: auto; color: var(--maple); opacity: 0.9; }
 .ca-mascot { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: auto; height: 68%; filter: var(--mascot-fx); }
 
 /* Reasons: side by side from tablet width, stacked on a phone. */
 .ca-reasons { display: grid; gap: 32px; }
-@media (min-width: 900px) { .ca-reasons { grid-template-columns: repeat(3, 1fr); gap: 40px; } }
+@media (min-width: 768px) { .ca-reasons { grid-template-columns: repeat(3, 1fr); gap: 40px; } }
 .ca-reasons > div { border-top: 1px solid var(--line); padding-top: 18px; }
 .ca-reasons p { color: var(--ink-2); }
 
@@ -38,7 +38,7 @@
 .ca-parts ul { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); }
 .ca-parts li { display: grid; gap: 8px; padding: 16px; }
 .ca-parts li + li { border-top: 1px solid var(--line); }
-@media (min-width: 760px) {
+@media (min-width: 768px) {
   .ca-parts li { grid-template-columns: minmax(0, 1.1fr) 9.5rem minmax(0, 2fr); gap: 20px; align-items: start; padding: 18px 20px; }
 }
 .ca-part { display: grid; gap: 2px; }
