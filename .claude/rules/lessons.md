@@ -32,3 +32,17 @@ flagged it as a MUST.
 merges: minor for `feat`, patch for `fix` or `refactor` (git-workflow.md,
 Versioning). A branch that falls behind main re-bumps after its rebase. Do
 not reserve numbers for PRs that have not merged.
+
+## Public copy is checked against content-style before it is proposed
+
+**Mistake.** Proposing a new headline for `/canada`, the agent suggested the
+subline "answering to Canadian courts, and to no one else's" and the heading
+"Sovereignty, not just residency". Both are antitheses, and the first is also a
+reveal clause. The `tim:content-style` guide forbids both.
+
+**Cost.** The owner had to point it out mid-task. On a page meant as a public
+statement, copy that reads as machine-written undercuts the statement.
+
+**Rule.** Load `tim:content-style` before drafting any user-facing words,
+including suggestions in conversation, and check each draft against its list of
+machine-written constructions before showing it.
