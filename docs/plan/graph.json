@@ -3002,6 +3002,11 @@
       "path": "internal/apikey/apikeydb/**",
       "mode": "open",
       "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/web/layout/layout_operator.go",
+      "mode": "open",
+      "note": "APPEND-ONLY by convention (wave 11): a node adds its own path to publicPages or its own predicate, and never edits another node's lines. a-mcp-endpoint adds /mcp (bearer-authenticated, so the session layer must pass it through); a-oauth-server adds its discovery, registration and token endpoints (ADR-00034)."
     }
   ],
   "done": [
