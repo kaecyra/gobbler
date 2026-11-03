@@ -2707,7 +2707,8 @@
         "internal/web/*.go",
         "e2e/profile/**",
         "e2e/layout/**",
-        "docs/ui/design.md"
+        "docs/ui/design.md",
+        "e2e/signin/signin.spec.ts"
       ],
       "needs_migration": "schema",
       "adrs": [],
@@ -2978,6 +2979,16 @@
       "path": "internal/config/**",
       "mode": "open",
       "note": "APPEND-ONLY by convention (wave 11): add your own settings and their parsing; never edit another node's. Rebase on conflict. mode is open for the same partition_by_lane reason as the other append-only entries."
+    },
+    {
+      "path": "internal/session/sessiondb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/profile/profiledb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
     }
   ],
   "done": [
