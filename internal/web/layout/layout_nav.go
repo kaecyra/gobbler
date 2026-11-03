@@ -32,6 +32,10 @@ var navItems = []navItem{
 	{Label: "Settings", Path: "/settings", Icon: "gear", Menu: true},
 }
 
+// profileItem is the account menu's link to the person's own profile. It is
+// not in navItems, which are the sections of the nav bar and its menu.
+var profileItem = navItem{Label: "Profile", Path: ProfilePath, Icon: "user"}
+
 // menuCurrent reports whether the page being rendered belongs to a section
 // behind the nav's menu button, so the button can say so while it is closed.
 func menuCurrent(ctx context.Context) bool {
@@ -43,13 +47,10 @@ func menuCurrent(ctx context.Context) bool {
 	return false
 }
 
-// hasMenu reports whether anything behind the menu button is visible to the
-// request in ctx, a section or "Sign out", so a non-member is not offered an
-// empty menu.
+// hasMenu reports whether any section behind the menu button is visible to the
+// request in ctx, so a non-member is not offered an empty menu. Sign out is not
+// one: it is in the account menu (ADR-00032).
 func hasMenu(ctx context.Context) bool {
-	if offerSignOut(ctx) {
-		return true
-	}
 	for _, item := range navItems {
 		if item.Menu && visible(ctx, item) {
 			return true

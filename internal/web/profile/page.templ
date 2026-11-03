@@ -1,0 +1,45 @@
+package profile
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// page is the profile page: the person, then the sections. See the package
+// documentation for how a section is added.
+templ page(v pageView) {
+	@layout.Page(v.title()) {
+		<div class="pg profile">
+			@identity(v)
+			@selfSections(v)
+		</div>
+	}
+}
+
+// identity is who the profile is: the avatar, the name and the email, each
+// shown only where the visibility rule allowed it.
+templ identity(v pageView) {
+	<section class="panel profile-head" aria-labelledby="profile-h" data-testid="profile-identity">
+		if v.Shown.Seed != "" {
+			<div class="profile-avatar" data-testid="profile-avatar">
+				@layout.Avatar(v.Shown.Seed)
+			</div>
+		}
+		<div class="profile-who">
+			if v.Self {
+				<p class="eyebrow">Your profile</p>
+			}
+			<h1 id="profile-h" data-testid="profile-name">{ v.title() }</h1>
+			if v.Shown.Email != "" {
+				<p class="muted" data-testid="profile-email">{ v.Shown.Email }</p>
+			}
+		</div>
+	</section>
+}
+
+// selfSections are the sections only the profile's person sees: they render
+// only when the viewer is that person, and their routes are behind selfOnly.
+// A later node adds its section as one line here, in the order the page shows
+// them.
+templ selfSections(v pageView) {
+	if v.Self {
+		@nameSection(v)
+	}
+}

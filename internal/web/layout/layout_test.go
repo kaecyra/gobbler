@@ -289,9 +289,10 @@ func TestNavHidesMemberLinksFromANonMember(t *testing.T) {
 	}
 }
 
-// Sign-in and sign-out are offered only where people sign in to the app
-// (ADR-00030); with identity from in front of it, neither is. The signed-in
-// case is rendered through the router in package web, which owns identity.
+// Sign-in is offered, in the account menu, only where people sign in to the app
+// (ADR-00030); with identity from in front of it, neither it nor sign-out is.
+// The signed-in case is rendered through the router in package web, which owns
+// identity.
 func TestHeaderOffersSignInOnlyWithSignIn(t *testing.T) {
 	render := func(ctx context.Context) string {
 		var b strings.Builder
@@ -307,8 +308,47 @@ func TestHeaderOffersSignInOnlyWithSignIn(t *testing.T) {
 	if !strings.Contains(got, `href="/login"`) || strings.Contains(got, `action="/logout"`) {
 		t.Errorf("an anonymous visitor is not offered sign-in alone:\n%s", got)
 	}
-	if strings.Contains(got, "<details") {
-		t.Error("an anonymous visitor is offered a menu")
+	if strings.Contains(got, `aria-label="More sections"`) {
+		t.Error("an anonymous visitor is offered the sections menu")
+	}
+}
+
+// ADR-00032: a visitor with no identity sees the signed-out figure, not an
+// avatar, and its menu holds the theme toggle. The old standalone button is
+// gone. The signed-in avatar menu is rendered through the router in package
+// web, which owns identity.
+func TestHeaderShowsTheSignedOutFigureWithTheToggle(t *testing.T) {
+	var b strings.Builder
+	if err := Page("Probe").Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	for _, want := range []string{`data-avatar="signed-out"`, `class="avatar figure"`, `data-theme-toggle`, `data-theme-label`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("signed-out header missing %q:\n%s", want, got)
+		}
+	}
+	for _, absent := range []string{`data-avatar="account"`, `modebtn`, `href="/profile"`} {
+		if strings.Contains(got, absent) {
+			t.Errorf("signed-out header has %q", absent)
+		}
+	}
+	if n := strings.Count(got, `data-theme-toggle`); n != 1 {
+		t.Errorf("the page has %d theme toggles, want exactly one (theme.js binds the first)", n)
+	}
+}
+
+// Sign out left the sections menu for the account menu, so a non-member, who has
+// no sections, has no sections menu either.
+func TestSectionsMenuHoldsOnlySections(t *testing.T) {
+	if got := renderAtAs(t, "/", nonMember); strings.Contains(got, `aria-label="More sections"`) {
+		t.Errorf("a non-member is offered an empty sections menu:\n%s", got)
+	}
+	if got := renderAtAs(t, "/", memberOnly); !strings.Contains(got, `aria-label="More sections"`) {
+		t.Error("a member is not offered the sections menu")
+	}
+	if got := renderAtAs(t, "/", memberOperator); strings.Contains(got, `action="/logout"`) {
+		t.Error("the sections menu still offers sign-out")
 	}
 }
 
@@ -336,10 +376,36 @@ func TestAdmits(t *testing.T) {
 		{CallbackPath, false, false, true},
 		{SignOutPath, false, false, true},
 		{SignOutPath + "/x", false, false, false},
+		// ADR-00032: a non-member opens the profile pages, and nothing that
+		// merely starts with the same letters.
+		{ProfilePath, false, false, true},
+		{ProfilePath + "/", false, false, true},
+		{ProfilePath + "/Zm9vYmFy/name", false, false, true},
+		{ProfilePath + "s", false, false, false},
+		{ProfilePath, true, false, true},
 	}
 	for _, tc := range cases {
 		if got := Admits(tc.path, tc.member, tc.operator); got != tc.want {
 			t.Errorf("Admits(%q, member=%v, operator=%v) = %v, want %v", tc.path, tc.member, tc.operator, got, tc.want)
+		}
+	}
+}
+
+// Every icon the header names is drawn: icon silently draws nothing for a name
+// it has no case for, which once left the Profile link and the signed-out
+// figure without a picture.
+func TestEveryHeaderIconIsDrawn(t *testing.T) {
+	names := []string{"moon", "signin", "signout", profileItem.Icon}
+	for _, item := range navItems {
+		names = append(names, item.Icon)
+	}
+	for _, name := range names {
+		var b strings.Builder
+		if err := icon(name).Render(context.Background(), &b); err != nil {
+			t.Fatal(err)
+		}
+		if !regexp.MustCompile(`<(path|circle|rect)\b`).MatchString(b.String()) {
+			t.Errorf("icon %q draws nothing: %s", name, b.String())
 		}
 	}
 }

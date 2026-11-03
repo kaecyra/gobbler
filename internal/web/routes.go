@@ -5,6 +5,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/sharing"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -17,6 +18,7 @@ import (
 	webingest "github.com/kaecyra/gobbler/internal/web/ingest"
 	"github.com/kaecyra/gobbler/internal/web/journal"
 	"github.com/kaecyra/gobbler/internal/web/operator"
+	webprofile "github.com/kaecyra/gobbler/internal/web/profile"
 	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
 	"github.com/kaecyra/gobbler/internal/web/settings"
@@ -51,6 +53,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountPromotion(r, d)
 	mountSharing(r, d, thumbs)
 	mountEquipment(r, d)
+	mountProfile(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -115,4 +118,14 @@ func mountSharing(r chi.Router, d Deps, thumbs video.ThumbnailSource) {
 // sits under /operator, so the membership middleware admits only an operator.
 func mountEquipment(r chi.Router, d Deps) {
 	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: catalog.New(d.DB)}))
+}
+
+// mountProfile mounts the profile pages (ADR-00032). A verified non-member may
+// open them, since every signed-in person has a profile (layout.Admits). The
+// sections later nodes add to the page take what they need from these deps.
+func mountProfile(r chi.Router, d Deps) {
+	r.Mount(webprofile.Pattern, webprofile.Routes(webprofile.Deps{
+		Profiles: profile.New(d.DB), Households: household.New(d.DB),
+		DB: d.DB, Config: d.Config, Sessions: d.Sessions,
+	}))
 }

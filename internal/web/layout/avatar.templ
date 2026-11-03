@@ -1,0 +1,81 @@
+package layout
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/profile"
+)
+
+// Avatar draws the default avatar of an email: a mirrored pattern from a hash
+// of it (ADR-00032). It is inline SVG coloured by the stylesheet's tokens, so
+// nothing is fetched from outside. The size is the box it is put in.
+templ Avatar(email string) {
+	{{ ic := profile.NewIdenticon(email) }}
+	<svg class={ "avatar", fmt.Sprintf("av-bg-%d", ic.Bg) } viewBox="0 0 5 5" aria-hidden="true" focusable="false">
+		<path class={ fmt.Sprintf("av-fg-%d", ic.Fg) } d={ ic.Path() }></path>
+	</svg>
+}
+
+// accountMenu is the header's account button and its menu (ADR-00032). Signed
+// in, the button is the person's avatar and the menu holds the light and dark
+// toggle, the profile link and, where people sign in to the app, Sign out.
+// Signed out, as on a public page, the button is a signed-out figure and the
+// menu holds the toggle and, where people sign in to the app, Sign in. The
+// toggle is script-driven (theme.js) and never follows the system setting.
+templ accountMenu(ctx context.Context) {
+	{{ email, signedIn := auth.EmailFromContext(ctx) }}
+	<details class="menu avatar-menu" data-menu>
+		<summary
+			class="avatar-btn"
+			role="button"
+			if signedIn {
+				aria-label="Account menu"
+				title="Account menu"
+				data-avatar="account"
+			} else {
+				aria-label="Signed out menu"
+				title="Signed out menu"
+				data-avatar="signed-out"
+			}
+		>
+			if signedIn {
+				@Avatar(email)
+			} else {
+				<span class="avatar figure">
+					@icon("user")
+				</span>
+			}
+		</summary>
+		<ul class="menu-list">
+			<li>
+				<button type="button" class="tab" data-theme-toggle aria-pressed="false" aria-label="Switch to dark" title="Dark mode">
+					@icon("moon")
+					<span class="lbl" data-theme-label>Dark mode</span>
+				</button>
+			</li>
+			if signedIn && profileAdmitted(ctx) {
+				<li>@navLink(ctx, profileItem)</li>
+			}
+			if offerSignOut(ctx) {
+				<li>
+					<form method="post" action={ templ.SafeURL(SignOutPath) }>
+						<button type="submit" class="tab" aria-label="Sign out" title="Sign out">
+							@icon("signout")
+							<span class="lbl">Sign out</span>
+						</button>
+					</form>
+				</li>
+			}
+			if offerSignIn(ctx) {
+				<li>
+					<a class="tab" href={ templ.SafeURL(SignInPath) } aria-label="Sign in" title="Sign in">
+						@icon("signin")
+						<span class="lbl">Sign in</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</details>
+}

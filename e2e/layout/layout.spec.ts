@@ -19,6 +19,12 @@ const menu = [
 ];
 
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Primary' });
+const header = (page: Page) => page.getByRole('banner');
+const account = (page: Page) => header(page).getByRole('button', { name: 'Account menu' });
+// The light and dark toggle lives in the account menu (ADR-00032), so the menu is opened first.
+const openAccount = async (page: Page) => {
+  await account(page).click();
+};
 const openMenu = async (page: Page) => {
   await nav(page).getByRole('button', { name: 'More sections' }).click();
 };
@@ -126,12 +132,14 @@ test.describe('theme', () => {
 
   test('the header toggle switches to dark and the choice survives a reload', async ({ page }) => {
     await page.goto('/');
-    const toggle = page.getByRole('button', { name: 'Switch to dark' });
-    await toggle.click();
+    await openAccount(page);
+    await page.getByRole('button', { name: 'Switch to dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
     await expect(page.getByRole('button', { name: 'Switch to light' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Switch to light' })).toContainText('Light mode');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
+    await openAccount(page);
     await page.getByRole('button', { name: 'Switch to light' }).click();
     await expect(page.locator('html')).not.toHaveAttribute('data-mode', 'dark');
     await page.reload();
@@ -147,6 +155,7 @@ test.describe('theme', () => {
       });
     });
     await page.goto('/');
+    await openAccount(page);
     await page.getByRole('button', { name: 'Switch to dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
   });
@@ -191,9 +200,161 @@ test.describe('on a phone', () => {
       expect(box!.height, p.name).toBeGreaterThanOrEqual(44);
       expect(box!.width, p.name).toBeGreaterThanOrEqual(44);
     }
-    const toggle = await page.getByRole('button', { name: 'Switch to dark' }).boundingBox();
-    expect(toggle!.height).toBeGreaterThanOrEqual(44);
+    const avatar = await account(page).boundingBox();
+    expect(avatar!.height).toBeGreaterThanOrEqual(44);
+    expect(avatar!.width).toBeGreaterThanOrEqual(44);
+    await openAccount(page);
+    for (const name of ['Switch to dark', 'Profile']) {
+      const box = await header(page).getByRole(name === 'Profile' ? 'link' : 'button', { name }).boundingBox();
+      expect(box!.height, name).toBeGreaterThanOrEqual(44);
+    }
   });
+
+  test('the account menu opens downward from the top of the page, not up over the nav bar', async ({ page }) => {
+    await page.goto('/');
+    await openAccount(page);
+    const list = await header(page).locator('.avatar-menu .menu-list').boundingBox();
+    const button = await account(page).boundingBox();
+    expect(list!.y).toBeGreaterThan(button!.y + button!.height);
+    expect(list!.x + list!.width).toBeLessThanOrEqual(390);
+  });
+});
+
+// ADR-00032 obligation 6: the avatar replaces the old light and dark button, and its
+// menu holds the toggle, the profile link and (where people sign in) Sign out.
+test.describe('the account menu', () => {
+  test('is the signed-in person\'s avatar, drawn in the page, in place of the old button', async ({ page }) => {
+    await page.goto('/');
+    await expect(header(page).locator('.modebtn')).toHaveCount(0);
+    const avatar = account(page).locator('svg.avatar');
+    await expect(avatar).toBeVisible();
+    // Drawn from the email by the app: an inline SVG path, no image request.
+    await expect(avatar.locator('path')).toHaveAttribute('d', /^M/);
+    await expect(account(page).locator('img')).toHaveCount(0);
+  });
+
+  test('holds the toggle and the profile link, and sends the person to their profile', async ({ page }) => {
+    await page.goto('/');
+    await openAccount(page);
+    await expect(header(page).getByRole('button', { name: 'Switch to dark' })).toBeVisible();
+    const profile = header(page).getByRole('link', { name: 'Profile' });
+    await expect(profile).toHaveAttribute('href', '/profile');
+    await expect(profile.locator('svg circle, svg path').first()).toBeAttached();
+    await profile.click();
+    await expect(page).toHaveURL(/\/profile\/[A-Za-z0-9_-]{22}$/);
+    await openAccount(page);
+    await expect(header(page).getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('closes on Escape and on a click elsewhere, and leaves the sections menu alone', async ({ page }) => {
+    await page.goto('/');
+    const toggle = header(page).getByRole('button', { name: 'Switch to dark' });
+    await openAccount(page);
+    await expect(toggle).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(toggle).toBeHidden();
+    await openAccount(page);
+    await page.locator('main').click({ position: { x: 5, y: 5 } });
+    await expect(toggle).toBeHidden();
+  });
+
+  test('does not offer sign-out where people do not sign in to the app', async ({ page }) => {
+    await page.goto('/');
+    await openAccount(page);
+    await expect(header(page).getByRole('button', { name: 'Sign out' })).toHaveCount(0);
+  });
+});
+
+// Signed out: a public page served without an identity (ADR-00029) shows the figure
+// in the same place, with the toggle and Sign in. The anonymous server runs without the
+// dev bypass, as production does.
+test.describe('the signed-out figure', () => {
+  const anonymousURL = process.env.GOBBLER_E2E_ANONYMOUS_URL;
+  if (!anonymousURL) throw new Error('GOBBLER_E2E_ANONYMOUS_URL is not set; run through playwright.config.ts');
+
+  test('stands in the account button\'s place, with the toggle and Sign in', async ({ page }) => {
+    await page.goto(`${anonymousURL}/canada`);
+    const figure = header(page).getByRole('button', { name: 'Signed out menu' });
+    await expect(figure).toBeVisible();
+    await expect(header(page).getByRole('button', { name: 'Account menu' })).toHaveCount(0);
+    const box = await figure.boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await expect(figure.locator('svg circle, svg path').first()).toBeVisible();
+    await figure.click();
+    await expect(header(page).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    await expect(header(page).getByRole('link', { name: 'Profile' })).toHaveCount(0);
+    await expect(header(page).getByRole('button', { name: 'Sign out' })).toHaveCount(0);
+  });
+
+  test.describe('with the system preferring dark', () => {
+    test.use({ colorScheme: 'dark' });
+
+    test('toggles the theme, remembers it, and is light until asked', async ({ page }) => {
+      await page.goto(`${anonymousURL}/canada`);
+      await expect(page.locator('html')).not.toHaveAttribute('data-mode', 'dark');
+      await header(page).getByRole('button', { name: 'Signed out menu' }).click();
+      await header(page).getByRole('button', { name: 'Switch to dark' }).click();
+      await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
+      await page.reload();
+      await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
+      await header(page).getByRole('button', { name: 'Signed out menu' }).click();
+      await header(page).getByRole('button', { name: 'Switch to light' }).click();
+      await expect(page.locator('html')).not.toHaveAttribute('data-mode', 'dark');
+    });
+  });
+});
+
+// The header's right-hand items are spaced by one token at every width (the issue's
+// nav spacing): the bar's own gap, the gap to the account button and the coral action's
+// margin used to be three different numbers.
+test.describe('header spacing', () => {
+  const NAV_GAP = 8;
+
+  for (const [name, width, height] of [
+    ['laptop', 1440, 900],
+    ['tablet', 1024, 768],
+    ['small tablet', 700, 900],
+  ] as const) {
+    test(`separates the nav entries, the sections menu and the account button by one gap at ${name} width`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto('/');
+      const items = [
+        nav(page).getByRole('link', { name: 'Library' }),
+        nav(page).getByRole('link', { name: 'Shopping list' }),
+        nav(page).getByRole('link', { name: 'Add recipe' }),
+        nav(page).locator('details.menu'),
+        header(page).locator('details.avatar-menu'),
+      ];
+      const boxes = [];
+      for (const item of items) boxes.push((await item.boundingBox())!);
+      for (let i = 1; i < boxes.length; i++) {
+        const gap = boxes[i].x - (boxes[i - 1].x + boxes[i - 1].width);
+        expect(gap, `gap before item ${i}`).toBeCloseTo(NAV_GAP, 0);
+      }
+    });
+  }
+
+  for (const [name, width, height] of [
+    ['laptop', 1440, 900],
+    ['tablet', 1024, 768],
+    ['phone', 390, 844],
+  ] as const) {
+    test(`uses the token for the bar and the header, with no margin on the coral action, at ${name} width`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto('/');
+      const gaps = await page.evaluate(() => {
+        const px = (el: Element, prop: string) => getComputedStyle(el).getPropertyValue(prop);
+        return {
+          token: px(document.documentElement, '--nav-gap').trim(),
+          tabs: px(document.querySelector('.tabs')!, 'column-gap'),
+          wrap: px(document.querySelector('.top .wrap')!, 'column-gap'),
+          cta: px(document.querySelector('.tab.cta')!, 'margin-left'),
+        };
+      });
+      expect(gaps).toEqual({ token: '8px', tabs: '8px', wrap: '8px', cta: '0px' });
+    });
+  }
 });
 
 // Settings and Invitations are operator pages. DEV is a member and an operator (the default
