@@ -316,6 +316,44 @@ second drain it, and `GOBBLER_MCP_BURST` requests fit at once. A request past
 that gets `429` with `Retry-After` in seconds. The defaults (2 a second, a burst
 of 20) suit one home server and a few agents; raise them for a busy automation.
 
+## OAuth for MCP clients
+
+Some MCP clients, including hosted connector screens, can only sign in through
+OAuth. gobbler is an OAuth 2.1 authorization server for them, and needs no
+setting of its own: the issuer and the audience of every token come from
+`GOBBLER_PUBLIC_BASE_URL` ([ADR-00034](adr/00034-mcp-server.md)). The audience is
+`<GOBBLER_PUBLIC_BASE_URL>/mcp`, so changing the base URL makes every existing
+token fail its audience check and every client has to be allowed again.
+
+- **Connecting a client.** Give it the MCP address, `<GOBBLER_PUBLIC_BASE_URL>/mcp`.
+  The client reads `/.well-known/oauth-protected-resource/mcp` and
+  `/.well-known/oauth-authorization-server`, identifies itself, and opens
+  `/oauth/authorize` in the browser. If you are not signed in, gobbler sends you
+  to Google first and brings you back. The consent page names the app and the
+  host your browser returns to. Allow it only if you started the connection.
+  Only a member of a household can allow an app.
+- **How a client identifies itself.** By Dynamic Client Registration at
+  `/oauth/register`, or by using the URL of a Client ID Metadata Document as its
+  `client_id`. Clients are public and use PKCE (`S256`) and the `resource`
+  parameter, so gobbler issues and stores no client secret. gobbler keeps at most
+  1000 registered clients and deletes those that never received a grant after a
+  day.
+- **Fetching a metadata document.** The URL must be https. gobbler never connects
+  to a private, loopback or link-local address, follows no redirect, and gives up
+  after 5 seconds or 16 KiB. A client that lives on your own network is refused
+  this way and has to register instead.
+- **Lifetimes.** A code lasts 5 minutes and works once. An access token lasts 1
+  hour. A refresh token lasts 30 days and is replaced each time it is used. If a
+  replaced refresh token, or a used code, is presented again, gobbler revokes the
+  whole grant. Only SHA-256 hashes of codes and tokens are stored.
+- **Where grants are revoked.** On the person's profile, under "Connected apps",
+  where only they see the list. Revoking ends the app's access at once. When a
+  member is removed or leaves, their grants are revoked in the same change that
+  revokes their keys.
+- **Logs.** No log line contains a code, a token or a verifier.
+- **Limits.** The registration and token endpoints are public and have no rate
+  limit of their own. Browsers cannot call them from another origin.
+
 ## Backups
 
 Design and reasoning: [ADR-00010](./adr/00010-backups.md).
