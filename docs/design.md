@@ -61,6 +61,7 @@ dependencies.
 | `auth` | The identity middleware: the sign-in session cookie, or the dev bypass on a loopback listener | `config`, `session` |
 | `session` | Server-side sign-in sessions named by a random cookie token, stored as its SHA-256; queries in `queries/`, sqlc-generated `sessiondb` ([ADR-00030](adr/00030-google-sign-in.md)) | `db` |
 | `profile` | A person's profile keyed by email (display name, avatar reference) at an opaque random address; the one visibility rule keyed on the viewer's relation (`Visible`); the default avatar drawn from a hash of the email (`NewIdenticon`); queries in `queries/`, sqlc-generated `profiledb` ([ADR-00032](adr/00032-profiles.md)) | `db` |
+| `media` | Uploaded media (ADR-00033): the storage interface with S3 and local-directory implementations, and the image pipeline that decodes JPEG, PNG, GIF, WebP, HEIC and AVIF, crops, bounds to 1024 by 1024 and encodes metadata-free lossy WebP (pure Go, no cgo) ([ADR-00033](adr/00033-media-object-storage.md)) | `config` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types (with the closed sets of meal types, cuisines and stage kinds), step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
 | `video` | Reading a pasted YouTube link into the video ID a recipe stores, the thumbnail and embed addresses, and the thumbnail download ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)) | — |

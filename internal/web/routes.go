@@ -131,6 +131,6 @@ func mountEquipment(r chi.Router, d Deps) {
 func mountProfile(r chi.Router, d Deps) {
 	r.Mount(webprofile.Pattern, webprofile.Routes(webprofile.Deps{
 		Profiles: profile.New(d.DB), Households: household.New(d.DB),
-		DB: d.DB, Config: d.Config, Sessions: d.Sessions,
+		DB: d.DB, Config: d.Config, Sessions: d.Sessions, Avatars: avatarsFor(d),
 	}))
 }

@@ -41,7 +41,11 @@ templ accountMenu(ctx context.Context) {
 			}
 		>
 			if signedIn {
-				@Avatar(email)
+				if src := avatarSrc(ctx); src != "" {
+					<img class="avatar" src={ src } alt="" width="44" height="44" style="object-fit: cover" data-testid="header-avatar-img"/>
+				} else {
+					@Avatar(email)
+				}
 			} else {
 				<span class="avatar figure">
 					@icon("user")

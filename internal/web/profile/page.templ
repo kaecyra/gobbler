@@ -19,7 +19,11 @@ templ identity(v pageView) {
 	<section class="panel profile-head" aria-labelledby="profile-h" data-testid="profile-identity">
 		if v.Shown.Seed != "" {
 			<div class="profile-avatar" data-testid="profile-avatar">
-				@layout.Avatar(v.Shown.Seed)
+				if v.Shown.Avatar != "" {
+					<img class="avatar" src={ avatarSrcOf(v) } alt="" width="96" height="96" style="object-fit: cover" data-testid="profile-avatar-img"/>
+				} else {
+					@layout.Avatar(v.Shown.Seed)
+				}
 			</div>
 		}
 		<div class="profile-who">
@@ -43,5 +47,6 @@ templ selfSections(v pageView) {
 		@nameSection(v)
 		@sessionsSection(v)
 		@keysSection(v)
+		@avatarSection(v)
 	}
 }

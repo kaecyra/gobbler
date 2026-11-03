@@ -198,7 +198,7 @@ the container runs in UTC.
 | `GOBBLER_SESSION_LIFETIME` | `720h` (30 days) | no | Go duration, positive. A session ends this long after sign-in, however recently it was used. |
 | `GOBBLER_OPERATOR_EMAILS` | empty (no operator) | no | Comma-separated bare email addresses, case-insensitive. Each is an operator: it reaches `/settings` and the other operator pages without being a household member ([ADR-00018](./adr/00018-households-as-tenants.md)). A malformed entry is an error. |
 | `GOBBLER_LISTEN_ADDR` | `127.0.0.1:8080` | no | |
-| `GOBBLER_DATA_DIR` | `data` | no | Holds `gobbler.db` and `backups/`. |
+| `GOBBLER_DATA_DIR` | `data` | no | Holds `gobbler.db`, `backups/` and, when no S3 media bucket is set, `media/`. |
 | `GOBBLER_LOG_LEVEL` | `info` | no | `debug`, `info`, `warn` or `error`. |
 | `GOBBLER_DEV_AUTH_BYPASS` | `false` | no | Skips identity verification; refuses to start unless the listen address is loopback. Development only. Every request acts as `dev@localhost` unless it sends `X-Gobbler-Dev-Identity`, and `dev@localhost` and `other@localhost` are seeded as members of two separate households. With sign-in configured as well (an `http://` issuer is allowed then), the sign-in routes work against that issuer but the bypass still decides every request's identity. None of this exists with the bypass off. |
 | `GOBBLER_INGEST_CONFIDENCE_THRESHOLD` | `0.7` | no | 0 to 1. Drafts below it fall back to the LLM ([ADR-00006](./adr/00006-rule-first-ingestion.md)). |
@@ -220,13 +220,15 @@ the container runs in UTC.
 | `GOBBLER_S3_PREFIX` | empty (bucket root) | no | Leading slash dropped, one trailing slash added. |
 | `GOBBLER_S3_ACCESS_KEY_ID` | none | yes | |
 | `GOBBLER_S3_SECRET_ACCESS_KEY` | none | yes | |
+| `GOBBLER_S3_MEDIA_BUCKET` | none | no | Bucket for uploaded media ([ADR-00033](./adr/00033-media-object-storage.md)), on the same endpoint and credentials as the backup bucket. Empty keeps media in `<data dir>/media/`. See [Media](#media). |
 
 Cross-field rules enforced at start-up:
 
 - If the LLM provider is empty, the model and API key variables must be empty
   too; settings that would be silently ignored are an error.
 - If any S3 variable is set, endpoint, region, bucket, access key id and secret
-  access key are all required. Only the prefix is optional.
+  access key are all required. Only the prefix and the media bucket are
+  optional.
 - `GOBBLER_OIDC_ISSUER`, `GOBBLER_OIDC_CLIENT_ID`,
   `GOBBLER_OIDC_CLIENT_SECRET` and `GOBBLER_PUBLIC_BASE_URL` are all required
   unless the dev bypass is on. With the bypass on they are optional, but if
@@ -290,6 +292,78 @@ Design and reasoning: [ADR-00010](./adr/00010-backups.md).
 - Status (last success time, last error) is stored in
   `<data dir>/backups/status.json`. The operator's `/settings` page shows it,
   and `/healthz` reports it under `details`.
+
+## Media
+
+Design and reasoning: [ADR-00033](./adr/00033-media-object-storage.md).
+
+What people upload (today, avatars) is not in SQLite. gobbler processes it to
+a stripped WebP and keeps it as objects, read and written through one storage
+interface with two implementations:
+
+- **S3 media bucket.** Set `GOBBLER_S3_MEDIA_BUCKET` and the other S3 settings
+  and media goes to that bucket. It is a separate bucket from
+  `GOBBLER_S3_BUCKET` (the backups), on the same endpoint with the same
+  credentials, so create both. Objects are under `avatars/`: the processed
+  avatar as `avatars/<random>.webp` and, until processing succeeds, the upload
+  and its crop preview under `avatars/uploads/`.
+- **Local directory.** With no S3 settings, or S3 set for backups only (no media
+  bucket), media is kept under `<data dir>/media/`, which is `/data/media/` in
+  the container, on the `gobbler-data` volume. Development, the e2e suite and a
+  deployment with no S3 work this way. Moving to S3 later does not copy what is
+  already there: an avatar not in the bucket shows as the default one until it
+  is uploaded again.
+
+The storage server is never exposed. gobbler reads the bytes itself and serves
+them after the same admission as the page that shows them, so no URL points at
+the bucket; keep the endpoint reachable from the gobbler host only.
+
+**Media is not in the database snapshot.** The nightly `VACUUM INTO` copies
+`gobbler.db` alone (see [Backups](#backups)), so a restore brings back every
+profile and its avatar reference but not the pictures. If the storage server or
+the local volume is lost, the pictures are lost with it. For avatars that is
+accepted: people upload them again. The local directory sits on the same volume
+as the database, so it protects against nothing that the volume does not.
+
+A job the app was stopped in the middle of, a picture cropped but not yet
+processed, runs again when `gobbler serve` starts; the original upload is kept
+until processing succeeds.
+
+### Garage as the S3 endpoint for backups and media
+
+The deployment plans to run [Garage](https://garagehq.deuxfleurs.fr/) on a second
+machine on the home network, because MinIO is no longer maintained
+([ADR-00033](./adr/00033-media-object-storage.md)). Garage speaks plain S3, so
+the same endpoint and key serve the backups and the media. Garage has no object
+versioning, which neither needs.
+
+The commands below are from memory of Garage's command line and are
+**unverified**; follow Garage's own quick start for the version you install, and
+treat this as the shape of the setup, not a script.
+
+```sh
+# On the Garage machine, after its layout is applied:
+garage bucket create gobbler-backups     # unverified
+garage bucket create gobbler-media       # unverified
+garage key create gobbler                # prints the access key id and the secret
+garage bucket allow --read --write gobbler-backups --key gobbler   # unverified
+garage bucket allow --read --write gobbler-media --key gobbler     # unverified
+```
+
+Then in `.env` on the gobbler host:
+
+```sh
+GOBBLER_S3_ENDPOINT=http://garage.lan:3900   # the S3 API port in Garage's config
+GOBBLER_S3_REGION=garage                     # must equal s3_region in Garage's config
+GOBBLER_S3_BUCKET=gobbler-backups
+GOBBLER_S3_MEDIA_BUCKET=gobbler-media
+GOBBLER_S3_ACCESS_KEY_ID=...
+GOBBLER_S3_SECRET_ACCESS_KEY=...
+```
+
+`http://` is fine on a trusted home network; use `https://` if the traffic
+crosses anything else. Restart gobbler, upload an avatar from the profile page,
+and check the object appears under `avatars/` in the media bucket.
 
 ## Restore
 

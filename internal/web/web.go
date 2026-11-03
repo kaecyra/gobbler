@@ -18,6 +18,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -59,6 +60,10 @@ type Deps struct {
 	// BackupSecrets are the credential values redacted from the backup error
 	// the settings page shows.
 	BackupSecrets []string
+	// Avatars runs avatar uploads (ADR-00033); the server starts it so it can
+	// resume interrupted jobs. When nil, the profile pages use a local
+	// directory under the data directory.
+	Avatars *profile.Avatars
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -106,6 +111,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		r.Use(markSignIn)
 	}
 	r.Use(d.Auth.Middleware(layout.IsPublic), membership(members, d.Config.Operator), cop.Handler)
+	r.Use(avatarSource(d.DB, log))
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})
