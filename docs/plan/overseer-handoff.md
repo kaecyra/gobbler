@@ -12,16 +12,18 @@ This file holds the volatile state the graph does not. The durable record is `do
 |---|---|---|---|---|
 | a-mcp-endpoint | #354 | 5f304ae | 00024 | 0.91.0 |
 | a-oauth-server | #355 | a3bd17a | 00025 | 0.92.0 |
+| a-mcp-oauth | #359 | 413b572 | 00026 | 0.93.0 |
 
-- Graph PRs: #352 and #356.
+- Graph PRs: #352, #356, #357 and #358.
   - #352 made `layout_operator.go` shared append-only. `/mcp` stays off `publicPages`.
   - #352 widened a-mcp-endpoint to `middleware_household*.go`, `web/ingest/**` and `signin_flow_test.go`.
   - #352 added a-mcp-recipe-edit (#353), blocked.
   - #356 added `oauthdb` as shared generated output, and the in-container gates notes.
+  - #357 and #358 widened a-mcp-oauth's lane and recorded the write-log design.
+- Each write row in `api_key_writes` and `oauth_grant_writes` stores a snapshot of the credential, taken when the credential is verified. SQLite reuses a deleted row's id, so the id alone cannot name a credential. `Writes` matches on the snapshot.
+- `weboauth.Origin` is the one request-origin helper.
 
-**In flight:** a-mcp-oauth (#336), worktree `.claude/worktrees/wt-336`, branch `feat/336-mcp-oauth`, e2e ports 41500-41502. The prompt is `.cc-scratch/w11/dispatch-a-mcp-oauth.md`.
-- It may edit the one `web.go` line that defaults `MCPVerifier`.
-- It has no migration. If recording the grant id on writes needs one, it stops and reports.
+**Nothing is in flight:** no open PRs, no worktrees, no workers. Wave 11 is merged except a-mcp-recipe-edit (#353), which is blocked on its ADR.
 
 **Owner calls this session (don't re-ask):**
 - `/mcp` is not a public path. A bearer middleware sets the credential's owner, and the ADR-00018 membership check applies to that owner.
@@ -39,9 +41,10 @@ This file holds the volatile state the graph does not. The durable record is `do
 **Lessons:**
 - **Check a lane note against the ADRs before dispatching.** The first #352 note sent `/mcp` to `publicPages`, which ADR-00029 forbids. Review caught it, but the worker had already been told, and that cost a correction message.
 - **"Append-only" plus an existing line that must change:** grant the exception in the `shared_files` entry itself, not only in the node note. Diff review checks the entry (#352, round 2).
+- **Never key a write log on a SQLite rowid alone.** A bare `INTEGER PRIMARY KEY` reuses the newest freed id, and credential rows are deleted on revoke. Snapshot the credential at verify time. Review of #357 caught this, and #359 fixed it in both logs.
 - **A worker that reports a shared append-only file as "out of lane" may be wrong.** Appending to `tenancy-support.ts` was always allowed. Check the shared list before widening a lane.
 
-**Next:** verify a-mcp-oauth, review it with a deep pass (it wires tokens into the auth path), and merge it. Then wave 11 is done except a-mcp-recipe-edit (blocked). Still parked: i-site-extractors (#193) and l-meal-planning (#38). Open but no node: #348.
+**Next:** nothing is dispatchable. a-mcp-recipe-edit (#353) needs an ADR on how an MCP edit is reviewed. #348 (the duplicated `parseEndpoint`) has no node. Still parked: i-site-extractors (#193) and l-meal-planning (#38). Open but no node: #348.
 
 ## Round 17 (2026-11-03): sign-in, then wave 11 planned and ready
 

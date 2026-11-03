@@ -2840,7 +2840,7 @@
       "wave": 11,
       "track": null,
       "issue": 336,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "a-mcp-endpoint",
         "a-oauth-server"
@@ -3881,6 +3881,12 @@
       "title": "OAuth 2.1 authorization server for MCP clients",
       "merged": "a3bd17a",
       "note": "ADR-00034, Credentials. Security-critical: review with --deep. Grant revocation on member leave registers through the OnMemberLeave hook in routes.go."
+    },
+    {
+      "id": "a-mcp-oauth",
+      "title": "accept OAuth access tokens at /mcp",
+      "merged": "413b572",
+      "note": "ADR-00034. Wires the OAuth token verifier into /mcp. Writes made with a token are logged in a new oauth_grant_writes table owned by internal/oauth, not in api_key_writes. Credential rows are deleted on revocation, and a bare INTEGER PRIMARY KEY reuses the newest freed id, so a credential id alone can name a later, unrelated credential. Each write row therefore also stores a snapshot that is never reused: for a grant, its client_id, owner email and created_at; for a key, the same fix applies to api_key_writes (its non-secret prefix, owner and created_at), in the same migration. Every lookup of a credential's writes (apikey.Store.Writes and its grant counterpart) matches on the snapshot as well as the id, and each log has a test that revokes the newest credential, issues a new one with the same id, and shows the old writes are not returned. May edit, as exceptions to append-only: the web.go r.Use line and the MCPVerifier default line, and the routes.go mountMCP line that builds the audit."
     }
   ],
   "adr_sequence": {
