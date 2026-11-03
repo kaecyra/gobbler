@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/kaecyra/gobbler/internal/oauth"
 )
@@ -136,5 +137,27 @@ func TestPKCE(t *testing.T) {
 	}
 	if oauth.ValidChallenge(strings.Repeat("a", 43)+"=") || oauth.ValidChallenge("short") {
 		t.Fatal("ValidChallenge accepts a bad challenge")
+	}
+}
+
+func TestTruncateCutsOnACharacterBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		n    int
+		want string
+	}{
+		{"abcdef", 3, "abc"},
+		{"abc", 3, "abc"},
+		{"abc", 10, "abc"},
+		{"", 5, ""},
+		{"héllo", 2, "h"}, // é is two bytes, so a cut at 2 would split it
+		{"héllo", 3, "hé"},
+		{"日本語", 4, "日"}, // three bytes each
+		{"日本語", 2, ""},
+		{"abc", 0, ""},
+	} {
+		if got := oauth.Truncate(tc.in, tc.n); got != tc.want || !utf8.ValidString(got) {
+			t.Errorf("Truncate(%q, %d) = %q, want %q", tc.in, tc.n, got, tc.want)
+		}
 	}
 }

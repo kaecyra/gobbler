@@ -92,7 +92,7 @@ func (h *handler) client(r *http.Request, clientID string) (oauth.Client, error)
 		if err != nil {
 			// The detail is logged and kept from the page: it can say what
 			// gobbler could or could not reach.
-			h.log.WarnContext(r.Context(), "oauth client metadata refused", "client_id", truncate(clientID), "error", err.Error())
+			h.log.WarnContext(r.Context(), "oauth client metadata refused", "client_id", oauth.Truncate(clientID, 120), "error", err.Error())
 			return oauth.Client{}, &pageError{status: http.StatusBadRequest, message: "gobbler could not load this application's details, so it stopped.", cause: err}
 		}
 		return c, nil
@@ -192,7 +192,7 @@ func (h *handler) authorizePost(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("issue authorization code: %w", err))
 		return
 	}
-	h.log.InfoContext(r.Context(), "oauth request approved", "client_id", truncate(req.Client.ID), "return_host", oauth.ReturnHost(req.RedirectURI))
+	h.log.InfoContext(r.Context(), "oauth request approved", "client_id", oauth.Truncate(req.Client.ID, 120), "return_host", oauth.ReturnHost(req.RedirectURI))
 	params := url.Values{"code": {code}, "iss": {req.Base}}
 	if req.State != "" {
 		params.Set("state", req.State)

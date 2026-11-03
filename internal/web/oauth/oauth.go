@@ -276,21 +276,13 @@ func (h *handler) token(w http.ResponseWriter, r *http.Request) {
 		h.writeOAuthError(w, r, err)
 		return
 	}
-	h.log.InfoContext(r.Context(), "oauth tokens issued", "grant_type", form.Get("grant_type"), "client_id", truncate(form.Get("client_id")))
+	h.log.InfoContext(r.Context(), "oauth tokens issued", "grant_type", form.Get("grant_type"), "client_id", oauth.Truncate(form.Get("client_id"), 120))
 	h.writeJSON(w, r, http.StatusOK, map[string]any{
 		"access_token":  toks.Access,
 		"token_type":    "Bearer",
 		"expires_in":    int(toks.ExpiresIn.Seconds()),
 		"refresh_token": toks.Refresh,
 	})
-}
-
-// truncate bounds a client-supplied value that is logged.
-func truncate(s string) string {
-	if len(s) > 120 {
-		return s[:120]
-	}
-	return s
 }
 
 // redirectWith sends the browser back to the client with the parameters added.

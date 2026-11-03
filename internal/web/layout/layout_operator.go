@@ -44,7 +44,8 @@ const ProfilePath = "/profile"
 
 // publicPages are the exact paths served to a request without an identity
 // (ADR-00029): the health check, /canada, and sign-in with its callback
-// (ADR-00030). Paths are written out, not imported, for the same reason
+// (ADR-00030); the OAuth endpoints (ADR-00034) are appended by the init below.
+// Paths are written out, not imported, for the same reason
 // navItems' are (ADR-00012); package web checks that its health route is
 // listed.
 var publicPages = []string{"/healthz", CanadaPath, SignInPath, CallbackPath}

@@ -160,7 +160,7 @@ func (s *Store) RegisterClient(ctx context.Context, m ClientMetadata) (Client, e
 func (s *Store) Client(ctx context.Context, id string) (Client, error) {
 	row, err := s.q.GetClient(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Client{}, fmt.Errorf("%w: %q", ErrUnknownClient, truncate(id, 80))
+		return Client{}, fmt.Errorf("%w: %q", ErrUnknownClient, Truncate(id, 80))
 	}
 	if err != nil {
 		return Client{}, fmt.Errorf("get client: %w", err)
@@ -175,9 +175,14 @@ func (s *Store) Client(ctx context.Context, id string) (Client, error) {
 	return c, nil
 }
 
-func truncate(s string, n int) string {
+// Truncate cuts s to at most n bytes, never in the middle of a character. It
+// bounds a client-supplied value before it is logged or put in an error.
+func Truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
 	}
 	return s[:n]
 }
