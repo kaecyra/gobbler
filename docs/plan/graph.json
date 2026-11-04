@@ -2970,7 +2970,8 @@
         "internal/web/profile/**",
         "internal/web/static/avatar*",
         "internal/web/static/profile*",
-        "e2e/profile/**"
+        "e2e/profile/**",
+        "internal/web/profile_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
