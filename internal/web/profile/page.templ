@@ -19,8 +19,12 @@ templ page(v pageView) {
 // shown only where the visibility rule allowed it. For the person themself the
 // avatar is a link to the upload page that profile.js turns into a button which
 // opens the file chooser, so a browser without scripts still reaches the
-// upload. The status of their last upload sits under the email.
+// upload. When their last upload has something to tell, a message above the
+// profile says it.
 templ identity(v pageView) {
+	if v.Self {
+		@avatarStatusSlot(newPanelView(v.Address, v.Shown.Avatar, ""))
+	}
 	<section class="panel profile-head" aria-labelledby="profile-h" data-testid="profile-identity">
 		if v.Shown.Seed != "" {
 			if v.Self {
@@ -44,9 +48,6 @@ templ identity(v pageView) {
 			<h1 id="profile-h" data-testid="profile-name">{ v.title() }</h1>
 			if v.Shown.Email != "" {
 				<p class="muted" data-testid="profile-email">{ v.Shown.Email }</p>
-			}
-			if v.Self {
-				@avatarStatusSlot(newPanelView(v.Address, v.Shown.Avatar, ""))
 			}
 		</div>
 	</section>

@@ -223,7 +223,7 @@ test.describe('the picture dialog', () => {
     await waitForCrop(page);
   });
 
-  test('says so in the dialog when a request fails, and offers to try again', async ({ page }) => {
+  test('says so in the dialog when a request fails, and choosing again is the retry', async ({ page }) => {
     await page.goto('/profile');
     // The first file comes from the avatar; after that the dialog is open and
     // its Choose button opens the chooser.
@@ -248,11 +248,16 @@ test.describe('the picture dialog', () => {
       await expect(dialogOf(page).getByTestId('avatar-error'), name).toBeVisible();
       await expect(dialogOf(page).getByTestId('avatar-error'), name).toContainText(message);
       await page.unroute(/\/avatar$/);
-      // Try again starts over at the first step with the message gone.
-      await dialogOf(page).getByTestId('avatar-retry').click();
-      await expect(dialogOf(page).getByTestId('avatar-error')).toBeHidden();
+      // No retry button: the upload step is there to choose again.
+      await expect(dialogOf(page).getByRole('button', { name: 'Try again' })).toHaveCount(0);
       await expect(dialogOf(page).getByTestId('avatar-choose')).toBeVisible();
     }
+    // Choosing again clears the message and reaches the crop.
+    await upload_();
+    await waitForCrop(page);
+    await expect(dialogOf(page).getByTestId('avatar-error')).toBeHidden();
+    await page.keyboard.press('Escape');
+    fromAvatar = true;
     // Close is always there.
     await page.route(/\/avatar$/, (route) => route.fulfill({ status: 500, body: 'boom' }));
     await upload_();
@@ -290,6 +295,46 @@ test.describe('the picture dialog and the page around it', () => {
     await page.getByTestId('profile-avatar').click();
     await chooser;
     await expect(dialogOf(page)).toBeHidden();
+  });
+
+  test('says where the picture stands in a message above the profile, and nothing when all is well', async ({ page }) => {
+    await page.goto('/profile');
+    await expect(page.getByTestId('avatar-status')).toBeHidden();
+    await choose(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    await page.keyboard.press('Escape');
+    const status = page.getByTestId('avatar-status');
+    await expect(status).toContainText('waiting to be cropped');
+    // A page-level message, above the profile box rather than inside it.
+    await expect(page.getByTestId('profile-identity').getByTestId('avatar-status')).toHaveCount(0);
+    const [msg, box] = [await status.boundingBox(), await page.getByTestId('profile-identity').boundingBox()];
+    expect(msg!.y + msg!.height).toBeLessThanOrEqual(box!.y);
+  });
+
+  test('says so above the profile when the status cannot be fetched, and recovers', async ({ page }) => {
+    await upload(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    const problem = page.getByTestId('avatar-status-problem');
+    const cases: [string, number, RegExp][] = [
+      ['server error', 500, /could not check on your picture/],
+      ['signed out', 401, /You are signed out/],
+    ];
+    let fail = 500;
+    await page.route(/\/avatar\/status/, (route) => route.fulfill({ status: fail, body: 'no' }));
+    await page.getByTestId('crop-save').click();
+    await expect(dialogOf(page)).toBeHidden();
+    for (const [name, code, message] of cases) {
+      fail = code;
+      // The saved step's status polls every 2s; each failure says so on the page.
+      await expect(problem, name).toBeVisible({ timeout: 10_000 });
+      await expect(problem, name).toContainText(message, { timeout: 10_000 });
+      await expect(problem.getByRole('link', { name: 'Reload this page' }), name).toBeVisible();
+      await expect(page.getByTestId('avatar-status'), name).toBeHidden();
+    }
+    // Once the status answers again, the page reloads with the new picture.
+    await page.unroute(/\/avatar\/status/);
+    await expect(page.getByTestId('profile-avatar-img')).toBeVisible({ timeout: 30_000 });
+    await expect(problem).toBeHidden();
   });
 
   test('a crop link on the page that fails says so in the dialog', async ({ page }) => {

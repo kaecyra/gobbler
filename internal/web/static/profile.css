@@ -30,9 +30,6 @@
    is a shadow of the dialog itself, which does. */
 .avatar-dialog { box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--ink) 40%, transparent); }
 .avatar-dialog::backdrop { background: transparent; }
-.avatar-error { margin-bottom: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--sunk); }
-.avatar-error[hidden] { display: none; }
-.avatar-error p { margin: 0 0 8px; }
 .avatar-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .avatar-dialog-head h2 { margin: 0; }
 

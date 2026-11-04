@@ -6,7 +6,9 @@
 // scripts, or without <dialog>, the link works as a link. Any failure of a
 // request made from the dialog is shown in it: htmx swaps nothing on an error
 // status or a dropped connection, so without this the person would see no
-// change at all.
+// change at all. There is no retry button: choosing a picture again, or
+// pressing Use this picture again, is the retry. Failures of the page's status
+// line are avatar.js's.
 (function () {
   'use strict';
   var dialog = document.getElementById('avatar-dialog');
@@ -50,8 +52,14 @@
   // still being put back), the dialog opens on whatever step it holds.
   function choose() {
     var input = dialog.querySelector('#avatar-panel input[type=file]');
-    if (input) input.click();
-    else show();
+    if (!input) {
+      show();
+      return;
+    }
+    // A browser fires no change for the file already chosen, so choosing the
+    // same picture again after a failure would otherwise do nothing.
+    input.value = '';
+    input.click();
   }
   function loading() {
     return dialog.querySelector('#avatar-panel [data-avatar-loading]');
@@ -92,7 +100,6 @@
   dialog.querySelector('[data-avatar-close]').addEventListener('click', function () {
     dialog.close();
   });
-  dialog.querySelector('[data-avatar-retry]').addEventListener('click', startOver);
   dialog.addEventListener('click', function (e) {
     if (!e.target.closest) return;
     if (e.target.closest('[data-avatar-choose]')) {

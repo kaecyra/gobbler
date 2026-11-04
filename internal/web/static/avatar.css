@@ -18,10 +18,19 @@
 .avatar-loading { margin: 0; }
 #avatar-panel.is-loading > :not([data-avatar-loading]) { display: none; }
 
-/* Where the last upload stands, on the page beside the steps. */
-.avatar-status { margin-top: 12px; }
-.avatar-status:empty { display: none; }
-.avatar-status p { margin: 0; }
+/* A refusal or a failed request, in the dialog or on a step's page. */
+.avatar-problem { margin: 0 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--sunk); }
+.avatar-problem[hidden] { display: none; }
+.avatar-problem p { margin: 0; }
+
+/* Where the last upload stands: a page-level callout above the profile, shown
+   only while something is pending or went wrong; inside a step's page it sits
+   below the step. Amber (check) when it needs a look. */
+.callout.check { --co-bg: var(--grain-soft); --co-ink: var(--grain-ink); }
+.avatar-status, .avatar-status-problem { margin: 0 0 16px; }
+.panel .avatar-status, .panel .avatar-status-problem { margin: 12px 0 0; }
+.avatar-status:empty, .avatar-status[hidden], .avatar-status-problem[hidden] { display: none; }
+.avatar-status p, .avatar-status-problem p { margin: 0; }
 
 .crop-stage {
   max-width: 100%; height: min(60vh, 520px); margin: 12px 0;
@@ -30,4 +39,3 @@
 .crop-stage img { display: block; max-width: 100%; max-height: 100%; }
 .crop-form { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .crop-form .btn { display: inline-flex; align-items: center; justify-content: center; }
-.avatar-dialog [role=alert] { margin: 0 0 12px; }

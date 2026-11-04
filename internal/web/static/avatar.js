@@ -2,10 +2,10 @@
 // (vendor/cropper.min.js) draws the square; this posts it as fractions of the
 // picture, which the server applies to the original and checks again
 // (ADR-00033). The step appears in the profile page's dialog after htmx swaps it
-// in, or on the crop page when it loads.
+// in, or on the crop page when it loads. It also tells the person when the
+// page's status line cannot be fetched.
 (function () {
   'use strict';
-  if (typeof Cropper === 'undefined') return;
 
   function clamp(n) {
     return Math.min(1, Math.max(0, n));
@@ -53,6 +53,7 @@
   }
 
   function scan() {
+    if (typeof Cropper === 'undefined') return;
     var img = document.getElementById('crop-image');
     if (img) setup(img);
   }
@@ -68,6 +69,39 @@
     var heading = panel.querySelector('[data-step-heading]');
     if (heading) heading.focus();
   }
+  // The page's status line (avatarStatusSlot) loads and polls itself. When one
+  // of those requests fails, htmx swaps nothing and the line would go on saying
+  // the picture is processing; the message beside it says what happened instead.
+  // The next status that arrives puts the line back.
+  function statusProblem(e) {
+    var target = e.detail && e.detail.target;
+    var box = document.querySelector('[data-avatar-status-problem]');
+    if (!target || target.id !== 'avatar-status' || !box) return;
+    var status = e.detail.xhr ? e.detail.xhr.status : 0;
+    var signedOut = e.type === 'htmx:responseError' && (status === 401 || status === 403);
+    var text = box.querySelector('[data-avatar-status-problem-text]');
+    var reload = document.createElement('a');
+    reload.className = 'link';
+    reload.href = window.location.href;
+    reload.textContent = 'Reload this page';
+    box.querySelector('[data-avatar-status-problem-label]').textContent = signedOut ? 'Signed out' : 'Check';
+    text.textContent = signedOut ? 'You are signed out. ' : 'We could not check on your picture. ';
+    text.appendChild(reload);
+    text.appendChild(document.createTextNode(signedOut ? ' to sign in again.' : ' to see where it stands.'));
+    target.hidden = true;
+    box.hidden = false;
+  }
+  function statusBack(e) {
+    var target = e.detail && e.detail.target;
+    var box = document.querySelector('[data-avatar-status-problem]');
+    if (box && target && target.id === 'avatar-status') box.hidden = true;
+  }
+  ['htmx:responseError', 'htmx:sendError', 'htmx:timeout'].forEach(function (name) {
+    document.body.addEventListener(name, statusProblem);
+  });
+  document.body.addEventListener('htmx:afterSwap', statusBack);
+  document.body.addEventListener('htmx:oobAfterSwap', statusBack);
+
   scan();
   document.body.addEventListener('htmx:afterSettle', function (e) {
     scan();

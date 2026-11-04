@@ -17,9 +17,8 @@ templ avatarDialog(v pageView) {
 			<h2 id="avatar-h">Change your picture</h2>
 			<button type="button" class="btn" data-avatar-close data-testid="avatar-close">Close</button>
 		</div>
-		<div class="avatar-error" role="alert" hidden data-avatar-error data-testid="avatar-error">
+		<div class="avatar-problem" role="alert" hidden data-avatar-error data-testid="avatar-error">
 			<p data-avatar-error-text></p>
-			<button type="button" class="btn" data-avatar-retry data-testid="avatar-retry">Try again</button>
 		</div>
 		@uploadPanel(newPanelView(v.Address, v.Shown.Avatar, ""))
 	</dialog>
@@ -34,7 +33,7 @@ templ uploadPanel(v panelView) {
 	<div id="avatar-panel" data-step="upload" data-testid="avatar-panel">
 		<h3 tabindex="-1" data-step-heading>Pick a picture</h3>
 		if v.Message != "" {
-			<p role="alert" data-testid="avatar-message">{ v.Message }</p>
+			<div class="avatar-problem" role="alert" data-testid="avatar-message"><p>{ v.Message }</p></div>
 		}
 		<form class="avatar-pick" method="post" enctype="multipart/form-data" action={ templ.SafeURL(v.path("avatar")) } hx-post={ v.path("avatar") } hx-encoding="multipart/form-data" hx-target="#avatar-panel" hx-swap="outerHTML">
 			<label>
@@ -49,12 +48,22 @@ templ uploadPanel(v panelView) {
 	</div>
 }
 
-// avatarStatusSlot is where the status of the person's last upload appears. It
+// avatarStatusSlot is where the status of the person's last upload appears: a
+// page-level message, shown only while something is pending or went wrong. It
 // loads as a fragment (statusFragment) so it can poll while the picture is
 // processed in the background. Each page that shows a step has exactly one,
 // outside #avatar-panel, so a step can update it out of band (savedPanel).
+// The hidden message beside it is what avatar.js fills and shows when the
+// status itself cannot be fetched.
 templ avatarStatusSlot(v panelView) {
 	<div id="avatar-status" class="avatar-status" data-testid="avatar-status" hx-get={ v.statusSrc() } hx-trigger="load" hx-swap="outerHTML"></div>
+	<div class="callout check avatar-status-problem" role="alert" hidden data-avatar-status-problem data-testid="avatar-status-problem">
+		<div class="co-label">
+			@layout.Icon(layout.IconAlert)
+			<span data-avatar-status-problem-label>Check</span>
+		</div>
+		<p data-avatar-status-problem-text></p>
+	</div>
 }
 
 // cropPanel is the second step: the square to keep, drawn with Cropper.js
@@ -65,7 +74,7 @@ templ cropPanel(v cropView) {
 	<div id="avatar-panel" data-step="crop" data-testid="avatar-panel">
 		<h3 tabindex="-1" data-step-heading>Choose the square to keep</h3>
 		if v.Failed != "" {
-			<p role="alert">{ v.Failed }</p>
+			<div class="avatar-problem" role="alert"><p>{ v.Failed }</p></div>
 		}
 		<p class="muted">Drag the square to choose the part to keep.</p>
 		<div class="crop-stage">
@@ -94,21 +103,35 @@ templ savedPanel(v statusView) {
 	@statusFragment(v)
 }
 
-// statusFragment says where the person's last upload stands. While it is
-// processing it polls itself. Its links go to the crop step: in the dialog
+// statusFragment says where the person's last upload stands, as a callout:
+// grey while it waits on something, amber when it needs a look. With nothing
+// pending it is empty, and the page shows no message. While it is processing
+// it polls itself. Its links go to the crop step: in the dialog
 // (profile.js opens it on data-avatar-resume), or as a page without scripts.
 templ statusFragment(v statusView) {
 	switch v.State {
 		case "queued":
-			<div id="avatar-status" class="avatar-status" data-testid="avatar-status" data-state="queued" { v.oobAttrs()... } role="status" hx-get={ v.statusPath() } hx-trigger="every 2s" hx-swap="outerHTML">
+			<div id="avatar-status" class="callout avatar-status" data-testid="avatar-status" data-state="queued" { v.oobAttrs()... } role="status" hx-get={ v.statusPath() } hx-trigger="every 2s" hx-swap="outerHTML">
+				<div class="co-label">
+					@layout.Icon(layout.IconClock)
+					<span>Your picture</span>
+				</div>
 				<p>Processing your picture. This page updates when it is ready.</p>
 			</div>
 		case "uploaded":
-			<div id="avatar-status" class="avatar-status" data-testid="avatar-status" data-state="uploaded" { v.oobAttrs()... } role="status">
+			<div id="avatar-status" class="callout avatar-status" data-testid="avatar-status" data-state="uploaded" { v.oobAttrs()... } role="status">
+				<div class="co-label">
+					@layout.Icon(layout.IconClock)
+					<span>Your picture</span>
+				</div>
 				<p>Your picture is waiting to be cropped. <a class="link" href={ templ.SafeURL(v.cropPath()) } hx-get={ v.cropPath() } data-avatar-resume hx-target="#avatar-panel" hx-swap="outerHTML">Choose the square to keep</a></p>
 			</div>
 		case "failed":
-			<div id="avatar-status" class="avatar-status" data-testid="avatar-status" data-state="failed" { v.oobAttrs()... } role="alert">
+			<div id="avatar-status" class="callout check avatar-status" data-testid="avatar-status" data-state="failed" { v.oobAttrs()... } role="alert">
+				<div class="co-label">
+					@layout.Icon(layout.IconAlert)
+					<span>Check</span>
+				</div>
 				<p>{ v.Error }</p>
 				<p><a class="link" href={ templ.SafeURL(v.cropPath()) } hx-get={ v.cropPath() } data-avatar-resume hx-target="#avatar-panel" hx-swap="outerHTML">Try the crop again</a> or upload another picture.</p>
 			</div>
