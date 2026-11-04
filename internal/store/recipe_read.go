@@ -164,7 +164,7 @@ func loadComponents(ctx context.Context, q *storedb.Queries, hid, id int64, unit
 // lineFrom converts a stored ingredient line row, without its qualifiers.
 func lineFrom(r storedb.ListIngredientLinesRow, units *unitTable) (recipe.IngredientLine, error) {
 	l := recipe.IngredientLine{
-		Ingredient: recipe.IngredientID(r.IngredientID.Int64), Optional: r.Optional == 1,
+		Key: r.LineKey, Ingredient: recipe.IngredientID(r.IngredientID.Int64), Optional: r.Optional == 1,
 		Rule: quantity.Rule(r.Rule), Raw: r.Raw,
 	}
 	var err error

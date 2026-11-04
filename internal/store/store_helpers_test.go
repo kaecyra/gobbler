@@ -241,8 +241,13 @@ func simpleRecipe(name string) recipe.Recipe {
 // sameRecipe fails the test when got differs from want in any stored field.
 // Documents compare through their exact JSON form (quantities as reduced
 // fractions); units are compared field by field, factor included.
+//
+// Keys are the store's to assign (ADR-00035), so a document a test wrote with
+// its own step labels is compared to what came back by shape: steps by their
+// order, lines without keys. TestKeys... tests check the keys themselves.
 func sameRecipe(t *testing.T, want, got recipe.Recipe) {
 	t.Helper()
+	want, got = withoutKeys(want), withoutKeys(got)
 	units := &unitTable{ids: map[string]int64{}, units: map[int64]quantity.Unit{}}
 	for i, u := range quantity.Units() {
 		units.ids[u.Name], units.units[int64(i+1)] = int64(i+1), u
@@ -277,4 +282,46 @@ func assertUnit(t *testing.T, want, got quantity.Unit) {
 	if want.Name != got.Name || want.System != got.System || want.Dimension != got.Dimension || !want.Factor.Equal(got.Factor) {
 		t.Fatalf("unit: want %+v, got %+v", want, got)
 	}
+}
+
+// withoutKeys returns r with its lines' keys cleared and its steps renamed
+// s1, s2, ... in reading order, every dependency and equipment link renamed to
+// match, so two documents that differ only in the keys the store assigned
+// compare equal.
+func withoutKeys(r recipe.Recipe) recipe.Recipe {
+	names := map[recipe.StepID]recipe.StepID{}
+	n := 0
+	for _, c := range r.Components {
+		for _, s := range c.Steps {
+			n++
+			names[s.ID] = recipe.StepID(fmt.Sprintf("s%d", n))
+		}
+	}
+	rename := func(ids []recipe.StepID) []recipe.StepID {
+		var out []recipe.StepID
+		for _, id := range ids {
+			out = append(out, names[id])
+		}
+		return out
+	}
+	comps := make([]recipe.Component, len(r.Components))
+	for ci, c := range r.Components {
+		comps[ci] = recipe.Component{Name: c.Name}
+		for _, l := range c.Lines {
+			l.Key = ""
+			comps[ci].Lines = append(comps[ci].Lines, l)
+		}
+		for _, s := range c.Steps {
+			s.ID, s.DependsOn = names[s.ID], rename(s.DependsOn)
+			comps[ci].Steps = append(comps[ci].Steps, s)
+		}
+	}
+	r.Components = comps
+	var eq []recipe.EquipmentLink
+	for _, e := range r.Equipment {
+		e.Steps = rename(e.Steps)
+		eq = append(eq, e)
+	}
+	r.Equipment = eq
+	return r
 }

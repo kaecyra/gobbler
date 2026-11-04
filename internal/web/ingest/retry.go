@@ -46,16 +46,16 @@ func providerFactories() map[string]ingestcore.ProviderFactory {
 }
 
 // retry asks the LLM to read the pending draft's source, whatever the draft
-// scored. Only the review screen's retry button reaches it. On success the
-// pending draft is replaced and the user is sent back to review it; nothing is
+// scored. Only the review screen's retry button reaches it. A draft read from a
+// photo that has left memory is read again from its OCR text alone. On success
+// the pending draft is replaced and the user is sent back to review it; nothing is
 // saved. On any failure the rule-based draft stays as it was and the review
 // screen shows the error, so a provider problem never blocks saving the draft
 // (ADR-00007).
 func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	d, ok := h.pending.Get(householdID(r), token)
+	d, ok := h.draft(w, r, token)
 	if !ok {
-		layout.WriteError(w, r, errGone)
 		return
 	}
 	fail := func(status int, msg string) {
@@ -82,7 +82,14 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadGateway, "The LLM could not read this recipe: "+err.Error())
 		return
 	}
-	h.pending.Put(householdID(r), token, out)
+	if err := h.drafts.Replace(r.Context(), token, out); err != nil {
+		if errors.Is(err, ingestcore.ErrDraftGone) {
+			layout.WriteError(w, r, errGone)
+			return
+		}
+		layout.WriteError(w, r, fmt.Errorf("keep the LLM's reading: %w", err))
+		return
+	}
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
 }
 

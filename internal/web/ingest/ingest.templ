@@ -145,6 +145,9 @@ templ reviewPage(v reviewView) {
 		</div>
 		<div class="review-body">
 			@summary(v.Draft)
+			if v.PhotoGone {
+				<p class="muted" id="photo-gone">The photo this recipe was read from is no longer available. Asking the LLM again reads the recognised text alone.</p>
+			}
 			if v.CanRetry {
 				<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
 					<button class="btn" type="submit">Retry with LLM</button>

@@ -51,7 +51,11 @@ type Snapshot struct {
 // The store exposes snapshots for add and read only. Source snapshots are
 // never modified (AGENTS.md boundary). That is a property of this API, not of
 // the database (ADR-00004 obligation 4, ADR-00015): TestSnapshotAPIHasNoMutator
-// fails if a method that changes or removes one appears here.
+// fails if a method that changes or removes one appears here. The one other
+// thing the store does with a snapshot is a draft's (ADR-00035, proposal.go): it
+// writes one with no recipe, attaches it once to the recipe the draft becomes,
+// and deletes one no recipe holds. None of that changes content, and none is
+// exported as a snapshot operation.
 
 // AddSnapshot stores the ingested input of recipe id. Each kind is stored once
 // per recipe; a second AddSnapshot of the same kind is ErrSnapshotExists and
@@ -91,7 +95,7 @@ func (s *Store) insertVersionedSnapshot(ctx context.Context, q *storedb.Queries,
 	if !kind.Valid() {
 		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
 	}
-	existing, err := q.CountSnapshots(ctx, storedb.CountSnapshotsParams{RecipeID: id, Kind: string(kind), HouseholdID: hid})
+	existing, err := q.CountSnapshots(ctx, storedb.CountSnapshotsParams{RecipeID: nullID(id), Kind: string(kind), HouseholdID: hid})
 	if err != nil {
 		return fmt.Errorf("check %s snapshot of recipe %d: %w", kind, id, err)
 	}
@@ -100,7 +104,7 @@ func (s *Store) insertVersionedSnapshot(ctx context.Context, q *storedb.Queries,
 	}
 	sum := sha256.Sum256(content)
 	err = q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
-		HouseholdID: hid, RecipeID: id, Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
+		HouseholdID: hid, RecipeID: nullID(id), Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
 		CreatedAt: s.stamp(), CreatedBy: who, ParserVersion: in.ParserVersion,
 	})
 	if err != nil {
@@ -115,7 +119,7 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 	if err != nil {
 		return Snapshot{}, err
 	}
-	row, err := s.q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: id, Kind: string(kind), HouseholdID: hid})
+	row, err := s.q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: nullID(id), Kind: string(kind), HouseholdID: hid})
 	if errors.Is(err, sql.ErrNoRows) {
 		return Snapshot{}, fmt.Errorf("%w: %s snapshot of recipe %d", ErrNotFound, kind, id)
 	}
@@ -141,7 +145,7 @@ func (s *Store) ListSnapshotKinds(ctx context.Context, id int64) ([]SnapshotKind
 		if _, err := loadInfo(ctx, q, hid, id); err != nil {
 			return err
 		}
-		kinds, err := q.ListSnapshotKinds(ctx, storedb.ListSnapshotKindsParams{RecipeID: id, HouseholdID: hid})
+		kinds, err := q.ListSnapshotKinds(ctx, storedb.ListSnapshotKindsParams{RecipeID: nullID(id), HouseholdID: hid})
 		if err != nil {
 			return readErr("snapshot kinds", err)
 		}

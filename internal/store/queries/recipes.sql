@@ -47,8 +47,8 @@ INSERT INTO components (household_id, recipe_id, position, name) VALUES (?, ?, ?
 RETURNING id;
 
 -- name: InsertIngredientLine :one
-INSERT INTO ingredient_lines (household_id, component_id, position, qty, unit_id, has_package, package_qty, package_unit_id, ingredient_id, optional, rule, raw)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO ingredient_lines (household_id, component_id, position, line_key, qty, unit_id, has_package, package_qty, package_unit_id, ingredient_id, optional, rule, raw)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 
 -- name: InsertLineQualifier :exec
@@ -95,7 +95,7 @@ SELECT label, duration_ns FROM recipe_special_times WHERE recipe_id = ? AND hous
 SELECT id, name FROM components WHERE recipe_id = ? AND household_id = ? ORDER BY position;
 
 -- name: ListIngredientLines :many
-SELECT l.id, l.component_id, l.qty, l.unit_id, l.has_package, l.package_qty, l.package_unit_id, l.ingredient_id, l.optional, l.rule, l.raw
+SELECT l.id, l.component_id, l.line_key, l.qty, l.unit_id, l.has_package, l.package_qty, l.package_unit_id, l.ingredient_id, l.optional, l.rule, l.raw
 FROM ingredient_lines l JOIN components c ON c.id = l.component_id
 WHERE c.recipe_id = ? AND c.household_id = ? ORDER BY c.position, l.position;
 
@@ -120,3 +120,9 @@ SELECT id, equipment_id, qty FROM recipe_equipment WHERE recipe_id = ? AND house
 SELECT es.recipe_equipment_id, s.step_key FROM recipe_equipment_steps es
 JOIN recipe_equipment e ON e.id = es.recipe_equipment_id JOIN steps s ON s.id = es.step_id
 WHERE e.recipe_id = ? AND e.household_id = ? ORDER BY es.recipe_equipment_id, es.position;
+
+-- name: ListRecipeKeys :many
+SELECT key FROM recipe_keys WHERE recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id);
+
+-- name: InsertRecipeKey :exec
+INSERT OR IGNORE INTO recipe_keys (household_id, recipe_id, key) VALUES (?, ?, ?);

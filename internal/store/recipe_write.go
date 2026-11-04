@@ -144,7 +144,7 @@ func insertLine(ctx context.Context, q *storedb.Queries, hid, compID int64, pos 
 		}
 	}
 	lineID, err := q.InsertIngredientLine(ctx, storedb.InsertIngredientLineParams{
-		HouseholdID: hid, ComponentID: compID, Position: int64(pos), Qty: nullString(qty), UnitID: unitID,
+		HouseholdID: hid, ComponentID: compID, Position: int64(pos), LineKey: l.Key, Qty: nullString(qty), UnitID: unitID,
 		HasPackage: boolInt(l.Amount.HasPackage), PackageQty: nullString(pkgQty), PackageUnitID: pkgUnit,
 		IngredientID: ingredient, Optional: boolInt(l.Optional), Rule: string(l.Rule), Raw: l.Raw,
 	})

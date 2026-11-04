@@ -118,7 +118,13 @@ func (s *Store) insertRecipe(ctx context.Context, q *storedb.Queries, hid int64,
 	if err != nil {
 		return 0, err
 	}
+	if r, err = assignKeys(ctx, q, hid, 0, r, nil, false); err != nil {
+		return 0, err
+	}
 	if err := insertChildren(ctx, q, hid, id, r, units); err != nil {
+		return 0, err
+	}
+	if err := recordKeys(ctx, q, hid, id, r); err != nil {
 		return 0, err
 	}
 	if err := setVideo(ctx, q, hid, id, r.VideoID); err != nil {
@@ -260,6 +266,18 @@ func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, 
 	if err != nil {
 		return err
 	}
+	live := map[string]bool{}
+	for _, c := range old.Components {
+		for _, l := range c.Lines {
+			live[l.Key] = true
+		}
+		for _, s := range c.Steps {
+			live[string(s.ID)] = true
+		}
+	}
+	if r, err = assignKeys(ctx, q, hid, id, r, live, change == changeRestore); err != nil {
+		return err
+	}
 	now := s.stamp()
 	if err := insertRevision(ctx, q, hid, id, cur.Version, old, units, change, restored, now, who); err != nil {
 		return err
@@ -281,10 +299,13 @@ func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, 
 	if err := clearChildren(ctx, q, hid, id); err != nil {
 		return err
 	}
-	return insertChildren(ctx, q, hid, id, r, units)
+	if err := insertChildren(ctx, q, hid, id, r, units); err != nil {
+		return err
+	}
+	return recordKeys(ctx, q, hid, id, r)
 }
 
-// Delete removes recipe id (of the request's household) with its revisions, notes, made-it entries and
+// Delete removes recipe id (of the request's household) with its revisions, proposals, notes, made-it entries and
 // source snapshots, or returns ErrNotFound. A clone of it survives, losing
 // only the pointer to its origin.
 func (s *Store) Delete(ctx context.Context, id int64) error {

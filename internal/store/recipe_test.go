@@ -519,7 +519,7 @@ func TestReadOfInconsistentRowsFailsNamingTheMiss(t *testing.T) {
 	if _, err := d.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Exec(`DELETE FROM steps WHERE step_key = 'mix'`); err != nil {
+	if _, err := d.Exec(`DELETE FROM steps WHERE id = (SELECT min(id) FROM steps)`); err != nil {
 		t.Fatal(err)
 	}
 

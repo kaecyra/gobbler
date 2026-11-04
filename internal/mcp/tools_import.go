@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // maxDraftText bounds the text of one import or draft, the way the web form
@@ -66,10 +68,16 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 		if u, perr := url.Parse(rawURL); perr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return nil, draftOut{}, refuse("url must be an http or https address")
 		}
+		if err := t.checkRoom(ctx, tool); err != nil {
+			return nil, draftOut{}, err
+		}
 		d, err = t.Drafter.FromURL(ctx, rawURL)
 	default:
 		if len(text) > maxDraftText {
 			return nil, draftOut{}, refuse("the text is too long: at most %d bytes", maxDraftText)
+		}
+		if err := t.checkRoom(ctx, tool); err != nil {
+			return nil, draftOut{}, err
 		}
 		d, err = t.Drafter.FromText(ctx, text)
 	}
@@ -104,6 +112,9 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	if b.Len() > maxDraftText {
 		return nil, draftOut{}, refuse("the recipe is too long: at most %d bytes", maxDraftText)
 	}
+	if err := t.checkRoom(ctx, tool); err != nil {
+		return nil, draftOut{}, err
+	}
 	d, err := t.Drafter.FromText(ctx, b.String())
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
@@ -112,9 +123,28 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	return t.hold(ctx, tool, c, h.ID, d)
 }
 
+// checkRoom refuses, with the message hold gives, a household that already holds
+// the most drafts it may, before anything is fetched or read for a draft that
+// would be turned away. hold's check where the draft is written stays the
+// authority.
+func (t *tools) checkRoom(ctx context.Context, tool string) error {
+	full, err := t.Drafts.Full(ctx)
+	if err != nil {
+		return t.toolError(ctx, tool, err)
+	}
+	if full {
+		return refuse("%s", store.ErrDraftLimit)
+	}
+	return nil
+}
+
 // hold puts the draft where the review screen finds it and records the write.
 func (t *tools) hold(ctx context.Context, tool string, c Credential, hid int64, d ingest.Draft) (*mcp.CallToolResult, draftOut, error) {
-	token, err := t.Drafts.Add(hid, d)
+	token, err := t.Drafts.Add(ctx, d, provenance(c, hid, tool))
+	if errors.Is(err, store.ErrDraftLimit) {
+		// Say so as it is: the agent can tell its user to review the drafts.
+		return nil, draftOut{}, refuse("%s", store.ErrDraftLimit)
+	}
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}

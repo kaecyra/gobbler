@@ -65,6 +65,11 @@ test.afterAll(async () => {
 
 const save = (page: import('@playwright/test').Page) => page.getByRole('button', { name: 'Save recipe' }).first().click();
 
+// A stored step is named by the key the store gave it (ADR-00035): read it from
+// the form rather than assuming one.
+const stepKey = (page: import('@playwright/test').Page, c: number, s: number) =>
+  page.locator(`[name="c.${c}.s.${s}.id"]`).inputValue();
+
 async function revisions(page: import('@playwright/test').Page): Promise<number> {
   await page.goto(`/recipes/${id}/history`);
   return page.getByTestId('revision').count();
@@ -80,8 +85,10 @@ test('loads the stored recipe into the form', async ({ page }) => {
   await expect(page.locator('[name="c.0.l.0.unit"]')).toHaveValue('cup');
   await expect(page.locator('[name="c.0.s.1.text"]')).toHaveValue('Let the dough rest.');
   await expect(page.locator('[name="c.0.s.1.dur"]')).toHaveValue('60 min');
-  await expect(page.locator('[name="c.0.s.1.dep"][value="mix"]')).toBeChecked();
-  await expect(page.locator('[name="c.1.s.0.dep"][value="rest"]')).toBeChecked();
+  const [mix, rest] = [await stepKey(page, 0, 0), await stepKey(page, 0, 1)];
+  expect(mix).toMatch(/^stp-[0-9a-hjkmnp-tv-z]{8}$/);
+  await expect(page.locator(`[name="c.0.s.1.dep"][value="${mix}"]`)).toBeChecked();
+  await expect(page.locator(`[name="c.1.s.0.dep"][value="${rest}"]`)).toBeChecked();
   expect(await revisions(page)).toBe(0);
 });
 
@@ -116,15 +123,16 @@ test('the video field takes a YouTube link or ID; anything else is rejected inli
 test('a step dependency cycle is rejected naming the steps and saves nothing', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
   // mix would depend on glaze, which depends on rest, which depends on mix.
+  const [mix, rest, glaze] = [await stepKey(page, 0, 0), await stepKey(page, 0, 1), await stepKey(page, 1, 0)];
   await page.locator('li.step').nth(0).locator('summary').click();
-  await page.locator('[name="c.0.s.0.dep"][value="glaze"]').check();
+  await page.locator(`[name="c.0.s.0.dep"][value="${glaze}"]`).check();
   await save(page);
   const alert = page.getByRole('alert').filter({ hasText: 'depend on each other in a circle' });
   await expect(alert).toBeVisible();
-  await expect(alert).toContainText('step 1 (mix)');
-  await expect(alert).toContainText('step 2 (rest)');
-  await expect(alert).toContainText('step 1 (glaze)');
-  await expect(page.locator('[name="c.0.s.0.dep"][value="glaze"]')).toBeChecked();
+  await expect(alert).toContainText(`step 1 (${mix})`);
+  await expect(alert).toContainText(`step 2 (${rest})`);
+  await expect(alert).toContainText(`step 1 (${glaze})`);
+  await expect(page.locator(`[name="c.0.s.0.dep"][value="${glaze}"]`)).toBeChecked();
   expect(await revisions(page)).toBe(0);
 });
 
@@ -163,7 +171,8 @@ test('edits and saves a recipe: new component, line with qualifier, step with de
   await page.locator('[name="c.2.s.0.text"]').fill('Brush on the melted butter.');
   await page.locator('[name="c.2.s.0.dur"]').fill('5 min');
   await topping.locator('li.step summary').click();
-  await page.locator('[name="c.2.s.0.dep"][value="glaze"]').check();
+  const glaze = await stepKey(page, 1, 0);
+  await page.locator(`[name="c.2.s.0.dep"][value="${glaze}"]`).check();
 
   await save(page);
   await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
@@ -176,7 +185,10 @@ test('edits and saves a recipe: new component, line with qualifier, step with de
   await expect(page.locator('[name="c.2.l.0.qty"]')).toHaveValue('2-3');
   await expect(page.locator('[name="c.2.l.0.q.0.text"]')).toHaveValue('melted');
   await expect(page.locator('[name="c.2.l.0.optional"]')).toBeChecked();
-  await expect(page.locator('[name="c.2.s.0.dep"][value="glaze"]')).toBeChecked();
+  await expect(page.locator(`[name="c.2.s.0.dep"][value="${glaze}"]`)).toBeChecked();
+  // The new step was given a key by the store; the old one kept its key.
+  expect(await stepKey(page, 1, 0)).toBe(glaze);
+  expect(await stepKey(page, 2, 0)).toMatch(/^stp-[0-9a-hjkmnp-tv-z]{8}$/);
   // Exactly one revision, written by the save.
   expect(await revisions(page)).toBe(1);
 });

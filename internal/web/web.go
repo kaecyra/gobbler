@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
+	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
@@ -74,9 +74,9 @@ type Deps struct {
 	// MCPVerifier checks the bearer credential of the MCP endpoint (ADR-00034).
 	// Nil means API keys (ADR-00031) and OAuth access tokens (ADR-00034).
 	MCPVerifier mcp.Verifier
-	// Drafts holds the drafts that wait on the review screen. Nil means a table
-	// of its own.
-	Drafts *ingest.Pending
+	// Drafts holds the drafts that wait on the review screen. Nil means the
+	// proposals table in DB (ADR-00035).
+	Drafts *ingest.Drafts
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -117,7 +117,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		d.MCPVerifier = mcp.OAuthVerifier{Tokens: oauth.New(d.DB), Next: mcp.KeyVerifier{Keys: apikey.New(d.DB)}}
 	}
 	if d.Drafts == nil {
-		d.Drafts = ingest.NewPending(time.Now)
+		d.Drafts = ingest.NewDrafts(store.New(d.DB))
 	}
 
 	var members memberLookup = household.New(d.DB)

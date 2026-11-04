@@ -23,6 +23,10 @@ const (
 	actionSave   = "save"
 )
 
+// newStepLabel starts the label of a step not yet stored. It cannot be a key
+// (recipe.IsStepKey), so the store always replaces it.
+const newStepLabel = "new-"
+
 // draft is the editor form as text: every value is what the user typed, so a
 // rejected save shows it back unchanged. Problems and the per-item Err strings
 // are the messages of a rejected save or action.
@@ -59,6 +63,10 @@ type compDraft struct {
 }
 
 type lineDraft struct {
+	// Key is the stored line's key (ADR-00035), carried in a hidden field so
+	// it follows the line through every post. Empty for a line added here: the
+	// store gives it one on save.
+	Key             string
 	Qty, Unit       string
 	PkgQty, PkgUnit string
 	Ingredient      string
@@ -127,6 +135,7 @@ func fromRecipe(r recipe.Recipe, names lookups) draft {
 		cd := compDraft{Name: c.Name}
 		for _, l := range c.Lines {
 			ld := lineDraft{
+				Key: l.Key,
 				Qty: qtyText(l.Amount.Qty), Unit: l.Amount.Unit.Name,
 				Ingredient: names.ingredient[int64(l.Ingredient)],
 				Optional:   l.Optional, Rule: string(l.Rule), Raw: l.Raw,
@@ -194,6 +203,7 @@ func parseForm(f url.Values) draft {
 		for _, li := range indices(f, cp+"l.") {
 			lp := fmt.Sprintf("%sl.%d.", cp, li)
 			l := lineDraft{
+				Key: strings.TrimSpace(f.Get(lp + "key")),
 				Qty: f.Get(lp + "qty"), Unit: f.Get(lp + "unit"),
 				PkgQty: f.Get(lp + "pkgqty"), PkgUnit: f.Get(lp + "pkgunit"),
 				Ingredient: f.Get(lp + "ing"), Propose: f.Get(lp+"propose") != "",
@@ -295,8 +305,13 @@ func (d *draft) arrange() {
 
 // settle makes the draft self-consistent: every step has a unique id, its To
 // is its position, and no dependency or equipment link names a missing step.
-// Links are checked before new steps are given ids, so a new step that takes
-// the id of a removed one does not inherit the links that named it.
+//
+// A stored step's id is its key, which the store assigned and never reuses
+// (ADR-00035). A step added here has no key yet, so it gets a label that is not
+// shaped like one, only so that this form's dependency and equipment choices can
+// name it; the store replaces the label with a key on save. Links are checked
+// before labels are given, so a new step that takes the label of a removed one
+// does not inherit the links that named it.
 func (d *draft) settle() {
 	used := map[string]bool{}
 	for _, c := range d.Components {
@@ -331,10 +346,10 @@ func (d *draft) settle() {
 			s := &c.Steps[si]
 			s.To = ci
 			if s.ID == "" {
-				for used["s"+strconv.Itoa(next)] {
+				for used[newStepLabel+strconv.Itoa(next)] {
 					next++
 				}
-				s.ID = "s" + strconv.Itoa(next)
+				s.ID = newStepLabel + strconv.Itoa(next)
 				used[s.ID] = true
 			}
 		}

@@ -14,6 +14,11 @@
 // (RegisterUsageCounters, CountIngredientLines) are the exceptions: they act on
 // every household's rows until t-catalog-overlay (#137). Every
 // edit writes a revision of the document it replaces in the same transaction.
+//
+// A document awaiting a decision is a proposal (ADR-00035), kept in its own
+// table where no query over live recipes sees it: an ingestion draft of a new
+// recipe, or a proposed new version of an existing one. The store also assigns
+// every step and ingredient line a key that names it across versions.
 package store
 
 import (

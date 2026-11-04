@@ -218,7 +218,8 @@ func TestConfirmRejectsIncompleteDrafts(t *testing.T) {
 
 // TestNoExportedPathSavesAnUnconfirmedDraft pins the API surface (ADR-00006
 // obligation 1): Confirm is the only function that takes a Draft, and Save the
-// only way to write, taking only a Confirmed.
+// only way to write, taking only a Confirmed (SaveProposed is Save for a held
+// draft, and takes one too).
 func TestNoExportedPathSavesAnUnconfirmedDraft(t *testing.T) {
 	draft := reflect.TypeOf(Draft{})
 	confirmed := reflect.TypeOf(Confirmed{})
@@ -236,6 +237,10 @@ func TestNoExportedPathSavesAnUnconfirmedDraft(t *testing.T) {
 	save, ok := reflect.TypeOf(&Saver{}).MethodByName("Save")
 	if !ok || save.Type.NumIn() != 3 || save.Type.In(2) != confirmed {
 		t.Errorf("Saver.Save must take exactly a Confirmed")
+	}
+	saveProposed, ok := reflect.TypeOf(&Saver{}).MethodByName("SaveProposed")
+	if !ok || saveProposed.Type.NumIn() != 4 || saveProposed.Type.In(3) != confirmed {
+		t.Errorf("Saver.SaveProposed must take exactly a token and a Confirmed")
 	}
 	for i := 0; i < confirmed.NumField(); i++ {
 		if confirmed.Field(i).IsExported() {

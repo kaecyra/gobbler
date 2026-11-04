@@ -54,9 +54,13 @@ type Drafter interface {
 	FromText(ctx context.Context, text string) (ingest.Draft, error)
 }
 
-// Drafts holds a draft for the review screen; *ingest.Pending satisfies it.
+// Drafts holds a draft for the review screen, durably (ADR-00035);
+// *ingest.Drafts satisfies it. The household is the one on ctx.
 type Drafts interface {
-	Add(hid int64, d ingest.Draft) (string, error)
+	Add(ctx context.Context, d ingest.Draft, by store.Provenance) (string, error)
+	// Full says the household already holds the most drafts it may, so a tool
+	// can refuse before it fetches or reads anything. Add stays the authority.
+	Full(ctx context.Context) (bool, error)
 }
 
 // Deps is everything the endpoint needs.
@@ -80,12 +84,12 @@ type Deps struct {
 // already shares. The pipeline has no LLM provider: an agent's import takes the
 // rule-based path and a draft below the confidence threshold is flagged for the
 // reviewer, never sent to a model (ADR-00006).
-func NewDeps(rec *store.Store, lists *shopping.Store, cat *catalog.Store, pending *ingest.Pending, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+func NewDeps(rec *store.Store, lists *shopping.Store, cat *catalog.Store, drafts Drafts, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
 	pipeline, err := ingest.New(cfg.Ingestion, ingest.Deps{Catalog: cat, Logger: log})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import pipeline: %w", err)
 	}
-	return Deps{Recipes: rec, Lists: lists, Catalog: cat, Drafter: pipeline, Drafts: pending, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	return Deps{Recipes: rec, Lists: lists, Catalog: cat, Drafter: pipeline, Drafts: drafts, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
 }
 
 // Routes returns the endpoint, to be mounted at Pattern behind Bearer and the

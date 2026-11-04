@@ -396,10 +396,13 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   const id = page.url().match(/\/recipes\/(\d+)$/)![1];
   await expect(page.getByText('3 tbsp')).toBeVisible();
 
+  // The draft's s1, s2, s3 were labels; the store gave the saved steps keys.
   await page.goto(`/recipes/${id}/edit`);
-  await expect(page.locator('[name="c.0.s.2.dep"][value="s1"]')).toBeChecked();
-  await expect(page.locator('[name="c.0.s.2.dep"][value="s2"]')).not.toBeChecked();
-  await expect(page.locator('[name="c.0.s.1.dep"][value="s1"]')).toBeChecked();
+  const [s1, s2] = [await page.locator('[name="c.0.s.0.id"]').inputValue(), await page.locator('[name="c.0.s.1.id"]').inputValue()];
+  expect(s1).toMatch(/^stp-[0-9a-hjkmnp-tv-z]{8}$/);
+  await expect(page.locator(`[name="c.0.s.2.dep"][value="${s1}"]`)).toBeChecked();
+  await expect(page.locator(`[name="c.0.s.2.dep"][value="${s2}"]`)).not.toBeChecked();
+  await expect(page.locator(`[name="c.0.s.1.dep"][value="${s1}"]`)).toBeChecked();
   await expect(page.locator('[name="c.0.s.1.passive"]')).toBeChecked();
   await expect(page.locator('[name="c.0.s.0.passive"]')).not.toBeChecked();
 });

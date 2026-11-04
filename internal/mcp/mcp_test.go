@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -43,7 +44,7 @@ type site struct {
 	d       *sql.DB
 	keys    *apikey.Store
 	oauth   *oauth.Store
-	pending *ingest.Pending
+	drafts  *ingest.Drafts
 	rec     *store.Store
 	srv     *httptest.Server
 	now     time.Time
@@ -54,8 +55,15 @@ type site struct {
 
 type fakeDrafter struct{ ingest.Draft }
 
-func (f fakeDrafter) FromURL(context.Context, string) (ingest.Draft, error) { return f.Draft, nil }
+// fetches counts the calls any fakeDrafter has been asked to make.
+var fetches atomic.Int32
+
+func (f fakeDrafter) FromURL(context.Context, string) (ingest.Draft, error) {
+	fetches.Add(1)
+	return f.Draft, nil
+}
 func (f fakeDrafter) FromText(_ context.Context, text string) (ingest.Draft, error) {
+	fetches.Add(1)
 	d := f.Draft
 	d.Source.Content = []byte(text)
 	return d, nil
@@ -75,7 +83,8 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
 		t.Fatal(err)
 	}
-	s := &site{t: t, d: d, keys: apikey.New(d), oauth: oauth.New(d), pending: ingest.NewPending(time.Now), rec: store.New(d), now: time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)}
+	s := &site{t: t, d: d, keys: apikey.New(d), oauth: oauth.New(d), rec: store.New(d), now: time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)}
+	s.drafts = ingest.NewDrafts(s.rec)
 	hs := household.New(d)
 	if s.smiths, err = hs.Create(ctx, "Smiths", "ann@example.com"); err != nil {
 		t.Fatal(err)
@@ -90,9 +99,9 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 	}
 	s.flour = ing.ID
 	shop := shopping.New(d, s.rec, cat)
-	draft := ingest.Draft{Name: ingest.Field[string]{Value: "Drafted pie", Confidence: 1}}
+	draft := ingest.Draft{Name: ingest.Field[string]{Value: "Drafted pie", Confidence: 1}, Source: ingest.Source{Kind: store.SnapshotText, Content: []byte("a page")}}
 	deps := mcp.Deps{
-		Recipes: s.rec, Lists: shop, Catalog: cat, Drafter: fakeDrafter{draft}, Drafts: s.pending,
+		Recipes: s.rec, Lists: shop, Catalog: cat, Drafter: fakeDrafter{draft}, Drafts: s.drafts,
 		Audit: mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}, Limits: limits, Logger: slog.New(slog.DiscardHandler), Now: func() time.Time { return s.now },
 	}
 	if drafter != nil {
@@ -130,6 +139,16 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 }
 
 // as returns a context for seeding as a member of h.
+// draft reads the pending draft for token as a member of h.
+func (s *site) draft(h household.Household, email, token string) (ingest.Draft, bool) {
+	s.t.Helper()
+	d, err := s.drafts.Get(s.as(h, email), token)
+	if err != nil && !errors.Is(err, ingest.ErrDraftGone) {
+		s.t.Fatal(err)
+	}
+	return d, err == nil
+}
+
 func (s *site) as(h household.Household, email string) context.Context {
 	s.t.Helper()
 	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:8080", DevAuthBypass: true}})
@@ -467,10 +486,10 @@ func TestARecipeWriteIsADraftAndChangesNoRecipe(t *testing.T) {
 		t.Fatalf("import = %+v", out)
 	}
 	token := strings.TrimPrefix(out.ReviewPath, "/ingest/")
-	if _, ok := s.pending.Get(s.smiths.ID, token); !ok {
+	if _, ok := s.draft(s.smiths, "ann@example.com", token); !ok {
 		t.Error("the draft is not waiting for the Smiths' review")
 	}
-	if _, ok := s.pending.Get(s.joneses.ID, token); ok {
+	if _, ok := s.draft(s.joneses, "jo@example.com", token); ok {
 		t.Error("the draft is visible to another household")
 	}
 	if msg := call(t, cs, "create_recipe_draft", map[string]any{"name": "Toast", "ingredients": []string{"1 slice bread"}, "steps": []string{"Toast it."}}, &out); msg != "" {
@@ -606,7 +625,7 @@ func TestCreateRecipeDraftGoesThroughTheRuleBasedPipeline(t *testing.T) {
 	if msg != "" {
 		t.Fatal(msg)
 	}
-	d, ok := s.pending.Get(s.smiths.ID, strings.TrimPrefix(out.ReviewPath, "/ingest/"))
+	d, ok := s.draft(s.smiths, "ann@example.com", strings.TrimPrefix(out.ReviewPath, "/ingest/"))
 	if !ok {
 		t.Fatal("no draft is waiting")
 	}
@@ -642,7 +661,7 @@ func TestAnAgentsItemsStayOneLineEach(t *testing.T) {
 	if msg != "" {
 		t.Fatal(msg)
 	}
-	d, ok := s.pending.Get(s.smiths.ID, strings.TrimPrefix(out.ReviewPath, "/ingest/"))
+	d, ok := s.draft(s.smiths, "ann@example.com", strings.TrimPrefix(out.ReviewPath, "/ingest/"))
 	if !ok {
 		t.Fatal("no draft is waiting")
 	}
@@ -835,5 +854,74 @@ func TestWritesOfCredentialsRevokedMidRequestAreStillLogged(t *testing.T) {
 	}
 	if w, err := s.oauth.Writes(ctx, grant); err != nil || len(w) != 1 {
 		t.Errorf("grant writes = %+v, %v", w, err)
+	}
+}
+
+// ADR-00035 obligation 14, MCP half: a household holds at most 20 pending
+// drafts, the 21st import is refused with a message saying drafts are waiting
+// for review, nothing is dropped, and another household is unaffected.
+func TestTheTwentyFirstDraftIsRefusedOverMCP(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 1000, Burst: 1000})
+	secret, key := s.personalKey("ann@example.com")
+	cs := s.connect(secret)
+	var tokens []string
+	for i := 0; i < store.MaxPendingDrafts; i++ {
+		var out struct {
+			ReviewPath string `json:"review_path"`
+		}
+		if msg := call(t, cs, "import_recipe", map[string]any{"text": fmt.Sprintf("Pie %d\n\nIngredients\n2 cups flour", i)}, &out); msg != "" {
+			t.Fatalf("draft %d: %s", i+1, msg)
+		}
+		tokens = append(tokens, strings.TrimPrefix(out.ReviewPath, "/ingest/"))
+	}
+	before := fetches.Load()
+	msg := call(t, cs, "import_recipe", map[string]any{"text": "One more pie"}, nil)
+	if !strings.Contains(msg, "waiting for review") {
+		t.Fatalf("the 21st draft = %q, want a refusal saying drafts are waiting for review", msg)
+	}
+	if msg := call(t, cs, "create_recipe_draft", map[string]any{"name": "Toast", "ingredients": []string{"1 slice bread"}, "steps": []string{"Toast it."}}, nil); !strings.Contains(msg, "waiting for review") {
+		t.Errorf("create_recipe_draft past the limit = %q, want the same refusal", msg)
+	}
+	if msg := call(t, cs, "import_recipe", map[string]any{"url": "https://example.test/pie"}, nil); !strings.Contains(msg, "waiting for review") {
+		t.Errorf("import_recipe of a URL past the limit = %q, want the same refusal", msg)
+	}
+	if got := fetches.Load(); got != before {
+		t.Errorf("%d fetches or readings ran for drafts that were going to be refused", got-before)
+	}
+	for i, tok := range tokens {
+		if _, ok := s.draft(s.smiths, "ann@example.com", tok); !ok {
+			t.Errorf("draft %d was dropped to make room", i+1)
+		}
+	}
+	other, _ := s.personalKey("jo@example.com")
+	if msg := call(t, s.connect(other), "import_recipe", map[string]any{"text": "Their pie"}, nil); msg != "" {
+		t.Errorf("another household's first draft: %s", msg)
+	}
+	if w, _ := s.keys.Writes(context.Background(), key); len(w) != store.MaxPendingDrafts {
+		t.Errorf("%d writes recorded, want %d: a refused draft is not a write", len(w), store.MaxPendingDrafts)
+	}
+}
+
+// A draft records who made it: the credential as snapshotted when it was
+// verified, the person it acts as and the tool.
+func TestADraftRecordsItsProvenance(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	secret, key := s.personalKey("ann@example.com")
+	var out struct {
+		ReviewPath string `json:"review_path"`
+	}
+	if msg := call(t, s.connect(secret), "import_recipe", map[string]any{"text": "Pie\n\nIngredients\n2 cups flour"}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	p, err := s.rec.GetProposal(s.as(s.smiths, "ann@example.com"), strings.TrimPrefix(out.ReviewPath, "/ingest/"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := p.Credential
+	if p.Person != "ann@example.com" || p.Tool != "import_recipe" || c == nil {
+		t.Fatalf("provenance = %+v, want ann, import_recipe and a credential", p.Provenance)
+	}
+	if c.Kind != mcp.KindAPIKey || c.ID != key.KeyID || c.Ref != key.Prefix || c.Owner != "ann@example.com" || !c.CreatedAt.Equal(key.CreatedAt) {
+		t.Errorf("credential = %+v, want the key %d (%s) as it was when verified", c, key.KeyID, key.Prefix)
 	}
 }

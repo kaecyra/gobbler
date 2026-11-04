@@ -82,6 +82,9 @@ type RecipeStore interface {
 	// video (ADR-00021 decision 3).
 	video.ThumbnailStore
 	CreateWithSnapshots(ctx context.Context, r recipe.Recipe, snaps ...store.SnapshotInput) (int64, error)
+	// CreateFromDraft stores the recipe and attaches the held draft's source
+	// snapshot to it, and marks the draft accepted, in one transaction.
+	CreateFromDraft(ctx context.Context, token string, r recipe.Recipe) (int64, error)
 }
 
 // CatalogWriter is what Save calls on the catalog: the reads of CatalogReader
@@ -133,6 +136,27 @@ type Saved struct {
 // snapshot cannot be written nothing is, so a recipe never exists without its
 // source. The catalog entries created above are separate and stay.
 func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
+	return s.save(ctx, c, func(r recipe.Recipe) (int64, error) {
+		return s.recipes.CreateWithSnapshots(ctx, r,
+			store.SnapshotInput{Kind: c.draft.Source.Kind, Content: c.draft.Source.Content, ParserVersion: c.draft.ParserVersion})
+	})
+}
+
+// SaveProposed is Save for a draft held for review under token (Drafts.Add):
+// the recipe is stored, the draft's source snapshot, written when the draft was
+// made, is attached to it, and the draft is marked accepted, all in one
+// transaction. A draft that is no longer pending, such as one confirmed by a
+// racing request, stores nothing and returns an error wrapping
+// store.ErrNotPending. The catalog entries Save creates are separate and stay.
+func (s *Saver) SaveProposed(ctx context.Context, token string, c Confirmed) (Saved, error) {
+	return s.save(ctx, c, func(r recipe.Recipe) (int64, error) {
+		return s.recipes.CreateFromDraft(ctx, token, r)
+	})
+}
+
+// save builds the recipe of a confirmed draft, creating the catalog entries it
+// proposed, and stores it with create.
+func (s *Saver) save(ctx context.Context, c Confirmed, create func(recipe.Recipe) (int64, error)) (Saved, error) {
 	if !c.confirmed {
 		return Saved{}, ErrNotConfirmed
 	}
@@ -173,8 +197,7 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 		return Saved{}, err
 	}
 
-	id, err := s.recipes.CreateWithSnapshots(ctx, toRecipe(d, comps, links),
-		store.SnapshotInput{Kind: d.Source.Kind, Content: d.Source.Content, ParserVersion: d.ParserVersion})
+	id, err := create(toRecipe(d, comps, links))
 	if err != nil {
 		return Saved{}, fmt.Errorf("save recipe %q with its %s snapshot, recipe not stored: %w", d.Name.Value, d.Source.Kind, err)
 	}
@@ -279,9 +302,11 @@ func (s *Saver) unit(ctx context.Context, u quantity.Unit, seen map[string]quant
 	return u, &UnknownUnitError{Name: u.Name}
 }
 
-// linkSteps adds the steps of the draft to comps with ids unique across the
+// linkSteps adds the steps of the draft to comps with labels unique across the
 // recipe: s1, s2, ... in reading order. A draft step's DependsOn numbers are
-// those ids' numbers, so they map straight onto step ids.
+// those labels' numbers, so they map straight onto step ids. A label is not a
+// key: the store replaces each with the key it assigns on save (ADR-00035), so
+// the draft itself stays deterministic.
 func linkSteps(comps []recipe.Component, from []Component) {
 	n := 0
 	for ci, dc := range from {

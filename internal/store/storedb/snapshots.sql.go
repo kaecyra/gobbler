@@ -7,6 +7,7 @@ package storedb
 
 import (
 	"context"
+	"database/sql"
 )
 
 const countSnapshots = `-- name: CountSnapshots :one
@@ -15,7 +16,7 @@ WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3
 `
 
 type CountSnapshotsParams struct {
-	RecipeID    int64
+	RecipeID    sql.NullInt64
 	Kind        string
 	HouseholdID int64
 }
@@ -33,7 +34,7 @@ WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3
 `
 
 type GetSnapshotParams struct {
-	RecipeID    int64
+	RecipeID    sql.NullInt64
 	Kind        string
 	HouseholdID int64
 }
@@ -67,7 +68,7 @@ INSERT INTO source_snapshots (household_id, recipe_id, kind, content, sha256, cr
 
 type InsertSnapshotParams struct {
 	HouseholdID   int64
-	RecipeID      int64
+	RecipeID      sql.NullInt64
 	Kind          string
 	Content       []byte
 	Sha256        string
@@ -96,7 +97,7 @@ WHERE recipe_id = ?1 AND household_id = ?2 ORDER BY id
 `
 
 type ListSnapshotKindsParams struct {
-	RecipeID    int64
+	RecipeID    sql.NullInt64
 	HouseholdID int64
 }
 

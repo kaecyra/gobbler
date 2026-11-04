@@ -60,7 +60,7 @@ func TestIngestRoutesRefuseARequestWithNoHousehold(t *testing.T) {
 			t.Errorf("%s %s with no household = %d, want 500", c.method, c.path, rec.Code)
 		}
 	}
-	if f.h.pending.Len() != 0 {
+	if f.pendingDrafts(t) != 0 {
 		t.Error("a request with no household left a pending draft")
 	}
 }

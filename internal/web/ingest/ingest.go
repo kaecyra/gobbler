@@ -6,9 +6,11 @@
 // internal/ingest (FromURL, FromText or FromOCR, then Confirm, then Saver.Save) and
 // never saves anything itself.
 //
-// A draft waits in memory (ingest.Pending) under a random token between ingest and confirm.
-// Only the confirm route saves, and only through ingest.Confirm, so no route
-// stores an ingested recipe without the review step.
+// A draft waits as a pending proposal (ingest.Drafts, ADR-00035) under a random
+// token between ingest and confirm, so a restart does not lose it and an agent's
+// draft can be reviewed the next day. Only the confirm route saves, and only
+// through ingest.Confirm, so no route stores an ingested recipe without the
+// review step.
 package ingest
 
 import (
@@ -25,6 +27,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
@@ -51,9 +54,10 @@ type Drafter interface {
 	FromText(ctx context.Context, text string) (ingestcore.Draft, error)
 }
 
-// Saver stores a confirmed draft; *ingestcore.Saver satisfies it.
+// Saver stores a confirmed draft that is held under token;
+// *ingestcore.Saver satisfies it.
 type Saver interface {
-	Save(ctx context.Context, c ingestcore.Confirmed) (ingestcore.Saved, error)
+	SaveProposed(ctx context.Context, token string, c ingestcore.Confirmed) (ingestcore.Saved, error)
 }
 
 // Deps is what the ingest routes need to build the pipeline.
@@ -74,8 +78,8 @@ type Deps struct {
 	Thumbnails video.ThumbnailSource
 	// Pending holds the drafts that wait for review. Sharing one table with
 	// the MCP endpoint is what lets an agent's draft open here (ADR-00034); nil
-	// means a table of this package's own.
-	Pending *ingestcore.Pending
+	// means the proposals table in DB.
+	Pending *ingestcore.Drafts
 }
 
 type handler struct {
@@ -83,8 +87,10 @@ type handler struct {
 	saver   Saver
 	// unsaved is the recipe editor over the unsaved draft.
 	unsaved editor.Unsaved
-	pending *ingestcore.Pending
-	retrier Retrier
+	drafts  *ingestcore.Drafts
+	// photoCache holds the photos behind OCR drafts, in memory only.
+	photoCache *ingestcore.Photos
+	retrier    Retrier
 	// photos drafts from a photo's OCR text, and ocr reads the photo.
 	photos PhotoDrafter
 	ocr    TextReader
@@ -103,9 +109,10 @@ type handler struct {
 // d.Provider or is selected from d.LLM; a provider that cannot be built does
 // not take the rule-based path down (see handler.llmInitErr).
 func Routes(d Deps) http.Handler {
-	h := &handler{pending: d.Pending, log: d.Logger}
-	if h.pending == nil {
-		h.pending = ingestcore.NewPending(time.Now)
+	h := &handler{drafts: d.Pending, photoCache: ingestcore.NewPhotos(time.Now), log: d.Logger}
+	rec := store.New(d.DB)
+	if h.drafts == nil {
+		h.drafts = ingestcore.NewDrafts(rec)
 	}
 	if h.log == nil {
 		h.log = slog.Default()
@@ -129,7 +136,7 @@ func Routes(d Deps) http.Handler {
 		h.photos = pipeline
 		h.ocr = ocr.Runner{}
 		h.retrier = pipeline.Fallback()
-		h.saver = ingestcore.NewSaver(store.New(d.DB), cat).WithThumbnails(d.Thumbnails)
+		h.saver = ingestcore.NewSaver(rec, cat).WithThumbnails(d.Thumbnails)
 		h.unsaved = editor.NewUnsaved(cat)
 	}
 	return h.routes()
@@ -175,13 +182,6 @@ func requireHousehold(next http.Handler) http.Handler {
 	})
 }
 
-// householdID is the id of the request's household. requireHousehold has
-// already refused a request without one, so no handler sees zero.
-func householdID(r *http.Request) int64 {
-	h, _ := household.FromContext(r.Context())
-	return h.ID
-}
-
 // formView is what the ingest form renders.
 type formView struct {
 	URL, Text string
@@ -200,6 +200,9 @@ type reviewView struct {
 	Form editor.Form
 	// CanRetry is whether the retry-with-LLM action is offered.
 	CanRetry bool
+	// PhotoGone is set for a draft read from a photo that has left memory
+	// (ADR-00035): the photo is never stored.
+	PhotoGone bool
 }
 
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +233,13 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.full(w, r, func(msg string) {
+		v.Error = msg
+		layout.Render(w, r, http.StatusConflict, formPage(v))
+	}) {
+		return
+	}
+
 	var (
 		draft ingestcore.Draft
 		err   error
@@ -251,12 +261,61 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		layout.Render(w, r, status, formPage(v))
 		return
 	}
-	token, err := h.pending.Add(householdID(r), draft)
-	if err != nil {
-		layout.WriteError(w, r, err)
+	token, ok := h.hold(w, r, draft, func(msg string) {
+		v.Error = msg
+		layout.Render(w, r, http.StatusConflict, formPage(v))
+	})
+	if !ok {
 		return
 	}
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
+}
+
+// full answers a household that already holds the most drafts it may before any
+// work is spent on one: no fetch, no pipeline, no LLM call. refuse is called
+// with the message to show. It reports whether the request has been answered.
+// hold's check, made where the draft is written, stays the authority.
+func (h *handler) full(w http.ResponseWriter, r *http.Request, refuse func(msg string)) bool {
+	full, err := h.drafts.Full(r.Context())
+	switch {
+	case err != nil:
+		layout.WriteError(w, r, err)
+		return true
+	case full:
+		refuse(sentence(store.ErrDraftLimit.Error()))
+		return true
+	}
+	return false
+}
+
+// hold stores draft for review and returns its token. A household that already
+// holds the most drafts it may is refused: refuse is called with the message to
+// show, and nothing is dropped to make room (ADR-00035). Any other failure is
+// answered here. ok is false when a response has been written.
+func (h *handler) hold(w http.ResponseWriter, r *http.Request, draft ingestcore.Draft, refuse func(msg string)) (token string, ok bool) {
+	email, found := auth.EmailFromContext(r.Context())
+	if !found {
+		layout.WriteError(w, r, fmt.Errorf("hold draft: %w", store.ErrNoIdentity))
+		return "", false
+	}
+	token, err := h.drafts.Add(r.Context(), draft, store.Provenance{Person: email})
+	switch {
+	case errors.Is(err, store.ErrDraftLimit):
+		refuse(sentence(store.ErrDraftLimit.Error()))
+		return "", false
+	case err != nil:
+		layout.WriteError(w, r, err)
+		return "", false
+	}
+	return token, true
+}
+
+// sentence capitalises msg and ends it with a full stop, for the page.
+func sentence(msg string) string {
+	if msg == "" {
+		return msg
+	}
+	return strings.ToUpper(msg[:1]) + msg[1:] + "."
 }
 
 // inputFailure is the form's wording for an input the pipeline rejected; the
@@ -279,12 +338,30 @@ func isWebURL(s string) bool {
 
 func (h *handler) review(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	d, ok := h.pending.Get(householdID(r), token)
+	d, ok := h.draft(w, r, token)
 	if !ok {
-		layout.WriteError(w, r, errGone)
 		return
 	}
 	h.renderReview(w, r, http.StatusOK, token, d, nil)
+}
+
+// draft reads the pending draft for token, with its photo if one is still in
+// memory. A token that names no pending draft of the household is the same
+// not-found as an unknown one. ok is false when a response has been written.
+func (h *handler) draft(w http.ResponseWriter, r *http.Request, token string) (ingestcore.Draft, bool) {
+	d, err := h.drafts.Get(r.Context(), token)
+	switch {
+	case errors.Is(err, ingestcore.ErrDraftGone):
+		layout.WriteError(w, r, errGone)
+		return ingestcore.Draft{}, false
+	case err != nil:
+		layout.WriteError(w, r, err)
+		return ingestcore.Draft{}, false
+	}
+	if image, mime, found := h.photoCache.Get(token); found {
+		d.Source.Image, d.Source.ImageMIME = image, mime
+	}
+	return d, true
 }
 
 // reviewOptions is where the review form's buttons post.
@@ -312,6 +389,9 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 	layout.Render(w, r, status, reviewPage(reviewView{
 		Token: token, Draft: d, Form: *form,
 		CanRetry: h.retrier != nil && h.retrier.Configured(),
+		// A draft read from a photo whose photo is no longer in memory:
+		// asking the LLM again reads the recognised text alone.
+		PhotoGone: d.Source.Kind == store.SnapshotOCR && len(d.Source.Image) == 0,
 	}))
 }
 
@@ -322,9 +402,9 @@ var errGone = fmt.Errorf("that draft is no longer available, ingest it again: %w
 // confirm reads the editor form posted from the review screen. A structural
 // button (add, remove, move) or a form the editor rejects shows the form
 // again and changes nothing. A form that passes the editor's validation is
-// confirmed and saved. The draft is taken from the table before saving, so a
-// second submit cannot save twice; it goes back, with the user's edits, if
-// anything fails.
+// confirmed and saved. Saving marks the draft accepted in the same transaction
+// as the recipe, so a second submit cannot save twice; when saving fails the
+// draft stays pending, with the user's edits.
 func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
@@ -332,9 +412,8 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("read form: %w", layout.ErrInvalid))
 		return
 	}
-	base, ok := h.pending.Get(householdID(r), token)
+	base, ok := h.draft(w, r, token)
 	if !ok {
-		layout.WriteError(w, r, errGone)
 		return
 	}
 	out, err := h.unsaved.Submit(r.Context(), r.PostForm, base, reviewOptions(token))
@@ -350,19 +429,32 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		h.renderReview(w, r, status, token, base, &out.Form)
 		return
 	}
-	if _, ok := h.pending.Take(householdID(r), token); !ok {
-		layout.WriteError(w, r, errGone)
-		return
-	}
 	d := out.Draft
+	// keep stores the user's edits, so the draft is as they left it when it
+	// cannot be saved. A draft that is gone is the same not-found as above.
+	keep := func() bool {
+		err := h.drafts.Replace(r.Context(), token, d)
+		switch {
+		case errors.Is(err, ingestcore.ErrDraftGone):
+			layout.WriteError(w, r, errGone)
+		case err != nil:
+			layout.WriteError(w, r, err)
+		default:
+			return true
+		}
+		return false
+	}
 	retry := func(problems []string) {
-		h.pending.Put(householdID(r), token, d)
+		if !keep() {
+			return
+		}
 		form := out.Form.WithProblems(problems...)
 		h.renderReview(w, r, http.StatusUnprocessableEntity, token, d, &form)
 	}
 	fail := func(err error) {
-		h.pending.Put(householdID(r), token, d)
-		layout.WriteError(w, r, err)
+		if keep() {
+			layout.WriteError(w, r, err)
+		}
 	}
 
 	confirmed, err := ingestcore.Confirm(d)
@@ -374,7 +466,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		fail(err)
 		return
 	}
-	saved, err := h.saver.Save(r.Context(), confirmed)
+	saved, err := h.saver.SaveProposed(r.Context(), token, confirmed)
 	var unitErr *ingestcore.UnknownUnitError
 	if errors.As(err, &unitErr) {
 		// The catalog changed since drafting: a problem with the draft, not a
@@ -384,10 +476,16 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if errors.Is(err, store.ErrNotPending) {
+		// Confirmed or discarded by another request since this one began.
+		layout.WriteError(w, r, errGone)
+		return
+	}
 	if err != nil {
 		fail(fmt.Errorf("save confirmed draft: %w", err))
 		return
 	}
+	h.photoCache.Drop(token)
 	h.log.InfoContext(r.Context(), "recipe ingested", "recipe_id", saved.RecipeID,
 		"new_ingredients", len(saved.NewIngredients), "new_equipment", len(saved.NewEquipment))
 	if editor.FromHTMX(r) {
@@ -427,7 +525,14 @@ func leaves(err error) []error {
 }
 
 // cancel discards the draft. Nothing was saved, so there is nothing to undo.
+// Another household's token, or one already ended, is discarded as nothing: the
+// answer is the same for every caller.
 func (h *handler) cancel(w http.ResponseWriter, r *http.Request) {
-	h.pending.Discard(householdID(r), chi.URLParam(r, "token"))
+	token := chi.URLParam(r, "token")
+	if err := h.drafts.Discard(r.Context(), token); err != nil && !errors.Is(err, ingestcore.ErrDraftGone) {
+		layout.WriteError(w, r, err)
+		return
+	}
+	h.photoCache.Drop(token)
 	http.Redirect(w, r, "/ingest", http.StatusSeeOther)
 }

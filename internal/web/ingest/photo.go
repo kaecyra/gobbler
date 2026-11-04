@@ -55,9 +55,9 @@ func (h *handler) photoForm(w http.ResponseWriter, r *http.Request) {
 // photoSubmit reads the uploaded photo with OCR and feeds the text through the
 // same pipeline as pasted text, so it gets the same extraction, scoring and
 // fallback, and then the review screen. The photo is never saved: only the OCR
-// text is the draft's source snapshot. The photo is held in memory on the
-// pending draft, for the vision fallback and retry, until the draft expires or
-// is confirmed. Nothing is saved here.
+// text is the draft's source snapshot. The photo is held in memory beside the
+// draft (ingest.Photos), for the vision fallback and retry, until it expires,
+// the draft ends or the process restarts (ADR-00035). Nothing is saved here.
 func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPhotoRequestBytes)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
@@ -94,6 +94,10 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.full(w, r, func(msg string) { h.photoFormError(w, r, http.StatusConflict, msg) }) {
+		return
+	}
+
 	text, err := h.ocr.Text(r.Context(), image)
 	switch {
 	case errors.Is(err, ocr.ErrNoText):
@@ -115,11 +119,11 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("ingest photo text: %w", err))
 		return
 	}
-	token, err := h.pending.Add(householdID(r), draft)
-	if err != nil {
-		layout.WriteError(w, r, err)
+	token, ok := h.hold(w, r, draft, func(msg string) { h.photoFormError(w, r, http.StatusConflict, msg) })
+	if !ok {
 		return
 	}
+	h.photoCache.Put(token, image, mime)
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
 }
 

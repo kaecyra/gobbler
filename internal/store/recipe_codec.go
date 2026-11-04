@@ -123,3 +123,7 @@ func (t *unitTable) refID(u quantity.Unit) (int64, error) {
 func (t *unitTable) byRef(id int64) (quantity.Unit, error) {
 	return t.unit(sql.NullInt64{Int64: id, Valid: id != 0})
 }
+
+// nullID is id as a non-NULL column value, for a column that is NULL only on
+// the rows that have no recipe yet (a draft's source snapshot).
+func nullID(id int64) sql.NullInt64 { return sql.NullInt64{Int64: id, Valid: true} }
