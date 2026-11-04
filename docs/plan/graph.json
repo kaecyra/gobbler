@@ -2905,7 +2905,9 @@
         "internal/web/editor/**",
         "internal/mcp/tools_import*.go",
         "e2e/ingest/**",
-        "e2e/editor/**"
+        "e2e/editor/**",
+        "internal/mcp/server.go",
+        "internal/mcp/mcp_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [
