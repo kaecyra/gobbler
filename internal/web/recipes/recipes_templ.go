@@ -474,7 +474,7 @@ func recentPanel(items []recentView) templ.Component {
 }
 
 // forgotPanel names the recipe made longest ago, with its spoons. It is absent
-// when nothing was made more than idleAfter ago.
+// when nothing was made more than idleAfterDays ago.
 func forgotPanel(f *forgotView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

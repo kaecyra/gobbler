@@ -341,9 +341,10 @@ func TestLibraryShowsTheSuggestionAndKeepsTheSearchOnAnotherIdea(t *testing.T) {
 		t.Errorf("another idea should get just the next suggestion:\n%s", frag)
 	}
 	// The forgot panel's recipe is never also the suggestion on the same page.
+	// Two ideas, so idea 2 wraps to the first; the forgot recipe is never one.
 	_, frag, _ = get(t, lib, "/?idea=2", map[string]string{"HX-Request": "true", "HX-Target": "suggest"})
-	if strings.Contains(frag, "Older stew") {
-		t.Errorf("the suggestion repeats the forgot panel:\n%s", frag)
+	if strings.Contains(frag, "Older stew") || !strings.Contains(frag, "Never cake") {
+		t.Errorf("idea 2 should wrap to Never cake and never repeat the forgot panel:\n%s", frag)
 	}
 	if code, _, _ := get(t, lib, "/?idea=x", nil); code != http.StatusBadRequest {
 		t.Errorf("bad idea status %d, want 400", code)
@@ -351,7 +352,13 @@ func TestLibraryShowsTheSuggestionAndKeepsTheSearchOnAnotherIdea(t *testing.T) {
 }
 
 func TestIdeasAndForgotPick(t *testing.T) {
-	day := func(daysAgo int) *time.Time { d := today.AddDate(0, 0, -daysAgo); return &d }
+	// A made-it date is a plain date at midnight UTC, as the store returns it,
+	// while today is noon: a count by duration would put the boundary a day off.
+	day := func(daysAgo int) *time.Time {
+		y, m, d := today.AddDate(0, 0, -daysAgo).Date()
+		t := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+		return &t
+	}
 	made := func(id int64, name string, daysAgo int) store.Card {
 		c := card(id, name, "")
 		c.LastMade = day(daysAgo)
@@ -409,10 +416,25 @@ func TestPanelsWithNothingToShowAreDropped(t *testing.T) {
 	if strings.Contains(body, `data-testid="recently-made"`) || !strings.Contains(body, `id="suggest"`) {
 		t.Errorf("home with nothing made:\n%s", body)
 	}
-	// Everything made this week: nothing to suggest.
+	// Everything made this week, with entries: Recently made alone.
+	made := []store.MadeEntry{{RecipeID: 1, Name: "Fresh soup", On: today.AddDate(0, 0, -2)}}
+	_, body, _ = home(t, &fakeLibrary{idle: []store.Card{recent(2)}, recent: made}, "/", nil)
+	if strings.Contains(body, `id="suggest"`) || !strings.Contains(body, `data-testid="recently-made"`) || !strings.Contains(body, `class="lib home"`) {
+		t.Errorf("home with only Recently made to show:\n%s", body)
+	}
+	// Made this week and no entries to list: no panel, so no grid.
 	_, body, _ = home(t, &fakeLibrary{idle: []store.Card{recent(2)}}, "/", nil)
-	if strings.Contains(body, `id="suggest"`) {
-		t.Error("a recipe made two days ago is suggested on home")
+	if strings.Contains(body, `id="suggest"`) || strings.Contains(body, `class="lib home"`) {
+		t.Errorf("home with no panel to show still draws the grid:\n%s", body)
+	}
+	// "Another idea" with none left answers with nothing, on both pages, so
+	// the card is removed rather than a page swapped into it.
+	htmx := map[string]string{"HX-Request": "true", "HX-Target": "suggest"}
+	if code, frag, _ := home(t, &fakeLibrary{idle: []store.Card{recent(2)}}, "/?idea=1", htmx); code != http.StatusOK || frag != "" {
+		t.Errorf("home, no idea left: %d %q, want an empty 200", code, frag)
+	}
+	if code, frag, _ := get(t, &fakeLibrary{cards: []store.Card{recent(2)}}, "/?idea=1", htmx); code != http.StatusOK || frag != "" {
+		t.Errorf("library, no idea left: %d %q, want an empty 200", code, frag)
 	}
 	// An empty library has no side at all.
 	_, body, _ = get(t, &fakeLibrary{}, "/", nil)
@@ -435,7 +457,11 @@ func TestForgotPanelShowsItsSpoons(t *testing.T) {
 		t.Fatalf("no forgot panel:\n%s", body)
 	}
 	panel := body[i:]
-	panel = panel[:strings.Index(panel, "</aside>")]
+	end := strings.Index(panel, "</aside>")
+	if end < 0 {
+		t.Fatalf("the forgot panel is not closed by the aside:\n%s", body)
+	}
+	panel = panel[:end]
 	if !strings.Contains(panel, "Last made in April.") || !strings.Contains(panel, `class="spoons"`) || strings.Contains(panel, "You gave it") {
 		t.Errorf("forgot panel:\n%s", panel)
 	}

@@ -125,7 +125,7 @@ templ recentPanel(items []recentView) {
 }
 
 // forgotPanel names the recipe made longest ago, with its spoons. It is absent
-// when nothing was made more than idleAfter ago.
+// when nothing was made more than idleAfterDays ago.
 templ forgotPanel(f *forgotView) {
 	if f != nil {
 		<div class="panel forgot" data-testid="forgot">

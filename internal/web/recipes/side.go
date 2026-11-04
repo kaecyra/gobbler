@@ -10,17 +10,17 @@ import (
 // recentLimit is how many made-it entries the "recently made" panel lists.
 const recentLimit = 4
 
-// idleAfter is how long since a recipe was last made before it counts as not
-// made in a while (docs/ui/design.md, Library side panels). A recipe made more
-// recently is neither suggested nor named by the forgot panel.
-const idleAfter = 30 * 24 * time.Hour
+// idleAfterDays is how many calendar days since a recipe was last made before
+// it counts as not made in a while (docs/ui/design.md, Library side panels). A
+// recipe made more recently is neither suggested nor named by the forgot panel.
+const idleAfterDays = 30
 
 // sideView is the library's side panels.
 type sideView struct {
 	// Suggest is nil when no recipe is left to suggest.
 	Suggest *suggestView
 	Recent  []recentView
-	// Forgot is nil when nothing was made longer than idleAfter ago.
+	// Forgot is nil when nothing was made more than idleAfterDays ago.
 	Forgot *forgotView
 }
 
@@ -78,9 +78,11 @@ func recentViews(entries []store.MadeEntry) []recentView {
 	return out
 }
 
-// idleFor reports a recipe last made longer than idleAfter before now.
+// idleFor reports a recipe last made more than idleAfterDays calendar days
+// before now. The made-it date is a plain date, so the days are counted as
+// ago() counts them: the hour and now's zone never move the boundary.
 func idleFor(c store.Card, now time.Time) bool {
-	return c.LastMade != nil && now.Sub(*c.LastMade) > idleAfter
+	return c.LastMade != nil && calendarDays(*c.LastMade, now) > idleAfterDays
 }
 
 // forgotPick is the recipe the forgot panel names: from the idle list (see
@@ -107,7 +109,7 @@ func forgotFor(c *store.Card, now time.Time) *forgotView {
 
 // ideasFrom is what a suggestion draws from, in order: recipes never made, by
 // name, then those not made in a while, made longest ago first. idle is in
-// store.IdleOrder. A recipe made in the last idleAfter is left out, and so is
+// store.IdleOrder. A recipe made in the last idleAfterDays is left out, and so is
 // skip, the recipe the forgot panel already names on the same page (nil when
 // the page has none).
 func ideasFrom(idle []store.Card, now time.Time, skip *store.Card) []store.Card {
