@@ -114,7 +114,7 @@ test('the footer shows the version the binary was built from, beside the reposit
   await expect(source.getByTestId('app-version')).toBeVisible();
 });
 
-test('every mascot drawing is served as a cached SVG', async ({ request }) => {
+test('every mascot drawing is served as an SVG revalidated by its ETag', async ({ request }) => {
   for (const name of [
     'gob',
     'gob-full-rolling-pin',
@@ -127,7 +127,8 @@ test('every mascot drawing is served as a cached SVG', async ({ request }) => {
     const res = await request.get(`/static/img/${name}.svg`);
     expect(res.status(), name).toBe(200);
     expect(res.headers()['content-type'], name).toContain('image/svg+xml');
-    expect(res.headers()['cache-control'], name).toContain('max-age');
+    expect(res.headers()['cache-control'], name).toBe('no-cache');
+    expect(res.headers()['etag'], name).toBeTruthy();
     expect(await res.text(), name).toContain('<svg');
   }
 });
