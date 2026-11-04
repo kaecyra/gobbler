@@ -167,11 +167,27 @@ func markSignIn(next http.Handler) http.Handler {
 	})
 }
 
-// staticHandler serves the embedded assets under /static/.
+// staticHandler serves the embedded assets under /static/, each with an ETag
+// from its bytes (layout.SetAssetCache).
 func staticHandler() http.Handler {
 	sub, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		panic("embedded static directory missing: " + err.Error())
+	}
+	etags := map[string]string{}
+	err = fs.WalkDir(sub, ".", func(name string, e fs.DirEntry, err error) error {
+		if err != nil || e.IsDir() {
+			return err
+		}
+		body, err := fs.ReadFile(sub, name)
+		if err != nil {
+			return err
+		}
+		etags[name] = layout.AssetETag(body)
+		return nil
+	})
+	if err != nil {
+		panic("embedded static directory unreadable: " + err.Error())
 	}
 	files := http.StripPrefix("/static/", http.FileServerFS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -185,7 +201,9 @@ func staticHandler() http.Handler {
 			layout.WriteError(w, r, layout.ErrNotFound)
 			return
 		}
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+		if etag, ok := etags[name]; ok {
+			layout.SetAssetCache(w.Header(), etag)
+		}
 		files.ServeHTTP(w, r)
 	})
 }

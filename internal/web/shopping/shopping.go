@@ -6,6 +6,7 @@
 package shopping
 
 import (
+	"bytes"
 	"context"
 	_ "embed" // the page script and stylesheet are embedded (ADR-00002)
 	"errors"
@@ -137,15 +138,14 @@ func newHandler(d Deps) *handler {
 	return &handler{Deps: d, hub: newHub(), log: log, heartbeat: heartbeatEvery}
 }
 
-// asset serves an embedded file. The bytes never change while the binary runs.
+// asset serves an embedded file. The bytes never change while the binary runs,
+// so the tag is computed once (layout.SetAssetCache).
 func asset(contentType string, body []byte) http.HandlerFunc {
+	etag := layout.AssetETag(body)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
-		w.Header().Set("Cache-Control", "public, max-age=3600")
-		if _, err := w.Write(body); err != nil {
-			// The client went away after the headers; nothing else to send.
-			slog.WarnContext(r.Context(), "write asset", "error", err.Error())
-		}
+		layout.SetAssetCache(w.Header(), etag)
+		http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(body))
 	}
 }
 
