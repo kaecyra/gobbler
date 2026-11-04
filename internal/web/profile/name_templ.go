@@ -14,8 +14,10 @@ import (
 	domain "github.com/kaecyra/gobbler/internal/profile"
 )
 
-// nameSection is the form that sets the display name. Saving it empty makes the
-// page show the start of the email again.
+// nameSection is the Profile section: a list of fields the person sets, one
+// form. Display name is the first; a later field is one more label in the form
+// and one more column in the store. Saving the name empty makes the page show
+// the start of the email again.
 func nameSection(v pageView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -37,14 +39,14 @@ func nameSection(v pageView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"panel\" aria-labelledby=\"name-h\" data-testid=\"profile-name-form\"><h2 id=\"name-h\">Display name</h2><form class=\"fields\" method=\"post\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"panel\" aria-labelledby=\"name-h\" data-testid=\"profile-name-form\"><h2 id=\"name-h\">Profile</h2><form class=\"fields\" method=\"post\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(v.sectionPath("name")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 14, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 16, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -57,7 +59,7 @@ func nameSection(v pageView) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.OwnName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 17, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 19, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -70,7 +72,7 @@ func nameSection(v pageView) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.DefaultName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 17, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 19, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -83,13 +85,13 @@ func nameSection(v pageView) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(domain.MaxNameRunes))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 17, Col: 130}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 19, Col: 130}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" autocomplete=\"off\"></label> <button type=\"submit\" class=\"btn accent\">Save</button></form><p class=\"muted\">Leave it empty to show the start of your email address instead.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" autocomplete=\"off\"></label><p class=\"muted\">Leave it empty to show the start of your email address instead.</p><button type=\"submit\" class=\"btn accent\">Save</button></form></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

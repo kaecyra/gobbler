@@ -67,7 +67,7 @@ test.describe('your own profile', () => {
   test('keeps the same avatar for the same person in the header and on the page', async ({ page }) => {
     await page.goto('/profile');
     const header_ = await header(page).locator('svg.avatar path').getAttribute('d');
-    const body = await page.getByTestId('profile-avatar').locator('path').getAttribute('d');
+    const body = await page.getByTestId('profile-avatar').locator('svg.avatar path').getAttribute('d');
     expect(header_).toBe(body);
   });
 

@@ -92,6 +92,12 @@ func (s *avatarSite) upload(target, email, field string, data []byte) *httptest.
 	return s.do(req, email)
 }
 
+// htmx marks a request as coming from the dialog; it gets fragments, not pages.
+func (s *avatarSite) hx(req *http.Request, email string) *httptest.ResponseRecorder {
+	req.Header.Set("HX-Request", "true")
+	return s.do(req, email)
+}
+
 func (s *avatarSite) profileOf(email string) string {
 	s.t.Helper()
 	rec := s.get("/profile", email)
@@ -293,5 +299,94 @@ func TestServeAvatarAsksTheVisibilityRule(t *testing.T) {
 		if rec.Code != want {
 			t.Errorf("relation %q = %d, want %d", rel, rec.Code, want)
 		}
+	}
+}
+
+// The dialog's requests carry HX-Request and stay inside the dialog: the upload
+// answers with the crop step, the crop with the status, and a refusal with a
+// message in the first step.
+func TestAvatarDialogStepsAreFragments(t *testing.T) {
+	s := newAvatarSite(t)
+	const me = "dia@example.com"
+	path := s.profileOf(me)
+
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("avatar", "p.jpg")
+	_, _ = fw.Write(picture(t))
+	_ = mw.Close()
+	req := httptest.NewRequest(http.MethodPost, path+"/avatar", &body)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	up := s.hx(req, me)
+	id := regexp.MustCompile(`name="id" value="([A-Za-z0-9_-]{22})"`).FindStringSubmatch(up.Body.String())
+	if up.Code != http.StatusOK || id == nil || strings.Contains(up.Body.String(), "<html") || !strings.Contains(up.Body.String(), `data-step="crop"`) {
+		t.Fatalf("upload from the dialog = %d, want the crop step as a fragment:\n%s", up.Code, up.Body)
+	}
+
+	// A refused crop shows its message in the first step and saves nothing.
+	bad := httptest.NewRequest(http.MethodPost, path+"/avatar/crop", strings.NewReader(url.Values{"id": {id[1]}, "x": {"0.9"}, "y": {"0"}, "w": {"0.5"}, "h": {"1"}}.Encode()))
+	bad.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if rec := s.hx(bad, me); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `data-testid="avatar-message"`) {
+		t.Errorf("refused crop from the dialog = %d:\n%s", rec.Code, rec.Body)
+	}
+
+	good := httptest.NewRequest(http.MethodPost, path+"/avatar/crop", strings.NewReader(url.Values{"id": {id[1]}, "x": {"0"}, "y": {"0"}, "w": {"0.5"}, "h": {"1"}}.Encode()))
+	good.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := s.hx(good, me)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `data-step="saved"`) || !strings.Contains(rec.Body.String(), `every 2s`) {
+		t.Errorf("crop from the dialog = %d, want the status step polling:\n%s", rec.Code, rec.Body)
+	}
+	s.avatars.Wait()
+	if rec := s.get(path+"/avatar", me); rec.Code != http.StatusOK {
+		t.Errorf("avatar after the dialog's crop = %d, want 200", rec.Code)
+	}
+
+	// A non-picture is refused in the dialog with the same message as before.
+	var junk bytes.Buffer
+	jw := multipart.NewWriter(&junk)
+	jf, _ := jw.CreateFormFile("avatar", "n.jpg")
+	_, _ = jf.Write([]byte("not a picture"))
+	_ = jw.Close()
+	bad2 := httptest.NewRequest(http.MethodPost, path+"/avatar", &junk)
+	bad2.Header.Set("Content-Type", jw.FormDataContentType())
+	if rec := s.hx(bad2, me); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "not a JPEG") || !strings.Contains(rec.Body.String(), `data-step="upload"`) {
+		t.Errorf("refused upload from the dialog = %d:\n%s", rec.Code, rec.Body)
+	}
+}
+
+// A failure that is not a refusal is not turned into a message the dialog would
+// swap in as if it had worked: it keeps its status, so the dialog's error
+// handling sees it.
+func TestAvatarDialogErrorsKeepTheirStatus(t *testing.T) {
+	s := newAvatarSite(t)
+	const me = "err@example.com"
+	path := s.profileOf(me)
+
+	unknown := httptest.NewRequest(http.MethodPost, path+"/avatar/crop", strings.NewReader(url.Values{"id": {strings.Repeat("A", 22)}, "x": {"0"}, "y": {"0"}, "w": {"1"}, "h": {"1"}}.Encode()))
+	unknown.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if rec := s.hx(unknown, me); rec.Code != http.StatusNotFound {
+		t.Errorf("crop of an unknown upload from the dialog = %d, want 404", rec.Code)
+	}
+	if rec := s.hx(httptest.NewRequest(http.MethodGet, path+"/avatar/preview/"+strings.Repeat("A", 22), nil), me); rec.Code != http.StatusNotFound {
+		t.Errorf("preview of an unknown upload from the dialog = %d, want 404", rec.Code)
+	}
+}
+
+// The upload and crop steps answer differently to htmx and to a browser, so a
+// cache must keep the two apart.
+func TestAvatarStepsVaryOnHTMX(t *testing.T) {
+	s := newAvatarSite(t)
+	const me = "vary@example.com"
+	path := s.profileOf(me)
+	for _, target := range []string{path + "/avatar/upload", path + "/avatar/crop"} {
+		if got := s.get(target, me).Header().Get("Vary"); !strings.Contains(got, "HX-Request") {
+			t.Errorf("%s Vary = %q, want HX-Request", target, got)
+		}
+	}
+	if rec := s.get(path+"/avatar/upload", me); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `name="avatar"`) || !strings.Contains(rec.Body.String(), "<html") {
+		t.Errorf("upload page = %d, want a page with the upload form", rec.Code)
+	}
+	if rec := s.hx(httptest.NewRequest(http.MethodGet, path+"/avatar/upload", nil), me); strings.Contains(rec.Body.String(), "<html") || !strings.Contains(rec.Body.String(), `data-step="upload"`) {
+		t.Errorf("upload step for htmx is not a bare fragment:\n%s", rec.Body)
 	}
 }
