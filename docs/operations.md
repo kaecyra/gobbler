@@ -214,10 +214,10 @@ the container runs in UTC.
 | `GOBBLER_MCP_RATE` | `5` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
 | `GOBBLER_MCP_BURST` | `50` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_TRUSTED_PROXIES` | empty | no | Comma-separated IP addresses or CIDR ranges whose `CF-Connecting-IP` header is believed ([ADR-00036](./adr/00036-rate-limits-on-public-oauth-endpoints.md)). Empty means the header is never read. See [Trusted proxies](#trusted-proxies). |
-| `GOBBLER_OAUTH_REGISTER_RATE` | `0.1` | no | Client registrations per second each address may sustain at `/oauth/register`, 0.001 to 1000. |
-| `GOBBLER_OAUTH_REGISTER_BURST` | `10` | no | Registrations one address may make at once before it is held to the rate; minimum 1. |
-| `GOBBLER_OAUTH_TOKEN_RATE` | `1` | no | Requests per second each address may sustain at `/oauth/token`, 0.001 to 1000. |
-| `GOBBLER_OAUTH_TOKEN_BURST` | `20` | no | Requests one address may make at once before it is held to the rate; minimum 1. |
+| `GOBBLER_OAUTH_REGISTER_RATE` | `0.1` | no | Client registrations per second each address (an IPv6 address by its /64) may sustain at `/oauth/register`, 0.001 to 1000. |
+| `GOBBLER_OAUTH_REGISTER_BURST` | `10` | no | Registrations one address (an IPv6 address by its /64) may make at once before it is held to the rate; minimum 1. |
+| `GOBBLER_OAUTH_TOKEN_RATE` | `1` | no | Requests per second each address (an IPv6 address by its /64) may sustain at `/oauth/token`, 0.001 to 1000. |
+| `GOBBLER_OAUTH_TOKEN_BURST` | `20` | no | Requests one address (an IPv6 address by its /64) may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |
@@ -372,7 +372,8 @@ token fail its audience check and every client has to be allowed again.
   revokes their keys.
 - **Logs.** No log line contains a code, a token or a verifier.
 - **Limits.** The registration and token endpoints are public, so each client
-  address has its own leaky bucket for each
+  address has its own leaky bucket for each, except that an IPv6 address shares
+  one with the rest of its /64, the block one subscriber holds
   ([ADR-00036](adr/00036-rate-limits-on-public-oauth-endpoints.md)):
   `GOBBLER_OAUTH_REGISTER_RATE` and `GOBBLER_OAUTH_REGISTER_BURST` for
   `/oauth/register` (by default 1 every 10 seconds, 10 at once), and

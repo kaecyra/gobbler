@@ -60,7 +60,8 @@ type Deps struct {
 	// empty (ADR-00003).
 	DevBypass bool
 	Logger    *slog.Logger
-	// Register and Token hold each client address to a leaky bucket on client
+	// Register and Token hold each client address (an IPv6 one by its /64) to a
+	// leaky bucket on client
 	// registration and the token endpoint (ADR-00036). Both are required:
 	// Routes refuses to build without them, so a public endpoint is never
 	// left unlimited by an omission.
@@ -94,7 +95,8 @@ func Routes(d Deps) (chi.Router, error) {
 	return r, nil
 }
 
-// perAddress holds each client address to l's bucket (ADR-00036). A refused
+// perAddress holds each client address, an IPv6 one by its /64, to l's bucket
+// (ADR-00036). A refused
 // request gets 429 with an OAuth error body (RFC 6749 section 5.2) and the
 // Retry-After the limiter set.
 func perAddress(l *ratelimit.Limiter, log *slog.Logger) func(http.Handler) http.Handler {

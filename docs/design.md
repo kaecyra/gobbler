@@ -90,7 +90,7 @@ Secrets are never in the repository.
 | OIDC | issuer URL, client ID, client secret, public base URL ([ADR-00030](adr/00030-google-sign-in.md); required unless the dev bypass is on) |
 | Session | session lifetime, fixed from sign-in ([ADR-00030](adr/00030-google-sign-in.md)) |
 | MCP | requests per second and burst allowed each credential at `/mcp` ([ADR-00034](adr/00034-mcp-server.md)) |
-| OAuth | requests per second and burst allowed each client address at `/oauth/register` and at `/oauth/token` ([ADR-00036](adr/00036-rate-limits-on-public-oauth-endpoints.md)) |
+| OAuth | requests per second and burst allowed each client address (an IPv6 one by its /64) at `/oauth/register` and at `/oauth/token` ([ADR-00036](adr/00036-rate-limits-on-public-oauth-endpoints.md)) |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
 | LLM | provider, text model, vision model, per-provider API key, timeout |

@@ -26,7 +26,7 @@ func oauthRegister(h http.Handler, remote, cf string) int {
 
 func limitedConfig() config.Config {
 	cfg := devConfig()
-	cfg.OAuth = config.OAuth{Register: config.Bucket{Rate: 0.01, Burst: 3}, Token: config.Bucket{Rate: 1, Burst: 3}}
+	cfg.OAuth = config.OAuth{Register: config.Bucket{Rate: 0.01, Burst: 3}, Token: config.Bucket{Rate: 0.01, Burst: 5}}
 	cfg.Server.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("172.18.0.1/32")}
 	return cfg
 }
@@ -45,6 +45,37 @@ func TestRouterLimitsRegistrationPerAddress(t *testing.T) {
 	}
 	if got := oauthRegister(h, "192.0.2.2:4000", ""); got != http.StatusCreated {
 		t.Errorf("another address = %d, want 201", got)
+	}
+}
+
+// Each endpoint is held to its own setting: the token bucket has a different
+// burst from the registration one.
+func TestRouterHoldsEachEndpointToItsOwnSetting(t *testing.T) {
+	h := testRouter(t, limitedConfig(), Deps{})
+	token := func() int {
+		r := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader("grant_type=nope"))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.RemoteAddr = "192.0.2.1:4000"
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec.Code
+	}
+	for i := 0; i < 5; i++ {
+		if got := token(); got != http.StatusBadRequest {
+			t.Fatalf("token request %d = %d, want it answered (400)", i+1, got)
+		}
+	}
+	if got := token(); got != http.StatusTooManyRequests {
+		t.Errorf("token request past its burst of 5 = %d, want 429", got)
+	}
+	// Registration has a burst of 3 and is a bucket of its own.
+	for i := 0; i < 3; i++ {
+		if got := oauthRegister(h, "192.0.2.1:4000", ""); got != http.StatusCreated {
+			t.Fatalf("registration %d = %d", i+1, got)
+		}
+	}
+	if got := oauthRegister(h, "192.0.2.1:4000", ""); got != http.StatusTooManyRequests {
+		t.Errorf("registration past its burst of 3 = %d, want 429", got)
 	}
 }
 

@@ -207,7 +207,8 @@ type MCP struct {
 }
 
 // OAuth holds the per-address limits on the public OAuth endpoints
-// (ADR-00036): each address has its own leaky bucket for each endpoint.
+// (ADR-00036): each client address has its own leaky bucket for each endpoint, except that
+// an IPv6 address shares one with the rest of its /64.
 type OAuth struct {
 	Register Bucket
 	Token    Bucket
