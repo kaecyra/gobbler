@@ -18,7 +18,7 @@ index below in the same commit.
 | [00001](00001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md), [00021](00021-youtube-video-on-a-recipe.md) |
 | [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Superseded by [00030](00030-google-sign-in.md) |
-| [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md), [00025](00025-one-cuisine-per-recipe.md) |
+| [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md), [00025](00025-one-cuisine-per-recipe.md), [00035](00035-reviewing-agent-recipe-edits.md) |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
 | [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Amended by [00020](00020-ingest-step-graph-gap-fill-review.md), [00034](00034-mcp-server.md) |
 | [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Accepted |
@@ -48,7 +48,9 @@ index below in the same commit.
 | [00031](00031-api-keys.md) | Personal and household API keys authenticate the machine-facing surface | Amended by [00034](00034-mcp-server.md) |
 | [00032](00032-profiles.md) | Everyone has a profile, and one visibility rule decides what a viewer sees | Accepted |
 | [00033](00033-media-object-storage.md) | Uploaded media is processed to WebP and kept in S3-compatible object storage | Accepted |
-| [00034](00034-mcp-server.md) | gobbler serves MCP, authenticated by API keys or OAuth, with recipe writes held for review | Accepted |
+| [00034](00034-mcp-server.md) | gobbler serves MCP, authenticated by API keys or OAuth, with recipe writes held for review | Amended by [00036](00036-rate-limits-on-public-oauth-endpoints.md) |
+| [00035](00035-reviewing-agent-recipe-edits.md) | Recipes awaiting review are stored as proposals, and an edit is reviewed in the recipe editor | Accepted |
+| [00036](00036-rate-limits-on-public-oauth-endpoints.md) | The public OAuth endpoints are rate-limited per client address, and unused client registrations have a ceiling | Accepted |
 
 ## What needs one
 
