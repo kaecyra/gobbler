@@ -25,9 +25,6 @@ type pageView struct {
 	Household string
 }
 
-// householdPath is the household page, which the household section links to.
-const householdPath = "/household"
-
 func newView(s subject) pageView {
 	v := pageView{Address: s.Profile.Address, Self: s.Self(), Shown: s.Profile.As(s.Relation)}
 	if v.Self {

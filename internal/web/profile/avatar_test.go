@@ -353,3 +353,40 @@ func TestAvatarDialogStepsAreFragments(t *testing.T) {
 		t.Errorf("refused upload from the dialog = %d:\n%s", rec.Code, rec.Body)
 	}
 }
+
+// A failure that is not a refusal is not turned into a message the dialog would
+// swap in as if it had worked: it keeps its status, so the dialog's error
+// handling sees it.
+func TestAvatarDialogErrorsKeepTheirStatus(t *testing.T) {
+	s := newAvatarSite(t)
+	const me = "err@example.com"
+	path := s.profileOf(me)
+
+	unknown := httptest.NewRequest(http.MethodPost, path+"/avatar/crop", strings.NewReader(url.Values{"id": {strings.Repeat("A", 22)}, "x": {"0"}, "y": {"0"}, "w": {"1"}, "h": {"1"}}.Encode()))
+	unknown.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if rec := s.hx(unknown, me); rec.Code != http.StatusNotFound {
+		t.Errorf("crop of an unknown upload from the dialog = %d, want 404", rec.Code)
+	}
+	if rec := s.hx(httptest.NewRequest(http.MethodGet, path+"/avatar/preview/"+strings.Repeat("A", 22), nil), me); rec.Code != http.StatusNotFound {
+		t.Errorf("preview of an unknown upload from the dialog = %d, want 404", rec.Code)
+	}
+}
+
+// The upload and crop steps answer differently to htmx and to a browser, so a
+// cache must keep the two apart.
+func TestAvatarStepsVaryOnHTMX(t *testing.T) {
+	s := newAvatarSite(t)
+	const me = "vary@example.com"
+	path := s.profileOf(me)
+	for _, target := range []string{path + "/avatar/upload", path + "/avatar/crop"} {
+		if got := s.get(target, me).Header().Get("Vary"); !strings.Contains(got, "HX-Request") {
+			t.Errorf("%s Vary = %q, want HX-Request", target, got)
+		}
+	}
+	if rec := s.get(path+"/avatar/upload", me); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `name="avatar"`) || !strings.Contains(rec.Body.String(), "<html") {
+		t.Errorf("upload page = %d, want a page with the upload form", rec.Code)
+	}
+	if rec := s.hx(httptest.NewRequest(http.MethodGet, path+"/avatar/upload", nil), me); strings.Contains(rec.Body.String(), "<html") || !strings.Contains(rec.Body.String(), `data-step="upload"`) {
+		t.Errorf("upload step for htmx is not a bare fragment:\n%s", rec.Body)
+	}
+}

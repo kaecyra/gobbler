@@ -45,12 +45,14 @@ func (h *handler) avatarServeRoutes(r chi.Router) {
 // avatarRoutes registers the self-only routes of the section.
 //
 //	POST /{address}/avatar              the picture, as multipart
+//	GET  /{address}/avatar/upload       the upload step (a fragment for the dialog, a page otherwise)
 //	GET  /{address}/avatar/crop         the crop step (a fragment for the dialog, a page otherwise)
 //	POST /{address}/avatar/crop         the chosen rectangle
 //	GET  /{address}/avatar/preview/{id} the picture to crop against
 //	GET  /{address}/avatar/status       the dialog's status fragment
 func (h *handler) avatarRoutes(r chi.Router) {
 	r.Post("/avatar", h.uploadAvatar)
+	r.Get("/avatar/upload", h.uploadPage)
 	r.Get("/avatar/crop", h.cropPage)
 	r.Post("/avatar/crop", h.cropAvatar)
 	r.Get("/avatar/preview/{id}", h.avatarPreview)
@@ -123,14 +125,12 @@ func refused(w http.ResponseWriter, r *http.Request, s subject, err error) bool 
 
 // refuse answers a request the person must correct, with msg.
 func refuse(w http.ResponseWriter, r *http.Request, s subject, status int, msg string) {
-	if fromHTMX(r) {
+	if r.Header.Get("HX-Request") == "true" {
 		layout.Render(w, r, http.StatusOK, uploadPanel(newPanelView(s.Profile.Address, s.Profile.Avatar, msg)))
 		return
 	}
 	layout.Render(w, r, status, layout.ErrorPage(status, msg))
 }
-
-func fromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 
 func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 	s, ok := self(w, r)
@@ -151,7 +151,7 @@ func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if fromHTMX(r) {
+	if r.Header.Get("HX-Request") == "true" {
 		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, j)))
 		return
 	}
@@ -193,25 +193,42 @@ func tooLargeOr(err error, otherwise error) error {
 	return otherwise
 }
 
+// uploadPage is the upload step: a fragment for the dialog to start over with,
+// and a page of its own for the avatar link of a browser without scripts.
+func (h *handler) uploadPage(w http.ResponseWriter, r *http.Request) {
+	s, ok := self(w, r)
+	if !ok {
+		return
+	}
+	w.Header().Add("Vary", "HX-Request")
+	v := newPanelView(s.Profile.Address, s.Profile.Avatar, "")
+	if r.Header.Get("HX-Request") == "true" {
+		layout.Render(w, r, http.StatusOK, uploadPanel(v))
+		return
+	}
+	layout.Render(w, r, http.StatusOK, uploadScreen(v))
+}
+
 func (h *handler) cropPage(w http.ResponseWriter, r *http.Request) {
 	s, ok := self(w, r)
 	if !ok {
 		return
 	}
+	w.Header().Add("Vary", "HX-Request")
 	j, found, err := h.Avatars.Job(r.Context(), s.Profile.Email)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
 	}
 	if !found || j.State == domain.JobQueued {
-		if fromHTMX(r) {
+		if r.Header.Get("HX-Request") == "true" {
 			layout.Render(w, r, http.StatusOK, uploadPanel(newPanelView(s.Profile.Address, s.Profile.Avatar, "")))
 			return
 		}
 		redirectTo(w, r, s.Profile.Address)
 		return
 	}
-	if fromHTMX(r) {
+	if r.Header.Get("HX-Request") == "true" {
 		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, j)))
 		return
 	}
@@ -238,7 +255,7 @@ func (h *handler) cropAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if fromHTMX(r) {
+	if r.Header.Get("HX-Request") == "true" {
 		queued := newStatusView(s.Profile.Address, domain.Job{State: domain.JobQueued}, true, s.Profile.Avatar)
 		layout.Render(w, r, http.StatusOK, savedPanel(queued))
 		return

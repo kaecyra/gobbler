@@ -56,6 +56,21 @@
     var img = document.getElementById('crop-image');
     if (img) setup(img);
   }
+  // A step replaces the one the person was on, and the focused control with it.
+  // Focus goes to the new step's heading, unless the step is in a dialog that
+  // is not open.
+  function focusStep(e) {
+    var gone = e.detail && e.detail.target;
+    if (!gone || gone.id !== 'avatar-panel') return;
+    var panel = document.getElementById('avatar-panel');
+    var dialog = panel && panel.closest('dialog');
+    if (!panel || (dialog && !dialog.open)) return;
+    var heading = panel.querySelector('[data-step-heading]');
+    if (heading) heading.focus();
+  }
   scan();
-  document.body.addEventListener('htmx:afterSettle', scan);
+  document.body.addEventListener('htmx:afterSettle', function (e) {
+    scan();
+    focusStep(e);
+  });
 })();

@@ -1,5 +1,7 @@
 package profile
 
+import webhousehold "github.com/kaecyra/gobbler/internal/web/household"
+
 // householdSection says which household the person belongs to (ADR-00018: at
 // most one). Households have no roles (ADR-00018), so membership is the whole
 // statement.
@@ -7,7 +9,7 @@ templ householdSection(v pageView) {
 	<section class="panel" aria-labelledby="household-h" data-testid="profile-household">
 		<h2 id="household-h">Household</h2>
 		if v.Household != "" {
-			<p>You are a member of <a class="link" href={ templ.SafeURL(householdPath) } data-testid="profile-household-name">{ v.Household }</a>.</p>
+			<p>You are a member of <a class="link" href={ templ.SafeURL(webhousehold.Pattern) } data-testid="profile-household-name">{ v.Household }</a>.</p>
 		} else {
 			<p data-testid="profile-household-none">You are not in a household.</p>
 		}

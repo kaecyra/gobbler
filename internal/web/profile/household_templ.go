@@ -8,6 +8,8 @@ package profile
 import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
+
+	webhousehold "github.com/kaecyra/gobbler/internal/web/household"
 )
 
 // householdSection says which household the person belongs to (ADR-00018: at
@@ -44,9 +46,9 @@ func householdSection(v pageView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 templ.SafeURL
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(householdPath))
+			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(webhousehold.Pattern))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/household.templ`, Line: 10, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/household.templ`, Line: 12, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -59,7 +61,7 @@ func householdSection(v pageView) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Household)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/household.templ`, Line: 10, Col: 130}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/household.templ`, Line: 12, Col: 137}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
