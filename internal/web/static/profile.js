@@ -48,12 +48,14 @@
     if (!dialog.open) dialog.showModal();
   }
 
-  // choose opens the file chooser of the upload step. Without one (a step is
-  // still being put back), the dialog opens on whatever step it holds.
+  // choose opens the file chooser of the upload step. Without one (the reset
+  // to it failed, or is still on its way), the dialog opens and asks for the
+  // first step again, so a failure of that request is shown in it.
   function choose() {
     var input = dialog.querySelector('#avatar-panel input[type=file]');
     if (!input) {
       show();
+      startOver();
       return;
     }
     // A browser fires no change for the file already chosen, so choosing the
@@ -125,10 +127,13 @@
     var target = e.detail && e.detail.target;
     return dialog.contains(e.target) || (target && target.id === 'avatar-panel');
   }
+  // Only a request the person is watching says so: one from the open dialog,
+  // or a crop link, which opens the dialog as it is pressed. The reset sent
+  // when the dialog closes fails quietly rather than open the dialog again;
+  // the next press of the avatar sends it again (choose).
   function onFailure(name, message) {
     document.addEventListener(name, function (e) {
-      if (!forDialog(e)) return;
-      show();
+      if (!forDialog(e) || !dialog.open) return;
       showError(typeof message === 'function' ? message(e) : message);
     });
   }

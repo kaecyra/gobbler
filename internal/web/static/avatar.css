@@ -25,8 +25,7 @@
 
 /* Where the last upload stands: a page-level callout above the profile, shown
    only while something is pending or went wrong; inside a step's page it sits
-   below the step. Amber (check) when it needs a look. */
-.callout.check { --co-bg: var(--grain-soft); --co-ink: var(--grain-ink); }
+   below the step. Amber (.callout.check) when it needs a look. */
 .avatar-status, .avatar-status-problem { margin: 0 0 16px; }
 .panel .avatar-status, .panel .avatar-status-problem { margin: 12px 0 0; }
 .avatar-status:empty, .avatar-status[hidden], .avatar-status-problem[hidden] { display: none; }

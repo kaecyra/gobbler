@@ -79,6 +79,10 @@
     if (!target || target.id !== 'avatar-status' || !box) return;
     var status = e.detail.xhr ? e.detail.xhr.status : 0;
     var signedOut = e.type === 'htmx:responseError' && (status === 401 || status === 403);
+    var kind = signedOut ? 'signed-out' : 'check';
+    // The poll goes on failing every 2s; the alert is said once, not each time.
+    if (!box.hidden && box.getAttribute('data-kind') === kind) return;
+    box.setAttribute('data-kind', kind);
     var text = box.querySelector('[data-avatar-status-problem-text]');
     var reload = document.createElement('a');
     reload.className = 'link';

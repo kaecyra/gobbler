@@ -337,6 +337,23 @@ test.describe('the picture dialog and the page around it', () => {
     await expect(problem).toBeHidden();
   });
 
+  test('a failed reset after closing keeps the dialog closed, and the next press says so', async ({ page }) => {
+    await upload(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    await page.route(/\/avatar\/upload$/, (route) => route.abort('connectionfailed'));
+    const resetFailed = page.waitForEvent('requestfailed', (r) => /\/avatar\/upload$/.test(r.url()));
+    await page.keyboard.press('Escape');
+    await expect(dialogOf(page)).toBeHidden();
+    // The reset to the first step failed in the background: nothing pops up.
+    await resetFailed;
+    await expect(dialogOf(page)).toBeHidden();
+    // Pressing the avatar asks for the first step again, in the open dialog.
+    await page.getByTestId('profile-avatar').click();
+    await expect(dialogOf(page)).toBeVisible();
+    await expect(dialogOf(page).getByTestId('avatar-error')).toContainText('connection failed');
+    await page.unroute(/\/avatar\/upload$/);
+  });
+
   test('a crop link on the page that fails says so in the dialog', async ({ page }) => {
     await upload(page, fixture('gps-tagged.jpg'));
     await waitForCrop(page);
