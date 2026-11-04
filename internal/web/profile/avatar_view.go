@@ -32,7 +32,6 @@ func (v statusView) statusPath() string {
 	return v.path("avatar/status") + "?has=" + url.QueryEscape(v.Has)
 }
 
-
 // panelView is the upload step of the dialog.
 type panelView struct {
 	Address string
