@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // maxDraftText bounds the text of one import or draft, the way the web form
@@ -114,7 +116,11 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 
 // hold puts the draft where the review screen finds it and records the write.
 func (t *tools) hold(ctx context.Context, tool string, c Credential, hid int64, d ingest.Draft) (*mcp.CallToolResult, draftOut, error) {
-	token, err := t.Drafts.Add(hid, d)
+	token, err := t.Drafts.Add(ctx, d, provenance(c, hid, tool))
+	if errors.Is(err, store.ErrDraftLimit) {
+		// Say so as it is: the agent can tell its user to review the drafts.
+		return nil, draftOut{}, refuse("%s", store.ErrDraftLimit)
+	}
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}

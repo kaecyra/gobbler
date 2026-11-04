@@ -156,7 +156,7 @@ func portableDocument(ctx context.Context, q *storedb.Queries, hid int64, r reci
 // shareSnapshots returns the source snapshots of recipe id in the column form,
 // or NULL when it has none.
 func shareSnapshots(ctx context.Context, q *storedb.Queries, hid, id int64) (sql.NullString, error) {
-	kinds, err := q.ListSnapshotKinds(ctx, storedb.ListSnapshotKindsParams{RecipeID: id, HouseholdID: hid})
+	kinds, err := q.ListSnapshotKinds(ctx, storedb.ListSnapshotKindsParams{RecipeID: nullID(id), HouseholdID: hid})
 	if err != nil {
 		return sql.NullString{}, readErr("snapshot kinds", err)
 	}
@@ -165,7 +165,7 @@ func shareSnapshots(ctx context.Context, q *storedb.Queries, hid, id int64) (sql
 	}
 	snaps := make([]shareSnapshot, 0, len(kinds))
 	for _, k := range kinds {
-		row, err := q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: id, Kind: k, HouseholdID: hid})
+		row, err := q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: nullID(id), Kind: k, HouseholdID: hid})
 		if err != nil {
 			return sql.NullString{}, readErr(fmt.Sprintf("%s snapshot of recipe %d", k, id), err)
 		}

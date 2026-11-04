@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -17,8 +18,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/household"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
@@ -62,6 +65,8 @@ type fakeStore struct {
 	createdEquipment []string
 	// thumbs are the video IDs whose thumbnail a save stored.
 	thumbs map[string]bool
+	// drafts is the proposals table the drafts are held in.
+	drafts *store.Store
 }
 
 func (s *fakeStore) HasThumbnail(_ context.Context, id string) (bool, error) {
@@ -91,6 +96,21 @@ func newFakeStore() *fakeStore {
 	return &fakeStore{known: map[string]catalog.Ingredient{
 		"butter": {ID: 7, Name: "butter"},
 	}}
+}
+
+// CreateFromDraft stands in for the store's: it records the recipe and ends the
+// draft, as the real one does in the same transaction by marking it accepted.
+// Whether the real one attaches the snapshot and refuses a second confirm is
+// the store's own tests' to show.
+func (s *fakeStore) CreateFromDraft(ctx context.Context, token string, r recipe.Recipe) (int64, error) {
+	if err := s.drafts.RejectProposal(ctx, token); err != nil {
+		return 0, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.recipes = append(s.recipes, r)
+	s.snapshots++
+	return int64(len(s.recipes)), nil
 }
 
 func (s *fakeStore) CreateWithSnapshots(_ context.Context, r recipe.Recipe, snaps ...store.SnapshotInput) (int64, error) {
@@ -209,12 +229,24 @@ var (
 	householdB = household.Household{ID: 2, Name: "B"}
 )
 
+// memberEmails are the people who sign in as each household's member.
+var memberEmails = map[int64]string{householdA.ID: auth.DevEmail, householdB.ID: auth.DevOtherEmail}
+
 // asMember puts h on every request, as the membership middleware does for a
-// member.
+// member, and the verified identity of that household's member, as the
+// authentication middleware does (here by its development bypass).
 func asMember(h household.Household) func(http.Handler) http.Handler {
+	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:8080", DevAuthBypass: true}})
+	if err != nil {
+		panic(err)
+	}
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		inner := a.Middleware(nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+		}))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Header.Set(auth.DevIdentityHeader, memberEmails[h.ID])
+			inner.ServeHTTP(w, r)
 		})
 	}
 }
@@ -224,20 +256,67 @@ type fixture struct {
 	srv     http.Handler
 	drafter *fakeDrafter
 	store   *fakeStore
+	// db holds the proposals the drafts wait in.
+	db *sql.DB
+}
+
+// ctx is the context of a request by household A's member.
+func (f *fixture) ctx(t *testing.T) context.Context {
+	t.Helper()
+	var got context.Context
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	asMember(householdA)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).ServeHTTP(httptest.NewRecorder(), req)
+	return got
+}
+
+// pendingDrafts is how many drafts are waiting for review, in every household.
+func (f *fixture) pendingDrafts(t *testing.T) int {
+	t.Helper()
+	var n int
+	if err := f.db.QueryRow(`SELECT COUNT(*) FROM proposals WHERE kind = 'draft' AND state = 'pending'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// holdDraft replaces the pending draft under token, as a retry or a failed
+// confirm does.
+func (f *fixture) holdDraft(t *testing.T, token string, d ingestcore.Draft) {
+	t.Helper()
+	if err := f.h.drafts.Replace(f.ctx(t), token, d); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
+	ctx := context.Background()
+	conn, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := db.Migrate(ctx, conn, db.Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	for i, email := range []string{auth.DevEmail, auth.DevOtherEmail} {
+		if _, err := household.New(conn).Create(ctx, fmt.Sprintf("Household %d", i+1), email); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rec := store.New(conn)
 	st := newFakeStore()
+	st.drafts = rec
 	d := &fakeDrafter{draft: sampleDraft()}
 	h := &handler{
-		drafter: d,
-		saver:   ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
-		unsaved: editor.NewUnsaved(st),
-		pending: ingestcore.NewPending(time.Now),
-		log:     slog.New(slog.NewJSONHandler(io.Discard, nil)),
+		drafter:    d,
+		saver:      ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
+		unsaved:    editor.NewUnsaved(st),
+		drafts:     ingestcore.NewDrafts(rec),
+		photoCache: ingestcore.NewPhotos(time.Now),
+		log:        slog.New(slog.NewJSONHandler(io.Discard, nil)),
 	}
-	return &fixture{h: h, srv: asMember(householdA)(h.routes()), drafter: d, store: st}
+	return &fixture{h: h, srv: asMember(householdA)(h.routes()), drafter: d, store: st, db: conn}
 }
 
 func newFormRequest(target string, form url.Values) *http.Request {
@@ -345,7 +424,7 @@ func TestSubmitFetchErrorShowsOnFormAndRendersNoDraft(t *testing.T) {
 	if strings.Contains(body, "Review recipe") {
 		t.Error("a draft was rendered for a failed fetch")
 	}
-	if f.h.pending.Len() != 0 {
+	if f.pendingDrafts(t) != 0 {
 		t.Error("a failed ingest left a pending draft")
 	}
 }
@@ -494,7 +573,7 @@ func TestConfirmTwiceSavesOnce(t *testing.T) {
 
 type failingSaver struct{}
 
-func (failingSaver) Save(context.Context, ingestcore.Confirmed) (ingestcore.Saved, error) {
+func (failingSaver) SaveProposed(context.Context, string, ingestcore.Confirmed) (ingestcore.Saved, error) {
 	return ingestcore.Saved{}, errors.New("disk on fire")
 }
 
@@ -601,7 +680,7 @@ func between(t *testing.T, s, start, end string) string {
 
 type unknownUnitSaver struct{}
 
-func (unknownUnitSaver) Save(context.Context, ingestcore.Confirmed) (ingestcore.Saved, error) {
+func (unknownUnitSaver) SaveProposed(context.Context, string, ingestcore.Confirmed) (ingestcore.Saved, error) {
 	return ingestcore.Saved{}, fmt.Errorf("component 1 line 2 (%q): %w", "3 zorbs butter", &ingestcore.UnknownUnitError{Name: "zorb"})
 }
 

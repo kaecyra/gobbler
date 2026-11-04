@@ -59,6 +59,9 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 		return fmt.Errorf("migrate database: %w", err)
 	}
 
+	sweeps := startProposalSweeps(ctx, d)
+	defer sweeps.Stop() // before the database closes
+
 	backups, err := startBackups(ctx, cfg, d)
 	if err != nil {
 		return err

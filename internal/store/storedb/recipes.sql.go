@@ -213,8 +213,8 @@ func (q *Queries) InsertEquipmentStep(ctx context.Context, arg InsertEquipmentSt
 }
 
 const insertIngredientLine = `-- name: InsertIngredientLine :one
-INSERT INTO ingredient_lines (household_id, component_id, position, qty, unit_id, has_package, package_qty, package_unit_id, ingredient_id, optional, rule, raw)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO ingredient_lines (household_id, component_id, position, line_key, qty, unit_id, has_package, package_qty, package_unit_id, ingredient_id, optional, rule, raw)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
@@ -222,6 +222,7 @@ type InsertIngredientLineParams struct {
 	HouseholdID   int64
 	ComponentID   int64
 	Position      int64
+	LineKey       string
 	Qty           sql.NullString
 	UnitID        sql.NullInt64
 	HasPackage    int64
@@ -238,6 +239,7 @@ func (q *Queries) InsertIngredientLine(ctx context.Context, arg InsertIngredient
 		arg.HouseholdID,
 		arg.ComponentID,
 		arg.Position,
+		arg.LineKey,
 		arg.Qty,
 		arg.UnitID,
 		arg.HasPackage,
@@ -360,6 +362,21 @@ func (q *Queries) InsertRecipeEquipment(ctx context.Context, arg InsertRecipeEqu
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const insertRecipeKey = `-- name: InsertRecipeKey :exec
+INSERT OR IGNORE INTO recipe_keys (household_id, recipe_id, key) VALUES (?, ?, ?)
+`
+
+type InsertRecipeKeyParams struct {
+	HouseholdID int64
+	RecipeID    int64
+	Key         string
+}
+
+func (q *Queries) InsertRecipeKey(ctx context.Context, arg InsertRecipeKeyParams) error {
+	_, err := q.db.ExecContext(ctx, insertRecipeKey, arg.HouseholdID, arg.RecipeID, arg.Key)
+	return err
 }
 
 const insertRecipeTag = `-- name: InsertRecipeTag :exec
@@ -537,7 +554,7 @@ func (q *Queries) ListEquipmentSteps(ctx context.Context, arg ListEquipmentSteps
 }
 
 const listIngredientLines = `-- name: ListIngredientLines :many
-SELECT l.id, l.component_id, l.qty, l.unit_id, l.has_package, l.package_qty, l.package_unit_id, l.ingredient_id, l.optional, l.rule, l.raw
+SELECT l.id, l.component_id, l.line_key, l.qty, l.unit_id, l.has_package, l.package_qty, l.package_unit_id, l.ingredient_id, l.optional, l.rule, l.raw
 FROM ingredient_lines l JOIN components c ON c.id = l.component_id
 WHERE c.recipe_id = ? AND c.household_id = ? ORDER BY c.position, l.position
 `
@@ -550,6 +567,7 @@ type ListIngredientLinesParams struct {
 type ListIngredientLinesRow struct {
 	ID            int64
 	ComponentID   int64
+	LineKey       string
 	Qty           sql.NullString
 	UnitID        sql.NullInt64
 	HasPackage    int64
@@ -573,6 +591,7 @@ func (q *Queries) ListIngredientLines(ctx context.Context, arg ListIngredientLin
 		if err := rows.Scan(
 			&i.ID,
 			&i.ComponentID,
+			&i.LineKey,
 			&i.Qty,
 			&i.UnitID,
 			&i.HasPackage,
@@ -664,6 +683,38 @@ func (q *Queries) ListRecipeEquipment(ctx context.Context, arg ListRecipeEquipme
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecipeKeys = `-- name: ListRecipeKeys :many
+SELECT key FROM recipe_keys WHERE recipe_id = ?1 AND household_id = ?2
+`
+
+type ListRecipeKeysParams struct {
+	RecipeID    int64
+	HouseholdID int64
+}
+
+func (q *Queries) ListRecipeKeys(ctx context.Context, arg ListRecipeKeysParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listRecipeKeys, arg.RecipeID, arg.HouseholdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		items = append(items, key)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

@@ -36,6 +36,12 @@ type EquipmentID int64
 
 // StepID identifies a step within one recipe. It is the target of step
 // dependencies, so it must be non-empty and unique across all components.
+//
+// A stored step's ID is its key (IsStepKey): kept across edits and never given
+// to another step of the recipe (ADR-00035). A step not yet stored has no key.
+// Its ID is then a label that is not shaped like a key, local to the document,
+// so that DependsOn and equipment links can name it; the store replaces the
+// label with a key on save and rewrites every reference to it.
 type StepID string
 
 // QualifierKind types a qualifier on an ingredient line.
@@ -70,6 +76,10 @@ type Qualifier struct {
 
 // IngredientLine is one structured line of a component's ingredient list.
 type IngredientLine struct {
+	// Key names the line across versions of the recipe: kept across edits and
+	// never given to another line (ADR-00035). Empty on a line not yet stored;
+	// the store assigns it on save and no writer chooses one.
+	Key string
 	// Amount holds the quantity (exact, range or absent), the unit (zero for
 	// count-only items such as "2 eggs") and any package size.
 	Amount quantity.Amount

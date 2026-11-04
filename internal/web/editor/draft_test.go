@@ -79,25 +79,27 @@ func TestNewStepsGetUniqueIDs(t *testing.T) {
 	}
 }
 
-// A posted form that drops the step with id s1 and adds a step with no id: the
-// new step takes the free id s1, and must not inherit the dependency and the
-// equipment link that named the removed step.
-func TestANewStepReusingARemovedIDInheritsNoLinks(t *testing.T) {
+// A posted form that drops the unsaved step labelled new-1 and adds a step with
+// no id: the new step takes the free label new-1, and must not inherit the
+// dependency and the equipment link that named the removed step. (A stored
+// step's id is its key, which the store never reuses; a label stands for no
+// step of the recipe.)
+func TestANewStepReusingARemovedLabelInheritsNoLinks(t *testing.T) {
 	d := parseForm(url.Values{
 		"c.0.s.0.text": {"Preheat."}, "c.0.s.0.to": {"0"},
-		"c.0.s.1.text": {"Bake."}, "c.0.s.1.to": {"0"}, "c.0.s.1.id": {"s2"}, "c.0.s.1.dep": {"s1"},
-		"e.0.name": {"oven"}, "e.0.step": {"s1", "s2"},
+		"c.0.s.1.text": {"Bake."}, "c.0.s.1.to": {"0"}, "c.0.s.1.id": {"stp-k3f9x2qa"}, "c.0.s.1.dep": {"new-1"},
+		"e.0.name": {"oven"}, "e.0.step": {"new-1", "stp-k3f9x2qa"},
 	})
 	d.arrange()
 	steps := d.Components[0].Steps
-	if steps[0].ID != "s1" {
-		t.Fatalf("new step id = %q, want the free id s1", steps[0].ID)
+	if steps[0].ID != "new-1" {
+		t.Fatalf("new step id = %q, want the free label new-1", steps[0].ID)
 	}
 	if len(steps[1].Deps) != 0 {
 		t.Errorf("Bake depends on %v, want nothing: the step it named is gone", steps[1].Deps)
 	}
-	if !reflect.DeepEqual(d.Equipment[0].Steps, []string{"s2"}) {
-		t.Errorf("equipment steps = %v, want only s2", d.Equipment[0].Steps)
+	if !reflect.DeepEqual(d.Equipment[0].Steps, []string{"stp-k3f9x2qa"}) {
+		t.Errorf("equipment steps = %v, want only the stored step", d.Equipment[0].Steps)
 	}
 }
 

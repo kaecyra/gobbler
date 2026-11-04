@@ -10,6 +10,15 @@ import (
 	"database/sql"
 )
 
+const deleteProposalIndex = `-- name: DeleteProposalIndex :exec
+DELETE FROM proposal_ingredients WHERE ingredient_id = ?
+`
+
+func (q *Queries) DeleteProposalIndex(ctx context.Context, ingredientID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteProposalIndex, ingredientID)
+	return err
+}
+
 const deleteRevisionIndex = `-- name: DeleteRevisionIndex :exec
 DELETE FROM revision_ingredients WHERE ingredient_id = ?
 `
@@ -17,6 +26,41 @@ DELETE FROM revision_ingredients WHERE ingredient_id = ?
 func (q *Queries) DeleteRevisionIndex(ctx context.Context, ingredientID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteRevisionIndex, ingredientID)
 	return err
+}
+
+const listProposalsNamingIngredient = `-- name: ListProposalsNamingIngredient :many
+SELECT p.id, p.kind, p.document FROM proposals p
+JOIN proposal_ingredients pi ON pi.proposal_id = p.id
+WHERE pi.ingredient_id = ?
+`
+
+type ListProposalsNamingIngredientRow struct {
+	ID       int64
+	Kind     string
+	Document string
+}
+
+func (q *Queries) ListProposalsNamingIngredient(ctx context.Context, ingredientID int64) ([]ListProposalsNamingIngredientRow, error) {
+	rows, err := q.db.QueryContext(ctx, listProposalsNamingIngredient, ingredientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProposalsNamingIngredientRow
+	for rows.Next() {
+		var i ListProposalsNamingIngredientRow
+		if err := rows.Scan(&i.ID, &i.Kind, &i.Document); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRevisionsNamingIngredient = `-- name: ListRevisionsNamingIngredient :many
@@ -70,6 +114,20 @@ func (q *Queries) RepointIngredientLines(ctx context.Context, arg RepointIngredi
 	return err
 }
 
+const repointProposalIndex = `-- name: RepointProposalIndex :exec
+UPDATE OR IGNORE proposal_ingredients SET ingredient_id = ?1 WHERE ingredient_id = ?2
+`
+
+type RepointProposalIndexParams struct {
+	WinnerID int64
+	LoserID  int64
+}
+
+func (q *Queries) RepointProposalIndex(ctx context.Context, arg RepointProposalIndexParams) error {
+	_, err := q.db.ExecContext(ctx, repointProposalIndex, arg.WinnerID, arg.LoserID)
+	return err
+}
+
 const repointRevisionIndex = `-- name: RepointRevisionIndex :exec
 UPDATE OR IGNORE revision_ingredients SET ingredient_id = ?1 WHERE ingredient_id = ?2
 `
@@ -81,6 +139,20 @@ type RepointRevisionIndexParams struct {
 
 func (q *Queries) RepointRevisionIndex(ctx context.Context, arg RepointRevisionIndexParams) error {
 	_, err := q.db.ExecContext(ctx, repointRevisionIndex, arg.WinnerID, arg.LoserID)
+	return err
+}
+
+const updateProposalDocument = `-- name: UpdateProposalDocument :exec
+UPDATE proposals SET document = ? WHERE id = ?
+`
+
+type UpdateProposalDocumentParams struct {
+	Document string
+	ID       int64
+}
+
+func (q *Queries) UpdateProposalDocument(ctx context.Context, arg UpdateProposalDocumentParams) error {
+	_, err := q.db.ExecContext(ctx, updateProposalDocument, arg.Document, arg.ID)
 	return err
 }
 

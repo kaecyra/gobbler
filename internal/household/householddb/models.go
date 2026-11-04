@@ -117,6 +117,7 @@ type IngredientLine struct {
 	Optional      int64
 	Rule          string
 	Raw           string
+	LineKey       string
 }
 
 type Invitation struct {
@@ -221,6 +222,35 @@ type Profile struct {
 	UpdatedAt   string
 }
 
+type Proposal struct {
+	ID                  int64
+	HouseholdID         int64
+	Token               string
+	Kind                string
+	State               string
+	RecipeID            sql.NullInt64
+	BaseVersion         sql.NullInt64
+	ResultRecipeID      sql.NullInt64
+	SnapshotID          sql.NullInt64
+	Document            string
+	Reason              string
+	ProposedBy          string
+	CredentialKind      string
+	CredentialID        int64
+	CredentialRef       string
+	CredentialOwner     string
+	CredentialCreatedAt string
+	Tool                string
+	CreatedAt           string
+	StateAt             string
+}
+
+type ProposalIngredient struct {
+	HouseholdID  int64
+	ProposalID   int64
+	IngredientID int64
+}
+
 type Recipe struct {
 	ID                 int64
 	HouseholdID        int64
@@ -263,6 +293,12 @@ type RecipeEquipmentStep struct {
 	RecipeEquipmentID int64
 	Position          int64
 	StepID            int64
+}
+
+type RecipeKey struct {
+	HouseholdID int64
+	RecipeID    int64
+	Key         string
 }
 
 type RecipeSearch struct {
@@ -383,7 +419,7 @@ type ShoppingPantry struct {
 type SourceSnapshot struct {
 	ID            int64
 	HouseholdID   int64
-	RecipeID      int64
+	RecipeID      sql.NullInt64
 	Kind          string
 	Content       []byte
 	Sha256        string

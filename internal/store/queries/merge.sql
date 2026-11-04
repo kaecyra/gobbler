@@ -17,3 +17,17 @@ UPDATE OR IGNORE revision_ingredients SET ingredient_id = sqlc.arg(winner_id) WH
 
 -- name: DeleteRevisionIndex :exec
 DELETE FROM revision_ingredients WHERE ingredient_id = ?;
+
+-- name: ListProposalsNamingIngredient :many
+SELECT p.id, p.kind, p.document FROM proposals p
+JOIN proposal_ingredients pi ON pi.proposal_id = p.id
+WHERE pi.ingredient_id = ?;
+
+-- name: UpdateProposalDocument :exec
+UPDATE proposals SET document = ? WHERE id = ?;
+
+-- name: RepointProposalIndex :exec
+UPDATE OR IGNORE proposal_ingredients SET ingredient_id = sqlc.arg(winner_id) WHERE ingredient_id = sqlc.arg(loser_id);
+
+-- name: DeleteProposalIndex :exec
+DELETE FROM proposal_ingredients WHERE ingredient_id = ?;

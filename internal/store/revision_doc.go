@@ -21,6 +21,9 @@ type docQualifier struct {
 }
 
 type docLine struct {
+	// Key is the line's key (ADR-00035); empty in a document written before
+	// lines had keys.
+	Key           string         `json:"key,omitempty"`
 	Qty           *string        `json:"qty,omitempty"`
 	UnitID        int64          `json:"unit_id,omitempty"`
 	HasPackage    bool           `json:"has_package,omitempty"`
@@ -141,7 +144,7 @@ func encodeRaw(d docRecipe) ([]byte, error) {
 
 func encodeLine(l recipe.IngredientLine, units *unitTable) (docLine, error) {
 	dl := docLine{
-		HasPackage: l.Amount.HasPackage, Ingredient: int64(l.Ingredient),
+		Key: l.Key, HasPackage: l.Amount.HasPackage, Ingredient: int64(l.Ingredient),
 		Optional: l.Optional, Rule: string(l.Rule), Raw: l.Raw,
 	}
 	var err error
@@ -253,7 +256,7 @@ func (d docRecipe) toRecipe(units *unitTable) (recipe.Recipe, error) {
 
 func (dl docLine) line(units *unitTable) (recipe.IngredientLine, error) {
 	l := recipe.IngredientLine{
-		Ingredient: recipe.IngredientID(dl.Ingredient), Optional: dl.Optional,
+		Key: dl.Key, Ingredient: recipe.IngredientID(dl.Ingredient), Optional: dl.Optional,
 		Rule: quantity.Rule(dl.Rule), Raw: dl.Raw,
 	}
 	var err error

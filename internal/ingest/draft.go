@@ -23,8 +23,9 @@ type Source struct {
 	SHA256  string
 	// Image is the uploaded photo behind an OCR source, kept in memory only so
 	// a vision-capable provider can be shown the page itself (ADR-00006). It is
-	// never part of the snapshot: Content is the OCR text, and nothing here is
-	// stored. ImageMIME is its media type.
+	// never part of the snapshot or of a held draft's document: Content is the
+	// OCR text, and nothing here is stored; Photos keeps it beside a held draft
+	// for as long as the process has it (ADR-00035). ImageMIME is its media type.
 	Image     []byte
 	ImageMIME string
 }
@@ -72,8 +73,9 @@ type Line struct {
 // Step is one instruction of a draft. Duration is zero when unknown.
 //
 // Steps are numbered from 1 in reading order across the whole draft, through
-// every component; Save gives the step with number n the id "s<n>". DependsOn
-// uses those numbers (ADR-00020 decision 1).
+// every component; Save gives the step with number n the label "s<n>", which the
+// store replaces with a key on save (ADR-00035). DependsOn uses those numbers
+// (ADR-00020 decision 1).
 type Step struct {
 	Text       string
 	Duration   time.Duration

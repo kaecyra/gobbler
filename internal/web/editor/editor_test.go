@@ -241,6 +241,7 @@ func encode(d draft) url.Values {
 	for ci, c := range d.Components {
 		f.Set(cField(ci, "name"), c.Name)
 		for li, l := range c.Lines {
+			f.Set(lField(ci, li, "key"), l.Key)
 			f.Set(lField(ci, li, "qty"), l.Qty)
 			f.Set(lField(ci, li, "unit"), l.Unit)
 			f.Set(lField(ci, li, "pkgqty"), l.PkgQty)
@@ -494,10 +495,13 @@ func TestStepCycleIsRejectedNamingTheStepsAndSavesNothing(t *testing.T) {
 	e := newEnv(t)
 	f := e.form()
 	// mix now depends on glaze, which depends on rest, which depends on mix.
-	f[sField(0, 0, "dep")] = []string{"glaze"}
+	// The steps are named by the keys the store gave them.
+	stored, _ := e.stored()
+	mix, rest, glaze := stored.Components[0].Steps[0].ID, stored.Components[0].Steps[1].ID, stored.Components[1].Steps[0].ID
+	f[sField(0, 0, "dep")] = []string{string(glaze)}
 	res := e.post(f)
 	res.wantStatus(t, http.StatusBadRequest)
-	res.wantBody(t, "depend on each other in a circle", "step 1 (mix)", "step 1 (glaze)", "step 2 (rest)", `name="c.0.s.0.dep" value="glaze" checked`)
+	res.wantBody(t, "depend on each other in a circle", "step 1 ("+string(mix)+")", "step 1 ("+string(glaze)+")", "step 2 ("+string(rest)+")", `name="c.0.s.0.dep" value="`+string(glaze)+`" checked`)
 	if len(e.revisions()) != 0 {
 		t.Error("a cycle must not write a revision")
 	}
@@ -717,5 +721,50 @@ func asMember(h household.Household) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
 		})
+	}
+}
+
+// ADR-00035 obligation 3: the editor does not choose a step's key. A step added
+// in the form is saved with a key the store assigns, and the steps and lines
+// that were there keep theirs.
+func TestAStepAddedInTheEditorIsSavedWithAStoreKey(t *testing.T) {
+	e := newEnv(t)
+	before, _ := e.stored()
+	f := e.form()
+	n := len(before.Components[0].Steps)
+	f.Set(sField(0, n, "text"), "Brush with egg.")
+	f.Set(sField(0, n, "to"), "0")
+	// The page labelled the new step when it was added, so that another step
+	// can depend on it before anything is saved.
+	f.Set(sField(0, n, "id"), "new-1")
+	f.Add(sField(0, 0, "dep"), "new-1")
+	e.post(f).wantStatus(t, http.StatusSeeOther)
+
+	after, _ := e.stored()
+	steps := after.Components[0].Steps
+	if len(steps) != n+1 {
+		t.Fatalf("%d steps after the save, want %d", len(steps), n+1)
+	}
+	added := steps[n].ID
+	if !recipe.IsStepKey(added) {
+		t.Errorf("the added step's id = %q, want a stored key (stp- and 8 characters)", added)
+	}
+	for ci, c := range before.Components {
+		for si, s := range c.Steps {
+			if got := after.Components[ci].Steps[si].ID; got != s.ID {
+				t.Errorf("step %d.%d changed key from %q to %q", ci+1, si+1, s.ID, got)
+			}
+			if got := after.Components[ci].Steps[si].ID; got == added {
+				t.Errorf("the added step took the key of step %d.%d", ci+1, si+1)
+			}
+		}
+		for li, l := range c.Lines {
+			if got := after.Components[ci].Lines[li].Key; got != l.Key || !recipe.IsLineKey(got) {
+				t.Errorf("line %d.%d changed key from %q to %q", ci+1, li+1, l.Key, got)
+			}
+		}
+	}
+	if dep := after.Components[0].Steps[0].DependsOn; len(dep) != 1 || dep[0] != added {
+		t.Errorf("the first step depends on %v, want the added step's new key %s", dep, added)
 	}
 }

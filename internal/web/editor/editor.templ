@@ -281,6 +281,9 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 	<li class={ "item line " + l.Mark.String() } data-low?={ l.Mark.Low } data-llm?={ l.Mark.LLM }>
 		@badges(l.Mark)
 		<strong>Line { n1(li) }</strong>
+		if l.Key != "" {
+			<input type="hidden" name={ lField(ci, li, "key") } value={ l.Key }/>
+		}
 		if !l.Mark.zero() {
 			<input type="hidden" name={ lField(ci, li, "mark") } value={ l.Mark.String() }/>
 		}

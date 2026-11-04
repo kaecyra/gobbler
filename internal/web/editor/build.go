@@ -313,6 +313,7 @@ func (b *builder) line(l *lineDraft) (line recipe.IngredientLine, keep bool, pro
 	if lineBlank(*l) {
 		return line, false, ""
 	}
+	line.Key = l.Key
 	var msgs []string
 	say := func(format string, args ...any) { msgs = append(msgs, fmt.Sprintf(format, args...)) }
 
