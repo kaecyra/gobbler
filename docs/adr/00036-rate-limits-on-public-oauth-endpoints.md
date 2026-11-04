@@ -83,5 +83,6 @@ peer address.
    fills it, shows the next registration is refused, and shows a client with a
    grant is neither counted nor pruned.
 5. `docs/operations.md` describes the trusted-proxy setting (with the
-   cloudflared Compose network as the example) and the rate and burst
-   settings for the public OAuth endpoints.
+   Compose network gateway that cloudflared on the VM guest connects
+   through, ADR-00017, as the example) and the rate and burst settings for
+   the public OAuth endpoints.
