@@ -39,14 +39,19 @@ generate-check:
 	go tool sqlc diff
 	bash .github/scripts/check-templ.sh
 
+# GO_FILES is every Go file git tracks or would track: ignored paths such as
+# .claude/worktrees/ (other checkouts) and scratch listed in .git/info/exclude
+# are left alone. A bare "gofmt -w ." walks into them.
+GO_FILES = git ls-files --cached --others --exclude-standard -- '*.go'
+
 ## fmt: rewrite Go files with gofmt and goimports
 fmt:
-	gofmt -w .
-	go tool goimports -local $(MODULE) -w .
+	@files="$$($(GO_FILES))"; [ -z "$$files" ] || { gofmt -w $$files && go tool goimports -local $(MODULE) -w $$files; }
 
 ## fmt-check: fail if any Go file is not formatted (CI)
 fmt-check:
-	@out="$$(gofmt -l .; go tool goimports -local $(MODULE) -l .)"; \
+	@files="$$($(GO_FILES))"; [ -z "$$files" ] && exit 0; \
+	out="$$(gofmt -l $$files; go tool goimports -local $(MODULE) -l $$files)"; \
 	if [ -n "$$out" ]; then echo "unformatted files (run make fmt):"; echo "$$out"; exit 1; fi
 
 ## lint: golangci-lint and go vet
