@@ -49,6 +49,16 @@ const env = {
   GOBBLER_DATA_DIR: dataDir,
   GOBBLER_LOG_LEVEL: 'warn',
   [THUMBNAIL_HOST_ENV]: thumbnails.origin,
+  // The suite's requests arrive from loopback, standing in for the tunnel, so
+  // the sessions specs can set CF-Connecting-IP (ADR-00036).
+  GOBBLER_TRUSTED_PROXIES: '127.0.0.1,::1',
+  // Every spec registers its clients from this one address, in parallel, far
+  // past what a household needs, so the per-address OAuth limits are lifted
+  // here; the limits themselves are covered by Go tests.
+  GOBBLER_OAUTH_REGISTER_RATE: '1000',
+  GOBBLER_OAUTH_REGISTER_BURST: '100000',
+  GOBBLER_OAUTH_TOKEN_RATE: '1000',
+  GOBBLER_OAUTH_TOKEN_BURST: '100000',
   // The operators of the e2e deployment: one who is a member of no household
   // and the default dev identity, so suites that open /settings as dev (the
   // layout nav) keep working. Keep them in step with OPERATOR and DEV in

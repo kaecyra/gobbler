@@ -3,6 +3,7 @@ package web
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/sharing"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -184,7 +186,23 @@ func mountOAuth(r chi.Router, d Deps) {
 	deps := weboauth.Deps{
 		OAuth: oauth.New(d.DB), Metadata: oauth.NewMetadataFetcher(),
 		PublicBaseURL: d.Config.OIDC.PublicBaseURL, DevBypass: d.Config.Server.DevAuthBypass, Logger: d.Logger,
+		Register: ratelimit.New(d.Config.OAuth.Register.Rate, d.Config.OAuth.Register.Burst, time.Now),
+		Token:    ratelimit.New(d.Config.OAuth.Token.Rate, d.Config.OAuth.Token.Burst, time.Now),
 	}
 	r.Mount(weboauth.WellKnownPattern, weboauth.WellKnownRoutes(deps))
-	r.Mount(weboauth.Pattern, weboauth.Routes(deps))
+	routes, err := weboauth.Routes(deps)
+	if err != nil {
+		// A router that cannot be built still answers 500 with the cause, as
+		// the MCP mount does, so a wiring fault is loud and not a missing page.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("oauth endpoints unavailable", "error", err.Error())
+		routes = chi.NewRouter()
+		routes.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the OAuth endpoints are not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+	}
+	r.Mount(weboauth.Pattern, routes)
 }

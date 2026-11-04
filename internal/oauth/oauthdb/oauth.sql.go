@@ -12,8 +12,12 @@ import (
 
 const countClients = `-- name: CountClients :one
 SELECT count(*) FROM oauth_clients
+WHERE NOT EXISTS (SELECT 1 FROM oauth_grants g WHERE g.client_id = oauth_clients.client_id)
 `
 
+// CountClients counts the clients without a grant: the ones PruneClients
+// removes and the registration ceiling bounds (ADR-00036). A client with a
+// grant is in use and is never counted.
 func (q *Queries) CountClients(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countClients)
 	var count int64

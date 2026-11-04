@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"os"
 	"slices"
@@ -51,6 +52,11 @@ const (
 	EnvS3MediaBucket       = "GOBBLER_S3_MEDIA_BUCKET"
 	EnvMCPRate             = "GOBBLER_MCP_RATE"
 	EnvMCPBurst            = "GOBBLER_MCP_BURST"
+	EnvTrustedProxies      = "GOBBLER_TRUSTED_PROXIES"
+	EnvOAuthRegisterRate   = "GOBBLER_OAUTH_REGISTER_RATE"
+	EnvOAuthRegisterBurst  = "GOBBLER_OAUTH_REGISTER_BURST"
+	EnvOAuthTokenRate      = "GOBBLER_OAUTH_TOKEN_RATE"
+	EnvOAuthTokenBurst     = "GOBBLER_OAUTH_TOKEN_BURST"
 )
 
 // LLM provider names accepted by EnvLLMProvider.
@@ -76,6 +82,13 @@ const (
 	defaultSessionLifetime     = 30 * 24 * time.Hour
 	defaultMCPRate             = 5.0
 	defaultMCPBurst            = 50
+	// One client registers once per connection, so a household needs a trickle:
+	// 1 every 10 seconds with 10 at once. The token endpoint also serves each
+	// refresh, so it is looser: 1 a second with 20 at once (ADR-00036).
+	defaultOAuthRegisterRate  = 0.1
+	defaultOAuthRegisterBurst = 10
+	defaultOAuthTokenRate     = 1.0
+	defaultOAuthTokenBurst    = 20
 )
 
 // Config is the validated application configuration. Load returns it by value
@@ -91,6 +104,7 @@ type Config struct {
 	Video     Video
 	Backup    Backup
 	MCP       MCP
+	OAuth     OAuth
 }
 
 // Server holds listener, storage and logging settings.
@@ -101,6 +115,9 @@ type Server struct {
 	// DevAuthBypass skips sign-in: every request is the dev identity. Valid
 	// only on a loopback ListenAddr (ADR-00003).
 	DevAuthBypass bool
+	// TrustedProxies are the peers whose CF-Connecting-IP header is believed
+	// (ADR-00036). Empty means the header is never read.
+	TrustedProxies []netip.Prefix
 }
 
 // OIDC holds the sign-in settings (ADR-00030): the one OpenID Connect issuer
@@ -189,6 +206,20 @@ type MCP struct {
 	Burst int
 }
 
+// OAuth holds the per-address limits on the public OAuth endpoints
+// (ADR-00036): each client address has its own leaky bucket for each endpoint,
+// except that an IPv6 address shares one with the rest of its /64.
+type OAuth struct {
+	Register Bucket
+	Token    Bucket
+}
+
+// Bucket is a leaky bucket's rate in requests per second and its burst.
+type Bucket struct {
+	Rate  float64
+	Burst int
+}
+
 // Backup holds backup settings (ADR-00010).
 type Backup struct {
 	// Schedule is the daily run time as "HH:MM".
@@ -244,6 +275,7 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Server.DataDir = r.str(EnvDataDir, defaultDataDir)
 	c.Server.LogLevel = r.logLevel(EnvLogLevel, defaultLogLevel)
 	c.Server.DevAuthBypass = r.boolean(EnvDevAuthBypass)
+	c.Server.TrustedProxies = r.prefixes(EnvTrustedProxies)
 	if c.Server.DevAuthBypass && !IsLoopbackAddr(c.Server.ListenAddr) {
 		r.fail(EnvDevAuthBypass, "refusing to start: dev auth bypass requires a loopback %s, got %q", EnvListenAddr, c.Server.ListenAddr)
 	}
@@ -265,6 +297,11 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 
 	c.MCP.Rate = r.float(EnvMCPRate, defaultMCPRate, 0.01, 1000)
 	c.MCP.Burst = r.integer(EnvMCPBurst, defaultMCPBurst, 1)
+
+	c.OAuth.Register.Rate = r.float(EnvOAuthRegisterRate, defaultOAuthRegisterRate, 0.001, 1000)
+	c.OAuth.Register.Burst = r.integer(EnvOAuthRegisterBurst, defaultOAuthRegisterBurst, 1)
+	c.OAuth.Token.Rate = r.float(EnvOAuthTokenRate, defaultOAuthTokenRate, 0.001, 1000)
+	c.OAuth.Token.Burst = r.integer(EnvOAuthTokenBurst, defaultOAuthTokenBurst, 1)
 
 	if err := errors.Join(r.errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
@@ -425,6 +462,39 @@ func (r *reader) emails(env string) []string {
 		if !slices.Contains(out, e) {
 			out = append(out, e)
 		}
+	}
+	return out
+}
+
+// prefixes reads a comma-separated list of IP addresses and CIDR ranges. A
+// bare address is a range of one. A blank list is empty; an entry that is
+// neither is an error naming it.
+func (r *reader) prefixes(env string) []netip.Prefix {
+	v := r.str(env, "")
+	if v == "" {
+		return nil
+	}
+	var out []netip.Prefix
+	for _, part := range strings.Split(v, ",") {
+		part = strings.TrimSpace(part)
+		p, err := netip.ParsePrefix(part)
+		if err != nil {
+			a, aerr := netip.ParseAddr(part)
+			if aerr != nil {
+				r.fail(env, "invalid address or range %q (want a comma-separated list of IP addresses or CIDR ranges)", part)
+				continue
+			}
+			p = netip.PrefixFrom(a, a.BitLen())
+		}
+		// Peers are compared unmapped, so a ::ffff:a.b.c.d range is the v4 one.
+		if p.Addr().Is4In6() {
+			if p.Bits() < 96 {
+				r.fail(env, "invalid range %q (an IPv4-mapped range needs at least 96 bits)", part)
+				continue
+			}
+			p = netip.PrefixFrom(p.Addr().Unmap(), p.Bits()-96)
+		}
+		out = append(out, p.Masked())
 	}
 	return out
 }

@@ -5,8 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 )
 
 func TestCreateRecordsTheClient(t *testing.T) {
@@ -128,9 +131,10 @@ func TestClientOf(t *testing.T) {
 		name, remote, cf, ua string
 		want                 Client
 	}{
-		{"tunnel header wins", "172.18.0.2:5000", "203.0.113.9", "UA", Client{"UA", "203.0.113.9"}},
+		{"trusted proxy's header wins", "172.18.0.2:5000", "203.0.113.9", "UA", Client{"UA", "203.0.113.9"}},
 		{"v6 header", "172.18.0.2:5000", "2001:db8::1", "", Client{"", "2001:db8::1"}},
 		{"junk header falls back", "172.18.0.2:5000", "not-an-ip<script>", "UA", Client{"UA", "172.18.0.2"}},
+		{"header from another peer is ignored", "192.0.2.1:1234", "203.0.113.9", "UA", Client{"UA", "192.0.2.1"}},
 		{"no header", "192.0.2.1:1234", "", "UA", Client{"UA", "192.0.2.1"}},
 		{"v6 remote", "[2001:db8::2]:80", "", "", Client{"", "2001:db8::2"}},
 		{"unreadable remote", "garbage", "", "", Client{}},
@@ -141,7 +145,11 @@ func TestClientOf(t *testing.T) {
 			r.RemoteAddr = tc.remote
 			r.Header.Set("CF-Connecting-IP", tc.cf)
 			r.Header.Set("User-Agent", tc.ua)
-			if got := ClientOf(r); got != tc.want {
+			var got Client
+			trusted := []netip.Prefix{netip.MustParsePrefix("172.18.0.0/16")}
+			ratelimit.ResolveClient(trusted)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = ClientOf(r) })).
+				ServeHTTP(httptest.NewRecorder(), r)
+			if got != tc.want {
 				t.Errorf("ClientOf = %+v, want %+v", got, tc.want)
 			}
 		})

@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/oauth"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 )
 
 // The paths of the endpoints. The public ones are also listed in package
@@ -59,6 +60,11 @@ type Deps struct {
 	// empty (ADR-00003).
 	DevBypass bool
 	Logger    *slog.Logger
+	// Register and Token hold each client address (an IPv6 one by its /64) to a
+	// leaky bucket on client registration and the token endpoint (ADR-00036).
+	// Both are required: Routes refuses to build without them, so a public
+	// endpoint is never left unlimited by an omission.
+	Register, Token *ratelimit.Limiter
 }
 
 type handler struct {
@@ -75,14 +81,33 @@ func newHandler(d Deps) *handler {
 }
 
 // Routes returns the endpoints under Pattern.
-func Routes(d Deps) chi.Router {
+func Routes(d Deps) (chi.Router, error) {
+	if d.Register == nil || d.Token == nil {
+		return nil, errors.New("oauth: the registration and token rate limiters are required")
+	}
 	h := newHandler(d)
 	r := chi.NewRouter()
-	r.Post("/register", h.register)
+	r.With(perAddress(d.Register, h.log)).Post("/register", h.register)
 	r.Get("/authorize", h.authorizeGet)
 	r.Post("/authorize", h.authorizePost)
-	r.Post("/token", h.token)
-	return r
+	r.With(perAddress(d.Token, h.log)).Post("/token", h.token)
+	return r, nil
+}
+
+// perAddress holds each client address, an IPv6 one by its /64, to l's bucket
+// (ADR-00036). A refused request gets 429 with an OAuth error body (RFC 6749
+// section 5.2) and the Retry-After the limiter set.
+func perAddress(l *ratelimit.Limiter, log *slog.Logger) func(http.Handler) http.Handler {
+	return l.Middleware(ratelimit.ClientKey, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusTooManyRequests)
+		body := errorBody{Error: oauth.CodeTemporarilyBusy, Description: "too many requests from this address; retry later"}
+		if err := json.NewEncoder(w).Encode(body); err != nil {
+			// The status is sent already, so all that is left is to say so.
+			log.WarnContext(r.Context(), "write oauth response", "path", r.URL.Path, "error", err.Error())
+		}
+	})
 }
 
 // WellKnownRoutes returns the discovery documents under WellKnownPattern.
