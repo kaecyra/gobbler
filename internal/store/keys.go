@@ -12,7 +12,7 @@ import (
 )
 
 // keyEntropy is where keys come from; a test swaps it to force a collision.
-var keyEntropy io.Reader = rand.Reader
+var keyEntropy = rand.Reader
 
 // mintKey returns prefix and KeyRandomLen random characters of the key
 // alphabet that is not in taken, and adds it to taken. The alphabet has 32
