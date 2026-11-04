@@ -136,6 +136,18 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   `hx-push-url`, so all of the state is in the URL and Back returns home.
 - **Library side panels:** a suggestion with "Another idea", recently made,
   and haven't made in a while. They are read from the made-it log.
+  - "A while" is more than 30 days since the recipe was last made. A recipe
+    made more recently is neither suggested nor named as not made in a while.
+  - The suggestion offers recipes never made first, by name, then those not
+    made in a while, made longest ago first. On the library it skips the
+    recipe the haven't-made-in-a-while panel names, so the two never repeat.
+  - The suggestion is a card: a small mascot head speaks the voice line, and
+    the time ribbon sits inside the card's padding with rounded segments,
+    never bled to the card's edge.
+  - Haven't made in a while shows the rating as spoons.
+  - A panel with nothing to show is not drawn. With none to draw, the library
+    drops its side and the results take the width, and an empty library shows
+    only the empty state, on home and in the library.
 - There are **no tag filters**.
 - **Equipment** on the recipe page and in cook mode is a row of chips, each
   an icon and the name, with the size hint where one applies

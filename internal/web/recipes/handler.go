@@ -92,10 +92,13 @@ func library(d Deps) http.HandlerFunc {
 				layout.WriteError(w, r, fmt.Errorf("list library cards: %w", err))
 				return
 			}
-			if idle := store.IdleOrder(all); len(idle) > 0 {
-				layout.Render(w, r, http.StatusOK, suggestion(suggestFor(idle, idea, d.now(), ideaHref(q, group))))
-				return
+			idle, now := store.IdleOrder(all), d.now()
+			// No idea left (a recipe was made since the page loaded) is an
+			// answer, not an error: an empty 200 removes the card.
+			if sg := suggestFor(ideasFrom(idle, now, forgotPick(idle, now)), idea, now, ideaHref(q, group)); sg != nil {
+				layout.Render(w, r, http.StatusOK, suggestion(*sg))
 			}
+			return
 		}
 		found, err := d.Library.Cards(r.Context(), store.SearchQuery{Text: q})
 		if err != nil {
@@ -121,11 +124,12 @@ func library(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("list recently made: %w", err))
 			return
 		}
-		idle := store.IdleOrder(slices.Clone(all))
-		side := sideView{Recent: recentViews(recent), Forgot: forgotFor(idle, d.now())}
-		if len(idle) > 0 {
-			sg := suggestFor(idle, idea, d.now(), ideaHref(q, group))
-			side.Suggest = &sg
+		idle, now := store.IdleOrder(slices.Clone(all)), d.now()
+		forgot := forgotPick(idle, now)
+		side := sideView{
+			Recent:  recentViews(recent),
+			Forgot:  forgotFor(forgot, now),
+			Suggest: suggestFor(ideasFrom(idle, now, forgot), idea, now, ideaHref(q, group)),
 		}
 		layout.Render(w, r, http.StatusOK, libraryPage(res, side))
 	}
@@ -157,13 +161,15 @@ func Home(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("list idle recipes: %w", err))
 			return
 		}
-		v := homeView{Empty: len(idle) == 0}
-		if !v.Empty {
-			v.Suggest = suggestFor(idle, idea, d.now(), homeHref)
-		}
+		// Home has no forgot panel, so its suggestion skips nothing.
+		now := d.now()
+		v := homeView{Empty: len(idle) == 0, Suggest: suggestFor(ideasFrom(idle, now, nil), idea, now, homeHref)}
 		varyOnHTMX(w)
-		if targets(r, "suggest") && !v.Empty {
-			layout.Render(w, r, http.StatusOK, suggestion(v.Suggest))
+		if targets(r, "suggest") {
+			// As on the library: no idea left answers with an empty 200.
+			if v.Suggest != nil {
+				layout.Render(w, r, http.StatusOK, suggestion(*v.Suggest))
+			}
 			return
 		}
 		recent, err := d.Library.RecentlyMade(r.Context(), recentLimit)

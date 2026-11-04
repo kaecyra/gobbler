@@ -13,7 +13,6 @@ const (
 // show them with an img tag; they are served cached like every static file.
 const (
 	MascotHeader     = "/static/img/gob.svg"
-	MascotRollingPin = "/static/img/gob-full-rolling-pin.svg"
 	MascotMixingBowl = "/static/img/gob-full-mixing-bowl.svg"
 	MascotWhisk      = "/static/img/gob-whisk.svg"
 	MascotHerbs      = "/static/img/gob-herbs.svg"

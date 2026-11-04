@@ -207,6 +207,24 @@ func TestStaticAssetsServedFromEmbeddedFS(t *testing.T) {
 	}
 }
 
+// A static asset is revalidated on each use, so a new build's stylesheet
+// reaches a browser that holds the previous one; an unchanged file is a 304.
+func TestStaticAssetsAreRevalidatedByETag(t *testing.T) {
+	r := testRouter(t, devConfig(), Deps{})
+	rec := get(r, "/static/app.css")
+	etag := rec.Header().Get("ETag")
+	if cc := rec.Header().Get("Cache-Control"); cc != "no-cache" || etag == "" {
+		t.Fatalf("Cache-Control = %q, ETag = %q; want no-cache and a tag", cc, etag)
+	}
+	if other := get(r, "/static/htmx.min.js").Header().Get("ETag"); other == etag {
+		t.Error("two files share an ETag")
+	}
+	again := get(r, "/static/app.css", "If-None-Match", etag)
+	if again.Code != http.StatusNotModified || again.Body.Len() != 0 {
+		t.Errorf("unchanged asset = %d with %d bytes, want an empty 304", again.Code, again.Body.Len())
+	}
+}
+
 // ADR-00002 obligation 3: no page names a script, stylesheet, font or other
 // asset on another origin. A plain link to another site is navigation, not a
 // load, and is allowed.

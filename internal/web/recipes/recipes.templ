@@ -4,7 +4,8 @@ import "github.com/kaecyra/gobbler/internal/web/layout"
 
 // libraryPage is the library: the search box, then the results beside the side
 // panels (docs/ui/design.md, Screens). The search box is outside the results,
-// so it keeps its focus while the results are swapped.
+// so it keeps its focus while the results are swapped. With no panel to draw,
+// the side is dropped and the results take the width.
 templ libraryPage(res results, side sideView) {
 	@layout.Page("Recipes") {
 		@templ.Raw("<style>" + libraryStyle + "</style>")
@@ -25,19 +26,21 @@ templ libraryPage(res results, side sideView) {
 				<h1 class="sr">Recipes</h1>
 				@searchBox(res.Query)
 			</form>
-			<div class="lib">
+			<div class={ "lib", templ.KV("solo", side.empty()) }>
 				<div class="listcol">
 					<div id="results" aria-live="polite">
 						@resultsFragment(res)
 					</div>
 				</div>
-				<aside class="side" aria-label="From your kitchen">
-					if side.Suggest != nil {
-						@suggestion(*side.Suggest)
-					}
-					@recentPanel(side.Recent)
-					@forgotPanel(side.Forgot)
-				</aside>
+				if !side.empty() {
+					<aside class="side" aria-label="From your kitchen">
+						if side.Suggest != nil {
+							@suggestion(*side.Suggest)
+						}
+						@recentPanel(side.Recent)
+						@forgotPanel(side.Forgot)
+					</aside>
+				}
 			</div>
 		</section>
 	}
@@ -100,13 +103,12 @@ templ groupLink(label, href string, current bool) {
 	>{ label }</a>
 }
 
-// recentPanel lists the latest made-it entries.
+// recentPanel lists the latest made-it entries. It is absent when nothing has
+// been made.
 templ recentPanel(items []recentView) {
-	<div class="panel" data-testid="recently-made">
-		<h2>Recently made</h2>
-		if len(items) == 0 {
-			<p class="muted">Nothing made yet.</p>
-		} else {
+	if len(items) > 0 {
+		<div class="panel" data-testid="recently-made">
+			<h2>Recently made</h2>
 			<ul class="made">
 				for _, it := range items {
 					<li>
@@ -118,12 +120,12 @@ templ recentPanel(items []recentView) {
 					</li>
 				}
 			</ul>
-		}
-	</div>
+		</div>
+	}
 }
 
-// forgotPanel names the recipe made longest ago. It is absent when nothing has
-// been made.
+// forgotPanel names the recipe made longest ago, with its spoons. It is absent
+// when nothing was made more than idleAfterDays ago.
 templ forgotPanel(f *forgotView) {
 	if f != nil {
 		<div class="panel forgot" data-testid="forgot">
@@ -132,6 +134,9 @@ templ forgotPanel(f *forgotView) {
 			<div>
 				<a href={ templ.SafeURL(f.Href) }>{ f.Name }</a>
 				<p>{ f.Text }</p>
+				if f.Rating > 0 {
+					@spoons(f.Rating, f.RatingLabel)
+				}
 			</div>
 		</div>
 	}

@@ -18,8 +18,8 @@ test('an empty library shows an empty state, not an error', async ({ page }) => 
   const res = await page.goto('/recipes');
   expect(res?.status()).toBe(200);
   await expect(page.getByTestId('empty-library')).toBeVisible();
-  await expect(page.getByTestId('recently-made')).toContainText('Nothing made yet');
-  await expect(page.getByTestId('forgot')).toHaveCount(0);
+  // Nothing to show in the side, so there is no side.
+  await expect(page.locator('aside.side')).toHaveCount(0);
   await expectTappable(page.getByTestId('empty-library').getByRole('link'));
 });
 
@@ -99,23 +99,25 @@ test.describe('with recipes', () => {
     await expect(entries.nth(3)).toContainText('“Too sweet”');
     const forgot = page.getByTestId('forgot');
     await expect(forgot).toContainText('Last made in');
-    await expect(forgot).toContainText('You gave it four spoons.');
+    await expect(forgot.getByRole('img', { name: 'Make it again' })).toBeVisible();
     await expect(forgot.getByRole('link', { name: 'Lemon Cake' })).toHaveAttribute('href', `/recipes/${ids['Lemon Cake']}`);
   });
 
   test('the library has the suggestion, and Another idea stays on the library page', async ({ page }) => {
     await page.goto('/recipes?q=a&group=time');
     const suggest = page.locator('#suggest');
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Lemon Cake');
+    // Never made first. Lemon Cake is the forgot panel's, so it is not also
+    // suggested here.
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Beef Stew');
     // The suggestion draws on the whole library, not on the search.
     const next = suggest.getByRole('link', { name: 'Another idea' });
     await expect(next).toHaveAttribute('href', '/recipes?group=time&idea=1&q=a');
     await next.click();
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Tomato Soup');
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
     await expect(page).toHaveURL(/\/recipes\?q=a&group=time$/);
     await expect(page.locator('.group h2').first()).toBeVisible();
     await page.goto('/recipes?idea=1');
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Tomato Soup');
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
     await expectTappable(suggest.locator('.btn'));
     await expectTappable(suggest.locator('.sg-next'));
   });

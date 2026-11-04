@@ -18,7 +18,7 @@ test('an empty library shows the hero and an empty state', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'What are we making?', level: 1 })).toBeVisible();
   await expect(page.getByTestId('empty-library')).toBeVisible();
   await expect(page.locator('#suggest')).toHaveCount(0);
-  await expect(page.getByTestId('recently-made')).toContainText('Nothing made yet');
+  await expect(page.getByTestId('recently-made')).toHaveCount(0);
 });
 
 test.describe('with recipes', () => {
@@ -70,33 +70,38 @@ test.describe('with recipes', () => {
     await expect(page.locator('.rcard')).toContainText('Beef Stew');
   });
 
-  test('the suggestion is the recipe made longest ago, and "Another idea" cycles', async ({ page }) => {
+  test('the suggestion offers never-made recipes first, and "Another idea" cycles', async ({ page }) => {
     await page.goto('/');
+    const suggest = page.locator('#suggest');
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Beef Stew');
+    await expect(suggest).toContainText('Haven’t tried this one yet');
+    await expect(suggest).toContainText('Not made yet');
+    await expect(suggest.locator('[data-rib]')).toHaveAttribute('role', 'img');
+    await expect(suggest.getByRole('link', { name: 'Open recipe' })).toHaveAttribute('href', `/recipes/${ids['Beef Stew']}`);
+
+    await suggest.getByRole('link', { name: 'Another idea' }).click();
+    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
+    // A swap, not a navigation: the address is still home, the hero still there.
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { name: 'What are we making?' })).toBeVisible();
+  });
+
+  test('after the never-made ones come recipes not made in a while, and never one made this month', async ({ page }) => {
+    // Beef Stew, Cardamom Knots, Slow Ribs, then Lemon Cake; Tomato Soup was
+    // made two days ago, so the list wraps without it.
+    await page.goto('/?idea=3');
     const suggest = page.locator('#suggest');
     await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Lemon Cake');
     await expect(suggest).toContainText('Haven’t made this in a while');
     await expect(suggest).toContainText(/Last made \d+ months ago/);
     await expect(suggest.getByRole('img', { name: 'Make it again' })).toBeVisible();
-    await expect(suggest.locator('[data-rib]')).toHaveAttribute('role', 'img');
-    await expect(suggest.getByRole('link', { name: 'Open recipe' })).toHaveAttribute('href', `/recipes/${ids['Lemon Cake']}`);
-
     await suggest.getByRole('link', { name: 'Another idea' }).click();
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Tomato Soup');
-    await expect(suggest).toContainText(/Last made 2 days ago/);
-    // A swap, not a navigation: the address is still home, the hero still there.
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole('heading', { name: 'What are we making?' })).toBeVisible();
-
-    await suggest.getByRole('link', { name: 'Another idea' }).click();
-    // Never made: by name after the ones that were.
     await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Beef Stew');
-    await expect(suggest).toContainText('Haven’t tried this one yet');
-    await expect(suggest).toContainText('Not made yet');
   });
 
   test('the idea is in the URL, so it can be reloaded', async ({ page }) => {
     await page.goto('/?idea=1');
-    await expect(page.locator('#suggest').getByRole('heading', { level: 2 })).toHaveText('Tomato Soup');
+    await expect(page.locator('#suggest').getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
     expect((await page.goto('/?idea=-1'))?.status()).toBe(400);
     expect((await page.goto('/?idea=x'))?.status()).toBe(400);
   });

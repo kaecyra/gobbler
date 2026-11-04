@@ -39,14 +39,22 @@ generate-check:
 	go tool sqlc diff
 	bash .github/scripts/check-templ.sh
 
+# GO_FILES prints, NUL-separated, every Go file git tracks or would track that
+# exists on disk: ignored paths such as .claude/worktrees/ (other checkouts)
+# and scratch listed in .git/info/exclude are left alone, which a bare
+# "gofmt -w ." walks into, and a tracked file deleted but not yet staged is
+# skipped rather than failing gofmt. NULs keep a path with a space whole.
+GO_FILES = git ls-files -z --cached --others --exclude-standard -- '*.go' | \
+	xargs -0 sh -c 'for f; do [ -e "$$f" ] && printf "%s\000" "$$f"; done' _
+
 ## fmt: rewrite Go files with gofmt and goimports
 fmt:
-	gofmt -w .
-	go tool goimports -local $(MODULE) -w .
+	@$(GO_FILES) | xargs -0 gofmt -w
+	@$(GO_FILES) | xargs -0 go tool goimports -local $(MODULE) -w
 
 ## fmt-check: fail if any Go file is not formatted (CI)
 fmt-check:
-	@out="$$(gofmt -l .; go tool goimports -local $(MODULE) -l .)"; \
+	@out="$$($(GO_FILES) | xargs -0 gofmt -l; $(GO_FILES) | xargs -0 go tool goimports -local $(MODULE) -l)"; \
 	if [ -n "$$out" ]; then echo "unformatted files (run make fmt):"; echo "$$out"; exit 1; fi
 
 ## lint: golangci-lint and go vet

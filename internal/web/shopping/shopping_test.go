@@ -496,6 +496,12 @@ func TestAssetsAreServedFromTheBinary(t *testing.T) {
 		t.Errorf("Content-Type = %q", js.Header().Get("Content-Type"))
 	}
 	wantStatus(t, f.do(http.MethodGet, "/shopping.css", nil), http.StatusOK)
+	// Revalidated by its tag, like the static assets (layout.SetAssetCache).
+	etag := js.Header().Get("ETag")
+	if js.Header().Get("Cache-Control") != "no-cache" || etag == "" {
+		t.Errorf("Cache-Control = %q, ETag = %q", js.Header().Get("Cache-Control"), etag)
+	}
+	wantStatus(t, f.do(http.MethodGet, "/shopping.js", nil, "If-None-Match", etag), http.StatusNotModified)
 
 	list := f.newList("Week")
 	for _, path := range []string{"/", "/pantry", "/" + id(list), "/" + id(list) + "/live"} {
