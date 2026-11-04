@@ -17,7 +17,21 @@
       dialog.close();
     });
   }
+  dialog.addEventListener('click', function (e) {
+    // The crop step's Cancel is a link for the page without scripts.
+    if (e.target.closest && e.target.closest('[data-crop-cancel]')) {
+      e.preventDefault();
+      dialog.close();
+    }
+  });
   dialog.addEventListener('close', function () {
+    var panel = document.getElementById('avatar-panel');
+    // A crop left unsaved is dropped by drawing the page again: the dialog opens
+    // on the first step, and the upload waits to be cropped (the status says so).
+    if (panel && panel.getAttribute('data-step') === 'crop') {
+      window.location.reload();
+      return;
+    }
     var form = dialog.querySelector('form');
     if (form) form.reset();
     open.focus();

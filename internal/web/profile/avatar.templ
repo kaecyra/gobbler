@@ -2,11 +2,12 @@ package profile
 
 import "github.com/kaecyra/gobbler/internal/web/layout"
 
-// avatarDialog is the modal the avatar button opens: the form that uploads a
-// picture, and the status of the last one. The status loads as a fragment so it
-// can poll while the picture is processed in the background (ADR-00033).
-// Escape closes a modal <dialog> natively; profile.js opens it and wires the
-// close button.
+// avatarDialog is the modal the avatar button opens. It holds the whole
+// picture flow: choose a file, choose the square to keep, and the status of the
+// job that processes it (ADR-00033). Each step is a fragment that replaces
+// #avatar-panel, so nothing leaves the dialog. Escape closes a modal <dialog>
+// natively; profile.js opens it, wires the close button and throws away a crop
+// left unsaved.
 templ avatarDialog(v pageView) {
 	<dialog class="avatar-dialog" id="avatar-dialog" aria-labelledby="avatar-h" data-testid="profile-avatar-form">
 		<link rel="stylesheet" href="/static/avatar.css"/>
@@ -14,7 +15,20 @@ templ avatarDialog(v pageView) {
 			<h2 id="avatar-h">Change your picture</h2>
 			<button type="button" class="btn" data-avatar-close data-testid="avatar-close">Close</button>
 		</div>
-		<form class="avatar-pick" method="post" enctype="multipart/form-data" action={ templ.SafeURL(v.sectionPath("avatar")) }>
+		@uploadPanel(newPanelView(v.Address, v.Shown.Avatar, ""))
+	</dialog>
+}
+
+// uploadPanel is the first step: the form that uploads a picture, and the
+// status of the last one. The status loads as a fragment so it can poll while
+// the picture is processed in the background. Message is why the last attempt
+// was refused.
+templ uploadPanel(v panelView) {
+	<div id="avatar-panel" data-step="upload" data-testid="avatar-panel">
+		if v.Message != "" {
+			<p role="alert" data-testid="avatar-message">{ v.Message }</p>
+		}
+		<form class="avatar-pick" method="post" enctype="multipart/form-data" action={ templ.SafeURL(v.path("avatar")) } hx-post={ v.path("avatar") } hx-encoding="multipart/form-data" hx-target="#avatar-panel" hx-swap="outerHTML">
 			<label>
 				Choose a picture
 				<input type="file" name="avatar" accept={ uploadAccept } required/>
@@ -22,8 +36,41 @@ templ avatarDialog(v pageView) {
 			<button type="submit" class="btn accent">Upload</button>
 		</form>
 		<p class="muted">JPEG, PNG, GIF, WebP, HEIC or AVIF, up to { maxUploadMB } MB. You choose the square to keep on the next step.</p>
-		<div id="avatar-status" data-testid="avatar-status" hx-get={ statusSrc(v) } hx-trigger="load" hx-swap="outerHTML"></div>
-	</dialog>
+		<div id="avatar-status" data-testid="avatar-status" hx-get={ v.statusSrc() } hx-trigger="load" hx-swap="outerHTML"></div>
+	</div>
+}
+
+// cropPanel is the second step: the square to keep, drawn with Cropper.js
+// (embedded under /static/vendor). The form carries the rectangle as fractions
+// of the picture, so it still posts the whole picture when scripts are off. The
+// server checks the rectangle again; the page is only a way to choose it.
+templ cropPanel(v cropView) {
+	<div id="avatar-panel" data-step="crop" data-testid="avatar-panel">
+		if v.Failed != "" {
+			<p role="alert">{ v.Failed }</p>
+		}
+		<p class="muted">Drag the square to choose the part to keep.</p>
+		<div class="crop-stage">
+			<img id="crop-image" src={ v.path("avatar/preview/" + v.ID) } alt="The picture to crop" data-testid="crop-image"/>
+		</div>
+		<form class="crop-form" method="post" action={ templ.SafeURL(v.path("avatar/crop")) } hx-post={ v.path("avatar/crop") } hx-target="#avatar-panel" hx-swap="outerHTML" data-crop-form>
+			<input type="hidden" name="id" value={ v.ID }/>
+			<input type="hidden" name="x" value="0" data-crop="x"/>
+			<input type="hidden" name="y" value="0" data-crop="y"/>
+			<input type="hidden" name="w" value="1" data-crop="w"/>
+			<input type="hidden" name="h" value="1" data-crop="h"/>
+			<button type="submit" class="btn accent" data-testid="crop-save">Use this picture</button>
+			<a class="btn" href={ templ.SafeURL(Pattern + "/" + v.Address) } data-crop-cancel data-testid="crop-cancel">Cancel</a>
+		</form>
+	</div>
+}
+
+// savedPanel is the step after the crop: the job is processing, and the status
+// fragment polls until the profile has the new picture.
+templ savedPanel(v statusView) {
+	<div id="avatar-panel" data-step="saved" data-testid="avatar-panel">
+		@statusFragment(v)
+	</div>
 }
 
 // statusFragment says where the person's last upload stands. While it is
@@ -36,21 +83,21 @@ templ statusFragment(v statusView) {
 			</div>
 		case "uploaded":
 			<div id="avatar-status" data-testid="avatar-status" data-state="uploaded" role="status">
-				<p>Your picture is waiting to be cropped. <a class="link" href={ templ.SafeURL(v.cropPath()) }>Choose the square to keep</a></p>
+				<p>Your picture is waiting to be cropped. <a class="link" href={ templ.SafeURL(v.cropPath()) } hx-get={ v.cropPath() } hx-target="#avatar-panel" hx-swap="outerHTML">Choose the square to keep</a></p>
 			</div>
 		case "failed":
 			<div id="avatar-status" data-testid="avatar-status" data-state="failed" role="alert">
 				<p>{ v.Error }</p>
-				<p><a class="link" href={ templ.SafeURL(v.cropPath()) }>Try the crop again</a> or upload another picture.</p>
+				<p><a class="link" href={ templ.SafeURL(v.cropPath()) } hx-get={ v.cropPath() } hx-target="#avatar-panel" hx-swap="outerHTML">Try the crop again</a> or upload another picture.</p>
 			</div>
 		default:
 			<div id="avatar-status" data-testid="avatar-status" data-state="none"></div>
 	}
 }
 
-// cropScreen is where the person chooses the square to keep, with Cropper.js
-// (embedded under /static/vendor). The form carries the rectangle as fractions
-// of the picture, so it still posts the whole picture when scripts are off.
+// cropScreen is the crop step on a page of its own, for a browser that opened
+// the address directly or posted the upload without scripts. The dialog is the
+// way the profile page reaches the same step (cropPanel).
 templ cropScreen(v cropView) {
 	@layout.Page("Crop your picture") {
 		<div class="pg avatar-crop">
@@ -58,22 +105,7 @@ templ cropScreen(v cropView) {
 			<link rel="stylesheet" href="/static/avatar.css"/>
 			<section class="panel" aria-labelledby="crop-h">
 				<h1 id="crop-h">Crop your picture</h1>
-				if v.Failed != "" {
-					<p role="alert">{ v.Failed }</p>
-				}
-				<p class="muted">Drag the square to choose the part to keep.</p>
-				<div class="crop-stage">
-					<img id="crop-image" src={ v.path("avatar/preview/" + v.ID) } alt="The picture to crop" data-testid="crop-image"/>
-				</div>
-				<form class="crop-form" method="post" action={ templ.SafeURL(v.path("avatar/crop")) } data-crop-form>
-					<input type="hidden" name="id" value={ v.ID }/>
-					<input type="hidden" name="x" value="0" data-crop="x"/>
-					<input type="hidden" name="y" value="0" data-crop="y"/>
-					<input type="hidden" name="w" value="1" data-crop="w"/>
-					<input type="hidden" name="h" value="1" data-crop="h"/>
-					<button type="submit" class="btn accent" data-testid="crop-save">Use this picture</button>
-					<a class="btn" href={ templ.SafeURL(Pattern + "/" + v.Address) }>Cancel</a>
-				</form>
+				@cropPanel(v)
 			</section>
 			<script src="/static/vendor/cropper.min.js"></script>
 			<script src="/static/avatar.js"></script>

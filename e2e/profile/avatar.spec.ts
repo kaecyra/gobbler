@@ -16,8 +16,6 @@ function freshEmail(label: string): string {
 }
 
 const fixture = (name: string) => fileURLToPath(new URL(`./avatar-fixtures/${name}`, import.meta.url));
-const ADDRESS_URL = /\/profile\/[A-Za-z0-9_-]{22}$/;
-const CROP_URL = /\/profile\/[A-Za-z0-9_-]{22}\/avatar\/crop$/;
 const header = (page: Page) => page.getByRole('banner');
 
 /** Opens the picture dialog from the avatar. */
@@ -34,13 +32,19 @@ async function upload(page: Page, file: string | { name: string; mimeType: strin
   await page.getByRole('button', { name: 'Upload' }).click();
 }
 
-/** Waits for Cropper.js to draw, then keeps the default square. */
+/** Waits, in the dialog, for Cropper.js to draw, then keeps the default square. */
 async function cropAndSave(page: Page) {
-  await expect(page).toHaveURL(CROP_URL);
-  await expect(page.locator('html')).toHaveAttribute('data-crop-ready', 'true');
+  await waitForCrop(page);
   await page.getByTestId('crop-save').click();
-  await expect(page).toHaveURL(ADDRESS_URL);
 }
+
+/** Waits for the crop step in the dialog to be drawn. */
+async function waitForCrop(page: Page) {
+  await expect(dialogOf(page).locator('[data-crop-form][data-crop-ready=true]')).toBeAttached();
+  await expect(dialogOf(page).locator('.cropper-container')).toBeVisible();
+}
+
+const dialogOf = (page: Page) => page.getByTestId('profile-avatar-form');
 
 test.describe('uploading an avatar', () => {
   const me = freshEmail('avatar-me');
@@ -112,7 +116,6 @@ test.describe('uploading an avatar', () => {
 
   test('uploads a HEIC, which the browser cannot show, by cropping against a preview made by the server', async ({ page }) => {
     await upload(page, fixture('sample.heic'));
-    await expect(page).toHaveURL(CROP_URL);
     // Cropper.js hides the original image and draws its own; the preview itself loaded.
     await expect(page.locator('.cropper-container')).toBeVisible();
     expect(await page.getByTestId('crop-image').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
@@ -120,7 +123,7 @@ test.describe('uploading an avatar', () => {
     await expect(page.getByTestId('profile-avatar-img')).toBeVisible({ timeout: 60_000 });
   });
 
-  test('has controls at least 44px tall on the profile and the crop page, on a laptop and on a phone', async ({ page }) => {
+  test('has controls at least 44px tall on the profile and in the crop step, on a laptop and on a phone', async ({ page }) => {
     for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(viewport);
       await page.goto('/profile');
@@ -129,12 +132,69 @@ test.describe('uploading an avatar', () => {
       await expectTapTargets(page, 'dialog');
       await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
       await page.getByRole('button', { name: 'Upload' }).click();
-      await expect(page).toHaveURL(CROP_URL);
-      await expect(page.locator('html')).toHaveAttribute('data-crop-ready', 'true');
-      await expectTapTargets(page, 'main');
+      await waitForCrop(page);
+      await expectTapTargets(page, 'dialog');
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `${viewport.width}px`).toBeLessThanOrEqual(0);
     }
+  });
+});
+
+test.describe('the picture dialog', () => {
+  test.describe.configure({ mode: 'serial' });
+  const me = freshEmail('avatar-dialog');
+  test.use(asIdentity(me));
+
+  test('takes the upload, the crop and the save without leaving the profile page', async ({ page }) => {
+    await page.goto('/profile');
+    const profileUrl = page.url();
+    await openDialog(page);
+    await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
+    await page.getByRole('button', { name: 'Upload' }).click();
+
+    // The crop is the dialog's next step: same page, same dialog, Cropper drawn in it.
+    await waitForCrop(page);
+    expect(page.url()).toBe(profileUrl);
+    await expect(dialogOf(page).getByTestId('crop-image')).toBeAttached();
+    await expect(dialogOf(page)).toBeVisible();
+
+    await page.getByTestId('crop-save').click();
+    await expect(dialogOf(page).getByTestId('avatar-status')).toHaveAttribute('data-state', 'queued');
+    expect(page.url()).toBe(profileUrl);
+    await expect(page.getByTestId('profile-avatar-img')).toBeVisible({ timeout: 30_000 });
+  });
+
+  test('closing in the middle of a crop saves nothing and keeps the old avatar', async ({ page }) => {
+    await page.goto('/profile');
+    const before = (await page.getByTestId('profile-avatar-img').getAttribute('src'))!;
+    const served = await (await page.request.get(before)).body();
+
+    await openDialog(page);
+    await page.locator('input[name=avatar]').setInputFiles(fixture('sample.heic'));
+    await page.getByRole('button', { name: 'Upload' }).click();
+    await waitForCrop(page);
+    await page.keyboard.press('Escape');
+    await expect(dialogOf(page)).toBeHidden();
+
+    // Nothing was saved: the avatar is the old one, byte for byte, and the dialog starts over.
+    // The page is drawn again; its status says the upload is waiting to be cropped.
+    await expect(page.getByTestId('avatar-status')).toHaveAttribute('data-state', 'uploaded');
+    await expect(page.getByTestId('profile-avatar-img')).toHaveAttribute('src', before);
+    expect(Buffer.compare(served, await (await page.request.get(before)).body())).toBe(0);
+    await page.getByTestId('profile-avatar').click();
+    await expect(dialogOf(page).locator('input[name=avatar]')).toBeVisible();
+    await expect(dialogOf(page).getByTestId('crop-save')).toHaveCount(0);
+
+    // Cancel in the crop step closes it the same way.
+    await dialogOf(page).getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' }).click();
+    await waitForCrop(page);
+    // Only the step arrives, not a whole page nested in the dialog.
+    await expect(dialogOf(page).locator('header, main, h1')).toHaveCount(0);
+    await dialogOf(page).getByTestId('crop-cancel').click();
+    await expect(dialogOf(page)).toBeHidden();
+    // The page is drawn again; its status says the upload is waiting to be cropped.
+    await expect(page.getByTestId('avatar-status')).toHaveAttribute('data-state', 'uploaded');
+    await expect(page.getByTestId('profile-avatar-img')).toHaveAttribute('src', before);
   });
 });
 
@@ -212,9 +272,7 @@ test.describe('screenshots', () => {
     await openDialog(page);
     await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
     await page.getByRole('button', { name: 'Upload' }).click();
-    await expect(page).toHaveURL(CROP_URL);
-    await expect(page.locator('html')).toHaveAttribute('data-crop-ready', 'true');
-    await shoot('crop');
+    await waitForCrop(page);
     await page.getByTestId('crop-save').click();
     await expect(page.getByTestId('profile-avatar-img')).toBeVisible({ timeout: 30_000 });
     await shoot('profile');

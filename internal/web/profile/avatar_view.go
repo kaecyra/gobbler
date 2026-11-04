@@ -32,9 +32,25 @@ func (v statusView) statusPath() string {
 	return v.path("avatar/status") + "?has=" + url.QueryEscape(v.Has)
 }
 
-// statusSrc is the same address for the section's first request.
-func statusSrc(v pageView) string {
-	return v.sectionPath("avatar/status") + "?has=" + url.QueryEscape(v.Shown.Avatar)
+
+// panelView is the upload step of the dialog.
+type panelView struct {
+	Address string
+	// Has is the avatar key the page was drawn with.
+	Has string
+	// Message is why the last upload or crop was refused, for the person.
+	Message string
+}
+
+func newPanelView(address, has, message string) panelView {
+	return panelView{Address: address, Has: has, Message: message}
+}
+
+func (v panelView) path(section string) string { return Pattern + "/" + v.Address + "/" + section }
+
+// statusSrc is the status fragment's address for the step's first request.
+func (v panelView) statusSrc() string {
+	return v.path("avatar/status") + "?has=" + url.QueryEscape(v.Has)
 }
 func (v statusView) cropPath() string { return v.path("avatar/crop") }
 func (v statusView) path(section string) string {

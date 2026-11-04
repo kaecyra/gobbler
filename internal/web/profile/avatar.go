@@ -45,10 +45,10 @@ func (h *handler) avatarServeRoutes(r chi.Router) {
 // avatarRoutes registers the self-only routes of the section.
 //
 //	POST /{address}/avatar              the picture, as multipart
-//	GET  /{address}/avatar/crop         the page to choose the crop on
+//	GET  /{address}/avatar/crop         the crop step (a fragment for the dialog, a page otherwise)
 //	POST /{address}/avatar/crop         the chosen rectangle
 //	GET  /{address}/avatar/preview/{id} the picture to crop against
-//	GET  /{address}/avatar/status       the section's status fragment
+//	GET  /{address}/avatar/status       the dialog's status fragment
 func (h *handler) avatarRoutes(r chi.Router) {
 	r.Post("/avatar", h.uploadAvatar)
 	r.Get("/avatar/crop", h.cropPage)
@@ -104,18 +104,33 @@ func self(w http.ResponseWriter, r *http.Request) (subject, bool) {
 
 // refused answers an upload or crop the person must fix, with the message the
 // media package wrote for them.
-func refused(w http.ResponseWriter, r *http.Request, err error) bool {
+//
+// The dialog (htmx) shows the message in its own panel and starts over at the
+// first step. htmx does not swap a 4xx response, so that one answer is a 200;
+// a request that is not htmx still gets the status code and the error page.
+func refused(w http.ResponseWriter, r *http.Request, s subject, err error) bool {
 	if msg, ok := media.RefusalText(err); ok {
-		layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest, msg))
+		refuse(w, r, s, http.StatusBadRequest, msg)
 		return true
 	}
 	if errors.Is(err, domain.ErrBusy) {
-		layout.Render(w, r, http.StatusConflict, layout.ErrorPage(http.StatusConflict,
-			"Your last picture is still being processed. Wait for it to finish, then upload again."))
+		refuse(w, r, s, http.StatusConflict,
+			"Your last picture is still being processed. Wait for it to finish, then upload again.")
 		return true
 	}
 	return false
 }
+
+// refuse answers a request the person must correct, with msg.
+func refuse(w http.ResponseWriter, r *http.Request, s subject, status int, msg string) {
+	if fromHTMX(r) {
+		layout.Render(w, r, http.StatusOK, uploadPanel(newPanelView(s.Profile.Address, s.Profile.Avatar, msg)))
+		return
+	}
+	layout.Render(w, r, status, layout.ErrorPage(status, msg))
+}
+
+func fromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 
 func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 	s, ok := self(w, r)
@@ -124,15 +139,20 @@ func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := readUpload(w, r)
 	if err != nil {
-		if !refused(w, r, err) {
+		if !refused(w, r, s, err) {
 			layout.WriteError(w, r, err)
 		}
 		return
 	}
-	if _, err := h.Avatars.Upload(r.Context(), s.Profile.Email, data); err != nil {
-		if !refused(w, r, err) {
+	j, err := h.Avatars.Upload(r.Context(), s.Profile.Email, data)
+	if err != nil {
+		if !refused(w, r, s, err) {
 			layout.WriteError(w, r, err)
 		}
+		return
+	}
+	if fromHTMX(r) {
+		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, j)))
 		return
 	}
 	http.Redirect(w, r, Pattern+"/"+s.Profile.Address+"/avatar/crop", http.StatusSeeOther)
@@ -184,7 +204,15 @@ func (h *handler) cropPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !found || j.State == domain.JobQueued {
+		if fromHTMX(r) {
+			layout.Render(w, r, http.StatusOK, uploadPanel(newPanelView(s.Profile.Address, s.Profile.Avatar, "")))
+			return
+		}
 		redirectTo(w, r, s.Profile.Address)
+		return
+	}
+	if fromHTMX(r) {
+		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, j)))
 		return
 	}
 	layout.Render(w, r, http.StatusOK, cropScreen(newCropView(s.Profile.Address, j)))
@@ -199,16 +227,20 @@ func (h *handler) cropAvatar(w http.ResponseWriter, r *http.Request) {
 	for name, dst := range map[string]*float64{"x": &c.X, "y": &c.Y, "w": &c.W, "h": &c.H} {
 		v, err := strconv.ParseFloat(r.PostFormValue(name), 64)
 		if err != nil {
-			layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest,
-				"The crop is not valid. Choose the part of the picture again."))
+			refuse(w, r, s, http.StatusBadRequest, "The crop is not valid. Choose the part of the picture again.")
 			return
 		}
 		*dst = v
 	}
 	if err := h.Avatars.Crop(r.Context(), s.Profile.Email, r.PostFormValue("id"), c); err != nil {
-		if !refused(w, r, err) {
+		if !refused(w, r, s, err) {
 			layout.WriteError(w, r, err)
 		}
+		return
+	}
+	if fromHTMX(r) {
+		queued := newStatusView(s.Profile.Address, domain.Job{State: domain.JobQueued}, true, s.Profile.Avatar)
+		layout.Render(w, r, http.StatusOK, savedPanel(queued))
 		return
 	}
 	redirectTo(w, r, s.Profile.Address)
