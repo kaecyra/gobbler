@@ -1,22 +1,66 @@
-# Overseer handoff: 2026-11-04, after round 17
+# Overseer handoff: 2026-11-04, after round 18
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
-## Decisions session (2026-11-04)
+## Round 18 (2026-11-04): decisions, then wave 11 storage, limits and profile
 
-The owner settled #353 and the OAuth items from round 17 with `/decide`. Everything below in round 17 that says "blocked" or "no node" is now out of date.
+**Merged** (squash SHA; all under the standing authority unless noted):
 
-- **ADR-00035** (recipes awaiting review are stored as proposals, and an edit is reviewed in the recipe editor) and **ADR-00036** (per-address limits on the public OAuth endpoints, and a ceiling on clients without a grant) are in PR #363, with their plan nodes:
-  - `a-recipe-proposals` (#360): the storage half of ADR-00035. It draws a schema migration.
-  - `a-mcp-recipe-edit` (#353): the review half. Now unblocked. It depends on `a-recipe-proposals` and `a-oauth-limits` and draws a schema migration.
-  - `a-oauth-limits` (#361): ADR-00036.
-  - `m-backup-endpoint` (#348): the duplicated `parseEndpoint`.
-- **PR #364** (#362) raises the MCP defaults to 5/s with a burst of 50. VERSION 0.93.1.
-- **Confirmed as built:** OAuth accepts public clients only, and private-use redirect schemes must be reverse-domain names.
+| Node | PR | SHA | Schema | VERSION |
+|---|---|---|---|---|
+| m-backup-endpoint | #366 | d0b6bd7 | none | 0.93.2 |
+| a-oauth-limits | #368 | f05ff9f | none | 0.94.0 |
+| p-profile-layout | #373 | 6da8f8b | none | 0.95.0 |
+| a-recipe-proposals | #374 | 5a2af2d | 00027 | 0.96.0 |
 
-**Next:** #363 (8bc0aee) and #364 (77b843b, VERSION 0.93.1) are merged. `a-recipe-proposals`, `a-oauth-limits` and `m-backup-endpoint` can be dispatched. `a-mcp-recipe-edit` waits for the first two. Still parked: i-site-extractors (#193) and l-meal-planning (#38).
+- **Dispatcher PRs:**
+  - ADR-00035 and ADR-00036 with their nodes: #363.
+  - Lane corrections: #365, #367, #372.
+  - The p-profile-layout node: #370.
+  - The ADR-00036 obligation 5 correction: #371.
+  - MCP defaults to 5/s with a burst of 50: #364.
+- **#374 merged without CI,** on the owner's call during a GitHub Actions outage. Local `make check` was green.
+- **0.96.0 was built and pushed to GHCR from the host:** linux/amd64 from a clean checkout of 5a2af2d, after `check-image.sh` passed. The tags are `5a2af2d…` and `0.96.0`, both with digest sha256:3f4ab198…. The queued CI publish job will find `0.96.0` already published and leave it alone.
+
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
+
+**Owner calls this session (don't re-ask):**
+- **ADR-00035 forks:**
+  - edits are reviewed in the editor and shown inline on the recipe page, with a toggle;
+  - proposals live in their own table;
+  - keys are `stp-`/`lin-` plus a random part;
+  - one pending proposal per recipe;
+  - a stale proposal cannot be accepted;
+  - history records a revision of kind `proposal`;
+  - ingest drafts are durable;
+  - a snapshot is attached once on confirm;
+  - pending proposals expire at 365 days, and finished ones are pruned at 60;
+  - 20 pending new-recipe drafts per household;
+  - the photo stays in memory only.
+- **ADR-00036:** per-address limits on the public OAuth endpoints, with a trusted-proxy rule; the client ceiling counts only clients without a grant, at 10,000.
+- **Profile page:** avatar editing opens from the picture, in a dialog (upload and crop); "Profile" section; household section; section order profile, household, API keys, connected apps, sessions. Households have no roles (ADR-00018).
+- **OAuth:** public clients only, and reverse-domain private-use redirect schemes, both confirmed as built.
+
+**For the owner:**
+- **Deploy 0.96.0.** Set `GOBBLER_OIDC_PUBLIC_BASE_URL`, and set `GOBBLER_TRUSTED_PROXIES` to the gateway address cloudflared reaches gobbler from (see `docs/operations.md`).
+- **The container's golangci-lint 2.14.0 is built with go1.27.0.** Its revive misses `var-declaration` on standard-library types, which CI (Go 1.26.4) catches; #374 failed CI on exactly this. The fix is to build the linter with the repo's Go in `.odette/Dockerfile`, which is read-only to agents.
+
+**Open, not in the graph:**
+- **#375:** the cook timers e2e test is flaky.
+- **Recorded, not fixed (out of lane):**
+  - The access logger in `internal/web/middleware.go` logs the raw `remote_addr`, not the address `ratelimit.ResolveClient` resolves.
+  - `internal/web/profile/avatar.go` repeats the `HX-Request` check six times.
+  - `docs/ui/design.md` has no modal pattern; the avatar dialog is the first modal.
+- **Not done:** #363's ADRs were merged without `/sdlc-review-pr`.
+
+**Lessons:**
+- **A worker's test that names its placeholder migration breaks at the renumber.** `dbtest.MigrationsBelow("99999")` in #374 had to become `"00027"` after the dispatcher's rename, which cost a round. Tell workers to name the placeholder once, as a constant, and have the dispatcher's renumber step grep for `99999`.
+- **Local lint is not CI lint** while the container's linter has a different Go build (above). A green local `make check` does not prove lint passes.
+- **Lane gaps surfaced at dispatch and verification:** `internal/mcp/server.go` for proposals, and the sign-in and session tests, `serve.mjs` and the router test for limits. Before writing a lane, grep for every caller of the type being replaced.
+
+**Next:** `a-mcp-recipe-edit` (#353) is dispatchable now. It is the review half of ADR-00035: the MCP edit tool, editor review, inline marks, the stale check and history. It draws a schema migration (revision `change_kind` gains `proposal`). Still parked: i-site-extractors (#193) and l-meal-planning (#38).
 
 ## Round 17, after the container restart (2026-11-03)
 
