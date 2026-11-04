@@ -58,6 +58,9 @@ type Drafter interface {
 // *ingest.Drafts satisfies it. The household is the one on ctx.
 type Drafts interface {
 	Add(ctx context.Context, d ingest.Draft, by store.Provenance) (string, error)
+	// Full says the household already holds the most drafts it may, so a tool
+	// can refuse before it fetches or reads anything. Add stays the authority.
+	Full(ctx context.Context) (bool, error)
 }
 
 // Deps is everything the endpoint needs.

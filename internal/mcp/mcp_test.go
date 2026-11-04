@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -54,8 +55,15 @@ type site struct {
 
 type fakeDrafter struct{ ingest.Draft }
 
-func (f fakeDrafter) FromURL(context.Context, string) (ingest.Draft, error) { return f.Draft, nil }
+// fetches counts the calls any fakeDrafter has been asked to make.
+var fetches atomic.Int32
+
+func (f fakeDrafter) FromURL(context.Context, string) (ingest.Draft, error) {
+	fetches.Add(1)
+	return f.Draft, nil
+}
 func (f fakeDrafter) FromText(_ context.Context, text string) (ingest.Draft, error) {
+	fetches.Add(1)
 	d := f.Draft
 	d.Source.Content = []byte(text)
 	return d, nil
@@ -866,12 +874,19 @@ func TestTheTwentyFirstDraftIsRefusedOverMCP(t *testing.T) {
 		}
 		tokens = append(tokens, strings.TrimPrefix(out.ReviewPath, "/ingest/"))
 	}
+	before := fetches.Load()
 	msg := call(t, cs, "import_recipe", map[string]any{"text": "One more pie"}, nil)
 	if !strings.Contains(msg, "waiting for review") {
 		t.Fatalf("the 21st draft = %q, want a refusal saying drafts are waiting for review", msg)
 	}
 	if msg := call(t, cs, "create_recipe_draft", map[string]any{"name": "Toast", "ingredients": []string{"1 slice bread"}, "steps": []string{"Toast it."}}, nil); !strings.Contains(msg, "waiting for review") {
 		t.Errorf("create_recipe_draft past the limit = %q, want the same refusal", msg)
+	}
+	if msg := call(t, cs, "import_recipe", map[string]any{"url": "https://example.test/pie"}, nil); !strings.Contains(msg, "waiting for review") {
+		t.Errorf("import_recipe of a URL past the limit = %q, want the same refusal", msg)
+	}
+	if got := fetches.Load(); got != before {
+		t.Errorf("%d fetches or readings ran for drafts that were going to be refused", got-before)
 	}
 	for i, tok := range tokens {
 		if _, ok := s.draft(s.smiths, "ann@example.com", tok); !ok {
