@@ -35,3 +35,7 @@
 .avatar-error p { margin: 0 0 8px; }
 .avatar-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .avatar-dialog-head h2 { margin: 0; }
+
+/* The picture dialog and its scripts sit between the profile box and the first
+   section, which defeats .pg > .panel + .panel; space every later panel here. */
+.pg.profile > .panel ~ .panel { margin-top: 16px; }

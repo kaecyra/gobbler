@@ -133,3 +133,14 @@ test.describe('the order of the sections', () => {
     expect(found).toEqual(order);
   });
 });
+
+test.describe('spacing', () => {
+  test.use(asIdentity(freshEmail('layout-gap')));
+
+  test('the profile box and the first section have the gap every panel has', async ({ page }) => {
+    await page.goto('/profile');
+    const head = (await page.getByTestId('profile-identity').boundingBox())!;
+    const next = (await page.locator('.pg.profile > .panel').nth(1).boundingBox())!;
+    expect(next.y - (head.y + head.height)).toBeGreaterThanOrEqual(16);
+  });
+});
