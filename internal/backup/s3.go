@@ -3,7 +3,6 @@ package backup
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -21,7 +20,7 @@ type S3Store struct {
 // NewS3Store builds a client from cfg. The endpoint may carry an http:// or
 // https:// scheme; without one TLS is used. It makes no network call.
 func NewS3Store(cfg config.S3) (*S3Store, error) {
-	host, secure, err := parseEndpoint(cfg.Endpoint)
+	host, secure, err := cfg.HostTLS()
 	if err != nil {
 		return nil, err
 	}
@@ -34,18 +33,6 @@ func NewS3Store(cfg config.S3) (*S3Store, error) {
 		return nil, fmt.Errorf("create S3 client for %q: %w", host, err)
 	}
 	return &S3Store{client: c, bucket: cfg.Bucket}, nil
-}
-
-func parseEndpoint(endpoint string) (host string, secure bool, err error) {
-	switch {
-	case strings.HasPrefix(endpoint, "https://"):
-		return strings.TrimPrefix(endpoint, "https://"), true, nil
-	case strings.HasPrefix(endpoint, "http://"):
-		return strings.TrimPrefix(endpoint, "http://"), false, nil
-	case strings.Contains(endpoint, "://"):
-		return "", false, fmt.Errorf("S3 endpoint %q: only http and https are supported", endpoint)
-	}
-	return endpoint, true, nil
 }
 
 // Put uploads the file at path to key.
