@@ -1,8 +1,22 @@
-# Overseer handoff: 2026-11-03, round 17
+# Overseer handoff: 2026-11-04, after round 17
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Decisions session (2026-11-04)
+
+The owner settled #353 and the OAuth items from round 17 with `/decide`. Everything below in round 17 that says "blocked" or "no node" is now out of date.
+
+- **ADR-00035** (recipes awaiting review are stored as proposals, and an edit is reviewed in the recipe editor) and **ADR-00036** (per-address limits on the public OAuth endpoints, and a ceiling on clients without a grant) are in PR #363, with their plan nodes:
+  - `a-recipe-proposals` (#360): the storage half of ADR-00035. It draws a schema migration.
+  - `a-mcp-recipe-edit` (#353): the review half. Now unblocked. It depends on `a-recipe-proposals` and `a-oauth-limits` and draws a schema migration.
+  - `a-oauth-limits` (#361): ADR-00036.
+  - `m-backup-endpoint` (#348): the duplicated `parseEndpoint`.
+- **PR #364** (#362) raises the MCP defaults to 5/s with a burst of 50. VERSION 0.93.1.
+- **Confirmed as built:** OAuth accepts public clients only, and private-use redirect schemes must be reverse-domain names.
+
+**Next:** merge #363 and #364. After #363 merges, `a-recipe-proposals`, `a-oauth-limits` and `m-backup-endpoint` can be dispatched. `a-mcp-recipe-edit` waits for the first two. Still parked: i-site-extractors (#193) and l-meal-planning (#38).
 
 ## Round 17, after the container restart (2026-11-03)
 
