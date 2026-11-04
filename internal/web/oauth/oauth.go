@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/oauth"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 )
 
 // The paths of the endpoints. The public ones are also listed in package
@@ -59,6 +60,10 @@ type Deps struct {
 	// empty (ADR-00003).
 	DevBypass bool
 	Logger    *slog.Logger
+	// Register and Token hold each client address to a leaky bucket on client
+	// registration and the token endpoint (ADR-00036). A nil limiter leaves
+	// that endpoint unlimited; the wiring in package web sets both.
+	Register, Token *ratelimit.Limiter
 }
 
 type handler struct {
@@ -78,11 +83,20 @@ func newHandler(d Deps) *handler {
 func Routes(d Deps) chi.Router {
 	h := newHandler(d)
 	r := chi.NewRouter()
-	r.Post("/register", h.register)
+	r.With(perAddress(d.Register)).Post("/register", h.register)
 	r.Get("/authorize", h.authorizeGet)
 	r.Post("/authorize", h.authorizePost)
-	r.Post("/token", h.token)
+	r.With(perAddress(d.Token)).Post("/token", h.token)
 	return r
+}
+
+// perAddress holds each client address to l's bucket (ADR-00036); a nil l
+// limits nothing.
+func perAddress(l *ratelimit.Limiter) func(http.Handler) http.Handler {
+	if l == nil {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	return l.Middleware(ratelimit.ClientKey)
 }
 
 // WellKnownRoutes returns the discovery documents under WellKnownPattern.

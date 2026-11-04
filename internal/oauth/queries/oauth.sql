@@ -13,8 +13,12 @@ DELETE FROM oauth_clients
 WHERE oauth_clients.created_at < sqlc.arg(cutoff)
   AND NOT EXISTS (SELECT 1 FROM oauth_grants g WHERE g.client_id = oauth_clients.client_id);
 
+-- CountClients counts the clients without a grant: the ones PruneClients
+-- removes and the registration ceiling bounds (ADR-00036). A client with a
+-- grant is in use and is never counted.
 -- name: CountClients :one
-SELECT count(*) FROM oauth_clients;
+SELECT count(*) FROM oauth_clients
+WHERE NOT EXISTS (SELECT 1 FROM oauth_grants g WHERE g.client_id = oauth_clients.client_id);
 
 -- name: InsertCode :exec
 INSERT INTO oauth_codes (code_hash, owner_email, client_id, client_name, redirect_uri, code_challenge, resource, created_at, expires_at)

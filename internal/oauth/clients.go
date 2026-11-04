@@ -21,9 +21,10 @@ const (
 	MaxClientNameRunes = 100
 	// MaxRedirectURIs is the most redirect URIs one client may register.
 	MaxRedirectURIs = 10
-	// MaxClients is how many self-registered clients are kept. The registration
-	// endpoint is public, so the table needs a ceiling.
-	MaxClients = 1000
+	// MaxClients is how many self-registered clients that have no grant are
+	// kept (ADR-00036). The registration endpoint is public, so the table needs
+	// a ceiling; a client with a grant is in use and does not count towards it.
+	MaxClients = 10000
 	// ClientRetention is how long a self-registered client that never got a
 	// grant is kept.
 	ClientRetention = 24 * time.Hour
@@ -111,8 +112,8 @@ func cleanName(name string) string {
 }
 
 // RegisterClient stores a client that registered itself (RFC 7591) and returns
-// it with its new id. It refuses a registration past MaxClients once clients
-// that never got a grant are pruned.
+// it with its new id. It refuses a registration when MaxClients clients without
+// a grant are kept, once those older than ClientRetention are pruned.
 func (s *Store) RegisterClient(ctx context.Context, m ClientMetadata) (Client, error) {
 	m, err := m.Normalize()
 	if err != nil {

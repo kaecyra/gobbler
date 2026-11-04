@@ -24,6 +24,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -128,6 +129,9 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	// No trusted origins and no bypass patterns: no handler opts out (ADR-00016).
 	cop := http.NewCrossOriginProtection()
 	r.Use(requestLogger(log), recoverer(log))
+	// Once, first, so the session list and the OAuth limits see one client
+	// address (ADR-00036).
+	r.Use(ratelimit.ResolveClient(d.Config.Server.TrustedProxies))
 	if d.SignIn != nil {
 		// Before identity, so the pages that refuse a request show it too.
 		r.Use(markSignIn)

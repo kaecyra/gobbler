@@ -3,6 +3,7 @@ package web
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/sharing"
 	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -184,6 +186,8 @@ func mountOAuth(r chi.Router, d Deps) {
 	deps := weboauth.Deps{
 		OAuth: oauth.New(d.DB), Metadata: oauth.NewMetadataFetcher(),
 		PublicBaseURL: d.Config.OIDC.PublicBaseURL, DevBypass: d.Config.Server.DevAuthBypass, Logger: d.Logger,
+		Register: ratelimit.New(d.Config.OAuth.Register.Rate, d.Config.OAuth.Register.Burst, time.Now),
+		Token:    ratelimit.New(d.Config.OAuth.Token.Rate, d.Config.OAuth.Token.Burst, time.Now),
 	}
 	r.Mount(weboauth.WellKnownPattern, weboauth.WellKnownRoutes(deps))
 	r.Mount(weboauth.Pattern, weboauth.Routes(deps))

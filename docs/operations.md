@@ -90,13 +90,14 @@ sign-in, however recently they were used.
 A session row records, beside its start, last use and expiry, the browser's
 user agent and the client IP address, both taken when the session starts
 ([ADR-00032](./adr/00032-profiles.md)). Behind the Cloudflare tunnel the
-address is the `CF-Connecting-IP` header, and the connection's remote address
-when that header is missing or is not an IP address. The person sees them, with
+address is the connection's remote address, or the `CF-Connecting-IP` header
+when the connection comes from a trusted proxy (`GOBBLER_TRUSTED_PROXIES`, see
+[Trusted proxies](#trusted-proxies)) and the header is an IP
+address. The person sees them, with
 the browser and system read from the user agent, in the Sessions section of
 their own profile, where they can end one session or every session but the
 current one; nobody else sees them. The address is for display only and never
-admits or refuses anyone: anything that reaches the app's port directly can set
-that header to any value ([ADR-00027](./adr/00027-publish-on-all-interfaces.md)). Both are deleted with
+admits or refuses anyone ([ADR-00027](./adr/00027-publish-on-all-interfaces.md)). Both are deleted with
 the row when the session ends or expires. Sessions that began before the app recorded
 these details show them empty.
 
@@ -212,6 +213,11 @@ the container runs in UTC.
 | `GOBBLER_VIDEO_THUMBNAIL_HOST` | `https://i.ytimg.com` | no | Origin a recipe video's thumbnail is downloaded from when a recipe with that video is saved ([ADR-00021](./adr/00021-youtube-video-on-a-recipe.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fixture so no test reaches YouTube. |
 | `GOBBLER_MCP_RATE` | `5` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
 | `GOBBLER_MCP_BURST` | `50` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
+| `GOBBLER_TRUSTED_PROXIES` | empty | no | Comma-separated IP addresses or CIDR ranges whose `CF-Connecting-IP` header is believed ([ADR-00036](./adr/00036-rate-limits-on-public-oauth-endpoints.md)). Empty means the header is never read. See [Trusted proxies](#trusted-proxies). |
+| `GOBBLER_OAUTH_REGISTER_RATE` | `0.1` | no | Client registrations per second each address may sustain at `/oauth/register`, 0.001 to 1000. |
+| `GOBBLER_OAUTH_REGISTER_BURST` | `10` | no | Registrations one address may make at once before it is held to the rate; minimum 1. |
+| `GOBBLER_OAUTH_TOKEN_RATE` | `1` | no | Requests per second each address may sustain at `/oauth/token`, 0.001 to 1000. |
+| `GOBBLER_OAUTH_TOKEN_BURST` | `20` | no | Requests one address may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |
@@ -318,8 +324,8 @@ to no household gets `403`. A session cookie never opens `/mcp`.
 
 Each credential has its own leaky bucket: `GOBBLER_MCP_RATE` requests per
 second drain it, and `GOBBLER_MCP_BURST` requests fit at once. A request past
-that gets `429` with `Retry-After` in seconds. The defaults (2 a second, a burst
-of 20) suit one home server and a few agents; raise them for a busy automation.
+that gets `429` with `Retry-After` in seconds. The defaults (5 a second, a burst
+of 50) suit one home server and a few agents; raise them for a busy automation.
 
 ## OAuth for MCP clients
 
@@ -340,9 +346,10 @@ token fail its audience check and every client has to be allowed again.
 - **How a client identifies itself.** By Dynamic Client Registration at
   `/oauth/register`, or by using the URL of a Client ID Metadata Document as its
   `client_id`. Clients are public and use PKCE (`S256`) and the `resource`
-  parameter, so gobbler issues and stores no client secret. gobbler keeps at most
-  1000 registered clients and deletes those that never received a grant after a
-  day.
+  parameter, so gobbler issues and stores no client secret. gobbler deletes
+  clients that never received a grant after a day, and keeps at most 10,000 of
+  those; a registration past that is refused until the pruning makes room.
+  Clients with a grant are never pruned and do not count towards the 10,000.
 - **Fetching a metadata document.** The URL must be https. gobbler never connects
   to a private, loopback or link-local address, follows no redirect, and gives up
   after 5 seconds or 16 KiB. A client that lives on your own network is refused
@@ -364,8 +371,42 @@ token fail its audience check and every client has to be allowed again.
   member is removed or leaves, their grants are revoked in the same change that
   revokes their keys.
 - **Logs.** No log line contains a code, a token or a verifier.
-- **Limits.** The registration and token endpoints are public and have no rate
-  limit of their own. Browsers cannot call them from another origin.
+- **Limits.** The registration and token endpoints are public, so each client
+  address has its own leaky bucket for each
+  ([ADR-00036](adr/00036-rate-limits-on-public-oauth-endpoints.md)):
+  `GOBBLER_OAUTH_REGISTER_RATE` and `GOBBLER_OAUTH_REGISTER_BURST` for
+  `/oauth/register` (by default 1 every 10 seconds, 10 at once), and
+  `GOBBLER_OAUTH_TOKEN_RATE` and `GOBBLER_OAUTH_TOKEN_BURST` for `/oauth/token`
+  (1 a second, 20 at once). A request past the burst gets `429` with
+  `Retry-After` in seconds. They suit one home server; raise them if several
+  people connect clients from behind one address. Browsers cannot call these
+  endpoints from another origin.
+
+### Trusted proxies
+
+Behind the Cloudflare tunnel the caller's address arrives in the
+`CF-Connecting-IP` header, but gobbler listens on every interface
+([ADR-00027](adr/00027-publish-on-all-interfaces.md)), so anything on the private
+network could send that header with any value. gobbler therefore uses the
+connection's own address as the client address, and reads the header only when
+the connection comes from an address in `GOBBLER_TRUSTED_PROXIES`. With it empty
+every caller behind the tunnel looks like the cloudflared container: the
+per-address limits above then share one bucket for all of them, and the
+Sessions list shows the proxy's address.
+
+Set it to the address cloudflared connects from, as the gobbler container sees
+it. cloudflared runs on the VM guest and reaches `127.0.0.1:8080`, which Docker
+forwards into the container, so the connection arrives from the gateway of the
+Compose network, not from a container. Read the gateway with
+`docker network inspect <project>_default` and list that one address:
+
+```
+GOBBLER_TRUSTED_PROXIES=172.18.0.1
+```
+
+Check it after setting: sign in through the tunnel and confirm the Sessions
+list shows your own address, not the gateway's. List only the proxy: any
+address in the list can set the client address of its requests to any value.
 
 ## Backups
 

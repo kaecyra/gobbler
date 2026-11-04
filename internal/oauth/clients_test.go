@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/kaecyra/gobbler/internal/oauth"
@@ -71,26 +72,70 @@ func TestRegistrationIsCappedAndPrunesClientsThatNeverGotAGrant(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
 	m := oauth.ClientMetadata{RedirectURIs: []string{"https://app.example/cb"}}
-	for i := 0; i < oauth.MaxClients; i++ {
-		if _, err := f.d.ExecContext(ctx, `INSERT INTO oauth_clients (client_id, client_name, redirect_uris, created_at) VALUES (?, 'x', '[]', ?)`,
-			fmt.Sprintf("gobc_%d", i), "2026-11-03T12:00:00.000000000Z"); err != nil {
-			t.Fatal(err)
-		}
-	}
+	f.fillClients(t, oauth.MaxClients)
 	_, err := f.store.RegisterClient(ctx, m)
 	wantCode(t, err, oauth.ErrTemporarilyBusy)
 
 	// A day later the unused ones are pruned to make room, but one with a grant stays.
-	if _, err := f.d.ExecContext(ctx, `INSERT INTO oauth_grants (owner_email, client_id, client_name, return_host, resource, created_at)
-		VALUES ('ann@example.com', 'gobc_0', 'x', 'h', 'r', 't')`); err != nil {
-		t.Fatal(err)
-	}
+	f.grant(t, "gobc_0")
 	f.now = f.now.Add(oauth.ClientRetention + 2)
 	if _, err := f.store.RegisterClient(ctx, m); err != nil {
 		t.Fatal(err)
 	}
 	if n := f.count("oauth_clients"); n != 2 {
 		t.Fatalf("clients after prune = %d, want the granted one and the new one", n)
+	}
+}
+
+// ADR-00036: the ceiling is 10,000 clients without a grant. Clients with a
+// grant neither count towards it nor are pruned.
+func TestCeilingCountsOnlyClientsWithoutAGrant(t *testing.T) {
+	if oauth.MaxClients != 10000 {
+		t.Fatalf("MaxClients = %d, want 10000", oauth.MaxClients)
+	}
+	f := newFixture(t)
+	ctx := context.Background()
+	m := oauth.ClientMetadata{RedirectURIs: []string{"https://app.example/cb"}}
+	f.fillClients(t, oauth.MaxClients)
+	// Granting 50 of the full table frees 50 places: they are in use, not counted.
+	for i := 0; i < 50; i++ {
+		f.grant(t, fmt.Sprintf("gobc_%d", i))
+	}
+	for i := 0; i < 50; i++ {
+		if _, err := f.store.RegisterClient(ctx, m); err != nil {
+			t.Fatalf("registration %d refused though clients with a grant do not count: %v", i+1, err)
+		}
+	}
+	_, err := f.store.RegisterClient(ctx, m)
+	wantCode(t, err, oauth.ErrTemporarilyBusy)
+
+	// Well past retention every unused client is pruned; the granted ones stay.
+	f.now = f.now.Add(oauth.ClientRetention + time.Hour)
+	if _, err := f.store.RegisterClient(ctx, m); err != nil {
+		t.Fatal(err)
+	}
+	if n := f.count("oauth_clients"); n != 51 {
+		t.Fatalf("clients after prune = %d, want the 50 granted and the new one", n)
+	}
+}
+
+// fillClients inserts n clients registered a moment before the fixture's
+// clock, named gobc_0 to gobc_<n-1>, in one transaction.
+func (f *fixture) fillClients(t *testing.T, n int) {
+	t.Helper()
+	_, err := f.d.ExecContext(context.Background(), `WITH RECURSIVE s(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM s WHERE i + 1 < ?)
+		INSERT INTO oauth_clients (client_id, client_name, redirect_uris, created_at)
+		SELECT 'gobc_' || i, 'x', '[]', '2026-11-03T12:00:00.000000000Z' FROM s`, n)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (f *fixture) grant(t *testing.T, clientID string) {
+	t.Helper()
+	if _, err := f.d.ExecContext(context.Background(), `INSERT INTO oauth_grants (owner_email, client_id, client_name, return_host, resource, created_at)
+		VALUES ('ann@example.com', ?, 'x', 'h', 'r', 't')`, clientID); err != nil {
+		t.Fatal(err)
 	}
 }
 

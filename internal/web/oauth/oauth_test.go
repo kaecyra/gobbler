@@ -54,6 +54,12 @@ type site struct {
 // bypass, which reads the identity from a header), over a real database.
 func newSite(t *testing.T, meta weboauth.MetadataSource) *site {
 	t.Helper()
+	return newSiteWith(t, meta, nil)
+}
+
+// newSiteWith is newSite with a chance to change the dependencies first.
+func newSiteWith(t *testing.T, meta weboauth.MetadataSource, change func(*weboauth.Deps)) *site {
+	t.Helper()
 	ctx := context.Background()
 	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
 	if err != nil {
@@ -71,6 +77,9 @@ func newSite(t *testing.T, meta weboauth.MetadataSource) *site {
 	deps := weboauth.Deps{
 		OAuth: oauth.New(d), Metadata: meta, PublicBaseURL: base,
 		Logger: slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	}
+	if change != nil {
+		change(&deps)
 	}
 	r := chi.NewRouter()
 	r.Use(a.Middleware(layout.IsPublic))

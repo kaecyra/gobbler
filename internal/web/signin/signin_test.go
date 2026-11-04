@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/signin/signintest"
@@ -499,7 +501,8 @@ func TestLocalPath(t *testing.T) {
 }
 
 // ADR-00032: the callback records the browser's user agent and its address,
-// the address from CF-Connecting-IP behind the tunnel.
+// the address from CF-Connecting-IP when the peer is a trusted proxy
+// (ADR-00036).
 func TestSignInRecordsTheUserAgentAndIP(t *testing.T) {
 	h := newHarness(t)
 	authURL, pending := h.start(t, "/")
@@ -508,7 +511,10 @@ func TestSignInRecordsTheUserAgentAndIP(t *testing.T) {
 	r.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0")
 	r.Header.Set("CF-Connecting-IP", "203.0.113.9")
 	r.RemoteAddr = "172.18.0.2:44000"
-	c := cookieNamed(h.serve(r).Result(), auth.SessionCookie)
+	rec := httptest.NewRecorder()
+	trusted := []netip.Prefix{netip.MustParsePrefix("172.18.0.0/16")}
+	ratelimit.ResolveClient(trusted)(h.app).ServeHTTP(rec, r)
+	c := cookieNamed(rec.Result(), auth.SessionCookie)
 	if c == nil {
 		t.Fatal("no session cookie")
 	}
