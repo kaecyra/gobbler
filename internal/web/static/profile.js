@@ -110,20 +110,28 @@
     if (e.target.closest && e.target.closest('#avatar-status [data-avatar-resume]')) show();
   });
 
-  dialog.addEventListener('htmx:responseError', function (e) {
+  // forDialog says whether a failed request was the dialog's: made from inside
+  // it, or aimed at its step from outside, as the status line's crop link is.
+  // Those events fire on the link and bubble past the dialog, so they are
+  // heard on the document.
+  function forDialog(e) {
+    var target = e.detail && e.detail.target;
+    return dialog.contains(e.target) || (target && target.id === 'avatar-panel');
+  }
+  function onFailure(name, message) {
+    document.addEventListener(name, function (e) {
+      if (!forDialog(e)) return;
+      show();
+      showError(typeof message === 'function' ? message(e) : message);
+    });
+  }
+  onFailure('htmx:responseError', function (e) {
     var status = e.detail.xhr ? e.detail.xhr.status : 0;
-    if (status === 401 || status === 403) {
-      showError('You are signed out. Reload this page to sign in again.');
-    } else {
-      showError('Something went wrong on our side, and your picture was not saved.');
-    }
+    if (status === 401 || status === 403) return 'You are signed out. Reload this page to sign in again.';
+    return 'Something went wrong on our side, and your picture was not saved.';
   });
-  dialog.addEventListener('htmx:sendError', function () {
-    showError('The connection failed, and your picture was not saved. Check it and try again.');
-  });
-  dialog.addEventListener('htmx:timeout', function () {
-    showError('The request took too long, and your picture was not saved.');
-  });
+  onFailure('htmx:sendError', 'The connection failed, and your picture was not saved. Check it and try again.');
+  onFailure('htmx:timeout', 'The request took too long, and your picture was not saved.');
   document.body.addEventListener('htmx:afterSwap', function (e) {
     if (e.detail.target && e.detail.target.id === 'avatar-panel') clearError();
   });

@@ -262,6 +262,50 @@ test.describe('the picture dialog', () => {
   });
 });
 
+test.describe('the picture dialog and the page around it', () => {
+  const me = freshEmail('avatar-around');
+  test.use(asIdentity(me));
+
+  test('closing while the picture goes up cancels it, so no crop arrives later', async ({ page }) => {
+    await page.goto('/profile');
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route(/\/avatar$/, async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      await held;
+      await route.continue().catch(() => {}); // the page has already given up on it
+    });
+    const failed = page.waitForEvent('requestfailed', (r) => r.method() === 'POST' && /\/avatar$/.test(r.url()));
+    await choose(page, fixture('gps-tagged.jpg'));
+    await expect(dialogOf(page).getByTestId('avatar-loading')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogOf(page)).toBeHidden();
+    await failed;
+    release();
+    await page.unroute(/\/avatar$/);
+
+    // The dialog is back on its first step: the avatar opens the chooser again.
+    await expect(dialogOf(page).getByTestId('crop-image')).toHaveCount(0);
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('profile-avatar').click();
+    await chooser;
+    await expect(dialogOf(page)).toBeHidden();
+  });
+
+  test('a crop link on the page that fails says so in the dialog', async ({ page }) => {
+    await upload(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    await page.keyboard.press('Escape');
+    const resume = page.getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' });
+    await expect(resume).toBeVisible();
+
+    await page.route(/\/avatar\/crop$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ status: 500, body: 'boom' }) : route.continue()));
+    await resume.click();
+    await expect(dialogOf(page)).toBeVisible();
+    await expect(dialogOf(page).getByTestId('avatar-error')).toContainText('went wrong on our side');
+  });
+});
+
 test.describe('the avatar without scripts', () => {
   const me = freshEmail('avatar-noscript');
   test.use({ ...asIdentity(me), javaScriptEnabled: false });
