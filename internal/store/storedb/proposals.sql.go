@@ -85,13 +85,18 @@ func (q *Queries) DeleteProposalIngredients(ctx context.Context, proposalID int6
 }
 
 const deleteUnattachedSnapshot = `-- name: DeleteUnattachedSnapshot :execrows
-DELETE FROM source_snapshots WHERE id = ? AND recipe_id IS NULL
+DELETE FROM source_snapshots WHERE id = ?1 AND household_id = ?2 AND recipe_id IS NULL
 `
+
+type DeleteUnattachedSnapshotParams struct {
+	ID          int64
+	HouseholdID int64
+}
 
 // Only a snapshot with no recipe can be deleted; an attached one goes with its
 // recipe.
-func (q *Queries) DeleteUnattachedSnapshot(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUnattachedSnapshot, id)
+func (q *Queries) DeleteUnattachedSnapshot(ctx context.Context, arg DeleteUnattachedSnapshotParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteUnattachedSnapshot, arg.ID, arg.HouseholdID)
 	if err != nil {
 		return 0, err
 	}
@@ -328,13 +333,14 @@ func (q *Queries) InsertUnattachedSnapshot(ctx context.Context, arg InsertUnatta
 }
 
 const listFinishedProposals = `-- name: ListFinishedProposals :many
-SELECT id, snapshot_id, state_at FROM proposals WHERE state IN ('rejected', 'superseded', 'expired')
+SELECT id, household_id, snapshot_id, state_at FROM proposals WHERE state IN ('rejected', 'superseded', 'expired')
 `
 
 type ListFinishedProposalsRow struct {
-	ID         int64
-	SnapshotID sql.NullInt64
-	StateAt    string
+	ID          int64
+	HouseholdID int64
+	SnapshotID  sql.NullInt64
+	StateAt     string
 }
 
 func (q *Queries) ListFinishedProposals(ctx context.Context) ([]ListFinishedProposalsRow, error) {
@@ -346,7 +352,12 @@ func (q *Queries) ListFinishedProposals(ctx context.Context) ([]ListFinishedProp
 	var items []ListFinishedProposalsRow
 	for rows.Next() {
 		var i ListFinishedProposalsRow
-		if err := rows.Scan(&i.ID, &i.SnapshotID, &i.StateAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.HouseholdID,
+			&i.SnapshotID,
+			&i.StateAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

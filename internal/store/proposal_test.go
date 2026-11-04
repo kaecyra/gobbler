@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -264,13 +265,20 @@ func TestSnapshotAttachesOnceDeletesOnlyWhileUnattachedAndNeverChanges(t *testin
 		t.Errorf("snapshot belongs to recipe %d (err %v) after a refused attach, want %d", owner, err, r1)
 	}
 
-	if err := deleteUnattachedSnapshot(ctx, q, snapA); !errors.Is(err, ErrSnapshotAttached) {
+	if err := deleteUnattachedSnapshot(ctx, q, hid, snapA); !errors.Is(err, ErrSnapshotAttached) {
 		t.Errorf("deleting an attached snapshot = %v, want ErrSnapshotAttached", err)
 	}
 	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE id = ?`, snapA); n != 1 {
 		t.Error("an attached snapshot was deleted")
 	}
-	if err := deleteUnattachedSnapshot(ctx, q, snapB); err != nil {
+	// Another household's id for it deletes nothing.
+	if err := deleteUnattachedSnapshot(ctx, q, otherHouseholdID, snapB); !errors.Is(err, ErrSnapshotAttached) {
+		t.Errorf("deleting household 1's snapshot as household 2 = %v, want it refused", err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE id = ?`, snapB); n != 1 {
+		t.Error("another household's delete removed a snapshot")
+	}
+	if err := deleteUnattachedSnapshot(ctx, q, hid, snapB); err != nil {
 		t.Errorf("deleting an unattached snapshot: %v", err)
 	}
 	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE id = ?`, snapB); n != 0 {
@@ -585,5 +593,80 @@ func TestDeletingARecipeDeletesItsProposals(t *testing.T) {
 	}
 	if n := count(t, d, `SELECT COUNT(*) FROM proposal_ingredients WHERE proposal_id NOT IN (SELECT id FROM proposals)`); n != 0 {
 		t.Errorf("%d index rows outlived their proposals", n)
+	}
+}
+
+// A draft whose snapshot is gone is a broken row. Confirming it must not store
+// a recipe with no source, which Save's rule forbids.
+func TestConfirmingADraftWithNoSnapshotStoresNothing(t *testing.T) {
+	s, d := newTestStore(t)
+	ctx := authedCtx(t)
+	token, err := s.ProposeDraft(ctx, draftInput(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`UPDATE proposals SET snapshot_id = NULL WHERE token = ?`, token); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateFromDraft(ctx, token, simpleRecipe("No source")); !errors.Is(err, ErrCorrupt) {
+		t.Fatalf("confirming a draft with no snapshot = %v, want ErrCorrupt", err)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM recipes`); n != 0 {
+		t.Errorf("%d recipes stored with no source snapshot", n)
+	}
+	if p, _ := s.GetProposal(ctx, token); p.State != ProposalPending {
+		t.Errorf("proposal is %s after the refusal, want pending", p.State)
+	}
+}
+
+// ADR-00035 obligation 14 under contention: many requests racing for a
+// household's last places get exactly the places there are.
+func TestTheDraftCapHoldsUnderConcurrentRequests(t *testing.T) {
+	s, d := newTestStore(t)
+	ctx := otherCtx(t)
+	const racers = 25
+	var wg sync.WaitGroup
+	errs := make([]error, racers)
+	for i := range errs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, errs[i] = s.ProposeDraft(ctx, draftInput(0))
+		}()
+	}
+	wg.Wait()
+	var ok, refused int
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			ok++
+		case errors.Is(err, ErrDraftLimit):
+			refused++
+		default:
+			t.Errorf("unexpected error: %v", err)
+		}
+	}
+	if ok != MaxPendingDrafts || refused != racers-MaxPendingDrafts {
+		t.Errorf("%d succeeded and %d were refused, want %d and %d", ok, refused, MaxPendingDrafts, racers-MaxPendingDrafts)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM proposals WHERE household_id = ? AND state = 'pending'`, otherHouseholdID); n != MaxPendingDrafts {
+		t.Errorf("%d drafts pending, want %d", n, MaxPendingDrafts)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE household_id = ?`, otherHouseholdID); n != MaxPendingDrafts {
+		t.Errorf("%d snapshots written, want %d: a refused draft writes none", n, MaxPendingDrafts)
+	}
+}
+
+func TestReplacingAnEditProposalAsADraftIsInvalidNotStale(t *testing.T) {
+	s, d := newTestStore(t)
+	_, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	id := newRecipe(ctx, t, s, ids.salt)
+	tok, err := s.ProposeEdit(ctx, id, 1, editOf(ctx, t, s, id, func(r *recipe.Recipe) { r.Name = "E" }), agent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReplaceDraft(ctx, tok, draftDoc(0)); !errors.Is(err, ErrInvalid) || errors.Is(err, ErrNotPending) {
+		t.Errorf("ReplaceDraft on an edit proposal = %v, want ErrInvalid", err)
 	}
 }

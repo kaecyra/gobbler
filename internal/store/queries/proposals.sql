@@ -15,7 +15,7 @@ WHERE id = sqlc.arg(id) AND household_id = sqlc.arg(household_id) AND recipe_id 
 -- Only a snapshot with no recipe can be deleted; an attached one goes with its
 -- recipe.
 -- name: DeleteUnattachedSnapshot :execrows
-DELETE FROM source_snapshots WHERE id = ? AND recipe_id IS NULL;
+DELETE FROM source_snapshots WHERE id = sqlc.arg(id) AND household_id = sqlc.arg(household_id) AND recipe_id IS NULL;
 
 -- name: GetSnapshotByID :one
 SELECT kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
@@ -65,7 +65,7 @@ SELECT id, created_at FROM proposals WHERE state = 'pending';
 UPDATE proposals SET state = 'expired', state_at = sqlc.arg(state_at) WHERE id = sqlc.arg(id) AND state = 'pending';
 
 -- name: ListFinishedProposals :many
-SELECT id, snapshot_id, state_at FROM proposals WHERE state IN ('rejected', 'superseded', 'expired');
+SELECT id, household_id, snapshot_id, state_at FROM proposals WHERE state IN ('rejected', 'superseded', 'expired');
 
 -- name: DeleteProposal :exec
 DELETE FROM proposals WHERE id = ?;

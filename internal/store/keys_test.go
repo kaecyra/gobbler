@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -240,9 +241,6 @@ func TestMigrationGivesExistingRowsKeys(t *testing.T) {
 	if n := count(t, d, `SELECT COUNT(*) FROM recipe_keys WHERE recipe_id = 7`); n != 4 {
 		t.Errorf("recipe_keys holds %d keys for the recipe, want 4", n)
 	}
-	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = 7`); n != 1 {
-		t.Errorf("the migrated snapshot kept %d rows, want 1", n)
-	}
 	if rows, err := d.Query(`PRAGMA foreign_key_check`); err != nil {
 		t.Fatal(err)
 	} else {
@@ -295,5 +293,75 @@ func TestARemovedKeyCannotComeBackOnAnEdit(t *testing.T) {
 	back, _ := s.Get(ctx, id)
 	if gs, gl := keysOf(back); strings.Join(gs, ",") != strings.Join(steps, ",") || strings.Join(gl, ",") != strings.Join(lines, ",") {
 		t.Errorf("restored keys %v %v, want %v %v", gs, gl, steps, lines)
+	}
+}
+
+// The source_snapshots table is rebuilt to let recipe_id be NULL. Every column
+// of every row must come through the copy unchanged: a snapshot is the record of
+// what was ingested, byte for byte (ADR-00004), and nothing may rewrite it.
+func TestMigrationKeepsEverySnapshotColumn(t *testing.T) {
+	ctx := context.Background()
+	d := openRaw(t)
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("99999")); err != nil {
+		t.Fatal(err)
+	}
+	hs := household.New(d)
+	for _, email := range []string{auth.DevEmail, auth.DevOtherEmail} {
+		if _, err := hs.Create(ctx, email, email); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := d.Exec(q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	// Two households, two recipes each, each recipe with a snapshot; ids are
+	// not contiguous, and the content holds NUL and bytes that are not UTF-8.
+	type snap struct {
+		id, hid, recipe int64
+		kind            string
+		content         []byte
+		parser          string
+	}
+	snaps := []snap{
+		{11, 1, 1, "html", []byte("<p>\x00 one</p>\xff\xfe"), "3"},
+		{15, 1, 2, "text", []byte("two\r\n\x00"), ""},
+		{22, 2, 3, "ocr", []byte{0, 1, 2, 0xc3, 0x28}, "7"},
+		{40, 2, 4, "llm_response", []byte(`{"k":"v"}`), "9"},
+	}
+	for _, sn := range snaps {
+		exec(`INSERT INTO recipes (id, household_id, name, created_at, created_by, updated_at, updated_by) VALUES (?, ?, 'r', 't', 'a', 't', 'a')`, sn.recipe, sn.hid)
+		exec(`INSERT INTO source_snapshots (id, household_id, recipe_id, kind, content, sha256, created_at, created_by, parser_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			sn.id, sn.hid, sn.recipe, sn.kind, sn.content, fmt.Sprintf("sum-%d", sn.id), fmt.Sprintf("2026-01-0%dT00:00:00Z", sn.id%9+1), fmt.Sprintf("by%d@example.test", sn.id), sn.parser)
+	}
+	dump := func() []string {
+		rows, err := d.Query(`SELECT id, household_id, recipe_id, kind, hex(content), sha256, created_at, created_by, parser_version FROM source_snapshots ORDER BY id`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = rows.Close() }()
+		var out []string
+		for rows.Next() {
+			var id, hid, rid int64
+			var kind, content, sum, at, by, parser string
+			if err := rows.Scan(&id, &hid, &rid, &kind, &content, &sum, &at, &by, &parser); err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, fmt.Sprint(id, hid, rid, kind, content, sum, at, by, parser))
+		}
+		return out
+	}
+	before := dump()
+	if len(before) != len(snaps) {
+		t.Fatalf("seeded %d snapshots, want %d", len(before), len(snaps))
+	}
+	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	after := dump()
+	if strings.Join(before, "\n") != strings.Join(after, "\n") {
+		t.Errorf("snapshots changed in the migration:\nbefore %q\n after %q", before, after)
 	}
 }

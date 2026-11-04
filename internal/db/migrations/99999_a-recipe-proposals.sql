@@ -56,8 +56,7 @@ FROM ingredient_lines l JOIN components c ON c.id = l.component_id;
 -- SQLite cannot drop NOT NULL, so the table is rebuilt; rows keep their ids.
 -- The composite foreign key is not enforced for a NULL recipe_id, and
 -- UNIQUE (recipe_id, kind) treats NULLs as distinct, so unattached snapshots
--- neither need a recipe nor collide. UNIQUE (household_id, id) lets a table
--- tie its household to a snapshot's.
+-- neither need a recipe nor collide.
 CREATE TABLE source_snapshots_new (
     id             INTEGER PRIMARY KEY,
     household_id   INTEGER NOT NULL REFERENCES households (id) ON DELETE CASCADE,
@@ -69,7 +68,6 @@ CREATE TABLE source_snapshots_new (
     created_by     TEXT NOT NULL CHECK (created_by <> ''),
     parser_version TEXT NOT NULL DEFAULT '',
     UNIQUE (recipe_id, kind),
-    UNIQUE (household_id, id),
     FOREIGN KEY (household_id, recipe_id) REFERENCES recipes (household_id, id) ON DELETE CASCADE
 );
 INSERT INTO source_snapshots_new (id, household_id, recipe_id, kind, content, sha256, created_at, created_by, parser_version)

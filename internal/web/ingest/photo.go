@@ -94,6 +94,10 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.full(w, r, func(msg string) { h.photoFormError(w, r, http.StatusConflict, msg) }) {
+		return
+	}
+
 	text, err := h.ocr.Text(r.Context(), image)
 	switch {
 	case errors.Is(err, ocr.ErrNoText):

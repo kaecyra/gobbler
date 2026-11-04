@@ -233,6 +233,13 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.full(w, r, func(msg string) {
+		v.Error = msg
+		layout.Render(w, r, http.StatusConflict, formPage(v))
+	}) {
+		return
+	}
+
 	var (
 		draft ingestcore.Draft
 		err   error
@@ -262,6 +269,23 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
+}
+
+// full answers a household that already holds the most drafts it may before any
+// work is spent on one: no fetch, no pipeline, no LLM call. refuse is called
+// with the message to show. It reports whether the request has been answered.
+// hold's check, made where the draft is written, stays the authority.
+func (h *handler) full(w http.ResponseWriter, r *http.Request, refuse func(msg string)) bool {
+	full, err := h.drafts.Full(r.Context())
+	switch {
+	case err != nil:
+		layout.WriteError(w, r, err)
+		return true
+	case full:
+		refuse(sentence(store.ErrDraftLimit.Error()))
+		return true
+	}
+	return false
 }
 
 // hold stores draft for review and returns its token. A household that already

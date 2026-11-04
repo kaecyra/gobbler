@@ -31,7 +31,11 @@ func TestTheTwentyFirstDraftIsRefusedOnTheForm(t *testing.T) {
 	for i := 0; i < store.MaxPendingDrafts; i++ {
 		tokens = append(tokens, f.ingestText(t))
 	}
+	calls := f.drafter.calls
 	rec := f.do(http.MethodPost, "/", url.Values{"text": {"One more pie"}})
+	if f.drafter.calls != calls {
+		t.Error("the pipeline ran for a draft that was going to be refused")
+	}
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("21st draft status = %d, want 409; body: %s", rec.Code, rec.Body)
 	}
@@ -75,9 +79,13 @@ func TestAPhotoDraftPastTheLimitIsRefusedOnThePhotoForm(t *testing.T) {
 			t.Fatalf("photo %d = %d", i+1, rec.Code)
 		}
 	}
+	ocrCalls, draftCalls := f.reader.calls, f.drafter.calls
 	rec := f.upload(t, "page.png", pngBytes)
 	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "drafts are waiting for review") {
 		t.Errorf("21st photo = %d, body: %s", rec.Code, rec.Body)
+	}
+	if f.reader.calls != ocrCalls || f.drafter.calls != draftCalls {
+		t.Error("OCR or the pipeline ran for a photo that was going to be refused")
 	}
 }
 

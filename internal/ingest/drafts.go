@@ -31,6 +31,7 @@ type DraftStore interface {
 	GetProposal(ctx context.Context, token string) (store.Proposal, error)
 	ReplaceDraft(ctx context.Context, token string, doc []byte) error
 	RejectProposal(ctx context.Context, token string) error
+	PendingDrafts(ctx context.Context) (int, error)
 }
 
 // Drafts holds the drafts awaiting review.
@@ -58,6 +59,18 @@ func (d *Drafts) Add(ctx context.Context, dr Draft, by store.Provenance) (string
 		return "", fmt.Errorf("hold draft: %w", err)
 	}
 	return token, nil
+}
+
+// Full reports whether the household on ctx already holds the most drafts it
+// may, so a caller can refuse before spending a fetch or an LLM call on a draft
+// Add would turn away. Add's own check is the authority; this one is early and
+// may be overtaken by a racing request.
+func (d *Drafts) Full(ctx context.Context) (bool, error) {
+	n, err := d.store.PendingDrafts(ctx)
+	if err != nil {
+		return false, fmt.Errorf("count pending drafts: %w", err)
+	}
+	return n >= store.MaxPendingDrafts, nil
 }
 
 // Get returns the pending draft for token, or ErrDraftGone.

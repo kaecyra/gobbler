@@ -202,6 +202,27 @@ func (s *Store) ProposeDraft(ctx context.Context, in DraftInput) (string, error)
 	return token, nil
 }
 
+// PendingDrafts is how many drafts of new recipes the household on ctx has
+// waiting for review. It lets a caller refuse early, before spending work on a
+// draft that ProposeDraft would turn away; ProposeDraft's own check, made in the
+// transaction that writes the draft, is the authority.
+func (s *Store) PendingDrafts(ctx context.Context) (int, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var n int64
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		var err error
+		n, err = q.CountPendingDrafts(ctx, hid)
+		return err
+	})
+	if err != nil {
+		return 0, readErr("pending drafts", err)
+	}
+	return int(n), nil
+}
+
 // ProposeEdit stores r as a pending proposal to replace recipe id, made
 // against baseVersion, and returns its token. A recipe has at most one pending
 // proposal: the one it had, if any, is kept with its state set to superseded.
@@ -431,6 +452,9 @@ func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) erro
 		if err != nil {
 			return readErr("proposal", err)
 		}
+		if ProposalKind(row.Kind) != ProposalDraft {
+			return fmt.Errorf("%w: proposal is not a draft of a new recipe", ErrInvalid)
+		}
 		n, err := q.UpdateDraftDocument(ctx, storedb.UpdateDraftDocumentParams{Document: string(doc), ID: row.ID, HouseholdID: hid})
 		if err != nil {
 			return fmt.Errorf("replace draft: %w", err)
@@ -510,10 +534,13 @@ func (s *Store) CreateFromDraft(ctx context.Context, token string, r recipe.Reci
 		if id, err = s.insertRecipe(ctx, q, hid, r, nil, who); err != nil {
 			return err
 		}
-		if row.SnapshotID.Valid {
-			if err := attachSnapshot(ctx, q, hid, row.SnapshotID.Int64, id); err != nil {
-				return err
-			}
+		// A recipe never exists without its source (Saver.Save): a draft with no
+		// snapshot is a broken row, not a draft to confirm without one.
+		if !row.SnapshotID.Valid {
+			return fmt.Errorf("%w: draft has no source snapshot to attach", ErrCorrupt)
+		}
+		if err := attachSnapshot(ctx, q, hid, row.SnapshotID.Int64, id); err != nil {
+			return err
 		}
 		n, err := q.AcceptDraft(ctx, storedb.AcceptDraftParams{ResultRecipeID: nullID(id), StateAt: s.stamp(), ID: row.ID, HouseholdID: hid})
 		if err != nil {
@@ -545,10 +572,11 @@ func attachSnapshot(ctx context.Context, q *storedb.Queries, hid, id, recipeID i
 	return nil
 }
 
-// deleteUnattachedSnapshot removes the snapshot with id if no recipe holds it.
+// deleteUnattachedSnapshot removes the snapshot with id of household hid if no
+// recipe holds it.
 // One that does is ErrSnapshotAttached and stays: it goes only with its recipe.
-func deleteUnattachedSnapshot(ctx context.Context, q *storedb.Queries, id int64) error {
-	n, err := q.DeleteUnattachedSnapshot(ctx, id)
+func deleteUnattachedSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64) error {
+	n, err := q.DeleteUnattachedSnapshot(ctx, storedb.DeleteUnattachedSnapshotParams{ID: id, HouseholdID: hid})
 	if err != nil {
 		return fmt.Errorf("delete snapshot %d: %w", id, err)
 	}
@@ -613,7 +641,7 @@ func (s *Store) Sweep(ctx context.Context) (SweepResult, error) {
 				// A snapshot a recipe holds stays: it goes with the recipe. A
 				// finished proposal that still names one cannot normally
 				// happen, and deleting the proposal is right either way.
-				if err := deleteUnattachedSnapshot(ctx, q, p.SnapshotID.Int64); err != nil && !errors.Is(err, ErrSnapshotAttached) {
+				if err := deleteUnattachedSnapshot(ctx, q, p.HouseholdID, p.SnapshotID.Int64); err != nil && !errors.Is(err, ErrSnapshotAttached) {
 					return err
 				}
 			}

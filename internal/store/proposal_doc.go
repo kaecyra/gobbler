@@ -10,8 +10,9 @@ import (
 // it names, to index them and to re-point them in an ingredient merge. That is
 // the contract between the packages: a draft document is a JSON object whose
 // "components" array holds objects whose "lines" array holds objects with a
-// numeric "ingredient" (0 or absent when the line is unmatched). Everything
-// else in the document passes through untouched, byte for byte.
+// numeric "ingredient" (0 or absent when the line is unmatched). Every
+// other field passes through with its value untouched (a re-point re-encodes
+// the document, so its whitespace and key order may change).
 // TestDraftDocumentIngredientsSurviveMerge in package ingest holds the other
 // end of the contract.
 
