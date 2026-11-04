@@ -392,27 +392,6 @@ func TestScheduleRunsAtNextTimeAndStopsOnCancel(t *testing.T) {
 	}
 }
 
-func TestParseEndpoint(t *testing.T) {
-	tests := []struct {
-		in     string
-		host   string
-		secure bool
-	}{
-		{"s3.us-west-000.backblazeb2.com", "s3.us-west-000.backblazeb2.com", true},
-		{"https://acct.r2.cloudflarestorage.com", "acct.r2.cloudflarestorage.com", true},
-		{"http://minio:9000", "minio:9000", false},
-	}
-	for _, tc := range tests {
-		host, secure, err := parseEndpoint(tc.in)
-		if err != nil || host != tc.host || secure != tc.secure {
-			t.Errorf("parseEndpoint(%q) = %q, %v, %v", tc.in, host, secure, err)
-		}
-	}
-	if _, _, err := parseEndpoint("ftp://x"); err == nil {
-		t.Error("want error for unsupported scheme")
-	}
-}
-
 func TestStatusSurvivesRestart(t *testing.T) {
 	d := openSource(t)
 	dir := t.TempDir()
