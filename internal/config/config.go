@@ -74,8 +74,8 @@ const (
 	defaultLocalRetention      = 7
 	defaultRemoteRetention     = 30
 	defaultSessionLifetime     = 30 * 24 * time.Hour
-	defaultMCPRate             = 2.0
-	defaultMCPBurst            = 20
+	defaultMCPRate             = 5.0
+	defaultMCPBurst            = 50
 )
 
 // Config is the validated application configuration. Load returns it by value

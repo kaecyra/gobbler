@@ -32,7 +32,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 **For the owner to check:**
 - The OAuth registration and token endpoints have no rate limit. Cross-origin protection blocks browsers, and docs/operations.md says so.
 - MCP imports are rule-based only and never call an LLM. A low-confidence draft is flagged for review.
-- MCP limits: `GOBBLER_MCP_RATE` defaults to 2/s and `GOBBLER_MCP_BURST` to 20. A list page holds at most 50 items.
+- MCP limits: `GOBBLER_MCP_RATE` defaults to 5/s and `GOBBLER_MCP_BURST` to 50 (owner, 2026-11-04, #362). A list page holds at most 50 items.
 - Pending drafts: each household holds at most 20, and 500 is the ceiling across all households. The table is shared by the ingest form and MCP.
 - OAuth accepts public clients only, with no client secret. Codes last 5 min, access tokens 1 h and refresh tokens 30 days. Private-use redirect schemes must be reverse-domain names, so `cursor://` is refused and `io.cursor.app://` is accepted.
 

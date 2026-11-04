@@ -210,8 +210,8 @@ the container runs in UTC.
 | `GOBBLER_LLM_VISION_MODEL` | none | no | Required with a provider. |
 | `GOBBLER_LLM_TIMEOUT` | `60s` | no | Go duration, positive. |
 | `GOBBLER_VIDEO_THUMBNAIL_HOST` | `https://i.ytimg.com` | no | Origin a recipe video's thumbnail is downloaded from when a recipe with that video is saved ([ADR-00021](./adr/00021-youtube-video-on-a-recipe.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fixture so no test reaches YouTube. |
-| `GOBBLER_MCP_RATE` | `2` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
-| `GOBBLER_MCP_BURST` | `20` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
+| `GOBBLER_MCP_RATE` | `5` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
+| `GOBBLER_MCP_BURST` | `50` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |
