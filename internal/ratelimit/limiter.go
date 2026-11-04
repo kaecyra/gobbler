@@ -8,8 +8,14 @@ import (
 	"time"
 )
 
-// pruneAbove is the table size past which idle buckets are dropped.
-const pruneAbove = 1024
+const (
+	// pruneAbove is the table size past which idle buckets are dropped.
+	pruneAbove = 1024
+	// pruneEvery is the most often the table is swept. Keys can be chosen by
+	// the caller, so a sweep on every request would let one caller make every
+	// request pay for a scan of the whole table under the lock.
+	pruneEvery = 10 * time.Second
+)
 
 // Limiter is a leaky bucket for each key (ADR-00034): a request pours one unit
 // in, the bucket drains at rate units a second, and a request that would
@@ -19,8 +25,9 @@ type Limiter struct {
 	burst float64
 	now   func() time.Time
 
-	mu      sync.Mutex
-	buckets map[string]bucket
+	mu        sync.Mutex
+	buckets   map[string]bucket
+	nextPrune time.Time
 }
 
 type bucket struct {
@@ -42,7 +49,8 @@ func (l *Limiter) Allow(key string) (ok bool, wait time.Duration) {
 	now := l.now()
 	// Idle buckets are empty, so dropping them changes nothing and keeps the
 	// table from growing with every key ever seen.
-	if len(l.buckets) > pruneAbove {
+	if len(l.buckets) > pruneAbove && !now.Before(l.nextPrune) {
+		l.nextPrune = now.Add(pruneEvery)
 		for k, b := range l.buckets {
 			if l.drained(b, now) {
 				delete(l.buckets, k)
@@ -67,9 +75,15 @@ func (l *Limiter) drained(b bucket, now time.Time) bool {
 }
 
 // Middleware holds each request to the bucket of the key keyOf returns for it.
-// A refused request gets 429 with Retry-After in whole seconds, rounded up. A
-// request keyOf cannot key (ok false) is a wiring fault and gets 500.
-func (l *Limiter) Middleware(keyOf func(*http.Request) (key string, ok bool)) func(http.Handler) http.Handler {
+// A refused request gets 429 with Retry-After in whole seconds, rounded up,
+// and refuse writes the body; nil refuse writes plain text. A request keyOf
+// cannot key (ok false) is a wiring fault and gets 500.
+func (l *Limiter) Middleware(keyOf func(*http.Request) (key string, ok bool), refuse func(http.ResponseWriter, *http.Request)) func(http.Handler) http.Handler {
+	if refuse == nil {
+		refuse = func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "rate limit exceeded; retry later", http.StatusTooManyRequests)
+		}
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			key, ok := keyOf(r)
@@ -80,7 +94,7 @@ func (l *Limiter) Middleware(keyOf func(*http.Request) (key string, ok bool)) fu
 			if allowed, wait := l.Allow(key); !allowed {
 				secs := max(1, int(math.Ceil(wait.Seconds())))
 				w.Header().Set("Retry-After", strconv.Itoa(secs))
-				http.Error(w, "rate limit exceeded; retry later", http.StatusTooManyRequests)
+				refuse(w, r)
 				return
 			}
 			next.ServeHTTP(w, r)

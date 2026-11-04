@@ -26,5 +26,5 @@ func (l *limiter) limit(next http.Handler) http.Handler {
 			return "", false
 		}
 		return c.Subject(), true
-	})(next)
+	}, nil)(next)
 }

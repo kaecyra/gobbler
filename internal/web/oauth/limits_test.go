@@ -65,6 +65,9 @@ func TestPublicEndpointsAreLimitedPerAddress(t *testing.T) {
 			if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") != "10" {
 				t.Fatalf("third = %d, Retry-After %q; want 429, 10", rec.Code, rec.Header().Get("Retry-After"))
 			}
+			if m := jsonOf(t, rec); m["error"] != "temporarily_unavailable" || rec.Header().Get("Content-Type") != "application/json" {
+				t.Errorf("429 body = %v (%s), want an OAuth JSON error", m, rec.Header().Get("Content-Type"))
+			}
 			if rec := s.fromAddr(tc.req(), "192.0.2.2"); rec.Code != tc.ok {
 				t.Errorf("another address = %d, want %d", rec.Code, tc.ok)
 			}
@@ -98,5 +101,17 @@ func TestAForgedHeaderDoesNotChooseTheKey(t *testing.T) {
 	}
 	if last != http.StatusTooManyRequests {
 		t.Errorf("third request with a fresh forged header = %d, want 429", last)
+	}
+}
+
+// A public endpoint must never be left unlimited by leaving a limiter out.
+func TestRoutesRequireBothLimiters(t *testing.T) {
+	l := ratelimit.New(1, 1, time.Now)
+	for name, d := range map[string]weboauth.Deps{
+		"none": {}, "no token": {Register: l}, "no register": {Token: l},
+	} {
+		if _, err := weboauth.Routes(d); err == nil {
+			t.Errorf("%s: Routes built without both limiters", name)
+		}
 	}
 }

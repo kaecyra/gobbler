@@ -71,12 +71,17 @@ func ClientAddr(r *http.Request) netip.Addr {
 	return PeerAddr(r)
 }
 
-// ClientKey is ClientAddr as a limiter key. A request with no readable address
-// shares one key, so it is limited rather than exempt.
+// ClientKey is ClientAddr as a limiter key. An IPv6 client is keyed by its /64,
+// because one subscriber holds a whole /64 and could otherwise take a fresh key
+// for every request. A request with no readable address shares one key, so it
+// is limited rather than exempt.
 func ClientKey(r *http.Request) (string, bool) {
 	a := ClientAddr(r)
 	if !a.IsValid() {
 		return "unknown", true
+	}
+	if a.Is6() {
+		return netip.PrefixFrom(a, 64).Masked().String(), true
 	}
 	return a.String(), true
 }

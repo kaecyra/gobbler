@@ -20,6 +20,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/oauth"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	weboauth "github.com/kaecyra/gobbler/internal/web/oauth"
 )
@@ -78,13 +79,14 @@ func newSiteWith(t *testing.T, meta weboauth.MetadataSource, change func(*weboau
 		OAuth: oauth.New(d), Metadata: meta, PublicBaseURL: base,
 		Logger: slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}
+	withLimits(&deps, 1000, 100000)
 	if change != nil {
 		change(&deps)
 	}
 	r := chi.NewRouter()
 	r.Use(a.Middleware(layout.IsPublic))
 	r.Mount(weboauth.WellKnownPattern, weboauth.WellKnownRoutes(deps))
-	r.Mount(weboauth.Pattern, weboauth.Routes(deps))
+	r.Mount(weboauth.Pattern, mustRoutes(t, deps))
 	return &site{t: t, h: r, d: d, store: deps.OAuth, logs: logs}
 }
 
@@ -215,8 +217,9 @@ func TestDiscoveryDocumentsArePublicAndDescribeTheServer(t *testing.T) {
 func TestEveryRouteButAuthorizeIsPublic(t *testing.T) {
 	r := chi.NewRouter()
 	d := weboauth.Deps{}
+	withLimits(&d, 1000, 100000)
 	r.Mount(weboauth.WellKnownPattern, weboauth.WellKnownRoutes(d))
-	r.Mount(weboauth.Pattern, weboauth.Routes(d))
+	r.Mount(weboauth.Pattern, mustRoutes(t, d))
 	seen := map[string]bool{}
 	err := chi.Walk(r, func(_, pattern string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		seen[pattern] = true
@@ -395,9 +398,10 @@ func TestTheAuthorizationEndpointNeedsAnIdentity(t *testing.T) {
 	// Under the dev bypass every request has one, so this checks the handler's
 	// own guard by calling it without the middleware.
 	d := weboauth.Deps{PublicBaseURL: base}
+	withLimits(&d, 1000, 100000)
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		rec := httptest.NewRecorder()
-		weboauth.Routes(d).ServeHTTP(rec, httptest.NewRequest(method, "/authorize", nil))
+		mustRoutes(t, d).ServeHTTP(rec, httptest.NewRequest(method, "/authorize", nil))
 		if rec.Code != http.StatusUnauthorized {
 			t.Errorf("%s with no identity = %d", method, rec.Code)
 		}
@@ -552,4 +556,19 @@ func TestNoLogLineHoldsASecret(t *testing.T) {
 			t.Fatalf("a log line holds %q:\n%s", secret[:8], logs)
 		}
 	}
+}
+
+// withLimits gives the endpoints limiters that never refuse in a test.
+func withLimits(d *weboauth.Deps, rate float64, burst int) {
+	d.Register = ratelimit.New(rate, burst, time.Now)
+	d.Token = ratelimit.New(rate, burst, time.Now)
+}
+
+func mustRoutes(t *testing.T, d weboauth.Deps) chi.Router {
+	t.Helper()
+	r, err := weboauth.Routes(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
 }

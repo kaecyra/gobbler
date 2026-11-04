@@ -67,3 +67,22 @@ func TestClientKeyGivesAnUnreadableAddressOneSharedKey(t *testing.T) {
 		t.Errorf("key = %q, %v", k, ok)
 	}
 }
+
+// One IPv6 subscriber holds a /64, so every address in it shares a key.
+func TestClientKeyGroupsIPv6ByItsSlash64(t *testing.T) {
+	key := func(remote string) string {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.RemoteAddr = remote
+		k, _ := ratelimit.ClientKey(r)
+		return k
+	}
+	if a, b := key("[2001:db8:1:2::1]:80"), key("[2001:db8:1:2:ffff::9]:80"); a != b {
+		t.Errorf("one /64 gave two keys: %q, %q", a, b)
+	}
+	if a, b := key("[2001:db8:1:2::1]:80"), key("[2001:db8:1:3::1]:80"); a == b {
+		t.Errorf("two /64s share the key %q", a)
+	}
+	if got := key("192.0.2.7:80"); got != "192.0.2.7" {
+		t.Errorf("IPv4 key = %q", got)
+	}
+}
