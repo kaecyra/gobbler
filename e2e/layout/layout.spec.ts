@@ -109,8 +109,9 @@ test('the footer shows the version the binary was built from, beside the reposit
   const footer = page.getByRole('contentinfo');
   await expect(footer.getByTestId('app-version')).toHaveText(`v${version}`);
   // Beside the link, in the same group.
-  await expect(footer.locator('.foot-src').getByRole('link', { name: /github\.com\/kaecyra\/gobbler/ })).toBeVisible();
-  await expect(footer.locator('.foot-src').getByTestId('app-version')).toBeVisible();
+  const source = footer.getByTestId('footer-source');
+  await expect(source.getByRole('link', { name: /github\.com\/kaecyra\/gobbler/ })).toBeVisible();
+  await expect(source.getByTestId('app-version')).toBeVisible();
 });
 
 test('every mascot drawing is served as a cached SVG', async ({ request }) => {

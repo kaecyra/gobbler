@@ -29,12 +29,15 @@ const (
 
 // Version is the release this binary was built from, the contents of the
 // repository's VERSION file. The image build and make e2e set it at link time
-// (-ldflags -X); any other build keeps "dev".
-var Version = "dev"
+// (-ldflags -X); any other build keeps devVersion.
+var Version = devVersion
+
+// devVersion is Version in a build with no release linked in.
+const devVersion = "dev"
 
 // versionLabel is the version as the footer shows it.
 func versionLabel() string {
-	if Version == "dev" {
+	if Version == devVersion {
 		return "dev build"
 	}
 	return "v" + Version
