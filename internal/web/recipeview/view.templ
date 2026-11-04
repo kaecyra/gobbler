@@ -246,7 +246,7 @@ templ recipeBody(v view) {
 				for _, t := range v.Tips {
 					<div class="tip" data-testid="tip">
 						<div class="co-label">
-							@iconBulb()
+							@layout.Icon(layout.IconBulb)
 							<span>Tip</span>
 						</div>
 						<p>{ t } <small>From your notes</small></p>
@@ -379,7 +379,7 @@ templ controls(v view) {
 			<button type="submit" class="btn" data-testid="shopping-add">Add to shopping list</button>
 		</form>
 		<a class="btn accent cookbtn" href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">
-			@iconPot()
+			@layout.Icon(layout.IconPot)
 			<span>Cook mode</span>
 		</a>
 	</div>

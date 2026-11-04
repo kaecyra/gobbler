@@ -38,7 +38,7 @@ templ spoons(n int, label string) {
 // input keeps its id across swaps, so htmx keeps the caret while results change.
 templ searchBox(value string) {
 	<label class="search" for="q">
-		<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+		@layout.Icon(layout.IconSearch)
 		<input id="q" type="search" name="q" value={ value } placeholder="Try &ldquo;chickpea&rdquo;, &ldquo;overnight&rdquo; or &ldquo;Sam liked it&rdquo;" autocomplete="off" aria-label="Search recipes"/>
 		<kbd aria-hidden="true">/</kbd>
 	</label>

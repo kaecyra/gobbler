@@ -1,6 +1,8 @@
 package profile
 
-import "github.com/kaecyra/gobbler/internal/web/layout"
+import (
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
 
 // page is the profile page: the person, then the sections. See the package
 // documentation for how a section is added.
@@ -26,7 +28,7 @@ templ identity(v pageView) {
 				<a href={ templ.SafeURL(v.sectionPath("avatar/upload")) } role="button" class="profile-avatar profile-avatar-btn" aria-label="Change your picture" data-avatar-open data-testid="profile-avatar">
 					@avatarPicture(v)
 					<span class="avatar-edit" aria-hidden="true" data-testid="avatar-edit">
-						<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+						@layout.Icon(layout.IconPencil)
 					</span>
 				</a>
 			} else {

@@ -19,3 +19,9 @@
   layout redone, which cost a review round and trust.
 - **Colours, radii and fonts come from the tokens.** A literal colour in a
   page stylesheet is a second palette waiting to drift.
+- **Line icons come from `layout.Icon`.** Add a drawing to the set in
+  `internal/web/layout/icon.go`; never inline an `<svg>` or write a
+  package-local `iconX` templ. Before the set, the clock was drawn twice
+  (`layout` and `ribbon`), and a name with no drawing rendered nothing, which
+  left the Profile link without its picture. Pictures with a meaning of their
+  own (meal type, equipment, the recipe scales) stay with their owners.
