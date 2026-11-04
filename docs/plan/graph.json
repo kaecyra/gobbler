@@ -2934,7 +2934,8 @@
         "e2e/oauth/**",
         "e2e/fixtures/serve.mjs",
         "internal/session/details_test.go",
-        "internal/web/signin/signin_test.go"
+        "internal/web/signin/signin_test.go",
+        "internal/web/oauth_limits_test.go"
       ],
       "needs_migration": null,
       "adrs": [
