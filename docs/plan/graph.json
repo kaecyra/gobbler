@@ -2955,6 +2955,26 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Broken window from m-avatar-media (#333): two parsers for one S3 endpoint setting. Behaviour unchanged; backup tests pass unchanged."
+    },
+    {
+      "id": "p-profile-layout",
+      "title": "profile page: avatar edit modal, Profile section, household membership, section order",
+      "wave": 11,
+      "track": null,
+      "issue": 369,
+      "status": "todo",
+      "depends_on": [
+        "m-avatar-media"
+      ],
+      "owns": [
+        "internal/web/profile/**",
+        "internal/web/static/avatar*",
+        "internal/web/static/profile*",
+        "e2e/profile/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner feedback 2026-11-04. ADR-00032, ADR-00018 (one household per person), ADR-00033, docs/ui/design.md. UI only: no schema, no new profile fields."
     }
   ],
   "shared_files": [
