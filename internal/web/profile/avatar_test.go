@@ -336,6 +336,11 @@ func TestAvatarDialogStepsAreFragments(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `data-step="saved"`) || !strings.Contains(rec.Body.String(), `every 2s`) {
 		t.Errorf("crop from the dialog = %d, want the status step polling:\n%s", rec.Code, rec.Body)
 	}
+	// The polling status replaces the page's, outside the step: a second
+	// #avatar-status inside the dialog would duplicate the page's.
+	if !strings.Contains(rec.Body.String(), `hx-swap-oob="true"`) {
+		t.Errorf("crop from the dialog: the status is not out of band:\n%s", rec.Body)
+	}
 	s.avatars.Wait()
 	if rec := s.get(path+"/avatar", me); rec.Code != http.StatusOK {
 		t.Errorf("avatar after the dialog's crop = %d, want 200", rec.Code)
@@ -388,5 +393,23 @@ func TestAvatarStepsVaryOnHTMX(t *testing.T) {
 	}
 	if rec := s.hx(httptest.NewRequest(http.MethodGet, path+"/avatar/upload", nil), me); strings.Contains(rec.Body.String(), "<html") || !strings.Contains(rec.Body.String(), `data-step="upload"`) {
 		t.Errorf("upload step for htmx is not a bare fragment:\n%s", rec.Body)
+	}
+}
+
+// The saved step sends its status out of band to the page's #avatar-status, so
+// every page that can show a step carries exactly one, outside the step: the
+// profile, and the upload and crop pages used without the dialog.
+func TestEachStepPageHasOneStatusSlot(t *testing.T) {
+	s := newAvatarSite(t)
+	const me = "slot@example.com"
+	path := s.profileOf(me)
+	if rec := s.upload(path+"/avatar", me, "avatar", picture(t)); rec.Code != http.StatusSeeOther {
+		t.Fatalf("upload = %d: %s", rec.Code, rec.Body)
+	}
+	for _, target := range []string{path, path + "/avatar/upload", path + "/avatar/crop"} {
+		rec := s.get(target, me)
+		if n := strings.Count(rec.Body.String(), `<div id="avatar-status"`); rec.Code != http.StatusOK || n != 1 {
+			t.Errorf("%s = %d with %d #avatar-status, want 200 with one", target, rec.Code, n)
+		}
 	}
 }

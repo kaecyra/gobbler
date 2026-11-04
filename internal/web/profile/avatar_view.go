@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/a-h/templ"
+
 	"github.com/kaecyra/gobbler/internal/media"
 	domain "github.com/kaecyra/gobbler/internal/profile"
 )
@@ -17,6 +19,17 @@ type statusView struct {
 	Error string
 	// Has is the avatar key the page was drawn with, echoed back on each poll.
 	Has string
+	// OOB is set when the fragment arrives beside a step, to replace the
+	// page's status out of band rather than sit in the step (savedPanel).
+	OOB bool
+}
+
+// oobAttrs marks the fragment for htmx's out-of-band swap when OOB is set.
+func (v statusView) oobAttrs() templ.Attributes {
+	if v.OOB {
+		return templ.Attributes{"hx-swap-oob": "true"}
+	}
+	return nil
 }
 
 func newStatusView(address string, j domain.Job, found bool, has string) statusView {
@@ -59,13 +72,15 @@ func (v statusView) path(section string) string {
 // cropView is the crop page.
 type cropView struct {
 	Address string
-	ID      string
+	// Has is the avatar key the page was drawn with, for the crop page's status.
+	Has string
+	ID  string
 	// Failed is set when the last attempt on this picture failed.
 	Failed string
 }
 
-func newCropView(address string, j domain.Job) cropView {
-	return cropView{Address: address, ID: j.ID, Failed: j.Error}
+func newCropView(address, has string, j domain.Job) cropView {
+	return cropView{Address: address, Has: has, ID: j.ID, Failed: j.Error}
 }
 
 func (v cropView) path(section string) string {

@@ -48,21 +48,21 @@ templ accountMenu(ctx context.Context) {
 				}
 			} else {
 				<span class="avatar figure">
-					@icon("user")
+					@Icon(IconUser)
 				</span>
 			}
 		</summary>
 		<ul class="menu-list">
 			<li>
 				<button type="button" class="tab" data-theme-toggle aria-pressed="false" aria-label="Switch to dark" title="Dark mode">
-					@icon("moon")
+					@Icon(IconMoon)
 					<span class="lbl" data-theme-label>Dark mode</span>
 				</button>
 			</li>
 			if signedIn && profileAdmitted(ctx) {
 				<li>
 					<a class="tab" href={ templ.SafeURL(ProfilePath) } aria-label="Profile" title="Profile">
-						@icon("user")
+						@Icon(profileIcon)
 						<span class="lbl">Profile</span>
 					</a>
 				</li>
@@ -71,7 +71,7 @@ templ accountMenu(ctx context.Context) {
 				<li>
 					<form method="post" action={ templ.SafeURL(SignOutPath) }>
 						<button type="submit" class="tab" aria-label="Sign out" title="Sign out">
-							@icon("signout")
+							@Icon(IconSignOut)
 							<span class="lbl">Sign out</span>
 						</button>
 					</form>
@@ -80,7 +80,7 @@ templ accountMenu(ctx context.Context) {
 			if offerSignIn(ctx) {
 				<li>
 					<a class="tab" href={ templ.SafeURL(SignInPath) } aria-label="Sign in" title="Sign in">
-						@icon("signin")
+						@Icon(IconSignIn)
 						<span class="lbl">Sign in</span>
 					</a>
 				</li>

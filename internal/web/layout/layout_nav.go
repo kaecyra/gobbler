@@ -13,7 +13,7 @@ import (
 type navItem struct {
 	Label string
 	Path  string
-	Icon  string
+	Icon  IconName
 	// CTA marks the one coral action in the nav bar.
 	CTA bool
 	// Menu puts the entry behind the nav's menu button instead of in the bar.
@@ -22,21 +22,21 @@ type navItem struct {
 
 // navItems lists the sections in display order: the bar first, then the menu.
 var navItems = []navItem{
-	{Label: "Library", Path: "/recipes", Icon: "library"},
-	{Label: "Shopping list", Path: "/shopping", Icon: "basket"},
-	{Label: "Add recipe", Path: "/ingest", Icon: "plus", CTA: true},
-	{Label: "Catalog", Path: "/catalog", Icon: "tag", Menu: true},
-	{Label: "Shared", Path: "/shares", Icon: "share", Menu: true},
-	{Label: "Household", Path: "/household", Icon: "home", Menu: true},
-	{Label: "Invitations", Path: "/operator", Icon: "mail", Menu: true},
-	{Label: "Settings", Path: "/settings", Icon: "gear", Menu: true},
+	{Label: "Library", Path: "/recipes", Icon: IconLibrary},
+	{Label: "Shopping list", Path: "/shopping", Icon: IconBasket},
+	{Label: "Add recipe", Path: "/ingest", Icon: IconPlus, CTA: true},
+	{Label: "Catalog", Path: "/catalog", Icon: IconTag, Menu: true},
+	{Label: "Shared", Path: "/shares", Icon: IconShare, Menu: true},
+	{Label: "Household", Path: "/household", Icon: IconHome, Menu: true},
+	{Label: "Invitations", Path: "/operator", Icon: IconMail, Menu: true},
+	{Label: "Settings", Path: "/settings", Icon: IconGear, Menu: true},
 }
 
 // profileIcon is the icon of the account menu's link to the person's own
 // profile. The link is not a navItem: it is never marked current, since the
 // layout cannot tell cheaply whose profile the page shows, and /profile/{address}
 // may be someone else's.
-const profileIcon = "user"
+const profileIcon = IconUser
 
 // menuCurrent reports whether the page being rendered belongs to a section
 // behind the nav's menu button, so the button can say so while it is closed.

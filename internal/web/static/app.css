@@ -418,6 +418,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 }
 .co-label svg { width: 1.2em; height: 1.2em; display: block; flex: none; }
 .callout.meanwhile { --co-bg: var(--wattle-soft); --co-ink: var(--wattle-ink); margin-top: 14px; }
+/* Something the person should look at. */
+.callout.check { --co-bg: var(--grain-soft); --co-ink: var(--grain-ink); }
 
 /* Tip: floats free with no box or tint, a coral icon and label, recipe-size text. */
 .tip { position: relative; margin: 30px 0 34px 62px; max-width: 34em; }

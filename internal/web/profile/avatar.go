@@ -49,7 +49,7 @@ func (h *handler) avatarServeRoutes(r chi.Router) {
 //	GET  /{address}/avatar/crop         the crop step (a fragment for the dialog, a page otherwise)
 //	POST /{address}/avatar/crop         the chosen rectangle
 //	GET  /{address}/avatar/preview/{id} the picture to crop against
-//	GET  /{address}/avatar/status       the dialog's status fragment
+//	GET  /{address}/avatar/status       the status fragment of the page
 func (h *handler) avatarRoutes(r chi.Router) {
 	r.Post("/avatar", h.uploadAvatar)
 	r.Get("/avatar/upload", h.uploadPage)
@@ -152,7 +152,7 @@ func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Header.Get("HX-Request") == "true" {
-		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, j)))
+		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, s.Profile.Avatar, j)))
 		return
 	}
 	http.Redirect(w, r, Pattern+"/"+s.Profile.Address+"/avatar/crop", http.StatusSeeOther)
@@ -229,10 +229,10 @@ func (h *handler) cropPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Header.Get("HX-Request") == "true" {
-		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, j)))
+		layout.Render(w, r, http.StatusOK, cropPanel(newCropView(s.Profile.Address, s.Profile.Avatar, j)))
 		return
 	}
-	layout.Render(w, r, http.StatusOK, cropScreen(newCropView(s.Profile.Address, j)))
+	layout.Render(w, r, http.StatusOK, cropScreen(newCropView(s.Profile.Address, s.Profile.Avatar, j)))
 }
 
 func (h *handler) cropAvatar(w http.ResponseWriter, r *http.Request) {
@@ -257,6 +257,7 @@ func (h *handler) cropAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Header.Get("HX-Request") == "true" {
 		queued := newStatusView(s.Profile.Address, domain.Job{State: domain.JobQueued}, true, s.Profile.Avatar)
+		queued.OOB = true
 		layout.Render(w, r, http.StatusOK, savedPanel(queued))
 		return
 	}

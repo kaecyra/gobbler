@@ -8,8 +8,28 @@
   color: var(--ink); font: inherit; font-weight: 400;
 }
 .avatar-pick input[type=file]::file-selector-button { min-height: calc(var(--tap) - 18px); margin-right: 12px; }
-.avatar-dialog [data-state] { margin-top: 12px; }
-.avatar-dialog [data-state] p { margin: 0; }
+
+/* With scripts, the dialog never shows the form: the Choose button opens the
+   file chooser, and a chosen file goes up at once. Without them, the page shows
+   the form and no button. */
+.avatar-choose { display: none; margin-bottom: 12px; }
+.avatar-dialog[data-enhanced] .avatar-pick { display: none; }
+.avatar-dialog[data-enhanced] .avatar-choose { display: inline-flex; align-items: center; justify-content: center; }
+.avatar-loading { margin: 0; }
+#avatar-panel.is-loading > :not([data-avatar-loading]) { display: none; }
+
+/* A refusal or a failed request, in the dialog or on a step's page. */
+.avatar-problem { margin: 0 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--sunk); }
+.avatar-problem[hidden] { display: none; }
+.avatar-problem p { margin: 0; }
+
+/* Where the last upload stands: a page-level callout above the profile, shown
+   only while something is pending or went wrong; inside a step's page it sits
+   below the step. Amber (.callout.check) when it needs a look. */
+.avatar-status, .avatar-status-problem { margin: 0 0 16px; }
+.panel .avatar-status, .panel .avatar-status-problem { margin: 12px 0 0; }
+.avatar-status:empty, .avatar-status[hidden], .avatar-status-problem[hidden] { display: none; }
+.avatar-status p, .avatar-status-problem p { margin: 0; }
 
 .crop-stage {
   max-width: 100%; height: min(60vh, 520px); margin: 12px 0;
@@ -18,4 +38,3 @@
 .crop-stage img { display: block; max-width: 100%; max-height: 100%; }
 .crop-form { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .crop-form .btn { display: inline-flex; align-items: center; justify-content: center; }
-.avatar-dialog [role=alert] { margin: 0 0 12px; }

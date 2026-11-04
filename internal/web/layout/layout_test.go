@@ -391,17 +391,17 @@ func TestAdmits(t *testing.T) {
 	}
 }
 
-// Every icon the header names is drawn: icon silently draws nothing for a name
-// it has no case for, which once left the Profile link and the signed-out
-// figure without a picture.
+// Every icon the header names is drawn. A name with no drawing once left the
+// Profile link and the signed-out figure without a picture; the icon set now
+// fails the render on one instead.
 func TestEveryHeaderIconIsDrawn(t *testing.T) {
-	names := []string{"moon", "signin", "signout", profileIcon}
+	names := []IconName{IconMoon, IconSignIn, IconSignOut, IconUser, IconMenu, IconCode, profileIcon}
 	for _, item := range navItems {
 		names = append(names, item.Icon)
 	}
 	for _, name := range names {
 		var b strings.Builder
-		if err := icon(name).Render(context.Background(), &b); err != nil {
+		if err := Icon(name).Render(context.Background(), &b); err != nil {
 			t.Fatal(err)
 		}
 		if !regexp.MustCompile(`<(path|circle|rect)\b`).MatchString(b.String()) {

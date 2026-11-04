@@ -18,18 +18,19 @@ function freshEmail(label: string): string {
 const fixture = (name: string) => fileURLToPath(new URL(`./avatar-fixtures/${name}`, import.meta.url));
 const header = (page: Page) => page.getByRole('banner');
 
-/** Opens the picture dialog from the avatar. */
-async function openDialog(page: Page) {
+type Upload = string | { name: string; mimeType: string; buffer: Buffer };
+
+/** Presses the avatar and chooses a file in the file chooser it opens. */
+async function choose(page: Page, file: Upload) {
+  const chooser = page.waitForEvent('filechooser');
   await page.getByTestId('profile-avatar').click();
-  await expect(page.getByTestId('profile-avatar-form')).toBeVisible();
+  await (await chooser).setFiles(file);
 }
 
-/** Chooses a file in the picture dialog and presses Upload. */
-async function upload(page: Page, file: string | { name: string; mimeType: string; buffer: Buffer }) {
+/** Goes to the profile and chooses a file from the avatar. */
+async function upload(page: Page, file: Upload) {
   await page.goto('/profile');
-  await openDialog(page);
-  await page.locator('input[name=avatar]').setInputFiles(file);
-  await page.getByRole('button', { name: 'Upload' }).click();
+  await choose(page, file);
 }
 
 /** Waits, in the dialog, for Cropper.js to draw, then keeps the default square. */
@@ -128,10 +129,7 @@ test.describe('uploading an avatar', () => {
       await page.setViewportSize(viewport);
       await page.goto('/profile');
       await expectTapTargets(page, 'main');
-      await openDialog(page);
-      await expectTapTargets(page, 'dialog');
-      await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
-      await page.getByRole('button', { name: 'Upload' }).click();
+      await choose(page, fixture('gps-tagged.jpg'));
       await waitForCrop(page);
       await expectTapTargets(page, 'dialog');
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -145,21 +143,25 @@ test.describe('the picture dialog', () => {
   const me = freshEmail('avatar-dialog');
   test.use(asIdentity(me));
 
-  test('takes the upload, the crop and the save without leaving the profile page', async ({ page }) => {
+  test('goes from the avatar to the file chooser to the crop, with no upload form in between', async ({ page }) => {
     await page.goto('/profile');
     const profileUrl = page.url();
-    await openDialog(page);
-    await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
-    await page.getByRole('button', { name: 'Upload' }).click();
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('profile-avatar').click();
+    // The chooser opens before any dialog does.
+    await expect(dialogOf(page)).toBeHidden();
+    await (await chooser).setFiles(fixture('gps-tagged.jpg'));
 
-    // The crop is the dialog's next step: same page, same dialog, Cropper drawn in it.
+    // The crop is the next thing shown: same page, the dialog, Cropper drawn in it.
     await waitForCrop(page);
     expect(page.url()).toBe(profileUrl);
     await expect(dialogOf(page).getByTestId('crop-image')).toBeAttached();
     await expect(dialogOf(page)).toBeVisible();
 
+    // Saving closes the dialog; the page says the picture is processing.
     await page.getByTestId('crop-save').click();
-    await expect(dialogOf(page).getByTestId('avatar-status')).toHaveAttribute('data-state', 'queued');
+    await expect(dialogOf(page)).toBeHidden();
+    await expect(page.getByTestId('avatar-status')).toHaveAttribute('data-state', 'queued');
     expect(page.url()).toBe(profileUrl);
     await expect(page.getByTestId('profile-avatar-img')).toBeVisible({ timeout: 30_000 });
   });
@@ -173,9 +175,7 @@ test.describe('the picture dialog', () => {
     const name = page.getByTestId('profile-name-form').getByRole('textbox', { name: 'Name' });
     await name.fill('Unsaved name');
 
-    await openDialog(page);
-    await page.locator('input[name=avatar]').setInputFiles(fixture('sample.heic'));
-    await page.getByRole('button', { name: 'Upload' }).click();
+    await choose(page, fixture('sample.heic'));
     await waitForCrop(page);
     await page.keyboard.press('Escape');
     await expect(dialogOf(page)).toBeHidden();
@@ -185,13 +185,12 @@ test.describe('the picture dialog', () => {
     // Nothing was saved: the avatar is the old one, byte for byte, and the dialog starts over.
     await expect(page.getByTestId('profile-avatar-img')).toHaveAttribute('src', before);
     expect(Buffer.compare(served, await (await page.request.get(before)).body())).toBe(0);
+    // The page says the picture waits, and its link opens the crop again.
     await expect(page.getByTestId('avatar-status')).toHaveAttribute('data-state', 'uploaded');
-    await avatar.click();
-    await expect(dialogOf(page).locator('input[name=avatar]')).toBeVisible();
     await expect(dialogOf(page).getByTestId('crop-save')).toHaveCount(0);
 
     // Cancel in the crop step closes it the same way.
-    await dialogOf(page).getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' }).click();
+    await page.getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' }).click();
     await waitForCrop(page);
     // Only the step arrives, not a whole page nested in the dialog.
     await expect(dialogOf(page).locator('header, main, h1')).toHaveCount(0);
@@ -202,32 +201,40 @@ test.describe('the picture dialog', () => {
     await expect(page.getByTestId('profile-avatar-img')).toHaveAttribute('src', before);
   });
 
-  test('moves focus to the new step each time one replaces the last', async ({ page }) => {
+  test('focuses the crop step when it arrives, and the avatar once the crop is saved', async ({ page }) => {
     await page.goto('/profile');
-    await page.getByTestId('profile-avatar').click();
-    await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
-    await page.getByRole('button', { name: 'Upload' }).click();
+    await choose(page, fixture('gps-tagged.jpg'));
     await waitForCrop(page);
     await expect(dialogOf(page).getByRole('heading', { name: 'Choose the square to keep' })).toBeFocused();
     await page.getByTestId('crop-save').click();
-    await expect(dialogOf(page).getByRole('heading', { name: 'Saving your picture' })).toBeFocused();
+    await expect(page.getByTestId('profile-avatar')).toBeFocused();
   });
 
   test('shows the reason in the dialog when a file is refused', async ({ page }) => {
-    await page.goto('/profile');
-    await openDialog(page);
-    await page.locator('input[name=avatar]').setInputFiles({ name: 'notes.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('hello, not a picture') });
-    await page.getByRole('button', { name: 'Upload' }).click();
+    await upload(page, { name: 'notes.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('hello, not a picture') });
     await expect(dialogOf(page).getByTestId('avatar-message')).toContainText('not a JPEG, PNG, GIF, WebP, HEIC or AVIF');
     await expect(dialogOf(page)).toBeVisible();
-    await expect(dialogOf(page).locator('input[name=avatar]')).toBeVisible();
     await expect(dialogOf(page).getByTestId('avatar-error')).toBeHidden();
+    // Another picture is one button away, without the form.
+    await expect(dialogOf(page).locator('input[name=avatar]')).toBeHidden();
+    const chooser = page.waitForEvent('filechooser');
+    await dialogOf(page).getByTestId('avatar-choose').click();
+    await (await chooser).setFiles(fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
   });
 
-  test('says so in the dialog when a request fails, and offers to try again', async ({ page }) => {
+  test('says so in the dialog when a request fails, and choosing again is the retry', async ({ page }) => {
     await page.goto('/profile');
-    await openDialog(page);
-    const upload_ = () => page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
+    // The first file comes from the avatar; after that the dialog is open and
+    // its Choose button opens the chooser.
+    let fromAvatar = true;
+    const upload_ = async () => {
+      const chooser = page.waitForEvent('filechooser');
+      if (fromAvatar) await page.getByTestId('profile-avatar').click();
+      else await dialogOf(page).getByTestId('avatar-choose').click();
+      fromAvatar = false;
+      await (await chooser).setFiles(fixture('gps-tagged.jpg'));
+    };
 
     // A server error, a dropped connection and a signed-out session each show a message.
     const cases: [string, (r: import('@playwright/test').Route) => Promise<void>, RegExp][] = [
@@ -238,22 +245,126 @@ test.describe('the picture dialog', () => {
     for (const [name, fail, message] of cases) {
       await page.route(/\/avatar$/, async (route) => (route.request().method() === 'POST' ? fail(route) : route.continue()));
       await upload_();
-      await page.getByRole('button', { name: 'Upload' }).click();
       await expect(dialogOf(page).getByTestId('avatar-error'), name).toBeVisible();
       await expect(dialogOf(page).getByTestId('avatar-error'), name).toContainText(message);
       await page.unroute(/\/avatar$/);
-      // Try again starts over at the first step with the message gone.
-      await dialogOf(page).getByTestId('avatar-retry').click();
-      await expect(dialogOf(page).getByTestId('avatar-error')).toBeHidden();
-      await expect(dialogOf(page).locator('input[name=avatar]')).toBeVisible();
+      // No retry button: the upload step is there to choose again.
+      await expect(dialogOf(page).getByRole('button', { name: 'Try again' })).toHaveCount(0);
+      await expect(dialogOf(page).getByTestId('avatar-choose')).toBeVisible();
     }
+    // Choosing again clears the message and reaches the crop.
+    await upload_();
+    await waitForCrop(page);
+    await expect(dialogOf(page).getByTestId('avatar-error')).toBeHidden();
+    await page.keyboard.press('Escape');
+    fromAvatar = true;
     // Close is always there.
     await page.route(/\/avatar$/, (route) => route.fulfill({ status: 500, body: 'boom' }));
     await upload_();
-    await page.getByRole('button', { name: 'Upload' }).click();
     await expect(dialogOf(page).getByTestId('avatar-error')).toBeVisible();
     await dialogOf(page).getByTestId('avatar-close').click();
     await expect(dialogOf(page)).toBeHidden();
+  });
+});
+
+test.describe('the picture dialog and the page around it', () => {
+  const me = freshEmail('avatar-around');
+  test.use(asIdentity(me));
+
+  test('closing while the picture goes up cancels it, so no crop arrives later', async ({ page }) => {
+    await page.goto('/profile');
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route(/\/avatar$/, async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      await held;
+      await route.continue().catch(() => {}); // the page has already given up on it
+    });
+    const failed = page.waitForEvent('requestfailed', (r) => r.method() === 'POST' && /\/avatar$/.test(r.url()));
+    await choose(page, fixture('gps-tagged.jpg'));
+    await expect(dialogOf(page).getByTestId('avatar-loading')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogOf(page)).toBeHidden();
+    await failed;
+    release();
+    await page.unroute(/\/avatar$/);
+
+    // The dialog is back on its first step: the avatar opens the chooser again.
+    await expect(dialogOf(page).getByTestId('crop-image')).toHaveCount(0);
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('profile-avatar').click();
+    await chooser;
+    await expect(dialogOf(page)).toBeHidden();
+  });
+
+  test('says where the picture stands in a message above the profile, and nothing when all is well', async ({ page }) => {
+    await page.goto('/profile');
+    await expect(page.getByTestId('avatar-status')).toBeHidden();
+    await choose(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    await page.keyboard.press('Escape');
+    const status = page.getByTestId('avatar-status');
+    await expect(status).toContainText('waiting to be cropped');
+    // A page-level message, above the profile box rather than inside it.
+    await expect(page.getByTestId('profile-identity').getByTestId('avatar-status')).toHaveCount(0);
+    const [msg, box] = [await status.boundingBox(), await page.getByTestId('profile-identity').boundingBox()];
+    expect(msg!.y + msg!.height).toBeLessThanOrEqual(box!.y);
+  });
+
+  test('says so above the profile when the status cannot be fetched, and recovers', async ({ page }) => {
+    await upload(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    const problem = page.getByTestId('avatar-status-problem');
+    const cases: [string, number, RegExp][] = [
+      ['server error', 500, /could not check on your picture/],
+      ['signed out', 401, /You are signed out/],
+    ];
+    let fail = 500;
+    await page.route(/\/avatar\/status/, (route) => route.fulfill({ status: fail, body: 'no' }));
+    await page.getByTestId('crop-save').click();
+    await expect(dialogOf(page)).toBeHidden();
+    for (const [name, code, message] of cases) {
+      fail = code;
+      // The saved step's status polls every 2s; each failure says so on the page.
+      await expect(problem, name).toBeVisible({ timeout: 10_000 });
+      await expect(problem, name).toContainText(message, { timeout: 10_000 });
+      await expect(problem.getByRole('link', { name: 'Reload this page' }), name).toBeVisible();
+      await expect(page.getByTestId('avatar-status'), name).toBeHidden();
+    }
+    // Once the status answers again, the page reloads with the new picture.
+    await page.unroute(/\/avatar\/status/);
+    await expect(page.getByTestId('profile-avatar-img')).toBeVisible({ timeout: 30_000 });
+    await expect(problem).toBeHidden();
+  });
+
+  test('a failed reset after closing keeps the dialog closed, and the next press says so', async ({ page }) => {
+    await upload(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    await page.route(/\/avatar\/upload$/, (route) => route.abort('connectionfailed'));
+    const resetFailed = page.waitForEvent('requestfailed', (r) => /\/avatar\/upload$/.test(r.url()));
+    await page.keyboard.press('Escape');
+    await expect(dialogOf(page)).toBeHidden();
+    // The reset to the first step failed in the background: nothing pops up.
+    await resetFailed;
+    await expect(dialogOf(page)).toBeHidden();
+    // Pressing the avatar asks for the first step again, in the open dialog.
+    await page.getByTestId('profile-avatar').click();
+    await expect(dialogOf(page)).toBeVisible();
+    await expect(dialogOf(page).getByTestId('avatar-error')).toContainText('connection failed');
+    await page.unroute(/\/avatar\/upload$/);
+  });
+
+  test('a crop link on the page that fails says so in the dialog', async ({ page }) => {
+    await upload(page, fixture('gps-tagged.jpg'));
+    await waitForCrop(page);
+    await page.keyboard.press('Escape');
+    const resume = page.getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' });
+    await expect(resume).toBeVisible();
+
+    await page.route(/\/avatar\/crop$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ status: 500, body: 'boom' }) : route.continue()));
+    await resume.click();
+    await expect(dialogOf(page)).toBeVisible();
+    await expect(dialogOf(page).getByTestId('avatar-error')).toContainText('went wrong on our side');
   });
 });
 
@@ -345,15 +456,12 @@ test.describe('screenshots', () => {
         }
       }
     };
-    await page.goto('/profile');
-    await openDialog(page);
-    await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
-    await page.getByRole('button', { name: 'Upload' }).click();
+    await upload(page, fixture('gps-tagged.jpg'));
     await waitForCrop(page);
-    // The crop step is in the dialog, which a reload closes: each shot opens it again.
+    // The crop step is in the dialog, which a reload closes: each shot opens it
+    // again from the status line on the page.
     const resumeCrop = async () => {
-      await openDialog(page);
-      await dialogOf(page).getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' }).click();
+      await page.getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' }).click();
       await waitForCrop(page);
     };
     await shoot('crop', resumeCrop);
