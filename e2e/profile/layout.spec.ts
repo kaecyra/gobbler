@@ -32,13 +32,16 @@ test.describe('editing the avatar from the picture', () => {
     await expect(editIcon(page)).not.toHaveCSS('opacity', '0');
   });
 
-  test('the page has no standalone upload controls until the avatar is clicked', async ({ page }) => {
+  test('the avatar opens the file chooser, and the page never shows an upload form', async ({ page }) => {
     await page.goto('/profile');
     await expect(dialog(page)).toBeHidden();
     await expect(page.locator('input[name=avatar]')).toBeHidden();
+    const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Change your picture' }).click();
-    await expect(dialog(page)).toBeVisible();
-    await expect(page.locator('input[name=avatar]')).toBeVisible();
+    expect((await chooser).isMultiple()).toBe(false);
+    // Nothing opens until a file is chosen.
+    await expect(dialog(page)).toBeHidden();
+    await expect(page.locator('input[name=avatar]')).toBeHidden();
   });
 
   test('Escape and the close button dismiss the dialog, and closing it keeps nothing', async ({ page }) => {
@@ -46,16 +49,24 @@ test.describe('editing the avatar from the picture', () => {
     const avatar = page.getByRole('button', { name: 'Change your picture' });
     const before = await page.getByTestId('profile-avatar').innerHTML();
 
+    // A file that is refused leaves the dialog open with the reason.
+    let chooser = page.waitForEvent('filechooser');
     await avatar.click();
-    await page.locator('input[name=avatar]').setInputFiles({ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from('x') });
+    await (await chooser).setFiles({ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from('x') });
+    await expect(dialog(page).getByTestId('avatar-message')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(dialog(page)).toBeHidden();
     await expect(avatar).toBeFocused();
 
-    // The chosen file is gone, nothing was uploaded and the avatar is as it was.
-    await avatar.click();
+    // The refusal and the chosen file are gone, and nothing was uploaded.
     expect(await page.locator('input[name=avatar]').evaluate((el: HTMLInputElement) => el.files!.length)).toBe(0);
     await expect(page.getByTestId('avatar-status')).toHaveAttribute('data-state', 'none');
+    await expect(dialog(page).getByTestId('avatar-message')).toHaveCount(0);
+
+    chooser = page.waitForEvent('filechooser');
+    await avatar.click();
+    await (await chooser).setFiles({ name: 'b.png', mimeType: 'image/png', buffer: Buffer.from('y') });
+    await expect(dialog(page)).toBeVisible();
     await page.getByTestId('avatar-close').click();
     await expect(dialog(page)).toBeHidden();
     expect(await page.getByTestId('profile-avatar').innerHTML()).toBe(before);

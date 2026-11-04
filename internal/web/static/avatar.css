@@ -8,8 +8,20 @@
   color: var(--ink); font: inherit; font-weight: 400;
 }
 .avatar-pick input[type=file]::file-selector-button { min-height: calc(var(--tap) - 18px); margin-right: 12px; }
-.avatar-dialog [data-state] { margin-top: 12px; }
-.avatar-dialog [data-state] p { margin: 0; }
+
+/* With scripts, the dialog never shows the form: the Choose button opens the
+   file chooser, and a chosen file goes up at once. Without them, the page shows
+   the form and no button. */
+.avatar-choose { display: none; margin-bottom: 12px; }
+.avatar-dialog[data-enhanced] .avatar-pick { display: none; }
+.avatar-dialog[data-enhanced] .avatar-choose { display: inline-flex; align-items: center; justify-content: center; }
+.avatar-loading { margin: 0; }
+#avatar-panel.is-loading > :not([data-avatar-loading]) { display: none; }
+
+/* Where the last upload stands, on the page beside the steps. */
+.avatar-status { margin-top: 12px; }
+.avatar-status:empty { display: none; }
+.avatar-status p { margin: 0; }
 
 .crop-stage {
   max-width: 100%; height: min(60vh, 520px); margin: 12px 0;

@@ -336,6 +336,11 @@ func TestAvatarDialogStepsAreFragments(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `data-step="saved"`) || !strings.Contains(rec.Body.String(), `every 2s`) {
 		t.Errorf("crop from the dialog = %d, want the status step polling:\n%s", rec.Code, rec.Body)
 	}
+	// The polling status replaces the page's, outside the step: a second
+	// #avatar-status inside the dialog would duplicate the page's.
+	if !strings.Contains(rec.Body.String(), `hx-swap-oob="true"`) {
+		t.Errorf("crop from the dialog: the status is not out of band:\n%s", rec.Body)
+	}
 	s.avatars.Wait()
 	if rec := s.get(path+"/avatar", me); rec.Code != http.StatusOK {
 		t.Errorf("avatar after the dialog's crop = %d, want 200", rec.Code)

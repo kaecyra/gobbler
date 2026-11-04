@@ -16,13 +16,14 @@ templ page(v pageView) {
 // identity is who the profile is: the avatar, the name and the email, each
 // shown only where the visibility rule allowed it. For the person themself the
 // avatar is a link to the upload page that profile.js turns into a button which
-// opens the dialog, so a browser without scripts still reaches the upload.
+// opens the file chooser, so a browser without scripts still reaches the
+// upload. The status of their last upload sits under the email.
 templ identity(v pageView) {
 	<section class="panel profile-head" aria-labelledby="profile-h" data-testid="profile-identity">
 		if v.Shown.Seed != "" {
 			if v.Self {
 				<link rel="stylesheet" href="/static/profile.css"/>
-				<a href={ templ.SafeURL(v.sectionPath("avatar/upload")) } role="button" class="profile-avatar profile-avatar-btn" aria-label="Change your picture" aria-haspopup="dialog" data-avatar-open data-testid="profile-avatar">
+				<a href={ templ.SafeURL(v.sectionPath("avatar/upload")) } role="button" class="profile-avatar profile-avatar-btn" aria-label="Change your picture" data-avatar-open data-testid="profile-avatar">
 					@avatarPicture(v)
 					<span class="avatar-edit" aria-hidden="true" data-testid="avatar-edit">
 						<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
@@ -41,6 +42,9 @@ templ identity(v pageView) {
 			<h1 id="profile-h" data-testid="profile-name">{ v.title() }</h1>
 			if v.Shown.Email != "" {
 				<p class="muted" data-testid="profile-email">{ v.Shown.Email }</p>
+			}
+			if v.Self {
+				@avatarStatusSlot(newPanelView(v.Address, v.Shown.Avatar, ""))
 			}
 		</div>
 	</section>
