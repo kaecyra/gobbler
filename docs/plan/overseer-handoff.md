@@ -16,7 +16,7 @@ The owner settled #353 and the OAuth items from round 17 with `/decide`. Everyth
 - **PR #364** (#362) raises the MCP defaults to 5/s with a burst of 50. VERSION 0.93.1.
 - **Confirmed as built:** OAuth accepts public clients only, and private-use redirect schemes must be reverse-domain names.
 
-**Next:** merge #363 and #364. After #363 merges, `a-recipe-proposals`, `a-oauth-limits` and `m-backup-endpoint` can be dispatched. `a-mcp-recipe-edit` waits for the first two. Still parked: i-site-extractors (#193) and l-meal-planning (#38).
+**Next:** #363 (8bc0aee) and #364 (77b843b, VERSION 0.93.1) are merged. `a-recipe-proposals`, `a-oauth-limits` and `m-backup-endpoint` can be dispatched. `a-mcp-recipe-edit` waits for the first two. Still parked: i-site-extractors (#193) and l-meal-planning (#38).
 
 ## Round 17, after the container restart (2026-11-03)
 
