@@ -2945,7 +2945,7 @@
       "wave": 11,
       "track": "ops",
       "issue": 348,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "m-avatar-media"
       ],
@@ -3964,6 +3964,12 @@
       "title": "accept OAuth access tokens at /mcp",
       "merged": "413b572",
       "note": "ADR-00034. Wires the OAuth token verifier into /mcp. Writes made with a token are logged in a new oauth_grant_writes table owned by internal/oauth, not in api_key_writes. Credential rows are deleted on revocation, and a bare INTEGER PRIMARY KEY reuses the newest freed id, so a credential id alone can name a later, unrelated credential. Each write row therefore also stores a snapshot that is never reused: for a grant, its client_id, owner email and created_at; for a key, the same fix applies to api_key_writes (its non-secret prefix, owner and created_at), in the same migration. Every lookup of a credential's writes (apikey.Store.Writes and its grant counterpart) matches on the snapshot as well as the id, and each log has a test that revokes the newest credential, issues a new one with the same id, and shows the old writes are not returned. May edit, as exceptions to append-only: the web.go r.Use line and the MCPVerifier default line, and the routes.go mountMCP line that builds the audit."
+    },
+    {
+      "id": "m-backup-endpoint",
+      "title": "backup uses config.S3.HostTLS instead of its own parseEndpoint",
+      "merged": "d0b6bd7772ebf1211ace100208b869780e99e61e",
+      "note": "Broken window from m-avatar-media (#333): two parsers for one S3 endpoint setting. Behaviour unchanged; backup tests pass unchanged."
     }
   ],
   "adr_sequence": {
