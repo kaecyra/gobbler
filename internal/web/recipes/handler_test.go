@@ -214,15 +214,17 @@ func TestHomeSuggestionCyclesAndValidatesTheIdea(t *testing.T) {
 	a.LastMade = &last
 	lib := &fakeLibrary{idle: []store.Card{a, b}}
 
+	// Never made comes first; home has no forgot panel, so the recipe made
+	// longest ago is the next idea rather than skipped.
 	_, body, _ := home(t, lib, "/", nil)
-	if !strings.Contains(body, "Old soup") || !strings.Contains(body, "Last made 7 months ago") || !strings.Contains(body, `href="/?idea=1"`) {
+	if !strings.Contains(body, "Never cake") || !strings.Contains(body, "Not made yet") || !strings.Contains(body, `href="/?idea=1"`) {
 		t.Errorf("first idea:\n%s", body)
 	}
 	_, body, _ = home(t, lib, "/?idea=1", nil)
-	if !strings.Contains(body, "Never cake") || !strings.Contains(body, "Not made yet") || !strings.Contains(body, `href="/"`) {
+	if !strings.Contains(body, "Old soup") || !strings.Contains(body, "Last made 7 months ago") || !strings.Contains(body, `href="/"`) {
 		t.Errorf("second idea should wrap back to the bare URL:\n%s", body)
 	}
-	_, body, _ = home(t, lib, "/?idea=3", nil)
+	_, body, _ = home(t, lib, "/?idea=2", nil)
 	if !strings.Contains(body, "Never cake") {
 		t.Error("an idea past the end should wrap round")
 	}
@@ -279,7 +281,6 @@ func TestFormatting(t *testing.T) {
 		{ago(d(2026, 3, 2), today), "7 months ago"},
 		{ago(d(2025, 8, 1), today), "a year ago"},
 		{ago(d(2023, 1, 1), today), "3 years ago"},
-		{spoonWord(4), "four"},
 		{headingFor(1, ""), "1 recipe"},
 		{headingFor(2, "lemon"), "2 recipes for “lemon”"},
 		{listHref("a b", groupTime), "/recipes?group=time&q=a+b"},
@@ -323,24 +324,120 @@ func TestAgoCountsCalendarDays(t *testing.T) {
 }
 
 func TestLibraryShowsTheSuggestionAndKeepsTheSearchOnAnotherIdea(t *testing.T) {
-	last := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
-	a, b := card(1, "Old soup", recipe.MealMain), card(2, "Never cake", recipe.MealDessert)
-	a.LastMade = &last
-	lib := &fakeLibrary{cards: []store.Card{b, a}}
+	older, last := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC), time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	f, a, b := card(3, "Older stew", recipe.MealMain), card(1, "Old soup", recipe.MealMain), card(2, "Never cake", recipe.MealDessert)
+	f.LastMade, a.LastMade = &older, &last
+	lib := &fakeLibrary{cards: []store.Card{b, a, f}}
 
 	_, body, _ := get(t, lib, "/?q=cake&group=time", nil)
-	if !strings.Contains(body, `id="suggest"`) || !strings.Contains(body, "Old soup") {
+	if !strings.Contains(body, `id="suggest"`) || !strings.Contains(body, "Never cake") {
 		t.Errorf("the library aside lacks the suggestion:\n%s", body)
 	}
 	if !strings.Contains(body, `href="/recipes?group=time&amp;idea=1&amp;q=cake"`) {
 		t.Errorf("Another idea should stay on the library page and keep q and group:\n%s", body)
 	}
 	_, frag, _ := get(t, lib, "/?q=cake&idea=1", map[string]string{"HX-Request": "true", "HX-Target": "suggest"})
-	if strings.Contains(frag, "<html") || !strings.Contains(frag, "Never cake") {
+	if strings.Contains(frag, "<html") || !strings.Contains(frag, "Old soup") {
 		t.Errorf("another idea should get just the next suggestion:\n%s", frag)
+	}
+	// The forgot panel's recipe is never also the suggestion on the same page.
+	_, frag, _ = get(t, lib, "/?idea=2", map[string]string{"HX-Request": "true", "HX-Target": "suggest"})
+	if strings.Contains(frag, "Older stew") {
+		t.Errorf("the suggestion repeats the forgot panel:\n%s", frag)
 	}
 	if code, _, _ := get(t, lib, "/?idea=x", nil); code != http.StatusBadRequest {
 		t.Errorf("bad idea status %d, want 400", code)
+	}
+}
+
+func TestIdeasAndForgotPick(t *testing.T) {
+	day := func(daysAgo int) *time.Time { d := today.AddDate(0, 0, -daysAgo); return &d }
+	made := func(id int64, name string, daysAgo int) store.Card {
+		c := card(id, name, "")
+		c.LastMade = day(daysAgo)
+		return c
+	}
+	names := func(cs []store.Card) string {
+		var out []string
+		for _, c := range cs {
+			out = append(out, c.Name)
+		}
+		return strings.Join(out, ",")
+	}
+	for _, tc := range []struct {
+		name       string
+		idle       []store.Card // in store.IdleOrder
+		forgot     string       // the pick, "" for none
+		home, page string       // ideas without and with the forgot skip
+	}{
+		{"empty", nil, "", "", ""},
+		{"never made only", []store.Card{card(1, "A", ""), card(2, "B", "")}, "", "A,B", "A,B"},
+		{"never made first, then idle oldest first",
+			[]store.Card{made(1, "Old", 200), made(2, "Mid", 60), card(3, "New", "")}, "Old", "New,Old,Mid", "New,Mid"},
+		{"made in the last 30 days is left out",
+			[]store.Card{made(1, "Thirty", 30), made(2, "Two", 2)}, "", "", ""},
+		{"31 days counts as a while", []store.Card{made(1, "Month", 31)}, "Month", "Month", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pick := forgotPick(tc.idle, today)
+			got := ""
+			if pick != nil {
+				got = pick.Name
+			}
+			if got != tc.forgot {
+				t.Errorf("forgot = %q, want %q", got, tc.forgot)
+			}
+			if g := names(ideasFrom(tc.idle, today, nil)); g != tc.home {
+				t.Errorf("home ideas = %q, want %q", g, tc.home)
+			}
+			if g := names(ideasFrom(tc.idle, today, pick)); g != tc.page {
+				t.Errorf("library ideas = %q, want %q", g, tc.page)
+			}
+		})
+	}
+}
+
+func TestPanelsWithNothingToShowAreDropped(t *testing.T) {
+	recent := func(daysAgo int) store.Card {
+		c := card(1, "Fresh soup", recipe.MealMain)
+		d := today.AddDate(0, 0, -daysAgo)
+		c.LastMade = &d
+		return c
+	}
+	// Recipes, none made: no Recently made, no forgot, but a suggestion.
+	_, body, _ := home(t, &fakeLibrary{idle: []store.Card{card(1, "Soup", "")}}, "/", nil)
+	if strings.Contains(body, `data-testid="recently-made"`) || !strings.Contains(body, `id="suggest"`) {
+		t.Errorf("home with nothing made:\n%s", body)
+	}
+	// Everything made this week: nothing to suggest.
+	_, body, _ = home(t, &fakeLibrary{idle: []store.Card{recent(2)}}, "/", nil)
+	if strings.Contains(body, `id="suggest"`) {
+		t.Error("a recipe made two days ago is suggested on home")
+	}
+	// An empty library has no side at all.
+	_, body, _ = get(t, &fakeLibrary{}, "/", nil)
+	if strings.Contains(body, `<aside`) || !strings.Contains(body, `class="lib solo"`) {
+		t.Errorf("an empty library keeps its side:\n%s", body)
+	}
+	_, body, _ = home(t, &fakeLibrary{}, "/", nil)
+	if strings.Contains(body, `data-testid="recently-made"`) || strings.Contains(body, `class="lib home"`) {
+		t.Errorf("home of an empty library draws its panels:\n%s", body)
+	}
+}
+
+func TestForgotPanelShowsItsSpoons(t *testing.T) {
+	c := card(1, "Lemon cake", recipe.MealDessert)
+	d, four := time.Date(2026, 4, 18, 0, 0, 0, 0, time.UTC), 4
+	c.LastMade, c.Rating = &d, &four
+	_, body, _ := get(t, &fakeLibrary{cards: []store.Card{c}}, "/", nil)
+	i := strings.Index(body, `data-testid="forgot"`)
+	if i < 0 {
+		t.Fatalf("no forgot panel:\n%s", body)
+	}
+	panel := body[i:]
+	panel = panel[:strings.Index(panel, "</aside>")]
+	if !strings.Contains(panel, "Last made in April.") || !strings.Contains(panel, `class="spoons"`) || strings.Contains(panel, "You gave it") {
+		t.Errorf("forgot panel:\n%s", panel)
 	}
 }
 

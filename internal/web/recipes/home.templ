@@ -31,52 +31,53 @@ templ homePage(h homeView) {
 				@searchBox("")
 				<p>Search by name, ingredient or anything you wrote in a note.</p>
 			</form>
-			<div class="lib home">
-				<div class="side">
-					if h.Empty {
-						@emptyLibrary()
-					} else {
-						@suggestion(h.Suggest)
-					}
-					@recentPanel(h.Recent)
+			if h.Empty {
+				@emptyLibrary()
+			} else if h.Suggest != nil || len(h.Recent) > 0 {
+				<div class="lib home">
+					<div class="side">
+						if h.Suggest != nil {
+							@suggestion(*h.Suggest)
+						}
+						@recentPanel(h.Recent)
+					</div>
 				</div>
-			</div>
+			}
 		</section>
 	}
 }
 
-// suggestion is the home page's pick: a recipe the household has not made for a
-// while. "Another idea" asks for the next one and replaces just this block.
+// suggestion is the pick on home and in the library's side: a recipe never
+// made, or not made for a while. The mascot is the speaker of the voice line.
+// "Another idea" asks for the next one and replaces just this block.
 templ suggestion(s suggestView) {
 	<article class="suggest" id="suggest" aria-label="A suggestion from gobbler">
-		<div class="sg-gob"><img src={ layout.MascotRollingPin } alt="" width="150"/></div>
-		<div class="sg-body">
-			<p class="sg-voice">{ s.Voice }</p>
-			<h2 class="sg-name">{ s.Card.Name }</h2>
-			<div class="sg-meta">
-				if s.Card.Meal != "" {
-					@mealType(s.Card.Meal, s.Card.MealLabel)
-				}
-				<span>{ s.When }</span>
-				if s.Card.Rating > 0 {
-					@spoons(s.Card.Rating, s.Card.RatingLabel)
-				}
-			</div>
-			<div class="sg-act">
-				<a class="btn accent" href={ templ.SafeURL(s.Card.Href) }>Open recipe</a>
-				if s.NextHref != "" {
-					<a
-						class="sg-next"
-						href={ templ.SafeURL(s.NextHref) }
-						hx-get={ s.NextHref }
-						hx-target="#suggest"
-						hx-swap="outerHTML"
-					>Another idea</a>
-				}
-			</div>
-			<div class="sg-rib">
-				@ribbon.Card(s.Card.Ribbon)
-			</div>
+		<div class="sg-voice">
+			<img src={ layout.MascotTasting } alt="" width="44" height="44"/>
+			<p>{ s.Voice }</p>
+		</div>
+		<h2 class="sg-name">{ s.Card.Name }</h2>
+		<div class="sg-meta">
+			if s.Card.Meal != "" {
+				@mealType(s.Card.Meal, s.Card.MealLabel)
+			}
+			<span>{ s.When }</span>
+			if s.Card.Rating > 0 {
+				@spoons(s.Card.Rating, s.Card.RatingLabel)
+			}
+		</div>
+		@ribbon.Inline(s.Card.Ribbon)
+		<div class="sg-act">
+			<a class="btn accent" href={ templ.SafeURL(s.Card.Href) }>Open recipe</a>
+			if s.NextHref != "" {
+				<a
+					class="sg-next"
+					href={ templ.SafeURL(s.NextHref) }
+					hx-get={ s.NextHref }
+					hx-target="#suggest"
+					hx-swap="outerHTML"
+				>Another idea</a>
+			}
 		</div>
 	</article>
 }

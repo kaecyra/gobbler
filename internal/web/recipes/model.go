@@ -285,15 +285,6 @@ func ago(t, now time.Time) string {
 	return strconv.Itoa(days/365) + " years ago"
 }
 
-// spoonWord spells a rating for the "You gave it ..." line.
-func spoonWord(n int) string {
-	words := [...]string{"no", "one", "two", "three", "four", "five"}
-	if n < 0 || n >= len(words) {
-		return strconv.Itoa(n)
-	}
-	return words[n]
-}
-
 func recipeHref(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }
 
 func itoa(n int) string { return strconv.Itoa(n) }
