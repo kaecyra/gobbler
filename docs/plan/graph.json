@@ -2921,7 +2921,7 @@
       "wave": 11,
       "track": null,
       "issue": 361,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "a-mcp-oauth"
       ],
@@ -3995,6 +3995,15 @@
       "title": "backup uses config.S3.HostTLS instead of its own parseEndpoint",
       "merged": "d0b6bd7772ebf1211ace100208b869780e99e61e",
       "note": "Broken window from m-avatar-media (#333): two parsers for one S3 endpoint setting. Behaviour unchanged; backup tests pass unchanged."
+    },
+    {
+      "id": "a-oauth-limits",
+      "title": "per-address rate limits on the public OAuth endpoints, ceiling on unused clients",
+      "merged": "f05ff9f040ac96ca1ebb55425f8201ad59bfeea0",
+      "adrs": [
+        "00036"
+      ],
+      "note": "ADR-00036. The /mcp leaky bucket moves to internal/ratelimit, imported by MCP and the OAuth endpoints. One client-address rule (CF-Connecting-IP only from configured trusted proxies) replaces the unconditional header read in internal/session/client.go. The client ceiling counts only clients without a grant, at 10,000."
     }
   ],
   "adr_sequence": {
