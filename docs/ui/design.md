@@ -75,8 +75,9 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   toggle and, where people sign in to the app, **Sign in**. The toggle works from
   both, remembers its choice in `localStorage` and never follows the system
   setting (see Principles).
-- **Footer.** It links the repository and says "Made by kaecyra in Canada"
-  with a red maple leaf.
+- **Footer.** It links the repository, with the running version beside the
+  link in muted text, and says "Made by kaecyra in Canada" with a red maple
+  leaf.
 - **Mascots.** Each drawing is its own embedded SVG file, served cached:
   `gob` in the header, plus `gob-full-rolling-pin`, `gob-full-mixing-bowl`,
   `gob-whisk`, `gob-herbs`, `gob-full-pie` and `gob-tasting` for the panels,

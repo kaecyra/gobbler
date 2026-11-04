@@ -13,9 +13,14 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 
+COPY VERSION ./
+
 # Pure-Go SQLite driver: no cgo, so no C toolchain in this stage (ADR-00002).
+# The footer shows the release, linked in from VERSION (layout.Version).
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/gobbler ./cmd/gobbler
+    CGO_ENABLED=0 go build -trimpath \
+      -ldflags="-s -w -X github.com/kaecyra/gobbler/internal/web/layout.Version=$(tr -d '[:space:]' < VERSION)" \
+      -o /out/gobbler ./cmd/gobbler
 
 FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 

@@ -80,7 +80,7 @@ e2e-routes:
 e2e: e2e-routes
 	@test -d e2e/node_modules/@playwright/test || { echo "e2e dependencies missing; setup: $(E2E_SETUP)"; exit 1; }
 	@d="$$(mktemp -d)"; trap 'rm -rf "$$d"' EXIT; \
-	go build -o "$$d/gobbler" ./cmd/gobbler || exit 1; \
+	go build -ldflags="-X $(MODULE)/internal/web/layout.Version=$$(tr -d '[:space:]' < VERSION)" -o "$$d/gobbler" ./cmd/gobbler || exit 1; \
 	cd e2e && GOBBLER_E2E_BIN="$$d/gobbler" npx --no-install playwright test
 
 ## version-check: fail if source changed against origin/main without a VERSION bump
