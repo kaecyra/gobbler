@@ -115,5 +115,28 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("no profile on the request: %w", layout.ErrNotFound))
 		return
 	}
-	layout.Render(w, r, http.StatusOK, page(newView(s)))
+	v := newView(s)
+	if v.Self {
+		name, err := h.householdName(r.Context(), s.Profile.Email)
+		if err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
+		v.Household = name
+	}
+	layout.Render(w, r, http.StatusOK, page(v))
+}
+
+// householdName is the name of the household of an email, empty for someone in
+// none. A failed lookup is an error, not "no household".
+func (h *handler) householdName(ctx context.Context, email string) (string, error) {
+	hh, err := h.Households.ForEmail(ctx, email)
+	switch {
+	case err == nil:
+		return hh.Name, nil
+	case errors.Is(err, household.ErrNotFound), errors.Is(err, household.ErrInvalid):
+		return "", nil
+	default:
+		return "", fmt.Errorf("household of the profile's person: %w", err)
+	}
 }

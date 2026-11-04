@@ -1,0 +1,31 @@
+/* Profile page (internal/web/profile/page.templ). Tokens only. */
+
+/* The avatar is a button; the edit icon shows on hover and focus, and always
+   where there is no hover (touch). */
+.profile-avatar-btn {
+  position: relative; display: block; padding: 0; cursor: pointer;
+  background: none; font: inherit; color: inherit;
+}
+.profile-avatar-btn .avatar-edit {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: var(--ink); color: var(--paper); opacity: 0; transition: opacity 0.12s;
+}
+.profile-avatar-btn:hover .avatar-edit,
+.profile-avatar-btn:focus-visible .avatar-edit { opacity: 0.72; }
+@media (hover: none) {
+  .profile-avatar-btn .avatar-edit {
+    inset: auto 4px 4px auto; width: 28px; height: 28px; border-radius: var(--r); opacity: 0.85;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-avatar-btn .avatar-edit { transition: none; }
+}
+
+.avatar-dialog {
+  width: min(32rem, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto;
+  padding: 16px; background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--r);
+}
+.avatar-dialog::backdrop { background: var(--ink); opacity: 0.4; }
+.avatar-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.avatar-dialog-head h2 { margin: 0; }

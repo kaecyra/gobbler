@@ -2,13 +2,18 @@ package profile
 
 import "github.com/kaecyra/gobbler/internal/web/layout"
 
-// avatarSection is the form that uploads a picture, and the status of the last
-// one. The section's status loads as a fragment so it can poll while the
-// picture is processed in the background (ADR-00033).
-templ avatarSection(v pageView) {
-	<section class="panel avatar-section" aria-labelledby="avatar-h" data-testid="profile-avatar-form">
+// avatarDialog is the modal the avatar button opens: the form that uploads a
+// picture, and the status of the last one. The status loads as a fragment so it
+// can poll while the picture is processed in the background (ADR-00033).
+// Escape closes a modal <dialog> natively; profile.js opens it and wires the
+// close button.
+templ avatarDialog(v pageView) {
+	<dialog class="avatar-dialog" id="avatar-dialog" aria-labelledby="avatar-h" data-testid="profile-avatar-form">
 		<link rel="stylesheet" href="/static/avatar.css"/>
-		<h2 id="avatar-h">Picture</h2>
+		<div class="avatar-dialog-head">
+			<h2 id="avatar-h">Change your picture</h2>
+			<button type="button" class="btn" data-avatar-close data-testid="avatar-close">Close</button>
+		</div>
 		<form class="avatar-pick" method="post" enctype="multipart/form-data" action={ templ.SafeURL(v.sectionPath("avatar")) }>
 			<label>
 				Choose a picture
@@ -18,7 +23,7 @@ templ avatarSection(v pageView) {
 		</form>
 		<p class="muted">JPEG, PNG, GIF, WebP, HEIC or AVIF, up to { maxUploadMB } MB. You choose the square to keep on the next step.</p>
 		<div id="avatar-status" data-testid="avatar-status" hx-get={ statusSrc(v) } hx-trigger="load" hx-swap="outerHTML"></div>
-	</section>
+	</dialog>
 }
 
 // statusFragment says where the person's last upload stands. While it is

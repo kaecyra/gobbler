@@ -101,7 +101,7 @@ func TestAnotherPersonSeesTheProfileButCannotEditIt(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(body, auth.DevEmail) {
 		t.Fatalf("another household's member opening %s = %d, want the profile", path, rec.Code)
 	}
-	for _, hidden := range []string{"Your profile", `action="` + path + `/name"`, "Display name"} {
+	for _, hidden := range []string{"Your profile", `action="` + path + `/name"`, `name="name"`, "profile-name-form", "profile-avatar-form", "Change your picture"} {
 		if strings.Contains(body, hidden) {
 			t.Errorf("another person's view shows %q", hidden)
 		}

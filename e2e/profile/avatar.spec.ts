@@ -20,9 +20,16 @@ const ADDRESS_URL = /\/profile\/[A-Za-z0-9_-]{22}$/;
 const CROP_URL = /\/profile\/[A-Za-z0-9_-]{22}\/avatar\/crop$/;
 const header = (page: Page) => page.getByRole('banner');
 
-/** Chooses a file in the picture form and presses Upload. */
+/** Opens the picture dialog from the avatar. */
+async function openDialog(page: Page) {
+  await page.getByTestId('profile-avatar').click();
+  await expect(page.getByTestId('profile-avatar-form')).toBeVisible();
+}
+
+/** Chooses a file in the picture dialog and presses Upload. */
 async function upload(page: Page, file: string | { name: string; mimeType: string; buffer: Buffer }) {
   await page.goto('/profile');
+  await openDialog(page);
   await page.locator('input[name=avatar]').setInputFiles(file);
   await page.getByRole('button', { name: 'Upload' }).click();
 }
@@ -118,6 +125,8 @@ test.describe('uploading an avatar', () => {
       await page.setViewportSize(viewport);
       await page.goto('/profile');
       await expectTapTargets(page, 'main');
+      await openDialog(page);
+      await expectTapTargets(page, 'dialog');
       await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
       await page.getByRole('button', { name: 'Upload' }).click();
       await expect(page).toHaveURL(CROP_URL);
@@ -200,6 +209,7 @@ test.describe('screenshots', () => {
       }
     };
     await page.goto('/profile');
+    await openDialog(page);
     await page.locator('input[name=avatar]').setInputFiles(fixture('gps-tagged.jpg'));
     await page.getByRole('button', { name: 'Upload' }).click();
     await expect(page).toHaveURL(CROP_URL);

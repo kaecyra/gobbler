@@ -20,7 +20,13 @@ type pageView struct {
 	// themself only, for the form that sets the name.
 	OwnName     string
 	DefaultName string
+	// Household is the name of the household the person belongs to, empty if
+	// none. Filled for the person themself only.
+	Household string
 }
+
+// householdPath is the household page, which the household section links to.
+const householdPath = "/household"
 
 func newView(s subject) pageView {
 	v := pageView{Address: s.Profile.Address, Self: s.Self(), Shown: s.Profile.As(s.Relation)}

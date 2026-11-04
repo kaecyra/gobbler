@@ -8,8 +8,8 @@
   color: var(--ink); font: inherit; font-weight: 400;
 }
 .avatar-pick input[type=file]::file-selector-button { min-height: calc(var(--tap) - 18px); margin-right: 12px; }
-.avatar-section [data-state] { margin-top: 12px; }
-.avatar-section [data-state] p { margin: 0; }
+.avatar-dialog [data-state] { margin-top: 12px; }
+.avatar-dialog [data-state] p { margin: 0; }
 
 .crop-stage {
   max-width: 100%; height: min(60vh, 520px); margin: 12px 0;
