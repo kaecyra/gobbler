@@ -82,6 +82,7 @@ peer address.
 4. The client ceiling counts only clients without a grant and is 10,000. A test
    fills it, shows the next registration is refused, and shows a client with a
    grant is neither counted nor pruned.
-5. `docs/operations.md` describes the trusted-proxy setting (with the
-   cloudflared Compose network as the example) and the rate and burst
-   settings for the public OAuth endpoints.
+5. `docs/operations.md` describes the trusted-proxy setting and the rate and
+   burst settings for the public OAuth endpoints. Its trusted-proxy example
+   is the address cloudflared, on the VM guest (ADR-00017, ADR-00027),
+   reaches gobbler from, with a step to confirm it.
