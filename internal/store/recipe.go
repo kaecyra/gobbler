@@ -118,7 +118,7 @@ func (s *Store) insertRecipe(ctx context.Context, q *storedb.Queries, hid int64,
 	if err != nil {
 		return 0, err
 	}
-	if r, err = assignKeys(ctx, q, hid, 0, r); err != nil {
+	if r, err = assignKeys(ctx, q, hid, 0, r, nil, false); err != nil {
 		return 0, err
 	}
 	if err := insertChildren(ctx, q, hid, id, r, units); err != nil {
@@ -258,15 +258,24 @@ func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, 
 	if err != nil {
 		return err
 	}
-	if r, err = assignKeys(ctx, q, hid, id, r); err != nil {
-		return err
-	}
 	cur, err := loadInfo(ctx, q, hid, id)
 	if err != nil {
 		return err
 	}
 	old, err := loadDocument(ctx, q, hid, id, units)
 	if err != nil {
+		return err
+	}
+	live := map[string]bool{}
+	for _, c := range old.Components {
+		for _, l := range c.Lines {
+			live[l.Key] = true
+		}
+		for _, s := range c.Steps {
+			live[string(s.ID)] = true
+		}
+	}
+	if r, err = assignKeys(ctx, q, hid, id, r, live, change == changeRestore); err != nil {
 		return err
 	}
 	now := s.stamp()

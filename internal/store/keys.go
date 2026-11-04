@@ -45,15 +45,22 @@ func mintKey(prefix string, taken map[string]bool) (string, error) {
 // document holds, so a removed element's key goes to no other element.
 //
 // id is 0 for a recipe being created, which has held no keys yet.
-func assignKeys(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe.Recipe) (recipe.Recipe, error) {
+//
+// live holds the keys of the version being replaced. A key r supplies that the
+// recipe has held but the live version does not is a removed element's key, and
+// it may not come back on a different element: it is refused, unless restore
+// says r is an earlier version being restored, whose elements are the ones that
+// held those keys.
+func assignKeys(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe.Recipe, live map[string]bool, restore bool) (recipe.Recipe, error) {
 	taken := map[string]bool{}
+	held := map[string]bool{}
 	if id != 0 {
-		held, err := q.ListRecipeKeys(ctx, storedb.ListRecipeKeysParams{RecipeID: id, HouseholdID: hid})
+		ledger, err := q.ListRecipeKeys(ctx, storedb.ListRecipeKeysParams{RecipeID: id, HouseholdID: hid})
 		if err != nil {
 			return recipe.Recipe{}, readErr(fmt.Sprintf("keys of recipe %d", id), err)
 		}
-		for _, k := range held {
-			taken[k] = true
+		for _, k := range ledger {
+			taken[k], held[k] = true, true
 		}
 	}
 	// Keys the document already holds are checked for shape and uniqueness
@@ -62,6 +69,9 @@ func assignKeys(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe
 	claim := func(k, what string) error {
 		if seen[k] {
 			return fmt.Errorf("%w: %s %q is on two elements", ErrInvalid, what, k)
+		}
+		if held[k] && !live[k] && !restore {
+			return fmt.Errorf("%w: %s %q belonged to an element that was removed from this recipe and cannot be given to another", ErrInvalid, what, k)
 		}
 		seen[k] = true
 		taken[k] = true

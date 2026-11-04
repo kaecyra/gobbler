@@ -305,7 +305,7 @@ What a client can do:
 | Tools | Effect |
 |---|---|
 | `search_recipes`, `list_recipes`, `get_recipe` | Read recipes as structured data. |
-| `import_recipe` (a URL or pasted text), `create_recipe_draft` | Produce a **draft** through the rule-first pipeline. It waits on the review screen (`/ingest/<token>`, returned as `review_path`) for a person to confirm; nothing is saved until then. A draft is held in memory for an hour, shared with the web ingest form, and opens for the members of its household only. |
+| `import_recipe` (a URL or pasted text), `create_recipe_draft` | Produce a **draft** through the rule-first pipeline. It waits on the review screen (`/ingest/<token>`, returned as `review_path`) for a person to confirm; nothing is saved until then. A draft is stored durably (ADR-00035), shared with the web ingest form, and opens for the members of its household only. It survives a restart and expires after 365 days; a household holds at most 20 pending drafts of new recipes, and the 21st is refused with a message saying drafts are waiting for review (nothing is dropped to make room). A rejected, superseded or expired proposal is deleted 60 days after it reached that state, with its unconfirmed source. |
 | `list_shopping_lists`, `get_shopping_list`, `get_pantry` | Read shopping lists and the pantry. |
 | `create_shopping_list`, `add_recipe_to_shopping_list`, `add_manual_shopping_item`, `check_shopping_item` | Change shopping lists. These **apply at once**. |
 

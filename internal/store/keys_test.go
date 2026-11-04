@@ -252,3 +252,48 @@ func TestMigrationGivesExistingRowsKeys(t *testing.T) {
 		}
 	}
 }
+
+// A key the recipe held, whose element has been removed, cannot come back on an
+// element of an ordinary edit (a crafted form could try); a restore of the
+// version that held it may bring it back, on the element that held it.
+func TestARemovedKeyCannotComeBackOnAnEdit(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := authedCtx(t)
+	id, err := s.Create(ctx, recipe.Recipe{Name: "v1", Components: []recipe.Component{{
+		Lines: []recipe.IngredientLine{lineOf("a"), lineOf("b")},
+		Steps: []recipe.Step{{ID: "x", Text: "One."}, {ID: "y", Text: "Two."}},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v1, _ := s.Get(ctx, id)
+	steps, lines := keysOf(v1)
+	// Remove the second step and second line.
+	v2 := v1
+	v2.Components = []recipe.Component{{Lines: v1.Components[0].Lines[:1], Steps: v1.Components[0].Steps[:1]}}
+	if err := s.Update(ctx, id, v2); err != nil {
+		t.Fatal(err)
+	}
+
+	stepBack := v2
+	stepBack.Components = []recipe.Component{{Lines: v2.Components[0].Lines, Steps: []recipe.Step{v2.Components[0].Steps[0], {ID: recipe.StepID(steps[1]), Text: "Imposter."}}}}
+	if err := s.Update(ctx, id, stepBack); !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), steps[1]) {
+		t.Errorf("a removed step's key on a new step = %v, want ErrInvalid naming the key", err)
+	}
+	lineBack := v2
+	lineBack.Components = []recipe.Component{{Lines: []recipe.IngredientLine{v2.Components[0].Lines[0], {Key: lines[1], Rule: quantity.RuleLinear, Raw: "imposter"}}, Steps: v2.Components[0].Steps}}
+	if err := s.Update(ctx, id, lineBack); !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), lines[1]) {
+		t.Errorf("a removed line's key on a new line = %v, want ErrInvalid naming the key", err)
+	}
+	if cur, _ := s.Info(ctx, id); cur.Version != 2 {
+		t.Errorf("a refused edit left version %d, want 2", cur.Version)
+	}
+	// A restore of version 1 puts the elements back with their keys.
+	if err := s.Restore(ctx, id, 1); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	back, _ := s.Get(ctx, id)
+	if gs, gl := keysOf(back); strings.Join(gs, ",") != strings.Join(steps, ",") || strings.Join(gl, ",") != strings.Join(lines, ",") {
+		t.Errorf("restored keys %v %v, want %v %v", gs, gl, steps, lines)
+	}
+}
