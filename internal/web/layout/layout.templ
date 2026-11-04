@@ -66,10 +66,13 @@ templ Page(title string) {
 			</main>
 			<footer class="wrap">
 				<div class="foot">
-					<a href={ templ.SafeURL(RepositoryURL) } target="_blank" rel="noopener">
-						@Icon(IconCode)
-						<span>{ RepositoryDisplay }</span>
-					</a>
+					<span class="foot-src">
+						<a href={ templ.SafeURL(RepositoryURL) } target="_blank" rel="noopener">
+							@Icon(IconCode)
+							<span>{ RepositoryDisplay }</span>
+						</a>
+						<span class="foot-ver" data-testid="app-version">{ versionLabel() }</span>
+					</span>
 					<span class="made-by">
 						<span>Made by <a href={ templ.SafeURL(MakerURL) } target="_blank" rel="noopener">kaecyra</a> in <a href={ templ.SafeURL(CanadaPath) }>Canada</a></span>
 						@MapleLeaf("leaf")

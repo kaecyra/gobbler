@@ -409,3 +409,20 @@ func TestEveryHeaderIconIsDrawn(t *testing.T) {
 		}
 	}
 }
+
+// The footer shows the release the binary was linked with, and says plainly
+// when it is a local build with none.
+func TestFooterShowsTheVersion(t *testing.T) {
+	saved := Version
+	t.Cleanup(func() { Version = saved })
+	for version, want := range map[string]string{"0.98.0": "v0.98.0", "dev": "dev build"} {
+		Version = version
+		var b strings.Builder
+		if err := Page("x").Render(context.Background(), &b); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(b.String(), `data-testid="app-version">`+want+`<`) {
+			t.Errorf("version %q: footer does not show %q", version, want)
+		}
+	}
+}

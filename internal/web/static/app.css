@@ -310,6 +310,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
   justify-content: space-between;
   gap: 8px 24px;
 }
+.foot-src { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 12px; }
+.foot-ver { font-variant-numeric: tabular-nums; }
 .foot a {
   color: var(--ink-2);
   text-decoration: none;

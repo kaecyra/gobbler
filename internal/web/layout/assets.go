@@ -27,5 +27,18 @@ const (
 	RepositoryDisplay = "github.com/kaecyra/gobbler"
 )
 
+// Version is the release this binary was built from, the contents of the
+// repository's VERSION file. The image build and make e2e set it at link time
+// (-ldflags -X); any other build keeps "dev".
+var Version = "dev"
+
+// versionLabel is the version as the footer shows it.
+func versionLabel() string {
+	if Version == "dev" {
+		return "dev build"
+	}
+	return "v" + Version
+}
+
 // MakerURL is where the footer's "kaecyra" links: the maker's resume.
 const MakerURL = "https://resume.timgunter.ca"
