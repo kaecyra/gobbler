@@ -189,7 +189,7 @@ func TestKeysRoundTripThroughRevisionAndRestore(t *testing.T) {
 func TestMigrationGivesExistingRowsKeys(t *testing.T) {
 	ctx := context.Background()
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("99999")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00027")); err != nil {
 		t.Fatal(err)
 	}
 	h, err := household.New(d).Create(ctx, "First", auth.DevEmail)
@@ -302,7 +302,7 @@ func TestARemovedKeyCannotComeBackOnAnEdit(t *testing.T) {
 func TestMigrationKeepsEverySnapshotColumn(t *testing.T) {
 	ctx := context.Background()
 	d := openRaw(t)
-	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("99999")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00027")); err != nil {
 		t.Fatal(err)
 	}
 	hs := household.New(d)
