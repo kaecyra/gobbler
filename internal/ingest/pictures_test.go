@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"image"
 	"image/color"
@@ -237,5 +238,57 @@ func TestURLImportNamesTheImagesOfThePage(t *testing.T) {
 	}
 	if len(d.ImageURLs) != 1 || d.ImageURLs[0] != srv.URL+"/hero.png" {
 		t.Errorf("ImageURLs = %v, want the page's og:image resolved against it", d.ImageURLs)
+	}
+}
+
+// brokenFetch is a Pictures whose candidate fetch itself fails, as when the
+// media store is down, rather than dropping candidates one by one.
+type brokenFetch struct{ *picture.Service }
+
+func (brokenFetch) FetchCandidates(context.Context, int64, []string) ([]picture.Candidate, error) {
+	return nil, errors.New("media store is down")
+}
+
+func TestCandidateFetchErrorStillHoldsAndConfirmsTheDraft(t *testing.T) {
+	e := newPictureEnv(t)
+	srv := imageSite(t)
+	drafts := NewDrafts(e.store).WithPictures(brokenFetch{e.svc})
+	token, err := drafts.Add(e.ctx, e.urlDraft(t, srv.URL+"/a.png"), store.Provenance{Person: auth.DevEmail})
+	if err != nil || token == "" {
+		t.Fatalf("Add = %q, %v; a failed candidate fetch must not fail the ingest", token, err)
+	}
+	held, err := drafts.Get(e.ctx, token)
+	if err != nil || held.Candidates != 0 {
+		t.Fatalf("held = %d candidates, %v; want none", held.Candidates, err)
+	}
+	if _, err := e.keeper.SaveProposed(e.ctx, token, confirm(t, held)); err != nil {
+		t.Fatalf("the draft must still confirm: %v", err)
+	}
+}
+
+// brokenPromote is a PictureKeeper that cannot keep the chosen picture.
+type brokenPromote struct{ PictureKeeper }
+
+func (brokenPromote) Promote(context.Context, int64, int, int64) (string, error) {
+	return "", errors.New("media store is down")
+}
+
+func TestSavedPictureErrReportsAPictureThatCouldNotBeKept(t *testing.T) {
+	e := newPictureEnv(t)
+	srv := imageSite(t)
+	token, _ := e.hold(t, e.urlDraft(t, srv.URL+"/a.png"))
+	if err := e.drafts.ChoosePicture(e.ctx, token, 1); err != nil {
+		t.Fatal(err)
+	}
+	held, _ := e.drafts.Get(e.ctx, token)
+	saved, err := e.saver().WithPictures(brokenPromote{e.svc}).SaveProposed(e.ctx, token, confirm(t, held))
+	if err != nil {
+		t.Fatalf("SaveProposed = %v; the recipe is stored, so this is not an error", err)
+	}
+	if saved.RecipeID == 0 || saved.PictureErr == nil {
+		t.Fatalf("saved = %+v; want a recipe id and a PictureErr", saved)
+	}
+	if _, err := e.store.Get(e.ctx, saved.RecipeID); err != nil {
+		t.Errorf("recipe %d is not stored: %v", saved.RecipeID, err)
 	}
 }
