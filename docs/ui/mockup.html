@@ -424,7 +424,7 @@ main{padding-block:26px 64px}
 .ph4{background:repeating-linear-gradient(0deg,color-mix(in srgb,var(--st-sky-b) 26%,transparent) 0 5px,transparent 5px 14px),color-mix(in srgb,var(--st-sky-b) 14%,var(--card))}
 .ph5{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--st-butter-b) 24%,transparent) 0 4px,transparent 4px 12px),repeating-linear-gradient(-45deg,color-mix(in srgb,var(--st-butter-b) 24%,transparent) 0 4px,transparent 4px 12px),color-mix(in srgb,var(--st-butter-b) 14%,var(--card))}
 .rcard:has(.rpic) .ctop{margin-top:0}
-.rhero{position:relative;height:var(--hero-h,210px);border-radius:var(--r);overflow:hidden;background:var(--sunk);margin-bottom:6px}
+.rhero{position:relative;height:var(--hero-h,210px);border-radius:var(--r);overflow:hidden;margin-bottom:6px}
 .rhero>svg.photo{position:absolute;inset:0;width:100%;height:100%;display:block}
 .rhero::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,transparent 20%,color-mix(in srgb,var(--paper) 78%,transparent) 62%,var(--paper) 94%);pointer-events:none}
 .rhero .phmark{position:absolute;z-index:1;top:22px;right:28px;width:72px;height:72px;border-radius:6px;background:color-mix(in srgb,var(--card) 82%,transparent);border:1px solid var(--line);display:grid;place-items:center;color:var(--walnut)}
@@ -439,7 +439,9 @@ main{padding-block:26px 64px}
 .pick .th svg.photo{width:100%;height:100%;display:block}
 .pick .cap{font-size:12.5px;color:var(--ink-3);line-height:1.3}
 .pick[aria-checked="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
-.pick[aria-checked="true"] .th::after{content:"";position:absolute;right:6px;top:6px;width:22px;height:22px;border-radius:50%;background:var(--ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.5l2.2 2.2L9.5 3.8'/%3E%3C/svg%3E") center/12px no-repeat}
+.pick .tick{display:none;position:absolute;right:6px;top:6px;width:22px;height:22px;border-radius:50%;background:var(--ok);color:var(--on-accent);place-items:center}
+.pick .tick svg{width:12px;height:12px;display:block}
+.pick[aria-checked="true"] .tick{display:grid}
 .pick.none .th{display:grid;place-items:center;color:var(--ink-3);border:1px dashed var(--slate);background:var(--sunk)}
 .pick.none .th svg{width:30px;height:30px}
 .pick b{font-size:14px;font-weight:650}
@@ -1131,20 +1133,21 @@ function heroFill(el,meal,phIdx,picKey){
   else{el.classList.add('ph'+phIdx);el.insertAdjacentHTML('afterbegin',`<span class="phmark">${ICON[meal]}</span>`)}
 }
 heroFill($('#rhero'),'main',0,'braise');
-$$('[data-th]').forEach(e=>e.innerHTML=PHOTO[e.dataset.th]);
-$('#rhero2').insertAdjacentHTML('afterbegin',`<span class="phmark">${ICON.dessert}</span>`);$('#rhero2').classList.add('ph3');
+const TICK='<i class="tick"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5l2.2 2.2L9.5 3.8"/></svg></i>';
+$$('[data-th]').forEach(e=>e.innerHTML=PHOTO[e.dataset.th]+TICK);
+heroFill($('#rhero2'),'dessert',3);
 function wirePicker(root,after){
   root.addEventListener('click',e=>{const b=e.target.closest('.pick');if(!b)return;
     $$('.pick',root).forEach(x=>x.setAttribute('aria-checked',x===b));after&&after()});
 }
 wirePicker($('#picker1'),()=>{$('#picknote').hidden=true;$('#savebtn').setAttribute('aria-disabled','false')});
 wirePicker($('#picker2'));
-const SPEC=[['Library card','260 px wide at the narrowest, which is the grid minimum on a laptop. A 390 px phone gives 342 px, and a card on a wider screen stretches to fill its column.'],['Card picture band','150 px tall and the full card width, so 258 to 340 px wide on the screens drawn here. It fades into the card over its lower 60%. A candidate has to fill 340 × 150 CSS px, which is 680 × 300 pixels at twice the density.'],['Page header picture','210 px tall on a tablet or laptop and 160 px on a phone, 1124 px wide at most. The title sits over the fade.']];
+const SPEC=[['Library card width','The grid is one column until the card area is 536 px wide, then splits in two (and into more as it grows), with 260 px the narrowest a card gets. On the library page the area is the full page width below 901 px (one column, up to a 536 px column) and page width minus the side panel from 901 px.'],['Card picture band','150 px tall and 258 to 533 px wide, measured: 533 px is the widest, a viewport of 583 px, just before the grid splits in two. A 390 px phone gives 340 px and a laptop 258 px. It fades into the card over its lower 60%. A candidate has to fill 533 × 150 CSS px, which is 1066 × 300 pixels at twice the density.'],['Page header picture','210 px tall on a tablet or laptop and 160 px on a phone, 1124 px wide at most. The title sits over the fade.']];
 $('#spec').innerHTML=SPEC.map(([h,t])=>`<div class="panel"><span class="eyebrow">${h}</span><p>${t}</p></div>`).join('');
 const VP=[R[0],R[1],R[4]];
 $('#vpic').innerHTML=VP.map(card).join('');
 const PHMEAL=['breakfast','main','side','dessert','snack','drink'];
-$('#vph').innerHTML=PHMEAL.map((m,i)=>`<div><div class="rcard" style="cursor:default;padding-bottom:0;height:auto">${rpic({id:i,meal:m})}<div style="height:22px"></div></div><div class="vlabel num">Recipe id ${i}, 6, 12 and so on · ${MEAL[m]}</div></div>`).join('');
+$('#vph').innerHTML=PHMEAL.map((m,i)=>`<div><div class="rcard" style="cursor:default;padding-bottom:0;height:auto">${rpic({id:i,meal:m})}<div style="height:22px"></div></div><div class="vlabel num">Recipe id ${i}, ${i+6}, ${i+12} and so on · ${MEAL[m]}</div></div>`).join('');
 fitAll();
 tally();
 })();
