@@ -149,8 +149,11 @@ func TestEditAndDeleteRefuseANoteThatIsNotTheRecipes(t *testing.T) {
 		"delete another recipe's note":       {http.MethodPost, e.notePath(foreign, "/delete"), url.Values{}},
 		"edit form of a missing note":        {http.MethodGet, e.notePath(999999, "/edit"), nil},
 		"save a missing note":                {http.MethodPost, e.notePath(999999, ""), url.Values{"body": {"x"}}},
-		"delete a missing note":              {http.MethodPost, e.notePath(999999, "/delete"), url.Values{}},
-		"note id text":                       {http.MethodGet, e.path("/notes/abc/edit"), nil},
+		// An empty body does not turn a 404 into the empty-note message.
+		"empty save of another recipe's note": {http.MethodPost, e.notePath(foreign, ""), url.Values{"body": {"  "}}},
+		"empty save of a missing note":        {http.MethodPost, e.notePath(999999, ""), url.Values{"body": {""}}},
+		"delete a missing note":               {http.MethodPost, e.notePath(999999, "/delete"), url.Values{}},
+		"note id text":                        {http.MethodGet, e.path("/notes/abc/edit"), nil},
 	} {
 		if rec := e.do(tc.method, tc.path, tc.form, htmx...); rec.Code != http.StatusNotFound {
 			t.Errorf("%s: status = %d, want 404", name, rec.Code)

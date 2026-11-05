@@ -126,7 +126,7 @@ func (v view) notePath(n store.Note) string {
 
 // pinPath is where the pin toggle of note n posts.
 func (v view) pinPath(n store.Note) string {
-	return v.base() + "/notes/" + strconv.FormatInt(n.ID, 10) + "/pin"
+	return v.notePath(n) + "/pin"
 }
 
 // pinValue is what the toggle of n posts: the opposite of its state.

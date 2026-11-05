@@ -214,6 +214,12 @@ func (h *handler) saveNote(w http.ResponseWriter, r *http.Request) {
 	body := form.Get("body")
 	var problem formProblem
 	if strings.TrimSpace(body) == "" {
+		// The message belongs to a note of this recipe: a foreign or missing
+		// note is a 404 whatever was posted, as it is for a non-empty body.
+		if err := h.requireNote(r.Context(), id, noteID); err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
 		problem = formProblem{edit: emptyNoteMessage}
 	} else if err := h.Journal.UpdateNoteBody(r.Context(), id, noteID, body); err != nil {
 		// As in addNote: the empty body is handled above, so any other
@@ -225,6 +231,21 @@ func (h *handler) saveNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.finish(w, r, id, problem, func(v *view) { v.EditingID, v.EditBody = noteID, body })
+}
+
+// requireNote is ErrNotFound unless noteID is one of recipe id's notes (a
+// missing recipe is ErrNotFound too).
+func (h *handler) requireNote(ctx context.Context, id, noteID int64) error {
+	notes, err := h.Journal.ListNotes(ctx, id)
+	if err != nil {
+		return fmt.Errorf("list notes of recipe %d: %w", id, err)
+	}
+	for _, n := range notes {
+		if n.ID == noteID {
+			return nil
+		}
+	}
+	return fmt.Errorf("note %d of recipe %d: %w", noteID, id, layout.ErrNotFound)
 }
 
 // deleteNote removes note noteID: the post of the delete confirmation.
