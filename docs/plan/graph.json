@@ -2864,7 +2864,7 @@
       "wave": 11,
       "track": null,
       "issue": 353,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "a-mcp-endpoint",
         "a-mcp-oauth",
@@ -4922,6 +4922,12 @@
       "title": "return ordered picture candidates, og:image first",
       "merged": "7b344ba",
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3."
+    },
+    {
+      "id": "a-mcp-recipe-edit",
+      "title": "edit an existing recipe over MCP as a draft for review",
+      "merged": "8ee98ff",
+      "note": "ADR-00035 review half (obligations 1, 8-11). Split from a-mcp-endpoint on the owner's call (2026-11-03). An MCP tool proposes an edit as a pending proposal (a-recipe-proposals); a person reviews it in the editor with a change summary, sees it inline on the recipe page (toggle hides the marks for the visit; cook mode and share links never show it), and accepting writes a revision of kind proposal that refers to it. A stale proposal cannot be accepted. The two-version comparison, paired by stp-/lin- keys, is pure logic in internal/recipe."
     }
   ],
   "adr_sequence": {
