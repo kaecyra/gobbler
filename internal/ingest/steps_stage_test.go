@@ -44,11 +44,15 @@ func TestStageKindIsProposedFromTheInstruction(t *testing.T) {
 		{"Add the carrots and roast beef.", ""},
 		{"Use a stand mixer on low.", ""},
 		{"Stir while the sauce simmers.", ""},
-		{"Slice and serve.", recipe.StagePrep},
 		{"Stir before you serve.", ""},
-		{"Chill for 2 hours, then serve.", recipe.StageChill},
 		{"Observe the dough.", ""},
+		// Serving is a kind only when the text opens with it; later, the verbs decide.
+		{"Slice and serve.", recipe.StagePrep},
+		{"Chill for 2 hours, then serve.", recipe.StageChill},
+		// An opening "serve" beside another kind is two kinds.
 		{"Serve. Chop the parsley and cook the rice.", ""},
+		{"Serve immediately. Refrigerate leftovers for up to 3 days.", ""},
+		{"Serve and slice at the table.", ""},
 		// Two kinds in one step is ambiguous, so none is proposed.
 		{"Chop the onion and cook until soft.", ""},
 		{"Let the dough rise, then bake for 20 minutes.", ""},

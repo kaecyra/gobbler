@@ -228,16 +228,17 @@ var (
 var serveRE = regexp.MustCompile(`(?i)^\W*serv(?:e|ing)\b`)
 
 // stageKindOf proposes a stage kind for a step from its source title and its
-// text. A title that opens with "serve" says so outright; otherwise the text
-// does, when it opens with "serve" and names no kind at all (ADR-00022). Text
-// that names two kinds is ambiguous, not empty, so it gets none.
+// text. A title that opens with "serve" says so outright. In the text, an
+// opening "serve" counts as the kind serve beside the kinds the verbs name, so
+// serve alone is serve and serve with another kind is ambiguous and gets none
+// (ADR-00022, ADR-00006).
 func stageKindOf(title, text string) recipe.StageKind {
 	if serveRE.MatchString(title) {
 		return recipe.StageServe
 	}
 	kinds := stageKinds(text)
-	if len(kinds) == 0 && serveRE.MatchString(text) {
-		return recipe.StageServe
+	if serveRE.MatchString(text) {
+		kinds[recipe.StageServe] = true
 	}
 	return soleKind(kinds)
 }
