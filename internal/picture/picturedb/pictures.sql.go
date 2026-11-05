@@ -40,6 +40,24 @@ func (q *Queries) DeletePictureKey(ctx context.Context, arg DeletePictureKeyPara
 	return result.RowsAffected()
 }
 
+const getDraftProposal = `-- name: GetDraftProposal :one
+SELECT id FROM proposals WHERE id = ? AND household_id = ? AND kind = 'draft'
+`
+
+type GetDraftProposalParams struct {
+	ID          int64
+	HouseholdID int64
+}
+
+// GetDraftProposal proves a proposal is a draft of the household before any
+// object is written under its id.
+func (q *Queries) GetDraftProposal(ctx context.Context, arg GetDraftProposalParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getDraftProposal, arg.ID, arg.HouseholdID)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getPictureKey = `-- name: GetPictureKey :one
 SELECT key FROM recipe_pictures WHERE recipe_id = ? AND household_id = ?
 `

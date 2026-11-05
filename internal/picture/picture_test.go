@@ -489,3 +489,48 @@ func TestAFailedObjectDeleteDoesNotFailTheHouseholdDeletion(t *testing.T) {
 		t.Error("setup: the object should have been left behind by the failed delete")
 	}
 }
+
+func TestFetchCandidatesRefusesAnotherHouseholdsDraft(t *testing.T) {
+	e := newEnv(t)
+	srv := site(t, map[string][]byte{"/a.png": pic(t, 1200, 400, 3), "/b.png": pic(t, 1200, 400, 5)})
+	pid := e.draft(t)
+	mine, err := e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/a.png"})
+	if err != nil || len(mine) != 1 {
+		t.Fatalf("setup: %v, %v", mine, err)
+	}
+	before, _ := e.media.Get(context.Background(), mine[0].Key)
+	if _, err := e.svc.FetchCandidates(e.other, pid, []string{srv.URL + "/b.png"}); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("FetchCandidates for another household's draft = %v, want ErrNotFound", err)
+	}
+	after, err := e.media.Get(context.Background(), mine[0].Key)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Errorf("the other household's candidate object was overwritten or deleted (err %v)", err)
+	}
+	if left, _ := e.svc.Candidates(e.ctx, pid); len(left) != 1 {
+		t.Errorf("candidate rows = %d, want 1", len(left))
+	}
+}
+
+func TestConcurrentFetchesOnOneDraftLeaveObjectsForEveryRow(t *testing.T) {
+	e := newEnv(t)
+	srv := site(t, map[string][]byte{"/a.png": pic(t, 1200, 400, 3), "/b.png": pic(t, 1200, 400, 5)})
+	pid := e.draft(t)
+	var wg sync.WaitGroup
+	for i := 0; i < 6; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/a.png", srv.URL + "/b.png"})
+		}()
+	}
+	wg.Wait()
+	rows, err := e.svc.Candidates(e.ctx, pid)
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("Candidates = %v, %v; want 2 rows", rows, err)
+	}
+	for _, c := range rows {
+		if !e.has(t, c.Key) {
+			t.Errorf("row %d names %s, which has no object", c.Position, c.Key)
+		}
+	}
+}

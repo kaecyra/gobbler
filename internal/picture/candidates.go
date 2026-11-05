@@ -165,7 +165,15 @@ func (s *Service) FetchCandidates(ctx context.Context, proposalID int64, urls []
 	if err != nil {
 		return nil, err
 	}
-	if err := s.DeleteCandidates(ctx, proposalID); err != nil {
+	// Prove the draft is the household's before any Put: the keys are fixed,
+	// so a foreign id would overwrite that household's objects.
+	if _, err := s.q.GetDraftProposal(ctx, picturedb.GetDraftProposalParams{ID: proposalID, HouseholdID: hid}); errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("%w: draft %d", store.ErrNotFound, proposalID)
+	} else if err != nil {
+		return nil, fmt.Errorf("read draft %d: %w", proposalID, err)
+	}
+	defer s.proposals.lock(proposalID)()
+	if err := s.deleteCandidates(ctx, hid, proposalID); err != nil {
 		return nil, err
 	}
 	found := s.find(ctx, urls)
@@ -227,6 +235,12 @@ func (s *Service) DeleteCandidates(ctx context.Context, proposalID int64) error 
 	if err != nil {
 		return err
 	}
+	defer s.proposals.lock(proposalID)()
+	return s.deleteCandidates(ctx, hid, proposalID)
+}
+
+// deleteCandidates is DeleteCandidates for a caller holding the proposal's lock.
+func (s *Service) deleteCandidates(ctx context.Context, hid, proposalID int64) error {
 	old, err := s.Candidates(ctx, proposalID)
 	if err != nil {
 		return err
@@ -308,7 +322,8 @@ func (s *Service) Refind(ctx context.Context, id int64) ([]Found, error) {
 }
 
 // Choose sets a candidate returned by Refind as recipe id's picture, replacing
-// the previous one. It returns the new key.
+// the previous one. It returns the new key. Bytes that are not a valid image
+// are a *media.Refusal.
 func (s *Service) Choose(ctx context.Context, id int64, f Found) (string, error) {
 	return s.setProcessed(ctx, id, f.WebP)
 }

@@ -43,6 +43,10 @@ type Service struct {
 	log       *slog.Logger
 	now       func() time.Time
 	rand      io.Reader
+	// proposals serialises the candidate operations on one proposal: their
+	// object keys are fixed (drafts/<proposal_id>/<n>.webp), so two runs on
+	// one proposal would otherwise delete each other's committed objects.
+	proposals keyedLock
 }
 
 // New returns a Service over a migrated database. f downloads candidate

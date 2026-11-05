@@ -39,3 +39,8 @@ WHERE c.household_id = sqlc.arg(household)
 SELECT rp.key FROM recipe_pictures rp WHERE rp.household_id = sqlc.arg(household)
 UNION ALL
 SELECT c.key FROM draft_candidates c WHERE c.household_id = sqlc.arg(household);
+
+-- GetDraftProposal proves a proposal is a draft of the household before any
+-- object is written under its id.
+-- name: GetDraftProposal :one
+SELECT id FROM proposals WHERE id = ? AND household_id = ? AND kind = 'draft';
