@@ -104,6 +104,11 @@ type Diff struct {
 	Lines      []LineChange
 	Steps      []StepChange
 	Equipment  []EquipmentChange
+	// NewToOld maps each part of the newer version to the part of the older it
+	// pairs with, or -1 for a part that is new. The ComponentChange of a pair
+	// that only moved is not listed, so this is how a caller finds where an
+	// added line or step belongs in the older version.
+	NewToOld []int
 	// ByPosition says the older version carried no keys, so its steps and
 	// lines were paired with the newer one's by their position.
 	ByPosition bool
@@ -149,6 +154,7 @@ func (d Diff) StepByOldID(id StepID) (StepChange, bool) {
 func Compare(old, next Recipe) Diff {
 	d := Diff{Fields: compareFields(old, next)}
 	oldComp, newComp := pairComponents(old.Components, next.Components)
+	d.NewToOld = newComp
 	for i, c := range old.Components {
 		if oldComp[i] < 0 {
 			d.Components = append(d.Components, ComponentChange{Kind: Removed, OldIndex: i, NewIndex: -1, OldName: c.Name})

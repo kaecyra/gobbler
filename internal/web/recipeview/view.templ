@@ -3,6 +3,7 @@ package recipeview
 import (
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -109,6 +110,9 @@ templ recipePage(v view) {
 		if v.VideoID != "" {
 			@videoPlayer(v)
 		}
+		if v.Proposal != nil {
+			@proposalBanner(v)
+		}
 		@recipeBody(v)
 		@aside(v)
 		<script src={ ribbon.ScriptPath } defer></script>
@@ -168,6 +172,9 @@ templ recipeBody(v view) {
 						<a href={ templ.SafeURL(originHref(v.Origin)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
 					</p>
 				}
+				if v.Proposal.marked() && len(v.Proposal.Fields) > 0 {
+					@fieldMarks(v.Proposal.Fields)
+				}
 				@layout.RecipeMetaRow(v.Meta)
 				if len(v.Tags) > 0 {
 					<ul class="recipe-tags">
@@ -215,15 +222,18 @@ templ recipeBody(v view) {
 				if v.hasLines() {
 					<section aria-labelledby="ingredients-h">
 						<h2 id="ingredients-h" class="eyebrow">Ingredients</h2>
-						for _, c := range v.Components {
-							if len(c.Lines) > 0 {
+						for ci, c := range v.Components {
+							if len(c.Lines) > 0 || v.Proposal.comp(ci).hasLineAdds() {
 								<div class="comp">
 									if c.Name != "" {
 										<h3>{ c.Name }</h3>
 									}
 									<ul class="ing">
-										for _, l := range c.Lines {
-											<li>
+										for _, a := range v.Proposal.comp(ci).LinesFirst {
+											@addedLine(a)
+										}
+										for li, l := range c.Lines {
+											<li class={ lineClass(v.Proposal.comp(ci).line(li)) }>
 												if l.Exact != "" {
 													<span title={ "exact: " + l.Exact }>{ l.Text }</span>
 												} else {
@@ -232,10 +242,19 @@ templ recipeBody(v view) {
 												if l.Unscaled {
 													<span class="muted"> (not scaled or converted: ingredient not matched)</span>
 												}
+												@lineMarkNote(v.Proposal.comp(ci).line(li))
 											</li>
+											for _, a := range v.Proposal.comp(ci).LinesAfter[li] {
+												@addedLine(a)
+											}
 										}
 									</ul>
 								</div>
+							}
+						}
+						if v.Proposal.marked() {
+							for _, part := range v.Proposal.NewParts {
+								@newPartMark(part)
 							}
 						}
 					</section>
@@ -252,14 +271,21 @@ templ recipeBody(v view) {
 						<p>{ t } <small>From your notes</small></p>
 					</div>
 				}
-				for _, c := range v.Components {
-					if len(c.Steps) > 0 {
+				for ci, c := range v.Components {
+					if len(c.Steps) > 0 || v.Proposal.comp(ci).hasStepAdds() {
 						if c.Name != "" {
 							<h3 class="part">{ c.Name }</h3>
 						}
 						<ol start={ strconv.Itoa(c.FirstStep) }>
+							for _, a := range v.Proposal.comp(ci).StepsFirst {
+								@addedStep(a)
+							}
 							for i, s := range c.Steps {
 								@layout.RecipeStep(s, stepNumber(c.FirstStep, i))
+								@stepMarkNote(v.Proposal.comp(ci).step(i), s.Text, stepNumber(c.FirstStep, i))
+								for _, a := range v.Proposal.comp(ci).StepsAfter[i] {
+									@addedStep(a)
+								}
 							}
 						</ol>
 					}
@@ -382,5 +408,150 @@ templ controls(v view) {
 			@layout.Icon(layout.IconPot)
 			<span>Cook mode</span>
 		</a>
+	</div>
+}
+
+// proposalBanner is the pending proposal's banner, above the recipe and outside
+// #recipe, so scaling the recipe leaves it and its toggle alone (ADR-00035). The
+// toggle hides the marks and the detail, leaving a compact banner; Reject and
+// Review stay. A stale proposal can only be rejected.
+templ proposalBanner(v view) {
+	@proposalStyles()
+	<section class={ "pbanner", templ.KV("stale", v.Proposal.Stale) } aria-label="Proposed change" data-testid="proposal-banner">
+		if v.Proposal.Stale {
+			<div class="phead">
+				<strong>Out of date</strong>
+				<span class="pwho">A proposal by { v.Proposal.By }.</span>
+			</div>
+			<p class="pdetail" data-testid="proposal-stale">{ staleBanner }</p>
+			<div class="pactions">
+				@rejectForm(v)
+			</div>
+		} else {
+			<div class="phead">
+				<strong>Proposed change</strong>
+				<span class="pwho" data-testid="proposal-by">by { v.Proposal.By }</span>
+				<span class="pwho">{ changeLabel(v.Proposal.Changes) }</span>
+			</div>
+			if v.Proposal.Reason != "" {
+				<p class="pdetail preason" data-testid="proposal-reason">Reason: { v.Proposal.Reason }</p>
+			}
+			<div class="pactions">
+				<a class="btn accent" href={ templ.SafeURL(reviewHref(v.ID, v.Proposal.Token)) } data-testid="proposal-review">Review</a>
+				@rejectForm(v)
+				<label class="ptoggle"><input type="checkbox" id="pmarks" checked data-testid="proposal-marks-toggle"/> Show changes</label>
+			</div>
+		}
+	</section>
+}
+
+templ rejectForm(v view) {
+	<form method="post" action={ templ.SafeURL(rejectHref(v.ID)) }>
+		<input type="hidden" name="proposal" value={ v.Proposal.Token }/>
+		<button type="submit" class="btn" data-testid="proposal-reject">Reject</button>
+	</form>
+}
+
+// fieldMarks lists the fields, parts and equipment the proposal changes, with
+// the old value struck and the new one beside it.
+templ fieldMarks(fs []fieldMark) {
+	<ul class="pfields pmark" data-testid="proposal-fields">
+		for _, f := range fs {
+			<li data-testid="proposal-field">
+				<span class="plabel">{ f.Label }</span>
+				if f.Old != "" {
+					<del>{ f.Old }</del>
+				} else {
+					<span class="muted">none</span>
+				}
+				if f.New != "" {
+					<ins>{ f.New }</ins>
+				} else {
+					<span class="muted">none</span>
+				}
+			</li>
+		}
+	</ul>
+}
+
+func lineClass(m lineMark) string {
+	switch m.Kind {
+	case recipe.Removed:
+		return "pline-removed"
+	case recipe.Changed:
+		return "pline-changed"
+	}
+	return ""
+}
+
+// lineMarkNote is what follows a marked line: the proposed text, or the word
+// removed, or moved. It is hidden with the other marks.
+templ lineMarkNote(m lineMark) {
+	switch m.Kind {
+		case recipe.Removed:
+			<span class="pmark pnew" data-testid="proposal-line-removed">removed</span>
+		case recipe.Changed:
+			if m.Edited {
+				<ins class="pmark pnew" data-testid="proposal-line-new">{ m.New }</ins>
+			} else {
+				<span class="pmark pnew" data-testid="proposal-line-moved">moved</span>
+			}
+	}
+}
+
+templ addedLine(text string) {
+	<li class="pmark padd" data-testid="proposal-line-added"><ins>{ text }</ins> <span class="muted">added</span></li>
+}
+
+// stepMarkNote follows a live step with what the proposal does to it: the old
+// and new text of a change, or a note that it is removed or moved. The step
+// above keeps its place, so the page reads as the live recipe with notes.
+templ stepMarkNote(m stepMark, text, number string) {
+	switch m.Kind {
+		case recipe.Removed:
+			<li class="pmark" data-testid="proposal-step-removed">
+				<div>Step { number }</div>
+				<div>
+					<p class="plabel">Removed</p>
+					<p><del>{ text }</del></p>
+				</div>
+			</li>
+		case recipe.Changed:
+			<li class="pmark" data-testid="proposal-step-changed">
+				<div>Step { number }</div>
+				<div>
+					if m.Edited {
+						<p class="plabel">Changed</p>
+						<p><del>{ text }</del></p>
+						<p><ins>{ m.New }</ins></p>
+					} else {
+						<p class="plabel">Moved to step { strconv.Itoa(m.NewNumber) }</p>
+					}
+				</div>
+			</li>
+	}
+}
+
+templ addedStep(text string) {
+	<li class="pmark" data-testid="proposal-step-added">
+		<div>New</div>
+		<div>
+			<p class="plabel">Added</p>
+			<p><ins>{ text }</ins></p>
+		</div>
+	</li>
+}
+
+templ newPartMark(p newPart) {
+	<div class="pmark pnewpart" data-testid="proposal-part-added">
+		<h3>New part: { partLabel(p.Name) }</h3>
+		<ul>
+			for _, l := range p.Lines {
+				<li><ins>{ l }</ins></li>
+			}
+			for _, s := range p.Steps {
+				<li><ins>{ s }</ins></li>
+			}
+		</ul>
 	</div>
 }
