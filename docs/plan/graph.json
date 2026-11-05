@@ -3302,7 +3302,8 @@
       "depends_on": [
         "r-stage-serve",
         "a-mcp-recipe-edit",
-        "t-cook-timers-flake"
+        "t-cook-timers-flake",
+        "f-step-titles-text"
       ],
       "owns": [
         "internal/recipe/**",
@@ -3323,6 +3324,44 @@
       "adrs": [],
       "blocked": "needs an ADR: author-notes model, on-screen name and placement (#395 open decision)",
       "note": "Owner request 2026-11-05. Amends ADR-00004's data model. WPRM .wprm-recipe-notes and Tasty .tasty-recipes-notes; nothing in JSON-LD."
+    },
+    {
+      "id": "u-equipment-popover",
+      "title": "draw an equipment chip's details above the save bar",
+      "wave": 11,
+      "track": null,
+      "issue": 396,
+      "status": "merged",
+      "depends_on": [
+        "u-note-edit-delete"
+      ],
+      "owns": [
+        "e2e/ingest/ingest.spec.ts",
+        "internal/web/editor/editor.templ"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner report 2026-11-05. z-index 6, the help popovers' layer."
+    },
+    {
+      "id": "f-step-titles-text",
+      "title": "read step titles from text and JSON-LD, not only WPRM markup",
+      "wave": 11,
+      "track": null,
+      "issue": 398,
+      "status": "todo",
+      "depends_on": [
+        "r-stage-serve"
+      ],
+      "owns": [
+        "internal/ingest/*.go",
+        "internal/ingest/extract/*.go",
+        "internal/ingest/extract/testdata/**",
+        "internal/ingest/testdata/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner request 2026-11-05. Rule-based lead-sentence split, flagged low confidence; Tasty bold leads. Bumps ParserVersion."
     }
   ],
   "shared_files": [
@@ -4410,6 +4449,12 @@
       "title": "edit and delete notes",
       "merged": "c35c553a78e25f5f414fcc373e8b524e75124294",
       "note": "ADR-00037: a note is a household scratchpad; body edited in place, deleted after a confirm step."
+    },
+    {
+      "id": "u-equipment-popover",
+      "title": "draw an equipment chip's details above the save bar",
+      "merged": "df15740340d596c81d834fe12f80c677ec5f6373",
+      "note": "Owner report 2026-11-05. z-index 6, the help popovers' layer."
     }
   ],
   "adr_sequence": {
