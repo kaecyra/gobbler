@@ -37,6 +37,9 @@ type getRecipeIn struct {
 }
 
 type ingredientLine struct {
+	// Key names the line across versions of the recipe; give it back, unchanged,
+	// to propose a change to this line.
+	Key          string `json:"key"`
 	Text         string `json:"text"`
 	IngredientID int64  `json:"ingredient_id,omitempty"`
 	Optional     bool   `json:"optional,omitempty"`
@@ -57,7 +60,10 @@ type componentOut struct {
 }
 
 type recipeOut struct {
-	ID          int64          `json:"id"`
+	ID int64 `json:"id"`
+	// Version is the recipe's version; propose_recipe_edit takes it back, so a
+	// proposal made against a recipe that has since changed is refused.
+	Version     int64          `json:"version"`
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
 	SourceURL   string         `json:"source_url,omitempty"`
@@ -89,7 +95,7 @@ func (t *tools) registerRecipes(s *mcp.Server) {
 	}, t.listRecipes)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_recipe",
-		Description: "Get one recipe as structured data: components with their ingredient lines and steps.",
+		Description: "Get one recipe as structured data: its version, and components with their ingredient lines and steps. Lines and steps carry keys, which propose_recipe_edit takes back.",
 		Annotations: readOnly,
 	}, t.getRecipe)
 }
@@ -125,12 +131,19 @@ func (t *tools) getRecipe(ctx context.Context, _ *mcp.CallToolRequest, in getRec
 	if _, _, err := scoped(ctx); err != nil {
 		return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
 	}
+	// Info first: a recipe saved between the two reads shows an older version
+	// than its content, and an edit made against it is refused as stale, never
+	// the reverse.
+	info, err := t.Recipes.Info(ctx, in.ID)
+	if err != nil {
+		return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
+	}
 	r, err := t.Recipes.Get(ctx, in.ID)
 	if err != nil {
 		return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
 	}
 	out := recipeOut{
-		ID: in.ID, Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author,
+		ID: in.ID, Version: info.Version, Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author,
 		Tags: r.Tags, Rating: r.Rating, Yield: yieldText(r.Yield), Servings: r.Servings.String(),
 	}
 	lines := display.NewLineBuilder(t.Catalog, display.Default())
@@ -141,7 +154,7 @@ func (t *tools) getRecipe(ctx context.Context, _ *mcp.CallToolRequest, in getRec
 			if err != nil {
 				return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
 			}
-			co.Ingredients = append(co.Ingredients, ingredientLine{Text: built.Text, IngredientID: int64(l.Ingredient), Optional: l.Optional})
+			co.Ingredients = append(co.Ingredients, ingredientLine{Key: l.Key, Text: built.Text, IngredientID: int64(l.Ingredient), Optional: l.Optional})
 		}
 		for _, st := range c.Steps {
 			so := stepOut{ID: string(st.ID), Text: st.Text, Minutes: int(st.Duration.Minutes()), Passive: st.Passive}

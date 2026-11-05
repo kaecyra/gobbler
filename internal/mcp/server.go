@@ -28,11 +28,32 @@ const Pattern = "/mcp"
 // the draft's token after it.
 const ReviewPath = "/ingest/"
 
+// EditPath is where a person reviews a proposed edit: the recipe's editor, with
+// the proposal's token in the query. ReviewPath's ingest screen is for new
+// recipes; an edit is reviewed in the editor (ADR-00035).
+func EditPath(recipeID int64, token string) string {
+	return fmt.Sprintf("/recipes/%d/edit?proposal=%s", recipeID, token)
+}
+
 // Recipes is what the recipe tools call on the recipe store; *store.Store
 // satisfies it.
 type Recipes interface {
 	Search(ctx context.Context, q store.SearchQuery) ([]store.Summary, error)
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
+	Info(ctx context.Context, id int64) (store.Info, error)
+	// ProposeEdit holds a proposed new version of a recipe for review
+	// (ADR-00035); GetProposal reads one back in whatever state it is in.
+	ProposeEdit(ctx context.Context, id, baseVersion int64, r recipe.Recipe, by store.Provenance) (string, error)
+	GetProposal(ctx context.Context, token string) (store.Proposal, error)
+}
+
+// Catalog is what the recipe tools read from the ingredient catalog: ingredient
+// names for display, and the matching an edited line needs to be read like any
+// other ingredient line. *catalog.Store satisfies it.
+type Catalog interface {
+	display.Ingredients
+	MatchIngredient(ctx context.Context, term string) (catalog.Ingredient, bool, error)
+	MatchUnit(ctx context.Context, term string) (catalog.Unit, bool, error)
 }
 
 // Lists is what the shopping tools call on the shopping store;
@@ -67,7 +88,7 @@ type Drafts interface {
 type Deps struct {
 	Recipes Recipes
 	Lists   Lists
-	Catalog display.Ingredients
+	Catalog Catalog
 	Drafter Drafter
 	Drafts  Drafts
 	Audit   Audit
@@ -117,7 +138,7 @@ func Routes(d Deps) (http.Handler, error) {
 	}
 	t := &tools{Deps: d, log: log}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "gobbler", Version: version}, &mcp.ServerOptions{
-		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts that a person reviews before they are saved. Shopping list changes apply at once.",
+		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once.",
 	})
 	t.register(srv)
 	h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.StreamableHTTPOptions{
