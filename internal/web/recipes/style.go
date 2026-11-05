@@ -60,7 +60,7 @@ const libraryStyle = `
 .rpic { position: relative; margin: -16px -16px -10px; height: var(--pic-h, 150px); overflow: hidden; flex: none; display: grid; place-items: center; padding-bottom: 14px; }
 .rpic > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .rpic::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 38%, color-mix(in srgb, var(--card) 70%, transparent) 72%, var(--card) 100%); pointer-events: none; }
-.rpic .phmark { position: relative; z-index: 1; width: 56px; height: 56px; border-radius: var(--r); background: color-mix(in srgb, var(--card) 82%, transparent); border: 1px solid var(--line); display: grid; place-items: center; color: var(--walnut); }
+.rpic .phmark { position: relative; z-index: 1; pointer-events: none; width: 56px; height: 56px; border-radius: var(--r); background: color-mix(in srgb, var(--card) 82%, transparent); border: 1px solid var(--line); display: grid; place-items: center; color: var(--walnut); }
 .rpic .phmark svg { width: 32px; height: 32px; display: block; }
 .rpic[data-pic] .phmark { display: none; }
 
