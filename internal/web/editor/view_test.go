@@ -299,7 +299,7 @@ func TestMoveActionsCarryAnItemToAnotherPart(t *testing.T) {
 func TestMoveActionsOutOfRangeAreRefused(t *testing.T) {
 	for _, action := range []string{
 		"move-line:0.0.4", "move-line:0.4.0", "move-line:0.1", "move-line:2.0.0",
-		"move-line:0.0.2.0", "move-line:0.0.1.9", "move-line:0.5.1.0", "move-step:0.0.1.5", "move-step:0.2.1.0", "move-step:0.0.3.0",
+		"move-line:0.0.0.2", "move-step:0.0.0.1", "move-line:0.0.0.0", "move-line:0.0.2.0", "move-line:0.0.1.9", "move-line:0.5.1.0", "move-step:0.0.1.5", "move-step:0.2.1.0", "move-step:0.0.3.0",
 		"move-qual:0.0.0.1", "move-step:0.0.2", "move-equip:0.3", "move-equip:0", "move-component:0.2",
 	} {
 		d := twoComponents()
