@@ -623,3 +623,26 @@ test('the review screen never says component', async ({ page }) => {
   await expect(page.locator('[name="c.1.name"]')).toBeVisible();
   expect(await userCopy(page)).not.toMatch(/\bcomponents?\b/i);
 });
+
+test("an equipment chip's open details sit above the save bar", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/ingest');
+  await pasteText(page, 'Quick bread\n\nIngredients\n3 cups flour\n1 cup milk\n\nInstructions\nWhisk the flour and milk in a large bowl.\nPour into a loaf pan and bake for 50 minutes.');
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+  const chip = page.locator('li.equipment').first();
+  await expect(chip).toBeVisible();
+  // Put the chip just above the bar, so its details open over it.
+  const bar = (await page.locator('.savebar').boundingBox())!;
+  await chip.evaluate((el, barTop) => {
+    const r = el.getBoundingClientRect();
+    window.scrollBy(0, r.bottom - (barTop - 20));
+  }, bar.y);
+  await chip.locator('details.more > summary').click();
+  const pop = (await chip.locator('.more-body').boundingBox())!;
+  const barNow = (await page.locator('.savebar').boundingBox())!;
+  const y = Math.max(pop.y, barNow.y) + 4;
+  expect(y, 'the details overlap the bar').toBeLessThan(Math.min(pop.y + pop.height, barNow.y + barNow.height));
+  const onTop = await page.evaluate(([x, yy]) => !!document.elementFromPoint(x, yy)?.closest('li.equipment .more-body'), [pop.x + 20, y]);
+  expect(onTop, 'the open details are drawn above the save bar').toBe(true);
+});
