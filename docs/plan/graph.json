@@ -3391,7 +3391,7 @@
       "wave": 11,
       "track": null,
       "issue": 401,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "r-recipes-verdict"
       ],
@@ -4554,6 +4554,12 @@
       "title": "add serve as a step stage kind",
       "merged": "f406b64",
       "note": "Owner request 2026-11-05. Amends ADR-00022's closed stage set in place (undeployed project); colour family to confirm with the owner (proposed active)."
+    },
+    {
+      "id": "r-rating-bound",
+      "title": "export the top of the rating scale once",
+      "merged": "50b91dc",
+      "note": "Follow-up from r-recipes-verdict (#400): maxSpoons, journal maxRating and recipes maxRating are one bound."
     }
   ],
   "adr_sequence": {
