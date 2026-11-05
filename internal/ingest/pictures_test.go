@@ -26,7 +26,7 @@ type pictureEnv struct {
 	dir    string
 	svc    *picture.Service
 	drafts *Drafts
-	saver_ *Saver
+	keeper *Saver
 }
 
 func newPictureEnv(t *testing.T) *pictureEnv {
@@ -37,7 +37,7 @@ func newPictureEnv(t *testing.T) *pictureEnv {
 	return &pictureEnv{
 		env: e, dir: dir, svc: svc,
 		drafts: NewDrafts(e.store).WithPictures(svc),
-		saver_: e.saver().WithPictures(svc),
+		keeper: e.saver().WithPictures(svc),
 	}
 }
 
@@ -155,7 +155,7 @@ func TestConfirmKeepsOnlyTheChosenObjectUnderRecipes(t *testing.T) {
 		t.Fatal(err)
 	}
 	held, _ := e.drafts.Get(e.ctx, token)
-	saved, err := e.saver_.SaveProposed(e.ctx, token, confirm(t, held))
+	saved, err := e.keeper.SaveProposed(e.ctx, token, confirm(t, held))
 	if err != nil || saved.PictureErr != nil {
 		t.Fatalf("SaveProposed = %v, picture error %v", err, saved.PictureErr)
 	}
@@ -176,7 +176,7 @@ func TestConfirmWithNoPictureLeavesNoObjects(t *testing.T) {
 		t.Fatal(err)
 	}
 	held, _ := e.drafts.Get(e.ctx, token)
-	saved, err := e.saver_.SaveProposed(e.ctx, token, confirm(t, held))
+	saved, err := e.keeper.SaveProposed(e.ctx, token, confirm(t, held))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestDraftWithNoCandidatesConfirmsWithoutAChoice(t *testing.T) {
 	if held.Candidates != 0 {
 		t.Fatalf("candidates = %d", held.Candidates)
 	}
-	if _, err := e.saver_.SaveProposed(e.ctx, token, confirm(t, held)); err != nil {
+	if _, err := e.keeper.SaveProposed(e.ctx, token, confirm(t, held)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -221,7 +221,7 @@ func TestCandidateFetchFailureDoesNotFailTheIngest(t *testing.T) {
 	if held.Candidates != 0 {
 		t.Fatalf("candidates = %d, want none", held.Candidates)
 	}
-	if _, err := e.saver_.SaveProposed(e.ctx, token, confirm(t, held)); err != nil {
+	if _, err := e.keeper.SaveProposed(e.ctx, token, confirm(t, held)); err != nil {
 		t.Fatalf("a draft whose pictures all failed must still confirm: %v", err)
 	}
 }
