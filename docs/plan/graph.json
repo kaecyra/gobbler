@@ -3614,7 +3614,7 @@
       "wave": 12,
       "track": null,
       "issue": 426,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "s-picture-store",
         "a-mcp-recipe-edit"
@@ -3634,7 +3634,7 @@
       "wave": 12,
       "track": null,
       "issue": 427,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "s-picture-store"
       ],
@@ -3643,7 +3643,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D1. Registers in routes.go and adds to the tenancy spec (shared, append-only)."
+      "note": "Also owns the picture wiring: household delete adapter (DeleteWithPictures + Reaper) in internal/web/picture, with a granted edit of the MemberRoutes Deps line in internal/web/routes.go."
     },
     {
       "id": "d-picture-mockup",
