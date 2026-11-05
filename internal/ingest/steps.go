@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
@@ -297,8 +298,8 @@ const maxLeadWords = 5
 // splitLead reads a step that runs its title into the instruction ("Preheat
 // oven. Heat the oven to 375F.") as a title and the rest. The lead is the text
 // up to the first full stop or colon that is followed by a space. It is a
-// title only when it is at most maxLeadWords words with no digit or fraction
-// in it and no "!" or "?", and when more text follows; a step that is one
+// title only when it is at most maxLeadWords words with no digit, fraction or
+// duration in it and no "!" or "?", and when more text follows; a step that is one
 // sentence ("Cool on a rack before slicing.") has no title. ok is false for
 // any other step, with title and rest empty. The rule is pure, so the same text
 // always splits the same way (ADR-00006).
@@ -318,6 +319,10 @@ func splitLead(text string) (title, rest string, ok bool) {
 		if unicode.IsNumber(r) || r == '!' || r == '?' {
 			return "", "", false
 		}
+	}
+	// A worded duration ("an hour") is a quantity too.
+	if len(parse.FindDurations(lead)) > 0 {
+		return "", "", false
 	}
 	return strings.Join(words, " "), rest, true
 }

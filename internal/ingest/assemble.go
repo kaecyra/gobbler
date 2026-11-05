@@ -319,16 +319,17 @@ func step(title, text string, confidence float64) Step {
 }
 
 // sourceStep builds a step the source stated. When the source gave no title
-// and the text opens with a short lead sentence, the lead becomes the title
-// and the step is flagged low confidence (splitLead). The stage kind is read
-// from the whole text, as it was before the split, so a lead like "Bake." keeps
-// the kind it named; a lead that opens with "serve" is the kind serve either
+// and the text opens with a short lead sentence, the lead becomes the title,
+// the rest the instruction, and the step is flagged low confidence
+// (splitLead). The duration and stage kind are read from the whole text, as
+// they were before the split, so no split can drop a time or the kind a lead
+// like "Bake." named; a lead that opens with "serve" is the kind serve either
 // way (stageKindOf).
 func sourceStep(title, text string, confidence float64) Step {
 	if title == "" {
 		if lead, rest, ok := splitLead(text); ok {
-			st := step(lead, rest, min(confidence, splitTitleConfidence))
-			st.Kind = stageKindOf(lead, text)
+			st := step(lead, text, min(confidence, splitTitleConfidence))
+			st.Text = rest
 			return st
 		}
 	}

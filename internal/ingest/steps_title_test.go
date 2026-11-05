@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"testing"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -20,6 +21,8 @@ func TestSplitLead(t *testing.T) {
 		{"single sentence", "Cool on a rack before slicing.", "", ""},
 		{"lead with a number", "Bake 50 minutes. Cool in the pan.", "", ""},
 		{"lead with a fraction", "Add ½ cup. Stir well.", "", ""},
+		{"worded duration", "Simmer half an hour. Stir.", "", ""},
+		{"worded duration an hour", "Bake an hour. Cool in the pan.", "", ""},
 		{"six words", "Mix the wet ingredients very well. Fold in flour.", "", ""},
 		{"nothing follows", "Serve.", "", ""},
 		{"lead then only space", "Serve.   ", "", ""},
@@ -99,5 +102,23 @@ func TestPastedTextSplitsLeadSentences(t *testing.T) {
 	}
 	if got[2].Kind != recipe.StageServe {
 		t.Errorf("split title Serve gave kind %q, want serve", got[2].Kind)
+	}
+}
+
+// A split must never lose the time a step states, even when the time is in
+// what became the title.
+func TestSplitStepsKeepTheirDuration(t *testing.T) {
+	e := newEnv(t)
+	res := extract.Result{Method: extract.MethodJSONLD, Recipe: &extract.Raw{
+		Name: "Bread", Ingredients: []string{"3 cups flour"},
+		Instructions: []extract.InstructionStep{{Text: "Bake an hour. Cool in the pan."}, {Text: "Rest. Wait 10 minutes."}},
+	}}
+	d, err := e.pipeline(t, nil).assemble(e.ctx, Source{}, res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := flatSteps(d)
+	if got[0].Duration != time.Hour || got[1].Duration != 10*time.Minute {
+		t.Errorf("durations = %v, %v; want 1h0m0s, 10m0s", got[0].Duration, got[1].Duration)
 	}
 }
