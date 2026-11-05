@@ -42,7 +42,7 @@ func (q *Queries) InsertMadeIt(ctx context.Context, arg InsertMadeItParams) (int
 
 const insertNote = `-- name: InsertNote :one
 
-INSERT INTO notes (household_id, recipe_id, body, created_at, created_by) VALUES (?, ?, ?, ?, ?)
+INSERT INTO notes (household_id, recipe_id, body, created_at, created_by, pinned) VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
@@ -52,6 +52,7 @@ type InsertNoteParams struct {
 	Body        string
 	CreatedAt   string
 	CreatedBy   string
+	Pinned      int64
 }
 
 // Every query takes the household and filters on it: a recipe id from another
@@ -63,6 +64,7 @@ func (q *Queries) InsertNote(ctx context.Context, arg InsertNoteParams) (int64, 
 		arg.Body,
 		arg.CreatedAt,
 		arg.CreatedBy,
+		arg.Pinned,
 	)
 	var id int64
 	err := row.Scan(&id)

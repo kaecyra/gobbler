@@ -128,13 +128,15 @@ func sourceHost(raw string) string {
 	return strings.TrimPrefix(u.Hostname(), "www.")
 }
 
-// heatLabel and verdict name the chilis and the spoons for screen readers.
+// heatLabel names the chilis for screen readers.
 func heatLabel(level int) string { return heatLabels[level] }
 
-func verdict(spoons int) string { return verdicts[spoons] }
+// Verdict is the word of a rating of 0 to 5 spoons ("Not rated" for 0): the
+// accessible name of the spoons wherever they are drawn or chosen.
+func Verdict(spoons int) string { return verdicts[spoons] }
 
-// spoonsOn lists the five spoons of the rating, true for the filled ones.
-func spoonsOn(n int) []bool {
+// SpoonsOn lists the five spoons of a rating of n, true for the filled ones.
+func SpoonsOn(n int) []bool {
 	out := make([]bool, maxSpoons)
 	for i := range out {
 		out[i] = i < n

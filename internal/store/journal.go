@@ -36,9 +36,10 @@ type MadeIt struct {
 	CreatedBy string
 }
 
-// AddNote adds a note to recipe id. An empty body is ErrInvalid; a missing
-// recipe is ErrNotFound.
-func (s *Store) AddNote(ctx context.Context, id int64, body string) (Note, error) {
+// AddNote adds a note to recipe id, pinned as a tip when pinned is set. The
+// note and its pin are one row, so it is written in one statement. An empty
+// body is ErrInvalid; a missing recipe is ErrNotFound.
+func (s *Store) AddNote(ctx context.Context, id int64, body string, pinned bool) (Note, error) {
 	who, err := identity(ctx)
 	if err != nil {
 		return Note{}, err
@@ -50,13 +51,13 @@ func (s *Store) AddNote(ctx context.Context, id int64, body string) (Note, error
 	if strings.TrimSpace(body) == "" {
 		return Note{}, fmt.Errorf("%w: note is empty", ErrInvalid)
 	}
-	n := Note{RecipeID: id, Body: body, CreatedBy: who}
+	n := Note{RecipeID: id, Body: body, CreatedBy: who, Pinned: pinned}
 	now := s.now().UTC()
 	err = s.withTx(ctx, func(q *storedb.Queries) (err error) {
 		if err := lockRecipe(ctx, q, hid, id); err != nil {
 			return err
 		}
-		n.ID, err = q.InsertNote(ctx, storedb.InsertNoteParams{HouseholdID: hid, RecipeID: id, Body: body, CreatedAt: formatTime(now), CreatedBy: who})
+		n.ID, err = q.InsertNote(ctx, storedb.InsertNoteParams{HouseholdID: hid, RecipeID: id, Body: body, CreatedAt: formatTime(now), CreatedBy: who, Pinned: boolInt(pinned)})
 		if err != nil {
 			return fmt.Errorf("write note on recipe %d: %w", id, err)
 		}

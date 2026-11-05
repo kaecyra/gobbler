@@ -31,7 +31,7 @@ const Pattern = "/recipes/{id}/journal"
 // maxFormBytes bounds a journal form body; a note is prose, not a document.
 const maxFormBytes = 64 << 10
 
-// Rating bounds: a rating is a whole number of stars.
+// Rating bounds: a rating is a whole number of spoons.
 const (
 	minRating = 1
 	maxRating = 5
@@ -46,7 +46,7 @@ const dateLayout = "2006-01-02"
 type Journal interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Update(ctx context.Context, id int64, r recipe.Recipe) error
-	AddNote(ctx context.Context, id int64, body string) (store.Note, error)
+	AddNote(ctx context.Context, id int64, body string, pinned bool) (store.Note, error)
 	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
 	SetNotePinned(ctx context.Context, id, noteID int64, pinned bool) error
 	AddMadeIt(ctx context.Context, id int64, e store.MadeIt) (store.MadeIt, error)
@@ -103,10 +103,21 @@ func (h *handler) addNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := form.Get("body")
+	// The "Pin as a tip" box posts 1 when ticked and nothing when not; any
+	// other value did not come from the form.
+	var pinned bool
+	switch choice := form.Get("pinned"); choice {
+	case "1":
+		pinned = true
+	case "":
+	default:
+		layout.WriteError(w, r, fmt.Errorf("%w: pinned must be 1 or absent, got %q", layout.ErrInvalid, choice))
+		return
+	}
 	var problem formProblem
 	if strings.TrimSpace(body) == "" {
 		problem = formProblem{note: emptyNoteMessage}
-	} else if _, err := h.Journal.AddNote(r.Context(), id, body); err != nil {
+	} else if _, err := h.Journal.AddNote(r.Context(), id, body, pinned); err != nil {
 		// The store rejects a note only for an empty body, which is handled
 		// above; any other ErrInvalid is a mismatch between us and the store, so
 		// it is reported as a bad request rather than as the empty-note message.
@@ -116,7 +127,7 @@ func (h *handler) addNote(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("add note to recipe %d: %w", id, err))
 		return
 	}
-	h.finish(w, r, id, problem, func(v *view) { v.NoteBody = body })
+	h.finish(w, r, id, problem, func(v *view) { v.NoteBody, v.NotePinned = body, pinned })
 }
 
 // pinNote pins a note as a tip or unpins it: the form's pinned field is 1 or 0,
@@ -293,7 +304,7 @@ func recipeID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 }
 
 // parseRating reads a rating field: empty is no rating (nil, valid), otherwise
-// a whole number of stars in range. valid is false for anything else.
+// a whole number of spoons in range. valid is false for anything else.
 func parseRating(s string) (rating *int, valid bool) {
 	s = strings.TrimSpace(s)
 	if s == "" {

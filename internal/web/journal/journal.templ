@@ -8,9 +8,11 @@ import (
 )
 
 // journalPage is the journal on a page of its own: the no-HTMX fallback, and
-// what the recipe page links to.
+// what the recipe page links to. It carries the recipe stylesheet for the
+// spoons, as the recipe page does.
 templ journalPage(v view) {
 	@layout.Page("Journal: " + v.Name) {
+		@layout.RecipeStyles()
 		<h1>{ v.Name }</h1>
 		<p><a href={ templ.SafeURL("/recipes/" + strconv.FormatInt(v.RecipeID, 10)) }>Back to the recipe</a></p>
 		@journalSection(v)
@@ -19,63 +21,140 @@ templ journalPage(v view) {
 
 // journalSection is the fragment the recipe page loads. Every form targets
 // it and swaps the whole section, so the lists and the forms stay in step.
+// Notes sit on the left; the rating and the made-it log on the right, one
+// column below 760px.
 templ journalSection(v view) {
 	<section id="journal" class="journal" aria-labelledby="journal-heading">
-		<style>
-			.journal form { margin: 0.75rem 0; }
-			.journal label { display: block; font-weight: 600; margin-top: 0.5rem; }
-			.journal textarea, .journal input[type=text] { width: 100%; font: inherit; padding: 0.4rem; }
-			.journal .alert { border: 2px solid var(--accent); padding: 0.4rem 0.6rem; margin: 0.5rem 0; }
-			.journal ul { padding-left: 0; list-style: none; }
-			.journal li { border-top: 1px solid var(--border); padding: 0.5rem 0; }
-			.journal .note-body { white-space: pre-wrap; margin: 0.25rem 0 0; }
-		</style>
-		<h2 id="journal-heading">Journal</h2>
-		@ratingForm(v)
-		@notesPart(v)
-		@madePart(v)
+		@journalStyles()
+		<h2 id="journal-heading" class="journal-title">Journal</h2>
+		<div class="journal-cols">
+			@notesPart(v)
+			<div class="journal-side">
+				@ratingPart(v)
+				@madePart(v)
+			</div>
+		</div>
 	</section>
 }
 
-templ ratingForm(v view) {
-	<form class="rating" method="post" action={ templ.SafeURL(v.base() + "/rating") } hx-post={ v.base() + "/rating" } hx-target="#journal" hx-swap="outerHTML">
-		<label for="journal-rating">Rating</label>
-		if v.RatingError != "" {
-			<p class="alert" role="alert">{ v.RatingError }</p>
-		}
-		<select id="journal-rating" name="rating">
-			<option value="" selected?={ v.Rating == nil }>No rating</option>
-			for _, n := range stars() {
-				<option value={ strconv.Itoa(n) } selected?={ v.ratingIs(n) }>{ starText(n) }</option>
-			}
-		</select>
-		<button type="submit">Save rating</button>
-	</form>
+// journalStyles is the journal's look, from the tokens only. It travels with
+// the fragment so the recipe page and the journal page draw it the same.
+templ journalStyles() {
+	<style>
+		.journal { margin: 0; padding: 0; border: 0; }
+		.journal .journal-title { font-family: var(--f-display); font-size: 26px; font-weight: 700; margin: 0 0 14px; }
+		.journal-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+		@media (max-width: 760px) { .journal-cols { grid-template-columns: minmax(0, 1fr); } }
+		.journal-side { display: flex; flex-direction: column; gap: 22px; }
+		.journal-part { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+		.journal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+		.journal .journal-head h3 { font-family: var(--f-display); font-size: 21px; font-weight: 700; margin: 0; flex: 1 1 auto; }
+		.journal-meta { font-size: 13.5px; color: var(--ink-3); }
+		.journal-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+		.journal-form { margin: 0; padding: 16px 18px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+		.journal-label { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink-2); margin: 0; }
+		.journal-field { box-sizing: border-box; width: 100%; min-height: var(--tap); padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink); font: inherit; font-size: 16px; }
+		.journal-field:focus-visible { border-color: var(--wattle); }
+		textarea.journal-field { resize: vertical; }
+		.journal-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+		.journal-row .grow { flex: 1 1 auto; }
+		.journal-check { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); font-size: 15.5px; color: var(--ink-2); }
+		.journal-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--wattle-ink); }
+		.journal .alert { margin: 0; background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; }
+		.journal-empty { margin: 0; padding: 14px 18px; border-top: 1px solid var(--line); color: var(--ink-3); }
+		.journal-list { list-style: none; margin: 0; padding: 0; }
+		.note { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 16px 18px; border-top: 1px solid var(--line); }
+		.note-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13.5px; color: var(--ink-3); }
+		.note-tip { display: inline-flex; align-items: center; gap: 6px; color: var(--wattle-ink); font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+		.note-tip svg { width: 18px; height: 18px; }
+		.note-body { grid-column: 1; margin: 0; font-size: 17.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+		.pin-form { grid-column: 2; grid-row: 1 / span 2; margin: 0; align-self: start; }
+		.pin { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+		.pin svg { width: 16px; height: 16px; }
+		.pin:hover { border-color: var(--ink-3); }
+		.pin.on { background: var(--wattle-soft); border-color: var(--wattle-soft); color: var(--wattle-ink); }
+		.journal .rating { margin: 0; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 2px; }
+		.rate { display: flex; }
+		.rate button, .spoon-pick { display: grid; place-items: center; width: var(--tap); height: var(--tap); border: 0; border-radius: var(--r); background: none; padding: 0; cursor: pointer; }
+		.rate button:hover, .spoon-pick:hover { background: var(--sunk); }
+		.rate .spoon { width: 32px; height: 32px; }
+		.verdict { margin-left: 10px; font-family: var(--f-display); font-weight: 650; font-size: 17px; color: var(--grain-ink); }
+		.verdict.none { color: var(--ink-3); }
+		.rating .clear { margin-left: auto; }
+		.rating .alert { flex-basis: 100%; }
+		.journal .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+		.journal .btn.ghost:hover { border-color: var(--line); }
+		.made-grid { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px 12px; }
+		@media (max-width: 480px) { .made-grid { grid-template-columns: minmax(0, 1fr); } }
+		.made-grid > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+		.made-rate { border: 0; margin: 0; padding: 0; min-width: 0; }
+		.made-rate legend { padding: 0; margin-bottom: 4px; }
+		.made-rate .picks { display: flex; flex-wrap: wrap; align-items: center; }
+		.spoon-pick { position: relative; }
+		.spoon-pick input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+		.spoon-pick .spoon { width: 26px; height: 26px; }
+		.spoon-pick:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }
+		.spoon-pick:has(input:checked) .spoon ellipse,
+		.spoon-pick:has(~ .spoon-pick input:checked) .spoon ellipse { fill: var(--grain); stroke: var(--grain-ink); }
+		.spoon-pick:has(input:checked) .spoon path,
+		.spoon-pick:has(~ .spoon-pick input:checked) .spoon path { stroke: var(--grain); }
+		/* "No rating" comes first, so no spoon follows it to fill. */
+		.spoon-pick.none { width: auto; padding: 0 10px; font-size: 14.5px; font-weight: 600; color: var(--ink-3); }
+		.spoon-pick.none:has(input:checked) { color: var(--ink); background: var(--sunk); }
+		.journal-actions { display: flex; justify-content: flex-end; }
+		.log { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 14px; padding: 14px 18px; border-top: 1px solid var(--line); }
+		.log time { font-size: 13.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; padding-top: 2px; }
+		.log p { margin: 0; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+		.log b { color: var(--ink); }
+		.log .spoons { margin-top: 4px; }
+	</style>
 }
 
 templ notesPart(v view) {
-	<h3>Notes</h3>
-	<form class="note-form" method="post" action={ templ.SafeURL(v.base() + "/notes") } hx-post={ v.base() + "/notes" } hx-target="#journal" hx-swap="outerHTML">
-		<label for="journal-note">Add a note</label>
-		if v.NoteError != "" {
-			<p class="alert" role="alert">{ v.NoteError }</p>
-		}
-		<textarea id="journal-note" name="body" rows="3">{ v.NoteBody }</textarea>
-		<button type="submit">Add note</button>
-	</form>
-	if len(v.Notes) == 0 {
-		<p class="muted">No notes yet.</p>
-	} else {
-		<ul class="notes">
-			for _, n := range v.Notes {
-				<li>
-					<span class="muted"><time datetime={ n.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }>{ stamp(n.CreatedAt) }</time> by { n.CreatedBy }</span>
-					<p class="note-body">{ n.Body }</p>
-					@pinForm(v, n)
-				</li>
+	<section class="journal-part" aria-labelledby="journal-notes-heading">
+		<div class="journal-head">
+			<h3 id="journal-notes-heading">Notes</h3>
+			<span class="journal-meta">Pinned notes show on the recipe as tips.</span>
+		</div>
+		<div class="journal-card">
+			<form class="journal-form note-form" method="post" action={ templ.SafeURL(v.base() + "/notes") } hx-post={ v.base() + "/notes" } hx-target="#journal" hx-swap="outerHTML">
+				<label for="journal-note" class="journal-label">Add a note</label>
+				if v.NoteError != "" {
+					<p class="alert" role="alert">{ v.NoteError }</p>
+				}
+				<textarea id="journal-note" class="journal-field" name="body" rows="2" placeholder="What would you change next time?">{ v.NoteBody }</textarea>
+				<div class="journal-row">
+					<label class="journal-check"><input type="checkbox" name="pinned" value="1" checked?={ v.NotePinned }/> Pin as a tip</label>
+					<span class="grow"></span>
+					<button type="submit" class="btn accent">Add note</button>
+				</div>
+			</form>
+			if len(v.Notes) == 0 {
+				<p class="journal-empty">No notes yet.</p>
+			} else {
+				<ul class="journal-list notes">
+					for _, n := range v.Notes {
+						<li class="note">
+							<div class="note-meta">
+								if n.Pinned {
+									<span class="note-tip">
+										@layout.Icon(layout.IconBulb)
+										Tip
+									</span>
+									<span aria-hidden="true">·</span>
+								}
+								<span>{ n.CreatedBy }</span>
+								<span aria-hidden="true">·</span>
+								<time datetime={ n.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }>{ day(n.CreatedAt.UTC()) }</time>
+							</div>
+							@pinForm(v, n)
+							<p class="note-body">{ n.Body }</p>
+						</li>
+					}
+				</ul>
 			}
-		</ul>
-	}
+		</div>
+	</section>
 }
 
 // pinForm is the toggle that makes a note a tip, shown in the recipe view, or
@@ -84,52 +163,110 @@ templ pinForm(v view, n store.Note) {
 	<form class="pin-form" method="post" action={ templ.SafeURL(v.pinPath(n)) } hx-post={ v.pinPath(n) } hx-target="#journal" hx-swap="outerHTML">
 		<input type="hidden" name="pinned" value={ pinValue(n) }/>
 		if n.Pinned {
-			<span class="muted">Tip</span>
-			<button type="submit">Unpin</button>
+			<button type="submit" class="pin on">Unpin</button>
 		} else {
-			<button type="submit">Pin as tip</button>
+			<button type="submit" class="pin">
+				@layout.Icon(layout.IconBulb)
+				Pin as tip
+			</button>
 		}
 	</form>
 }
 
+// ratingPart is the recipe's rating as five spoons. Each spoon is a submit
+// button carrying its rating, so choosing one saves it with or without
+// scripts; the button of the current rating is pressed.
+templ ratingPart(v view) {
+	<section class="journal-part" aria-labelledby="journal-rating-heading">
+		<div class="journal-head">
+			<h3 id="journal-rating-heading">Would you make it again?</h3>
+		</div>
+		<form class="journal-card rating" method="post" action={ templ.SafeURL(v.base() + "/rating") } hx-post={ v.base() + "/rating" } hx-target="#journal" hx-swap="outerHTML">
+			if v.RatingError != "" {
+				<p class="alert" role="alert">{ v.RatingError }</p>
+			}
+			<div class="rate" role="group" aria-labelledby="journal-rating-heading">
+				for _, n := range ratings() {
+					<button type="submit" name="rating" value={ strconv.Itoa(n) } aria-pressed={ strconv.FormatBool(v.ratingIs(n)) } aria-label={ layout.Verdict(n) } title={ layout.Verdict(n) }>
+						@layout.Spoon(v.spoonOn(n))
+					</button>
+				}
+			</div>
+			<span class={ "verdict", templ.KV("none", v.Rating == nil) } data-testid="journal-verdict">{ verdict(v.Rating) }</span>
+			if v.Rating != nil {
+				<button type="submit" name="rating" value="" class="btn ghost clear">Clear rating</button>
+			}
+		</form>
+	</section>
+}
+
 templ madePart(v view) {
-	<h3>Made it</h3>
-	<form class="made-form" method="post" action={ templ.SafeURL(v.base() + "/made") } hx-post={ v.base() + "/made" } hx-target="#journal" hx-swap="outerHTML">
-		<label for="journal-made-on">Date</label>
-		if v.DateError != "" {
-			<p class="alert" role="alert">{ v.DateError }</p>
-		}
-		<input id="journal-made-on" type="text" name="on" value={ v.MadeOn } placeholder="YYYY-MM-DD" inputmode="numeric"/>
-		<label for="journal-made-rating">Rating (optional)</label>
-		if v.MadeRatingError != "" {
-			<p class="alert" role="alert">{ v.MadeRatingError }</p>
-		}
-		<select id="journal-made-rating" name="rating">
-			<option value="" selected?={ v.MadeRating == "" }>No rating</option>
-			for _, n := range stars() {
-				<option value={ strconv.Itoa(n) } selected?={ v.MadeRating == strconv.Itoa(n) }>{ starText(n) }</option>
+	<section class="journal-part" aria-labelledby="journal-made-heading">
+		<div class="journal-head">
+			<h3 id="journal-made-heading">Made it</h3>
+			if len(v.Made) > 0 {
+				<span class="journal-meta">{ madeTimes(len(v.Made)) }</span>
 			}
-		</select>
-		<label for="journal-made-comment">Comment (optional)</label>
-		<textarea id="journal-made-comment" name="comment" rows="2">{ v.MadeComment }</textarea>
-		<button type="submit">Log it</button>
-	</form>
-	if len(v.Made) == 0 {
-		<p class="muted">Not made yet.</p>
-	} else {
-		<ul class="made">
-			for _, m := range v.Made {
-				<li>
-					<strong><time datetime={ m.On.Format("2006-01-02") }>{ m.On.Format("2006-01-02") }</time></strong>
-					if m.Rating != nil {
-						<span> - { starText(*m.Rating) }</span>
+		</div>
+		<div class="journal-card">
+			<form class="journal-form made-form" method="post" action={ templ.SafeURL(v.base() + "/made") } hx-post={ v.base() + "/made" } hx-target="#journal" hx-swap="outerHTML">
+				<div class="made-grid">
+					<div>
+						<label for="journal-made-on" class="journal-label">When</label>
+						if v.DateError != "" {
+							<p class="alert" role="alert">{ v.DateError }</p>
+						}
+						<input id="journal-made-on" class="journal-field" type="date" name="on" value={ v.MadeOn }/>
+					</div>
+					<div>
+						<label for="journal-made-comment" class="journal-label">How it went (optional)</label>
+						<input id="journal-made-comment" class="journal-field" type="text" name="comment" value={ v.MadeComment } placeholder="Anything worth remembering"/>
+					</div>
+				</div>
+				<fieldset class="made-rate">
+					<legend class="journal-label">Rating (optional)</legend>
+					if v.MadeRatingError != "" {
+						<p class="alert" role="alert">{ v.MadeRatingError }</p>
 					}
-					<span class="muted"> by { m.CreatedBy }</span>
-					if m.Comment != "" {
-						<p class="note-body">{ m.Comment }</p>
+					<div class="picks">
+						<label class="spoon-pick none"><input type="radio" name="rating" value="" checked?={ v.madeRatingIs(0) }/>No rating</label>
+						for _, n := range ratings() {
+							<label class="spoon-pick" title={ layout.Verdict(n) }>
+								<input type="radio" name="rating" value={ strconv.Itoa(n) } aria-label={ layout.Verdict(n) } checked?={ v.madeRatingIs(n) }/>
+								@layout.Spoon(false)
+							</label>
+						}
+					</div>
+				</fieldset>
+				<div class="journal-actions">
+					<button type="submit" class="btn accent">Log that I made it</button>
+				</div>
+			</form>
+			if len(v.Made) == 0 {
+				<p class="journal-empty">Not made yet.</p>
+			} else {
+				<ul class="journal-list made">
+					for _, m := range v.Made {
+						<li class="log">
+							<time datetime={ m.On.Format("2006-01-02") }>{ day(m.On) }</time>
+							<div>
+								<p><b>{ m.CreatedBy }.</b>
+									if m.Comment != "" {
+										{ " " + m.Comment }
+									}
+								</p>
+								if m.Rating != nil {
+									<span class="spoons" role="img" aria-label={ verdict(m.Rating) } title={ verdict(m.Rating) }>
+										for _, on := range layout.SpoonsOn(*m.Rating) {
+											@layout.Spoon(on)
+										}
+									</span>
+								}
+							</div>
+						</li>
 					}
-				</li>
+				</ul>
 			}
-		</ul>
-	}
+		</div>
+	</section>
 }

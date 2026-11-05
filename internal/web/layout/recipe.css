@@ -159,43 +159,10 @@
 .snap { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-3); margin-top: 10px; }
 .snap i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
 
-/* The journal section is another package's markup (its own stylesheet uses the
-   older token names); here it takes the mockup's journal look. */
-.recipe-after .journal { display: block; margin: 0; padding: 0; border: 0; }
-.recipe-after .journal ul { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.recipe-after .journal li { border: 0; padding: 0; font-size: 16.5px; color: var(--ink-2); }
-.recipe-after .journal time { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.recipe-after .journal .note-body { margin: 2px 0 0; color: var(--ink-2); }
-.recipe-after .journal .muted { color: var(--ink-3); }
-.recipe-after .journal .alert { border: 1px solid var(--wattle-ink); border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); padding: 6px 10px; }
-.recipe-after .journal label { display: block; font-weight: 600; margin-top: 8px; }
-.recipe-after .journal form { margin: 10px 0; }
-.recipe-after .journal select,
-.recipe-after .journal input[type=text],
-.recipe-after .journal textarea {
-  width: 100%;
-  min-height: var(--tap);
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-}
-.recipe-after .journal button {
-  min-height: var(--tap);
-  margin-top: 8px;
-  padding: 8px 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: var(--card);
-  color: var(--ink);
-  font-weight: 600;
-  cursor: pointer;
-}
-.recipe-after .journal button:hover { border-color: var(--ink-3); }
-.recipe-after .journal .pin-form { display: flex; align-items: center; gap: 10px; }
-.recipe-after .journal .pin-form button { margin-top: 0; }
+/* The journal section is another package's markup and carries its own
+   stylesheet (internal/web/journal); here it only spans the row, its own two
+   columns above the recipe tools. */
+.recipe-after .journal { grid-column: 1 / -1; }
 
 /* The note on a derived total is a sentence, not a label. */
 .rtime .eyebrow .muted { text-transform: none; letter-spacing: 0; font-weight: 400; }

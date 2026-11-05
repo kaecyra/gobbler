@@ -14,11 +14,11 @@ func TestPinAndUnpinANote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	one, err := s.AddNote(a, id, "salt early")
+	one, err := s.AddNote(a, id, "salt early", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	two, err := s.AddNote(a, id, "use stock")
+	two, err := s.AddNote(a, id, "use stock", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,5 +65,41 @@ func TestPinAndUnpinANote(t *testing.T) {
 	}
 	if p := pinned(); p[one.ID] {
 		t.Error("a note was pinned through the wrong recipe")
+	}
+}
+
+// A note can be pinned as it is written: the returned note and the stored one
+// both say so, and a missing recipe is refused before anything is written.
+func TestANoteIsPinnedAsItIsAdded(t *testing.T) {
+	s, _ := newTestStore(t)
+	a := authedCtx(t)
+	id, err := s.Create(a, simpleRecipe("Soup"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tip, err := s.AddNote(a, id, "salt early", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !tip.Pinned {
+		t.Error("AddNote returned the note unpinned")
+	}
+	plain, err := s.AddNote(a, id, "use stock", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := s.ListNotes(a, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[int64]bool{}
+	for _, n := range notes {
+		got[n.ID] = n.Pinned
+	}
+	if !got[tip.ID] || got[plain.ID] {
+		t.Errorf("stored pins = %v, want only note %d", got, tip.ID)
+	}
+	if _, err := s.AddNote(a, id+99, "nowhere", true); !errors.Is(err, ErrNotFound) {
+		t.Errorf("pinned note on a missing recipe = %v, want ErrNotFound", err)
 	}
 }

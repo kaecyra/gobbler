@@ -72,7 +72,7 @@ func TestConcurrentEditsAndJournalDoNotFailBusy(t *testing.T) {
 				if err := s.Update(ctx, id, simpleRecipe(fmt.Sprintf("w%d-%d", w, i))); err != nil {
 					errs <- fmt.Errorf("Update: %w", err)
 				}
-				if _, err := s.AddNote(ctx, id, "n"); err != nil {
+				if _, err := s.AddNote(ctx, id, "n", false); err != nil {
 					errs <- fmt.Errorf("AddNote: %w", err)
 				}
 				if _, err := s.AddMadeIt(ctx, id, MadeIt{}); err != nil {
@@ -150,7 +150,7 @@ func TestConcurrentMergesAndEditsDoNotFailBusy(t *testing.T) {
 					errs <- fmt.Errorf("Update: %w", err)
 					return
 				}
-				if _, err := s.AddNote(ctx, id, "n"); err != nil {
+				if _, err := s.AddNote(ctx, id, "n", false); err != nil {
 					errs <- fmt.Errorf("AddNote: %w", err)
 					return
 				}

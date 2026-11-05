@@ -13,7 +13,7 @@ func (e *env) pinPath(noteID int64) string {
 
 func TestANoteIsPinnedAsATipAndUnpinned(t *testing.T) {
 	e := newEnv(t)
-	if _, err := e.store.AddNote(e.ctx, e.id, "salt early"); err != nil {
+	if _, err := e.store.AddNote(e.ctx, e.id, "salt early", false); err != nil {
 		t.Fatal(err)
 	}
 	id := e.notes()[0].ID
@@ -40,7 +40,7 @@ func TestANoteIsPinnedAsATipAndUnpinned(t *testing.T) {
 
 func TestPinningAPlainPostRedirects(t *testing.T) {
 	e := newEnv(t)
-	if _, err := e.store.AddNote(e.ctx, e.id, "salt early"); err != nil {
+	if _, err := e.store.AddNote(e.ctx, e.id, "salt early", false); err != nil {
 		t.Fatal(err)
 	}
 	rec := e.do(http.MethodPost, e.pinPath(e.notes()[0].ID), url.Values{"pinned": {"1"}})
@@ -51,7 +51,7 @@ func TestPinningAPlainPostRedirects(t *testing.T) {
 
 func TestPinRefusesWhatIsNotANoteOfTheRecipeOrAChoice(t *testing.T) {
 	e := newEnv(t)
-	if _, err := e.store.AddNote(e.ctx, e.id, "salt early"); err != nil {
+	if _, err := e.store.AddNote(e.ctx, e.id, "salt early", false); err != nil {
 		t.Fatal(err)
 	}
 	id := e.notes()[0].ID
@@ -71,5 +71,47 @@ func TestPinRefusesWhatIsNotANoteOfTheRecipeOrAChoice(t *testing.T) {
 	}
 	if e.notes()[0].Pinned {
 		t.Error("a refused post pinned the note")
+	}
+}
+
+func TestANoteIsPinnedAsItIsAdded(t *testing.T) {
+	e := newEnv(t)
+	rec := e.do(http.MethodPost, e.path("/notes"), url.Values{"body": {"salt early"}, "pinned": {"1"}}, htmx...)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body)
+	}
+	notes := e.notes()
+	if len(notes) != 1 || !notes[0].Pinned {
+		t.Fatalf("notes = %+v, want one pinned", notes)
+	}
+	// It shows as a tip, offering to unpin.
+	mustContain(t, rec.Body.String(), `class="note-tip"`, `name="pinned" value="0"`, "Unpin")
+
+	// Without the box ticked the note is not a tip.
+	e.do(http.MethodPost, e.path("/notes"), url.Values{"body": {"use stock"}}, htmx...)
+	for _, n := range e.notes() {
+		if n.Body == "use stock" && n.Pinned {
+			t.Error("a note added without the box is pinned")
+		}
+	}
+}
+
+func TestARejectedNoteKeepsItsPinBox(t *testing.T) {
+	e := newEnv(t)
+	rec := e.do(http.MethodPost, e.path("/notes"), url.Values{"body": {" "}, "pinned": {"1"}}, htmx...)
+	mustContain(t, rec.Body.String(), `role="alert"`, `name="pinned" value="1" checked`)
+	if notes := e.notes(); len(notes) != 0 {
+		t.Errorf("saved %+v", notes)
+	}
+}
+
+func TestAddingANoteRefusesAnUnknownPinChoice(t *testing.T) {
+	e := newEnv(t)
+	rec := e.do(http.MethodPost, e.path("/notes"), url.Values{"body": {"salt early"}, "pinned": {"yes"}}, htmx...)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rec.Code)
+	}
+	if notes := e.notes(); len(notes) != 0 {
+		t.Errorf("saved %+v", notes)
 	}
 }

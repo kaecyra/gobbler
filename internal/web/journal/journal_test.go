@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -232,12 +233,22 @@ func TestRatingSetAndClear(t *testing.T) {
 	if got := e.rating(); got == nil || *got != 4 {
 		t.Fatalf("rating = %v, want 4", got)
 	}
-	mustContain(t, rec.Body.String(), `<option value="4" selected>`)
+	// The spoon of the rating is pressed, four are filled, the verdict is
+	// beside them, and the rating can be cleared.
+	body := rec.Body.String()
+	mustContain(t, body, `value="4" aria-pressed="true"`, `value="5" aria-pressed="false"`,
+		`>Make it again</span>`, `name="rating" value="" class="btn ghost clear"`)
+	if n := strings.Count(body, `class="spoon on"`); n != 4 {
+		t.Errorf("filled spoons = %d, want 4", n)
+	}
 
-	e.do(http.MethodPost, e.path("/rating"), url.Values{"rating": {""}}, htmx...)
+	rec = e.do(http.MethodPost, e.path("/rating"), url.Values{"rating": {""}}, htmx...)
 	if got := e.rating(); got != nil {
 		t.Fatalf("rating = %d, want cleared", *got)
 	}
+	body = rec.Body.String()
+	mustContain(t, body, `>Not rated</span>`)
+	mustNotContain(t, body, `aria-pressed="true"`, "Clear rating")
 }
 
 func TestRatingOutOfRangeIsRejectedAndNotSaved(t *testing.T) {
@@ -327,6 +338,24 @@ func TestMadeItInvalidInputIsRejectedInline(t *testing.T) {
 	// The typed values are kept so the user can fix them.
 	rec := e.do(http.MethodPost, e.path("/made"), url.Values{"on": {"yesterday"}, "comment": {"keep me"}}, htmx...)
 	mustContain(t, rec.Body.String(), `value="yesterday"`, "keep me", "YYYY-MM-DD")
+}
+
+// The journal's stylesheet takes its colours from the tokens only
+// (docs/ui/design.md), and draws no coloured left edge.
+func TestJournalStylesUseOnlyTokens(t *testing.T) {
+	e := newEnv(t)
+	body := e.do(http.MethodGet, e.path(""), nil, htmx...).Body.String()
+	start, end := strings.Index(body, "<style>"), strings.Index(body, "</style>")
+	if start < 0 || end < start {
+		t.Fatalf("no stylesheet in the fragment\n%s", body)
+	}
+	css := body[start:end]
+	if m := regexp.MustCompile(`#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(`).FindString(css); m != "" {
+		t.Errorf("journal stylesheet has the literal colour %q; use a token", m)
+	}
+	if strings.Contains(css, "border-left") {
+		t.Error("journal stylesheet draws a left border")
+	}
 }
 
 func TestUnknownRecipeIs404(t *testing.T) {

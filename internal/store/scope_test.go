@@ -29,7 +29,7 @@ func newScopeFixture(t *testing.T) scopeFixture {
 	if err := s.Update(f.a, id, r); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(f.a, id, "grandma's secret"); err != nil {
+	if _, err := s.AddNote(f.a, id, "grandma's secret", false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.AddMadeIt(f.a, id, MadeIt{Comment: "great"}); err != nil {
@@ -100,7 +100,7 @@ func TestOtherHouseholdCannotChangeARecipe(t *testing.T) {
 		"Delete":          func() error { return f.s.Delete(f.b, f.id) },
 		"Restore":         func() error { return f.s.Restore(f.b, f.id, 1) },
 		"Clone":           func() error { _, err := f.s.Clone(f.b, f.id); return err },
-		"AddNote":         func() error { _, err := f.s.AddNote(f.b, f.id, "injected"); return err },
+		"AddNote":         func() error { _, err := f.s.AddNote(f.b, f.id, "injected", false); return err },
 		"AddMadeIt":       func() error { _, err := f.s.AddMadeIt(f.b, f.id, MadeIt{Comment: "injected"}); return err },
 		"AddSnapshot":     func() error { return f.s.AddSnapshot(f.b, f.id, SnapshotHTML, []byte("injected")) },
 	}
@@ -151,7 +151,7 @@ func TestSearchNeverCrossesHouseholds(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.AddNote(ctx, id, note); err != nil {
+		if _, err := s.AddNote(ctx, id, note, false); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -203,7 +203,7 @@ func TestNoHouseholdOnContextFailsEveryCall(t *testing.T) {
 		"Restore":           func() error { return s.Restore(bare, id, 1) },
 		"GetVersion":        func() error { _, err := s.GetVersion(bare, id, 1); return err },
 		"ListRevisions":     func() error { _, err := s.ListRevisions(bare, id); return err },
-		"AddNote":           func() error { _, err := s.AddNote(bare, id, "n"); return err },
+		"AddNote":           func() error { _, err := s.AddNote(bare, id, "n", false); return err },
 		"ListNotes":         func() error { _, err := s.ListNotes(bare, id); return err },
 		"AddMadeIt":         func() error { _, err := s.AddMadeIt(bare, id, MadeIt{}); return err },
 		"ListMadeIt":        func() error { _, err := s.ListMadeIt(bare, id); return err },
@@ -230,7 +230,7 @@ func TestDeletingAHouseholdRemovesItsRecipesAndSearchRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(authedCtx(t), idA, "n"); err != nil {
+	if _, err := s.AddNote(authedCtx(t), idA, "n", false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := d.Exec(`DELETE FROM households WHERE id = ?`, testHouseholdID); err != nil {

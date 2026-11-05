@@ -196,14 +196,10 @@ func seedStyled(ctx context.Context, d *sql.DB) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	tip, err := rs.AddNote(ctx, id, "Salt the ribs the night before.")
-	if err != nil {
+	if _, err := rs.AddNote(ctx, id, "Salt the ribs the night before.", true); err != nil {
 		return 0, err
 	}
-	if err := rs.SetNotePinned(ctx, id, tip.ID, true); err != nil {
-		return 0, err
-	}
-	if _, err := rs.AddNote(ctx, id, "Private remark, not pinned."); err != nil {
+	if _, err := rs.AddNote(ctx, id, "Private remark, not pinned.", false); err != nil {
 		return 0, err
 	}
 	for i := 0; i < 2; i++ {

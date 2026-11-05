@@ -2,7 +2,7 @@
 -- household finds nothing (ADR-00018).
 
 -- name: InsertNote :one
-INSERT INTO notes (household_id, recipe_id, body, created_at, created_by) VALUES (?, ?, ?, ?, ?)
+INSERT INTO notes (household_id, recipe_id, body, created_at, created_by, pinned) VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id;
 
 -- name: ListNotes :many

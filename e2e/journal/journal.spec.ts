@@ -98,53 +98,66 @@ test('an empty note is rejected inline', async ({ page }) => {
 test('sets and clears the rating', async ({ page }) => {
   await page.goto(`/recipes/${id}/journal`);
   const saved = page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/rating`) && r.request().method() === 'POST');
-  await page.locator('#journal-rating').selectOption('4');
-  await page.getByRole('button', { name: 'Save rating' }).click();
+  const rating = page.locator('form.rating');
+  // Each spoon is a button that saves its rating; the fourth is "Make it again".
+  await rating.getByRole('button', { name: 'Make it again' }).click();
   expect((await saved).status()).toBe(200);
   await page.reload();
-  await expect(page.locator('#journal-rating')).toHaveValue('4');
+  await expect(rating.getByRole('button', { name: 'Make it again' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(rating.locator('svg.spoon.on')).toHaveCount(4);
+  await expect(page.getByTestId('journal-verdict')).toHaveText('Make it again');
 
   const cleared = page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/rating`) && r.request().method() === 'POST');
-  await page.locator('#journal-rating').selectOption('');
-  await page.getByRole('button', { name: 'Save rating' }).click();
+  await rating.getByRole('button', { name: 'Clear rating' }).click();
   expect((await cleared).status()).toBe(200);
   await page.reload();
-  await expect(page.locator('#journal-rating')).toHaveValue('');
+  await expect(rating.locator('[aria-pressed="true"]')).toHaveCount(0);
+  await expect(page.getByTestId('journal-verdict')).toHaveText('Not rated');
 });
 
 test('logs made-it with only a date, then with a rating and comment', async ({ page }) => {
   await page.goto(`/recipes/${id}/journal`);
   const made = () => page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/made`) && r.request().method() === 'POST');
 
+  // The date defaults to today.
+  await expect(page.getByLabel('When')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+
   let saved = made();
-  await page.getByLabel('Date').fill('2024-03-09');
-  await page.getByRole('button', { name: 'Log it' }).click();
+  await page.getByLabel('When').fill('2024-03-09');
+  await page.getByRole('button', { name: 'Log that I made it' }).click();
   expect((await saved).status()).toBe(200);
   await expect(page.locator('.made li')).toHaveCount(1);
-  await expect(page.locator('.made li').first()).toContainText('2024-03-09');
+  await expect(page.locator('.made li').first()).toContainText('9 Mar 2024');
+  await expect(page.locator('.made li').first().getByRole('img')).toHaveCount(0);
 
   saved = made();
-  await page.getByLabel('Date').fill('2024-05-01');
-  await page.getByLabel('Rating (optional)').selectOption('5');
-  await page.getByLabel('Comment (optional)').fill('Perfect crumb');
-  await page.getByRole('button', { name: 'Log it' }).click();
+  await page.getByLabel('When').fill('2024-05-01');
+  await page.locator('form.made-form').getByRole('radio', { name: 'House favourite' }).check();
+  await page.getByLabel('How it went (optional)').fill('Perfect crumb');
+  await page.getByRole('button', { name: 'Log that I made it' }).click();
   expect((await saved).status()).toBe(200);
   const rows = page.locator('.made li');
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0)).toContainText('2024-05-01');
-  await expect(rows.nth(0)).toContainText('5 of 5');
+  await expect(rows.nth(0)).toContainText('1 May 2024');
+  await expect(rows.nth(0).getByRole('img', { name: 'House favourite' })).toBeVisible();
   await expect(rows.nth(0)).toContainText('Perfect crumb');
-  await expect(rows.nth(1)).toContainText('2024-03-09');
+  await expect(rows.nth(1)).toContainText('9 Mar 2024');
 });
 
-test('an invalid made-it date is rejected inline and keeps what was typed', async ({ page }) => {
+// The date field is a date input, so a browser cannot type a bad date; a
+// client without one still gets the inline message and its text back.
+test('an invalid made-it date is rejected inline and keeps what was typed', async ({ page, request }) => {
+  const res = await request.post(`/recipes/${id}/journal/made`, {
+    headers: { 'HX-Request': 'true' },
+    form: { on: 'last tuesday', comment: 'keep this text' },
+  });
+  expect(res.status()).toBe(200);
+  const body = await res.text();
+  expect(body).toContain('role="alert"');
+  expect(body).toContain('YYYY-MM-DD');
+  expect(body).toContain('value="last tuesday"');
+  expect(body).toContain('value="keep this text"');
   await page.goto(`/recipes/${id}/journal`);
-  await page.getByLabel('Date').fill('last tuesday');
-  await page.getByLabel('Comment (optional)').fill('keep this text');
-  await page.getByRole('button', { name: 'Log it' }).click();
-  await expect(page.getByRole('alert')).toContainText('YYYY-MM-DD');
-  await expect(page.getByLabel('Date')).toHaveValue('last tuesday');
-  await expect(page.getByLabel('Comment (optional)')).toHaveValue('keep this text');
   await expect(page.locator('.made li')).toHaveCount(2);
 });
 
@@ -184,4 +197,18 @@ test('a note is pinned as a tip and unpinned', async ({ page }) => {
   expect((await saved).status()).toBe(200);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Unpin' })).toHaveCount(0);
+});
+
+test('a note is pinned as a tip as it is added', async ({ page }) => {
+  await page.goto(`/recipes/${id}/journal`);
+  const saved = page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/notes`) && r.request().method() === 'POST');
+  await page.getByLabel('Add a note').fill('Rest the dough overnight');
+  await page.getByLabel('Pin as a tip').check();
+  await page.getByRole('button', { name: 'Add note' }).click();
+  expect((await saved).status()).toBe(200);
+  const note = page.locator('.notes li').filter({ hasText: 'Rest the dough overnight' });
+  await expect(note.locator('.note-tip')).toHaveText('Tip');
+  await page.reload();
+  await expect(note.getByRole('button', { name: 'Unpin' })).toBeVisible();
+  await expect(page.getByLabel('Pin as a tip')).not.toBeChecked();
 });

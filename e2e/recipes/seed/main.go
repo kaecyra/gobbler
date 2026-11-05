@@ -61,7 +61,7 @@ func run(dir string) error {
 		}
 		ids[doc.Name] = id
 		for _, n := range r.notes {
-			if _, err := st.AddNote(ctx, id, n); err != nil {
+			if _, err := st.AddNote(ctx, id, n, false); err != nil {
 				return fmt.Errorf("note on %q: %w", doc.Name, err)
 			}
 		}

@@ -285,7 +285,7 @@ func TestCloneIsIndependentAndRecordsOrigin(t *testing.T) {
 	if err := s.Update(ctx, origID, orig); err != nil { // version 2
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(ctx, origID, "stays with the original"); err != nil {
+	if _, err := s.AddNote(ctx, origID, "stays with the original", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -344,7 +344,7 @@ func TestDelete(t *testing.T) {
 	if err := s.Update(ctx, id, simpleRecipe("two")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(ctx, id, "n"); err != nil {
+	if _, err := s.AddNote(ctx, id, "n", false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.AddMadeIt(ctx, id, MadeIt{}); err != nil {
@@ -409,7 +409,7 @@ func TestWritesNeedAnIdentity(t *testing.T) {
 		"Delete":      func() error { return s.Delete(bare, id) },
 		"Restore":     func() error { return s.Restore(bare, id, 1) },
 		"Clone":       func() error { _, err := s.Clone(bare, id); return err },
-		"AddNote":     func() error { _, err := s.AddNote(bare, id, "n"); return err },
+		"AddNote":     func() error { _, err := s.AddNote(bare, id, "n", false); return err },
 		"AddMadeIt":   func() error { _, err := s.AddMadeIt(bare, id, MadeIt{}); return err },
 		"AddSnapshot": func() error { return s.AddSnapshot(bare, id, SnapshotText, []byte("t")) },
 	}
@@ -558,7 +558,7 @@ func TestReadsSeeOneSnapshot(t *testing.T) {
 	}
 	err = s.read(ctx, func(q *storedb.Queries) error {
 		before := notes(q)
-		if _, err := s.AddNote(ctx, id, "lands mid-read"); err != nil {
+		if _, err := s.AddNote(ctx, id, "lands mid-read", false); err != nil {
 			t.Fatal(err)
 		}
 		if after := notes(q); after != before {

@@ -66,7 +66,7 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := rs.AddNote(ctx, id, "e2e sender private note"); err != nil {
+	if _, err := rs.AddNote(ctx, id, "e2e sender private note", false); err != nil {
 		return err
 	}
 	if _, err := rs.AddMadeIt(ctx, id, store.MadeIt{Comment: "e2e sender private comment"}); err != nil {
