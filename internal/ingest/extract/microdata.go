@@ -97,7 +97,12 @@ func recipeFromMicrodata(item *html.Node) Raw {
 		case "totalTime":
 			r.TotalTime = firstNonEmpty(r.TotalTime, v)
 		case "image":
-			r.ImageURL = firstNonEmpty(r.ImageURL, v)
+			if hasAttr(p.node, "itemscope") {
+				v = firstNonEmpty(nestedProp(p.node, "url"), nestedProp(p.node, "contentUrl"))
+			}
+			if v != "" {
+				r.ImageURLs = append(r.ImageURLs, v)
+			}
 		case "recipeIngredient", "ingredients":
 			if v != "" {
 				r.Ingredients = append(r.Ingredients, v)

@@ -42,6 +42,11 @@
       "Tex Mex"
     ],
     "calories": "251 kcal",
-    "image_url": "https://cdn.loveandlemons.com/wp-content/uploads/2023/07/guacamole-recipe-500x500.jpg"
+    "image_urls": [
+      "https://cdn.loveandlemons.com/wp-content/uploads/2023/07/guacamole-recipe-500x500.jpg",
+      "https://cdn.loveandlemons.com/wp-content/uploads/2023/07/guacamole-recipe-500x375.jpg",
+      "https://cdn.loveandlemons.com/wp-content/uploads/2023/07/guacamole-recipe-480x270.jpg",
+      "https://cdn.loveandlemons.com/wp-content/uploads/2023/07/guacamole-recipe.jpg"
+    ]
   }
 }

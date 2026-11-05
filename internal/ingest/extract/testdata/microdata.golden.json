@@ -25,6 +25,8 @@
       }
     ],
     "calories": "150 calories",
-    "image_url": "https://example.com/soup.jpg"
+    "image_urls": [
+      "https://example.com/soup.jpg"
+    ]
   }
 }

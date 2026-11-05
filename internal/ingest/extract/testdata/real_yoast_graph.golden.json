@@ -50,6 +50,11 @@
       "American"
     ],
     "calories": "250 calories",
-    "image_url": "https://pinchofyum.com/tachyon/Chocolate-Chip-Cookies-Recipe.jpg?fit=225%2C225"
+    "image_urls": [
+      "https://pinchofyum.com/tachyon/Chocolate-Chip-Cookies-Recipe.jpg?fit=225%2C225",
+      "https://pinchofyum.com/tachyon/Chocolate-Chip-Cookies-Recipe.jpg?fit=195%2C195",
+      "https://pinchofyum.com/tachyon/Chocolate-Chip-Cookies-Recipe.jpg?fit=180%2C180",
+      "https://pinchofyum.com/tachyon/Chocolate-Chip-Cookies-Recipe.jpg"
+    ]
   }
 }

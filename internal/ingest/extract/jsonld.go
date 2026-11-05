@@ -196,7 +196,7 @@ func recipeFromJSONLD(m map[string]any, ids map[string]map[string]any) Raw {
 		PrepTime:    jsonString(m["prepTime"]),
 		CookTime:    jsonString(m["cookTime"]),
 		TotalTime:   jsonString(m["totalTime"]),
-		ImageURL:    firstOf(jsonStrings(m["image"])),
+		ImageURLs:   jsonImages(m["image"]),
 	}
 	r.Ingredients = jsonStrings(m["recipeIngredient"])
 	if len(r.Ingredients) == 0 {
@@ -242,13 +242,6 @@ func youTubeID(v any) string {
 		}
 	}
 	return ""
-}
-
-func firstOf(s []string) string {
-	if len(s) == 0 {
-		return ""
-	}
-	return s[0]
 }
 
 // cleanText turns a string that may carry HTML into one line of text; see
