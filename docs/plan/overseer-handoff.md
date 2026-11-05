@@ -1,8 +1,53 @@
-# Overseer handoff: 2026-11-04, after round 18
+# Overseer handoff: 2026-11-05, round 19
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 19 (2026-11-05): owner UI feedback on the editor and journal, worked directly
+
+This round was worked in one session, from the owner's feedback, not dispatched from the graph. Its nodes were added afterwards (#393).
+
+**Merged** (squash SHA):
+
+| Node | PR | SHA | Schema | VERSION |
+|---|---|---|---|---|
+| f-yield-bare-number | #387 | 9ad62ef | none | 0.99.1 |
+| f-wprm-step-titles | #392 | 4f4f7cb | none | 0.100.0 |
+| u-editor-restyle | #388 | 3a2e156 | none | 0.101.0 |
+| u-journal-restyle | #389 | 7bb68ec | none | 0.102.0 |
+| u-note-edit-delete | #390 | c35c553 | none | 0.103.0 |
+| (graph) | #393 | 247a496 | none | none |
+
+- **#393** also added nodes for #377, #379 and #381, which landed earlier without any. It moved `adr_sequence` to 00038 and added r-stage-serve (#394), r-author-notes (#395, blocked), r-recipes-verdict (#386) and t-cook-timers-flake (#375).
+- **ADR-00037:** a note is a household scratchpad; it can be edited in place and deleted after a confirm step.
+- **ADR-00038:** the editor morphs the server-rendered form with idiomorph 0.8.0 (vendored, checksum in `internal/web/static/vendor/idiomorph.VERSION.txt`) instead of replacing it.
+
+**In flight:**
+- **#397 (#396):** the equipment chip's details sit under the save bar. The fix is approved with one NIT, which was answered: the commit message's "below the header" is wrong, because `.top` is at 5. Squash with a corrected message once CI passes, then add its node with `record-done`.
+
+**Owner calls this session (don't re-ask):**
+- **Wording:** the UI calls a recipe component a "part", everywhere. The data model, ADRs and MCP keep "component".
+- **Reordering:** the Move up and Move down buttons and the `up-`/`down-` actions are gone; rows reorder by drag handle only. Without scripts there is no reorder.
+- **Starts after** lists every step, one per line, with the current step greyed out as "This step".
+- **"From the source":** a line's original text is read-only when the line has an ingredient. It is editable, as "Text shown on the recipe", when the line has none.
+- **Non-YouTube video:** a video on another host (such as JW Player) stays ignored for now, per ADR-00021. A "watch on the source page" link would need an ADR.
+- **Serve stage (#394):** wanted. Colour family still to confirm; proposed `active`.
+- **Author notes (#395):** wanted. It needs an ADR first; the model, on-screen name and placement are the open questions listed in the issue.
+
+**Open, and not yet answered:**
+- **Step titles outside WPRM:** the owner asked whether an issue exists to improve step-title parsing beyond #391. #391 reads only WPRM's bold leads. Pasted text and JSON-LD-only pages still fuse a title like "Preheat oven." into the instruction. No issue exists; ask whether to file one.
+
+**For the owner:**
+- **0.103.0 is not deployed.**
+- **Dev server:** `/tmp/gobbler-demo` on the host, `:8080`, running a build of main at 0.103.0. Restart it detached: `(GOBBLER_DEV_AUTH_BYPASS=1 GOBBLER_DATA_DIR=/tmp/gobbler-demo/data GOBBLER_OPERATOR_EMAILS=dev@localhost nohup ./gobbler serve >> serve.log 2>&1 < /dev/null &)`. A bare `&` on an `&&` chain keeps the exec-daemon job open until it times out, and the timeout kills the server.
+
+**Lessons:**
+- **An approved mockup is the visual target** (now in `.claude/rules/lessons.md`). The first editor pass was briefed as a checklist that dropped drawn elements, and it was reviewed only for bugs. It shipped below the mockup.
+- **A UI bug that a script "restores" is still a bug.** The editor's scroll jump was patched by scrolling back, until it was measured per frame. The cause was replacing the form's DOM, and the fix was ADR-00038. A scroll test now samples every frame.
+- **CI's fonts are wider than the container's.** A phone layout with 11px to spare passed locally and overflowed by 15px in CI. Leave real slack at 390px; don't count on exact pixel fits.
+- **"Clear before more work" means finish what is in flight** (merge it), not start on the backlog.
+- **No git hooks are installed in this checkout, and the host lacks golangci-lint 2.14.0.** Run `make check` in the container before pushing.
 
 ## Round 18 (2026-11-04): decisions, then wave 11 storage, limits and profile
 
