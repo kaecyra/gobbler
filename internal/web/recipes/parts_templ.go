@@ -146,7 +146,7 @@ func heat(n int, label string) templ.Component {
 	})
 }
 
-// spoons draws a rating of 1 to 5 wooden spoons, never stars.
+// spoons draws a rating of 1 to layout.MaxSpoons wooden spoons, never stars.
 func spoons(n int, label string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -198,8 +198,8 @@ func spoons(n int, label string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for i := 1; i <= 5; i++ {
-			templ_7745c5c3_Err = layout.Spoon(i <= n).Render(ctx, templ_7745c5c3_Buffer)
+		for _, on := range layout.SpoonsOn(n) {
+			templ_7745c5c3_Err = layout.Spoon(on).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

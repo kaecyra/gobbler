@@ -25,11 +25,11 @@ templ heat(n int, label string) {
 	}
 }
 
-// spoons draws a rating of 1 to 5 wooden spoons, never stars.
+// spoons draws a rating of 1 to layout.MaxSpoons wooden spoons, never stars.
 templ spoons(n int, label string) {
 	<span class="spoons" role="img" aria-label={ label } title={ label }>
-		for i := 1; i <= 5; i++ {
-			@layout.Spoon(i <= n)
+		for _, on := range layout.SpoonsOn(n) {
+			@layout.Spoon(on)
 		}
 	</span>
 }
