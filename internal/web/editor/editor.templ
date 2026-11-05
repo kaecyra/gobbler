@@ -79,7 +79,8 @@ templ editorForm(v view) {
 			/* Components */
 			.editor .comp { padding: 12px 12px 14px; }
 			.editor .comp + .comp { border-top: 1px solid var(--line); }
-			.editor .comp-h { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 8px; padding: 0 4px 8px; }
+			.editor .comp-h { position: relative; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 8px; padding: 0 4px 8px 36px; }
+			.editor .comp-h .grip { top: auto; bottom: 8px; }
 			.editor .comp-h .fl { flex: 1 1 18rem; }
 			.editor .comp-h .tools { margin-left: auto; gap: 0; }
 			.editor .comp-h input { font-family: var(--f-display); font-weight: 700; font-size: 18px; }
@@ -104,12 +105,12 @@ templ editorForm(v view) {
 			.editor .more-body .help { margin: -6px 0 0; font-size: 14px; color: var(--ink-3); }
 			/* Ingredient lines */
 			.editor .cols, .editor .row { display: grid; grid-template-columns: 5.5rem 7rem minmax(0, 1fr) auto; gap: 6px; align-items: center; }
-			.editor .cols { padding: 0 52px 4px 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+			.editor .cols { padding: 0 96px 4px 36px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
 			.editor .cols span { padding-left: 13px; }
-			.editor.reviewing .cols { padding-left: 26px; }
-			.editor li.line, .editor li.equipment { padding: 6px 52px 6px 8px; }
+			.editor.reviewing .cols { padding-left: 54px; }
+			.editor li.line, .editor li.equipment { padding: 6px 96px 6px 36px; }
 			.editor li.line + li.line, .editor li.equipment + li.equipment { margin-top: 2px; }
-			.editor.reviewing li.line { padding-left: 26px; }
+			.editor.reviewing li.line { padding-left: 54px; }
 			.editor li.item:hover { background: var(--paper); }
 			.editor .row.erow { grid-template-columns: minmax(0, 1fr) auto; }
 			.editor .row input { border-color: transparent; background: transparent; }
@@ -122,21 +123,58 @@ templ editorForm(v view) {
 			.editor .c-mark { display: flex; gap: 6px; align-items: center; }
 			/* The confidence dot of a line under review. */
 			.editor.reviewing li.line::before {
-				content: ""; position: absolute; left: 10px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
+				content: ""; position: absolute; left: 38px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
 			}
 			.editor.reviewing li.line.low::before { background: var(--grain); }
 			.editor li.item.low, .editor li.item.low:hover { background: var(--grain-soft); }
 			.editor li.item.low .row input { background: var(--card); border-color: var(--line); }
 			.editor .quals { display: flex; flex-direction: column; gap: 8px; }
-			.editor .qualifier { display: grid; grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr); gap: 6px 8px; align-items: center; }
-			.editor .qualifier .tools { grid-column: 1 / -1; justify-content: flex-end; }
+			.editor .qual-list { display: flex; flex-direction: column; gap: 6px; }
+			.editor .qualifier { position: relative; display: grid; grid-template-columns: minmax(6rem, 8rem) minmax(0, 1fr) auto; gap: 6px; align-items: center; padding-left: 32px; border-radius: var(--r); }
+			.editor .qualifier .grip { top: 0; left: 0; }
+			.editor .qualifier .tools { gap: 0; flex-wrap: nowrap; }
 			.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }
+			.editor p.raw.from { margin: 0; padding: 4px 0; overflow-wrap: anywhere; }
+			/* Icon buttons, the drag handle and the help popover. */
+			.editor .ibtn {
+				display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0;
+				border-radius: var(--r); background: transparent; color: var(--ink-3); cursor: pointer;
+			}
+			.editor .ibtn:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
+			.editor .ibtn.danger:hover:not(:disabled) { color: var(--wattle-ink); }
+			.editor .ibtn:disabled { opacity: 0.35; cursor: default; }
+			.editor .ibtn svg { width: 18px; height: 18px; }
+			.editor .ibtn.rm { position: absolute; top: 6px; right: 48px; }
+			.editor .grip {
+				position: absolute; left: 2px; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;
+				color: var(--ink-3); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+			}
+			.editor .grip svg { width: 18px; height: 18px; }
+			:root.editor-drag .editor .grip { display: grid; }
+			.editor .dragging { background: var(--card); box-shadow: var(--shadow); opacity: 0.9; position: relative; z-index: 2; }
+			.editor .dragging .grip { cursor: grabbing; }
+			.editor .lbl-row { display: flex; align-items: center; gap: 2px; }
+			.editor .tip { position: relative; display: inline-flex; }
+			.editor .tip-btn {
+				display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -12px 0; padding: 0; border: 0;
+				background: transparent; color: var(--ink-3); cursor: help; border-radius: var(--r);
+			}
+			.editor .tip-btn svg { width: 16px; height: 16px; }
+			.editor .tip-btn:hover, .editor .tip-btn:focus-visible { color: var(--ink); }
+			.editor .tip-pop {
+				display: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 6px); width: min(20rem, 70vw);
+				padding: 10px 12px; background: var(--card); color: var(--ink-2); border: 1px solid var(--line); border-radius: var(--r);
+				box-shadow: var(--shadow); font-size: 14.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;
+			}
+			.editor .tip:hover .tip-pop, .editor .tip-btn:focus-visible + .tip-pop { display: block; }
 			/* Steps */
 			.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }
 			.editor .legend + .legend { margin-left: 6px; }
 			.editor .swatch { width: 14px; height: 14px; border-radius: var(--r-sm); background: var(--wattle-soft); }
 			.editor .swatch.passive { background: var(--sunk); }
-			.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 16px 56px 14px 14px; }
+			.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 16px 100px 14px 38px; }
+			.editor li.step .grip { top: 12px; }
+			.editor li.step .ibtn.rm { top: 12px; right: 50px; }
 			.editor li.step + li.step { border-top: 1px solid var(--line); border-radius: 0; }
 			.editor li.step.low { border-radius: var(--r); }
 			.editor li.step details.more > summary { top: 12px; right: 6px; }
@@ -160,7 +198,7 @@ templ editorForm(v view) {
 			.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 			.editor fieldset.deps legend { padding: 0; margin-bottom: 6px; }
 			.editor .grp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 4px 0 0; }
-			.editor .dep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 8px; }
+			.editor .dep-list { display: flex; flex-direction: column; gap: 8px; }
 			.editor label.dep {
 				display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 4px 12px; border: 1px solid var(--line);
 				border-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);
@@ -181,7 +219,9 @@ templ editorForm(v view) {
 				.editor .row { grid-template-columns: 5rem minmax(0, 1fr); }
 				.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }
 				.editor .c-mark:empty { display: none; }
-				.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 50px; }
+				.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }
+				.editor .qualifier { grid-template-columns: minmax(0, 1fr); }
+				.editor .qualifier .tools { justify-content: flex-end; }
 				.editor .snum { width: 28px; height: 28px; font-size: 14px; }
 				.editor .comp { padding-inline: 4px; }
 			}
@@ -220,6 +260,7 @@ templ editorForm(v view) {
 				<option value={ n }></option>
 			}
 		</datalist>
+		<script src={ scriptPath }></script>
 	</form>
 }
 
@@ -291,7 +332,7 @@ templ checkHint(low bool, issues []string, fallback string) {
 templ moreToggle(name string) {
 	<summary>
 		@layout.Icon(layout.IconChevron)
-		<span class="sr">{ name } details</span>
+		<span class="sr">Details of { name }</span>
 	</summary>
 }
 
@@ -380,7 +421,7 @@ templ metaFields(v view) {
 				}
 			</div>
 			<details class="more-meta" open?={ v.metaOpen() }>
-				<summary>{ metaSummary(v) }</summary>
+				<summary>{ v.metaSummary() }</summary>
 				<div class="two">
 					if v.carries(groupSource) {
 						<div class="fl">
@@ -415,7 +456,7 @@ templ metaFields(v view) {
 templ ingredientFields(v view) {
 	<section class="ed-sec" aria-labelledby="ed-h-ingredients" id="ed-ingredients">
 		@sectionHead("ed-h-ingredients", "Ingredients")
-		<div class="ed-card">
+		<div class="ed-card" data-drag-list="move-component">
 			for ci, c := range v.D.Components {
 				@componentLines(v, ci, c)
 			}
@@ -429,25 +470,69 @@ templ ingredientFields(v view) {
 	</section>
 }
 
+// grip is the drag handle of a row. Dragging is pointer-only (editor.js, which
+// shows the handle); the Move up and Move down buttons do the same without a
+// script or a pointer.
+templ grip() {
+	<span class="grip" aria-hidden="true">
+		@layout.Icon(layout.IconGrip)
+	</span>
+}
+
+// iconButton is a structural button drawn as an icon alone, named by label.
+templ iconButton(action, label string, icon layout.IconName, disabled bool, class string) {
+	<button type="submit" class={ "ibtn " + class } name="action" value={ action } aria-label={ label } title={ label } disabled?={ disabled }>
+		@layout.Icon(icon)
+	</button>
+}
+
+// moveButtons are the Move up and Move down buttons of an item, the fallback
+// for a drag.
+templ moveButtons(upAction, downAction, name string, first, last bool) {
+	@iconButton(upAction, "Move "+name+" up", layout.IconUp, first, "")
+	@iconButton(downAction, "Move "+name+" down", layout.IconDown, last, "")
+}
+
+// helpTip is an info button that shows text in a popover on hover and on
+// keyboard focus, with CSS alone. The text is the button's description, so a
+// screen reader reads it too.
+templ helpTip(id, about, text string) {
+	<span class="tip">
+		<button type="button" class="tip-btn" aria-describedby={ id }>
+			@layout.Icon(layout.IconInfo)
+			<span class="sr">About { about }</span>
+		</button>
+		<span class="tip-pop" role="tooltip" id={ id }>{ text }</span>
+	</span>
+}
+
+const (
+	qualifierHelp = "Words that describe the ingredient without changing how much you buy: chopped, softened, room temperature. They show beside the ingredient on the recipe and stay off the shopping list."
+	componentHelp = "A part of the recipe with its own ingredients and steps, such as the dough and the filling. The recipe page shows each named part under its own heading, and cook mode names the part each step belongs to."
+)
+
 // componentLines is one component in the ingredients section: its name and
 // the controls that move or remove the whole component, then its lines.
 templ componentLines(v view, ci int, c compDraft) {
 	<div class="comp component">
 		<div class="comp-h">
+			@grip()
 			<div class="fl">
-				<label for={ cField(ci, "name") }>Component { n1(ci) } name</label>
-				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Leave empty for a recipe without parts"/>
+				<div class="lbl-row">
+					<label for={ cField(ci, "name") }>Component { n1(ci) } name</label>
+					@helpTip(tipID("comp", ci), "components", componentHelp)
+				</div>
+				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Leave empty for a recipe without parts" autofocus?={ v.D.Focus == cField(ci, "name") }/>
 			</div>
 			<p class="tools">
-				<button type="submit" class="btn ghost" name="action" value={ act("up-component", ci) } disabled?={ ci == 0 }>Move component up</button>
-				<button type="submit" class="btn ghost" name="action" value={ act("down-component", ci) } disabled?={ ci == len(v.D.Components)-1 }>Move component down</button>
-				<button type="submit" class="btn ghost danger" name="action" value={ act("rm-component", ci) }>Remove component</button>
+				@moveButtons(act("up-component", ci), act("down-component", ci), "component "+n1(ci), ci == 0, ci == len(v.D.Components)-1)
+				@iconButton(act("rm-component", ci), "Remove component "+n1(ci), layout.IconClose, false, "danger")
 			</p>
 		</div>
 		if len(c.Lines) > 0 {
 			<div class="cols" aria-hidden="true"><span>Qty</span><span>Unit</span><span>Ingredient</span></div>
 		}
-		<ol>
+		<ol data-drag-list={ "move-line:" + n0(ci) }>
 			for li, l := range c.Lines {
 				@lineFields(v, ci, li, len(c.Lines), l)
 			}
@@ -463,6 +548,7 @@ templ componentLines(v view, ci int, c compDraft) {
 
 templ lineFields(v view, ci, li, count int, l lineDraft) {
 	<li class={ "item line " + l.Mark.String() } data-low?={ l.Mark.Low } data-llm?={ l.Mark.LLM }>
+		@grip()
 		if l.Key != "" {
 			<input type="hidden" name={ lField(ci, li, "key") } value={ l.Key }/>
 		}
@@ -475,10 +561,10 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 		if !v.carries(groupScaling) {
 			<input type="hidden" name={ lField(ci, li, "rule") } value={ l.Rule }/>
 		}
-		<div class="row" id={ lineAnchor(ci, li) }>
+		<div class="row" id={ lineAnchor(ci, li) } data-item={ l.Key }>
 			<div>
 				<label class="sr" for={ lField(ci, li, "qty") }>Quantity</label>
-				<input id={ lField(ci, li, "qty") } class="qty" type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off"/>
+				<input id={ lField(ci, li, "qty") } class="qty" type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off" autofocus?={ v.D.Focus == lField(ci, li, "qty") }/>
 			</div>
 			<div>
 				<label class="sr" for={ lField(ci, li, "unit") }>Unit</label>
@@ -495,17 +581,15 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 				@llmBadge(l.Mark)
 			</div>
 		</div>
+		@iconButton(act("rm-line", ci, li), "Remove "+v.lineRef(ci, li), layout.IconClose, false, "rm danger")
 		@checkHint(l.Mark.Low, l.Issues, "the rules were not sure how to read this line.")
 		if l.Err != "" {
 			<p class="alert" role="alert">{ l.Err }</p>
 		}
 		<details class="more" open?={ l.open() }>
-			@moreToggle("Line " + n1(li))
+			@moreToggle(v.lineRef(ci, li))
 			<div class="more-body">
-				<div class="fl full">
-					<label for={ lField(ci, li, "raw") }>Original text</label>
-					<input id={ lField(ci, li, "raw") } class="raw" type="text" name={ lField(ci, li, "raw") } value={ l.Raw }/>
-				</div>
+				@rawField(ci, li, l)
 				<div class="fl">
 					<label for={ lField(ci, li, "pkgqty") }>Package amount</label>
 					<input id={ lField(ci, li, "pkgqty") } type="text" name={ lField(ci, li, "pkgqty") } value={ l.PkgQty }/>
@@ -534,26 +618,29 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 					</div>
 				}
 				<div class="fl full quals">
-					if len(l.Quals) > 0 {
+					<div class="lbl-row">
 						<span class="lbl">Qualifiers</span>
-					}
-					for qi, q := range l.Quals {
-						<div class="qualifier">
-							<label class="sr" for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
-							<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
-								for _, k := range qualKinds() {
-									<option value={ k } selected?={ q.Kind == k }>{ k }</option>
-								}
-							</select>
-							<label class="sr" for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
-							<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text }/>
-							<p class="tools">
-								<button type="submit" class="btn ghost" name="action" value={ act("up-qual", ci, li, qi) } disabled?={ qi == 0 }>Move qualifier up</button>
-								<button type="submit" class="btn ghost" name="action" value={ act("down-qual", ci, li, qi) } disabled?={ qi == len(l.Quals)-1 }>Move qualifier down</button>
-								<button type="submit" class="btn ghost danger" name="action" value={ act("rm-qual", ci, li, qi) }>Remove qualifier</button>
-							</p>
-						</div>
-					}
+						@helpTip(tipID("qual", ci, li), "qualifiers", qualifierHelp)
+					</div>
+					<div class="qual-list" data-drag-list={ "move-qual:" + n0(ci) + "." + n0(li) }>
+						for qi, q := range l.Quals {
+							<div class="qualifier">
+								@grip()
+								<label class="sr" for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
+								<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
+									for _, k := range qualKinds() {
+										<option value={ k } selected?={ q.Kind == k }>{ k }</option>
+									}
+								</select>
+								<label class="sr" for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
+								<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text } autofocus?={ v.D.Focus == qField(ci, li, qi, "text") }/>
+								<p class="tools">
+									@moveButtons(act("up-qual", ci, li, qi), act("down-qual", ci, li, qi), "qualifier "+n1(qi), qi == 0, qi == len(l.Quals)-1)
+									@iconButton(act("rm-qual", ci, li, qi), "Remove qualifier "+n1(qi), layout.IconClose, false, "danger")
+								</p>
+							</div>
+						}
+					</div>
 					<p class="tools">
 						<button type="submit" class="btn" name="action" value={ act("add-qual", ci, li) }>
 							@layout.Icon(layout.IconPlus)
@@ -562,13 +649,33 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 					</p>
 				</div>
 				<p class="actions">
-					<button type="submit" class="btn ghost" name="action" value={ act("up-line", ci, li) } disabled?={ li == 0 }>Move line up</button>
-					<button type="submit" class="btn ghost" name="action" value={ act("down-line", ci, li) } disabled?={ li == count-1 }>Move line down</button>
-					<button type="submit" class="btn ghost danger" name="action" value={ act("rm-line", ci, li) }>Remove line</button>
+					@moveButtons(act("up-line", ci, li), act("down-line", ci, li), v.lineRef(ci, li), li == 0, li == count-1)
 				</p>
 			</div>
 		</details>
 	</li>
+}
+
+// rawField is a line's original text. A line with an ingredient is shown from
+// the catalog, so its text is only a record of what the source said: it is
+// shown read-only and posted unchanged. A line with no ingredient is shown on
+// the recipe as this text, so there it is the field to edit.
+templ rawField(ci, li int, l lineDraft) {
+	if strings.TrimSpace(l.Ingredient) != "" {
+		<input type="hidden" name={ lField(ci, li, "raw") } value={ l.Raw }/>
+		if strings.TrimSpace(l.Raw) != "" {
+			<div class="fl full">
+				<span class="lbl">From the source</span>
+				<p class="raw from">{ l.Raw }</p>
+			</div>
+		}
+	} else {
+		<div class="fl full">
+			<label for={ lField(ci, li, "raw") }>Text shown on the recipe</label>
+			<input id={ lField(ci, li, "raw") } class="raw" type="text" name={ lField(ci, li, "raw") } value={ l.Raw }/>
+			<p class="help">With no ingredient set, the recipe and the shopping list show this text as written.</p>
+		</div>
+	}
 }
 
 templ stepSection(v view) {
@@ -583,7 +690,7 @@ templ stepSection(v view) {
 					if len(v.D.Components) > 1 || strings.TrimSpace(c.Name) != "" {
 						<h3 class="comp-name">{ componentName(ci, c) }</h3>
 					}
-					<ol>
+					<ol data-drag-list={ "move-step:" + n0(ci) }>
 						for si, s := range c.Steps {
 							@stepFields(v, ci, si, len(c.Steps), s)
 						}
@@ -602,13 +709,14 @@ templ stepSection(v view) {
 
 templ stepFields(v view, ci, si, count int, s stepDraft) {
 	<li class={ "item step " + s.Mark.String() } data-low?={ s.Mark.Low } data-llm?={ s.Mark.LLM }>
+		@grip()
 		<span class={ "snum", templ.KV("passive", s.Passive) }>
 			<span class="sr">Step </span>{ strconv.Itoa(v.stepNum(ci, si)) }
 			if s.Passive {
 				<span class="sr">, hands-off</span>
 			}
 		</span>
-		<div class="sbody" id={ stepAnchor(ci, si) }>
+		<div class="sbody" id={ stepAnchor(ci, si) } data-item={ s.ID }>
 			if !s.Mark.zero() {
 				<input type="hidden" name={ sField(ci, si, "mark") } value={ s.Mark.String() }/>
 			}
@@ -618,7 +726,7 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 				<input id={ sField(ci, si, "title") } class="quiet stitle" type="text" name={ sField(ci, si, "title") } value={ s.Title } placeholder="Add a title"/>
 			}
 			<label class="sr" for={ sField(ci, si, "text") }>Step { strconv.Itoa(v.stepNum(ci, si)) } instruction</label>
-			<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="2">{ s.Text }</textarea>
+			<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="2" autofocus?={ v.D.Focus == sField(ci, si, "text") }>{ s.Text }</textarea>
 			<div class="pills">
 				if strings.TrimSpace(s.Duration) != "" {
 					<span class="pill">
@@ -650,7 +758,7 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 				}
 			}
 			<details class="more" open?={ s.open() }>
-				@moreToggle("Step " + strconv.Itoa(v.stepNum(ci, si)))
+				@moreToggle("step " + strconv.Itoa(v.stepNum(ci, si)))
 				<div class="more-body">
 					<div class="fl">
 						<label for={ sField(ci, si, "dur") }>Duration</label>
@@ -668,7 +776,10 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 						</div>
 					}
 					<div class="fl">
-						<label for={ sField(ci, si, "to") }>Component</label>
+						<div class="lbl-row">
+							<label for={ sField(ci, si, "to") }>Component</label>
+							@helpTip(tipID("step-comp", ci, si), "components", componentHelp)
+						</div>
 						<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
 							for oi, o := range v.D.Components {
 								<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
@@ -684,13 +795,12 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 						</div>
 					}
 					<p class="actions">
-						<button type="submit" class="btn ghost" name="action" value={ act("up-step", ci, si) } disabled?={ si == 0 }>Move step up</button>
-						<button type="submit" class="btn ghost" name="action" value={ act("down-step", ci, si) } disabled?={ si == count-1 }>Move step down</button>
-						<button type="submit" class="btn ghost danger" name="action" value={ act("rm-step", ci, si) }>Remove step</button>
+						@moveButtons(act("up-step", ci, si), act("down-step", ci, si), "step "+strconv.Itoa(v.stepNum(ci, si)), si == 0, si == count-1)
 					</p>
 				</div>
 			</details>
 		</div>
+		@iconButton(act("rm-step", ci, si), "Remove step "+strconv.Itoa(v.stepNum(ci, si)), layout.IconClose, false, "rm danger")
 	</li>
 }
 
@@ -705,7 +815,7 @@ templ stepChooser(v view, legend, name, self string, checked []string) {
 			if len(v.D.Components) > 1 {
 				<p class="grp">{ g.Name }</p>
 			}
-			<div class="dep-grid">
+			<div class="dep-list">
 				for _, o := range g.Options {
 					if o.ID == self {
 						<label class="dep self" title="A step cannot wait for itself">
@@ -732,16 +842,17 @@ templ equipmentFields(v view) {
 		@sectionHead("ed-h-equipment", "Equipment")
 		<div class="ed-card">
 			<div class="comp">
-				<ol>
+				<ol data-drag-list="move-equip">
 					for ei, e := range v.D.Equipment {
 						<li class={ "item equipment " + e.Mark.String() } data-llm?={ e.Mark.LLM }>
+							@grip()
 							if !e.Mark.zero() {
 								<input type="hidden" name={ eField(ei, "mark") } value={ e.Mark.String() }/>
 							}
 							<div class="row erow" id={ equipAnchor(ei) }>
 								<div class="c-ing">
 									<label class="sr" for={ eField(ei, "name") }>Equipment</label>
-									<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
+									<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off" autofocus?={ v.D.Focus == eField(ei, "name") }/>
 									if strings.TrimSpace(e.Qty) != "" {
 										<span class="qual">{ e.Qty }</span>
 									}
@@ -750,12 +861,13 @@ templ equipmentFields(v view) {
 									@llmBadge(e.Mark)
 								</div>
 							</div>
+							@iconButton(act("rm-equip", ei), "Remove equipment "+n1(ei), layout.IconClose, false, "rm danger")
 							@checkHint(e.Mark.Low, nil, "the rules were not sure of this equipment.")
 							if e.Err != "" {
 								<p class="alert" role="alert">{ e.Err }</p>
 							}
 							<details class="more" open?={ e.open() }>
-								@moreToggle("Equipment " + n1(ei))
+								@moreToggle("equipment " + n1(ei))
 								<div class="more-body">
 									if v.carries(groupEquipmentLinks) {
 										<div class="fl">
@@ -774,9 +886,7 @@ templ equipmentFields(v view) {
 										</div>
 									}
 									<p class="actions">
-										<button type="submit" class="btn ghost" name="action" value={ act("up-equip", ei) } disabled?={ ei == 0 }>Move equipment up</button>
-										<button type="submit" class="btn ghost" name="action" value={ act("down-equip", ei) } disabled?={ ei == len(v.D.Equipment)-1 }>Move equipment down</button>
-										<button type="submit" class="btn ghost danger" name="action" value={ act("rm-equip", ei) }>Remove equipment</button>
+										@moveButtons(act("up-equip", ei), act("down-equip", ei), "equipment "+n1(ei), ei == 0, ei == len(v.D.Equipment)-1)
 									</p>
 								</div>
 							</details>

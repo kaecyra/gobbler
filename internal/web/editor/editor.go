@@ -31,6 +31,11 @@ import (
 // below the recipe's own page.
 const Pattern = "/recipes/{id}/edit"
 
+// scriptPath is the editor's embedded script: drag to reorder, and keeping the
+// viewport and the open rows in place across a structural action. The form
+// works without it.
+const scriptPath = "/static/editor.js"
+
 // maxFormBytes bounds an editor form body; a long recipe is still prose.
 const maxFormBytes = 1 << 20
 

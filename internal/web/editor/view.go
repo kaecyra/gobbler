@@ -214,6 +214,20 @@ func (v view) equipmentFor(id string) []string {
 	return out
 }
 
+// lineRef names line li of component ci for a person, unique in the form:
+// "line 2", or "Glaze line 2" when the recipe has more than one component.
+func (v view) lineRef(ci, li int) string {
+	if len(v.D.Components) > 1 {
+		return componentName(ci, v.D.Components[ci]) + " line " + n1(li)
+	}
+	return "line " + n1(li)
+}
+
+// tipID is the id of a help popover, unique in the form.
+func tipID(kind string, pos ...int) string {
+	return "tip-" + strings.ReplaceAll(act(kind, pos...), ":", "-")
+}
+
 // Anchors of the items the save bar can point at.
 func lineAnchor(ci, li int) string { return fmt.Sprintf("line-%d-%d", ci, li) }
 func stepAnchor(ci, si int) string { return fmt.Sprintf("step-%d-%d", ci, si) }
@@ -273,7 +287,7 @@ func (v view) metaOpen() bool {
 
 // metaSummary names what the recipe's second disclosure holds, which is less
 // for a draft under review: it cannot keep a source URL or tags.
-func metaSummary(v view) string {
+func (v view) metaSummary() string {
 	if v.carries(groupSource) {
 		return "Source, author, video and tags"
 	}

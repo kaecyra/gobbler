@@ -54,6 +54,10 @@ type draft struct {
 	// Problems are messages about the recipe as a whole: a step cycle, a
 	// stale save.
 	Problems []string
+	// Focus is the id of the control a structural action just made, such as
+	// the text of a new qualifier, which the form focuses when it comes back.
+	// It is never read from the form.
+	Focus string
 }
 
 type compDraft struct {
@@ -358,7 +362,9 @@ func (d *draft) settle() {
 
 // apply performs one structural action ("add-line:0", "up-step:1.2", ...).
 // The numbers are positions in the draft; an action that names something the
-// draft does not have is an error, since the form only offers real ones.
+// draft does not have is an error, since the form only offers real ones. A
+// "move-..." action ends with two positions, from and to, within one list:
+// "move-line:0.3.1" moves line 3 of component 0 to position 1.
 func (d *draft) apply(action string) error {
 	verb, arg, _ := strings.Cut(action, ":")
 	pos, err := positions(arg)
@@ -369,6 +375,12 @@ func (d *draft) apply(action string) error {
 	switch verb {
 	case "add-component":
 		d.Components = append(d.Components, compDraft{})
+		d.Focus = cField(len(d.Components)-1, "name")
+	case "move-component":
+		if len(pos) != 2 || !inRange(len(d.Components), pos[0]) || !inRange(len(d.Components), pos[1]) {
+			return bad
+		}
+		d.Components = moveTo(d.Components, pos[0], pos[1])
 	case "rm-component", "up-component", "down-component":
 		if len(pos) != 1 || !inRange(len(d.Components), pos[0]) {
 			return bad
@@ -380,6 +392,13 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		c.Lines = append(c.Lines, lineDraft{Rule: string(quantity.RuleLinear)})
+		d.Focus = lField(pos[0], len(c.Lines)-1, "qty")
+	case "move-line":
+		c, ok := d.component(pos, 3)
+		if !ok || !inRange(len(c.Lines), pos[1]) || !inRange(len(c.Lines), pos[2]) {
+			return bad
+		}
+		c.Lines = moveTo(c.Lines, pos[1], pos[2])
 	case "rm-line", "up-line", "down-line":
 		c, ok := d.component(pos, 2)
 		if !ok || !inRange(len(c.Lines), pos[1]) {
@@ -393,6 +412,17 @@ func (d *draft) apply(action string) error {
 		}
 		l := &c.Lines[pos[1]]
 		l.Quals = append(l.Quals, qualDraft{Kind: string(recipe.QualPreparation)})
+		d.Focus = qField(pos[0], pos[1], len(l.Quals)-1, "text")
+	case "move-qual":
+		c, ok := d.component(pos, 4)
+		if !ok || !inRange(len(c.Lines), pos[1]) {
+			return bad
+		}
+		l := &c.Lines[pos[1]]
+		if !inRange(len(l.Quals), pos[2]) || !inRange(len(l.Quals), pos[3]) {
+			return bad
+		}
+		l.Quals = moveTo(l.Quals, pos[2], pos[3])
 	case "rm-qual", "up-qual", "down-qual":
 		c, ok := d.component(pos, 3)
 		if !ok || !inRange(len(c.Lines), pos[1]) || !inRange(len(c.Lines[pos[1]].Quals), pos[2]) {
@@ -406,6 +436,13 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		c.Steps = append(c.Steps, stepDraft{})
+		d.Focus = sField(pos[0], len(c.Steps)-1, "text")
+	case "move-step":
+		c, ok := d.component(pos, 3)
+		if !ok || !inRange(len(c.Steps), pos[1]) || !inRange(len(c.Steps), pos[2]) {
+			return bad
+		}
+		c.Steps = moveTo(c.Steps, pos[1], pos[2])
 	case "rm-step", "up-step", "down-step":
 		c, ok := d.component(pos, 2)
 		if !ok || !inRange(len(c.Steps), pos[1]) {
@@ -414,6 +451,12 @@ func (d *draft) apply(action string) error {
 		c.Steps = reorder(c.Steps, verb, pos[1])
 	case "add-equip":
 		d.Equipment = append(d.Equipment, equipDraft{})
+		d.Focus = eField(len(d.Equipment)-1, "name")
+	case "move-equip":
+		if len(pos) != 2 || !inRange(len(d.Equipment), pos[0]) || !inRange(len(d.Equipment), pos[1]) {
+			return bad
+		}
+		d.Equipment = moveTo(d.Equipment, pos[0], pos[1])
 	case "rm-equip", "up-equip", "down-equip":
 		if len(pos) != 1 || !inRange(len(d.Equipment), pos[0]) {
 			return bad
@@ -451,6 +494,17 @@ func positions(arg string) ([]int, error) {
 }
 
 func inRange(n, i int) bool { return i >= 0 && i < n }
+
+// moveTo moves the item at from to index to, shifting the items between: what
+// a drag in the form posts as a "move-..." action. Both must be in range.
+func moveTo[T any](items []T, from, to int) []T {
+	if from == to {
+		return items
+	}
+	item := items[from]
+	items = slices.Delete(items, from, from+1)
+	return slices.Insert(items, to, item)
+}
 
 // reorder removes (verb "rm-..."), or moves up or down by one, the item at i.
 // An item that is already first or last stays where it is.

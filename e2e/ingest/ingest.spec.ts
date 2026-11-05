@@ -262,7 +262,7 @@ test('pasted text goes to review, then confirm saves and redirects to the recipe
   await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
-  await expect(page.getByLabel('Original text').first()).toHaveValue('2 cups all-purpose flour');
+  await expect(page.locator('[name="c.0.l.0.raw"]')).toHaveValue('2 cups all-purpose flour');
 
   await page.getByLabel('Name', { exact: true }).fill('Best Pancakes');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
@@ -300,10 +300,10 @@ test('a low-confidence line is highlighted in words, a confident one is not', as
 
   const flagged = page.locator('li.line[data-low]');
   await expect(flagged).toHaveCount(1);
-  await expect(flagged.getByLabel('Original text')).toHaveValue(/glorp/);
+  await expect(flagged.locator('input[name$=".raw"]')).toHaveValue(/glorp/);
   await expect(flagged).toContainText('Check:');
   const confident = page.locator('li.line:not([data-low])');
-  await expect(confident.getByLabel('Original text')).toHaveValue(/all-purpose flour/);
+  await expect(confident.locator('input[name$=".raw"]')).toHaveValue(/all-purpose flour/);
   await expect(confident).not.toContainText('Check:');
 });
 
@@ -355,15 +355,12 @@ test('an amount, a unit and a whole line can be corrected on review before anyth
   await first.getByLabel('Unit', { exact: true }).fill('tbsp');
 
   // A structural button keeps what was typed and saves nothing.
-  // Remove line sits in the line's details.
-  await page.locator('li.line').last().locator('summary').click();
   await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
   await expect(page.locator('li.line')).toHaveCount(2);
   await expect(page.locator('li.line').nth(0).getByLabel('Quantity')).toHaveValue('3');
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
   await page.getByRole('button', { name: 'Add ingredient line' }).click();
   await expect(page.locator('li.line')).toHaveCount(3);
-  // A line just added comes back with its details open.
   await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
@@ -441,7 +438,7 @@ test('a URL is fetched from the fixture server and reviewed', async ({ page }) =
   await page.getByLabel('Recipe URL').fill(`${fixtureURL}/toast`);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fixture Toast');
-  await expect(page.getByLabel('Original text').first()).toHaveValue('2 slices bread');
+  await expect(page.locator('[name="c.0.l.0.raw"]')).toHaveValue('2 slices bread');
   await expect(page.getByText(`Read from ${fixtureURL}/toast`)).toBeVisible();
 });
 

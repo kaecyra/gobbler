@@ -206,8 +206,9 @@ test('moves a step to another component and reorders steps', async ({ page }) =>
   await expect(page.locator('[name="c.1.s.2.text"]')).toBeVisible();
   await expect(page.locator('[name="c.0.s.0.text"]')).toHaveValue('Let the dough rest.');
   await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Mix the dough.');
-  await page.locator('li.step').nth(2).locator('summary').click();
-  await page.locator('li.step').nth(2).getByRole('button', { name: 'Move step up' }).click();
+  // Open its details; they may be open already, since editor.js keeps the rows a person opened.
+  await page.locator('li.step').nth(2).locator('details.more').evaluate((d) => { (d as HTMLDetailsElement).open = true; });
+  await page.locator('li.step').nth(2).getByRole('button', { name: 'Move step 3 up' }).click();
   await expect(page.locator('[name="c.1.s.0.text"]')).toHaveValue('Mix the dough.');
   await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Glaze the loaf.');
 });
@@ -361,4 +362,45 @@ test('without JavaScript, Enter in a field saves', async ({ browser }) => {
   await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
   await expect(page.getByRole('heading', { name: 'E2E No Script Enter Loaf' })).toBeVisible();
   await ctx.close();
+});
+
+// A structural action swaps the whole form (HTMX). editor.js keeps the page
+// where it was and focuses what the action made, so Add qualifier halfway down
+// the page does not jump.
+test('Add qualifier keeps the page in place and focuses the new qualifier', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto(`/recipes/${id}/edit`);
+  const line = page.locator('li.line').first();
+  await line.locator('summary').click();
+  const add = line.getByRole('button', { name: 'Add qualifier' });
+  await add.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before, 'the button is mid-page, not at the top').toBeGreaterThan(100);
+  const n = await page.locator('[name^="c.0.l.0.q."][name$=".text"]').count();
+  await add.click();
+  await expect(page.locator(`[name="c.0.l.0.q.${n}.text"]`)).toBeFocused();
+  const after = await page.evaluate(() => window.scrollY);
+  expect(Math.abs(after - before), `scrolled from ${before} to ${after}`).toBeLessThanOrEqual(4);
+});
+
+// Dragging a step by its handle posts a move, and the server reorders.
+test('dragging a step by its handle reorders the steps', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto(`/recipes/${id}/edit`);
+  const steps = page.locator('ol[data-drag-list="move-step:0"] > li.step');
+  await expect(steps).toHaveCount(2);
+  const first = await page.locator('[name="c.0.s.0.text"]').inputValue();
+  const second = await page.locator('[name="c.0.s.1.text"]').inputValue();
+  await steps.nth(1).scrollIntoViewIfNeeded();
+  const grip = (await steps.nth(0).locator('.grip').boundingBox())!;
+  const target = (await steps.nth(1).boundingBox())!;
+  const x = grip.x + grip.width / 2;
+  const y0 = grip.y + grip.height / 2;
+  const y1 = target.y + target.height * 0.8;
+  await page.mouse.move(x, y0);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
+  await page.mouse.up();
+  await expect(page.locator('[name="c.0.s.0.text"]')).toHaveValue(second);
+  await expect(page.locator('[name="c.0.s.1.text"]')).toHaveValue(first);
 });
