@@ -76,3 +76,35 @@ func TestFetchRefusesARedirectLoop(t *testing.T) {
 		t.Fatalf("err = %v, want ErrFetch for a refused redirect", err)
 	}
 }
+
+// ADR-00040: loopback is admitted for the page fetch only when the
+// configuration allows it, and a private address that is not loopback is
+// refused either way.
+func TestFetchLoopbackFollowsTheConfiguration(t *testing.T) {
+	srv, _ := serve(t, []byte("<html></html>"))
+	u, _ := url.Parse(srv.URL)
+	e := newEnv(t)
+	pipeline := func(allow bool) *Pipeline {
+		cfg := testConfig()
+		cfg.AllowLoopbackFetch = allow
+		p, err := New(cfg, Deps{Catalog: e.catalog})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	if _, _, err := pipeline(false).fetch(e.ctx, "http://127.0.0.1:"+u.Port()+"/"); !errors.Is(err, ErrFetch) || !errors.Is(err, netguard.ErrBlocked) {
+		t.Fatalf("loopback, option off: err = %v, want ErrFetch wrapping ErrBlocked", err)
+	}
+	body, _, err := pipeline(true).fetch(e.ctx, "http://127.0.0.1:"+u.Port()+"/")
+	if err != nil || string(body) != "<html></html>" {
+		t.Fatalf("loopback, option on: body %q, err %v", body, err)
+	}
+	for _, allow := range []bool{false, true} {
+		for _, target := range []string{"http://10.0.0.1/", "http://192.168.1.1/"} {
+			if _, _, err := pipeline(allow).fetch(e.ctx, target); !errors.Is(err, netguard.ErrBlocked) {
+				t.Errorf("%s, option %v: err = %v, want ErrBlocked", target, allow, err)
+			}
+		}
+	}
+}

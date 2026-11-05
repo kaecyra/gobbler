@@ -207,3 +207,20 @@ func TestFetchNeverConnectsToAPrivateLoopbackOrLinkLocalAddress(t *testing.T) {
 		t.Fatal("the server on loopback was reached")
 	}
 }
+
+// ADR-00040: the dev auth bypass admits loopback for page and image fetches
+// only. The metadata fetcher has no such option, so it refuses loopback even
+// in a process running with the bypass on.
+func TestFetchRefusesLoopbackEvenWithTheDevAuthBypassOn(t *testing.T) {
+	t.Setenv("GOBBLER_DEV_AUTH_BYPASS", "true")
+	var hits atomic.Int32
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hits.Add(1) }))
+	t.Cleanup(srv.Close)
+	_, err := oauth.NewMetadataFetcher().Fetch(context.Background(), srv.URL+"/c.json")
+	if !errors.Is(err, oauth.ErrMetadata) || !strings.Contains(err.Error(), "does not connect to") {
+		t.Fatalf("Fetch = %v, want the address guard's refusal", err)
+	}
+	if hits.Load() != 0 {
+		t.Fatal("the server on loopback was reached")
+	}
+}

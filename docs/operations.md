@@ -33,8 +33,11 @@ sign-in session, stops anything else that gets through
   an OAuth client's metadata document) ignore `HTTP_PROXY` and `HTTPS_PROXY`, and
   never connect to a private, loopback or link-local address, even through a
   redirect or a name that resolves to one. A recipe cannot be imported by URL
-  from a host on the local network
-  ([ADR-00039](./adr/00039-recipe-pictures.md)).
+  from a host on the local network. The one exception is a development server
+  running with `GOBBLER_DEV_AUTH_BYPASS`, whose recipe page and picture fetches
+  may connect to loopback; the OAuth metadata fetch never may
+  ([ADR-00039](./adr/00039-recipe-pictures.md),
+  [ADR-00040](./adr/00040-loopback-fetches-under-the-dev-bypass.md)).
 
 ### Cloudflare side (unverified: dashboard labels change)
 

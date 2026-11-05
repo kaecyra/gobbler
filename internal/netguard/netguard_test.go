@@ -156,3 +156,27 @@ func TestClientIgnoresProxyEnvironment(t *testing.T) {
 		}
 	}
 }
+
+// AllowLoopback admits loopback and nothing else the guard refuses.
+func TestAllowLoopbackAdmitsOnlyLoopback(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) }))
+	t.Cleanup(srv.Close)
+	u, _ := url.Parse(srv.URL)
+	loopback := "http://127.0.0.1:" + u.Port() + "/"
+
+	off := netguard.NewClient(netguard.Options{})
+	if _, err := get(t, off, loopback); !errors.Is(err, netguard.ErrBlocked) {
+		t.Fatalf("loopback with the option off: err = %v, want ErrBlocked", err)
+	}
+	on := netguard.NewClient(netguard.Options{AllowLoopback: true})
+	resp, err := get(t, on, loopback)
+	if err != nil {
+		t.Fatalf("loopback with the option on: %v", err)
+	}
+	_ = resp.Body.Close()
+	for _, target := range []string{"http://10.0.0.1/", "http://192.168.1.1/", "http://169.254.169.254/", "http://100.64.0.1/", "http://0.0.0.0/"} {
+		if _, err := get(t, on, target); !errors.Is(err, netguard.ErrBlocked) {
+			t.Errorf("%s with the option on: err = %v, want ErrBlocked", target, err)
+		}
+	}
+}

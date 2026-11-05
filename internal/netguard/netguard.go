@@ -49,8 +49,15 @@ var blockedPrefixes = func() []netip.Prefix {
 // Blocked reports whether gobbler must not connect to a: anything that is not a
 // public unicast address. An IPv4 address inside an IPv6 one is judged as the
 // IPv4 address.
-func Blocked(a netip.Addr) bool {
+func Blocked(a netip.Addr) bool { return blocked(a, false) }
+
+// blocked is Blocked with an exception: loopback (127.0.0.0/8 and ::1) is
+// admitted when allowLoopback is set. Every other range stays refused.
+func blocked(a netip.Addr, allowLoopback bool) bool {
 	a = a.Unmap().WithZone("")
+	if allowLoopback && a.IsLoopback() {
+		return false
+	}
 	if !a.IsGlobalUnicast() || a.IsPrivate() || a.IsLoopback() || a.IsLinkLocalUnicast() || a.IsMulticast() || a.IsUnspecified() {
 		return true
 	}
@@ -64,7 +71,16 @@ func Blocked(a netip.Addr) bool {
 
 // Control is a net.Dialer Control hook. It runs for every connection, on the
 // address about to be connected to, and refuses one that Blocked names.
-func Control(_, address string, _ syscall.RawConn) error {
+func Control(network, address string, c syscall.RawConn) error {
+	return control(network, address, c, false)
+}
+
+// ControlAllowingLoopback is Control except that it admits loopback addresses.
+func ControlAllowingLoopback(network, address string, c syscall.RawConn) error {
+	return control(network, address, c, true)
+}
+
+func control(_, address string, _ syscall.RawConn, allowLoopback bool) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
 		return fmt.Errorf("%w: bad address %q", ErrBlocked, address)
@@ -73,7 +89,7 @@ func Control(_, address string, _ syscall.RawConn) error {
 	if err != nil {
 		return fmt.Errorf("%w: connecting to a name that was not resolved", ErrBlocked)
 	}
-	if Blocked(a) {
+	if blocked(a, allowLoopback) {
 		return fmt.Errorf("%w: the host resolves to an address gobbler does not connect to (%s)", ErrBlocked, a.Unmap())
 	}
 	return nil
@@ -93,6 +109,11 @@ type Options struct {
 	MaxHeaderBytes int64
 	// TLSConfig is the TLS configuration; nil means the system roots.
 	TLSConfig *tls.Config
+	// AllowLoopback admits loopback addresses (127.0.0.0/8, ::1) and nothing
+	// else the guard refuses. It is for a development server running with the
+	// dev auth bypass (ADR-00040); the caller decides, this package reads no
+	// environment. Dial, when set, takes precedence.
+	AllowLoopback bool
 	// Dial replaces Control as the dial guard. It exists so a test can reach a
 	// server on loopback; production code leaves it nil.
 	Dial func(network, address string, c syscall.RawConn) error
@@ -105,6 +126,9 @@ func NewClient(o Options) *http.Client {
 	control := o.Dial
 	if control == nil {
 		control = Control
+		if o.AllowLoopback {
+			control = ControlAllowingLoopback
+		}
 	}
 	d := &net.Dialer{Timeout: o.Timeout, Control: control}
 	tr := &http.Transport{

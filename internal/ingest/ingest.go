@@ -82,7 +82,7 @@ func New(cfg config.Ingestion, d Deps) (*Pipeline, error) {
 	if cfg.ConfidenceThreshold < 0 || cfg.ConfidenceThreshold > 1 {
 		return nil, fmt.Errorf("ingest: confidence threshold must be in [0, 1], got %v", cfg.ConfidenceThreshold)
 	}
-	return &Pipeline{cfg: cfg, deps: d, guarded: netguard.NewClient(netguard.Options{Redirects: netguard.MaxRedirects})}, nil
+	return &Pipeline{cfg: cfg, deps: d, guarded: netguard.NewClient(netguard.Options{Redirects: netguard.MaxRedirects, AllowLoopback: cfg.AllowLoopbackFetch})}, nil
 }
 
 // draftWithFallback assembles the rule-based draft and, only when it scored

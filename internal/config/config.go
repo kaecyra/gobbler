@@ -172,6 +172,10 @@ type Ingestion struct {
 	ConfidenceThreshold float64
 	FetchTimeout        time.Duration
 	UserAgent           string
+	// AllowLoopbackFetch lets the page and image fetches connect to loopback
+	// addresses. It follows Server.DevAuthBypass and nothing else
+	// (ADR-00040).
+	AllowLoopbackFetch bool
 }
 
 // LLM holds provider settings (ADR-00007). Provider is empty when the LLM is
@@ -288,6 +292,7 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Ingestion.ConfidenceThreshold = r.float(EnvConfidenceThreshold, defaultConfidenceThreshold, 0, 1)
 	c.Ingestion.FetchTimeout = r.duration(EnvFetchTimeout, defaultFetchTimeout)
 	c.Ingestion.UserAgent = r.str(EnvUserAgent, defaultUserAgent)
+	c.Ingestion.AllowLoopbackFetch = c.Server.DevAuthBypass
 
 	r.llm(&c.LLM)
 
