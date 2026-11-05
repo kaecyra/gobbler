@@ -364,7 +364,10 @@ func (d *draft) settle() {
 // The numbers are positions in the draft; an action that names something the
 // draft does not have is an error, since the form only offers real ones. A
 // "move-..." action ends with two positions, from and to, within one list:
-// "move-line:0.3.1" moves line 3 of component 0 to position 1.
+// "move-line:0.3.1" moves line 3 of component 0 to position 1. A line or step
+// dragged into another component posts four: "move-step:0.3.1.0" moves step 3
+// of component 0 to position 0 of component 1, where a step is the same step
+// with the same id, so its dependencies and equipment links still name it.
 func (d *draft) apply(action string) error {
 	verb, arg, _ := strings.Cut(action, ":")
 	pos, err := positions(arg)
@@ -394,6 +397,12 @@ func (d *draft) apply(action string) error {
 		c.Lines = append(c.Lines, lineDraft{Rule: string(quantity.RuleLinear)})
 		d.Focus = lField(pos[0], len(c.Lines)-1, "qty")
 	case "move-line":
+		if len(pos) == 4 {
+			if !moveAcross(d, pos, func(c *compDraft) *[]lineDraft { return &c.Lines }) {
+				return bad
+			}
+			break
+		}
 		c, ok := d.component(pos, 3)
 		if !ok || !inRange(len(c.Lines), pos[1]) || !inRange(len(c.Lines), pos[2]) {
 			return bad
@@ -438,6 +447,12 @@ func (d *draft) apply(action string) error {
 		c.Steps = append(c.Steps, stepDraft{})
 		d.Focus = sField(pos[0], len(c.Steps)-1, "text")
 	case "move-step":
+		if len(pos) == 4 {
+			if !moveAcross(d, pos, func(c *compDraft) *[]stepDraft { return &c.Steps }) {
+				return bad
+			}
+			break
+		}
 		c, ok := d.component(pos, 3)
 		if !ok || !inRange(len(c.Steps), pos[1]) || !inRange(len(c.Steps), pos[2]) {
 			return bad
@@ -469,6 +484,24 @@ func (d *draft) apply(action string) error {
 	}
 	d.settle()
 	return nil
+}
+
+// moveAcross moves an item from one component's list to another's: pos is
+// from component, from position, to component, to position, and the item lands
+// at to position in the list as it is once the item has left the first. It
+// reports false when pos names something that is not there.
+func moveAcross[T any](d *draft, pos []int, list func(*compDraft) *[]T) bool {
+	if !inRange(len(d.Components), pos[0]) || !inRange(len(d.Components), pos[2]) || pos[0] == pos[2] {
+		return false
+	}
+	from, to := list(&d.Components[pos[0]]), list(&d.Components[pos[2]])
+	if !inRange(len(*from), pos[1]) || !inRange(len(*to)+1, pos[3]) {
+		return false
+	}
+	item := (*from)[pos[1]]
+	*from = slices.Delete(*from, pos[1], pos[1]+1)
+	*to = slices.Insert(*to, pos[3], item)
+	return true
 }
 
 // component returns the component addressed by pos[0] when pos has exactly n

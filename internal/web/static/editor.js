@@ -15,6 +15,15 @@
 // names are positional and unchanged by the preview, so what posts is the
 // form as it was. Pointer events cover a mouse, a pen and a finger on an iPad.
 //
+// Lists that share a data-drag-group (the lines of every part, the steps of
+// every part) take each other's rows: a row dragged over another part's list
+// previews there, and on release the action is
+// "<verb>:<from part>.<from>.<to part>.<to>".
+//
+// A part's name is typed in two inputs, under Ingredients and under Steps. Both
+// carry data-part-name; only the one under Ingredients has a name attribute, so
+// the form posts one value, and typing in either copies it to the other.
+//
 // Guarded so a re-run installs nothing twice.
 (function () {
   'use strict';
@@ -59,6 +68,35 @@
 
   var drag = null;
 
+  // listsOf is the lists a row dragged from list may land in: its own group
+  // across every part, or just list when it has none.
+  function listsOf(list) {
+    var group = list.getAttribute('data-drag-group');
+    if (!group) return [list];
+    return Array.prototype.filter.call(
+      list.closest('form').querySelectorAll('[data-drag-list]'),
+      function (l) { return l.getAttribute('data-drag-group') === group; }
+    );
+  }
+
+  // The list under the pointer: the one whose part (the whole box, so an empty
+  // list is a target too) holds y. Between parts it is the list the row is in.
+  function listAt(y) {
+    var found = drag.list;
+    drag.lists.forEach(function (l) {
+      var box = l.closest('.comp') || l;
+      var r = box.getBoundingClientRect();
+      if (y >= r.top && y < r.bottom) found = l;
+    });
+    return found;
+  }
+
+  // position is the number after the verb's colon: the part a list belongs to.
+  function partOf(list) {
+    var v = list.getAttribute('data-drag-list');
+    return v.slice(v.indexOf(':') + 1);
+  }
+
   document.addEventListener('pointerdown', function (e) {
     var grip = e.target.closest && e.target.closest('.editor .grip');
     if (!grip || e.button > 0) return;
@@ -71,6 +109,7 @@
     drag = {
       grip: grip, list: list, item: item, id: e.pointerId,
       from: itemsOf(list).indexOf(item), next: item.nextSibling, grab: e.clientY - rect.top,
+      origin: list, lists: listsOf(list),
     };
     item.classList.add('dragging');
   });
@@ -105,6 +144,11 @@
     var y = e.clientY;
     var item = drag.item;
     item.style.transform = '';
+    var over = listAt(y);
+    if (over !== drag.list) {
+      drag.list = over;
+      over.appendChild(item);
+    }
     var items = itemsOf(drag.list);
     var i = items.indexOf(item);
     var moved = true;
@@ -145,12 +189,13 @@
     d.item.classList.remove('dragging');
     d.item.style.transform = '';
     var to = itemsOf(d.list).indexOf(d.item);
-    if (cancelled || to === d.from) {
-      d.list.insertBefore(d.item, d.next);
+    if (cancelled || (d.list === d.origin && to === d.from)) {
+      d.origin.insertBefore(d.item, d.next);
       return;
     }
-    var base = d.list.getAttribute('data-drag-list');
+    var base = d.origin.getAttribute('data-drag-list');
     var action = base + (base.indexOf(':') >= 0 ? '.' : ':') + d.from + '.' + to;
+    if (d.list !== d.origin) action = base + '.' + d.from + '.' + partOf(d.list) + '.' + to;
     var f = d.list.closest('form');
     var b = document.createElement('button');
     b.type = 'submit';
@@ -175,6 +220,13 @@
     if (!b) return;
     e.preventDefault();
     b.click();
+  });
+
+  document.addEventListener('input', function (e) {
+    var name = e.target.closest && e.target.closest('.editor [data-part-name]');
+    if (!name) return;
+    var same = document.querySelectorAll('.editor [data-part-name="' + name.getAttribute('data-part-name') + '"]');
+    Array.prototype.forEach.call(same, function (el) { if (el !== name) el.value = name.value; });
   });
 
   document.addEventListener('pointerup', function (e) { end(e, false); });
