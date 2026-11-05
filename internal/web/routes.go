@@ -12,6 +12,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
+	domain "github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/sharing"
@@ -27,6 +28,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/journal"
 	weboauth "github.com/kaecyra/gobbler/internal/web/oauth"
 	"github.com/kaecyra/gobbler/internal/web/operator"
+	pictures "github.com/kaecyra/gobbler/internal/web/picture"
 	webprofile "github.com/kaecyra/gobbler/internal/web/profile"
 	"github.com/kaecyra/gobbler/internal/web/recipes"
 	"github.com/kaecyra/gobbler/internal/web/recipeview"
@@ -65,6 +67,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountProfile(r, d)
 	mountMCP(r, d)
 	mountOAuth(r, d)
+	mountPictures(r, d)
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
@@ -106,7 +109,7 @@ func mountHouseholds(r chi.Router, d Deps) {
 	hs.OnMemberLeave(keys.RevokeForMember)
 	// And their OAuth grants (ADR-00034), in that same transaction.
 	hs.OnMemberLeave(oauth.New(d.DB).RevokeForMember)
-	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: hs, Keys: keys}))
+	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: pictures.Households{Store: hs, Reaper: domain.NewReaper(d.Media, d.Logger)}, Keys: keys}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
 }
@@ -205,4 +208,13 @@ func mountOAuth(r chi.Router, d Deps) {
 		}))
 	}
 	r.Mount(weboauth.Pattern, routes)
+}
+
+// mountPictures mounts the routes that serve a recipe's picture and a draft's
+// candidates from the media store, after admission (ADR-00039).
+func mountPictures(r chi.Router, d Deps) {
+	svc := domain.New(d.DB, d.Media, store.New(d.DB), domain.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger)
+	deps := pictures.Deps{Pictures: svc, Media: d.Media, Logger: d.Logger}
+	r.Mount(pictures.Pattern, pictures.Routes(deps))
+	r.Mount(pictures.DraftsPattern, pictures.DraftRoutes(deps))
 }
