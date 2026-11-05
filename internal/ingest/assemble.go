@@ -35,6 +35,10 @@ const (
 	// textNotesConfidence is the confidence in a description made from the
 	// text that is neither ingredients nor steps.
 	textNotesConfidence = 0.5
+	// splitTitleConfidence is the confidence in a step title read off the front
+	// of a step's text (splitLead), below the default threshold so the review
+	// screen marks the step to check.
+	splitTitleConfidence = 0.6
 
 	penaltyNoName        = 0.3
 	penaltyNoIngredients = 0.5
@@ -152,7 +156,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 				byName[strings.ToLower(name)] = i
 			}
 		}
-		st := step(strings.TrimSpace(s.Title), text, 1)
+		st := sourceStep(strings.TrimSpace(s.Title), text, 1)
 		comps[i].Steps = append(comps[i].Steps, st)
 	}
 	if len(comps) > 1 && len(comps[0].Lines) == 0 && len(comps[0].Steps) == 0 {
@@ -188,7 +192,7 @@ func (a *assembler) fromSections(sec parse.Sections) {
 		for _, s := range sc.Steps {
 			if text := strings.TrimSpace(s); text != "" {
 				// A heading-less split guesses which text is a step.
-				c.Steps = append(c.Steps, step("", text, sec.Confidence))
+				c.Steps = append(c.Steps, sourceStep("", text, sec.Confidence))
 			}
 		}
 		d.Components = append(d.Components, c)
@@ -312,6 +316,24 @@ func step(title, text string, confidence float64) Step {
 		total += f.Max
 	}
 	return Step{Text: text, Duration: total, Confidence: confidence, Kind: stageKindOf(title, text), Title: title}
+}
+
+// sourceStep builds a step the source stated. When the source gave no title
+// and the text opens with a short lead sentence, the lead becomes the title,
+// the rest the instruction, and the step is flagged low confidence
+// (splitLead). The duration and stage kind are read from the whole text, as
+// they were before the split, so no split can drop a time or the kind a lead
+// like "Bake." named; a lead that opens with "serve" is the kind serve either
+// way (stageKindOf).
+func sourceStep(title, text string, confidence float64) Step {
+	if title == "" {
+		if lead, rest, ok := splitLead(text); ok {
+			st := step(lead, text, min(confidence, splitTitleConfidence))
+			st.Text = rest
+			return st
+		}
+	}
+	return step(title, text, confidence)
 }
 
 func calories(s string) Field[int] {
