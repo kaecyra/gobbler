@@ -8,6 +8,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
 
@@ -72,11 +73,12 @@ var (
 	}
 )
 
-// heatLabels name 1 to 3 chilis; verdicts name 1 to 5 spoons.
-var (
-	heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
-	verdicts   = [...]string{"Not rated", "Not again", "It was fine", "Good", "Make it again", "House favourite"}
-)
+// heatLabels name 1 to 3 chilis; the words for 1 to maxRating spoons are
+// layout.Verdict.
+var heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
+
+// maxRating is the top of the spoon scale, the last rating layout.Verdict names.
+const maxRating = 5
 
 // timeBands are the "time to table" groups, shortest first; the last has no
 // upper bound. A recipe with no time at all is in noTimeTitle.
@@ -101,8 +103,8 @@ func cardFor(c store.Card, now time.Time) cardView {
 	if c.SpiceLevel != nil && *c.SpiceLevel >= 1 && *c.SpiceLevel < len(heatLabels) {
 		v.Spice, v.SpiceLabel = *c.SpiceLevel, heatLabels[*c.SpiceLevel]
 	}
-	if c.Rating != nil && *c.Rating >= 1 && *c.Rating < len(verdicts) {
-		v.Rating, v.RatingLabel = *c.Rating, verdicts[*c.Rating]
+	if c.Rating != nil && *c.Rating >= 1 && *c.Rating <= maxRating {
+		v.Rating, v.RatingLabel = *c.Rating, layout.Verdict(*c.Rating)
 	}
 	return v
 }
