@@ -70,6 +70,9 @@ func Confirm(d Draft) (Confirmed, error) {
 	if !d.Source.Kind.Valid() || !d.Source.intact() {
 		problems = append(problems, errors.New("the source snapshot does not match the ingested input"))
 	}
+	if err := d.checkPicture(); err != nil {
+		problems = append(problems, err)
+	}
 	if len(problems) > 0 {
 		return Confirmed{}, fmt.Errorf("%w: %w", ErrIncompleteDraft, errors.Join(problems...))
 	}
@@ -104,6 +107,8 @@ type Saver struct {
 	catalog CatalogWriter
 	// thumbs downloads a video's thumbnail; nil means YouTube's image host.
 	thumbs video.ThumbnailSource
+	// pictures keeps the chosen picture of a confirmed URL draft; nil keeps none.
+	pictures PictureKeeper
 }
 
 // WithThumbnails returns s downloading video thumbnails from src instead of
@@ -120,6 +125,10 @@ func NewSaver(r RecipeStore, c CatalogWriter) *Saver { return &Saver{recipes: r,
 // Saved reports what a Save wrote.
 type Saved struct {
 	RecipeID int64
+	// PictureErr is set when the recipe was saved but its chosen picture could
+	// not be kept (ADR-00039). The recipe is not rolled back: the person can set
+	// a picture from the recipe page.
+	PictureErr error
 	// NewIngredients were created, unreviewed, for this recipe.
 	NewIngredients []catalog.Ingredient
 	// NewEquipment were created, unreviewed, for this recipe.
@@ -151,9 +160,14 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 // racing request, stores nothing and returns an error wrapping
 // store.ErrNotPending. The catalog entries Save creates are separate and stay.
 func (s *Saver) SaveProposed(ctx context.Context, token string, c Confirmed) (Saved, error) {
-	return s.save(ctx, c, func(r recipe.Recipe) (int64, error) {
+	saved, err := s.save(ctx, c, func(r recipe.Recipe) (int64, error) {
 		return s.recipes.CreateFromDraft(ctx, token, r)
 	})
+	if err != nil {
+		return saved, err
+	}
+	saved.PictureErr = s.keepPicture(ctx, c.draft, saved.RecipeID)
+	return saved, nil
 }
 
 // save builds the recipe of a confirmed draft, creating the catalog entries it
