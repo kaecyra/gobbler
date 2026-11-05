@@ -384,9 +384,17 @@ test.describe('the picture dialog and the page around it', () => {
     await expect(error).toBeVisible();
 
     // The late reset swaps the first step in, and the failure stays.
-    await page.evaluate(() => document.body.addEventListener('htmx:afterSwap', () => ((window as any).swapped = true), { once: true }));
+    // Only a swap into the panel counts: the status line swaps too, and
+    // would otherwise set the flag before the reset has landed.
+    await page.evaluate(() =>
+      document.body.addEventListener('htmx:afterSwap', (e: any) => {
+        if (e.detail.target?.id === 'avatar-panel') (window as any).swapped = true;
+      }),
+    );
     release();
     await page.waitForFunction(() => (window as any).swapped === true);
+    // The late swap still put the first step back.
+    await expect(dialogOf(page).locator('#avatar-panel')).toHaveAttribute('data-step', 'upload');
     await expect(error).toBeVisible();
     await expect(error).toContainText('went wrong on our side');
     await page.unroute(/\/avatar\/upload$/);
