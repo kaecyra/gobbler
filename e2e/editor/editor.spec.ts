@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -7,6 +7,21 @@ import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
 import { expectTapTargets } from '../fixtures/tap';
 import { userCopy } from '../fixtures/copy';
+
+// dragRow drags a row by its handle onto another row, releasing at frac of the
+// target's height.
+async function dragRow(page: Page, from: Locator, to: Locator, frac: number) {
+  await to.scrollIntoViewIfNeeded();
+  const grip = (await from.locator('.grip').first().boundingBox())!;
+  const target = (await to.boundingBox())!;
+  const x = grip.x + grip.width / 2;
+  const y0 = grip.y + grip.height / 2;
+  const y1 = target.y + target.height * frac;
+  await page.mouse.move(x, y0);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
+  await page.mouse.up();
+}
 
 // The editor needs a recipe in the database, which the shared server of the
 // suite does not have. This spec seeds its own data directory through the real
@@ -205,9 +220,7 @@ test('moves a step to another part and reorders steps', async ({ page }) => {
   await expect(page.locator('[name="c.1.s.2.text"]')).toBeVisible();
   await expect(page.locator('[name="c.0.s.0.text"]')).toHaveValue('Let the dough rest.');
   await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Mix the dough.');
-  // Open its details; they may be open already, since editor.js keeps the rows a person opened.
-  await page.locator('li.step').nth(2).locator('details.more').evaluate((d) => { (d as HTMLDetailsElement).open = true; });
-  await page.locator('li.step').nth(2).getByRole('button', { name: 'Move step 3 up' }).click();
+  await dragRow(page, page.locator('li.step').nth(2), page.locator('li.step').nth(1), 0.2);
   await expect(page.locator('[name="c.1.s.0.text"]')).toHaveValue('Mix the dough.');
   await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Glaze the loaf.');
 });
@@ -387,10 +400,21 @@ test('Add qualifier keeps the page in place and focuses the new qualifier', asyn
   const before = await page.evaluate(() => window.scrollY);
   expect(before, 'the button is mid-page, not at the top').toBeGreaterThan(100);
   const n = await page.locator('[name^="c.0.l.0.q."][name$=".text"]').count();
+  // Sample the scroll position on every frame, so a jump that is scrolled
+  // back afterwards still fails.
+  await page.evaluate(() => {
+    const w = window as unknown as { ys: number[] };
+    w.ys = [];
+    const t0 = performance.now();
+    const f = () => { w.ys.push(window.scrollY); if (performance.now() - t0 < 1500) requestAnimationFrame(f); };
+    requestAnimationFrame(f);
+  });
   await add.click();
   await expect(page.locator(`[name="c.0.l.0.q.${n}.text"]`)).toBeFocused();
-  const after = await page.evaluate(() => window.scrollY);
-  expect(Math.abs(after - before), `scrolled from ${before} to ${after}`).toBeLessThanOrEqual(4);
+  await page.waitForTimeout(1600);
+  const ys = await page.evaluate(() => (window as unknown as { ys: number[] }).ys);
+  const worst = Math.max(...ys.map((y) => Math.abs(y - before)));
+  expect(worst, `scrollY moved up to ${worst}px from ${before}`).toBeLessThanOrEqual(4);
 });
 
 // Dragging a step by its handle posts a move, and the server reorders.
@@ -401,16 +425,7 @@ test('dragging a step by its handle reorders the steps', async ({ page }) => {
   await expect(steps).toHaveCount(2);
   const first = await page.locator('[name="c.0.s.0.text"]').inputValue();
   const second = await page.locator('[name="c.0.s.1.text"]').inputValue();
-  await steps.nth(1).scrollIntoViewIfNeeded();
-  const grip = (await steps.nth(0).locator('.grip').boundingBox())!;
-  const target = (await steps.nth(1).boundingBox())!;
-  const x = grip.x + grip.width / 2;
-  const y0 = grip.y + grip.height / 2;
-  const y1 = target.y + target.height * 0.8;
-  await page.mouse.move(x, y0);
-  await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
-  await page.mouse.up();
+  await dragRow(page, steps.nth(0), steps.nth(1), 0.8);
   await expect(page.locator('[name="c.0.s.0.text"]')).toHaveValue(second);
   await expect(page.locator('[name="c.0.s.1.text"]')).toHaveValue(first);
 });

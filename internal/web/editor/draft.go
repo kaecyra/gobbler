@@ -360,7 +360,7 @@ func (d *draft) settle() {
 	}
 }
 
-// apply performs one structural action ("add-line:0", "up-step:1.2", ...).
+// apply performs one structural action ("add-line:0", "rm-step:1.2", ...).
 // The numbers are positions in the draft; an action that names something the
 // draft does not have is an error, since the form only offers real ones. A
 // "move-..." action ends with two positions, from and to, within one list:
@@ -381,11 +381,11 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		d.Components = moveTo(d.Components, pos[0], pos[1])
-	case "rm-component", "up-component", "down-component":
+	case "rm-component":
 		if len(pos) != 1 || !inRange(len(d.Components), pos[0]) {
 			return bad
 		}
-		d.Components = reorder(d.Components, verb, pos[0])
+		d.Components = slices.Delete(d.Components, pos[0], pos[0]+1)
 	case "add-line":
 		c, ok := d.component(pos, 1)
 		if !ok {
@@ -399,12 +399,12 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		c.Lines = moveTo(c.Lines, pos[1], pos[2])
-	case "rm-line", "up-line", "down-line":
+	case "rm-line":
 		c, ok := d.component(pos, 2)
 		if !ok || !inRange(len(c.Lines), pos[1]) {
 			return bad
 		}
-		c.Lines = reorder(c.Lines, verb, pos[1])
+		c.Lines = slices.Delete(c.Lines, pos[1], pos[1]+1)
 	case "add-qual":
 		c, ok := d.component(pos, 2)
 		if !ok || !inRange(len(c.Lines), pos[1]) {
@@ -423,13 +423,13 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		l.Quals = moveTo(l.Quals, pos[2], pos[3])
-	case "rm-qual", "up-qual", "down-qual":
+	case "rm-qual":
 		c, ok := d.component(pos, 3)
 		if !ok || !inRange(len(c.Lines), pos[1]) || !inRange(len(c.Lines[pos[1]].Quals), pos[2]) {
 			return bad
 		}
 		l := &c.Lines[pos[1]]
-		l.Quals = reorder(l.Quals, verb, pos[2])
+		l.Quals = slices.Delete(l.Quals, pos[2], pos[2]+1)
 	case "add-step":
 		c, ok := d.component(pos, 1)
 		if !ok {
@@ -443,12 +443,12 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		c.Steps = moveTo(c.Steps, pos[1], pos[2])
-	case "rm-step", "up-step", "down-step":
+	case "rm-step":
 		c, ok := d.component(pos, 2)
 		if !ok || !inRange(len(c.Steps), pos[1]) {
 			return bad
 		}
-		c.Steps = reorder(c.Steps, verb, pos[1])
+		c.Steps = slices.Delete(c.Steps, pos[1], pos[1]+1)
 	case "add-equip":
 		// The form always draws one empty slot after the equipment, so the
 		// name typed there arrived with this post; the button focuses the
@@ -459,11 +459,11 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		d.Equipment = moveTo(d.Equipment, pos[0], pos[1])
-	case "rm-equip", "up-equip", "down-equip":
+	case "rm-equip":
 		if len(pos) != 1 || !inRange(len(d.Equipment), pos[0]) {
 			return bad
 		}
-		d.Equipment = reorder(d.Equipment, verb, pos[0])
+		d.Equipment = slices.Delete(d.Equipment, pos[0], pos[0]+1)
 	default:
 		return fmt.Errorf("unknown action %q", action)
 	}
@@ -506,18 +506,4 @@ func moveTo[T any](items []T, from, to int) []T {
 	item := items[from]
 	items = slices.Delete(items, from, from+1)
 	return slices.Insert(items, to, item)
-}
-
-// reorder removes (verb "rm-..."), or moves up or down by one, the item at i.
-// An item that is already first or last stays where it is.
-func reorder[T any](items []T, verb string, i int) []T {
-	switch {
-	case strings.HasPrefix(verb, "rm-"):
-		return slices.Delete(items, i, i+1)
-	case strings.HasPrefix(verb, "up-") && i > 0:
-		items[i-1], items[i] = items[i], items[i-1]
-	case strings.HasPrefix(verb, "down-") && i < len(items)-1:
-		items[i+1], items[i] = items[i], items[i+1]
-	}
-	return items
 }

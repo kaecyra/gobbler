@@ -33,7 +33,7 @@ templ editorPage(v view) {
 // equipment show a compact row, and keep the rest of their fields in a
 // disclosure that starts open when the item has something to check.
 templ editorForm(v view) {
-	<form id="editor" class={ v.formClass() } method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
+	<form id="editor" class={ v.formClass() } method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="morph:outerHTML" hx-ext="morph">
 		<style>
 			.editor { display: flex; flex-direction: column; gap: 22px; }
 			.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
@@ -65,7 +65,6 @@ templ editorForm(v view) {
 			.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
 			.editor ol { list-style: none; padding: 0; margin: 0; }
 			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
-			.editor .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; margin: 0; }
 			.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }
 			/* Recipe */
 			.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }
@@ -105,11 +104,12 @@ templ editorForm(v view) {
 			.editor details.more > summary svg { width: 18px; height: 18px; }
 			.editor details.more[open] > summary svg { transform: rotate(180deg); }
 			.editor .more-body {
-				display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 14px; margin: 12px 8px 4px 0;
-				background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px;
+				display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 16px 14px; margin: 10px -96px 6px 0;
+				background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;
 			}
 			.editor .more-body .full { grid-column: 1 / -1; }
-			.editor .more-body .fl { justify-content: flex-end; }
+			.editor .more-body .fl { justify-content: flex-end; gap: 6px; }
+			.editor .more-body .fl > label.inline { min-height: var(--tap); }
 			/* Icon buttons, the drag handle and the help popover. */
 			.editor .ibtn {
 				display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; flex: none;
@@ -169,14 +169,12 @@ templ editorForm(v view) {
 			.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }
 			/* Qualifiers as chips. */
 			.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-			.editor .qchip { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px 0 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); }
+			.editor .qchip { display: inline-flex; align-items: center; gap: 0; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
 			.editor .qchip .grip { position: static; width: 24px; }
-			.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }
-			.editor .qchip input[type=text] { width: auto; min-width: 6ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-size: 15px; }
+			.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 2px 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }
+			.editor .qchip input[type=text] { width: auto; min-width: 14ch; field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }
 			.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }
 			.editor .qchip .ibtn { width: 36px; }
-			.editor .qchip .qmove { display: none; }
-			.editor .qchip:focus-within .qmove { display: inline-flex; }
 			.editor .pillbtn {
 				display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);
 				border-radius: var(--r); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 650; cursor: pointer;
@@ -315,7 +313,8 @@ templ editorForm(v view) {
 				<option value={ n }></option>
 			}
 		</datalist>
-		<script src={ scriptPath }></script>
+		<script src={ morphPath } defer></script>
+		<script src={ scriptPath } defer></script>
 	</form>
 }
 
@@ -538,9 +537,7 @@ templ ingredientFields(v view) {
 	</section>
 }
 
-// grip is the drag handle of a row. Dragging is pointer-only (editor.js, which
-// shows the handle); the Move up and Move down buttons do the same without a
-// script or a pointer.
+// grip is the drag handle of a row; editor.js shows it and does the drag.
 templ grip() {
 	<span class="grip" aria-hidden="true">
 		@layout.Icon(layout.IconGrip)
@@ -552,13 +549,6 @@ templ iconButton(action, label string, icon layout.IconName, disabled bool, clas
 	<button type="submit" class={ "ibtn " + class } name="action" value={ action } aria-label={ label } title={ label } disabled?={ disabled }>
 		@layout.Icon(icon)
 	</button>
-}
-
-// moveButtons are the Move up and Move down buttons of an item, the fallback
-// for a drag.
-templ moveButtons(upAction, downAction, name string, first, last bool) {
-	@iconButton(upAction, "Move "+name+" up", layout.IconUp, first, "")
-	@iconButton(downAction, "Move "+name+" down", layout.IconDown, last, "")
 }
 
 // helpTip is an info button that shows text in a popover on hover and on
@@ -578,6 +568,7 @@ templ helpTip(id, about, text string) {
 
 const (
 	qualifierHelp = "Words that describe the ingredient without changing how much you buy: chopped, softened, room temperature. They show beside the ingredient on the recipe and stay off the shopping list."
+	packageHelp   = "The size of the can or packet the line counts in: the 14 oz of \"1 (14 oz) can\". The shopping list adds lines together only when their package size matches."
 	partHelp      = "A part of the recipe with its own ingredients and steps, such as the dough and the filling. The recipe page shows each named part under its own heading, and cook mode names the part each step belongs to."
 )
 
@@ -597,7 +588,6 @@ templ componentLines(v view, ci int, c compDraft) {
 				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Name this part" autofocus?={ v.D.Focus == cField(ci, "name") }/>
 				@grip()
 				<p class="tools">
-					@moveButtons(act("up-component", ci), act("down-component", ci), "part "+n1(ci), ci == 0, ci == len(v.D.Components)-1)
 					@iconButton(act("rm-component", ci), "Remove part "+n1(ci), layout.IconClose, false, "danger")
 				</p>
 			</div>
@@ -668,7 +658,10 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 			<div class="more-body">
 				@rawField(ci, li, l)
 				<div class="fl">
-					<label for={ lField(ci, li, "pkgqty") }>Package amount</label>
+					<div class="lbl-row">
+						<label for={ lField(ci, li, "pkgqty") }>Package amount</label>
+						@helpTip(tipID("pkg", ci, li), "package size", packageHelp)
+					</div>
 					<input id={ lField(ci, li, "pkgqty") } type="text" name={ lField(ci, li, "pkgqty") } value={ l.PkgQty }/>
 				</div>
 				<div class="fl">
@@ -686,10 +679,9 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 					</div>
 				}
 				<div class="fl">
-					<span class="lbl">Optional</span>
-					<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Optional</label>
+					<span class="lbl" aria-hidden="true">Optional</span>
+					<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Can be left out<span class="sr"> (optional)</span></label>
 				</div>
-				<p class="help full">Package size is for a can or packet: the 14 oz of "1 (14 oz) can".</p>
 				if l.OfferProposal || l.Propose {
 					<div class="fl full">
 						<label class="inline"><input type="checkbox" name={ lField(ci, li, "propose") } value="1" checked?={ l.Propose }/> Add this ingredient to the catalog as new and unreviewed</label>
@@ -711,10 +703,7 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 									}
 								</select>
 								<label class="sr" for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
-								<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text } autofocus?={ v.D.Focus == qField(ci, li, qi, "text") }/>
-								<span class="qmove">
-									@moveButtons(act("up-qual", ci, li, qi), act("down-qual", ci, li, qi), "qualifier "+n1(qi), qi == 0, qi == len(l.Quals)-1)
-								</span>
+								<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text } placeholder="chopped" autofocus?={ v.D.Focus == qField(ci, li, qi, "text") }/>
 								@iconButton(act("rm-qual", ci, li, qi), "Remove qualifier "+n1(qi), layout.IconClose, false, "danger")
 							</span>
 						}
@@ -724,9 +713,6 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 						</button>
 					</div>
 				</div>
-				<p class="actions">
-					@moveButtons(act("up-line", ci, li), act("down-line", ci, li), v.lineRef(ci, li), li == 0, li == count-1)
-				</p>
 			</div>
 		</details>
 	</li>
@@ -893,9 +879,6 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 					if v.carries(groupStepGraph) {
 						@stepChooser(v, "Starts after", "Cook mode uses these to suggest what to do while a hands-off step runs.", sField(ci, si, "dep"), s.ID, s.Deps)
 					}
-					<p class="actions">
-						@moveButtons(act("up-step", ci, si), act("down-step", ci, si), "step "+strconv.Itoa(v.stepNum(ci, si)), si == 0, si == count-1)
-					</p>
 				</div>
 			</details>
 		</div>
@@ -990,9 +973,6 @@ templ equipmentFields(v view) {
 											@stepChooser(v, "Used in steps", "", eField(ei, "step"), "", e.Steps)
 										</div>
 									}
-									<p class="actions">
-										@moveButtons(act("up-equip", ei), act("down-equip", ei), equipRef(e, ei), ei == 0, ei == len(v.D.Equipment)-1)
-									</p>
 								</div>
 							</details>
 						</li>

@@ -3,11 +3,9 @@
 // server answers with the form again. This adds what follows, and an Enter
 // key that presses Add equipment in its field.
 //
-// Keeping the place. HTMX swaps the whole form (#editor) after a structural
-// action. Before the request this notes the scroll position and which rows the
-// person had opened; after the swap it opens them again, puts the page back
-// where it was and focuses the control the action made (the server marks it
-// autofocus), without scrolling to it unless it is out of view.
+// Structural actions morph the returned form into the page (ADR-00038), so
+// scroll, focus and caret survive. This keeps opened rows open and focuses the
+// control the server marked autofocus.
 //
 // Drag to reorder. Each draggable row has a .grip handle inside a
 // [data-drag-list] container whose value is the action's verb and position,
@@ -17,8 +15,7 @@
 // names are positional and unchanged by the preview, so what posts is the
 // form as it was. Pointer events cover a mouse, a pen and a finger on an iPad.
 //
-// HTMX runs the scripts of swapped content again, so this file can execute
-// many times in one document. Only the first run installs the listeners.
+// Guarded so a re-run installs nothing twice.
 (function () {
   'use strict';
 
@@ -28,65 +25,21 @@
 
   function form() { return document.getElementById('editor'); }
 
-  // ---- keeping the place across a swap ----
+  // ---- keeping opened rows open, focusing the new control ----
 
-  var kept = null;
-
-  // keyOf names the row a disclosure belongs to: by its stored key or step id
-  // when it has one, which survives a move, else by its position.
-  function keyOf(details) {
-    var li = details.closest('li.item');
-    if (!li) return '';
-    var el = li.querySelector('[data-item]');
-    if (el && el.getAttribute('data-item')) return 'k:' + el.getAttribute('data-item');
-    var anchor = li.querySelector('[id^="line-"], [id^="step-"], [id^="equip-"]');
-    return anchor ? 'i:' + anchor.id : '';
+  if (window.Idiomorph) {
+    window.Idiomorph.defaults.callbacks.beforeAttributeUpdated = function (attr, el, type) {
+      return !(attr === 'open' && type === 'remove' && el.matches('.editor details.more'));
+    };
   }
-
-  function find(f, key) {
-    if (key.indexOf('k:') === 0) {
-      var want = key.slice(2);
-      var all = f.querySelectorAll('[data-item]');
-      for (var i = 0; i < all.length; i++) {
-        if (all[i].getAttribute('data-item') === want) return all[i];
-      }
-      return null;
-    }
-    return document.getElementById(key.slice(2));
-  }
-
-  document.addEventListener('htmx:beforeRequest', function (e) {
-    var f = form();
-    if (!f || e.target !== f) return;
-    var open = [];
-    f.querySelectorAll('details.more[open]').forEach(function (d) {
-      var k = keyOf(d);
-      if (k) open.push(k);
-    });
-    var meta = f.querySelector('details.more-meta');
-    kept = { y: window.scrollY, open: open, meta: !!(meta && meta.open) };
-  });
 
   document.addEventListener('htmx:afterSettle', function () {
     var f = form();
-    if (!f || !kept) return;
-    var k = kept;
-    kept = null;
-    k.open.forEach(function (key) {
-      var el = find(f, key);
-      var li = el && el.closest('li.item');
-      var d = li && li.querySelector('details.more');
-      if (d) d.open = true;
-    });
-    var meta = f.querySelector('details.more-meta');
-    if (meta && k.meta) meta.open = true;
-    window.scrollTo(0, k.y);
-    var focus = f.querySelector('[autofocus]');
-    if (focus) {
-      focus.focus({ preventScroll: true });
-      var r = focus.getBoundingClientRect();
-      if (r.top < 0 || r.bottom > window.innerHeight) focus.scrollIntoView({ block: 'center' });
-    }
+    var focus = f && f.querySelector('[autofocus]');
+    if (!focus || focus === document.activeElement) return;
+    focus.focus({ preventScroll: true });
+    var r = focus.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > window.innerHeight) focus.scrollIntoView({ block: 'center' });
   });
 
   // ---- drag to reorder ----

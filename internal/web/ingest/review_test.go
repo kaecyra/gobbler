@@ -237,7 +237,7 @@ func TestFlagsSurviveAStructuralButton(t *testing.T) {
 		form.Set(name, "low")
 	}
 	form.Set("c.0.l.1.issue", "ingredient not matched")
-	form.Set("action", "up-line:0.1")
+	form.Set("action", "move-line:0.1.0")
 	body := f.do(http.MethodPost, "/"+token+"/confirm", form).Body.String()
 	lines := items(body, "line")
 	if !strings.Contains(lines[0], "Check:") || !strings.Contains(lines[0], "not matched") {
