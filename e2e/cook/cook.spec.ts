@@ -68,7 +68,8 @@ test.afterAll(async () => {
 // Installs the fake clock and stops it. install() alone leaves it running with
 // real time, so every real millisecond between a timer starting and a check
 // came off the display ("9:" read "8:54" on a loaded machine, #375). Paused,
-// time moves only when a test calls fastForward.
+// time moves only when a test calls fastForward. pauseAt needs a time after the
+// installed clock's current one, which is why it is start + 1s.
 async function freezeClock(page: Page) {
   const start = new Date('2030-01-01T12:00:00Z');
   await page.clock.install({ time: start });
