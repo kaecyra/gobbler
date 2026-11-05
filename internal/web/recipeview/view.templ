@@ -151,7 +151,7 @@ templ videoPlayer(v view) {
 // picture kept short, or the placeholder band at the same height, with the
 // title over the fade so the ingredients stay high on a tablet.
 templ pictureHeader(v view) {
-	@layout.PictureBand("rhero", "recipe-picture", v.ID, v.Meta.MealType, v.Picture, 1124, 210) {
+	@layout.PictureBand("rhero", "recipe-picture", v.ID, v.Meta.MealType, v.Picture, 1124, 210, false) {
 		<h1>{ v.Name }</h1>
 	}
 	@layout.PictureFallback()

@@ -13,11 +13,17 @@ import (
 // it has a meal type, and variant BandVariant(id). class is the shape of the
 // box, "rpic" for a library card and "rhero" for the recipe page header;
 // children are drawn over the picture, as the header's title is. The picture is
-// decoration, so it has no accessible name.
-templ PictureBand(class, testID string, id int64, meal recipe.MealType, src string, width, height int) {
+// decoration, so it has no accessible name. lazy defers the picture until it
+// nears the viewport: cards below the fold pass true, the recipe page header,
+// the main image at the top of the page, passes false.
+templ PictureBand(class, testID string, id int64, meal recipe.MealType, src string, width, height int, lazy bool) {
 	<div class={ class, "ph", "ph" + strconv.Itoa(BandVariant(id)) } data-testid={ testID } data-pic?={ src != "" }>
 		if src != "" {
-			<img src={ src } alt="" width={ strconv.Itoa(width) } height={ strconv.Itoa(height) } loading="lazy" decoding="async" data-pic-img/>
+			if lazy {
+				<img src={ src } alt="" width={ strconv.Itoa(width) } height={ strconv.Itoa(height) } loading="lazy" decoding="async" data-pic-img/>
+			} else {
+				<img src={ src } alt="" width={ strconv.Itoa(width) } height={ strconv.Itoa(height) } decoding="async" data-pic-img/>
+			}
 		}
 		if meal != "" {
 			<span class="phmark">

@@ -33,7 +33,11 @@ func withPictures(t *testing.T, p Pictures) (int, string) {
 func TestCardShowsItsPicture(t *testing.T) {
 	code, body := withPictures(t, fakePictures{src: "/recipes/4/picture?v=abc"})
 	if code != http.StatusOK || !strings.Contains(body, `<img src="/recipes/4/picture?v=abc"`) {
-		t.Errorf("status %d, card has no picture:\n%s", code, body)
+		t.Fatalf("status %d, card has no picture:\n%s", code, body)
+	}
+	// Cards can be far down the page, so their pictures wait until they are near.
+	if !strings.Contains(body, `loading="lazy"`) {
+		t.Errorf("the card picture is not lazy-loaded:\n%s", body)
 	}
 }
 

@@ -30,10 +30,14 @@ func withPictures(t *testing.T, p Pictures) (int, string) {
 	return rec.Code, rec.Body.String()
 }
 
-func TestHeaderShowsThePicture(t *testing.T) {
+func TestHeaderShowsThePictureAndLoadsItAtOnce(t *testing.T) {
 	code, body := withPictures(t, fakePictures{src: "/recipes/7/picture?v=abc"})
 	if code != http.StatusOK || !strings.Contains(body, `<img src="/recipes/7/picture?v=abc"`) {
-		t.Errorf("status %d, header has no picture:\n%s", code, body)
+		t.Fatalf("status %d, header has no picture:\n%s", code, body)
+	}
+	// It is the main image at the top of the page; deferring it delays the first paint.
+	if strings.Contains(body, `loading="lazy"`) {
+		t.Errorf("the header picture is lazy-loaded:\n%s", body)
 	}
 }
 
