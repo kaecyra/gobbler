@@ -75,8 +75,8 @@ func Control(network, address string, c syscall.RawConn) error {
 	return control(network, address, c, false)
 }
 
-// ControlAllowingLoopback is Control except that it admits loopback addresses.
-func ControlAllowingLoopback(network, address string, c syscall.RawConn) error {
+// controlAllowingLoopback is Control except that it admits loopback addresses.
+func controlAllowingLoopback(network, address string, c syscall.RawConn) error {
 	return control(network, address, c, true)
 }
 
@@ -127,7 +127,7 @@ func NewClient(o Options) *http.Client {
 	if control == nil {
 		control = Control
 		if o.AllowLoopback {
-			control = ControlAllowingLoopback
+			control = controlAllowingLoopback
 		}
 	}
 	d := &net.Dialer{Timeout: o.Timeout, Control: control}
