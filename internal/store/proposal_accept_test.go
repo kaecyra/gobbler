@@ -204,3 +204,30 @@ func TestProvenanceDescribe(t *testing.T) {
 		}
 	}
 }
+
+// A credential recorded without a creation time must not make its proposal
+// unreadable: it was stored as empty text, and reading it back parsed the empty
+// text as a time.
+func TestProposalByACredentialWithNoCreationTimeLoads(t *testing.T) {
+	s, d := newTestStore(t)
+	_, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	id := newRecipe(ctx, t, s, ids.salt)
+	by := Provenance{Person: "ann@example.com", Reason: "r", Credential: &Credential{Kind: "api_key", ID: 1, Ref: "gobk_x"}}
+	edit := editOf(ctx, t, s, id, func(r *recipe.Recipe) { r.Name = "N" })
+	token, err := s.ProposeEdit(ctx, id, 1, edit, by)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := s.GetProposal(ctx, token)
+	if err != nil || p.Credential == nil || !p.Credential.CreatedAt.IsZero() {
+		t.Fatalf("GetProposal = %+v (%v), want the credential with no creation time", p.Credential, err)
+	}
+	if err := s.AcceptEdit(ctx, token, 1, edit); err != nil {
+		t.Fatal(err)
+	}
+	ref, ok, err := s.ProposalFor(ctx, id, 2)
+	if err != nil || !ok || ref.Credential == nil {
+		t.Fatalf("ProposalFor = %+v %v (%v), want the credential", ref, ok, err)
+	}
+}

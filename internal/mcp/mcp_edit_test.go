@@ -251,3 +251,75 @@ func TestAProposalCannotBeReadByAnotherHousehold(t *testing.T) {
 		t.Errorf("another household reading the proposal: %q, want not found", msg)
 	}
 }
+
+// The fields and steps a proposal may change are read the way the editor reads
+// them, and what the tool does not expose is left as it was.
+func TestAnEditCanChangeFieldsAndStepsAndLeavesWhatItDoesNotExpose(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	id := s.recipe(s.smiths, "ann@example.com", "Bread", s.flourLine(2))
+	secret, _ := s.personalKey("ann@example.com")
+	cs := s.connect(secret)
+	r := s.read(cs, id)
+	args := map[string]any{
+		"id": id, "version": r.Version, "reason": "fields",
+		"recipe": map[string]any{
+			"name": "Bread", "description": "Crusty.", "tags": []string{"bread", " ", "baking"}, "yield": "2 loaves", "servings": "6",
+			"components": []map[string]any{{
+				"ingredients": []map[string]any{{"key": r.Components[0].Ingredients[0].Key, "text": r.Components[0].Ingredients[0].Text}},
+				"steps": []map[string]any{
+					{"id": r.Components[0].Steps[0].ID, "text": "Mix.", "minutes": 5, "passive": true},
+					{"id": "later", "text": "Bake.", "minutes": 30, "depends_on": []string{r.Components[0].Steps[0].ID}},
+					{"text": "Cool.", "depends_on": []string{"later"}},
+				},
+			}},
+		},
+	}
+	var out proposed
+	if msg := call(t, cs, "propose_recipe_edit", args, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	p, err := s.rec.GetProposal(s.as(s.smiths, "ann@example.com"), out.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := p.Edit
+	if got.Description != "Crusty." || len(got.Tags) != 2 || got.Yield.Unit != "loaves" || got.Yield.Qty.String() != "2" || got.Servings.String() != "6" {
+		t.Errorf("fields = %q %v %+v %s, want the edited description, tags, yield and servings", got.Description, got.Tags, got.Yield, got.Servings)
+	}
+	steps := got.Components[0].Steps
+	if len(steps) != 3 || steps[0].Duration.Minutes() != 5 || !steps[0].Passive || steps[1].Duration.Minutes() != 30 || len(steps[2].DependsOn) != 1 || steps[2].DependsOn[0] != steps[1].ID {
+		t.Errorf("steps = %+v, want the minutes read and the label 'later' kept as the one dependency of the third", steps)
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"bad servings":  func(a map[string]any) { a["recipe"].(map[string]any)["servings"] = "lots" },
+		"no components": func(a map[string]any) { a["recipe"].(map[string]any)["components"] = []map[string]any{} },
+		"negative minutes": func(a map[string]any) {
+			a["recipe"].(map[string]any)["components"].([]map[string]any)[0]["steps"] = []map[string]any{{"text": "x", "minutes": -1}}
+		},
+	} {
+		a := map[string]any{"id": id, "version": r.Version, "reason": "r", "recipe": map[string]any{
+			"name": "Bread", "components": []map[string]any{{"ingredients": []map[string]any{{"text": "2 cups zz mcp flour"}}, "steps": []map[string]any{{"text": "Mix."}}}},
+		}}
+		mutate(a)
+		if msg := call(t, cs, "propose_recipe_edit", a, nil); msg == "" {
+			t.Errorf("%s: the edit was accepted", name)
+		}
+	}
+}
+
+func TestAProposalOfADraftIsReadWithoutRecipeFields(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	secret, _ := s.personalKey("ann@example.com")
+	cs := s.connect(secret)
+	var draft struct {
+		ReviewPath string `json:"review_path"`
+	}
+	if msg := call(t, cs, "import_recipe", map[string]any{"text": "Pie\n\nIngredients\n2 cups flour"}, &draft); msg != "" {
+		t.Fatal(msg)
+	}
+	var st proposalState
+	token := strings.TrimPrefix(draft.ReviewPath, "/ingest/")
+	if msg := call(t, cs, "get_recipe_proposal", map[string]any{"token": token}, &st); msg != "" || st.State != "pending" || st.RecipeID != 0 {
+		t.Errorf("draft state = %+v %q, want a pending proposal with no recipe", st, msg)
+	}
+}

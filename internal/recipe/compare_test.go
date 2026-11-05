@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"testing"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 )
@@ -122,5 +123,32 @@ func TestCompareEquipment(t *testing.T) {
 	d := Compare(old, next)
 	if len(d.Equipment) != 2 {
 		t.Fatalf("equipment = %+v, want 1 removed and 3 added", d.Equipment)
+	}
+}
+
+func TestCompareSpecialTimesAndCountAndKey(t *testing.T) {
+	old := one([]IngredientLine{ln(k1, 1, 2)}, nil)
+	next := one([]IngredientLine{ln(k1, 1, 3)}, nil)
+	next.Times.Special = []SpecialTime{{Label: LabelRest, Duration: 90 * time.Second}}
+	next.Servings = quantity.Exact(quantity.Int(4))
+	d := Compare(old, next)
+	if d.Count() != 3 {
+		t.Errorf("Count() = %d for %+v, want a special time, the servings and one line", d.Count(), d)
+	}
+	var special string
+	for _, f := range d.Fields {
+		if f.Field == FieldSpecial {
+			special = f.New
+		}
+	}
+	if special != "rest 90 sec" {
+		t.Errorf("special times = %q, want 'rest 90 sec'", special)
+	}
+	if k := d.Lines[0].Key(); k != k1 {
+		t.Errorf("Key() = %q, want %q", k, k1)
+	}
+	added := Compare(one(nil, nil), one([]IngredientLine{ln("", 1, 1)}, nil))
+	if k := added.Lines[0].Key(); k != "" {
+		t.Errorf("Key() of an added line = %q, want none", k)
 	}
 }

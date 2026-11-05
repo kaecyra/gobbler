@@ -31,8 +31,11 @@ func proposalRef(token, reason, tool, person, credKind string, credID int64, cre
 	}
 	if credKind != "" {
 		c := &Credential{Kind: credKind, ID: credID, Ref: credRef, Owner: credOwner}
-		if c.CreatedAt, err = parseTime(credCreated); err != nil {
-			return ProposalRef{}, err
+		// A credential recorded without its creation time has none to read.
+		if credCreated != "" {
+			if c.CreatedAt, err = parseTime(credCreated); err != nil {
+				return ProposalRef{}, err
+			}
 		}
 		ref.Credential = c
 	}
