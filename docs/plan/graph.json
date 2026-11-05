@@ -3371,7 +3371,7 @@
       "wave": 11,
       "track": null,
       "issue": 404,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "r-stage-serve"
       ],
@@ -4635,6 +4635,12 @@
       "title": "read step titles from text and JSON-LD, not only WPRM markup",
       "merged": "9d5704b",
       "note": "Owner request 2026-11-05. Rule-based lead-sentence split, flagged low confidence; Tasty bold leads. Bumps ParserVersion."
+    },
+    {
+      "id": "u-drag-between-parts",
+      "title": "drag ingredients and steps between parts; name a part from Steps",
+      "merged": "1925b83",
+      "note": "Owner request 2026-11-05: drag only, no fallback without scripts; part name editable in Steps, synced with Ingredients. After r-stage-serve: both own internal/web/editor/**."
     }
   ],
   "adr_sequence": {
