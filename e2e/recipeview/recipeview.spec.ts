@@ -341,8 +341,6 @@ test('saving a recipe with a video stores the thumbnail the image host served', 
   const before = await request.get(`/recipes/${laterId}/video/thumbnail`);
   expect(before.status()).toBe(404);
   await page.goto(`/recipes/${laterId}/edit`);
-  // The video field sits in the closed "Source, author, video and tags" disclosure.
-  await page.locator('details.more-meta summary').click();
   await page.locator('[name="video"]').fill('https://youtu.be/aqz-KE-bpKQ');
   await page.getByRole('button', { name: 'Save recipe' }).first().click();
   await expect(page).toHaveURL(new RegExp(`/recipes/${laterId}$`));

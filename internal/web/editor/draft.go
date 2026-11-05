@@ -450,8 +450,10 @@ func (d *draft) apply(action string) error {
 		}
 		c.Steps = reorder(c.Steps, verb, pos[1])
 	case "add-equip":
-		d.Equipment = append(d.Equipment, equipDraft{})
-		d.Focus = eField(len(d.Equipment)-1, "name")
+		// The form always draws one empty slot after the equipment, so the
+		// name typed there arrived with this post; the button focuses the
+		// next slot.
+		d.Focus = eField(len(d.Equipment), "name")
 	case "move-equip":
 		if len(pos) != 2 || !inRange(len(d.Equipment), pos[0]) || !inRange(len(d.Equipment), pos[1]) {
 			return bad

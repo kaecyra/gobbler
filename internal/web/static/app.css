@@ -334,7 +334,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* Section heading, above its card: the editor's sections and the review
    screen's source pane. Extra words or controls may sit beside the h2. */
 .sec-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: var(--tap); margin: 0 0 10px; }
-.sec-h h2 { margin: 0; font-size: 22px; line-height: 1.2; }
+.sec-h h2 { flex: 1; margin: 0; font-size: 22px; line-height: 1.2; }
 
 /* Buttons. */
 .btn {

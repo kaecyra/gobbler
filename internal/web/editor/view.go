@@ -10,7 +10,6 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // view is everything the editor templates show.
@@ -183,8 +182,8 @@ func (v view) stepNum(ci, si int) int {
 	return n
 }
 
-// after is the "after step 1" tag of a step's closed row, empty when the step
-// waits for none of the steps the form shows.
+// after is the "after 1, 2" tag of a step's closed row, as the mockup writes
+// it, empty when the step waits for none of the steps the form shows.
 func (v view) after(s stepDraft) string {
 	num := map[string]int{}
 	for _, g := range v.stepGroups() {
@@ -202,7 +201,11 @@ func (v view) after(s stepDraft) string {
 		return ""
 	}
 	slices.Sort(nums)
-	return layout.AfterText(nums)
+	parts := make([]string, len(nums))
+	for i, n := range nums {
+		parts[i] = strconv.Itoa(n)
+	}
+	return "after " + strings.Join(parts, ", ")
 }
 
 // equipmentFor names the equipment the form links to step id.
@@ -223,6 +226,64 @@ func (v view) lineRef(ci, li int) string {
 		return componentName(ci, v.D.Components[ci]) + " line " + n1(li)
 	}
 	return "line " + n1(li)
+}
+
+// partHeaders reports whether the form draws a header row for each part. A
+// recipe of one unnamed part is drawn as its lines alone, as the mockup draws
+// it; naming it, or adding a part, brings the headers.
+func (v view) partHeaders() bool {
+	return len(v.D.Components) > 1 || (len(v.D.Components) == 1 && strings.TrimSpace(v.D.Components[0].Name) != "")
+}
+
+// ingredientsMeta is the count beside the Ingredients heading: "6 lines", or
+// "3 parts · 8 lines".
+func (v view) ingredientsMeta() string {
+	lines := 0
+	for _, c := range v.D.Components {
+		lines += len(c.Lines)
+	}
+	out := plural(lines, "line", "lines")
+	if len(v.D.Components) > 1 {
+		out = plural(len(v.D.Components), "part", "parts") + " · " + out
+	}
+	return out
+}
+
+// stepMeta is the line beside an open step's title: its part when the recipe
+// has headed parts, its duration and its attention, "Bread · 55 min ·
+// hands-off".
+func (v view) stepMeta(ci int, s stepDraft) string {
+	var parts []string
+	if v.partHeaders() {
+		parts = append(parts, partTitle(v.D.Components[ci]))
+	}
+	if d := strings.TrimSpace(s.Duration); d != "" {
+		parts = append(parts, d)
+	}
+	if s.Passive {
+		parts = append(parts, "hands-off")
+	} else {
+		parts = append(parts, "hands-on")
+	}
+	return strings.Join(parts, " · ")
+}
+
+// equipRef names a piece of equipment for a button: by its name, or its place
+// when it has none.
+func equipRef(e equipDraft, ei int) string {
+	if n := strings.TrimSpace(e.Name); n != "" {
+		return n
+	}
+	return "equipment " + n1(ei)
+}
+
+// spiceLabel is an option of the spice select: 0 is a recipe that is not
+// spicy, which is not the same as unset.
+func spiceLabel(n string) string {
+	if n == "0" {
+		return "Not spicy"
+	}
+	return n + " of 3"
 }
 
 // partAnchor is the id of a part's group in the ingredients section.
@@ -338,12 +399,6 @@ func needsLookText(n int) string {
 		return "1 item still needs a look"
 	}
 	return strconv.Itoa(n) + " items still need a look"
-}
-
-// metaOpen reports whether the source, author, video and tags disclosure
-// starts open: when one of its fields has an error or a mark to show.
-func (v view) metaOpen() bool {
-	return v.D.Errs["video"] != "" || !v.D.mark("author").zero()
 }
 
 // metaSummary names what the recipe's second disclosure holds, which is less

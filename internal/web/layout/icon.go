@@ -45,6 +45,7 @@ const (
 	IconPencil   IconName = "pencil"
 	IconPlus     IconName = "plus"
 	IconPot      IconName = "pot"
+	IconRetry    IconName = "retry"
 	IconSearch   IconName = "search"
 	IconShare    IconName = "share"
 	IconSignIn   IconName = "signin"
@@ -89,6 +90,7 @@ var lineGlyphs = map[IconName]lineGlyph{
 	IconPencil:   {body: `<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>`, stroke: "2", size: 20},
 	IconPlus:     {body: `<rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M12 8.5v7M8.5 12h7"></path>`},
 	IconPot:      {body: `<path d="M4 11h16v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3zM2 11h2M20 11h2M9 7.5c0-1 1-1.5 1-2.5M14 7.5c0-1 1-1.5 1-2.5"></path>`, stroke: "1.9"},
+	IconRetry:    {body: `<path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"></path>`, stroke: "1.8"},
 	IconSearch:   {body: `<circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path>`, stroke: "2", size: 20, square: true},
 	IconShare:    {body: `<circle cx="6" cy="12" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="18" cy="18" r="2.5"></circle><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"></path>`},
 	IconSignIn:   {body: `<path d="M14 4h5v16h-5M3 12h11M10 8l4 4-4 4"></path>`},

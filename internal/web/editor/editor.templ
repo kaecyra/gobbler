@@ -26,19 +26,20 @@ templ editorPage(v view) {
 // again, Save validates it and stores it. The first submit button in the markup is
 // the one the Enter key presses.
 //
-// Each section is a heading above a card. Ingredients and steps are separate
-// sections, each grouped by component; the form is read back by field name
-// (parseForm), never by where a field sits, so the grouping is only layout.
-// A line, a step and a piece of equipment show a compact row, and keep the
-// rest of their fields in a disclosure that starts open when the item has
-// something to check.
+// Each section is a heading above a card, drawn after the reviewed mockup of
+// the review screen. Ingredients and steps are separate sections, each grouped
+// by part; the form is read back by field name (parseForm), never by where a
+// field sits, so the grouping is only layout. A line, a step and a piece of
+// equipment show a compact row, and keep the rest of their fields in a
+// disclosure that starts open when the item has something to check.
 templ editorForm(v view) {
 	<form id="editor" class={ v.formClass() } method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
 		<style>
-			.editor { display: flex; flex-direction: column; gap: 26px; }
+			.editor { display: flex; flex-direction: column; gap: 22px; }
 			.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
+			.editor .sec-h .meta { color: var(--ink-3); font-size: 14px; }
 			.editor .fl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-			.editor .fl > label, .editor .lbl { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+			.editor .fl > label, .editor .lbl, .editor .lbl-row > label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
 			.editor input[type=text], .editor textarea, .editor select {
 				display: block; width: 100%; min-height: var(--tap); padding: 8px 12px;
 				border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);
@@ -53,7 +54,6 @@ templ editorForm(v view) {
 			.editor label.inline input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--wattle-ink); }
 			.editor .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
 			.editor .btn.ghost:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
-			.editor .btn.ghost.danger { color: var(--wattle-ink); }
 			.editor .btn svg { width: 18px; height: 18px; }
 			.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 0; }
 			.editor .alert p { margin: 0; }
@@ -61,32 +61,40 @@ templ editorForm(v view) {
 			.editor .flag { color: var(--grain-ink); font-weight: 700; }
 			.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }
 			.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }
-			.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; color: var(--grain-ink); font-size: 15px; }
-			.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 3px; }
+			.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; color: var(--grain-ink); font-size: 15px; }
+			.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
 			.editor ol { list-style: none; padding: 0; margin: 0; }
 			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
-			.editor .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+			.editor .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; margin: 0; }
+			.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }
 			/* Recipe */
-			.editor .meta { padding: 22px 24px 18px; display: flex; flex-direction: column; gap: 18px; }
-			.editor .ed-name { font-family: var(--f-display); font-size: clamp(24px, 4vw, 30px); font-weight: 700; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }
-			.editor .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 12px 10px; }
-			.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 8px 10px; }
-			.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); }
+			.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }
+			.editor input.ed-name { font-family: var(--f-display); font-size: 30px; font-weight: 750; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }
+			.editor .facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+			.editor .facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+			.editor .fact.yield { grid-column: span 2; }
+			.editor .pair { display: flex; gap: 8px; }
+			.editor .pair input:first-of-type { width: 72px; flex: none; }
+			.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 10px 12px; }
+			.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }
+			.editor .fl.low > label::before, .editor .fact.low > label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
 			.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }
-			.editor details.more-meta { border-top: 1px solid var(--line); }
-			.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 600; color: var(--ink-2); }
-			.editor .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 12px 14px; padding: 4px 0 8px; }
-			/* Components */
-			.editor .comp { padding: 12px 12px 14px; }
+			.editor .fl.low .mark { display: none; }
+			.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }
+			.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }
+			.editor .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding-top: 4px; }
+			/* Parts inside a section card */
 			.editor .comp + .comp { border-top: 1px solid var(--line); }
-			.editor .comp-h { position: relative; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 8px; padding: 0 4px 8px 36px; }
-			.editor .comp-h .grip { top: auto; bottom: 8px; }
-			.editor .comp-h .fl { flex: 1 1 18rem; }
-			.editor .comp-h .tools { margin-left: auto; gap: 0; }
-			.editor .comp-h input { font-family: var(--f-display); font-weight: 700; font-size: 18px; }
-			.editor .comp-name { font-size: 17px; margin: 4px 8px 6px; }
-			.editor .add { padding: 10px 16px 14px; border-top: 1px solid var(--line); }
-			/* The disclosure toggle of a row: a chevron at its top right. */
+			.editor .comp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 8px 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+			.editor .comp:first-child .comp-h { border-radius: var(--r) var(--r) 0 0; }
+			.editor .comp-h .pn, .editor .grp-n { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; flex: none; }
+			.editor .comp-h input[type=text] { flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; padding: 0 8px; }
+			.editor .comp-h .grip { position: static; }
+			.editor .comp-h .tools { gap: 0; flex-wrap: nowrap; }
+			.editor .grp { display: flex; align-items: center; gap: 8px; margin: 0; padding: 14px 18px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+			.editor .comp-body { padding: 8px 8px 8px; }
+			.editor .add-row { padding: 6px 8px 0; }
+			/* The disclosure toggle of a row: a chevron at its end. */
 			.editor li.item { position: relative; border-radius: var(--r); }
 			.editor details.more > summary {
 				position: absolute; top: 6px; right: 4px; width: var(--tap); height: var(--tap);
@@ -94,50 +102,17 @@ templ editorForm(v view) {
 			}
 			.editor details.more > summary::-webkit-details-marker { display: none; }
 			.editor details.more > summary:hover { background: var(--sunk); color: var(--ink); }
-			.editor details.more > summary svg { width: 20px; height: 20px; }
+			.editor details.more > summary svg { width: 18px; height: 18px; }
 			.editor details.more[open] > summary svg { transform: rotate(180deg); }
 			.editor .more-body {
-				display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 12px 14px; margin: 10px 0 4px;
-				background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px;
+				display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 14px; margin: 12px 8px 4px 0;
+				background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px;
 			}
 			.editor .more-body .full { grid-column: 1 / -1; }
 			.editor .more-body .fl { justify-content: flex-end; }
-			.editor .more-body .help { margin: -6px 0 0; font-size: 14px; color: var(--ink-3); }
-			/* Ingredient lines */
-			.editor .cols, .editor .row { display: grid; grid-template-columns: 5.5rem 7rem minmax(0, 1fr) auto; gap: 6px; align-items: center; }
-			.editor .cols { padding: 0 96px 4px 36px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
-			.editor .cols span { padding-left: 13px; }
-			.editor.reviewing .cols { padding-left: 54px; }
-			.editor li.line, .editor li.equipment { padding: 6px 96px 6px 36px; }
-			.editor li.line + li.line, .editor li.equipment + li.equipment { margin-top: 2px; }
-			.editor.reviewing li.line { padding-left: 54px; }
-			.editor li.item:hover { background: var(--paper); }
-			.editor .row.erow { grid-template-columns: minmax(0, 1fr) auto; }
-			.editor .row input { border-color: transparent; background: transparent; }
-			.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }
-			.editor .row input:focus { border-color: var(--wattle); background: var(--card); }
-			.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }
-			.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }
-			.editor .c-ing input { flex: 1 1 8rem; min-width: 0; }
-			.editor .qual { color: var(--ink-3); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
-			.editor .c-mark { display: flex; gap: 6px; align-items: center; }
-			/* The confidence dot of a line under review. */
-			.editor.reviewing li.line::before {
-				content: ""; position: absolute; left: 38px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
-			}
-			.editor.reviewing li.line.low::before { background: var(--grain); }
-			.editor li.item.low, .editor li.item.low:hover { background: var(--grain-soft); }
-			.editor li.item.low .row input { background: var(--card); border-color: var(--line); }
-			.editor .quals { display: flex; flex-direction: column; gap: 8px; }
-			.editor .qual-list { display: flex; flex-direction: column; gap: 6px; }
-			.editor .qualifier { position: relative; display: grid; grid-template-columns: minmax(6rem, 8rem) minmax(0, 1fr) auto; gap: 6px; align-items: center; padding-left: 32px; border-radius: var(--r); }
-			.editor .qualifier .grip { top: 0; left: 0; }
-			.editor .qualifier .tools { gap: 0; flex-wrap: nowrap; }
-			.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }
-			.editor p.raw.from { margin: 0; padding: 4px 0; overflow-wrap: anywhere; }
 			/* Icon buttons, the drag handle and the help popover. */
 			.editor .ibtn {
-				display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0;
+				display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; flex: none;
 				border-radius: var(--r); background: transparent; color: var(--ink-3); cursor: pointer;
 			}
 			.editor .ibtn:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
@@ -145,62 +120,119 @@ templ editorForm(v view) {
 			.editor .ibtn:disabled { opacity: 0.35; cursor: default; }
 			.editor .ibtn svg { width: 18px; height: 18px; }
 			.editor .ibtn.rm { position: absolute; top: 6px; right: 48px; }
+			.editor .ibtn.rm svg { width: 15px; height: 15px; }
 			.editor .grip {
-				position: absolute; left: 2px; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;
-				color: var(--ink-3); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+				position: absolute; left: 0; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;
+				color: var(--slate); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
 			}
 			.editor .grip svg { width: 18px; height: 18px; }
 			:root.editor-drag .editor .grip { display: grid; }
-			.editor .dragging { background: var(--card); box-shadow: var(--shadow); opacity: 0.9; position: relative; z-index: 2; }
+			.editor .dragging { background: var(--card); box-shadow: var(--shadow); position: relative; z-index: 3; }
 			.editor .dragging .grip { cursor: grabbing; }
-			.editor .lbl-row { display: flex; align-items: center; gap: 2px; }
-			.editor .tip { position: relative; display: inline-flex; }
-			.editor .tip-btn {
-				display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -12px 0; padding: 0; border: 0;
-				background: transparent; color: var(--ink-3); cursor: help; border-radius: var(--r);
-			}
-			.editor .tip-btn svg { width: 16px; height: 16px; }
-			.editor .tip-btn:hover, .editor .tip-btn:focus-visible { color: var(--ink); }
-			.editor .tip-pop {
-				display: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 6px); width: min(20rem, 70vw);
-				padding: 10px 12px; background: var(--card); color: var(--ink-2); border: 1px solid var(--line); border-radius: var(--r);
+			.editor .lbl-row { position: relative; display: flex; align-items: center; gap: 4px; }
+			.editor .help-tip { position: relative; display: inline-flex; }
+			.editor .help-btn { display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: transparent; cursor: help; }
+			.editor .help-btn > span:first-child { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); }
+			.editor .help-btn svg { width: 16px; height: 16px; }
+			.editor .help-pop {
+				display: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 8px); width: min(300px, 75vw);
+				padding: 10px 12px; background: var(--ink); color: var(--paper); border-radius: var(--r);
 				box-shadow: var(--shadow); font-size: 14.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;
 			}
-			.editor .tip:hover .tip-pop, .editor .tip-btn:focus-visible + .tip-pop { display: block; }
+			.editor .help-tip:hover .help-pop, .editor .help-btn:focus-visible + .help-pop { display: block; }
+			/* Ingredient lines: plain text until hovered or focused. */
+			.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+			.editor .cols { padding: 12px 112px 6px 44px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+			.editor .cols span { padding-left: 11px; }
+			.editor li.line { padding: 6px 112px 6px 36px; }
+			.editor li.line + li.line { margin-top: 2px; }
+			.editor li.line:hover { background: var(--paper); }
+			.editor .row input[type=text] { min-height: var(--tap); padding: 0 10px; border-color: transparent; background: transparent; }
+			.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }
+			.editor .row input:focus { border-color: var(--wattle); background: var(--card); }
+			.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }
+			.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }
+			/* The ingredient input fits its name, so the qualifiers follow it, muted, and wrap rather than clip. */
+			.editor .c-ing input[type=text] { flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%; field-sizing: content; }
+			.editor .qual { flex: 1 1 8rem; min-width: 0; color: var(--ink-3); font-style: italic; overflow-wrap: anywhere; }
+			.editor .c-mark { display: flex; gap: 6px; align-items: center; }
+			/* The confidence dot of a line under review, before its remove button. */
+			.editor.reviewing li.line::before {
+				content: ""; position: absolute; right: 98px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
+			}
+			.editor.reviewing li.line.low::before { background: var(--grain); }
+			/* A low line, or one with an issue to check, takes the grain tint as the mockup's beer line. */
+			.editor li.item.low, .editor li.item.low:hover, .editor li.line:has(> .hint), .editor li.line:has(> .hint):hover { background: var(--grain-soft); }
+			.editor li.item.low .row input, .editor li.line:has(> .hint) .row input { background: var(--card); border-color: var(--line); }
+			.editor li.line .hint, .editor li.line > .alert { margin: 2px 0 0 0; }
+			.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }
+			.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }
+			/* Qualifiers as chips. */
+			.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+			.editor .qchip { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px 0 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); }
+			.editor .qchip .grip { position: static; width: 24px; }
+			.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }
+			.editor .qchip input[type=text] { width: auto; min-width: 6ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-size: 15px; }
+			.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }
+			.editor .qchip .ibtn { width: 36px; }
+			.editor .qchip .qmove { display: none; }
+			.editor .qchip:focus-within .qmove { display: inline-flex; }
+			.editor .pillbtn {
+				display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);
+				border-radius: var(--r); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 650; cursor: pointer;
+			}
+			.editor .pillbtn svg { width: 16px; height: 16px; }
 			/* Steps */
 			.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }
-			.editor .legend + .legend { margin-left: 6px; }
-			.editor .swatch { width: 14px; height: 14px; border-radius: var(--r-sm); background: var(--wattle-soft); }
+			.editor .swatch { width: 16px; height: 16px; border-radius: 3px; background: var(--wattle-soft); }
 			.editor .swatch.passive { background: var(--sunk); }
-			.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 16px 100px 14px 38px; }
-			.editor li.step .grip { top: 12px; }
-			.editor li.step .ibtn.rm { top: 12px; right: 50px; }
-			.editor li.step + li.step { border-top: 1px solid var(--line); border-radius: 0; }
-			.editor li.step.low { border-radius: var(--r); }
-			.editor li.step details.more > summary { top: 12px; right: 6px; }
+			.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }
+			.editor li.step + li.step { border-top: 1px solid var(--line); }
+			.editor li.step .grip { top: 14px; left: 4px; }
+			.editor li.step .ibtn.rm { top: 14px; right: 50px; }
+			.editor li.step details.more > summary { top: 14px; right: 8px; }
+			.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }
+			.editor li.step.low { background: var(--grain-soft); }
 			.editor .snum {
 				width: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;
 				background: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;
 			}
 			.editor .snum.passive { background: var(--sunk); color: var(--ink-2); }
 			.editor .snum.sm { width: 26px; height: 26px; font-size: 13.5px; }
-			.editor .sbody { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-			.editor .stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); }
-			.editor .sbody textarea.quiet { padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }
+			.editor .sbody { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+			.editor .trow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+			.editor input.stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; min-height: var(--tap); padding: 2px 10px; margin-left: -10px; flex: 1 1 auto; width: auto; min-width: 0; }
+			.editor .smeta { display: none; color: var(--ink-3); font-size: 14.5px; white-space: nowrap; }
+			.editor .sbody:has(> details.more[open]) .smeta { display: inline; }
+			.editor .sbody textarea.quiet { padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }
+			.editor .sbody:has(> details.more[open]) textarea.quiet { background: var(--card); border-color: var(--line); padding: 8px 12px; margin-left: 0; width: 100%; resize: vertical; }
 			.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+			.editor .pills:not(:has(*)), .editor .sbody:has(> details.more[open]) .pills { display: none; }
 			.editor .pill {
-				display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border: 1px solid var(--line);
+				display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line);
 				border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600;
 			}
 			.editor .pill svg { width: 16px; height: 16px; }
 			.editor .pill.on { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }
+			.editor li.step .more-body { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }
+			.editor .srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+			.editor .srow .dur { width: 110px; }
+			.editor .srow .stage, .editor .srow .part { width: 150px; }
+			.editor .att { display: flex; gap: 6px; }
+			.editor .att label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600; cursor: pointer; }
+			.editor .att input { position: absolute; inset: -1px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; }
+			.editor .att label:has(input:checked) { background: var(--sunk); border-color: var(--ink-3); color: var(--ink); }
+			.editor .att label.on:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }
+			.editor .att label:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }
+			.editor .att svg { width: 16px; height: 16px; }
 			.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }
 			.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-			.editor fieldset.deps legend { padding: 0; margin-bottom: 6px; }
-			.editor .grp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 4px 0 0; }
+			.editor fieldset.deps legend { padding: 0; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }
+			.editor fieldset.deps legend .help { font-weight: 400; }
+			.editor .dgrp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 6px 0 2px; }
 			.editor .dep-list { display: flex; flex-direction: column; gap: 8px; }
 			.editor label.dep {
-				display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 4px 12px; border: 1px solid var(--line);
+				display: flex; align-items: center; gap: 12px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);
 				border-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);
 			}
 			.editor label.dep:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); }
@@ -208,22 +240,42 @@ templ editorForm(v view) {
 			.editor label.dep .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 			.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }
 			.editor label.dep.self .this { font-size: 13px; font-weight: 700; }
+			/* Equipment as chips, each with its details in a popover. */
+			.editor .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }
+			.editor li.equipment { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px; border: 1px solid var(--line); background: var(--card); }
+			.editor li.equipment .grip { position: static; width: 24px; }
+			.editor li.equipment .erow { display: inline-flex; align-items: center; gap: 6px; }
+			.editor li.equipment .erow input[type=text] { width: auto; min-width: 5ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-weight: 600; font-size: 15.5px; }
+			.editor li.equipment:hover .erow input { border-color: transparent; }
+			.editor li.equipment .erow input:focus { border-color: var(--wattle); }
+			.editor li.equipment .qual { flex: none; font-style: normal; font-size: 14.5px; }
+			.editor li.equipment .ibtn.rm { position: static; width: 36px; }
+			.editor li.equipment details.more > summary { position: static; width: 36px; }
+			.editor li.equipment details.more { display: inline-block; }
+			.editor li.equipment .more-body { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: min(26rem, 80vw); margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); box-shadow: var(--shadow); }
+			.editor .add-equip { display: inline-flex; gap: 4px; align-items: center; }
+			.editor .add-equip input[type=text] { width: 200px; }
 			/* Save bar */
-			.editor .savebar { align-items: center; }
-			.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }
+			.editor .savebar { align-items: center; justify-content: flex-end; background: color-mix(in srgb, var(--paper) 96%, transparent); }
+			.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }
 			.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }
 			.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
+			@media (max-width: 760px) {
+				.editor .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+				.editor .facts.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+				.editor .two { grid-template-columns: minmax(0, 1fr); }
+				.editor .more-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+			}
 			@media (max-width: 560px) {
-				.editor .meta { padding: 16px 14px; }
+				.editor .meta-card { padding: 16px 14px; }
+				.editor input.ed-name { font-size: 24px; }
 				.editor .cols { display: none; }
-				.editor .row { grid-template-columns: 5rem minmax(0, 1fr); }
+				.editor .row { grid-template-columns: 4.5rem minmax(0, 1fr); }
 				.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }
 				.editor .c-mark:empty { display: none; }
 				.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }
-				.editor .qualifier { grid-template-columns: minmax(0, 1fr); }
-				.editor .qualifier .tools { justify-content: flex-end; }
 				.editor .snum { width: 28px; height: 28px; font-size: 14px; }
-				.editor .comp { padding-inline: 4px; }
+				.editor .chips { padding: 12px; }
 			}
 		</style>
 		if v.carries(groupVersion) {
@@ -278,17 +330,17 @@ templ saveBar(v view) {
 		if n, first := v.needsLook(); n > 0 {
 			<p class="look"><span class="dot" aria-hidden="true"></span>{ needsLookText(n) } <a href={ templ.SafeURL("#" + first) }>Show the first one</a></p>
 		}
-		<button type="submit" class="btn accent" name="action" value="save">{ v.saveLabel() }</button>
 		if v.reviewing() {
 			<button type="submit" form={ CancelFormID } class="btn" formnovalidate>Cancel</button>
 		} else {
 			<a class="btn" href={ templ.SafeURL(v.back()) }>Cancel</a>
 		}
+		<button type="submit" class="btn accent" name="action" value="save">{ v.saveLabel() }</button>
 	</div>
 }
 
 // sectionHead is the heading above a section's card, the one style every
-// section of the form uses.
+// section of the form uses. Children sit at its right: a count, a key.
 templ sectionHead(id, title string) {
 	<div class="sec-h"><h2 id={ id }>{ title }</h2>{ children... }</div>
 }
@@ -353,10 +405,17 @@ templ fieldError(v view, field string) {
 	}
 }
 
-// fact is one field of the recipe's grid of facts; field names its mark.
-templ fact(v view, id, name, label, value, field, errField, placeholder string) {
+// fact is one field of the recipe's grid of facts; field names its mark. The
+// label shows the short word of the mockup and reads the whole name, such as
+// "Prep" shown and "Prep time" read.
+templ fact(v view, id, name, label, labelRest, value, field, errField, placeholder string) {
 	<div class={ "fl fact " + v.D.mark(field).String() }>
-		<label for={ id }>{ label }</label>
+		<label for={ id }>
+			{ label }
+			if labelRest != "" {
+				<span class="sr">{ " " + labelRest }</span>
+			}
+		</label>
 		if field != "" {
 			@markInput(v, field)
 		}
@@ -370,7 +429,7 @@ templ fact(v view, id, name, label, value, field, errField, placeholder string) 
 templ metaFields(v view) {
 	<section class="ed-sec" aria-labelledby="ed-h-recipe">
 		@sectionHead("ed-h-recipe", "Recipe")
-		<div class="ed-card meta">
+		<div class="ed-card meta-card">
 			<div class={ "fl " + v.D.mark("name").String() }>
 				<label for="f-name">Name</label>
 				@markInput(v, "name")
@@ -383,13 +442,23 @@ templ metaFields(v view) {
 				<textarea id="f-description" name="description" rows="2">{ v.D.Description }</textarea>
 			</div>
 			<div class="facts">
-				@fact(v, "f-yield-qty", "yield_qty", "Yield amount", v.D.YieldQty, "yield", "yield_qty", "")
-				@fact(v, "f-yield-unit", "yield_unit", "Yield unit", v.D.YieldUnit, "", "", "loaf")
-				@fact(v, "f-servings", "servings", "Servings", v.D.Servings, "", "servings", "")
-				@fact(v, "f-calories", "calories", "Calories per serving", v.D.Calories, "", "calories", "")
-				@fact(v, "f-prep", "prep", "Prep time", v.D.Prep, "prep", "prep", "")
-				@fact(v, "f-cook", "cook", "Cook time", v.D.Cook, "cook", "cook", "")
-				@fact(v, "f-total", "total", "Total time", v.D.Total, "total", "total", "Worked out if empty")
+				<div class={ "fl fact yield " + v.D.mark("yield").String() }>
+					<label for="f-yield-qty">Yield<span class="sr">{ " amount" }</span></label>
+					@markInput(v, "yield")
+					<div class="pair">
+						<input id="f-yield-qty" type="text" name="yield_qty" value={ v.D.YieldQty } placeholder="1"/>
+						<label class="sr" for="f-yield-unit">Yield unit</label>
+						<input id="f-yield-unit" type="text" name="yield_unit" value={ v.D.YieldUnit } placeholder="loaf"/>
+					</div>
+					@fieldError(v, "yield_qty")
+				</div>
+				@fact(v, "f-servings", "servings", "Servings", "", v.D.Servings, "", "servings", "")
+				@fact(v, "f-calories", "calories", "Calories", "per serving", v.D.Calories, "", "calories", "per serving")
+				@fact(v, "f-prep", "prep", "Prep", "time", v.D.Prep, "prep", "prep", "")
+				@fact(v, "f-cook", "cook", "Cook", "time", v.D.Cook, "cook", "cook", "")
+			</div>
+			<div class="facts four">
+				@fact(v, "f-total", "total", "Total", "time", v.D.Total, "total", "total", "worked out")
 				if v.carries(groupRecipeFields) {
 					<div class="fl fact">
 						<label for="f-meal-type">Meal type</label>
@@ -412,23 +481,23 @@ templ metaFields(v view) {
 						@fieldError(v, "cuisine")
 					</div>
 					<div class="fl fact">
-						<label for="f-spice">Spice level</label>
+						<label for="f-spice">Spice<span class="sr">{ " level" }</span></label>
 						<select id="f-spice" name="spice">
 							<option value="" selected?={ v.D.Spice == "" }>Not set</option>
 							for _, n := range spiceOptions() {
-								<option value={ n } selected?={ v.D.Spice == n }>{ n } of 3</option>
+								<option value={ n } selected?={ v.D.Spice == n }>{ spiceLabel(n) }</option>
 							}
 						</select>
 						@fieldError(v, "spice")
 					</div>
 				}
 			</div>
-			<details class="more-meta" open?={ v.metaOpen() }>
+			<details class="more-meta" open>
 				<summary>{ v.metaSummary() }</summary>
 				<div class="two">
 					if v.carries(groupSource) {
 						<div class="fl">
-							<label for="f-source">Source URL</label>
+							<label for="f-source">Source</label>
 							<input id="f-source" type="text" name="source_url" value={ v.D.SourceURL }/>
 						</div>
 					}
@@ -439,15 +508,15 @@ templ metaFields(v view) {
 					</div>
 					if v.carries(groupVideo) {
 						<div class="fl">
-							<label for="f-video">YouTube video (link or ID, optional)</label>
-							<input id="f-video" type="text" name="video" value={ v.D.Video } autocomplete="off" spellcheck="false"/>
+							<label for="f-video">YouTube video<span class="sr">{ " (link or ID, optional)" }</span></label>
+							<input id="f-video" type="text" name="video" value={ v.D.Video } autocomplete="off" spellcheck="false" placeholder="Paste a link or video ID"/>
 							@fieldError(v, "video")
 						</div>
 					}
 					if v.carries(groupSource) {
 						<div class="fl">
-							<label for="f-tags">Tags (comma separated)</label>
-							<input id="f-tags" type="text" name="tags" value={ v.D.Tags }/>
+							<label for="f-tags">Tags<span class="sr">{ " (comma separated)" }</span></label>
+							<input id="f-tags" type="text" name="tags" value={ v.D.Tags } placeholder="Comma separated"/>
 						</div>
 					}
 				</div>
@@ -458,7 +527,9 @@ templ metaFields(v view) {
 
 templ ingredientFields(v view) {
 	<section class="ed-sec" aria-labelledby="ed-h-ingredients" id="ed-ingredients">
-		@sectionHead("ed-h-ingredients", "Ingredients")
+		@sectionHead("ed-h-ingredients", "Ingredients") {
+			<span class="meta">{ v.ingredientsMeta() }</span>
+		}
 		<div class="ed-card" data-drag-list="move-component">
 			for ci, c := range v.D.Components {
 				@componentLines(v, ci, c)
@@ -494,12 +565,14 @@ templ moveButtons(upAction, downAction, name string, first, last bool) {
 // keyboard focus, with CSS alone. The text is the button's description, so a
 // screen reader reads it too.
 templ helpTip(id, about, text string) {
-	<span class="tip">
-		<button type="button" class="tip-btn" aria-describedby={ id }>
-			@layout.Icon(layout.IconInfo)
+	<span class="help-tip">
+		<button type="button" class="help-btn" aria-describedby={ id }>
+			<span>
+				@layout.Icon(layout.IconInfo)
+			</span>
 			<span class="sr">About { about }</span>
 		</button>
-		<span class="tip-pop" role="tooltip" id={ id }>{ text }</span>
+		<span class="help-pop" role="tooltip" id={ id }>{ text }</span>
 	</span>
 }
 
@@ -508,38 +581,45 @@ const (
 	partHelp      = "A part of the recipe with its own ingredients and steps, such as the dough and the filling. The recipe page shows each named part under its own heading, and cook mode names the part each step belongs to."
 )
 
-// componentLines is one component in the ingredients section: its name and
-// the controls that move or remove the whole component, then its lines.
+// componentLines is one part in the ingredients section. A recipe of one
+// unnamed part shows only its lines, under the column heads, as the mockup
+// draws it; otherwise each part has a header row with its number, its name and
+// the controls that move or remove it.
 templ componentLines(v view, ci int, c compDraft) {
 	<div class="comp component" id={ partAnchor(ci) }>
-		<div class="comp-h">
-			@grip()
-			<div class="fl">
+		if v.partHeaders() {
+			<div class="comp-h">
+				<span class="pn" aria-hidden="true">{ n1(ci) }</span>
 				<div class="lbl-row">
-					<label for={ cField(ci, "name") }>Part { n1(ci) } name</label>
+					<label for={ cField(ci, "name") }>Part<span class="sr">{ " " + n1(ci) + " name" }</span></label>
 					@helpTip(tipID("comp", ci), "parts", partHelp)
 				</div>
-				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Leave empty for a recipe without parts" autofocus?={ v.D.Focus == cField(ci, "name") }/>
+				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Name this part" autofocus?={ v.D.Focus == cField(ci, "name") }/>
+				@grip()
+				<p class="tools">
+					@moveButtons(act("up-component", ci), act("down-component", ci), "part "+n1(ci), ci == 0, ci == len(v.D.Components)-1)
+					@iconButton(act("rm-component", ci), "Remove part "+n1(ci), layout.IconClose, false, "danger")
+				</p>
 			</div>
-			<p class="tools">
-				@moveButtons(act("up-component", ci), act("down-component", ci), "part "+n1(ci), ci == 0, ci == len(v.D.Components)-1)
-				@iconButton(act("rm-component", ci), "Remove part "+n1(ci), layout.IconClose, false, "danger")
-			</p>
-		</div>
-		if len(c.Lines) > 0 {
+		} else {
+			<input type="hidden" name={ cField(ci, "name") } value={ c.Name }/>
+		}
+		if !v.partHeaders() && len(c.Lines) > 0 {
 			<div class="cols" aria-hidden="true"><span>Qty</span><span>Unit</span><span>Ingredient</span></div>
 		}
-		<ol data-drag-list={ "move-line:" + n0(ci) }>
-			for li, l := range c.Lines {
-				@lineFields(v, ci, li, len(c.Lines), l)
-			}
-		</ol>
-		<p class="tools">
-			<button type="submit" class="btn ghost" name="action" value={ act("add-line", ci) }>
-				@layout.Icon(layout.IconPlus)
-				Add ingredient line
-			</button>
-		</p>
+		<div class="comp-body">
+			<ol data-drag-list={ "move-line:" + n0(ci) }>
+				for li, l := range c.Lines {
+					@lineFields(v, ci, li, len(c.Lines), l)
+				}
+			</ol>
+			<p class="tools add-row">
+				<button type="submit" class="btn ghost" name="action" value={ act("add-line", ci) }>
+					@layout.Icon(layout.IconPlus)
+					Add ingredient
+				</button>
+			</p>
+		</div>
 	</div>
 }
 
@@ -595,7 +675,6 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 					<label for={ lField(ci, li, "pkgunit") }>Package unit</label>
 					<input id={ lField(ci, li, "pkgunit") } type="text" name={ lField(ci, li, "pkgunit") } value={ l.PkgUnit } list="unit-names"/>
 				</div>
-				<p class="help full">Package size is for a can or packet: the 14 oz of "1 (14 oz) can".</p>
 				if v.carries(groupScaling) {
 					<div class="fl">
 						<label for={ lField(ci, li, "rule") }>Scaling</label>
@@ -607,21 +686,23 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 					</div>
 				}
 				<div class="fl">
+					<span class="lbl">Optional</span>
 					<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Optional</label>
 				</div>
+				<p class="help full">Package size is for a can or packet: the 14 oz of "1 (14 oz) can".</p>
 				if l.OfferProposal || l.Propose {
 					<div class="fl full">
 						<label class="inline"><input type="checkbox" name={ lField(ci, li, "propose") } value="1" checked?={ l.Propose }/> Add this ingredient to the catalog as new and unreviewed</label>
 					</div>
 				}
-				<div class="fl full quals">
+				<div class="fl full">
 					<div class="lbl-row">
 						<span class="lbl">Qualifiers</span>
 						@helpTip(tipID("qual", ci, li), "qualifiers", qualifierHelp)
 					</div>
-					<div class="qual-list" data-drag-list={ "move-qual:" + n0(ci) + "." + n0(li) }>
+					<div class="qual-list" data-drag-list={ "move-qual:" + n0(ci) + "." + n0(li) } data-drag-axis="x">
 						for qi, q := range l.Quals {
-							<div class="qualifier">
+							<span class="qchip">
 								@grip()
 								<label class="sr" for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
 								<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
@@ -631,19 +712,17 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 								</select>
 								<label class="sr" for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
 								<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text } autofocus?={ v.D.Focus == qField(ci, li, qi, "text") }/>
-								<p class="tools">
+								<span class="qmove">
 									@moveButtons(act("up-qual", ci, li, qi), act("down-qual", ci, li, qi), "qualifier "+n1(qi), qi == 0, qi == len(l.Quals)-1)
-									@iconButton(act("rm-qual", ci, li, qi), "Remove qualifier "+n1(qi), layout.IconClose, false, "danger")
-								</p>
-							</div>
+								</span>
+								@iconButton(act("rm-qual", ci, li, qi), "Remove qualifier "+n1(qi), layout.IconClose, false, "danger")
+							</span>
 						}
-					</div>
-					<p class="tools">
-						<button type="submit" class="btn" name="action" value={ act("add-qual", ci, li) }>
+						<button type="submit" class="pillbtn" name="action" value={ act("add-qual", ci, li) }>
 							@layout.Icon(layout.IconPlus)
 							Add qualifier
 						</button>
-					</p>
+					</div>
 				</div>
 				<p class="actions">
 					@moveButtons(act("up-line", ci, li), act("down-line", ci, li), v.lineRef(ci, li), li == 0, li == count-1)
@@ -684,15 +763,15 @@ templ stepSection(v view) {
 		<div class="ed-card">
 			for ci, c := range v.D.Components {
 				<div class="comp component">
-					if len(v.D.Components) > 1 || strings.TrimSpace(c.Name) != "" {
-						<h3 class="comp-name">{ componentName(ci, c) }</h3>
+					if v.partHeaders() {
+						<p class="grp"><span class="grp-n" aria-hidden="true">{ n1(ci) }</span>{ partTitle(c) }</p>
 					}
 					<ol data-drag-list={ "move-step:" + n0(ci) }>
 						for si, s := range c.Steps {
 							@stepFields(v, ci, si, len(c.Steps), s)
 						}
 					</ol>
-					<p class="tools">
+					<p class="tools add-row">
 						<button type="submit" class="btn ghost" name="action" value={ act("add-step", ci) }>
 							@layout.Icon(layout.IconPlus)
 							Add step
@@ -718,12 +797,15 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 				<input type="hidden" name={ sField(ci, si, "mark") } value={ s.Mark.String() }/>
 			}
 			<input type="hidden" name={ sField(ci, si, "id") } value={ s.ID }/>
-			if v.carries(groupRecipeFields) {
-				<label class="sr" for={ sField(ci, si, "title") }>Step { strconv.Itoa(v.stepNum(ci, si)) } title (optional)</label>
-				<input id={ sField(ci, si, "title") } class="quiet stitle" type="text" name={ sField(ci, si, "title") } value={ s.Title } placeholder="Add a title"/>
-			}
+			<div class="trow">
+				if v.carries(groupRecipeFields) {
+					<label class="sr" for={ sField(ci, si, "title") }>Step { strconv.Itoa(v.stepNum(ci, si)) } title (optional)</label>
+					<input id={ sField(ci, si, "title") } class="quiet stitle" type="text" name={ sField(ci, si, "title") } value={ s.Title } placeholder="Add a title"/>
+				}
+				<span class="smeta">{ v.stepMeta(ci, s) }</span>
+			</div>
 			<label class="sr" for={ sField(ci, si, "text") }>Step { strconv.Itoa(v.stepNum(ci, si)) } instruction</label>
-			<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="2" autofocus?={ v.D.Focus == sField(ci, si, "text") }>{ s.Text }</textarea>
+			<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="1" autofocus?={ v.D.Focus == sField(ci, si, "text") }>{ s.Text }</textarea>
 			<div class="pills">
 				if strings.TrimSpace(s.Duration) != "" {
 					<span class="pill">
@@ -757,39 +839,59 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 			<details class="more" open?={ s.open() }>
 				@moreToggle("step " + strconv.Itoa(v.stepNum(ci, si)))
 				<div class="more-body">
-					<div class="fl">
-						<label for={ sField(ci, si, "dur") }>Duration</label>
-						<input id={ sField(ci, si, "dur") } type="text" name={ sField(ci, si, "dur") } value={ s.Duration }/>
-					</div>
-					if v.carries(groupRecipeFields) {
-						<div class="fl">
-							<label for={ sField(ci, si, "kind") }>Stage kind (optional)</label>
-							<select id={ sField(ci, si, "kind") } name={ sField(ci, si, "kind") }>
-								<option value="" selected?={ s.Kind == "" }>Not set</option>
-								for _, k := range stageOptions() {
-									<option value={ k } selected?={ s.Kind == k }>{ k }</option>
-								}
-							</select>
+					<div class="srow">
+						<div class="fl dur">
+							<label for={ sField(ci, si, "dur") }>Duration</label>
+							<input id={ sField(ci, si, "dur") } type="text" name={ sField(ci, si, "dur") } value={ s.Duration }/>
 						</div>
-					}
-					<div class="fl">
-						<div class="lbl-row">
-							<label for={ sField(ci, si, "to") }>Part</label>
-							@helpTip(tipID("step-part", ci, si), "parts", partHelp)
-						</div>
-						<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
-							for oi, o := range v.D.Components {
-								<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
-							}
-						</select>
+						if v.carries(groupRecipeFields) {
+							<div class="fl stage">
+								<label for={ sField(ci, si, "kind") }>Stage<span class="sr">{ " kind (optional)" }</span></label>
+								<select id={ sField(ci, si, "kind") } name={ sField(ci, si, "kind") }>
+									<option value="" selected?={ s.Kind == "" }>Not set</option>
+									for _, k := range stageOptions() {
+										<option value={ k } selected?={ s.Kind == k }>{ k }</option>
+									}
+								</select>
+							</div>
+						}
+						if len(v.D.Components) > 1 {
+							<div class="fl part">
+								<div class="lbl-row">
+									<label for={ sField(ci, si, "to") }>Part</label>
+									@helpTip(tipID("step-part", ci, si), "parts", partHelp)
+								</div>
+								<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
+									for oi, o := range v.D.Components {
+										<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
+									}
+								</select>
+							</div>
+						} else {
+							// One part: nowhere to move the step, but parseForm reads a
+							// missing part as "a new one", so it is posted all the same.
+							<input type="hidden" name={ sField(ci, si, "to") } value={ n0(ci) }/>
+						}
+						if v.carries(groupStepGraph) {
+							<div class="fl">
+								<span class="lbl" id={ sField(ci, si, "att") }>Attention</span>
+								<div class="att" role="radiogroup" aria-labelledby={ sField(ci, si, "att") }>
+									<label class="on">
+										<input type="radio" name={ sField(ci, si, "passive") } value="" checked?={ !s.Passive }/>
+										@layout.Icon(layout.IconHand)
+										Hands-on
+									</label>
+									<label>
+										<input type="radio" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/>
+										@layout.Icon(layout.IconClock)
+										Hands-off
+									</label>
+								</div>
+							</div>
+						}
 					</div>
 					if v.carries(groupStepGraph) {
-						<div class="fl full">
-							<label class="inline"><input type="checkbox" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/> Hands-off: it needs no attention while it runs</label>
-						</div>
-						<div class="full">
-							@stepChooser(v, "Starts after", sField(ci, si, "dep"), s.ID, s.Deps)
-						</div>
+						@stepChooser(v, "Starts after", "Cook mode uses these to suggest what to do while a hands-off step runs.", sField(ci, si, "dep"), s.ID, s.Deps)
 					}
 					<p class="actions">
 						@moveButtons(act("up-step", ci, si), act("down-step", ci, si), "step "+strconv.Itoa(v.stepNum(ci, si)), si == 0, si == count-1)
@@ -802,15 +904,20 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 }
 
 // stepChooser offers every step of the recipe as a checkbox named name,
-// grouped by component, with checked ticked. The step self is listed in its
-// place but cannot be chosen: a step cannot wait for itself. Its checkbox is
-// disabled and has no name, so it never posts.
-templ stepChooser(v view, legend, name, self string, checked []string) {
+// grouped by part, with checked ticked, one per line. The step self is listed
+// in its place but cannot be chosen: a step cannot wait for itself. Its
+// checkbox is disabled and has no name, so it never posts.
+templ stepChooser(v view, legend, help, name, self string, checked []string) {
 	<fieldset class="deps">
-		<legend class="lbl">{ legend }</legend>
+		<legend class="lbl">
+			{ legend }
+			if help != "" {
+				<span class="help">{ help }</span>
+			}
+		</legend>
 		for _, g := range v.stepGroups() {
 			if len(v.D.Components) > 1 {
-				<p class="grp">{ g.Name }</p>
+				<p class="dgrp">{ g.Name }</p>
 			}
 			<div class="dep-list">
 				for _, o := range g.Options {
@@ -834,38 +941,39 @@ templ stepChooser(v view, legend, name, self string, checked []string) {
 	</fieldset>
 }
 
+// equipmentFields draws the equipment as chips, each with its details in a
+// popover, and a field that adds one more: the next equipment slot, posted
+// with the form. A blank row is not drawn; the build drops it anyway.
 templ equipmentFields(v view) {
 	<section class="ed-sec" aria-labelledby="ed-h-equipment" id="ed-equipment">
 		@sectionHead("ed-h-equipment", "Equipment")
 		<div class="ed-card">
-			<div class="comp">
-				<ol data-drag-list="move-equip">
-					for ei, e := range v.D.Equipment {
+			<ol class="chips" data-drag-list="move-equip" data-drag-axis="x">
+				for ei, e := range v.D.Equipment {
+					if !equipBlank(e) {
 						<li class={ "item equipment " + e.Mark.String() } data-llm?={ e.Mark.LLM }>
 							@grip()
 							if !e.Mark.zero() {
 								<input type="hidden" name={ eField(ei, "mark") } value={ e.Mark.String() }/>
 							}
-							<div class="row erow" id={ equipAnchor(ei) }>
-								<div class="c-ing">
-									<label class="sr" for={ eField(ei, "name") }>Equipment</label>
-									<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off" autofocus?={ v.D.Focus == eField(ei, "name") }/>
-									if strings.TrimSpace(e.Qty) != "" {
-										<span class="qual">{ e.Qty }</span>
-									}
-								</div>
-								<div class="c-mark">
-									@llmBadge(e.Mark)
-								</div>
-							</div>
-							@iconButton(act("rm-equip", ei), "Remove equipment "+n1(ei), layout.IconClose, false, "rm danger")
-							@checkHint(e.Mark.Low, nil, "the rules were not sure of this equipment.")
-							if e.Err != "" {
-								<p class="alert" role="alert">{ e.Err }</p>
-							}
+							<span class="erow" id={ equipAnchor(ei) }>
+								<label class="sr" for={ eField(ei, "name") }>Equipment</label>
+								<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
+								if strings.TrimSpace(e.Qty) != "" {
+									<span class="qual">{ e.Qty }</span>
+								}
+								@llmBadge(e.Mark)
+							</span>
+							@iconButton(act("rm-equip", ei), "Remove "+equipRef(e, ei), layout.IconClose, false, "rm danger")
 							<details class="more" open?={ e.open() }>
-								@moreToggle("equipment " + n1(ei))
+								@moreToggle(equipRef(e, ei))
 								<div class="more-body">
+									<div class="full">
+										@checkHint(e.Mark.Low, nil, "the rules were not sure of this equipment.")
+										if e.Err != "" {
+											<p class="alert" role="alert">{ e.Err }</p>
+										}
+									</div>
 									if v.carries(groupEquipmentLinks) {
 										<div class="fl">
 											<label for={ eField(ei, "qty") }>Quantity</label>
@@ -879,24 +987,25 @@ templ equipmentFields(v view) {
 									}
 									if v.carries(groupEquipmentLinks) && len(v.stepGroups()) > 0 {
 										<div class="full">
-											@stepChooser(v, "Used in steps", eField(ei, "step"), "", e.Steps)
+											@stepChooser(v, "Used in steps", "", eField(ei, "step"), "", e.Steps)
 										</div>
 									}
 									<p class="actions">
-										@moveButtons(act("up-equip", ei), act("down-equip", ei), "equipment "+n1(ei), ei == 0, ei == len(v.D.Equipment)-1)
+										@moveButtons(act("up-equip", ei), act("down-equip", ei), equipRef(e, ei), ei == 0, ei == len(v.D.Equipment)-1)
 									</p>
 								</div>
 							</details>
 						</li>
 					}
-				</ol>
-				<p class="tools">
-					<button type="submit" class="btn ghost" name="action" value="add-equip">
+				}
+				<li class="add-equip">
+					<label class="sr" for={ eField(len(v.D.Equipment), "name") }>New equipment</label>
+					<input id={ eField(len(v.D.Equipment), "name") } type="text" name={ eField(len(v.D.Equipment), "name") } list="equipment-names" autocomplete="off" placeholder="Add equipment" data-enter="add-equip" autofocus?={ v.D.Focus == eField(len(v.D.Equipment), "name") }/>
+					<button type="submit" class="ibtn" name="action" value="add-equip" aria-label="Add equipment" title="Add equipment">
 						@layout.Icon(layout.IconPlus)
-						Add equipment
 					</button>
-				</p>
-			</div>
+				</li>
+			</ol>
 		</div>
 	</section>
 }
@@ -908,15 +1017,14 @@ templ equipmentFields(v view) {
 templ partsPanel(v view, oob bool) {
 	<section id="parts-panel" class="parts-panel" aria-labelledby="ed-h-parts" { oobAttrs(oob)... }>
 		<style>
-			.parts-panel .pp-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px 16px; }
+			.parts-panel .pp-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px 16px 8px; }
 			.parts-panel .pp-text { margin: 0 0 10px; color: var(--ink-2); font-size: 15.5px; }
 			.parts-panel .pp-part { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
 			.parts-panel .pn { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; }
-			.parts-panel .pp-name { display: block; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+			.parts-panel .pp-name { display: block; color: var(--ink); overflow-wrap: anywhere; }
 			.parts-panel .pp-meta { display: block; font-size: 14px; color: var(--ink-3); }
 			.parts-panel .pp-part a { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 14.5px; }
-			.parts-panel .pp-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding-top: 10px; }
-			.parts-panel .pp-part + .pp-tools { border-top: 1px solid var(--line); }
+			.parts-panel .pp-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 10px 0 6px; border-top: 1px solid var(--line); }
 		</style>
 		@sectionHead("ed-h-parts", "Parts of this recipe")
 		<div class="pp-card">

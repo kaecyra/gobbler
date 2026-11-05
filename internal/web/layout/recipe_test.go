@@ -172,10 +172,10 @@ func TestMeanwhileCalloutListsEachItemWithItsStepNumber(t *testing.T) {
 }
 
 func TestAfterTextSingularAndPlural(t *testing.T) {
-	if got := AfterText([]int{1}); got != "after step 1" {
+	if got := afterText([]int{1}); got != "after step 1" {
 		t.Errorf("one = %q", got)
 	}
-	if got := AfterText([]int{3, 4, 5}); got != "after steps 3, 4, 5" {
+	if got := afterText([]int{3, 4, 5}); got != "after steps 3, 4, 5" {
 		t.Errorf("many = %q", got)
 	}
 }

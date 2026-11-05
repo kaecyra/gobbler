@@ -1,6 +1,7 @@
 // The recipe editor in the browser (internal/web/editor). The form works
 // without this file: every structural button posts the whole form and the
-// server answers with the form again. This adds two things.
+// server answers with the form again. This adds what follows, and an Enter
+// key that presses Add equipment in its field.
 //
 // Keeping the place. HTMX swaps the whole form (#editor) after a structural
 // action. Before the request this notes the scroll position and which rows the
@@ -121,8 +122,33 @@
     item.classList.add('dragging');
   });
 
+  // moveAcross is the preview for a list of chips that wraps across lines
+  // (data-drag-axis="x"): the chip moves next to the one nearest the pointer,
+  // before it or after it by which half the pointer is over.
+  function moveAcross(e) {
+    var item = drag.item;
+    var best = null;
+    var dist = Infinity;
+    itemsOf(drag.list).forEach(function (el) {
+      if (el === item) return;
+      var r = el.getBoundingClientRect();
+      var dx = e.clientX - (r.left + r.width / 2);
+      var dy = e.clientY - (r.top + r.height / 2);
+      var d = dx * dx + dy * dy;
+      if (d < dist) { dist = d; best = { el: el, before: dx < 0 }; }
+    });
+    if (!best) return;
+    var r = item.getBoundingClientRect();
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+    drag.list.insertBefore(item, best.before ? best.el : best.el.nextSibling);
+  }
+
   document.addEventListener('pointermove', function (e) {
     if (!drag || e.pointerId !== drag.id) return;
+    if (drag.list.getAttribute('data-drag-axis') === 'x') {
+      moveAcross(e);
+      return;
+    }
     var y = e.clientY;
     var item = drag.item;
     item.style.transform = '';
@@ -184,6 +210,19 @@
     // all, which the server reads as Save.
     b.click();
   }
+
+  // Enter in a field marked data-enter presses the structural button beside
+  // it, such as Add equipment, rather than the form's default Save. Without a
+  // script Enter saves, and what was typed is saved with the recipe.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    var input = e.target.closest && e.target.closest('.editor [data-enter]');
+    if (!input) return;
+    var b = input.parentElement.querySelector('button[name="action"][value="' + input.getAttribute('data-enter') + '"]');
+    if (!b) return;
+    e.preventDefault();
+    b.click();
+  });
 
   document.addEventListener('pointerup', function (e) { end(e, false); });
   document.addEventListener('pointercancel', function (e) { end(e, true); });

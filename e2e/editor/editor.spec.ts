@@ -110,8 +110,6 @@ test('the video field takes a YouTube link or ID; anything else is rejected inli
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator('[name="video"]')).toHaveValue('');
   await page.locator('[name="name"]').fill('Never Saved Either');
-  // The video field sits in the closed "Source, author, video and tags" disclosure.
-  await page.locator('details.more-meta summary').click();
   await page.locator('[name="video"]').fill('https://vimeo.com/12345');
   await save(page);
   await expect(page.getByRole('alert').filter({ hasText: 'is not a YouTube video' })).toBeVisible();
@@ -160,7 +158,7 @@ test('edits and saves a recipe: new part, line with qualifier, step with depende
   // Ingredients and steps are separate sections, each grouped by component.
   const topping = page.locator('#ed-ingredients .component').nth(2);
   const toppingSteps = page.locator('#ed-steps .component').nth(2);
-  await topping.getByRole('button', { name: 'Add ingredient line' }).click();
+  await topping.getByRole('button', { name: 'Add ingredient' }).click();
   await expect(page.locator('[name="c.2.l.0.qty"]')).toBeVisible();
   await page.locator('[name="c.2.l.0.qty"]').fill('2-3');
   await page.locator('[name="c.2.l.0.unit"]').fill('tbsp');

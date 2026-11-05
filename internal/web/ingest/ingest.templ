@@ -35,8 +35,9 @@ templ styles() {
 		.ingest-form input:focus-visible, .ingest-form textarea:focus-visible { outline: none; border-color: var(--wattle); }
 		.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 		.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
-		.retry-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; }
-		.retry-form .muted { font-size: 14px; max-width: 60ch; }
+		.retry-form { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; }
+		.retry-form .btn svg { width: 18px; height: 18px; }
+		.retry-form .muted { font-size: 13px; max-width: 32ch; text-align: right; }
 		.via { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 		.via .chip {
 			display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: var(--r);
@@ -50,7 +51,8 @@ templ styles() {
 		.review-note .flag { color: var(--grain-ink); font-weight: 700; margin-right: 0.4rem; }
 		.review-note .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
 		.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }
-		.review-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }
+		.review-grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 28px; align-items: start; }
+		.review-side { display: flex; flex-direction: column; gap: 12px; }
 		.review-grid:not(:has(.srcbox-wrap[open])) { grid-template-columns: minmax(0, 1fr); }
 		/* Clears the sticky site header: the same 90px offset as .ingr in layout/recipe.css. */
 		.review-grid > .review-side:has(.srcbox-wrap[open]) { position: sticky; top: 90px; max-height: calc(100vh - 106px); overflow-y: auto; }
@@ -68,7 +70,7 @@ templ styles() {
 			background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;
 			font-family: var(--f-mono); font-size: 14px; line-height: 1.65; color: var(--ink-2); overflow-x: auto;
 		}
-		.srcbox .src-h { margin-top: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; color: var(--ink-3); }
+		.srcbox .src-h { display: inline-block; margin-top: 12px; padding: 0 6px; border-radius: var(--r-sm); background: var(--wattle-soft); color: var(--wattle-ink); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 700; }
 		.srcbox .src-h:first-child { margin-top: 0; }
 		.srcbox div { white-space: pre-wrap; }
 		.srcbox mark { background: var(--grain-soft); color: var(--ink); border-radius: var(--r-sm); padding: 0 2px; box-shadow: inset 0 -2px 0 var(--grain); }
@@ -132,17 +134,20 @@ templ reviewPage(v reviewView) {
 				<h1>Review recipe</h1>
 				<p>Nothing is saved until you confirm. Items marked amber need a look.</p>
 			</div>
-		</div>
-		<div class="review-body">
-			@summary(v.Draft)
-			if v.PhotoGone {
-				<p class="muted" id="photo-gone">The photo this recipe was read from is no longer available. Asking the LLM again reads the recognised text alone.</p>
-			}
 			if v.CanRetry {
 				<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
-					<button class="btn" type="submit">Retry with LLM</button>
-					<span class="muted">Asks the configured LLM to read the source again. Edits you have not confirmed are discarded. Nothing is saved.</span>
+					<button class="btn" type="submit" aria-describedby="retry-note">
+						@layout.Icon(layout.IconRetry)
+						Retry with LLM
+					</button>
+					<span class="muted" id="retry-note">Reads the source again. Edits you have not confirmed are discarded.</span>
 				</form>
+			}
+		</div>
+		<div class="review-body">
+			@summary(v.Draft, v.Form.NeedsLook())
+			if v.PhotoGone {
+				<p class="muted" id="photo-gone">The photo this recipe was read from is no longer available. Asking the LLM again reads the recognised text alone.</p>
 			}
 			<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
 			<div class="review-grid">
@@ -179,8 +184,9 @@ templ sourceBox(d ingestcore.Draft) {
 	}
 }
 
-// summary shows how sure the rules were, as words.
-templ summary(d ingestcore.Draft) {
+// summary shows how sure the rules were, as words. look is how many items
+// the form marks for a look, the count its save bar shows.
+templ summary(d ingestcore.Draft, look int) {
 	<section aria-label="Confidence">
 		if d.LLMError != "" {
 			<div class="error" role="alert">
@@ -197,13 +203,13 @@ templ summary(d ingestcore.Draft) {
 			if !d.UsedLLM && !d.BelowThreshold {
 				<span class="chip">Confidence { percent(d.Overall) }</span>
 			}
-			if n := lowLineCount(d); n > 0 {
-				<span class="chip need"><span class="dot" aria-hidden="true"></span>{ lowLinesText(n) }</span>
+			if look > 0 {
+				<span class="chip need"><span class="dot" aria-hidden="true"></span>{ needLookText(look) }</span>
 			}
 			<span class="from">
-				Read from { sourceText(d) } using { string(d.Method) }.
+				From { sourceText(d) }
 				if d.ParserVersion != "" {
-					Parser version { d.ParserVersion }.
+					· parser { d.ParserVersion }
 				}
 			</span>
 		</div>

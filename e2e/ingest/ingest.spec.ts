@@ -231,7 +231,9 @@ test('a low-confidence line is marked in grain with a dot, never a left border',
   const ok = await style('li.line:not([data-low])');
   expect(ok.dot).toBe(probe.ok);
   // Equipment items carry no confidence dot.
-  await page.getByRole('button', { name: 'Add equipment' }).first().click();
+  // Equipment is added by typing into the empty slot after the chips.
+  await page.getByPlaceholder('Add equipment').fill('whisk');
+  await page.getByRole('button', { name: 'Add equipment' }).click();
   const equipment = page.locator('li.item.equipment');
   await expect(equipment.first()).toBeVisible();
   expect(await equipment.first().evaluate((el) => getComputedStyle(el, '::before').content)).toBe('none');
@@ -360,7 +362,7 @@ test('an amount, a unit and a whole line can be corrected on review before anyth
   await expect(page.locator('li.line')).toHaveCount(2);
   await expect(page.locator('li.line').nth(0).getByLabel('Quantity')).toHaveValue('3');
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
-  await page.getByRole('button', { name: 'Add ingredient line' }).click();
+  await page.getByRole('button', { name: 'Add ingredient' }).click();
   await expect(page.locator('li.line')).toHaveCount(3);
   await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
 
@@ -390,10 +392,10 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   await page.locator('li.step').nth(2).locator('summary').click();
   await page.locator('[name="c.0.s.2.dep"][value="s2"]').uncheck();
   await page.locator('[name="c.0.s.2.dep"][value="s1"]').check();
-  await page.locator('[name="c.0.s.1.passive"]').check();
+  await page.locator('[name="c.0.s.1.passive"][value="1"]').check();
 
   // A structural button keeps the edit.
-  await page.getByRole('button', { name: 'Add ingredient line' }).click();
+  await page.getByRole('button', { name: 'Add ingredient' }).click();
   await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
   await expect(page.locator('[name="c.0.s.2.dep"][value="s1"]')).toBeChecked();
 
@@ -409,8 +411,9 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   await expect(page.locator(`[name="c.0.s.2.dep"][value="${s1}"]`)).toBeChecked();
   await expect(page.locator(`[name="c.0.s.2.dep"][value="${s2}"]`)).not.toBeChecked();
   await expect(page.locator(`[name="c.0.s.1.dep"][value="${s1}"]`)).toBeChecked();
-  await expect(page.locator('[name="c.0.s.1.passive"]')).toBeChecked();
-  await expect(page.locator('[name="c.0.s.0.passive"]')).not.toBeChecked();
+  // Attention is a pair of radios: hands-off posts 1, hands-on posts nothing.
+  await expect(page.locator('[name="c.0.s.1.passive"][value="1"]')).toBeChecked();
+  await expect(page.locator('[name="c.0.s.0.passive"][value="1"]')).not.toBeChecked();
 });
 
 test('cancel discards the draft and saves nothing', async ({ page, request }) => {
@@ -440,7 +443,7 @@ test('a URL is fetched from the fixture server and reviewed', async ({ page }) =
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fixture Toast');
   await expect(page.locator('[name="c.0.l.0.raw"]')).toHaveValue('2 slices bread');
-  await expect(page.getByText(`Read from ${fixtureURL}/toast`)).toBeVisible();
+  await expect(page.getByText(`From ${fixtureURL}/toast`)).toBeVisible();
 });
 
 test('a failed fetch shows a message on the form and no draft', async ({ page }) => {

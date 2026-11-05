@@ -73,6 +73,13 @@ func (f Form) Fragment() templ.Component {
 	})
 }
 
+// NeedsLook is how many items the form marks for a look, the count its save
+// bar shows.
+func (f Form) NeedsLook() int {
+	n, _ := f.v.needsLook()
+	return n
+}
+
 // WithProblems returns f showing msgs as problems with the recipe as a whole.
 func (f Form) WithProblems(msgs ...string) Form {
 	f.v.D.Problems = append(append([]string(nil), f.v.D.Problems...), msgs...)

@@ -30,9 +30,9 @@ func TestAfterNamesTheStepsAStepWaitsFor(t *testing.T) {
 		want string
 	}{
 		{"none", nil, ""},
-		{"one", []string{"a2"}, "after step 2"},
-		{"several, sorted by number", []string{"b1", "a1"}, "after steps 1, 3"},
-		{"an id the form does not show is left out", []string{"gone", "a1"}, "after step 1"},
+		{"one", []string{"a2"}, "after 2"},
+		{"several, sorted by number", []string{"b1", "a1"}, "after 1, 3"},
+		{"an id the form does not show is left out", []string{"gone", "a1"}, "after 1"},
 		{"only unknown ids", []string{"gone"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -144,7 +144,7 @@ func TestDisclosuresOpenWhenThereIsSomethingToSeeOrFillIn(t *testing.T) {
 func TestStepChooserShowsTheStepItselfDisabled(t *testing.T) {
 	v := view{D: twoComponents()}
 	var b strings.Builder
-	if err := stepChooser(v, "Starts after", "c.0.s.1.dep", "a2", []string{"a1"}).Render(context.Background(), &b); err != nil {
+	if err := stepChooser(v, "Starts after", "", "c.0.s.1.dep", "a2", []string{"a1"}).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
