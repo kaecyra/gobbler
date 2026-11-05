@@ -3277,7 +3277,7 @@
       "wave": 11,
       "track": null,
       "issue": 394,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/recipe/**",
@@ -4511,6 +4511,12 @@
       "title": "cook timers spec is flaky on a clock assertion",
       "merged": "85b36c5",
       "note": "Fails under load in CI and locally (cook.spec.ts timers test); passes alone."
+    },
+    {
+      "id": "r-stage-serve",
+      "title": "add serve as a step stage kind",
+      "merged": "f406b64",
+      "note": "Owner request 2026-11-05. Amends ADR-00022's closed stage set in place (undeployed project); colour family to confirm with the owner (proposed active)."
     }
   ],
   "adr_sequence": {
