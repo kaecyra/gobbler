@@ -3666,7 +3666,7 @@
       "wave": 12,
       "track": null,
       "issue": 429,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "d-picture-mockup",
         "i-draft-pictures",
@@ -4958,6 +4958,12 @@
       "title": "fetch picture candidates for URL drafts and promote the chosen one on confirm",
       "merged": "ed47bf4",
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3, D6."
+    },
+    {
+      "id": "u-picture-picker",
+      "title": "picture picker on the review screen",
+      "merged": "4386b98",
+      "note": "Also owns the picture wiring: picture service built once in newRouter; Drafts/Saver .WithPictures; cmd/gobbler/proposals.go SweepWithPictures (granted edits to existing lines)."
     }
   ],
   "adr_sequence": {
