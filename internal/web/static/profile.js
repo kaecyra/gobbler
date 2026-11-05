@@ -30,11 +30,18 @@
     errorBox.hidden = true;
     errorText.textContent = '';
   }
+  // The reset sent when the dialog closes is told apart by this header. It can
+  // land after the dialog was opened again and a request in it failed, and its
+  // swap must not hide that message: only a swap the open itself asked for
+  // clears an old one.
+  var RESET_HEADER = 'X-Avatar-Reset';
   // startOver puts the first step back, without drawing the page again.
-  function startOver() {
+  function startOver(closing) {
     clearError();
     if (typeof htmx !== 'undefined') {
-      htmx.ajax('GET', uploadStep, { target: '#avatar-panel', swap: 'outerHTML' });
+      var ctx = { target: '#avatar-panel', swap: 'outerHTML' };
+      if (closing) ctx.headers = { [RESET_HEADER]: 'close' };
+      htmx.ajax('GET', uploadStep, ctx);
     }
   }
   // refreshStatus asks again where the last upload stands, for the line on the
@@ -145,7 +152,10 @@
   onFailure('htmx:sendError', 'The connection failed, and your picture was not saved. Check it and try again.');
   onFailure('htmx:timeout', 'The request took too long, and your picture was not saved.');
   document.body.addEventListener('htmx:afterSwap', function (e) {
-    if (e.detail.target && e.detail.target.id === 'avatar-panel') clearError();
+    if (!e.detail.target || e.detail.target.id !== 'avatar-panel') return;
+    var sent = e.detail.requestConfig && e.detail.requestConfig.headers;
+    if (sent && sent[RESET_HEADER]) return;
+    clearError();
   });
   // Once the crop is saved, the page's status line takes over: it says the
   // picture is processing, and the page reloads when it is ready.
@@ -166,7 +176,7 @@
     if (panel && panel.classList.contains('is-loading') && form && typeof htmx !== 'undefined') {
       htmx.trigger(form, 'htmx:abort');
     }
-    if (stale || !errorBox.hidden) startOver();
+    if (stale || !errorBox.hidden) startOver(true);
     else stopLoading();
     if (form) form.reset();
     // The saved step already put a polling status on the page.

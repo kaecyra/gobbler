@@ -358,6 +358,40 @@ test.describe('the picture dialog and the page around it', () => {
     await page.unroute(/\/avatar\/upload$/);
   });
 
+  test('a reset that lands after a newer failure leaves the failure showing', async ({ page }) => {
+    await page.goto('/profile');
+    const error = dialogOf(page).getByTestId('avatar-error');
+    await page.route(/\/avatar$/, (route) => (route.request().method() === 'POST' ? route.fulfill({ status: 500, body: 'boom' }) : route.continue()));
+    await choose(page, fixture('gps-tagged.jpg'));
+    await expect(error).toBeVisible();
+
+    // Closing with a message showing sends a reset to the first step. Hold it.
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    let resets = 0;
+    await page.route(/\/avatar\/upload$/, async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      resets += 1;
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.keyboard.press('Escape');
+    await expect(dialogOf(page)).toBeHidden();
+    await expect.poll(() => resets).toBe(1);
+
+    // Open again and fail again before the reset has come back.
+    await choose(page, fixture('gps-tagged.jpg'));
+    await expect(error).toBeVisible();
+
+    // The late reset swaps the first step in, and the failure stays.
+    await page.evaluate(() => document.body.addEventListener('htmx:afterSwap', () => ((window as any).swapped = true), { once: true }));
+    release();
+    await page.waitForFunction(() => (window as any).swapped === true);
+    await expect(error).toBeVisible();
+    await expect(error).toContainText('went wrong on our side');
+    await page.unroute(/\/avatar\/upload$/);
+  });
+
   test('a crop link on the page that fails says so in the dialog', async ({ page }) => {
     await upload(page, fixture('gps-tagged.jpg'));
     await waitForCrop(page);
