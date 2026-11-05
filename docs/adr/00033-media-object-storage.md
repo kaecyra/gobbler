@@ -89,7 +89,11 @@ but cannot encode it, and the binary is built without cgo.
 ## Consequences
 
 ADR-00021's thumbnails stay in SQLite. This record covers what people upload,
-not what the app fetches. The S3 settings of ADR-00010 now also serve media,
+not what the app fetches.
+
+> Amended by [ADR-00039](00039-recipe-pictures.md): this storage also holds
+> recipe pictures the app fetches from a source page, and avatar keys move to
+> `people/<person_id>/…`. The S3 settings of ADR-00010 now also serve media,
 plus a setting for the media bucket.
 
 **Obligations:**

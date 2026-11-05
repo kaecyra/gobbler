@@ -44,6 +44,9 @@ integrations. The plan graph holds the detail.
 
   > Amended by [ADR-00021](00021-youtube-video-on-a-recipe.md): a recipe's
   > YouTube video thumbnail is downloaded and stored. Recipe photos stay out.
+
+  > Amended by [ADR-00039](00039-recipe-pictures.md): a recipe has one picture,
+  > chosen from its source page's images on the review screen or uploaded.
 - **Computed nutrition.** Calories are entered or scraped, not computed from
   ingredients.
 - **Timeline (Gantt) view** of the step graph. "Meanwhile" guidance in the

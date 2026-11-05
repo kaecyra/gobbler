@@ -3297,7 +3297,7 @@
     {
       "id": "r-author-notes",
       "title": "parse, store and show the recipe author's notes",
-      "wave": 11,
+      "wave": 12,
       "track": null,
       "issue": 395,
       "status": "todo",
@@ -3305,7 +3305,13 @@
         "r-stage-serve",
         "a-mcp-recipe-edit",
         "t-cook-timers-flake",
-        "f-step-titles-text"
+        "f-step-titles-text",
+        "m-fetch-guard",
+        "i-image-candidates",
+        "s-picture-store",
+        "i-draft-pictures",
+        "u-picture-picker",
+        "u-picture-cards"
       ],
       "owns": [
         "internal/recipe/**",
@@ -3500,6 +3506,203 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner call 2026-11-05 (ib on #413): drag only, so the #119 per-step Part select goes. Ordered before a-mcp-recipe-edit, which owns the same editor globs. The .to fields still posted by internal/web/routes_test.go, internal/web/ingest/ingest_test.go and e2e/fixtures/routes/tenancy-support.ts stay as they are: they become the 'a post carrying c.N.s.M.to changes nothing' case, so do not edit them."
+    },
+    {
+      "id": "m-fetch-guard",
+      "title": "one guarded fetcher for page, image and OAuth fetches",
+      "wave": 12,
+      "track": null,
+      "issue": 421,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/netguard/**",
+        "internal/oauth/metadata.go",
+        "internal/oauth/metadata_test.go",
+        "internal/oauth/export_test.go",
+        "internal/ingest/fetch.go",
+        "internal/ingest/fetch_test.go",
+        "internal/ingest/ingest_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D8. Page-fetch change in its own commit."
+    },
+    {
+      "id": "m-media-fit",
+      "title": "scale a picture to fit without cropping",
+      "wave": 12,
+      "track": null,
+      "issue": 422,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/media/image.go",
+        "internal/media/image_test.go",
+        "internal/media/testdata/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D1."
+    },
+    {
+      "id": "m-avatar-keys",
+      "title": "store avatars under people/<person_id>/ keys",
+      "wave": 12,
+      "track": null,
+      "issue": 423,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/profile/avatar.go",
+        "internal/profile/avatar_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D2."
+    },
+    {
+      "id": "i-image-candidates",
+      "title": "return ordered picture candidates, og:image first",
+      "wave": 12,
+      "track": null,
+      "issue": 424,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/ingest/extract/*.go",
+        "internal/ingest/extract/testdata/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3."
+    },
+    {
+      "id": "s-picture-store",
+      "title": "recipe pictures: candidates, storage and the set-picture operation",
+      "wave": 12,
+      "track": null,
+      "issue": 425,
+      "status": "todo",
+      "depends_on": [
+        "m-fetch-guard",
+        "m-media-fit",
+        "i-image-candidates",
+        "a-mcp-recipe-edit"
+      ],
+      "owns": [
+        "internal/picture/**",
+        "internal/store/recipe.go",
+        "internal/store/recipe_test.go",
+        "internal/household/members.go",
+        "internal/household/members_test.go"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00039"
+      ],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D1-D5. Candidate minimum size is a named constant until d-picture-mockup sets the card size."
+    },
+    {
+      "id": "i-draft-pictures",
+      "title": "fetch picture candidates for URL drafts and promote the chosen one on confirm",
+      "wave": 12,
+      "track": null,
+      "issue": 426,
+      "status": "todo",
+      "depends_on": [
+        "s-picture-store",
+        "a-mcp-recipe-edit"
+      ],
+      "owns": [
+        "internal/ingest/*.go",
+        "internal/store/proposal.go",
+        "internal/store/proposal_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3, D6."
+    },
+    {
+      "id": "w-picture-serve",
+      "title": "serve recipe pictures and draft candidates after admission",
+      "wave": 12,
+      "track": null,
+      "issue": 427,
+      "status": "todo",
+      "depends_on": [
+        "s-picture-store"
+      ],
+      "owns": [
+        "internal/web/picture/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D1. Registers in routes.go and adds to the tenancy spec (shared, append-only)."
+    },
+    {
+      "id": "d-picture-mockup",
+      "title": "mockup the faded recipe card, header, picker and placeholder",
+      "wave": 12,
+      "track": null,
+      "issue": 428,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "docs/ui/mockup.html"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D9, D10. Owner approves on the PR; the UI nodes depend on this merging."
+    },
+    {
+      "id": "u-picture-picker",
+      "title": "picture picker on the review screen",
+      "wave": 12,
+      "track": null,
+      "issue": 429,
+      "status": "todo",
+      "depends_on": [
+        "d-picture-mockup",
+        "i-draft-pictures",
+        "w-picture-serve"
+      ],
+      "owns": [
+        "internal/web/ingest/**",
+        "e2e/ingest/**",
+        "internal/web/static/app.css"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3. Match the approved mockup side by side."
+    },
+    {
+      "id": "u-picture-cards",
+      "title": "pictures and placeholders on library cards and the recipe header",
+      "wave": 12,
+      "track": null,
+      "issue": 430,
+      "status": "todo",
+      "depends_on": [
+        "d-picture-mockup",
+        "w-picture-serve",
+        "s-picture-store",
+        "u-picture-picker",
+        "a-mcp-recipe-edit"
+      ],
+      "owns": [
+        "internal/web/recipes/**",
+        "internal/web/recipeview/**",
+        "e2e/recipes/**",
+        "e2e/recipeview/**",
+        "e2e/home/**",
+        "e2e/cook/**",
+        "internal/web/static/app.css",
+        "docs/ui/design.md"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D9, D10. Match the approved mockup side by side."
     }
   ],
   "shared_files": [
@@ -4662,7 +4865,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00038",
+    "last_used": "00039",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
