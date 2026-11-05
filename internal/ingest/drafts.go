@@ -116,8 +116,9 @@ func (d *Drafts) Replace(ctx context.Context, token string, dr Draft) error {
 	return draftGone(err, "replace draft")
 }
 
-// Discard rejects the pending draft for token and deletes its picture candidates. It is kept, as rejected, for
-// store.FinishedLifetime and then deleted with its source.
+// Discard rejects the pending draft for token. The draft is kept, as rejected,
+// for store.FinishedLifetime and then deleted with its source; its picture
+// candidates, if Drafts holds pictures, are deleted now.
 func (d *Drafts) Discard(ctx context.Context, token string) error {
 	var id int64
 	if d.pictures != nil {
