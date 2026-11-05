@@ -2869,7 +2869,8 @@
         "a-mcp-endpoint",
         "a-mcp-oauth",
         "a-recipe-proposals",
-        "a-oauth-limits"
+        "a-oauth-limits",
+        "r-stage-serve"
       ],
       "owns": [
         "internal/mcp/**",
@@ -2980,6 +2981,348 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner feedback 2026-11-04. ADR-00032, ADR-00018 (one household per person), ADR-00033, docs/ui/design.md. UI only: no schema, no new profile fields."
+    },
+    {
+      "id": "f-yield-bare-number",
+      "title": "read on past a bare-number recipeYield to the entry with a unit",
+      "wave": 11,
+      "track": null,
+      "issue": 382,
+      "status": "merged",
+      "depends_on": [
+        "u-library-panels"
+      ],
+      "owns": [
+        "internal/ingest/assemble.go",
+        "internal/ingest/ingest.go",
+        "internal/ingest/source_fidelity_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner report 2026-11-04 (gimmesomeoven honey beer bread). ParserVersion 10."
+    },
+    {
+      "id": "f-wprm-step-titles",
+      "title": "read WPRM bold step leads as step titles",
+      "wave": 11,
+      "track": null,
+      "issue": 391,
+      "status": "merged",
+      "depends_on": [
+        "f-yield-bare-number"
+      ],
+      "owns": [
+        "internal/ingest/extract/extract.go",
+        "internal/ingest/extract/plugins.go",
+        "internal/ingest/extract/plugins_test.go",
+        "internal/ingest/extract/testdata/real_wprm_step_titles.golden.json",
+        "internal/ingest/extract/testdata/real_wprm_step_titles.html",
+        "internal/ingest/ingest.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner feedback 2026-11-05. ParserVersion 11; stacked on f-yield-bare-number for the parser version."
+    },
+    {
+      "id": "u-editor-restyle",
+      "title": "restyle the editor and review screen to the reviewed mockup",
+      "wave": 11,
+      "track": null,
+      "issue": 383,
+      "status": "merged",
+      "depends_on": [
+        "f-wprm-step-titles"
+      ],
+      "owns": [
+        ".claude/rules/lessons.md",
+        "docs/adr/00038-editor-morphs-the-server-rendered-form.md",
+        "docs/adr/README.md",
+        "docs/ui/design.md",
+        "e2e/editor/editor.spec.ts",
+        "e2e/fixtures/copy.ts",
+        "e2e/ingest/ingest.spec.ts",
+        "e2e/ingest/photo.spec.ts",
+        "internal/ingest/save.go",
+        "internal/web/editor/build.go",
+        "internal/web/editor/draft.go",
+        "internal/web/editor/draft_test.go",
+        "internal/web/editor/editor.go",
+        "internal/web/editor/editor.templ",
+        "internal/web/editor/editor_test.go",
+        "internal/web/editor/review.go",
+        "internal/web/editor/view.go",
+        "internal/web/editor/view_test.go",
+        "internal/web/ingest/ingest.go",
+        "internal/web/ingest/ingest.templ",
+        "internal/web/ingest/ingest_test.go",
+        "internal/web/ingest/review_test.go",
+        "internal/web/ingest/views.go",
+        "internal/web/ingest/views_test.go",
+        "internal/web/layout/icon.go",
+        "internal/web/static/app.css",
+        "internal/web/static/editor.js",
+        "internal/web/static/vendor/idiomorph-ext.min.js",
+        "internal/web/static/vendor/idiomorph.VERSION.txt"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner feedback 2026-11-04/05: mockup parity, parts panel and 'part' wording, drag reorder, morph swap (ADR-00038, idiomorph 0.8.0 vendored)."
+    },
+    {
+      "id": "u-journal-restyle",
+      "title": "restyle notes, rating and made-it",
+      "wave": 11,
+      "track": null,
+      "issue": 384,
+      "status": "merged",
+      "depends_on": [
+        "u-editor-restyle"
+      ],
+      "owns": [
+        "e2e/journal/journal.spec.ts",
+        "e2e/recipes/seed/main.go",
+        "e2e/recipeview/recipeview.spec.ts",
+        "e2e/recipeview/seed/main.go",
+        "e2e/sharing/seed/main.go",
+        "internal/household/delete_test.go",
+        "internal/store/journal.go",
+        "internal/store/journal_pin_test.go",
+        "internal/store/journal_test.go",
+        "internal/store/recipe_fields_test.go",
+        "internal/store/recipe_test.go",
+        "internal/store/scope_test.go",
+        "internal/store/search_test.go",
+        "internal/store/share_test.go",
+        "internal/store/store_concurrency_test.go",
+        "internal/web/journal/handler.go",
+        "internal/web/journal/journal.templ",
+        "internal/web/journal/journal_test.go",
+        "internal/web/journal/pin_test.go",
+        "internal/web/journal/view.go",
+        "internal/web/journal/view_test.go",
+        "internal/web/layout/recipe.css",
+        "internal/web/layout/recipe.go",
+        "internal/web/layout/recipe_parts.templ",
+        "internal/web/static/app.css"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner feedback 2026-11-04. Pin a note on add; spoons rating; made-it keeps its optional rating (ADR-00004)."
+    },
+    {
+      "id": "u-note-edit-delete",
+      "title": "edit and delete notes",
+      "wave": 11,
+      "track": null,
+      "issue": 385,
+      "status": "merged",
+      "depends_on": [
+        "u-journal-restyle"
+      ],
+      "owns": [
+        "docs/adr/00037-notes-are-editable.md",
+        "docs/adr/README.md",
+        "e2e/journal/journal.spec.ts",
+        "internal/store/journal.go",
+        "internal/store/journal_edit_test.go",
+        "internal/store/recipe_test.go",
+        "internal/store/scope_test.go",
+        "internal/web/journal/edit_test.go",
+        "internal/web/journal/handler.go",
+        "internal/web/journal/journal.templ",
+        "internal/web/journal/view.go",
+        "internal/web/layout/icon.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00037: a note is a household scratchpad; body edited in place, deleted after a confirm step."
+    },
+    {
+      "id": "u-avatar-chooser",
+      "title": "open the file chooser from the avatar and go straight to the crop",
+      "wave": 11,
+      "track": null,
+      "issue": 376,
+      "status": "merged",
+      "depends_on": [],
+      "owns": [
+        ".claude/rules/frontend.md",
+        "e2e/profile/avatar.spec.ts",
+        "e2e/profile/layout.spec.ts",
+        "internal/web/cook/cook.templ",
+        "internal/web/layout/avatar.templ",
+        "internal/web/layout/icon.go",
+        "internal/web/layout/icon_test.go",
+        "internal/web/layout/layout.templ",
+        "internal/web/layout/layout_nav.go",
+        "internal/web/layout/layout_test.go",
+        "internal/web/layout/recipe_parts.templ",
+        "internal/web/profile/avatar.go",
+        "internal/web/profile/avatar.templ",
+        "internal/web/profile/avatar_test.go",
+        "internal/web/profile/avatar_view.go",
+        "internal/web/profile/page.templ",
+        "internal/web/recipes/parts.templ",
+        "internal/web/recipeview/icons.templ",
+        "internal/web/recipeview/view.templ",
+        "internal/web/ribbon/ribbon.templ",
+        "internal/web/static/app.css",
+        "internal/web/static/avatar.css",
+        "internal/web/static/avatar.js",
+        "internal/web/static/profile.css",
+        "internal/web/static/profile.js"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner request 2026-11-04 (#377)."
+    },
+    {
+      "id": "u-footer-version",
+      "title": "show the running version in the footer",
+      "wave": 11,
+      "track": null,
+      "issue": 378,
+      "status": "merged",
+      "depends_on": [
+        "u-avatar-chooser"
+      ],
+      "owns": [
+        ".dockerignore",
+        "Dockerfile",
+        "Makefile",
+        "docs/ui/design.md",
+        "e2e/layout/layout.spec.ts",
+        "internal/web/layout/assets.go",
+        "internal/web/layout/layout.templ",
+        "internal/web/layout/layout_test.go",
+        "internal/web/static/app.css"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner request 2026-11-04 (#379)."
+    },
+    {
+      "id": "u-library-panels",
+      "title": "a lighter suggestion card, and side panels that fit a sparse library",
+      "wave": 11,
+      "track": null,
+      "issue": 380,
+      "status": "merged",
+      "depends_on": [
+        "u-footer-version"
+      ],
+      "owns": [
+        "Makefile",
+        "docs/ui/design.md",
+        "e2e/home/home.spec.ts",
+        "e2e/layout/layout.spec.ts",
+        "e2e/recipes/recipes.spec.ts",
+        "internal/web/layout/assets.go",
+        "internal/web/layout/cache.go",
+        "internal/web/recipes/handler.go",
+        "internal/web/recipes/handler_test.go",
+        "internal/web/recipes/home.templ",
+        "internal/web/recipes/model.go",
+        "internal/web/recipes/recipes.templ",
+        "internal/web/recipes/side.go",
+        "internal/web/recipes/style.go",
+        "internal/web/ribbon/ribbon.templ",
+        "internal/web/shopping/shopping.go",
+        "internal/web/shopping/shopping_test.go",
+        "internal/web/static/app.css",
+        "internal/web/web_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner request 2026-11-04 (#381)."
+    },
+    {
+      "id": "r-recipes-verdict",
+      "title": "use layout.Verdict instead of a local verdict list in recipes",
+      "wave": 11,
+      "track": null,
+      "issue": 386,
+      "status": "todo",
+      "depends_on": [
+        "u-journal-restyle",
+        "u-library-panels"
+      ],
+      "owns": [
+        "internal/web/recipes/model.go",
+        "internal/web/recipes/model_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Follow-up from u-journal-restyle review: one verdict list."
+    },
+    {
+      "id": "t-cook-timers-flake",
+      "title": "cook timers spec is flaky on a clock assertion",
+      "wave": 11,
+      "track": null,
+      "issue": 375,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "e2e/cook/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Fails under load in CI and locally (cook.spec.ts timers test); passes alone."
+    },
+    {
+      "id": "r-stage-serve",
+      "title": "add serve as a step stage kind",
+      "wave": 11,
+      "track": null,
+      "issue": 394,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/**",
+        "docs/adr/00022-adopt-the-mockup-design.md",
+        "docs/ui/design.md",
+        "internal/web/ribbon/**",
+        "internal/ingest/*.go",
+        "internal/llm/**",
+        "internal/web/editor/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "Owner request 2026-11-05. Amends ADR-00022's closed stage set in place (undeployed project); colour family to confirm with the owner (proposed active)."
+    },
+    {
+      "id": "r-author-notes",
+      "title": "parse, store and show the recipe author's notes",
+      "wave": 11,
+      "track": null,
+      "issue": 395,
+      "status": "todo",
+      "depends_on": [
+        "r-stage-serve",
+        "a-mcp-recipe-edit",
+        "t-cook-timers-flake"
+      ],
+      "owns": [
+        "internal/recipe/**",
+        "internal/store/**",
+        "internal/web/editor/**",
+        "internal/web/ingest/**",
+        "internal/web/recipeview/**",
+        "internal/web/cook/**",
+        "e2e/editor/**",
+        "e2e/ingest/**",
+        "e2e/recipeview/**",
+        "e2e/cook/**",
+        "internal/ingest/*.go",
+        "internal/ingest/extract/*.go",
+        "internal/ingest/extract/testdata/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "blocked": "needs an ADR: author-notes model, on-screen name and placement (#395 open decision)",
+      "note": "Owner request 2026-11-05. Amends ADR-00004's data model. WPRM .wprm-recipe-notes and Tasty .tasty-recipes-notes; nothing in JSON-LD."
     }
   ],
   "shared_files": [
@@ -4019,10 +4362,58 @@
         "00035"
       ],
       "note": "ADR-00035 storage half (obligations 2-7, 12-16). Ingestion drafts leave the in-memory table in internal/ingest/pending.go for a proposals table; source snapshots may exist before their recipe and attach once on confirm (amends ADR-00004 obligation 4). The store assigns stp-/lin- keys; the editor stops choosing step ids. Ingredient merge re-points proposals through the revision re-pointing code generalised, not copied."
+    },
+    {
+      "id": "u-avatar-chooser",
+      "title": "open the file chooser from the avatar and go straight to the crop",
+      "merged": "3aad8e2b90732d04d8a05b642f98a91f55053567",
+      "note": "Owner request 2026-11-04 (#377)."
+    },
+    {
+      "id": "u-footer-version",
+      "title": "show the running version in the footer",
+      "merged": "abb22944005ae73fecec5f4c9eef514ff5e1278e",
+      "note": "Owner request 2026-11-04 (#379)."
+    },
+    {
+      "id": "u-library-panels",
+      "title": "a lighter suggestion card, and side panels that fit a sparse library",
+      "merged": "7bd92229f90f62b79ce2d229af676404cd314f32",
+      "note": "Owner request 2026-11-04 (#381)."
+    },
+    {
+      "id": "f-yield-bare-number",
+      "title": "read on past a bare-number recipeYield to the entry with a unit",
+      "merged": "9ad62ef858be6ee33ea35ec138361458abb82121",
+      "note": "Owner report 2026-11-04 (gimmesomeoven honey beer bread). ParserVersion 10."
+    },
+    {
+      "id": "f-wprm-step-titles",
+      "title": "read WPRM bold step leads as step titles",
+      "merged": "4f4f7cb8ea6d4d1bcabe1141317e351f052754a4",
+      "note": "Owner feedback 2026-11-05. ParserVersion 11; stacked on f-yield-bare-number for the parser version."
+    },
+    {
+      "id": "u-editor-restyle",
+      "title": "restyle the editor and review screen to the reviewed mockup",
+      "merged": "3a2e1565bcfd700587e0503f540b5a99328f5026",
+      "note": "Owner feedback 2026-11-04/05: mockup parity, parts panel and 'part' wording, drag reorder, morph swap (ADR-00038, idiomorph 0.8.0 vendored)."
+    },
+    {
+      "id": "u-journal-restyle",
+      "title": "restyle notes, rating and made-it",
+      "merged": "7bb68ecba77846a95a1e455015947dfcd3be2c3a",
+      "note": "Owner feedback 2026-11-04. Pin a note on add; spoons rating; made-it keeps its optional rating (ADR-00004)."
+    },
+    {
+      "id": "u-note-edit-delete",
+      "title": "edit and delete notes",
+      "merged": "c35c553a78e25f5f414fcc373e8b524e75124294",
+      "note": "ADR-00037: a note is a household scratchpad; body edited in place, deleted after a confirm step."
     }
   ],
   "adr_sequence": {
-    "last_used": "00036",
-    "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12"
+    "last_used": "00038",
+    "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
