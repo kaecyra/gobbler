@@ -126,9 +126,6 @@ func (s *Service) setProcessed(ctx context.Context, id int64, webp []byte) (stri
 	if err != nil {
 		return "", err
 	}
-	if _, err := s.source(ctx, hid, id); err != nil {
-		return "", err
-	}
 	v, err := s.newVersion()
 	if err != nil {
 		return "", err
@@ -138,7 +135,14 @@ func (s *Service) setProcessed(ctx context.Context, id int64, webp []byte) (stri
 		return "", fmt.Errorf("store picture of recipe %d: %w", id, err)
 	}
 	var previous string
+	// The ownership check is in the transaction that writes the row, so a
+	// recipe deleted meanwhile is ErrNotFound, not a foreign key error.
 	err = db.WithTx(ctx, s.db, s.q, func(q *picturedb.Queries, _ *sql.Tx) error {
+		if _, err := q.GetRecipeSource(ctx, picturedb.GetRecipeSourceParams{ID: id, HouseholdID: hid}); errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: recipe %d", store.ErrNotFound, id)
+		} else if err != nil {
+			return err
+		}
 		p, err := q.GetPictureKey(ctx, picturedb.GetPictureKeyParams{RecipeID: id, HouseholdID: hid})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
@@ -148,6 +152,9 @@ func (s *Service) setProcessed(ctx context.Context, id int64, webp []byte) (stri
 	})
 	if err != nil {
 		s.deleteObject(ctx, key, "unrecorded picture")
+		if errors.Is(err, store.ErrNotFound) {
+			return "", err
+		}
 		return "", fmt.Errorf("record picture of recipe %d: %w", id, err)
 	}
 	if previous != "" {

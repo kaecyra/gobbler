@@ -534,3 +534,16 @@ func TestConcurrentFetchesOnOneDraftLeaveObjectsForEveryRow(t *testing.T) {
 		}
 	}
 }
+
+func TestSettingAPictureOnADeletedRecipeIsNotFound(t *testing.T) {
+	e := newEnv(t)
+	rid := e.recipe(t, "")
+	if err := e.store.Delete(e.ctx, rid); err != nil {
+		t.Fatal(err)
+	}
+	// Choose skips the up-front check Upload makes, so it reaches the write.
+	f := picture.Found{WebP: pic(t, 300, 200, 2)}
+	if _, err := e.svc.Choose(e.ctx, rid, f); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("Choose on a deleted recipe = %v, want ErrNotFound", err)
+	}
+}
