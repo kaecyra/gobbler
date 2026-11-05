@@ -26,10 +26,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
+	"github.com/kaecyra/gobbler/internal/netguard"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -42,8 +44,9 @@ const ParserVersion = "13"
 // Deps are the collaborators a Pipeline needs. Each is an interface sized to
 // what this package calls, so tests substitute at the boundary.
 type Deps struct {
-	// HTTP fetches pages. Nil means a plain http.Client; the per-request
-	// timeout comes from the configuration either way.
+	// HTTP fetches pages. Nil means a netguard client, which never connects to
+	// a private address; the per-request timeout comes from the configuration
+	// either way.
 	HTTP HTTPClient
 	// Catalog resolves ingredient names, units and equipment.
 	Catalog CatalogReader
@@ -60,6 +63,8 @@ type Deps struct {
 type Pipeline struct {
 	cfg  config.Ingestion
 	deps Deps
+	// guarded is the client used when Deps.HTTP is nil.
+	guarded *http.Client
 }
 
 // New returns a Pipeline. It rejects configuration the pipeline cannot work
@@ -77,7 +82,7 @@ func New(cfg config.Ingestion, d Deps) (*Pipeline, error) {
 	if cfg.ConfidenceThreshold < 0 || cfg.ConfidenceThreshold > 1 {
 		return nil, fmt.Errorf("ingest: confidence threshold must be in [0, 1], got %v", cfg.ConfidenceThreshold)
 	}
-	return &Pipeline{cfg: cfg, deps: d}, nil
+	return &Pipeline{cfg: cfg, deps: d, guarded: netguard.NewClient(netguard.Options{Redirects: netguard.MaxRedirects, AllowLoopback: cfg.AllowLoopbackFetch})}, nil
 }
 
 // draftWithFallback assembles the rule-based draft and, only when it scored

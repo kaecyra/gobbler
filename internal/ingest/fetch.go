@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/kaecyra/gobbler/internal/netguard"
 )
 
 // ErrFetch is returned (wrapped) when a page cannot be acquired: a bad URL,
@@ -26,6 +28,16 @@ type HTTPClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
+// client is the client the page fetch uses: the one in Deps, or else a guarded
+// one that connects only to public addresses and follows at most
+// netguard.MaxRedirects redirects (ADR-00039, "Fetching").
+func (p *Pipeline) client() HTTPClient {
+	if p.deps.HTTP != nil {
+		return p.deps.HTTP
+	}
+	return p.guarded
+}
+
 // fetch returns the body of rawURL and the URL it was finally served from.
 func (p *Pipeline) fetch(ctx context.Context, rawURL string) (body []byte, finalURL string, err error) {
 	u, err := url.Parse(strings.TrimSpace(rawURL))
@@ -41,12 +53,13 @@ func (p *Pipeline) fetch(ctx context.Context, rawURL string) (body []byte, final
 	req.Header.Set("User-Agent", p.cfg.UserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")
 
-	client := p.deps.HTTP
-	if client == nil {
-		client = http.DefaultClient
-	}
-	resp, err := client.Do(req)
-	if err != nil {
+	resp, err := p.client().Do(req)
+	switch {
+	case errors.Is(err, netguard.ErrBlocked):
+		return nil, "", fmt.Errorf("%w: %s is, or leads to, an address on a private or local network, which gobbler does not fetch from: %w", ErrFetch, u, err)
+	case errors.Is(err, netguard.ErrRedirect):
+		return nil, "", fmt.Errorf("%w: %s redirected somewhere gobbler will not follow: %w", ErrFetch, u, err)
+	case err != nil:
 		return nil, "", fmt.Errorf("%w: get %s: %w", ErrFetch, u, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
