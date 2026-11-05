@@ -110,21 +110,6 @@ func cardFor(c store.Card, now time.Time) cardView {
 	return v
 }
 
-// bandVariants is the number of placeholder bands app.css draws (.ph0 to
-// .ph5, from the mockup). recipeview draws the same set for its header.
-const bandVariants = 6
-
-// bandVariant is the placeholder band of a recipe without a picture: its id
-// modulo the size of the set, so the same recipe always shows the same band
-// and recipes imported one after another differ (ADR-00039, Showing).
-func bandVariant(id int64) int {
-	v := int(id % bandVariants)
-	if v < 0 {
-		v += bandVariants
-	}
-	return v
-}
-
 // timeToTable is how long a recipe takes: its timed steps added up, else the
 // total time the source stated.
 func timeToTable(c store.Card) time.Duration {

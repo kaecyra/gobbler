@@ -1,0 +1,35 @@
+package layout
+
+import (
+	"strconv"
+
+	"github.com/kaecyra/gobbler/internal/recipe"
+)
+
+// PictureBand is the picture of a recipe (ADR-00039, Showing): the picture at
+// src, or the placeholder band when src is empty, which also sits under a
+// picture while it loads and is all that is left when the picture's object is
+// gone (PictureFallback). The band carries the recipe's meal-type picture, if
+// it has a meal type, and variant BandVariant(id). class is the shape of the
+// box, "rpic" for a library card and "rhero" for the recipe page header;
+// children are drawn over the picture, as the header's title is. The picture is
+// decoration, so it has no accessible name.
+templ PictureBand(class, testID string, id int64, meal recipe.MealType, src string, width, height int) {
+	<div class={ class, "ph", "ph" + strconv.Itoa(BandVariant(id)) } data-testid={ testID } data-pic?={ src != "" }>
+		if src != "" {
+			<img src={ src } alt="" width={ strconv.Itoa(width) } height={ strconv.Itoa(height) } loading="lazy" decoding="async" data-pic-img/>
+		}
+		if meal != "" {
+			<span class="phmark">
+				@MealIcon(meal)
+			</span>
+		}
+		{ children... }
+	</div>
+}
+
+// PictureFallback links the script that removes a picture that fails to load,
+// leaving its band. Draw it once on a page that draws PictureBand.
+templ PictureFallback() {
+	<script src={ PictureScriptPath } defer></script>
+}

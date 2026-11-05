@@ -32,21 +32,6 @@ func equipmentHint(scaledUp, sized bool) string {
 	return ""
 }
 
-// bandVariants is the number of placeholder bands app.css draws (.ph0 to
-// .ph5). The library draws the same set on its cards.
-const bandVariants = 6
-
-// bandVariant is the placeholder band of a recipe without a picture: its id
-// modulo the size of the set, so the same recipe always shows the same band
-// (ADR-00039, Showing).
-func bandVariant(id int64) int {
-	v := int(id % bandVariants)
-	if v < 0 {
-		v += bandVariants
-	}
-	return v
-}
-
 // view is everything the template shows, already formatted. All quantity
 // arithmetic happened in package quantity before it was built.
 type view struct {
