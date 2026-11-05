@@ -45,6 +45,7 @@ templ listPage(v listView) {
 				<li data-testid="current-version">
 					<a href={ templ.SafeURL(versionPath(v.ID, v.Current.Version)) }>Version { strconv.FormatInt(v.Current.Version, 10) }</a>
 					<span>(current), last changed { v.Current.When } by { v.Current.Who }</span>
+					@proposalLine(v.Current.Proposal, "current-proposal")
 				</li>
 				for _, row := range v.Rows {
 					<li data-testid="revision">
@@ -52,11 +53,14 @@ templ listPage(v listView) {
 						<span>
 							if row.Restored != 0 {
 								replaced by a restore of version { strconv.FormatInt(row.Restored, 10) }
+							} else if row.Proposal != nil {
+								replaced by a saved proposal
 							} else {
 								replaced by an edit
 							}
 							on { row.When } by { row.Who }
 						</span>
+						@proposalLine(row.Proposal, "revision-proposal")
 					</li>
 				}
 			</ol>
@@ -65,6 +69,19 @@ templ listPage(v listView) {
 			}
 			<div class="snap"><i></i>Original source snapshot kept, unchanged</div>
 		</article>
+	}
+}
+
+// proposalLine says where a version came from when a person saved a proposal
+// an agent made: who and through which credential, and the reason it gave.
+templ proposalLine(p *proposalNote, testID string) {
+	if p != nil {
+		<span class="muted" data-testid={ testID }>
+			Proposed by { p.By }.
+			if p.Reason != "" {
+				Reason: { p.Reason }
+			}
+		</span>
 	}
 }
 

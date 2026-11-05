@@ -43,6 +43,9 @@ type Recipes interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, id int64) (store.Info, error)
 	ListRevisions(ctx context.Context, id int64) ([]store.Revision, error)
+	// ProposalFor names the accepted proposal that produced a version, so the
+	// current version can say where it came from (ADR-00035).
+	ProposalFor(ctx context.Context, id, version int64) (store.ProposalRef, bool, error)
 	GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error)
 	Restore(ctx context.Context, id, version int64) error
 	Clone(ctx context.Context, id int64) (int64, error)
@@ -146,7 +149,16 @@ func list(d Deps) http.HandlerFunc {
 		}
 		// The store lists oldest first; the page shows newest first.
 		slices.Reverse(revs)
-		layout.Render(w, r, http.StatusOK, listPage(buildList(id, doc.Name, info, revs)))
+		current, found, err := d.Recipes.ProposalFor(r.Context(), id, info.Version)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load the proposal behind recipe %d: %w", id, err))
+			return
+		}
+		var from *store.ProposalRef
+		if found {
+			from = &current
+		}
+		layout.Render(w, r, http.StatusOK, listPage(buildList(id, doc.Name, info, revs, from)))
 	}
 }
 

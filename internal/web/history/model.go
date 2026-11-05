@@ -28,6 +28,19 @@ type currentRow struct {
 	Version int64
 	When    string
 	Who     string
+	// Proposal says where the version came from when a person saved a proposal.
+	Proposal *proposalNote
+}
+
+// proposalNote is what history says of a proposal: who made it, through which
+// credential, and why (ADR-00035).
+type proposalNote struct{ By, Reason string }
+
+func noteOf(p *store.ProposalRef) *proposalNote {
+	if p == nil {
+		return nil
+	}
+	return &proposalNote{By: p.Describe(), Reason: p.Reason}
 }
 
 type revisionRow struct {
@@ -38,6 +51,9 @@ type revisionRow struct {
 	// Restored is the version whose restore replaced this one, 0 when an
 	// ordinary edit did.
 	Restored int64
+	// Proposal is set when the edit that replaced this version was the saving of
+	// a proposal.
+	Proposal *proposalNote
 }
 
 // originView says what a clone was copied from.
@@ -46,16 +62,16 @@ type originView struct {
 	Version  int64
 }
 
-func buildList(id int64, name string, info store.Info, revs []store.Revision) listView {
+func buildList(id int64, name string, info store.Info, revs []store.Revision, from *store.ProposalRef) listView {
 	v := listView{
 		ID: id, Name: name,
-		Current: currentRow{Version: info.Version, When: info.UpdatedAt.UTC().Format(timeLayout), Who: info.UpdatedBy},
+		Current: currentRow{Version: info.Version, When: info.UpdatedAt.UTC().Format(timeLayout), Who: info.UpdatedBy, Proposal: noteOf(from)},
 	}
 	if info.ClonedFrom != nil {
 		v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
 	}
 	for _, r := range revs {
-		row := revisionRow{Version: r.Version, When: r.CreatedAt.UTC().Format(timeLayout), Who: r.Author}
+		row := revisionRow{Version: r.Version, When: r.CreatedAt.UTC().Format(timeLayout), Who: r.Author, Proposal: noteOf(r.Proposal)}
 		if r.Restored != nil {
 			row.Restored = *r.Restored
 		}
