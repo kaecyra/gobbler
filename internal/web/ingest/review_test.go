@@ -30,6 +30,10 @@ func TestReviewIsTheEditorForm(t *testing.T) {
 			t.Errorf("review lacks the editor control %s", want)
 		}
 	}
+	// A step moves between parts by drag only (#416): no step-level part field.
+	if strings.Contains(body, `.to"`) {
+		t.Error("the review screen renders a step part field")
+	}
 }
 
 // The draft cannot keep these, so offering them would drop an edit silently on
@@ -112,8 +116,8 @@ func TestConfirmSavesAnAddedLineARemovedLineAndAMovedStep(t *testing.T) {
 	form.Del("c.0.l.1.ing")
 	form.Del("c.0.l.1.raw")
 	form.Del("c.0.l.1.propose")
-	// A second component, and the weak step dragged into it: the browser posts
-	// the step under the other part.
+	// A second component, and the weak step in it, as the server renders the
+	// form back after a drag moved the step there.
 	form.Set("c.1.name", "Topping")
 	dragStepInForm(form, 0, 1, 1)
 	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
@@ -649,8 +653,10 @@ func TestDraggingAcrossPartsMovesTheRowOnTheReviewScreen(t *testing.T) {
 	}
 }
 
-// dragStepInForm posts a step the way a drag does: under the end of part
-// toCi, with the steps after it in its old part closed up.
+// dragStepInForm builds the form the server renders back after a move-step
+// action (what a drag posts) has put a step at the end of part toCi: the step's
+// fields sit under that part, and the steps after it in its old part are closed
+// up. It does not post the action itself.
 func dragStepInForm(form url.Values, ci, si, toCi int) {
 	take := func(c, st int) url.Values {
 		prefix := fmt.Sprintf("c.%d.s.%d.", c, st)
@@ -678,8 +684,9 @@ func dragStepInForm(form url.Values, ci, si, toCi int) {
 		}
 		return n
 	}
+	n := count(ci)
 	row := take(ci, si)
-	for st := si + 1; st < count(ci)+1; st++ {
+	for st := si + 1; st < n; st++ {
 		put(ci, st-1, take(ci, st))
 	}
 	put(toCi, count(toCi), row)

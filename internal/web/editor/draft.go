@@ -269,8 +269,8 @@ func indices(f url.Values, prefix string) []int {
 }
 
 // arrange gives every step an id and drops references to steps that are
-// gone. It runs on every post, before any action. A step changes part only by
-// being posted under another part, which is what dragging does.
+// gone. It runs on every post, before any action. A step changes part only
+// through a move-step action, which is what a drag posts.
 func (d *draft) arrange() {
 	d.settle()
 }
