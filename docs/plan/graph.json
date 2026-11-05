@@ -3551,7 +3551,7 @@
       "wave": 12,
       "track": null,
       "issue": 423,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/profile/avatar.go",
@@ -4907,6 +4907,12 @@
       "title": "mockup the faded recipe card, header, picker and placeholder",
       "merged": "ce4fa50",
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D9, D10. Owner approves on the PR; the UI nodes depend on this merging."
+    },
+    {
+      "id": "m-avatar-keys",
+      "title": "store avatars under people/<person_id>/ keys",
+      "merged": "71ffa14",
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D2."
     }
   ],
   "adr_sequence": {
