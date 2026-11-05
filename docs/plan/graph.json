@@ -3648,7 +3648,7 @@
       "wave": 12,
       "track": null,
       "issue": 428,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "docs/ui/mockup.html"
@@ -4901,6 +4901,12 @@
       "title": "scale a picture to fit without cropping",
       "merged": "44b5445",
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D1."
+    },
+    {
+      "id": "d-picture-mockup",
+      "title": "mockup the faded recipe card, header, picker and placeholder",
+      "merged": "ce4fa50",
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D9, D10. Owner approves on the PR; the UI nodes depend on this merging."
     }
   ],
   "adr_sequence": {
