@@ -46,6 +46,10 @@ type Recipes interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, id int64) (store.Info, error)
 	UpdateIfVersion(ctx context.Context, id, expectedVersion int64, r recipe.Recipe) error
+	// GetProposal and AcceptEdit review an agent's proposed edit in this editor
+	// (ADR-00035): saving the form with a proposal's token accepts it.
+	GetProposal(ctx context.Context, token string) (store.Proposal, error)
+	AcceptEdit(ctx context.Context, token string, expectedVersion int64, r recipe.Recipe) error
 	// HasThumbnail and SaveThumbnail keep the preview image of a recipe's video
 	// (ADR-00021).
 	video.ThumbnailStore
@@ -110,8 +114,18 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
+	if token := r.URL.Query().Get(fieldProposal); token != "" {
+		// The proposal is read after the version, as the recipe is: a save in
+		// between leaves a form at the older version, refused on save.
+		p, ok := h.openForReview(w, r, id, info.Version, token)
+		if !ok {
+			return
+		}
+		rec = *p.Edit
+	}
 	d := fromRecipe(rec, names)
 	d.Version = info.Version
+	d.Proposal = r.URL.Query().Get(fieldProposal)
 	h.render(w, r, http.StatusOK, id, d, names)
 }
 
@@ -144,6 +158,15 @@ func (h *handler) post(w http.ResponseWriter, r *http.Request) {
 	d := parseForm(form)
 	d.Version = version
 	d.arrange()
+	if d.Proposal != "" {
+		// What the form does not edit comes from the proposal, as it comes from
+		// the stored recipe otherwise.
+		p, ok := h.openForReview(w, r, id, version, d.Proposal)
+		if !ok {
+			return
+		}
+		base = *p.Edit
+	}
 
 	action := form.Get(fieldAction)
 	if action != "" && action != actionSave {
@@ -181,7 +204,7 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 			return
 		}
 		if info.Version != d.Version {
-			h.stale(w, r, id, d, names, fmt.Errorf("%w: recipe %d is at version %d, not %d", store.ErrStaleVersion, id, info.Version, d.Version))
+			h.stale(w, r, id, d, names, fmt.Errorf("%w: recipe %d is at version %d, not %d", store.ErrStaleVersion, id, info.Version, d.Version), staleMessage)
 			return
 		}
 	}
@@ -189,10 +212,18 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		layout.WriteError(w, r, err)
 		return
 	}
-	err = h.Recipes.UpdateIfVersion(ctx, id, d.Version, rec)
+	if d.Proposal != "" {
+		err = h.Recipes.AcceptEdit(ctx, d.Proposal, d.Version, rec)
+	} else {
+		err = h.Recipes.UpdateIfVersion(ctx, id, d.Version, rec)
+	}
+	if msg, ok := acceptFailure(err); ok {
+		h.stale(w, r, id, d, names, err, msg)
+		return
+	}
 	switch {
 	case errors.Is(err, store.ErrStaleVersion):
-		h.stale(w, r, id, d, names, err)
+		h.stale(w, r, id, d, names, err, staleMessage)
 		return
 	case err != nil:
 		layout.WriteError(w, r, fmt.Errorf("save recipe %d: %w", id, err))
@@ -208,10 +239,11 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 	http.Redirect(w, r, to, http.StatusSeeOther)
 }
 
-// stale shows the form again with the stale-save message.
-func (h *handler) stale(w http.ResponseWriter, r *http.Request, id int64, d draft, names lookups, cause error) {
+// stale shows the form again with the message for a save that was refused
+// because the recipe, or the proposal being reviewed, is out of date.
+func (h *handler) stale(w http.ResponseWriter, r *http.Request, id int64, d draft, names lookups, cause error, message string) {
 	slog.WarnContext(r.Context(), "stale editor save", "recipe_id", id, "form_version", d.Version, "error", cause.Error())
-	d.Problems = append(d.Problems, staleMessage)
+	d.Problems = append(d.Problems, message)
 	h.render(w, r, staleStatus(r), id, d, names)
 }
 
@@ -234,6 +266,17 @@ func staleStatus(r *http.Request) int {
 
 func (h *handler) render(w http.ResponseWriter, r *http.Request, status int, id int64, d draft, names lookups) {
 	v := view{ID: id, D: d, Names: names}
+	if d.Proposal != "" {
+		p, err := h.Recipes.GetProposal(r.Context(), d.Proposal)
+		if err != nil {
+			layout.WriteError(w, r, fmt.Errorf("load proposal: %w", err))
+			return
+		}
+		if v.Proposal, err = h.proposalFor(r.Context(), p, names); err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
+	}
 	if FromHTMX(r) {
 		layout.Render(w, r, status, editorForm(v))
 		return

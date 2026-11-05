@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -143,4 +144,30 @@ func (s *Store) ProposalFor(ctx context.Context, id, version int64) (ProposalRef
 		return err
 	})
 	return ref, found, err
+}
+
+// Describe says who made a proposal for a person to read: the credential an
+// agent used and whom it acts for, or the person alone when no credential was
+// involved. A household key acts for no one person, so it is named without an
+// owner.
+func (p Provenance) Describe() string {
+	c := p.Credential
+	if c == nil {
+		return p.Person
+	}
+	kind := c.Kind
+	switch kind {
+	case "api_key":
+		kind = "API key"
+	case "oauth_grant":
+		kind = "OAuth client"
+	}
+	out := kind
+	if c.Ref != "" {
+		out += " " + c.Ref
+	}
+	if p.Person != "" && !strings.HasPrefix(p.Person, "household:") {
+		out += " (" + p.Person + ")"
+	}
+	return out
 }

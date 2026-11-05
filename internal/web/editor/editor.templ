@@ -66,6 +66,10 @@ templ editorForm(v view) {
 			.editor ol { list-style: none; padding: 0; margin: 0; }
 			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 			.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }
+			.editor .proposal { padding: 18px 22px; display: flex; flex-direction: column; gap: 8px; background: var(--grain-soft); }
+			.editor .proposal h2 { margin: 0; font-size: 18px; }
+			.editor .proposal p { margin: 0; }
+			.editor .proposal ul { margin: 0; padding-left: 20px; }
 			/* Recipe */
 			.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }
 			.editor input.ed-name { font-family: var(--f-display); font-size: 30px; font-weight: 750; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }
@@ -285,6 +289,10 @@ templ editorForm(v view) {
 		if v.carries(groupVersion) {
 			<input type="hidden" name="version" value={ v.version() }/>
 		}
+		if v.Proposal != nil {
+			<input type="hidden" name="proposal" value={ v.Proposal.Token }/>
+			@proposalSummary(v.Proposal)
+		}
 		if len(v.D.Problems) > 0 {
 			<div class="alert" role="alert">
 				for _, p := range v.D.Problems {
@@ -322,6 +330,27 @@ templ editorForm(v view) {
 		<script src={ morphPath } defer></script>
 		<script src={ scriptPath } defer></script>
 	</form>
+}
+
+// proposalSummary is what a proposed edit changes, above the form that holds it
+// (ADR-00035). The form below is the proposal, filled in: the person may change
+// anything before saving, and saving is an ordinary save.
+templ proposalSummary(p *proposalView) {
+	<section class="ed-card proposal" aria-labelledby="proposal-h" data-testid="proposal-summary">
+		<h2 id="proposal-h">Review proposed changes</h2>
+		<p>
+			Proposed by { p.By }.
+			if p.Reason != "" {
+				<span data-testid="proposal-reason">Reason: { p.Reason }</span>
+			}
+		</p>
+		<p class="help">Nothing is saved until you save the recipe. Change anything below first; the changes are listed here as they were proposed.</p>
+		<ul data-testid="proposal-changes">
+			for _, c := range p.Changes {
+				<li>{ c }</li>
+			}
+		</ul>
+	</section>
 }
 
 // saveBar is the primary action, stuck to the bottom of the viewport while the

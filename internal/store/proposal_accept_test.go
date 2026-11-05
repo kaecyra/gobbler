@@ -187,3 +187,20 @@ func TestDeleteRecipeWithAnAcceptedProposal(t *testing.T) {
 		t.Errorf("%d proposal or revision rows left after deleting the recipe", n)
 	}
 }
+
+func TestProvenanceDescribe(t *testing.T) {
+	key := &Credential{Kind: "api_key", Ref: "gobk_ab12"}
+	for name, c := range map[string]struct {
+		p    Provenance
+		want string
+	}{
+		"person":    {Provenance{Person: "ann@example.com"}, "ann@example.com"},
+		"key":       {Provenance{Person: "ann@example.com", Credential: key}, "API key gobk_ab12 (ann@example.com)"},
+		"household": {Provenance{Person: "household:3", Credential: key}, "API key gobk_ab12"},
+		"oauth":     {Provenance{Person: "ann@example.com", Credential: &Credential{Kind: "oauth_grant", Ref: "client-1"}}, "OAuth client client-1 (ann@example.com)"},
+	} {
+		if got := c.p.Describe(); got != c.want {
+			t.Errorf("%s: Describe() = %q, want %q", name, got, c.want)
+		}
+	}
+}
