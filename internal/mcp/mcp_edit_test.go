@@ -323,3 +323,31 @@ func TestAProposalOfADraftIsReadWithoutRecipeFields(t *testing.T) {
 		t.Errorf("draft state = %+v %q, want a pending proposal with no recipe", st, msg)
 	}
 }
+
+// An id-less step gets a label of its own, never one the agent wrote for
+// another step.
+func TestAnIdlessStepNeverTakesALabelTheAgentWrote(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	id := s.recipe(s.smiths, "ann@example.com", "Bread", s.flourLine(2))
+	secret, _ := s.personalKey("ann@example.com")
+	cs := s.connect(secret)
+	r := s.read(cs, id)
+	args := editArgs(r, "Bread", "steps")
+	comp := args["recipe"].(map[string]any)["components"].([]map[string]any)[0]
+	comp["steps"] = []map[string]any{
+		{"id": "new-1", "text": "Mine."},
+		{"text": "Anonymous.", "depends_on": []string{"new-1"}},
+	}
+	var out proposed
+	if msg := call(t, cs, "propose_recipe_edit", args, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	p, err := s.rec.GetProposal(s.as(s.smiths, "ann@example.com"), out.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := p.Edit.Components[0].Steps
+	if len(steps) != 2 || steps[0].ID == steps[1].ID || len(steps[1].DependsOn) != 1 || steps[1].DependsOn[0] != steps[0].ID {
+		t.Errorf("steps = %+v, want two distinct ids with the second depending on the first", steps)
+	}
+}

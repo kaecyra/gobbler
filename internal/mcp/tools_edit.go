@@ -193,11 +193,7 @@ func (t *tools) getProposal(ctx context.Context, _ *mcp.CallToolRequest, in getP
 	}
 	out.RecipeID, out.BaseVersion = p.RecipeID, p.BaseVersion
 	info, err := t.Recipes.Info(ctx, p.RecipeID)
-	switch {
-	case errors.Is(err, store.ErrNotFound):
-		// The recipe was deleted: its proposals go with it, so this is a race.
-		return nil, proposalStateOut{}, t.toolError(ctx, tool, err)
-	case err != nil:
+	if err != nil {
 		return nil, proposalStateOut{}, t.toolError(ctx, tool, err)
 	}
 	out.CurrentVersion = info.Version
@@ -290,6 +286,15 @@ func (t *tools) editedRecipe(ctx context.Context, base recipe.Recipe, in editRec
 	lines := display.NewLineBuilder(t.Catalog, display.Default())
 	m := &lineMatcher{ctx: ctx, cat: t.Catalog}
 	labels := 0
+	// Ids the agent wrote, so a label made for an id-less step is never one of them.
+	written := map[recipe.StepID]bool{}
+	for _, c := range in.Components {
+		for _, s := range c.Steps {
+			if id := strings.TrimSpace(s.ID); id != "" {
+				written[recipe.StepID(id)] = true
+			}
+		}
+	}
 	used := map[recipe.StepID]bool{}
 	next.Components = nil
 	for ci, c := range in.Components {
@@ -304,7 +309,7 @@ func (t *tools) editedRecipe(ctx context.Context, base recipe.Recipe, in editRec
 		}
 		for si, s := range c.Steps {
 			where := fmt.Sprintf("component %d, step %d", ci+1, si+1)
-			step, err := editedStep(oldSteps, s, where, &labels)
+			step, err := editedStep(oldSteps, s, where, &labels, written)
 			if err != nil {
 				return recipe.Recipe{}, err
 			}
@@ -385,7 +390,7 @@ func (t *tools) editedLine(ctx context.Context, lines *display.LineBuilder, m *l
 	return line, nil
 }
 
-func editedStep(old map[recipe.StepID]recipe.Step, in editStep, where string, labels *int) (recipe.Step, error) {
+func editedStep(old map[recipe.StepID]recipe.Step, in editStep, where string, labels *int, written map[recipe.StepID]bool) (recipe.Step, error) {
 	text := strings.TrimSpace(in.Text)
 	if text == "" {
 		return recipe.Step{}, refuse("%s: the step has no text", where)
@@ -403,8 +408,13 @@ func editedStep(old map[recipe.StepID]recipe.Step, in editStep, where string, la
 		}
 		step = had
 	case id == "":
-		*labels++
-		id = recipe.StepID("new-" + strconv.Itoa(*labels))
+		for {
+			*labels++
+			id = recipe.StepID("new-" + strconv.Itoa(*labels))
+			if !written[id] {
+				break
+			}
+		}
 	}
 	step.ID, step.Text, step.Passive = id, text, in.Passive
 	// get_recipe shows whole minutes, so minutes sent back unchanged keep the
