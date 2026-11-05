@@ -132,6 +132,55 @@ func (s *Store) SetNotePinned(ctx context.Context, id, noteID int64, pinned bool
 	})
 }
 
+// UpdateNoteBody replaces the body of note noteID of recipe id (ADR-00037).
+// The note keeps its id, author, creation time and pin. An empty body is
+// ErrInvalid; a missing recipe or note, one of another household, or a note of
+// another recipe is ErrNotFound.
+func (s *Store) UpdateNoteBody(ctx context.Context, id, noteID int64, body string) error {
+	if _, err := identity(ctx); err != nil {
+		return err
+	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(body) == "" {
+		return fmt.Errorf("%w: note is empty", ErrInvalid)
+	}
+	return s.withTx(ctx, func(q *storedb.Queries) error {
+		n, err := q.UpdateNoteBody(ctx, storedb.UpdateNoteBodyParams{Body: body, ID: noteID, RecipeID: id, HouseholdID: hid})
+		if err != nil {
+			return fmt.Errorf("edit note %d on recipe %d: %w", noteID, id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("%w: note %d on recipe %d", ErrNotFound, noteID, id)
+		}
+		return nil
+	})
+}
+
+// DeleteNote removes note noteID of recipe id (ADR-00037). A missing recipe or
+// note, one of another household, or a note of another recipe is ErrNotFound.
+func (s *Store) DeleteNote(ctx context.Context, id, noteID int64) error {
+	if _, err := identity(ctx); err != nil {
+		return err
+	}
+	hid, err := scope(ctx)
+	if err != nil {
+		return err
+	}
+	return s.withTx(ctx, func(q *storedb.Queries) error {
+		n, err := q.DeleteNote(ctx, storedb.DeleteNoteParams{ID: noteID, RecipeID: id, HouseholdID: hid})
+		if err != nil {
+			return fmt.Errorf("delete note %d on recipe %d: %w", noteID, id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("%w: note %d on recipe %d", ErrNotFound, noteID, id)
+		}
+		return nil
+	})
+}
+
 // AddMadeIt logs that recipe id was made. A zero On means today; the other
 // fields are optional. A missing recipe is ErrNotFound.
 func (s *Store) AddMadeIt(ctx context.Context, id int64, e MadeIt) (MadeIt, error) {

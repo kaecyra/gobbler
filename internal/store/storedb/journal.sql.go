@@ -10,6 +10,25 @@ import (
 	"database/sql"
 )
 
+const deleteNote = `-- name: DeleteNote :execrows
+DELETE FROM notes
+WHERE id = ?1 AND recipe_id = ?2 AND household_id = ?3
+`
+
+type DeleteNoteParams struct {
+	ID          int64
+	RecipeID    int64
+	HouseholdID int64
+}
+
+func (q *Queries) DeleteNote(ctx context.Context, arg DeleteNoteParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteNote, arg.ID, arg.RecipeID, arg.HouseholdID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const insertMadeIt = `-- name: InsertMadeIt :one
 INSERT INTO made_it (household_id, recipe_id, made_on, rating, comment, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id
@@ -163,4 +182,31 @@ func (q *Queries) ListNotes(ctx context.Context, arg ListNotesParams) ([]ListNot
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateNoteBody = `-- name: UpdateNoteBody :execrows
+UPDATE notes SET body = ?1
+WHERE id = ?2 AND recipe_id = ?3 AND household_id = ?4
+`
+
+type UpdateNoteBodyParams struct {
+	Body        string
+	ID          int64
+	RecipeID    int64
+	HouseholdID int64
+}
+
+// A note's body is edited in place; its key, author, time and pin stay
+// (ADR-00037).
+func (q *Queries) UpdateNoteBody(ctx context.Context, arg UpdateNoteBodyParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateNoteBody,
+		arg.Body,
+		arg.ID,
+		arg.RecipeID,
+		arg.HouseholdID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

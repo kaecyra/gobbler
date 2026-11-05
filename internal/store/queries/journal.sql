@@ -16,3 +16,13 @@ RETURNING id;
 -- name: ListMadeIt :many
 SELECT id, made_on, rating, comment, created_at, created_by FROM made_it
 WHERE recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id) ORDER BY made_on, id;
+
+-- A note's body is edited in place; its key, author, time and pin stay
+-- (ADR-00037).
+-- name: UpdateNoteBody :execrows
+UPDATE notes SET body = sqlc.arg(body)
+WHERE id = sqlc.arg(id) AND recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id);
+
+-- name: DeleteNote :execrows
+DELETE FROM notes
+WHERE id = sqlc.arg(id) AND recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id);
