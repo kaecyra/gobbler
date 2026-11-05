@@ -108,6 +108,23 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
     | `simmer`, `braise`, `cook` | `butter` |
     | none on a passive step | `--slate` |
 
+- **Recipe picture**
+  ([ADR-00039](../adr/00039-recipe-pictures.md), mockup `.rpic` and `.rhero`).
+  - A library or search card shows it full-bleed at the top, 150px tall,
+    fading into the card colour over its lower 60%. The recipe page shows it
+    as a header 210px tall (160px under 560px wide) with the title over the
+    fade, fading into the page colour.
+  - A recipe with no picture, or whose picture object is missing from the
+    store, shows the placeholder band at the same height. The band is drawn
+    from tokens only (`.ph0` to `.ph5` in `app.css`) and carries the meal
+    type's icon in a small tile. Its variant is the recipe id modulo 6, so a
+    recipe keeps its band. A recipe with no meal type has the band alone.
+  - The picture is decoration: `alt=""`, and the card's title link is the way
+    in. The band sits under the picture while it loads. A page script removes
+    a picture that fails to load, which leaves the band; the server logs the
+    missing object when the picture route answers 404.
+  - Cook mode, the home side panels, shopping lists, the journal and history
+    show no picture.
 - **Meal type.** An icon with a label, centred on each other. The library
   groups its cards by meal.
 - **Spice.** Zero to three chilis. Nothing is shown when the spice level is

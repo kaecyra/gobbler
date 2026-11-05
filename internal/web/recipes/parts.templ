@@ -70,11 +70,19 @@ templ ribbonAssets() {
 	<script src={ ribbon.ScriptPath } defer></script>
 }
 
+// cardPicture is the top of a card: the recipe's picture full-bleed and fading
+// into the card, or the placeholder band of the same height (layout.PictureBand,
+// ADR-00039).
+templ cardPicture(c cardView) {
+	@layout.PictureBand("rpic", "card-picture", c.ID, c.Meal, c.Picture, 1024, 300, true)
+}
+
 // recipeCard is one library card: meal type and chilis, title and source,
 // components, key ingredients, rating and made-it line, and the time ribbon
 // pinned to the bottom. The title link is stretched over the whole card.
 templ recipeCard(c cardView) {
 	<article class="rcard">
+		@cardPicture(c)
 		<div class="ctop">
 			if c.Meal != "" {
 				@mealType(c.Meal, c.MealLabel)

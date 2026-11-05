@@ -38,6 +38,9 @@ type view struct {
 	ID          int64
 	Name        string
 	Description string
+	// Picture is the address of the recipe's picture, empty for none, which
+	// shows the placeholder band (ADR-00039).
+	Picture string
 	// Meta is the line under the title; history shows the same for a revision.
 	Meta layout.RecipeMeta
 	// VideoID is the recipe's YouTube video, empty for none. HasThumbnail says

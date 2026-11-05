@@ -21,6 +21,7 @@ const (
 
 // cardView is a library card, already formatted.
 type cardView struct {
+	ID         int64
 	Href       string
 	Name       string
 	Source     string
@@ -36,6 +37,9 @@ type cardView struct {
 	RatingLabel string
 	Made        string
 	Ribbon      ribbon.Ribbon
+	// Picture is the address of the recipe's picture; empty for a recipe with
+	// none, which shows the placeholder band instead (ADR-00039).
+	Picture string
 }
 
 // groupView is a heading and the cards under it.
@@ -92,7 +96,7 @@ const noTimeTitle = "No time set"
 
 func cardFor(c store.Card, now time.Time) cardView {
 	v := cardView{
-		Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: mealLabels[c.MealType], Cuisine: c.Cuisine.Label(),
+		ID: c.ID, Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: mealLabels[c.MealType], Cuisine: c.Cuisine.Label(),
 		Components: c.Components, Key: c.KeyIngredients,
 		Made:   madeLine(c.MadeCount, c.LastMade, now),
 		Ribbon: ribbon.Build(c.Steps),

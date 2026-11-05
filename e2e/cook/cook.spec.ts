@@ -471,3 +471,12 @@ test('a running timer\'s button offers a restart, not a silent second start', as
   await page.clock.fastForward(60_000);
   await expect(button).toHaveText('Start timer (1 min)');
 });
+
+test('cook mode shows no recipe picture, though the recipe has one', async ({ page }) => {
+  // The recipe page shows it, so the seeded picture is really there.
+  await page.goto(`/recipes/${pizza}`);
+  await expect(page.getByTestId('recipe-picture').locator('img')).toHaveCount(1);
+  await page.goto(`/recipes/${pizza}/cook`);
+  await expect(page.getByTestId('cook-ingredients')).toBeVisible();
+  await expect(page.locator('img[src*="/picture"], .rhero, .rpic')).toHaveCount(0);
+});

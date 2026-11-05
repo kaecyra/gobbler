@@ -481,7 +481,10 @@ profile and its avatar reference but not the pictures. If the storage server or
 the local volume is lost, the pictures are lost with it. For avatars that is
 accepted: people upload them again. Until they do, a profile whose avatar
 object is gone shows a broken image where the avatar was (the app answers 404
-for it); uploading a new picture replaces the reference and fixes it. The local
+for it); uploading a new picture replaces the reference and fixes it. A recipe
+whose picture object is gone shows its placeholder band instead, never a broken
+image, and the app logs "picture object is missing from the media store" with
+the key. The local
 directory sits on the same volume as the database, so it protects against
 nothing that the volume does not.
 

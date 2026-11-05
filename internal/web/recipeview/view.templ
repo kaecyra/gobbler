@@ -147,6 +147,16 @@ templ videoPlayer(v view) {
 	<script src={ videoScriptPath } defer></script>
 }
 
+// pictureHeader is the top of the page (ADR-00039, Showing): the recipe's
+// picture kept short, or the placeholder band at the same height, with the
+// title over the fade so the ingredients stay high on a tablet.
+templ pictureHeader(v view) {
+	@layout.PictureBand("rhero", "recipe-picture", v.ID, v.Meta.MealType, v.Picture, 1124, 210, false) {
+		<h1>{ v.Name }</h1>
+	}
+	@layout.PictureFallback()
+}
+
 templ recipeBody(v view) {
 	<article id="recipe" class="recipe">
 		<nav class="crumbs" aria-label="Breadcrumb">
@@ -158,9 +168,9 @@ templ recipeBody(v view) {
 				<span aria-current="page">{ v.Name }</span>
 			}
 		</nav>
+		@pictureHeader(v)
 		<div class="rhead">
 			<div>
-				<h1>{ v.Name }</h1>
 				if v.Description != "" {
 					<p class="lede">{ v.Description }</p>
 				}

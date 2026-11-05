@@ -49,14 +49,14 @@ func mountFeatures(r chi.Router, d Deps) {
 	// downloads a video thumbnail, so the image host is set in one place.
 	thumbs := video.NewFetcherAt(d.Config.Video.ThumbnailHost)
 	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Thumbnails: thumbs, Pending: d.Drafts, Pictures: d.Pictures, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
-	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
+	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Pictures: pictures.Srcs{Pictures: d.Pictures}}))
 	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: store.New(d.DB)}))
 	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
 	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
-	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB)}))
+	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB), Pictures: pictures.Srcs{Pictures: d.Pictures}}))
 	// The home page: "/" is registered here and nowhere else.
 	r.Get("/", homeRoute(d))
 	mountCatalog(r, d)
