@@ -3378,7 +3378,8 @@
         "internal/web/editor/**",
         "internal/web/static/editor.js",
         "e2e/editor/**",
-        "e2e/ingest/**"
+        "e2e/ingest/**",
+        "internal/web/ingest/review_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
