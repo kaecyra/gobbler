@@ -166,6 +166,7 @@ const PROBES: Probe[] = [
   hidden('GET', (i) => `/recipes/${i.recipe}/edit`),
   hidden('POST', (i) => `/recipes/${i.recipe}/edit`, () => ({ version: '1', name: 'Hijacked' })),
   hidden('POST', (i) => `/recipes/${i.recipe}/clone`),
+  hidden('POST', (i) => `/recipes/${i.recipe}/proposal/reject`, () => ({ proposal: 'a-token-nobody-holds' })),
   // This recipe has no video, so DEV gets 404 here too; the video suite below proves it with a stored thumbnail.
   hidden('GET', (i) => `/recipes/${i.recipe}/video/thumbnail`),
   hidden('GET', (i) => `/recipes/${i.recipe}/history`),

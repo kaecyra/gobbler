@@ -28,7 +28,8 @@
 #recipe ins { background: var(--grain-soft); color: var(--grain-ink); font-weight: 600; }
 #recipe del { background: var(--wattle-soft); color: var(--wattle-ink); text-decoration: line-through; }
 
-.pfields { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.pfields { margin: 12px 0 0; padding: 0; list-style: none; flex-direction: column; gap: 4px; }
+.pbanner:has(#pmarks:checked) ~ #recipe .pfields { display: flex; }
 .pfields li { font-size: 16px; color: var(--ink-2); }
 .pfields .plabel { font-weight: 650; color: var(--ink); margin-right: 6px; }
 

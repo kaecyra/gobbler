@@ -57,6 +57,46 @@ test('a recipe write is a draft with a review path, and saves nothing', async ()
   await ctx.dispose();
 });
 
+test('an edit is a proposal: the recipe is unchanged until a person saves it, and the review page shows it', async () => {
+  const ctx = await withKey(server.origin, server.seed.devKey);
+  const id = server.seed.pancakes;
+  const recipe = await tool(ctx, 'get_recipe', { id });
+  const components = recipe.components.map((c: any) => ({
+    name: c.name,
+    ingredients: c.ingredients.map((l: any) => ({ key: l.key, text: l.text })),
+    steps: c.steps.map((s: any) => ({ id: s.id, text: s.text, minutes: s.minutes, depends_on: s.depends_on })),
+  }));
+  expect(components[0].ingredients[0].key).toMatch(/^lin-/);
+
+  const out = await tool(ctx, 'propose_recipe_edit', {
+    id,
+    version: recipe.version,
+    reason: 'A thicker batter holds the blueberries.',
+    recipe: { name: 'E2E MCP Pancakes, thicker', components },
+  });
+  expect(out.review_path).toBe(`/recipes/${id}/edit?proposal=${out.token}`);
+
+  // Nothing was saved.
+  const after = await tool(ctx, 'get_recipe', { id });
+  expect(after.name).toBe('E2E MCP Pancakes');
+  expect(after.version).toBe(recipe.version);
+  const state = await tool(ctx, 'get_recipe_proposal', { token: out.token });
+  expect(state).toMatchObject({ state: 'pending', stale: false, current_version: recipe.version, review_path: out.review_path });
+
+  // A person opens the review path in the editor and sees the proposal.
+  const person = await withKey(server.origin);
+  const page = await person.get(out.review_path);
+  expect(page.status()).toBe(200);
+  const html = await page.text();
+  expect(html).toContain('A thicker batter holds the blueberries.');
+  expect(html).toContain('E2E MCP Pancakes, thicker');
+  // A stale version, a missing reason and an unchanged recipe are refused.
+  expect(await toolError(ctx, 'propose_recipe_edit', { id, version: recipe.version + 5, reason: 'x', recipe: { name: 'x', components } })).toContain('version');
+  expect(await toolError(ctx, 'propose_recipe_edit', { id, version: recipe.version, reason: ' ', recipe: { name: 'x', components } })).toContain('reason');
+  await person.dispose();
+  await ctx.dispose();
+});
+
 test('another household is not found, and an unknown list is refused', async () => {
   const ctx = await withKey(server.origin, server.seed.devKey);
   expect(await toolError(ctx, 'get_recipe', { id: server.seed.secret })).toBe('not found');
