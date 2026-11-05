@@ -8,6 +8,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/jpeg"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -80,6 +81,16 @@ func (r *rig) avatarKey(email string) string {
 	return p.Avatar
 }
 
+// personOf is the id that names the email's media keys.
+func personOf(t *testing.T, s *Store, email string) string {
+	t.Helper()
+	p, err := s.Ensure(context.Background(), email)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p.Address
+}
+
 func (r *rig) has(key string) bool {
 	_, err := r.media.Get(context.Background(), key)
 	return err == nil
@@ -89,7 +100,7 @@ func TestUploadCropProcessStoresAWebPAndClearsTheOriginal(t *testing.T) {
 	r := newRig(t)
 	ctx := context.Background()
 	j := r.uploadAndCrop("ann@example.com", media.Crop{X: 0, Y: 0, W: 0.5, H: 1})
-	if !r.has(uploadKey(j.ID, originalSuffix)) {
+	if !r.has(uploadKey(personOf(t, r.store, "ann@example.com"), j.ID, originalSuffix)) {
 		t.Fatal("the original is not stored while the job is queued")
 	}
 	r.avatars.Wait()
@@ -112,7 +123,7 @@ func TestUploadCropProcessStoresAWebPAndClearsTheOriginal(t *testing.T) {
 	if _, ok, _ := r.avatars.Job(ctx, "ann@example.com"); ok {
 		t.Error("the job row is still there after success")
 	}
-	if r.has(uploadKey(j.ID, originalSuffix)) || r.has(uploadKey(j.ID, previewSuffix)) {
+	if r.has(uploadKey(personOf(t, r.store, "ann@example.com"), j.ID, originalSuffix)) || r.has(uploadKey(personOf(t, r.store, "ann@example.com"), j.ID, previewSuffix)) {
 		t.Error("the original or preview was kept after success")
 	}
 
@@ -153,7 +164,7 @@ func TestOriginalIsKeptWhenProcessingFailsAndTheCropCanBeRetried(t *testing.T) {
 	if strings.Contains(got.Error, "storage server") {
 		t.Errorf("the message %q leaks the internal error", got.Error)
 	}
-	if _, err := m.Get(ctx, uploadKey(j.ID, originalSuffix)); err != nil {
+	if _, err := m.Get(ctx, uploadKey(personOf(t, s, "ann@example.com"), j.ID, originalSuffix)); err != nil {
 		t.Errorf("the original was not kept after a failure: %v", err)
 	}
 	if p, _ := s.Ensure(ctx, "ann@example.com"); p.Avatar != "" {
@@ -247,7 +258,7 @@ func TestAnUploadWhileOneIsBeingProcessedIsBusy(t *testing.T) {
 	if _, err := r.avatars.Upload(ctx, "ann@example.com", testJPEG(t)); !errors.Is(err, ErrBusy) {
 		t.Errorf("Upload beside a queued job = %v, want ErrBusy", err)
 	}
-	if !r.has(uploadKey(j.ID, originalSuffix)) {
+	if !r.has(uploadKey(personOf(t, r.store, "ann@example.com"), j.ID, originalSuffix)) {
 		t.Error("the queued job's original was removed by the refused upload")
 	}
 }
@@ -314,7 +325,7 @@ func TestAPanicWhileProcessingFailsTheJobAndKeepsTheOriginal(t *testing.T) {
 	if err != nil || !ok || got.State != JobFailed || got.Error == "" {
 		t.Fatalf("Job = %+v, %v, %v, want a failed job with a message", got, ok, err)
 	}
-	if _, err := m.Get(ctx, uploadKey(j.ID, originalSuffix)); err != nil {
+	if _, err := m.Get(ctx, uploadKey(personOf(t, s, "ann@example.com"), j.ID, originalSuffix)); err != nil {
 		t.Errorf("the original was not kept: %v", err)
 	}
 	// Not queued any more, so the next start does not run it again.
@@ -325,5 +336,31 @@ func TestAPanicWhileProcessingFailsTheJobAndKeepsTheOriginal(t *testing.T) {
 	next.Wait()
 	if got, _, _ := next.Job(ctx, "ann@example.com"); got.State != JobFailed {
 		t.Errorf("State after a restart = %q, want failed", got.State)
+	}
+}
+
+// Media keys are named for their owner (ADR-00039): the processed avatar under
+// people/<person>/avatar/, the transient upload under people/<person>/uploads/.
+func TestStoredKeysAreNamedForTheirPerson(t *testing.T) {
+	r := newRig(t)
+	ctx := context.Background()
+	const email = "ann@example.com"
+	person := personOf(t, r.store, email)
+	j, err := r.avatars.Upload(ctx, email, testJPEG(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{".orig", ".preview.jpg"} {
+		if !r.has("people/" + person + "/uploads/" + j.ID + suffix) {
+			t.Errorf("no object at people/%s/uploads/%s%s", person, j.ID, suffix)
+		}
+	}
+	if err := r.avatars.Crop(ctx, email, j.ID, media.Full); err != nil {
+		t.Fatal(err)
+	}
+	r.avatars.Wait()
+	want := regexp.MustCompile(`^people/` + regexp.QuoteMeta(person) + `/avatar/[A-Za-z0-9_-]{22}\.webp$`)
+	if key := r.avatarKey(email); !want.MatchString(key) {
+		t.Errorf("avatar key = %q, want %s", key, want)
 	}
 }

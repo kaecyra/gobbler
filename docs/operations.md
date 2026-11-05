@@ -451,9 +451,10 @@ interface with two implementations:
 - **S3 media bucket.** Set `GOBBLER_S3_MEDIA_BUCKET` and the other S3 settings
   and media goes to that bucket. It is a separate bucket from
   `GOBBLER_S3_BUCKET` (the backups), on the same endpoint with the same
-  credentials, so create both. Objects are under `avatars/`: the processed
-  avatar as `avatars/<random>.webp` and, until processing succeeds, the upload
-  and its crop preview under `avatars/uploads/`.
+  credentials, so create both. Objects are under `people/<address>/`: the
+  processed avatar as `people/<address>/avatar/<version>.webp` and, until
+  processing succeeds, the upload and its crop preview as
+  `people/<address>/uploads/<token>.orig` and `.preview.jpg`.
 - **Local directory.** With no S3 settings, or S3 set for backups only (no media
   bucket), media is kept under `<data dir>/media/`, which is `/data/media/` in
   the container, on the `gobbler-data` volume. Development, the e2e suite and a
@@ -512,7 +513,7 @@ GOBBLER_S3_SECRET_ACCESS_KEY=...
 
 `http://` is fine on a trusted home network; use `https://` if the traffic
 crosses anything else. Restart gobbler, upload an avatar from the profile page,
-and check the object appears under `avatars/` in the media bucket.
+and check the object appears under `people/` in the media bucket.
 
 ## Restore
 

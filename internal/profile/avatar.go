@@ -69,7 +69,26 @@ func NewAvatars(ctx context.Context, s *Store, m media.Store, log *slog.Logger) 
 // Wait blocks until the background jobs started so far have ended.
 func (a *Avatars) Wait() { a.wg.Wait() }
 
-func uploadKey(id, suffix string) string { return "avatars/uploads/" + id + suffix }
+// Media keys are named for their owner (ADR-00039). A person's id in a key is
+// the address of their profile: it never changes, and unlike the email it puts
+// no personal data in an object name.
+
+func uploadKey(person, id, suffix string) string {
+	return "people/" + person + "/uploads/" + id + suffix
+}
+
+func avatarKey(person, version string) string {
+	return "people/" + person + "/avatar/" + version + ".webp"
+}
+
+// person returns the id that names the email's media keys.
+func (a *Avatars) person(ctx context.Context, email string) (string, error) {
+	p, err := a.s.ByEmail(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	return p.Address, nil
+}
 
 const (
 	originalSuffix = ".orig"
@@ -102,6 +121,10 @@ func (a *Avatars) Upload(ctx context.Context, email string, data []byte) (Job, e
 	if err != nil {
 		return Job{}, err
 	}
+	person, err := a.person(ctx, e)
+	if err != nil {
+		return Job{}, err
+	}
 	id, err := a.newID()
 	if err != nil {
 		return Job{}, err
@@ -113,11 +136,11 @@ func (a *Avatars) Upload(ctx context.Context, email string, data []byte) (Job, e
 	if hadOld && old.State == JobQueued {
 		return Job{}, fmt.Errorf("upload for %s: %w", e, ErrBusy)
 	}
-	if err := a.media.Put(ctx, uploadKey(id, originalSuffix), data, "application/octet-stream"); err != nil {
+	if err := a.media.Put(ctx, uploadKey(person, id, originalSuffix), data, "application/octet-stream"); err != nil {
 		return Job{}, fmt.Errorf("store the upload: %w", err)
 	}
-	if err := a.media.Put(ctx, uploadKey(id, previewSuffix), preview, "image/jpeg"); err != nil {
-		a.discard(ctx, id)
+	if err := a.media.Put(ctx, uploadKey(person, id, previewSuffix), preview, "image/jpeg"); err != nil {
+		a.discard(ctx, person, id)
 		return Job{}, fmt.Errorf("store the preview: %w", err)
 	}
 	var n int64
@@ -127,15 +150,15 @@ func (a *Avatars) Upload(ctx context.Context, email string, data []byte) (Job, e
 		return err
 	})
 	if err != nil {
-		a.discard(ctx, id)
+		a.discard(ctx, person, id)
 		return Job{}, fmt.Errorf("record the upload for %s: %w", e, err)
 	}
 	if n == 0 { // queued between the read and the write
-		a.discard(ctx, id)
+		a.discard(ctx, person, id)
 		return Job{}, fmt.Errorf("upload for %s: %w", e, ErrBusy)
 	}
 	if hadOld {
-		a.discard(ctx, old.ID)
+		a.discard(ctx, person, old.ID)
 	}
 	return Job{ID: id, State: JobUploaded, Crop: media.Full}, nil
 }
@@ -143,9 +166,9 @@ func (a *Avatars) Upload(ctx context.Context, email string, data []byte) (Job, e
 // discard removes an upload's objects. Failing to is logged, not returned: an
 // orphan object costs disk and nothing else, and the caller has either
 // succeeded or is already returning a more important error.
-func (a *Avatars) discard(ctx context.Context, id string) {
+func (a *Avatars) discard(ctx context.Context, person, id string) {
 	for _, suffix := range []string{originalSuffix, previewSuffix} {
-		if err := a.media.Delete(ctx, uploadKey(id, suffix)); err != nil {
+		if err := a.media.Delete(ctx, uploadKey(person, id, suffix)); err != nil {
 			a.log.WarnContext(ctx, "delete avatar upload object", "upload_id", id, "error", err.Error())
 		}
 	}
@@ -186,7 +209,11 @@ func (a *Avatars) Preview(ctx context.Context, email, id string) ([]byte, error)
 	if !ok || j.ID != id {
 		return nil, fmt.Errorf("avatar upload %q: %w", id, ErrNotFound)
 	}
-	b, err := a.media.Get(ctx, uploadKey(id, previewSuffix))
+	person, err := a.person(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	b, err := a.media.Get(ctx, uploadKey(person, id, previewSuffix))
 	if errors.Is(err, media.ErrNotFound) {
 		return nil, fmt.Errorf("avatar preview %q: %w", id, ErrNotFound)
 	}
@@ -318,7 +345,11 @@ func (a *Avatars) safeProcess(ctx context.Context, email string, j Job) (key str
 }
 
 func (a *Avatars) process(ctx context.Context, email string, j Job) (string, error) {
-	orig, err := a.media.Get(ctx, uploadKey(j.ID, originalSuffix))
+	person, err := a.person(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	orig, err := a.media.Get(ctx, uploadKey(person, j.ID, originalSuffix))
 	if err != nil {
 		return "", fmt.Errorf("read the original: %w", err)
 	}
@@ -334,7 +365,7 @@ func (a *Avatars) process(ctx context.Context, email string, j Job) (string, err
 	if err != nil {
 		return "", err
 	}
-	key := "avatars/" + id + ".webp"
+	key := avatarKey(person, id)
 	if err := a.media.Put(ctx, key, out, "image/webp"); err != nil {
 		return "", fmt.Errorf("store the avatar: %w", err)
 	}
@@ -359,7 +390,7 @@ func (a *Avatars) process(ctx context.Context, email string, j Job) (string, err
 		return "", fmt.Errorf("record the avatar: %w", err)
 	}
 	// Recorded: the original and the replaced avatar are no longer needed.
-	a.discard(ctx, j.ID)
+	a.discard(ctx, person, j.ID)
 	if previous != "" {
 		if err := a.media.Delete(ctx, previous); err != nil {
 			a.log.WarnContext(ctx, "delete replaced avatar", "avatar", previous, "error", err.Error())
