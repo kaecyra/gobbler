@@ -257,6 +257,10 @@ test.describe('the picture dialog', () => {
     await waitForCrop(page);
     await expect(dialogOf(page).getByTestId('avatar-error')).toBeHidden();
     await page.keyboard.press('Escape');
+    // Closing sends a reset to the first step. Wait for it to be swapped in:
+    // before that the panel has no file input to open, and a swap landing after
+    // the failure below would clear its message.
+    await expect(dialogOf(page).getByTestId('avatar-panel')).toHaveAttribute('data-step', 'upload');
     fromAvatar = true;
     // Close is always there.
     await page.route(/\/avatar$/, (route) => route.fulfill({ status: 500, body: 'boom' }));
