@@ -195,7 +195,12 @@ test('the choice survives the form being shown again', async ({ page: p }) => {
   await picker(p).locator('.pick', { hasText: '1024 × 341' }).click();
   // A refused confirm re-renders the form: blank the name so the editor rejects it.
   await p.getByLabel('Name', { exact: true }).fill('');
-  await p.getByRole('button', { name: 'Confirm and save' }).first().click();
+  // The confirm is an htmx request: wait for it, or the reload can abort it
+  // before the choice is recorded.
+  await Promise.all([
+    p.waitForResponse((r) => r.url().endsWith('/confirm')),
+    p.getByRole('button', { name: 'Confirm and save' }).first().click(),
+  ]);
   await p.reload();
   await expect(picker(p).getByRole('radio', { name: /1024 × 341/ })).toBeChecked();
 });
@@ -209,7 +214,6 @@ test('a picture position the draft does not have is refused as a bad request', a
     p.getByRole('button', { name: 'Confirm and save' }).first().click(),
   ]);
   expect(res.status()).toBe(400);
-  await p.goBack(); // to the review screen, so afterEach discards the draft
 });
 
 test('a page with no pictures offers only No picture, and it saves', async ({ page: p }) => {
