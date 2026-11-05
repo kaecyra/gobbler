@@ -61,13 +61,6 @@ func TestAcceptEditWritesAProposalRevision(t *testing.T) {
 	if err != nil || old.Name != before.Name {
 		t.Errorf("version 1 = %q (%v), want %q", old.Name, err, before.Name)
 	}
-	ref, ok, err := s.ProposalFor(ctx, id, 2)
-	if err != nil || !ok || ref.Token != token || ref.Reason != "less salt" {
-		t.Errorf("ProposalFor(version 2) = %+v %v %v, want the accepted proposal", ref, ok, err)
-	}
-	if _, ok, _ := s.ProposalFor(ctx, id, 1); ok {
-		t.Error("ProposalFor(version 1) found a proposal, but version 1 was not produced by one")
-	}
 }
 
 // ADR-00035 obligation 11: restoring the revision a proposal wrote round-trips
@@ -226,8 +219,8 @@ func TestProposalByACredentialWithNoCreationTimeLoads(t *testing.T) {
 	if err := s.AcceptEdit(ctx, token, 1, edit); err != nil {
 		t.Fatal(err)
 	}
-	ref, ok, err := s.ProposalFor(ctx, id, 2)
-	if err != nil || !ok || ref.Credential == nil {
-		t.Fatalf("ProposalFor = %+v %v (%v), want the credential", ref, ok, err)
+	revs, err := s.ListRevisions(ctx, id)
+	if err != nil || len(revs) != 1 || revs[0].Proposal == nil || revs[0].Proposal.Credential == nil {
+		t.Fatalf("ListRevisions = %+v (%v), want the revision to carry the credential", revs, err)
 	}
 }

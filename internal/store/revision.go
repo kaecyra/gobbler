@@ -92,15 +92,17 @@ func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error)
 		if err != nil {
 			return readErr("revision proposals", err)
 		}
+		byVersion := make(map[int64]ProposalRef, len(refs))
 		for _, r := range refs {
 			ref, err := proposalRef(r.Token, r.Reason, r.Tool, r.ProposedBy, r.CredentialKind, r.CredentialID, r.CredentialRef, r.CredentialOwner, r.CredentialCreatedAt, r.CreatedAt)
 			if err != nil {
 				return err
 			}
-			for i := range out {
-				if out[i].Version == r.Version {
-					out[i].Proposal = &ref
-				}
+			byVersion[r.Version] = ref
+		}
+		for i := range out {
+			if ref, ok := byVersion[out[i].Version]; ok {
+				out[i].Proposal = &ref
 			}
 		}
 		return nil

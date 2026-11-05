@@ -7,55 +7,7 @@ package storedb
 
 import (
 	"context"
-	"database/sql"
 )
-
-const getAcceptedEditProposalFor = `-- name: GetAcceptedEditProposalFor :one
-SELECT token, reason, tool, proposed_by, credential_kind, credential_id, credential_ref, credential_owner,
-    credential_created_at, created_at
-FROM proposals
-WHERE recipe_id = ?1 AND household_id = ?2 AND kind = 'edit' AND state = 'accepted'
-    AND base_version = ?3
-`
-
-type GetAcceptedEditProposalForParams struct {
-	RecipeID    sql.NullInt64
-	HouseholdID int64
-	BaseVersion sql.NullInt64
-}
-
-type GetAcceptedEditProposalForRow struct {
-	Token               string
-	Reason              string
-	Tool                string
-	ProposedBy          string
-	CredentialKind      string
-	CredentialID        int64
-	CredentialRef       string
-	CredentialOwner     string
-	CredentialCreatedAt string
-	CreatedAt           string
-}
-
-// Accepting a proposal made against version v produced version v+1, and a
-// version is produced once, so this names the proposal behind a version.
-func (q *Queries) GetAcceptedEditProposalFor(ctx context.Context, arg GetAcceptedEditProposalForParams) (GetAcceptedEditProposalForRow, error) {
-	row := q.db.QueryRowContext(ctx, getAcceptedEditProposalFor, arg.RecipeID, arg.HouseholdID, arg.BaseVersion)
-	var i GetAcceptedEditProposalForRow
-	err := row.Scan(
-		&i.Token,
-		&i.Reason,
-		&i.Tool,
-		&i.ProposedBy,
-		&i.CredentialKind,
-		&i.CredentialID,
-		&i.CredentialRef,
-		&i.CredentialOwner,
-		&i.CredentialCreatedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
 
 const listRevisionProposals = `-- name: ListRevisionProposals :many
 
@@ -84,9 +36,8 @@ type ListRevisionProposalsRow struct {
 	CreatedAt           string
 }
 
-// The proposal an accepted edit came from, for history (ADR-00035): the
-// revisions that were written by accepting one, and the proposal that produced
-// the current version.
+// The proposals that accepted edits came from, for history (ADR-00035): the
+// revisions that were written by accepting one.
 func (q *Queries) ListRevisionProposals(ctx context.Context, arg ListRevisionProposalsParams) ([]ListRevisionProposalsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRevisionProposals, arg.RecipeID, arg.HouseholdID)
 	if err != nil {

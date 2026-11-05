@@ -118,37 +118,6 @@ func (s *Store) AcceptEdit(ctx context.Context, token string, expectedVersion in
 	})
 }
 
-// ProposalFor returns what history shows of the accepted edit proposal that
-// produced version of recipe id, if one did. Accepting a proposal made against
-// version v produced v+1, and a version is produced once, so there is at most
-// one.
-func (s *Store) ProposalFor(ctx context.Context, id, version int64) (ProposalRef, bool, error) {
-	hid, err := scope(ctx)
-	if err != nil {
-		return ProposalRef{}, false, err
-	}
-	var ref ProposalRef
-	var found bool
-	err = s.read(ctx, func(q *storedb.Queries) error {
-		if _, err := loadInfo(ctx, q, hid, id); err != nil {
-			return err
-		}
-		r, err := q.GetAcceptedEditProposalFor(ctx, storedb.GetAcceptedEditProposalForParams{
-			RecipeID: nullID(id), HouseholdID: hid, BaseVersion: nullID(version - 1),
-		})
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return readErr("accepted proposal", err)
-		}
-		found = true
-		ref, err = proposalRef(r.Token, r.Reason, r.Tool, r.ProposedBy, r.CredentialKind, r.CredentialID, r.CredentialRef, r.CredentialOwner, r.CredentialCreatedAt, r.CreatedAt)
-		return err
-	})
-	return ref, found, err
-}
-
 // Describe says who made a proposal for a person to read: the credential an
 // agent used and whom it acts for, or the person alone when no credential was
 // involved. A household key acts for no one person, so it is named without an
