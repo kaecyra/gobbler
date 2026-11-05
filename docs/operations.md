@@ -29,6 +29,12 @@ sign-in session, stops anything else that gets through
 - A Cloudflare account with a domain on it and Zero Trust enabled.
 - Outbound HTTPS from the VM: the guest's `cloudflared` to Cloudflare, `gobbler` to recipe
   sites, the sign-in issuer, the LLM provider and the S3 endpoint.
+- Outbound fetches of a URL someone else chose (a recipe page, a recipe picture,
+  an OAuth client's metadata document) ignore `HTTP_PROXY` and `HTTPS_PROXY`, and
+  never connect to a private, loopback or link-local address, even through a
+  redirect or a name that resolves to one. A recipe cannot be imported by URL
+  from a host on the local network
+  ([ADR-00039](./adr/00039-recipe-pictures.md)).
 
 ### Cloudflare side (unverified: dashboard labels change)
 
