@@ -3428,7 +3428,7 @@
       "wave": 11,
       "track": null,
       "issue": 407,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "e2e/profile/avatar.spec.ts",
@@ -4566,6 +4566,12 @@
       "title": "make the profile address test deterministic",
       "merged": "9b38f22",
       "note": "CI flake on #405: a random base64url address contains 'ann' by chance. Fix with a fixed s.rand reader and an exact expected address, per the issue."
+    },
+    {
+      "id": "t-avatar-dialog-flake",
+      "title": "find and fix the avatar dialog failed-request e2e flake",
+      "merged": "2854585",
+      "note": "CI flake on #405 at e2e/profile/avatar.spec.ts:226, cause unknown. Reproduce with --repeat-each, fix the cause (wait on the request, not a delay); no retries. The lane covers the dialog's error display and button handler (static/profile.js), the crop step (static/avatar.js) and the avatar templ and handler, in case the cause is in the page."
     }
   ],
   "adr_sequence": {
