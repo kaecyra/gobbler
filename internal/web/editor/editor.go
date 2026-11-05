@@ -31,6 +31,13 @@ import (
 // below the recipe's own page.
 const Pattern = "/recipes/{id}/edit"
 
+// scriptPath is the editor's script: drag to reorder, opened rows kept open,
+// focus on a new control. The form works without it.
+const scriptPath = "/static/editor.js"
+
+// morphPath is idiomorph's htmx extension (ADR-00038).
+const morphPath = "/static/vendor/idiomorph-ext.min.js"
+
 // maxFormBytes bounds an editor form body; a long recipe is still prose.
 const maxFormBytes = 1 << 20
 

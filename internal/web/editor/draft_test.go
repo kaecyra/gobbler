@@ -103,21 +103,15 @@ func TestANewStepReusingARemovedLabelInheritsNoLinks(t *testing.T) {
 	}
 }
 
-func TestReorderingAndEdgeMoves(t *testing.T) {
+func TestMoveReordersWithinItsList(t *testing.T) {
 	d := twoComponents()
-	if err := d.apply("down-step:0.0"); err != nil {
+	if err := d.apply("move-step:0.0.1"); err != nil {
 		t.Fatal(err)
 	}
 	if got := stepIDsOf(d.Components[0]); !reflect.DeepEqual(got, []string{"a2", "a1"}) {
-		t.Errorf("after down = %v", got)
+		t.Errorf("after moving the first step to second = %v", got)
 	}
-	if err := d.apply("up-step:0.0"); err != nil { // already first: stays
-		t.Fatal(err)
-	}
-	if got := stepIDsOf(d.Components[0]); !reflect.DeepEqual(got, []string{"a2", "a1"}) {
-		t.Errorf("up on the first step moved it: %v", got)
-	}
-	if err := d.apply("down-component:0"); err != nil {
+	if err := d.apply("move-component:0.1"); err != nil {
 		t.Fatal(err)
 	}
 	if d.Components[0].Name != "B" || d.Components[1].Name != "A" {
@@ -126,7 +120,7 @@ func TestReorderingAndEdgeMoves(t *testing.T) {
 }
 
 func TestApplyRejectsWhatTheDraftDoesNotHave(t *testing.T) {
-	for _, a := range []string{"rm-component:5", "add-line:2", "rm-line:0.0", "rm-qual:0.0.0", "up-step:0.9", "rm-equip:3", "nonsense", "rm-step:a.b", "add-step:0.1"} {
+	for _, a := range []string{"rm-component:5", "add-line:2", "rm-line:0.0", "rm-qual:0.0.0", "move-step:0.9.0", "up-step:0.0", "rm-equip:3", "nonsense", "rm-step:a.b", "add-step:0.1"} {
 		d := twoComponents()
 		if err := d.apply(a); err == nil {
 			t.Errorf("apply(%q) = nil, want an error", a)

@@ -24,9 +24,6 @@ func TestSourceRowsMarkOnlyLinesBelowTheThreshold(t *testing.T) {
 	if got := sourceRows(d); !reflect.DeepEqual(got, want) {
 		t.Errorf("sourceRows = %+v, want %+v", got, want)
 	}
-	if got := lowLineCount(d); got != 2 {
-		t.Errorf("lowLineCount = %d, want the unsure line and the blank LLM line", got)
-	}
 }
 
 func TestFormModeFollowsWhatWasSubmitted(t *testing.T) {

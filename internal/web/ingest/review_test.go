@@ -202,7 +202,7 @@ func TestStructuralButtonShowsTheFormAgainAndSavesNothing(t *testing.T) {
 	form.Set("action", "add-line:0")
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
 	body := rec.Body.String()
-	if rec.Code != http.StatusOK || !strings.Contains(body, "Line 3") || !strings.Contains(body, `value="Grace"`) {
+	if rec.Code != http.StatusOK || !strings.Contains(body, `name="c.0.l.2.qty"`) || !strings.Contains(body, `value="Grace"`) {
 		t.Fatalf("status = %d; body: %s", rec.Code, body)
 	}
 	if len(f.store.recipes) != 0 || len(f.store.created) != 0 {
@@ -237,7 +237,7 @@ func TestFlagsSurviveAStructuralButton(t *testing.T) {
 		form.Set(name, "low")
 	}
 	form.Set("c.0.l.1.issue", "ingredient not matched")
-	form.Set("action", "up-line:0.1")
+	form.Set("action", "move-line:0.1.0")
 	body := f.do(http.MethodPost, "/"+token+"/confirm", form).Body.String()
 	lines := items(body, "line")
 	if !strings.Contains(lines[0], "Check:") || !strings.Contains(lines[0], "not matched") {

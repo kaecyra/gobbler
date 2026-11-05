@@ -327,11 +327,13 @@ func calories(s string) Field[int] {
 	return Field[int]{Value: n, Confidence: 1}
 }
 
-// yield reads the first yield text that starts with a quantity: "4" gives
-// servings 4 and no yield, since a bare number names no unit and a "Makes 4
-// servings" line beside "Serves 4" would say the same thing twice; "4
-// servings" gives servings 4 and a yield of 4 servings; "1 loaf" gives a yield
-// of one loaf.
+// yield reads the yield texts that start with a quantity. "4" gives servings 4
+// and no yield, since a bare number names no unit, and reading goes on to the
+// next text: WPRM states ["1", "1 loaf"], which gives servings 1 and a yield
+// of one loaf. The first text with a unit ends the reading. "4 servings" gives
+// servings 4 and a yield of 4 servings, unless a bare number already gave the
+// servings, since a "Makes 4 servings" yield beside "Serves 4" would say the
+// same thing twice; "1 loaf" gives a yield of one loaf.
 func (a *assembler) yield(texts []string) {
 	var stated bool
 	for _, t := range texts {
@@ -345,17 +347,22 @@ func (a *assembler) yield(texts []string) {
 			continue
 		}
 		if unit == "" {
-			a.d.Servings = Field[quantity.Quantity]{Value: qty, Confidence: 1}
-			return
+			if a.d.Servings.Confidence == 0 {
+				a.d.Servings = Field[quantity.Quantity]{Value: qty, Confidence: 1}
+			}
+			continue
 		}
 		if strings.HasPrefix(strings.ToLower(unit), "serving") {
+			if a.d.Servings.Confidence > 0 {
+				return
+			}
 			a.d.Servings = Field[quantity.Quantity]{Value: qty, Confidence: 1}
 			unit = "servings"
 		}
 		a.d.Yield = Field[recipe.Yield]{Value: recipe.Yield{Qty: qty, Unit: unit}, Confidence: 1}
 		return
 	}
-	if stated {
+	if stated && a.d.Servings.Confidence == 0 {
 		a.d.Issues = append(a.d.Issues, IssueUnreadableYield)
 	}
 }

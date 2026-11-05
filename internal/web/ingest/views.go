@@ -78,22 +78,10 @@ func sourceRows(d ingestcore.Draft) []srcRow {
 	return rows
 }
 
-// lowLineCount is how many ingredient lines the rules were unsure of.
-func lowLineCount(d ingestcore.Draft) int {
-	n := 0
-	for _, c := range d.Components {
-		for _, l := range c.Lines {
-			if l.Confidence < d.Threshold {
-				n++
-			}
-		}
-	}
-	return n
-}
-
-func lowLinesText(n int) string {
+// needLookText is the chip that counts the items marked for a look.
+func needLookText(n int) string {
 	if n == 1 {
-		return "1 line needs a look"
+		return "1 item needs a look"
 	}
-	return fmt.Sprintf("%d lines need a look", n)
+	return fmt.Sprintf("%d items need a look", n)
 }

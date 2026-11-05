@@ -161,6 +161,9 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   in a last "Added by hand" group.
 - **Editor save bar:** Save and Cancel sit in a bar stuck to the bottom of the
   viewport while the form scrolls, above the bottom tab bar on a phone.
+- **Parts:** every page calls a recipe component a "part" (Add a part, Part 2
+  name, Parts of this recipe). The data model, the ADRs, field names and the
+  MCP tools keep "component".
 - **Pages with no mockup** take the same tokens and components: the editor,
   settings, household and invitations, the profile page, sharing, catalog, pantry, shopping
   build and export, and the operator pages. They are reviewed from screenshots

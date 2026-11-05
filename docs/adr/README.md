@@ -52,6 +52,7 @@ index below in the same commit.
 | [00035](00035-reviewing-agent-recipe-edits.md) | Recipes awaiting review are stored as proposals, and an edit is reviewed in the recipe editor | Accepted |
 | [00036](00036-rate-limits-on-public-oauth-endpoints.md) | The public OAuth endpoints are rate-limited per client address, and unused client registrations have a ceiling | Accepted |
 | [00037](00037-notes-are-editable.md) | A note is a household scratchpad: its body is edited in place and it can be deleted | Accepted |
+| [00038](00038-editor-morphs-the-server-rendered-form.md) | The recipe editor morphs the server-rendered form in place | Accepted |
 
 ## What needs one
 
