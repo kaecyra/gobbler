@@ -158,7 +158,7 @@ func editorForm(v view) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"#editor\" hx-swap=\"morph:outerHTML\" hx-ext=\"morph\"><style>\n\t\t\t.editor { display: flex; flex-direction: column; gap: 22px; }\n\t\t\t.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }\n\t\t\t.editor .sec-h .meta { color: var(--ink-3); font-size: 14px; }\n\t\t\t.editor .fl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }\n\t\t\t.editor .fl > label, .editor .lbl, .editor .lbl-row > label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }\n\t\t\t.editor input[type=text], .editor textarea, .editor select {\n\t\t\t\tdisplay: block; width: 100%; min-height: var(--tap); padding: 8px 12px;\n\t\t\t\tborder: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);\n\t\t\t\tfont: inherit; font-size: 16px; font-weight: 400;\n\t\t\t}\n\t\t\t.editor textarea { resize: vertical; }\n\t\t\t.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }\n\t\t\t.editor input.quiet, .editor textarea.quiet { background: transparent; border-color: transparent; }\n\t\t\t.editor input.quiet:hover, .editor textarea.quiet:hover { border-color: var(--line); }\n\t\t\t.editor input.quiet:focus, .editor textarea.quiet:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font-weight: 400; font-size: 16px; color: var(--ink); cursor: pointer; }\n\t\t\t.editor label.inline input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--wattle-ink); }\n\t\t\t.editor .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }\n\t\t\t.editor .btn.ghost:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .btn svg { width: 18px; height: 18px; }\n\t\t\t.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 0; }\n\t\t\t.editor .alert p { margin: 0; }\n\t\t\t.editor .field-error { color: var(--wattle-ink); font-weight: 600; font-size: 15px; margin: 2px 0 0; }\n\t\t\t.editor .flag { color: var(--grain-ink); font-weight: 700; }\n\t\t\t.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }\n\t\t\t.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }\n\t\t\t.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; color: var(--grain-ink); font-size: 15px; }\n\t\t\t.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }\n\t\t\t.editor ol { list-style: none; padding: 0; margin: 0; }\n\t\t\t.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }\n\t\t\t.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }\n\t\t\t/* Recipe */\n\t\t\t.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }\n\t\t\t.editor input.ed-name { font-family: var(--f-display); font-size: 30px; font-weight: 750; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }\n\t\t\t.editor .facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }\n\t\t\t.editor .facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }\n\t\t\t.editor .fact.yield { grid-column: span 2; }\n\t\t\t.editor .pair { display: flex; gap: 8px; }\n\t\t\t.editor .pair input:first-of-type { width: 72px; flex: none; }\n\t\t\t.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 10px 12px; }\n\t\t\t.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }\n\t\t\t.editor .fl.low > label::before, .editor .fact.low > label::before { content: \"\"; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }\n\t\t\t.editor .fl.low .mark { display: none; }\n\t\t\t.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }\n\t\t\t.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }\n\t\t\t.editor .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding-top: 4px; }\n\t\t\t/* Parts inside a section card */\n\t\t\t.editor .comp + .comp { border-top: 1px solid var(--line); }\n\t\t\t.editor .comp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 8px 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }\n\t\t\t.editor .comp:first-child .comp-h { border-radius: var(--r) var(--r) 0 0; }\n\t\t\t.editor .comp-h .pn, .editor .grp-n { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; flex: none; }\n\t\t\t.editor .comp-h input[type=text] { flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; padding: 0 8px; }\n\t\t\t.editor .comp-h .grip { position: static; }\n\t\t\t.editor .comp-h .tools { gap: 0; flex-wrap: nowrap; }\n\t\t\t.editor .grp { display: flex; align-items: center; gap: 8px; margin: 0; padding: 14px 18px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor .comp-body { padding: 8px 8px 8px; }\n\t\t\t.editor .add-row { padding: 6px 8px 0; }\n\t\t\t/* The disclosure toggle of a row: a chevron at its end. */\n\t\t\t.editor li.item { position: relative; border-radius: var(--r); }\n\t\t\t.editor details.more > summary {\n\t\t\t\tposition: absolute; top: 6px; right: 4px; width: var(--tap); height: var(--tap);\n\t\t\t\tdisplay: grid; place-items: center; border-radius: var(--r); color: var(--ink-3); cursor: pointer; list-style: none;\n\t\t\t}\n\t\t\t.editor details.more > summary::-webkit-details-marker { display: none; }\n\t\t\t.editor details.more > summary:hover { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor details.more > summary svg { width: 18px; height: 18px; }\n\t\t\t.editor details.more[open] > summary svg { transform: rotate(180deg); }\n\t\t\t.editor .more-body {\n\t\t\t\tdisplay: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 16px 14px; margin: 10px -96px 6px 0;\n\t\t\t\tbackground: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;\n\t\t\t}\n\t\t\t.editor .more-body .full { grid-column: 1 / -1; }\n\t\t\t.editor .more-body .fl { justify-content: flex-end; gap: 6px; }\n\t\t\t.editor .more-body .fl > label.inline { min-height: var(--tap); }\n\t\t\t/* Icon buttons, the drag handle and the help popover. */\n\t\t\t.editor .ibtn {\n\t\t\t\tdisplay: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; flex: none;\n\t\t\t\tborder-radius: var(--r); background: transparent; color: var(--ink-3); cursor: pointer;\n\t\t\t}\n\t\t\t.editor .ibtn:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .ibtn.danger:hover:not(:disabled) { color: var(--wattle-ink); }\n\t\t\t.editor .ibtn:disabled { opacity: 0.35; cursor: default; }\n\t\t\t.editor .ibtn svg { width: 18px; height: 18px; }\n\t\t\t.editor .ibtn.rm { position: absolute; top: 6px; right: 48px; }\n\t\t\t.editor .ibtn.rm svg { width: 15px; height: 15px; }\n\t\t\t.editor .grip {\n\t\t\t\tposition: absolute; left: 0; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;\n\t\t\t\tcolor: var(--slate); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;\n\t\t\t}\n\t\t\t.editor .grip svg { width: 18px; height: 18px; }\n\t\t\t:root.editor-drag .editor .grip { display: grid; }\n\t\t\t.editor .dragging { background: var(--card); box-shadow: var(--shadow); position: relative; z-index: 3; }\n\t\t\t.editor .dragging .grip { cursor: grabbing; }\n\t\t\t.editor .lbl-row { position: relative; display: flex; align-items: center; gap: 4px; }\n\t\t\t.editor .help-tip { position: relative; display: inline-flex; }\n\t\t\t.editor .help-btn { display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: transparent; cursor: help; }\n\t\t\t.editor .help-btn > span:first-child { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); }\n\t\t\t.editor .help-btn svg { width: 16px; height: 16px; }\n\t\t\t.editor .help-pop {\n\t\t\t\tdisplay: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 8px); width: min(300px, 75vw);\n\t\t\t\tpadding: 10px 12px; background: var(--ink); color: var(--paper); border-radius: var(--r);\n\t\t\t\tbox-shadow: var(--shadow); font-size: 14.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;\n\t\t\t}\n\t\t\t.editor .help-tip:hover .help-pop, .editor .help-btn:focus-visible + .help-pop { display: block; }\n\t\t\t/* Ingredient lines: plain text until hovered or focused. */\n\t\t\t.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; }\n\t\t\t.editor .cols { padding: 12px 112px 6px 44px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor .cols span { padding-left: 11px; }\n\t\t\t.editor li.line { padding: 6px 112px 6px 36px; }\n\t\t\t.editor li.line + li.line { margin-top: 2px; }\n\t\t\t.editor li.line:hover { background: var(--paper); }\n\t\t\t.editor .row input[type=text] { min-height: var(--tap); padding: 0 10px; border-color: transparent; background: transparent; }\n\t\t\t.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }\n\t\t\t.editor .row input:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }\n\t\t\t.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }\n\t\t\t/* The ingredient input fits its name, so the qualifiers follow it, muted, and wrap rather than clip. */\n\t\t\t.editor .c-ing input[type=text] { flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%; field-sizing: content; }\n\t\t\t.editor .qual { flex: 1 1 8rem; min-width: 0; color: var(--ink-3); font-style: italic; overflow-wrap: anywhere; }\n\t\t\t.editor .c-mark { display: flex; gap: 6px; align-items: center; }\n\t\t\t/* The confidence dot of a line under review, before its remove button. */\n\t\t\t.editor.reviewing li.line::before {\n\t\t\t\tcontent: \"\"; position: absolute; right: 98px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);\n\t\t\t}\n\t\t\t.editor.reviewing li.line.low::before { background: var(--grain); }\n\t\t\t/* A low line, or one with an issue to check, takes the grain tint as the mockup's beer line. */\n\t\t\t.editor li.item.low, .editor li.item.low:hover, .editor li.line:has(> .hint), .editor li.line:has(> .hint):hover { background: var(--grain-soft); }\n\t\t\t.editor li.item.low .row input, .editor li.line:has(> .hint) .row input { background: var(--card); border-color: var(--line); }\n\t\t\t.editor li.line .hint, .editor li.line > .alert { margin: 2px 0 0 0; }\n\t\t\t.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }\n\t\t\t.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }\n\t\t\t/* Qualifiers as chips. */\n\t\t\t.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .qchip { display: inline-flex; align-items: center; gap: 0; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }\n\t\t\t.editor .qchip .grip { position: static; width: 24px; }\n\t\t\t.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 2px 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }\n\t\t\t.editor .qchip input[type=text] { width: auto; min-width: 14ch; field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }\n\t\t\t.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }\n\t\t\t.editor .qchip .ibtn { width: 36px; }\n\t\t\t.editor .pillbtn {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 650; cursor: pointer;\n\t\t\t}\n\t\t\t.editor .pillbtn svg { width: 16px; height: 16px; }\n\t\t\t/* Steps */\n\t\t\t.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }\n\t\t\t.editor .swatch { width: 16px; height: 16px; border-radius: 3px; background: var(--wattle-soft); }\n\t\t\t.editor .swatch.passive { background: var(--sunk); }\n\t\t\t.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }\n\t\t\t.editor li.step + li.step { border-top: 1px solid var(--line); }\n\t\t\t.editor li.step .grip { top: 14px; left: 4px; }\n\t\t\t.editor li.step .ibtn.rm { top: 14px; right: 50px; }\n\t\t\t.editor li.step details.more > summary { top: 14px; right: 8px; }\n\t\t\t.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }\n\t\t\t.editor li.step.low { background: var(--grain-soft); }\n\t\t\t.editor .snum {\n\t\t\t\twidth: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;\n\t\t\t\tbackground: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;\n\t\t\t}\n\t\t\t.editor .snum.passive { background: var(--sunk); color: var(--ink-2); }\n\t\t\t.editor .snum.sm { width: 26px; height: 26px; font-size: 13.5px; }\n\t\t\t.editor .sbody { display: flex; flex-direction: column; gap: 8px; min-width: 0; }\n\t\t\t.editor .trow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }\n\t\t\t.editor input.stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; min-height: var(--tap); padding: 2px 10px; margin-left: -10px; flex: 1 1 auto; width: auto; min-width: 0; }\n\t\t\t.editor .smeta { display: none; color: var(--ink-3); font-size: 14.5px; white-space: nowrap; }\n\t\t\t.editor .sbody:has(> details.more[open]) .smeta { display: inline; }\n\t\t\t.editor .sbody textarea.quiet { padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }\n\t\t\t.editor .sbody:has(> details.more[open]) textarea.quiet { background: var(--card); border-color: var(--line); padding: 8px 12px; margin-left: 0; width: 100%; resize: vertical; }\n\t\t\t.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .pills:not(:has(*)), .editor .sbody:has(> details.more[open]) .pills { display: none; }\n\t\t\t.editor .pill {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600;\n\t\t\t}\n\t\t\t.editor .pill svg { width: 16px; height: 16px; }\n\t\t\t.editor .pill.on { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor li.step .more-body { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }\n\t\t\t.editor .srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }\n\t\t\t.editor .srow .dur { width: 110px; }\n\t\t\t.editor .srow .stage, .editor .srow .part { width: 150px; }\n\t\t\t.editor .att { display: flex; gap: 6px; }\n\t\t\t.editor .att label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600; cursor: pointer; }\n\t\t\t.editor .att input { position: absolute; inset: -1px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; }\n\t\t\t.editor .att label:has(input:checked) { background: var(--sunk); border-color: var(--ink-3); color: var(--ink); }\n\t\t\t.editor .att label.on:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor .att label:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }\n\t\t\t.editor .att svg { width: 16px; height: 16px; }\n\t\t\t.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }\n\t\t\t.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor fieldset.deps legend { padding: 0; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }\n\t\t\t.editor fieldset.deps legend .help { font-weight: 400; }\n\t\t\t.editor .dgrp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 6px 0 2px; }\n\t\t\t.editor .dep-list { display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor label.dep {\n\t\t\t\tdisplay: flex; align-items: center; gap: 12px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);\n\t\t\t}\n\t\t\t.editor label.dep:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); }\n\t\t\t.editor label.dep input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--wattle-ink); }\n\t\t\t.editor label.dep .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n\t\t\t.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }\n\t\t\t.editor label.dep.self .this { font-size: 13px; font-weight: 700; }\n\t\t\t/* Equipment as chips, each with its details in a popover. */\n\t\t\t.editor .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }\n\t\t\t.editor li.equipment { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px; border: 1px solid var(--line); background: var(--card); }\n\t\t\t.editor li.equipment .grip { position: static; width: 24px; }\n\t\t\t.editor li.equipment .erow { display: inline-flex; align-items: center; gap: 6px; }\n\t\t\t.editor li.equipment .erow input[type=text] { width: auto; min-width: 5ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-weight: 600; font-size: 15.5px; }\n\t\t\t.editor li.equipment:hover .erow input { border-color: transparent; }\n\t\t\t.editor li.equipment .erow input:focus { border-color: var(--wattle); }\n\t\t\t.editor li.equipment .qual { flex: none; font-style: normal; font-size: 14.5px; }\n\t\t\t.editor li.equipment .ibtn.rm { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more > summary { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more { display: inline-block; }\n\t\t\t.editor li.equipment .more-body { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: min(26rem, 80vw); margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); box-shadow: var(--shadow); }\n\t\t\t.editor .add-equip { display: inline-flex; gap: 4px; align-items: center; }\n\t\t\t.editor .add-equip input[type=text] { width: 200px; }\n\t\t\t/* Save bar */\n\t\t\t.editor .savebar { align-items: center; justify-content: flex-end; background: color-mix(in srgb, var(--paper) 96%, transparent); }\n\t\t\t.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }\n\t\t\t.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }\n\t\t\t.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t@media (max-width: 760px) {\n\t\t\t\t.editor .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .facts.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .two { grid-template-columns: minmax(0, 1fr); }\n\t\t\t\t.editor .more-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t}\n\t\t\t@media (max-width: 560px) {\n\t\t\t\t.editor .meta-card { padding: 16px 14px; }\n\t\t\t\t.editor input.ed-name { font-size: 24px; }\n\t\t\t\t.editor .cols { display: none; }\n\t\t\t\t.editor .row { grid-template-columns: 4.5rem minmax(0, 1fr); }\n\t\t\t\t.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }\n\t\t\t\t.editor .c-mark:empty { display: none; }\n\t\t\t\t.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }\n\t\t\t\t.editor .snum { width: 28px; height: 28px; font-size: 14px; }\n\t\t\t\t.editor .chips { padding: 12px; }\n\t\t\t}\n\t\t</style>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"#editor\" hx-swap=\"morph:outerHTML\" hx-ext=\"morph\"><style>\n\t\t\t.editor { display: flex; flex-direction: column; gap: 22px; }\n\t\t\t.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }\n\t\t\t.editor .sec-h .meta { color: var(--ink-3); font-size: 14px; }\n\t\t\t.editor .fl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }\n\t\t\t.editor .fl > label, .editor .lbl, .editor .lbl-row > label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }\n\t\t\t.editor input[type=text], .editor textarea, .editor select {\n\t\t\t\tdisplay: block; width: 100%; min-height: var(--tap); padding: 8px 12px;\n\t\t\t\tborder: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);\n\t\t\t\tfont: inherit; font-size: 16px; font-weight: 400;\n\t\t\t}\n\t\t\t.editor textarea { resize: vertical; }\n\t\t\t.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }\n\t\t\t.editor input.quiet, .editor textarea.quiet { background: transparent; border-color: transparent; }\n\t\t\t.editor input.quiet:hover, .editor textarea.quiet:hover { border-color: var(--line); }\n\t\t\t.editor input.quiet:focus, .editor textarea.quiet:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font-weight: 400; font-size: 16px; color: var(--ink); cursor: pointer; }\n\t\t\t.editor label.inline input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--wattle-ink); }\n\t\t\t.editor .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }\n\t\t\t.editor .btn.ghost:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .btn svg { width: 18px; height: 18px; }\n\t\t\t.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 0; }\n\t\t\t.editor .alert p { margin: 0; }\n\t\t\t.editor .field-error { color: var(--wattle-ink); font-weight: 600; font-size: 15px; margin: 2px 0 0; }\n\t\t\t.editor .flag { color: var(--grain-ink); font-weight: 700; }\n\t\t\t.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }\n\t\t\t.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }\n\t\t\t.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; color: var(--grain-ink); font-size: 15px; }\n\t\t\t.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }\n\t\t\t.editor ol { list-style: none; padding: 0; margin: 0; }\n\t\t\t.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }\n\t\t\t.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }\n\t\t\t/* Recipe */\n\t\t\t.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }\n\t\t\t.editor input.ed-name { font-family: var(--f-display); font-size: 30px; font-weight: 750; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }\n\t\t\t.editor .facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }\n\t\t\t.editor .facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }\n\t\t\t.editor .fact.yield { grid-column: span 2; }\n\t\t\t.editor .pair { display: flex; gap: 8px; }\n\t\t\t.editor .pair input:first-of-type { width: 72px; flex: none; }\n\t\t\t.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 10px 12px; }\n\t\t\t.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }\n\t\t\t.editor .fl.low > label::before, .editor .fact.low > label::before { content: \"\"; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }\n\t\t\t.editor .fl.low .mark { display: none; }\n\t\t\t.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }\n\t\t\t.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }\n\t\t\t.editor .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding-top: 4px; }\n\t\t\t/* Parts inside a section card */\n\t\t\t.editor .comp + .comp { border-top: 1px solid var(--line); }\n\t\t\t.editor .comp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 8px 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }\n\t\t\t.editor .comp:first-child .comp-h { border-radius: var(--r) var(--r) 0 0; }\n\t\t\t.editor .comp-h .pn, .editor .grp-n { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; flex: none; }\n\t\t\t.editor .comp-h input[type=text] { flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; padding: 0 8px; }\n\t\t\t.editor .comp-h .grip { position: static; }\n\t\t\t.editor .comp-h .tools { gap: 0; flex-wrap: nowrap; }\n\t\t\t.editor .grp { display: flex; align-items: center; gap: 8px; margin: 0; padding: 14px 18px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor .comp-body { padding: 8px 8px 8px; }\n\t\t\t.editor .add-row { padding: 6px 8px 0; }\n\t\t\t/* The disclosure toggle of a row: a chevron at its end. */\n\t\t\t.editor li.item { position: relative; border-radius: var(--r); }\n\t\t\t.editor details.more > summary {\n\t\t\t\tposition: absolute; top: 6px; right: 4px; width: var(--tap); height: var(--tap);\n\t\t\t\tdisplay: grid; place-items: center; border-radius: var(--r); color: var(--ink-3); cursor: pointer; list-style: none;\n\t\t\t}\n\t\t\t.editor details.more > summary::-webkit-details-marker { display: none; }\n\t\t\t.editor details.more > summary:hover { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor details.more > summary svg { width: 18px; height: 18px; }\n\t\t\t.editor details.more[open] > summary svg { transform: rotate(180deg); }\n\t\t\t.editor .more-body {\n\t\t\t\tdisplay: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 16px 14px; margin: 10px -96px 6px 0;\n\t\t\t\tbackground: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;\n\t\t\t}\n\t\t\t.editor .more-body .full { grid-column: 1 / -1; }\n\t\t\t.editor .more-body .fl { justify-content: flex-end; gap: 6px; }\n\t\t\t.editor .more-body .fl > label.inline { min-height: var(--tap); }\n\t\t\t/* Icon buttons, the drag handle and the help popover. */\n\t\t\t.editor .ibtn {\n\t\t\t\tdisplay: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; flex: none;\n\t\t\t\tborder-radius: var(--r); background: transparent; color: var(--ink-3); cursor: pointer;\n\t\t\t}\n\t\t\t.editor .ibtn:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .ibtn.danger:hover:not(:disabled) { color: var(--wattle-ink); }\n\t\t\t.editor .ibtn:disabled { opacity: 0.35; cursor: default; }\n\t\t\t.editor .ibtn svg { width: 18px; height: 18px; }\n\t\t\t.editor .ibtn.rm { position: absolute; top: 6px; right: 48px; }\n\t\t\t.editor .ibtn.rm svg { width: 15px; height: 15px; }\n\t\t\t.editor .grip {\n\t\t\t\tposition: absolute; left: 0; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;\n\t\t\t\tcolor: var(--slate); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;\n\t\t\t}\n\t\t\t.editor .grip svg { width: 18px; height: 18px; }\n\t\t\t:root.editor-drag .editor .grip { display: grid; }\n\t\t\t.editor .dragging { background: var(--card); box-shadow: var(--shadow); position: relative; z-index: 3; }\n\t\t\t.editor .dragging .grip { cursor: grabbing; }\n\t\t\t.editor .lbl-row { position: relative; display: flex; align-items: center; gap: 4px; }\n\t\t\t.editor .help-tip { position: relative; display: inline-flex; }\n\t\t\t.editor .help-btn { display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: transparent; cursor: help; }\n\t\t\t.editor .help-btn > span:first-child { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); }\n\t\t\t.editor .help-btn svg { width: 16px; height: 16px; }\n\t\t\t.editor .help-pop {\n\t\t\t\tdisplay: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 8px); width: min(300px, 75vw);\n\t\t\t\tpadding: 10px 12px; background: var(--ink); color: var(--paper); border-radius: var(--r);\n\t\t\t\tbox-shadow: var(--shadow); font-size: 14.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;\n\t\t\t}\n\t\t\t.editor .help-tip:hover .help-pop, .editor .help-btn:focus-visible + .help-pop { display: block; }\n\t\t\t/* Ingredient lines: plain text until hovered or focused. */\n\t\t\t.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; }\n\t\t\t.editor .cols { padding: 12px 112px 6px 44px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor .cols span { padding-left: 11px; }\n\t\t\t.editor li.line { padding: 6px 112px 6px 36px; }\n\t\t\t.editor li.line + li.line { margin-top: 2px; }\n\t\t\t.editor li.line:hover { background: var(--paper); }\n\t\t\t.editor .row input[type=text] { min-height: var(--tap); padding: 0 10px; border-color: transparent; background: transparent; }\n\t\t\t.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }\n\t\t\t.editor .row input:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }\n\t\t\t.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }\n\t\t\t/* The ingredient input fits its name, so the qualifiers follow it, muted, and wrap rather than clip. */\n\t\t\t.editor .c-ing input[type=text] { flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%; field-sizing: content; }\n\t\t\t.editor .qual { flex: 1 1 8rem; min-width: 0; color: var(--ink-3); font-style: italic; overflow-wrap: anywhere; }\n\t\t\t.editor .c-mark { display: flex; gap: 6px; align-items: center; }\n\t\t\t/* The confidence dot of a line under review, before its remove button. */\n\t\t\t.editor.reviewing li.line::before {\n\t\t\t\tcontent: \"\"; position: absolute; right: 98px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);\n\t\t\t}\n\t\t\t.editor.reviewing li.line.low::before { background: var(--grain); }\n\t\t\t/* A low line, or one with an issue to check, takes the grain tint as the mockup's beer line. */\n\t\t\t.editor li.item.low, .editor li.item.low:hover, .editor li.line:has(> .hint), .editor li.line:has(> .hint):hover { background: var(--grain-soft); }\n\t\t\t.editor li.item.low .row input, .editor li.line:has(> .hint) .row input { background: var(--card); border-color: var(--line); }\n\t\t\t.editor li.line .hint, .editor li.line > .alert { margin: 2px 0 0 0; }\n\t\t\t.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }\n\t\t\t.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }\n\t\t\t/* Qualifiers as chips. */\n\t\t\t.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .qchip { display: inline-flex; align-items: center; gap: 0; max-width: 100%; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }\n\t\t\t.editor .qchip .grip { position: static; width: 24px; }\n\t\t\t.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 2px 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }\n\t\t\t.editor .qchip input[type=text] { flex: 1 1 auto; width: auto; min-width: min(14ch, 100%); field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }\n\t\t\t.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }\n\t\t\t.editor .qchip .ibtn { width: 36px; }\n\t\t\t.editor .pillbtn {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 650; cursor: pointer;\n\t\t\t}\n\t\t\t.editor .pillbtn svg { width: 16px; height: 16px; }\n\t\t\t/* Steps */\n\t\t\t.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }\n\t\t\t.editor .swatch { width: 16px; height: 16px; border-radius: 3px; background: var(--wattle-soft); }\n\t\t\t.editor .swatch.passive { background: var(--sunk); }\n\t\t\t.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }\n\t\t\t.editor li.step + li.step { border-top: 1px solid var(--line); }\n\t\t\t.editor li.step .grip { top: 14px; left: 4px; }\n\t\t\t.editor li.step .ibtn.rm { top: 14px; right: 50px; }\n\t\t\t.editor li.step details.more > summary { top: 14px; right: 8px; }\n\t\t\t.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }\n\t\t\t.editor li.step.low { background: var(--grain-soft); }\n\t\t\t.editor .snum {\n\t\t\t\twidth: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;\n\t\t\t\tbackground: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;\n\t\t\t}\n\t\t\t.editor .snum.passive { background: var(--sunk); color: var(--ink-2); }\n\t\t\t.editor .snum.sm { width: 26px; height: 26px; font-size: 13.5px; }\n\t\t\t.editor .sbody { display: flex; flex-direction: column; gap: 8px; min-width: 0; }\n\t\t\t.editor .trow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }\n\t\t\t.editor input.stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; min-height: var(--tap); padding: 2px 10px; margin-left: -10px; flex: 1 1 auto; width: auto; min-width: 0; }\n\t\t\t.editor .smeta { display: none; color: var(--ink-3); font-size: 14.5px; white-space: nowrap; }\n\t\t\t.editor .sbody:has(> details.more[open]) .smeta { display: inline; }\n\t\t\t.editor .sbody textarea.quiet { padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }\n\t\t\t.editor .sbody:has(> details.more[open]) textarea.quiet { background: var(--card); border-color: var(--line); padding: 8px 12px; margin-left: 0; width: 100%; resize: vertical; }\n\t\t\t.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .pills:not(:has(*)), .editor .sbody:has(> details.more[open]) .pills { display: none; }\n\t\t\t.editor .pill {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600;\n\t\t\t}\n\t\t\t.editor .pill svg { width: 16px; height: 16px; }\n\t\t\t.editor .pill.on { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor li.step .more-body { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }\n\t\t\t.editor .srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }\n\t\t\t.editor .srow .dur { width: 110px; }\n\t\t\t.editor .srow .stage, .editor .srow .part { width: 150px; }\n\t\t\t.editor .att { display: flex; gap: 6px; }\n\t\t\t.editor .att label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600; cursor: pointer; }\n\t\t\t.editor .att input { position: absolute; inset: -1px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; }\n\t\t\t.editor .att label:has(input:checked) { background: var(--sunk); border-color: var(--ink-3); color: var(--ink); }\n\t\t\t.editor .att label.on:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor .att label:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }\n\t\t\t.editor .att svg { width: 16px; height: 16px; }\n\t\t\t.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }\n\t\t\t.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor fieldset.deps legend { padding: 0; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }\n\t\t\t.editor fieldset.deps legend .help { font-weight: 400; }\n\t\t\t.editor .dgrp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 6px 0 2px; }\n\t\t\t.editor .dep-list { display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor label.dep {\n\t\t\t\tdisplay: flex; align-items: center; gap: 12px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);\n\t\t\t}\n\t\t\t.editor label.dep:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); }\n\t\t\t.editor label.dep input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--wattle-ink); }\n\t\t\t.editor label.dep .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n\t\t\t.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }\n\t\t\t.editor label.dep.self .this { font-size: 13px; font-weight: 700; }\n\t\t\t/* Equipment as chips, each with its details in a popover. */\n\t\t\t.editor .chips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }\n\t\t\t.editor li.equipment { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px; border: 1px solid var(--line); background: var(--card); }\n\t\t\t.editor li.equipment .grip { position: static; width: 24px; }\n\t\t\t.editor li.equipment .erow { display: inline-flex; align-items: center; gap: 6px; }\n\t\t\t.editor li.equipment .erow input[type=text] { width: auto; min-width: 5ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-weight: 600; font-size: 15.5px; }\n\t\t\t.editor li.equipment:hover .erow input { border-color: transparent; }\n\t\t\t.editor li.equipment .erow input:focus { border-color: var(--wattle); }\n\t\t\t.editor li.equipment .qual { flex: none; font-style: normal; font-size: 14.5px; }\n\t\t\t.editor li.equipment .ibtn.rm { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more > summary { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more { display: inline-block; }\n\t\t\t.editor li.equipment .more-body { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: min(26rem, 80vw); margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); box-shadow: var(--shadow); }\n\t\t\t.editor .add-equip { display: inline-flex; gap: 4px; align-items: center; }\n\t\t\t.editor .add-equip input[type=text] { width: 200px; }\n\t\t\t/* Save bar */\n\t\t\t.editor .savebar { align-items: center; justify-content: flex-end; background: color-mix(in srgb, var(--paper) 96%, transparent); }\n\t\t\t.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }\n\t\t\t.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }\n\t\t\t.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t@media (max-width: 760px) {\n\t\t\t\t.editor .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .facts.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .two { grid-template-columns: minmax(0, 1fr); }\n\t\t\t\t.editor .more-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t}\n\t\t\t@media (max-width: 560px) {\n\t\t\t\t/* A chip's details span the list, so they stay on screen. */\n\t\t\t\t.editor li.equipment { position: static; }\n\t\t\t\t.editor li.equipment .more-body { left: 12px; right: 12px; width: auto; top: auto; margin-top: 6px; grid-template-columns: minmax(0, 1fr); }\n\t\t\t\t.editor .meta-card { padding: 16px 14px; }\n\t\t\t\t.editor input.ed-name { font-size: 24px; }\n\t\t\t\t.editor .cols { display: none; }\n\t\t\t\t.editor .row { grid-template-columns: 4.5rem minmax(0, 1fr); }\n\t\t\t\t.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }\n\t\t\t\t.editor .c-mark:empty { display: none; }\n\t\t\t\t.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }\n\t\t\t\t.editor .snum { width: 28px; height: 28px; font-size: 14px; }\n\t\t\t\t.editor .chips { padding: 12px; }\n\t\t\t}\n\t\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -170,7 +170,7 @@ func editorForm(v view) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.version())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 280, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 283, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -194,7 +194,7 @@ func editorForm(v view) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 285, Col: 11}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 288, Col: 11}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -252,7 +252,7 @@ func editorForm(v view) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(n)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 303, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 306, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -275,7 +275,7 @@ func editorForm(v view) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(n)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 308, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 311, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
@@ -298,7 +298,7 @@ func editorForm(v view) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(n)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 313, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 316, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -316,7 +316,7 @@ func editorForm(v view) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(morphPath)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 316, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 319, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -329,7 +329,7 @@ func editorForm(v view) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(scriptPath)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 317, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 320, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
@@ -382,7 +382,7 @@ func saveBar(v view) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(needsLookText(n))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 330, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 333, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -395,7 +395,7 @@ func saveBar(v view) templ.Component {
 			var templ_7745c5c3_Var18 templ.SafeURL
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + first))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 330, Col: 120}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 333, Col: 120}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -414,7 +414,7 @@ func saveBar(v view) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(CancelFormID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 333, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 336, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 			if templ_7745c5c3_Err != nil {
@@ -432,7 +432,7 @@ func saveBar(v view) templ.Component {
 			var templ_7745c5c3_Var20 templ.SafeURL
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(v.back()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 335, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 338, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -450,7 +450,7 @@ func saveBar(v view) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(v.saveLabel())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 337, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 340, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -494,7 +494,7 @@ func sectionHead(id, title string) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 344, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 347, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 		if templ_7745c5c3_Err != nil {
@@ -507,7 +507,7 @@ func sectionHead(id, title string) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 344, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 347, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -645,7 +645,7 @@ func checkHint(low bool, issues []string, fallback string) templ.Component {
 				var templ_7745c5c3_Var28 string
 				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Join(issues, "; "))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 375, Col: 33}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 378, Col: 33}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 				if templ_7745c5c3_Err != nil {
@@ -655,7 +655,7 @@ func checkHint(low bool, issues []string, fallback string) templ.Component {
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fallback)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 377, Col: 15}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 380, Col: 15}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 				if templ_7745c5c3_Err != nil {
@@ -709,7 +709,7 @@ func moreToggle(name string) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 389, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 392, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -753,7 +753,7 @@ func markInput(v view, field string) templ.Component {
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.ResolveAttributeValue(markName(field))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 396, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 399, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33)
 			if templ_7745c5c3_Err != nil {
@@ -766,7 +766,7 @@ func markInput(v view, field string) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 396, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 399, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 			if templ_7745c5c3_Err != nil {
@@ -840,7 +840,7 @@ func fieldError(v view, field string) templ.Component {
 			var templ_7745c5c3_Var38 string
 			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 403, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 406, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
@@ -904,7 +904,7 @@ func fact(v view, id, name, label, labelRest, value, field, errField, placeholde
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 412, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 415, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
 		if templ_7745c5c3_Err != nil {
@@ -917,7 +917,7 @@ func fact(v view, id, name, label, labelRest, value, field, errField, placeholde
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 413, Col: 10}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 416, Col: 10}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -935,7 +935,7 @@ func fact(v view, id, name, label, labelRest, value, field, errField, placeholde
 			var templ_7745c5c3_Var44 string
 			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(" " + labelRest)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 415, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 418, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
@@ -963,7 +963,7 @@ func fact(v view, id, name, label, labelRest, value, field, errField, placeholde
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 421, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 424, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 		if templ_7745c5c3_Err != nil {
@@ -976,7 +976,7 @@ func fact(v view, id, name, label, labelRest, value, field, errField, placeholde
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 421, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 424, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 		if templ_7745c5c3_Err != nil {
@@ -989,7 +989,7 @@ func fact(v view, id, name, label, labelRest, value, field, errField, placeholde
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 421, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 424, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 		if templ_7745c5c3_Err != nil {
@@ -1002,7 +1002,7 @@ func fact(v view, id, name, label, labelRest, value, field, errField, placeholde
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(placeholder)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 421, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 424, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 		if templ_7745c5c3_Err != nil {
@@ -1092,7 +1092,7 @@ func metaFields(v view) templ.Component {
 		var templ_7745c5c3_Var52 string
 		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.D.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 435, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 438, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var52)
 		if templ_7745c5c3_Err != nil {
@@ -1143,7 +1143,7 @@ func metaFields(v view) templ.Component {
 		var templ_7745c5c3_Var55 string
 		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(v.D.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 441, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 444, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 		if templ_7745c5c3_Err != nil {
@@ -1178,7 +1178,7 @@ func metaFields(v view) templ.Component {
 		var templ_7745c5c3_Var58 string
 		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(" amount")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 445, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 448, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 		if templ_7745c5c3_Err != nil {
@@ -1199,7 +1199,7 @@ func metaFields(v view) templ.Component {
 		var templ_7745c5c3_Var59 string
 		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.D.YieldQty)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 448, Col: 79}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 451, Col: 79}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var59)
 		if templ_7745c5c3_Err != nil {
@@ -1212,7 +1212,7 @@ func metaFields(v view) templ.Component {
 		var templ_7745c5c3_Var60 string
 		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.D.YieldUnit)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 450, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 453, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var60)
 		if templ_7745c5c3_Err != nil {
@@ -1277,7 +1277,7 @@ func metaFields(v view) templ.Component {
 				var templ_7745c5c3_Var61 string
 				templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.ResolveAttributeValue(m)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 467, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 470, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var61)
 				if templ_7745c5c3_Err != nil {
@@ -1300,7 +1300,7 @@ func metaFields(v view) templ.Component {
 				var templ_7745c5c3_Var62 string
 				templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs(m)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 467, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 470, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
 				if templ_7745c5c3_Err != nil {
@@ -1341,7 +1341,7 @@ func metaFields(v view) templ.Component {
 				var templ_7745c5c3_Var63 string
 				templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 477, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 480, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
 				if templ_7745c5c3_Err != nil {
@@ -1364,7 +1364,7 @@ func metaFields(v view) templ.Component {
 				var templ_7745c5c3_Var64 string
 				templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(c.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 477, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 480, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
 				if templ_7745c5c3_Err != nil {
@@ -1390,7 +1390,7 @@ func metaFields(v view) templ.Component {
 			var templ_7745c5c3_Var65 string
 			templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(" level")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 483, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 486, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
 			if templ_7745c5c3_Err != nil {
@@ -1418,7 +1418,7 @@ func metaFields(v view) templ.Component {
 				var templ_7745c5c3_Var66 string
 				templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.ResolveAttributeValue(n)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 487, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 490, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var66)
 				if templ_7745c5c3_Err != nil {
@@ -1441,7 +1441,7 @@ func metaFields(v view) templ.Component {
 				var templ_7745c5c3_Var67 string
 				templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(spiceLabel(n))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 487, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 490, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 				if templ_7745c5c3_Err != nil {
@@ -1472,7 +1472,7 @@ func metaFields(v view) templ.Component {
 		var templ_7745c5c3_Var68 string
 		templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(v.metaSummary())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 495, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 498, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 		if templ_7745c5c3_Err != nil {
@@ -1490,7 +1490,7 @@ func metaFields(v view) templ.Component {
 			var templ_7745c5c3_Var69 string
 			templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.D.SourceURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 500, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 503, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var69)
 			if templ_7745c5c3_Err != nil {
@@ -1534,7 +1534,7 @@ func metaFields(v view) templ.Component {
 		var templ_7745c5c3_Var72 string
 		templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.D.Author)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 506, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 509, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var72)
 		if templ_7745c5c3_Err != nil {
@@ -1552,7 +1552,7 @@ func metaFields(v view) templ.Component {
 			var templ_7745c5c3_Var73 string
 			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(" (link or ID, optional)")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 510, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 513, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 			if templ_7745c5c3_Err != nil {
@@ -1565,7 +1565,7 @@ func metaFields(v view) templ.Component {
 			var templ_7745c5c3_Var74 string
 			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.D.Video)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 511, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 514, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var74)
 			if templ_7745c5c3_Err != nil {
@@ -1592,7 +1592,7 @@ func metaFields(v view) templ.Component {
 			var templ_7745c5c3_Var75 string
 			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(" (comma separated)")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 517, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 520, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 			if templ_7745c5c3_Err != nil {
@@ -1605,7 +1605,7 @@ func metaFields(v view) templ.Component {
 			var templ_7745c5c3_Var76 string
 			templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.D.Tags)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 518, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 521, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var76)
 			if templ_7745c5c3_Err != nil {
@@ -1668,7 +1668,7 @@ func ingredientFields(v view) templ.Component {
 			var templ_7745c5c3_Var79 string
 			templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(v.ingredientsMeta())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 530, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 533, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 			if templ_7745c5c3_Err != nil {
@@ -1787,7 +1787,7 @@ func iconButton(action, label string, icon layout.IconName, disabled bool, class
 		var templ_7745c5c3_Var84 string
 		templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.ResolveAttributeValue(action)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 549, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 552, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var84)
 		if templ_7745c5c3_Err != nil {
@@ -1800,7 +1800,7 @@ func iconButton(action, label string, icon layout.IconName, disabled bool, class
 		var templ_7745c5c3_Var85 string
 		templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.ResolveAttributeValue(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 549, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 552, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var85)
 		if templ_7745c5c3_Err != nil {
@@ -1813,7 +1813,7 @@ func iconButton(action, label string, icon layout.IconName, disabled bool, class
 		var templ_7745c5c3_Var86 string
 		templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.ResolveAttributeValue(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 549, Col: 114}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 552, Col: 114}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var86)
 		if templ_7745c5c3_Err != nil {
@@ -1876,7 +1876,7 @@ func helpTip(id, about, text string) templ.Component {
 		var templ_7745c5c3_Var88 string
 		templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 559, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 562, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var88)
 		if templ_7745c5c3_Err != nil {
@@ -1897,7 +1897,7 @@ func helpTip(id, about, text string) templ.Component {
 		var templ_7745c5c3_Var89 string
 		templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(about)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 563, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 566, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 		if templ_7745c5c3_Err != nil {
@@ -1910,7 +1910,7 @@ func helpTip(id, about, text string) templ.Component {
 		var templ_7745c5c3_Var90 string
 		templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 565, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 568, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var90)
 		if templ_7745c5c3_Err != nil {
@@ -1923,7 +1923,7 @@ func helpTip(id, about, text string) templ.Component {
 		var templ_7745c5c3_Var91 string
 		templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 565, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 568, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 		if templ_7745c5c3_Err != nil {
@@ -1975,7 +1975,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 		var templ_7745c5c3_Var93 string
 		templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.ResolveAttributeValue(partAnchor(ci))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 580, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 583, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var93)
 		if templ_7745c5c3_Err != nil {
@@ -1993,7 +1993,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var94 string
 			templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(n1(ci))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 583, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 586, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
 			if templ_7745c5c3_Err != nil {
@@ -2006,7 +2006,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var95 string
 			templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.ResolveAttributeValue(cField(ci, "name"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 585, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 588, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var95)
 			if templ_7745c5c3_Err != nil {
@@ -2019,7 +2019,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var96 string
 			templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(" " + n1(ci) + " name")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 585, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 588, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
 			if templ_7745c5c3_Err != nil {
@@ -2040,7 +2040,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var97 string
 			templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.ResolveAttributeValue(cField(ci, "name"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 588, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 591, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var97)
 			if templ_7745c5c3_Err != nil {
@@ -2053,7 +2053,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var98 string
 			templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.ResolveAttributeValue(cField(ci, "name"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 588, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 591, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var98)
 			if templ_7745c5c3_Err != nil {
@@ -2066,7 +2066,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var99 string
 			templ_7745c5c3_Var99, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 588, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 591, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var99)
 			if templ_7745c5c3_Err != nil {
@@ -2110,7 +2110,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var100 string
 			templ_7745c5c3_Var100, templ_7745c5c3_Err = templ.ResolveAttributeValue(cField(ci, "name"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 595, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 598, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var100)
 			if templ_7745c5c3_Err != nil {
@@ -2123,7 +2123,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 			var templ_7745c5c3_Var101 string
 			templ_7745c5c3_Var101, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 595, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 598, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var101)
 			if templ_7745c5c3_Err != nil {
@@ -2147,7 +2147,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 		var templ_7745c5c3_Var102 string
 		templ_7745c5c3_Var102, templ_7745c5c3_Err = templ.ResolveAttributeValue("move-line:" + n0(ci))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 601, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 604, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var102)
 		if templ_7745c5c3_Err != nil {
@@ -2170,7 +2170,7 @@ func componentLines(v view, ci int, c compDraft) templ.Component {
 		var templ_7745c5c3_Var103 string
 		templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.ResolveAttributeValue(act("add-line", ci))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 607, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 610, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var103)
 		if templ_7745c5c3_Err != nil {
@@ -2263,7 +2263,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var107 string
 			templ_7745c5c3_Var107, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "key"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 620, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 623, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var107)
 			if templ_7745c5c3_Err != nil {
@@ -2276,7 +2276,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var108 string
 			templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Key)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 620, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 623, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var108)
 			if templ_7745c5c3_Err != nil {
@@ -2295,7 +2295,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var109 string
 			templ_7745c5c3_Var109, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "mark"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 623, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 626, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var109)
 			if templ_7745c5c3_Err != nil {
@@ -2308,7 +2308,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var110 string
 			templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Mark.String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 623, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 626, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var110)
 			if templ_7745c5c3_Err != nil {
@@ -2327,7 +2327,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var111 string
 			templ_7745c5c3_Var111, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "issue"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 626, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 629, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var111)
 			if templ_7745c5c3_Err != nil {
@@ -2340,7 +2340,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var112 string
 			templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.ResolveAttributeValue(issue)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 626, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 629, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var112)
 			if templ_7745c5c3_Err != nil {
@@ -2359,7 +2359,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var113 string
 			templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "rule"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 629, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 632, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var113)
 			if templ_7745c5c3_Err != nil {
@@ -2372,7 +2372,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var114 string
 			templ_7745c5c3_Var114, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Rule)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 629, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 632, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var114)
 			if templ_7745c5c3_Err != nil {
@@ -2390,7 +2390,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var115 string
 		templ_7745c5c3_Var115, templ_7745c5c3_Err = templ.ResolveAttributeValue(lineAnchor(ci, li))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 631, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 634, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var115)
 		if templ_7745c5c3_Err != nil {
@@ -2403,7 +2403,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var116 string
 		templ_7745c5c3_Var116, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Key)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 631, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 634, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var116)
 		if templ_7745c5c3_Err != nil {
@@ -2416,7 +2416,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var117 string
 		templ_7745c5c3_Var117, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "qty"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 633, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 636, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var117)
 		if templ_7745c5c3_Err != nil {
@@ -2429,7 +2429,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var118 string
 		templ_7745c5c3_Var118, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "qty"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 634, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 637, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var118)
 		if templ_7745c5c3_Err != nil {
@@ -2442,7 +2442,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var119 string
 		templ_7745c5c3_Var119, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "qty"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 634, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 637, Col: 92}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var119)
 		if templ_7745c5c3_Err != nil {
@@ -2455,7 +2455,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var120 string
 		templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Qty)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 634, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 637, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var120)
 		if templ_7745c5c3_Err != nil {
@@ -2478,7 +2478,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var121 string
 		templ_7745c5c3_Var121, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "unit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 637, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 640, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var121)
 		if templ_7745c5c3_Err != nil {
@@ -2491,7 +2491,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var122 string
 		templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "unit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 638, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 641, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var122)
 		if templ_7745c5c3_Err != nil {
@@ -2504,7 +2504,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var123 string
 		templ_7745c5c3_Var123, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "unit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 638, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 641, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var123)
 		if templ_7745c5c3_Err != nil {
@@ -2517,7 +2517,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var124 string
 		templ_7745c5c3_Var124, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Unit)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 638, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 641, Col: 99}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var124)
 		if templ_7745c5c3_Err != nil {
@@ -2530,7 +2530,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var125 string
 		templ_7745c5c3_Var125, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "ing"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 641, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 644, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var125)
 		if templ_7745c5c3_Err != nil {
@@ -2543,7 +2543,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var126 string
 		templ_7745c5c3_Var126, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "ing"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 642, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 645, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var126)
 		if templ_7745c5c3_Err != nil {
@@ -2556,7 +2556,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var127 string
 		templ_7745c5c3_Var127, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "ing"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 642, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 645, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var127)
 		if templ_7745c5c3_Err != nil {
@@ -2569,7 +2569,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var128 string
 		templ_7745c5c3_Var128, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Ingredient)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 642, Col: 103}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 645, Col: 103}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var128)
 		if templ_7745c5c3_Err != nil {
@@ -2587,7 +2587,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var129 string
 			templ_7745c5c3_Var129, templ_7745c5c3_Err = templ.JoinStringErrs(q)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 644, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 647, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var129))
 			if templ_7745c5c3_Err != nil {
@@ -2626,7 +2626,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var130 string
 			templ_7745c5c3_Var130, templ_7745c5c3_Err = templ.JoinStringErrs(l.Err)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 654, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 657, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var130))
 			if templ_7745c5c3_Err != nil {
@@ -2670,7 +2670,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var131 string
 		templ_7745c5c3_Var131, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "pkgqty"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 662, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 665, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var131)
 		if templ_7745c5c3_Err != nil {
@@ -2691,7 +2691,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var132 string
 		templ_7745c5c3_Var132, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "pkgqty"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 665, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 668, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var132)
 		if templ_7745c5c3_Err != nil {
@@ -2704,7 +2704,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var133 string
 		templ_7745c5c3_Var133, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "pkgqty"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 665, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 668, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var133)
 		if templ_7745c5c3_Err != nil {
@@ -2717,7 +2717,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var134 string
 		templ_7745c5c3_Var134, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.PkgQty)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 665, Col: 106}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 668, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var134)
 		if templ_7745c5c3_Err != nil {
@@ -2730,7 +2730,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var135 string
 		templ_7745c5c3_Var135, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "pkgunit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 668, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 671, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var135)
 		if templ_7745c5c3_Err != nil {
@@ -2743,7 +2743,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var136 string
 		templ_7745c5c3_Var136, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "pkgunit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 669, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 672, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var136)
 		if templ_7745c5c3_Err != nil {
@@ -2756,7 +2756,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var137 string
 		templ_7745c5c3_Var137, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "pkgunit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 669, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 672, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var137)
 		if templ_7745c5c3_Err != nil {
@@ -2769,7 +2769,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var138 string
 		templ_7745c5c3_Var138, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.PkgUnit)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 669, Col: 109}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 672, Col: 109}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var138)
 		if templ_7745c5c3_Err != nil {
@@ -2787,7 +2787,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var139 string
 			templ_7745c5c3_Var139, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "rule"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 673, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 676, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var139)
 			if templ_7745c5c3_Err != nil {
@@ -2800,7 +2800,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var140 string
 			templ_7745c5c3_Var140, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "rule"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 674, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 677, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var140)
 			if templ_7745c5c3_Err != nil {
@@ -2813,7 +2813,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var141 string
 			templ_7745c5c3_Var141, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "rule"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 674, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 677, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var141)
 			if templ_7745c5c3_Err != nil {
@@ -2831,7 +2831,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 				var templ_7745c5c3_Var142 string
 				templ_7745c5c3_Var142, templ_7745c5c3_Err = templ.ResolveAttributeValue(r)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 676, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 679, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var142)
 				if templ_7745c5c3_Err != nil {
@@ -2854,7 +2854,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 				var templ_7745c5c3_Var143 string
 				templ_7745c5c3_Var143, templ_7745c5c3_Err = templ.JoinStringErrs(r)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 676, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 679, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var143))
 				if templ_7745c5c3_Err != nil {
@@ -2877,7 +2877,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var144 string
 		templ_7745c5c3_Var144, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "optional"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 683, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 686, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var144)
 		if templ_7745c5c3_Err != nil {
@@ -2905,7 +2905,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var145 string
 			templ_7745c5c3_Var145, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "propose"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 687, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 690, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var145)
 			if templ_7745c5c3_Err != nil {
@@ -2941,7 +2941,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var146 string
 		templ_7745c5c3_Var146, templ_7745c5c3_Err = templ.ResolveAttributeValue("move-qual:" + n0(ci) + "." + n0(li))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 695, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 698, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var146)
 		if templ_7745c5c3_Err != nil {
@@ -2967,7 +2967,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var147 string
 			templ_7745c5c3_Var147, templ_7745c5c3_Err = templ.ResolveAttributeValue(qField(ci, li, qi, "kind"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 699, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 702, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var147)
 			if templ_7745c5c3_Err != nil {
@@ -2980,7 +2980,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var148 string
 			templ_7745c5c3_Var148, templ_7745c5c3_Err = templ.JoinStringErrs(n1(qi))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 699, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 702, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var148))
 			if templ_7745c5c3_Err != nil {
@@ -2993,7 +2993,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var149 string
 			templ_7745c5c3_Var149, templ_7745c5c3_Err = templ.ResolveAttributeValue(qField(ci, li, qi, "kind"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 700, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 703, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var149)
 			if templ_7745c5c3_Err != nil {
@@ -3006,7 +3006,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var150 string
 			templ_7745c5c3_Var150, templ_7745c5c3_Err = templ.ResolveAttributeValue(qField(ci, li, qi, "kind"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 700, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 703, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var150)
 			if templ_7745c5c3_Err != nil {
@@ -3024,7 +3024,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 				var templ_7745c5c3_Var151 string
 				templ_7745c5c3_Var151, templ_7745c5c3_Err = templ.ResolveAttributeValue(k)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 702, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 705, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var151)
 				if templ_7745c5c3_Err != nil {
@@ -3047,7 +3047,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 				var templ_7745c5c3_Var152 string
 				templ_7745c5c3_Var152, templ_7745c5c3_Err = templ.JoinStringErrs(k)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 702, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 705, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var152))
 				if templ_7745c5c3_Err != nil {
@@ -3065,7 +3065,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var153 string
 			templ_7745c5c3_Var153, templ_7745c5c3_Err = templ.ResolveAttributeValue(qField(ci, li, qi, "text"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 705, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 708, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var153)
 			if templ_7745c5c3_Err != nil {
@@ -3078,7 +3078,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var154 string
 			templ_7745c5c3_Var154, templ_7745c5c3_Err = templ.JoinStringErrs(n1(qi))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 705, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 708, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var154))
 			if templ_7745c5c3_Err != nil {
@@ -3091,7 +3091,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var155 string
 			templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.ResolveAttributeValue(qField(ci, li, qi, "text"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 706, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 709, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var155)
 			if templ_7745c5c3_Err != nil {
@@ -3104,7 +3104,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var156 string
 			templ_7745c5c3_Var156, templ_7745c5c3_Err = templ.ResolveAttributeValue(qField(ci, li, qi, "text"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 706, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 709, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var156)
 			if templ_7745c5c3_Err != nil {
@@ -3117,7 +3117,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var157 string
 			templ_7745c5c3_Var157, templ_7745c5c3_Err = templ.ResolveAttributeValue(q.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 706, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 709, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var157)
 			if templ_7745c5c3_Err != nil {
@@ -3153,7 +3153,7 @@ func lineFields(v view, ci, li, count int, l lineDraft) templ.Component {
 		var templ_7745c5c3_Var158 string
 		templ_7745c5c3_Var158, templ_7745c5c3_Err = templ.ResolveAttributeValue(act("add-qual", ci, li))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 710, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 713, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var158)
 		if templ_7745c5c3_Err != nil {
@@ -3208,7 +3208,7 @@ func rawField(ci, li int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var160 string
 			templ_7745c5c3_Var160, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "raw"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 727, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 730, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var160)
 			if templ_7745c5c3_Err != nil {
@@ -3221,7 +3221,7 @@ func rawField(ci, li int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var161 string
 			templ_7745c5c3_Var161, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Raw)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 727, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 730, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var161)
 			if templ_7745c5c3_Err != nil {
@@ -3239,7 +3239,7 @@ func rawField(ci, li int, l lineDraft) templ.Component {
 				var templ_7745c5c3_Var162 string
 				templ_7745c5c3_Var162, templ_7745c5c3_Err = templ.JoinStringErrs(l.Raw)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 731, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 734, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var162))
 				if templ_7745c5c3_Err != nil {
@@ -3258,7 +3258,7 @@ func rawField(ci, li int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var163 string
 			templ_7745c5c3_Var163, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "raw"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 736, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 739, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var163)
 			if templ_7745c5c3_Err != nil {
@@ -3271,7 +3271,7 @@ func rawField(ci, li int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var164 string
 			templ_7745c5c3_Var164, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "raw"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 737, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 740, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var164)
 			if templ_7745c5c3_Err != nil {
@@ -3284,7 +3284,7 @@ func rawField(ci, li int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var165 string
 			templ_7745c5c3_Var165, templ_7745c5c3_Err = templ.ResolveAttributeValue(lField(ci, li, "raw"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 737, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 740, Col: 91}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var165)
 			if templ_7745c5c3_Err != nil {
@@ -3297,7 +3297,7 @@ func rawField(ci, li int, l lineDraft) templ.Component {
 			var templ_7745c5c3_Var166 string
 			templ_7745c5c3_Var166, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Raw)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 737, Col: 107}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 740, Col: 107}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var166)
 			if templ_7745c5c3_Err != nil {
@@ -3376,7 +3376,7 @@ func stepSection(v view) templ.Component {
 				var templ_7745c5c3_Var169 string
 				templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.JoinStringErrs(n1(ci))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 753, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 756, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var169))
 				if templ_7745c5c3_Err != nil {
@@ -3389,7 +3389,7 @@ func stepSection(v view) templ.Component {
 				var templ_7745c5c3_Var170 string
 				templ_7745c5c3_Var170, templ_7745c5c3_Err = templ.JoinStringErrs(partTitle(c))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 753, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 756, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var170))
 				if templ_7745c5c3_Err != nil {
@@ -3407,7 +3407,7 @@ func stepSection(v view) templ.Component {
 			var templ_7745c5c3_Var171 string
 			templ_7745c5c3_Var171, templ_7745c5c3_Err = templ.ResolveAttributeValue("move-step:" + n0(ci))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 755, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 758, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var171)
 			if templ_7745c5c3_Err != nil {
@@ -3430,7 +3430,7 @@ func stepSection(v view) templ.Component {
 			var templ_7745c5c3_Var172 string
 			templ_7745c5c3_Var172, templ_7745c5c3_Err = templ.ResolveAttributeValue(act("add-step", ci))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 761, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 764, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var172)
 			if templ_7745c5c3_Err != nil {
@@ -3545,7 +3545,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var178 string
 		templ_7745c5c3_Var178, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.stepNum(ci, si)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 776, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 779, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var178))
 		if templ_7745c5c3_Err != nil {
@@ -3568,7 +3568,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var179 string
 		templ_7745c5c3_Var179, templ_7745c5c3_Err = templ.ResolveAttributeValue(stepAnchor(ci, si))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 781, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 784, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var179)
 		if templ_7745c5c3_Err != nil {
@@ -3581,7 +3581,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var180 string
 		templ_7745c5c3_Var180, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 781, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 784, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var180)
 		if templ_7745c5c3_Err != nil {
@@ -3599,7 +3599,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var181 string
 			templ_7745c5c3_Var181, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "mark"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 783, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 786, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var181)
 			if templ_7745c5c3_Err != nil {
@@ -3612,7 +3612,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var182 string
 			templ_7745c5c3_Var182, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.Mark.String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 783, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 786, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var182)
 			if templ_7745c5c3_Err != nil {
@@ -3630,7 +3630,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var183 string
 		templ_7745c5c3_Var183, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "id"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 785, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 788, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var183)
 		if templ_7745c5c3_Err != nil {
@@ -3643,7 +3643,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var184 string
 		templ_7745c5c3_Var184, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 785, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 788, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var184)
 		if templ_7745c5c3_Err != nil {
@@ -3661,7 +3661,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var185 string
 			templ_7745c5c3_Var185, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "title"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 788, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 791, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var185)
 			if templ_7745c5c3_Err != nil {
@@ -3674,7 +3674,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var186 string
 			templ_7745c5c3_Var186, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.stepNum(ci, si)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 788, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 791, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var186))
 			if templ_7745c5c3_Err != nil {
@@ -3687,7 +3687,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var187 string
 			templ_7745c5c3_Var187, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "title"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 789, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 792, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var187)
 			if templ_7745c5c3_Err != nil {
@@ -3700,7 +3700,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var188 string
 			templ_7745c5c3_Var188, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "title"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 789, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 792, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var188)
 			if templ_7745c5c3_Err != nil {
@@ -3713,7 +3713,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var189 string
 			templ_7745c5c3_Var189, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 789, Col: 124}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 792, Col: 124}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var189)
 			if templ_7745c5c3_Err != nil {
@@ -3731,7 +3731,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var190 string
 		templ_7745c5c3_Var190, templ_7745c5c3_Err = templ.JoinStringErrs(v.stepMeta(ci, s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 791, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 794, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var190))
 		if templ_7745c5c3_Err != nil {
@@ -3744,7 +3744,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var191 string
 		templ_7745c5c3_Var191, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "text"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 793, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 796, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var191)
 		if templ_7745c5c3_Err != nil {
@@ -3757,7 +3757,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var192 string
 		templ_7745c5c3_Var192, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.stepNum(ci, si)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 793, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 796, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var192))
 		if templ_7745c5c3_Err != nil {
@@ -3770,7 +3770,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var193 string
 		templ_7745c5c3_Var193, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "text"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 794, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 797, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var193)
 		if templ_7745c5c3_Err != nil {
@@ -3783,7 +3783,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var194 string
 		templ_7745c5c3_Var194, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "text"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 794, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 797, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var194)
 		if templ_7745c5c3_Err != nil {
@@ -3806,7 +3806,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var195 string
 		templ_7745c5c3_Var195, templ_7745c5c3_Err = templ.JoinStringErrs(s.Text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 794, Col: 157}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 797, Col: 157}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var195))
 		if templ_7745c5c3_Err != nil {
@@ -3832,7 +3832,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var196 string
 			templ_7745c5c3_Var196, templ_7745c5c3_Err = templ.JoinStringErrs(s.Duration)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 799, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 802, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var196))
 			if templ_7745c5c3_Err != nil {
@@ -3851,7 +3851,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var197 string
 			templ_7745c5c3_Var197, templ_7745c5c3_Err = templ.JoinStringErrs(s.Kind)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 803, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 806, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var197))
 			if templ_7745c5c3_Err != nil {
@@ -3870,7 +3870,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var198 string
 			templ_7745c5c3_Var198, templ_7745c5c3_Err = templ.JoinStringErrs(a)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 806, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 809, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var198))
 			if templ_7745c5c3_Err != nil {
@@ -3889,7 +3889,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var199 string
 			templ_7745c5c3_Var199, templ_7745c5c3_Err = templ.JoinStringErrs(e)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 809, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 812, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var199))
 			if templ_7745c5c3_Err != nil {
@@ -3920,7 +3920,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var200 string
 			templ_7745c5c3_Var200, templ_7745c5c3_Err = templ.JoinStringErrs(s.Err)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 815, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 818, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var200))
 			if templ_7745c5c3_Err != nil {
@@ -3940,7 +3940,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				var templ_7745c5c3_Var201 string
 				templ_7745c5c3_Var201, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "graph"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 819, Col: 56}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 822, Col: 56}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var201)
 				if templ_7745c5c3_Err != nil {
@@ -3953,7 +3953,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				var templ_7745c5c3_Var202 string
 				templ_7745c5c3_Var202, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.Graph.String())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 819, Col: 83}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 822, Col: 83}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var202)
 				if templ_7745c5c3_Err != nil {
@@ -4000,7 +4000,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var203 string
 		templ_7745c5c3_Var203, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "dur"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 830, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 833, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var203)
 		if templ_7745c5c3_Err != nil {
@@ -4013,7 +4013,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var204 string
 		templ_7745c5c3_Var204, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "dur"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 831, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 834, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var204)
 		if templ_7745c5c3_Err != nil {
@@ -4026,7 +4026,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var205 string
 		templ_7745c5c3_Var205, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "dur"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 831, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 834, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var205)
 		if templ_7745c5c3_Err != nil {
@@ -4039,7 +4039,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		var templ_7745c5c3_Var206 string
 		templ_7745c5c3_Var206, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.Duration)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 831, Col: 104}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 834, Col: 104}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var206)
 		if templ_7745c5c3_Err != nil {
@@ -4057,7 +4057,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var207 string
 			templ_7745c5c3_Var207, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "kind"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 835, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 838, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var207)
 			if templ_7745c5c3_Err != nil {
@@ -4070,7 +4070,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var208 string
 			templ_7745c5c3_Var208, templ_7745c5c3_Err = templ.JoinStringErrs(" kind (optional)")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 835, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 838, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var208))
 			if templ_7745c5c3_Err != nil {
@@ -4083,7 +4083,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var209 string
 			templ_7745c5c3_Var209, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "kind"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 836, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 839, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var209)
 			if templ_7745c5c3_Err != nil {
@@ -4096,7 +4096,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var210 string
 			templ_7745c5c3_Var210, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "kind"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 836, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 839, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var210)
 			if templ_7745c5c3_Err != nil {
@@ -4124,7 +4124,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				var templ_7745c5c3_Var211 string
 				templ_7745c5c3_Var211, templ_7745c5c3_Err = templ.ResolveAttributeValue(k)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 839, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 842, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var211)
 				if templ_7745c5c3_Err != nil {
@@ -4147,7 +4147,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				var templ_7745c5c3_Var212 string
 				templ_7745c5c3_Var212, templ_7745c5c3_Err = templ.JoinStringErrs(k)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 839, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 842, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var212))
 				if templ_7745c5c3_Err != nil {
@@ -4171,7 +4171,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var213 string
 			templ_7745c5c3_Var213, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 847, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 850, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var213)
 			if templ_7745c5c3_Err != nil {
@@ -4192,7 +4192,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var214 string
 			templ_7745c5c3_Var214, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 850, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 853, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var214)
 			if templ_7745c5c3_Err != nil {
@@ -4205,7 +4205,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var215 string
 			templ_7745c5c3_Var215, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 850, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 853, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var215)
 			if templ_7745c5c3_Err != nil {
@@ -4223,7 +4223,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				var templ_7745c5c3_Var216 string
 				templ_7745c5c3_Var216, templ_7745c5c3_Err = templ.ResolveAttributeValue(n0(oi))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 852, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 855, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var216)
 				if templ_7745c5c3_Err != nil {
@@ -4246,7 +4246,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				var templ_7745c5c3_Var217 string
 				templ_7745c5c3_Var217, templ_7745c5c3_Err = templ.JoinStringErrs(componentLabel(oi, o))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 852, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 855, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var217))
 				if templ_7745c5c3_Err != nil {
@@ -4269,7 +4269,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var218 string
 			templ_7745c5c3_Var218, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 859, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 862, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var218)
 			if templ_7745c5c3_Err != nil {
@@ -4282,7 +4282,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var219 string
 			templ_7745c5c3_Var219, templ_7745c5c3_Err = templ.ResolveAttributeValue(n0(ci))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 859, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 862, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var219)
 			if templ_7745c5c3_Err != nil {
@@ -4301,7 +4301,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var220 string
 			templ_7745c5c3_Var220, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "att"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 863, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 866, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var220)
 			if templ_7745c5c3_Err != nil {
@@ -4314,7 +4314,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var221 string
 			templ_7745c5c3_Var221, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "att"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 864, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 867, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var221)
 			if templ_7745c5c3_Err != nil {
@@ -4327,7 +4327,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var222 string
 			templ_7745c5c3_Var222, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "passive"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 866, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 869, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var222)
 			if templ_7745c5c3_Err != nil {
@@ -4358,7 +4358,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			var templ_7745c5c3_Var223 string
 			templ_7745c5c3_Var223, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "passive"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 871, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 874, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var223)
 			if templ_7745c5c3_Err != nil {
@@ -4445,7 +4445,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 		var templ_7745c5c3_Var225 string
 		templ_7745c5c3_Var225, templ_7745c5c3_Err = templ.JoinStringErrs(legend)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 896, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 899, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var225))
 		if templ_7745c5c3_Err != nil {
@@ -4463,7 +4463,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 			var templ_7745c5c3_Var226 string
 			templ_7745c5c3_Var226, templ_7745c5c3_Err = templ.JoinStringErrs(help)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 898, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 901, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var226))
 			if templ_7745c5c3_Err != nil {
@@ -4487,7 +4487,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 				var templ_7745c5c3_Var227 string
 				templ_7745c5c3_Var227, templ_7745c5c3_Err = templ.JoinStringErrs(g.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 903, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 906, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var227))
 				if templ_7745c5c3_Err != nil {
@@ -4533,7 +4533,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 					var templ_7745c5c3_Var230 string
 					templ_7745c5c3_Var230, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(o.Num))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 910, Col: 86}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 913, Col: 86}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var230))
 					if templ_7745c5c3_Err != nil {
@@ -4546,7 +4546,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 					var templ_7745c5c3_Var231 string
 					templ_7745c5c3_Var231, templ_7745c5c3_Err = templ.JoinStringErrs(o.Title)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 911, Col: 32}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 914, Col: 32}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var231))
 					if templ_7745c5c3_Err != nil {
@@ -4564,7 +4564,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 					var templ_7745c5c3_Var232 string
 					templ_7745c5c3_Var232, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 916, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 919, Col: 41}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var232)
 					if templ_7745c5c3_Err != nil {
@@ -4577,7 +4577,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 					var templ_7745c5c3_Var233 string
 					templ_7745c5c3_Var233, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.ID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 916, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 919, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var233)
 					if templ_7745c5c3_Err != nil {
@@ -4622,7 +4622,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 					var templ_7745c5c3_Var236 string
 					templ_7745c5c3_Var236, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(o.Num))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 917, Col: 115}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 920, Col: 115}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var236))
 					if templ_7745c5c3_Err != nil {
@@ -4635,7 +4635,7 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 					var templ_7745c5c3_Var237 string
 					templ_7745c5c3_Var237, templ_7745c5c3_Err = templ.JoinStringErrs(o.Title)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 918, Col: 32}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 921, Col: 32}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var237))
 					if templ_7745c5c3_Err != nil {
@@ -4742,7 +4742,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var241 string
 					templ_7745c5c3_Var241, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "mark"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 940, Col: 54}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 943, Col: 54}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var241)
 					if templ_7745c5c3_Err != nil {
@@ -4755,7 +4755,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var242 string
 					templ_7745c5c3_Var242, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Mark.String())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 940, Col: 80}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 943, Col: 80}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var242)
 					if templ_7745c5c3_Err != nil {
@@ -4773,7 +4773,7 @@ func equipmentFields(v view) templ.Component {
 				var templ_7745c5c3_Var243 string
 				templ_7745c5c3_Var243, templ_7745c5c3_Err = templ.ResolveAttributeValue(equipAnchor(ei))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 942, Col: 46}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 945, Col: 46}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var243)
 				if templ_7745c5c3_Err != nil {
@@ -4786,7 +4786,7 @@ func equipmentFields(v view) templ.Component {
 				var templ_7745c5c3_Var244 string
 				templ_7745c5c3_Var244, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 943, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 946, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var244)
 				if templ_7745c5c3_Err != nil {
@@ -4799,7 +4799,7 @@ func equipmentFields(v view) templ.Component {
 				var templ_7745c5c3_Var245 string
 				templ_7745c5c3_Var245, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 944, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 947, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var245)
 				if templ_7745c5c3_Err != nil {
@@ -4812,7 +4812,7 @@ func equipmentFields(v view) templ.Component {
 				var templ_7745c5c3_Var246 string
 				templ_7745c5c3_Var246, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 944, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 947, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var246)
 				if templ_7745c5c3_Err != nil {
@@ -4825,7 +4825,7 @@ func equipmentFields(v view) templ.Component {
 				var templ_7745c5c3_Var247 string
 				templ_7745c5c3_Var247, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 944, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 947, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var247)
 				if templ_7745c5c3_Err != nil {
@@ -4843,7 +4843,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var248 string
 					templ_7745c5c3_Var248, templ_7745c5c3_Err = templ.JoinStringErrs(e.Qty)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 946, Col: 35}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 949, Col: 35}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var248))
 					if templ_7745c5c3_Err != nil {
@@ -4900,7 +4900,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var249 string
 					templ_7745c5c3_Var249, templ_7745c5c3_Err = templ.JoinStringErrs(e.Err)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 957, Col: 48}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 960, Col: 48}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var249))
 					if templ_7745c5c3_Err != nil {
@@ -4923,7 +4923,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var250 string
 					templ_7745c5c3_Var250, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 962, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 965, Col: 41}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var250)
 					if templ_7745c5c3_Err != nil {
@@ -4936,7 +4936,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var251 string
 					templ_7745c5c3_Var251, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 963, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 966, Col: 40}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var251)
 					if templ_7745c5c3_Err != nil {
@@ -4949,7 +4949,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var252 string
 					templ_7745c5c3_Var252, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 963, Col: 79}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 966, Col: 79}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var252)
 					if templ_7745c5c3_Err != nil {
@@ -4962,7 +4962,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var253 string
 					templ_7745c5c3_Var253, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Qty)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 963, Col: 95}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 966, Col: 95}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var253)
 					if templ_7745c5c3_Err != nil {
@@ -4981,7 +4981,7 @@ func equipmentFields(v view) templ.Component {
 					var templ_7745c5c3_Var254 string
 					templ_7745c5c3_Var254, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "propose"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 968, Col: 84}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 971, Col: 84}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var254)
 					if templ_7745c5c3_Err != nil {
@@ -5029,7 +5029,7 @@ func equipmentFields(v view) templ.Component {
 		var templ_7745c5c3_Var255 string
 		templ_7745c5c3_Var255, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 982, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 985, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var255)
 		if templ_7745c5c3_Err != nil {
@@ -5042,7 +5042,7 @@ func equipmentFields(v view) templ.Component {
 		var templ_7745c5c3_Var256 string
 		templ_7745c5c3_Var256, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 983, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 986, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var256)
 		if templ_7745c5c3_Err != nil {
@@ -5055,7 +5055,7 @@ func equipmentFields(v view) templ.Component {
 		var templ_7745c5c3_Var257 string
 		templ_7745c5c3_Var257, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 983, Col: 107}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 986, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var257)
 		if templ_7745c5c3_Err != nil {
@@ -5135,7 +5135,7 @@ func partsPanel(v view, oob bool) templ.Component {
 		var templ_7745c5c3_Var259 string
 		templ_7745c5c3_Var259, templ_7745c5c3_Err = templ.JoinStringErrs(v.partsText())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1011, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1014, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var259))
 		if templ_7745c5c3_Err != nil {
@@ -5154,7 +5154,7 @@ func partsPanel(v view, oob bool) templ.Component {
 				var templ_7745c5c3_Var260 string
 				templ_7745c5c3_Var260, templ_7745c5c3_Err = templ.JoinStringErrs(n1(ci))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1015, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1018, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var260))
 				if templ_7745c5c3_Err != nil {
@@ -5167,7 +5167,7 @@ func partsPanel(v view, oob bool) templ.Component {
 				var templ_7745c5c3_Var261 string
 				templ_7745c5c3_Var261, templ_7745c5c3_Err = templ.JoinStringErrs(partTitle(c))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1017, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1020, Col: 43}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var261))
 				if templ_7745c5c3_Err != nil {
@@ -5180,7 +5180,7 @@ func partsPanel(v view, oob bool) templ.Component {
 				var templ_7745c5c3_Var262 string
 				templ_7745c5c3_Var262, templ_7745c5c3_Err = templ.JoinStringErrs(partCounts(c))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1018, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1021, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var262))
 				if templ_7745c5c3_Err != nil {
@@ -5193,7 +5193,7 @@ func partsPanel(v view, oob bool) templ.Component {
 				var templ_7745c5c3_Var263 templ.SafeURL
 				templ_7745c5c3_Var263, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + partAnchor(ci)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1020, Col: 51}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1023, Col: 51}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var263))
 				if templ_7745c5c3_Err != nil {
@@ -5206,7 +5206,7 @@ func partsPanel(v view, oob bool) templ.Component {
 				var templ_7745c5c3_Var264 string
 				templ_7745c5c3_Var264, templ_7745c5c3_Err = templ.ResolveAttributeValue("Go to part " + n1(ci))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1020, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1023, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var264)
 				if templ_7745c5c3_Err != nil {

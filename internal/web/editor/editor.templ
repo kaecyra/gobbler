@@ -169,10 +169,10 @@ templ editorForm(v view) {
 			.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }
 			/* Qualifiers as chips. */
 			.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-			.editor .qchip { display: inline-flex; align-items: center; gap: 0; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
+			.editor .qchip { display: inline-flex; align-items: center; gap: 0; max-width: 100%; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
 			.editor .qchip .grip { position: static; width: 24px; }
 			.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 2px 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }
-			.editor .qchip input[type=text] { width: auto; min-width: 14ch; field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }
+			.editor .qchip input[type=text] { flex: 1 1 auto; width: auto; min-width: min(14ch, 100%); field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }
 			.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }
 			.editor .qchip .ibtn { width: 36px; }
 			.editor .pillbtn {
@@ -239,7 +239,7 @@ templ editorForm(v view) {
 			.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }
 			.editor label.dep.self .this { font-size: 13px; font-weight: 700; }
 			/* Equipment as chips, each with its details in a popover. */
-			.editor .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }
+			.editor .chips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }
 			.editor li.equipment { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px; border: 1px solid var(--line); background: var(--card); }
 			.editor li.equipment .grip { position: static; width: 24px; }
 			.editor li.equipment .erow { display: inline-flex; align-items: center; gap: 6px; }
@@ -265,6 +265,9 @@ templ editorForm(v view) {
 				.editor .more-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 			}
 			@media (max-width: 560px) {
+				/* A chip's details span the list, so they stay on screen. */
+				.editor li.equipment { position: static; }
+				.editor li.equipment .more-body { left: 12px; right: 12px; width: auto; top: auto; margin-top: 6px; grid-template-columns: minmax(0, 1fr); }
 				.editor .meta-card { padding: 16px 14px; }
 				.editor input.ed-name { font-size: 24px; }
 				.editor .cols { display: none; }
