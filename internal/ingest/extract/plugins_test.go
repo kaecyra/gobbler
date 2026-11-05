@@ -163,3 +163,16 @@ func TestWPRMBoldLeadKeepsAStructuredTitle(t *testing.T) {
 		t.Errorf("step = %+v, want the HowToStep name and the whole text", got)
 	}
 }
+
+// Tasty Recipes opens a step with the same bold lead WPRM does (#398); the
+// reader is shared, so the lead rules are the ones TestWPRMBoldLeadCases pins.
+func TestTastyBoldLeadsBecomeStepTitles(t *testing.T) {
+	page := fixture(t, "plugin_tasty")
+	page = strings.Replace(page, `"text":"Bake the cake."`, `"text":"Preheat oven. Bake the cake."`, 1)
+	page = strings.Replace(page, `<li>Bake the cake.</li>`, `<li><strong>Preheat oven.</strong> Bake the cake.</li>`, 1)
+	res := mustExtract(t, page, fixtureURL)
+	got := res.Recipe.Instructions
+	if len(got) != 2 || got[0].Title != "Preheat oven" || got[0].Text != "Bake the cake." || got[1].Title != "" {
+		t.Errorf("steps = %+v, want the first titled Preheat oven with the lead off its text, the second untitled", got)
+	}
+}

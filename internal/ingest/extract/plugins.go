@@ -320,7 +320,8 @@ func wprmGroupName(g *html.Node) string {
 }
 
 // --- Tasty Recipes and Create: a flat container of headings and lists. A
-// heading names the items after it.
+// heading names the items after it, and a step may open with a bold title as
+// in WP Recipe Maker (boldLead).
 
 func tastyIngredients(doc *html.Node) []IngredientGroup {
 	return headedGroups(firstWithClass(doc, "tasty-recipes-ingredients"))
@@ -346,7 +347,7 @@ var sectionTitles = map[string]bool{
 
 // headedItems reads container as a run of headings and list items. An item
 // before any heading belongs to the unnamed group.
-func headedItems(container *html.Node, f func(name, text string)) {
+func headedItems(container *html.Node, f func(name string, li *html.Node)) {
 	if container == nil {
 		return
 	}
@@ -362,8 +363,8 @@ func headedItems(container *html.Node, f func(name, text string)) {
 			}
 			return false
 		case n.Data == "li":
-			if t := textOf(n); t != "" {
-				f(name, t)
+			if textOf(n) != "" {
+				f(name, n)
 			}
 			return false
 		}
@@ -373,20 +374,20 @@ func headedItems(container *html.Node, f func(name, text string)) {
 
 func headedGroups(container *html.Node) []IngredientGroup {
 	var out []IngredientGroup
-	headedItems(container, func(name, text string) {
+	headedItems(container, func(name string, li *html.Node) {
 		if len(out) == 0 || out[len(out)-1].Name != name {
 			out = append(out, IngredientGroup{Name: name})
 		}
 		g := &out[len(out)-1]
-		g.Lines = append(g.Lines, text)
+		g.Lines = append(g.Lines, textOf(li))
 	})
 	return out
 }
 
 func headedSteps(container *html.Node) []InstructionStep {
 	var out []InstructionStep
-	headedItems(container, func(name, text string) {
-		out = append(out, InstructionStep{Section: name, Text: text})
+	headedItems(container, func(name string, li *html.Node) {
+		out = append(out, InstructionStep{Section: name, Text: textOf(li), Title: boldLead(li)})
 	})
 	return out
 }

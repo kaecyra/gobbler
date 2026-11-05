@@ -100,6 +100,8 @@ type Step struct {
 	// unknown, never an error (ADR-00006).
 	Kind recipe.StageKind
 	// Title is a short heading the source gave the step, empty when it had none.
+	// A title read off the front of the step's text (splitLead) is a guess, and
+	// the step's Confidence is lowered to say so.
 	Title string
 	// GraphByUser marks a step whose Passive and DependsOn the user set on the
 	// review screen. It is settled: a retry with the LLM does not ask about it.
