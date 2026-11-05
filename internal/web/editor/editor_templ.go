@@ -158,7 +158,7 @@ func editorForm(v view) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"#editor\" hx-swap=\"morph:outerHTML\" hx-ext=\"morph\"><style>\n\t\t\t.editor { display: flex; flex-direction: column; gap: 22px; }\n\t\t\t.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }\n\t\t\t.editor .sec-h .meta { color: var(--ink-3); font-size: 14px; }\n\t\t\t.editor .fl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }\n\t\t\t.editor .fl > label, .editor .lbl, .editor .lbl-row > label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }\n\t\t\t.editor input[type=text], .editor textarea, .editor select {\n\t\t\t\tdisplay: block; width: 100%; min-height: var(--tap); padding: 8px 12px;\n\t\t\t\tborder: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);\n\t\t\t\tfont: inherit; font-size: 16px; font-weight: 400;\n\t\t\t}\n\t\t\t.editor textarea { resize: vertical; }\n\t\t\t.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }\n\t\t\t.editor input.quiet, .editor textarea.quiet { background: transparent; border-color: transparent; }\n\t\t\t.editor input.quiet:hover, .editor textarea.quiet:hover { border-color: var(--line); }\n\t\t\t.editor input.quiet:focus, .editor textarea.quiet:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font-weight: 400; font-size: 16px; color: var(--ink); cursor: pointer; }\n\t\t\t.editor label.inline input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--wattle-ink); }\n\t\t\t.editor .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }\n\t\t\t.editor .btn.ghost:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .btn svg { width: 18px; height: 18px; }\n\t\t\t.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 0; }\n\t\t\t.editor .alert p { margin: 0; }\n\t\t\t.editor .field-error { color: var(--wattle-ink); font-weight: 600; font-size: 15px; margin: 2px 0 0; }\n\t\t\t.editor .flag { color: var(--grain-ink); font-weight: 700; }\n\t\t\t.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }\n\t\t\t.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }\n\t\t\t.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; color: var(--grain-ink); font-size: 15px; }\n\t\t\t.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }\n\t\t\t.editor ol { list-style: none; padding: 0; margin: 0; }\n\t\t\t.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }\n\t\t\t.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }\n\t\t\t/* Recipe */\n\t\t\t.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }\n\t\t\t.editor input.ed-name { font-family: var(--f-display); font-size: 30px; font-weight: 750; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }\n\t\t\t.editor .facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }\n\t\t\t.editor .facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }\n\t\t\t.editor .fact.yield { grid-column: span 2; }\n\t\t\t.editor .pair { display: flex; gap: 8px; }\n\t\t\t.editor .pair input:first-of-type { width: 72px; flex: none; }\n\t\t\t.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 10px 12px; }\n\t\t\t.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }\n\t\t\t.editor .fl.low > label::before, .editor .fact.low > label::before { content: \"\"; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }\n\t\t\t.editor .fl.low .mark { display: none; }\n\t\t\t.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }\n\t\t\t.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }\n\t\t\t.editor .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding-top: 4px; }\n\t\t\t/* Parts inside a section card */\n\t\t\t.editor .comp + .comp { border-top: 1px solid var(--line); }\n\t\t\t.editor .comp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 8px 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }\n\t\t\t.editor .comp:first-child .comp-h { border-radius: var(--r) var(--r) 0 0; }\n\t\t\t.editor .comp-h .pn, .editor .grp-n { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; flex: none; }\n\t\t\t.editor .comp-h input[type=text] { flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; padding: 0 8px; }\n\t\t\t.editor .comp-h .grip { position: static; }\n\t\t\t.editor .comp-h .tools { gap: 0; flex-wrap: nowrap; }\n\t\t\t.editor .grp { display: flex; align-items: center; gap: 8px; margin: 0; padding: 14px 18px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor input.grp-name { display: none; flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; letter-spacing: normal; text-transform: none; color: var(--ink); padding: 0 8px; }\n\t\t\t:root.editor-drag .editor input.grp-name { display: block; }\n\t\t\t:root.editor-drag .editor .grp-title { display: none; }\n\t\t\t.editor .comp-body { padding: 8px 8px 8px; }\n\t\t\t.editor .add-row { padding: 6px 8px 0; }\n\t\t\t/* The disclosure toggle of a row: a chevron at its end. */\n\t\t\t.editor li.item { position: relative; border-radius: var(--r); }\n\t\t\t.editor details.more > summary {\n\t\t\t\tposition: absolute; top: 6px; right: 4px; width: var(--tap); height: var(--tap);\n\t\t\t\tdisplay: grid; place-items: center; border-radius: var(--r); color: var(--ink-3); cursor: pointer; list-style: none;\n\t\t\t}\n\t\t\t.editor details.more > summary::-webkit-details-marker { display: none; }\n\t\t\t.editor details.more > summary:hover { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor details.more > summary svg { width: 18px; height: 18px; }\n\t\t\t.editor details.more[open] > summary svg { transform: rotate(180deg); }\n\t\t\t.editor .more-body {\n\t\t\t\tdisplay: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 16px 14px; margin: 10px -96px 6px 0;\n\t\t\t\tbackground: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;\n\t\t\t}\n\t\t\t.editor .more-body .full { grid-column: 1 / -1; }\n\t\t\t.editor .more-body .fl { justify-content: flex-end; gap: 6px; }\n\t\t\t.editor .more-body .fl > label.inline { min-height: var(--tap); }\n\t\t\t/* Icon buttons, the drag handle and the help popover. */\n\t\t\t.editor .ibtn {\n\t\t\t\tdisplay: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; flex: none;\n\t\t\t\tborder-radius: var(--r); background: transparent; color: var(--ink-3); cursor: pointer;\n\t\t\t}\n\t\t\t.editor .ibtn:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .ibtn.danger:hover:not(:disabled) { color: var(--wattle-ink); }\n\t\t\t.editor .ibtn:disabled { opacity: 0.35; cursor: default; }\n\t\t\t.editor .ibtn svg { width: 18px; height: 18px; }\n\t\t\t.editor .ibtn.rm { position: absolute; top: 6px; right: 48px; }\n\t\t\t.editor .ibtn.rm svg { width: 15px; height: 15px; }\n\t\t\t.editor .grip {\n\t\t\t\tposition: absolute; left: 0; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;\n\t\t\t\tcolor: var(--slate); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;\n\t\t\t}\n\t\t\t.editor .grip svg { width: 18px; height: 18px; }\n\t\t\t:root.editor-drag .editor .grip { display: grid; }\n\t\t\t.editor .dragging { background: var(--card); box-shadow: var(--shadow); position: relative; z-index: 3; }\n\t\t\t.editor .dragging .grip { cursor: grabbing; }\n\t\t\t.editor .lbl-row { position: relative; display: flex; align-items: center; gap: 4px; }\n\t\t\t.editor .help-tip { position: relative; display: inline-flex; }\n\t\t\t.editor .help-btn { display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: transparent; cursor: help; }\n\t\t\t.editor .help-btn > span:first-child { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); }\n\t\t\t.editor .help-btn svg { width: 16px; height: 16px; }\n\t\t\t.editor .help-pop {\n\t\t\t\tdisplay: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 8px); width: min(300px, 75vw);\n\t\t\t\tpadding: 10px 12px; background: var(--ink); color: var(--paper); border-radius: var(--r);\n\t\t\t\tbox-shadow: var(--shadow); font-size: 14.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;\n\t\t\t}\n\t\t\t.editor .help-tip:hover .help-pop, .editor .help-btn:focus-visible + .help-pop { display: block; }\n\t\t\t/* Ingredient lines: plain text until hovered or focused. */\n\t\t\t.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; }\n\t\t\t.editor .cols { padding: 12px 112px 6px 44px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor .cols span { padding-left: 11px; }\n\t\t\t.editor li.line { padding: 6px 112px 6px 36px; }\n\t\t\t.editor li.line + li.line { margin-top: 2px; }\n\t\t\t.editor li.line:hover { background: var(--paper); }\n\t\t\t.editor .row input[type=text] { min-height: var(--tap); padding: 0 10px; border-color: transparent; background: transparent; }\n\t\t\t.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }\n\t\t\t.editor .row input:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }\n\t\t\t.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }\n\t\t\t/* The ingredient input fits its name, so the qualifiers follow it, muted, and wrap rather than clip. */\n\t\t\t.editor .c-ing input[type=text] { flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%; field-sizing: content; }\n\t\t\t.editor .qual { flex: 1 1 8rem; min-width: 0; color: var(--ink-3); font-style: italic; overflow-wrap: anywhere; }\n\t\t\t.editor .c-mark { display: flex; gap: 6px; align-items: center; }\n\t\t\t/* The confidence dot of a line under review, before its remove button. */\n\t\t\t.editor.reviewing li.line::before {\n\t\t\t\tcontent: \"\"; position: absolute; right: 98px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);\n\t\t\t}\n\t\t\t.editor.reviewing li.line.low::before { background: var(--grain); }\n\t\t\t/* A low line, or one with an issue to check, takes the grain tint as the mockup's beer line. */\n\t\t\t.editor li.item.low, .editor li.item.low:hover, .editor li.line:has(> .hint), .editor li.line:has(> .hint):hover { background: var(--grain-soft); }\n\t\t\t.editor li.item.low .row input, .editor li.line:has(> .hint) .row input { background: var(--card); border-color: var(--line); }\n\t\t\t.editor li.line .hint, .editor li.line > .alert { margin: 2px 0 0 0; }\n\t\t\t.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }\n\t\t\t.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }\n\t\t\t/* Qualifiers as chips. */\n\t\t\t.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .qchip { display: inline-flex; align-items: center; gap: 0; max-width: 100%; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }\n\t\t\t.editor .qchip .grip { position: static; width: 24px; }\n\t\t\t.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 2px 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }\n\t\t\t.editor .qchip input[type=text] { flex: 1 1 auto; width: auto; min-width: min(14ch, 100%); field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }\n\t\t\t.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }\n\t\t\t.editor .qchip .ibtn { width: 36px; }\n\t\t\t.editor .pillbtn {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 650; cursor: pointer;\n\t\t\t}\n\t\t\t.editor .pillbtn svg { width: 16px; height: 16px; }\n\t\t\t/* Steps */\n\t\t\t.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }\n\t\t\t.editor .swatch { width: 16px; height: 16px; border-radius: 3px; background: var(--wattle-soft); }\n\t\t\t.editor .swatch.passive { background: var(--sunk); }\n\t\t\t.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }\n\t\t\t.editor li.step + li.step { border-top: 1px solid var(--line); }\n\t\t\t.editor li.step .grip { top: 14px; left: 4px; }\n\t\t\t.editor li.step .ibtn.rm { top: 14px; right: 50px; }\n\t\t\t.editor li.step details.more > summary { top: 14px; right: 8px; }\n\t\t\t.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }\n\t\t\t.editor li.step.low { background: var(--grain-soft); }\n\t\t\t.editor .snum {\n\t\t\t\twidth: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;\n\t\t\t\tbackground: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;\n\t\t\t}\n\t\t\t.editor .snum.passive { background: var(--sunk); color: var(--ink-2); }\n\t\t\t.editor .snum.sm { width: 26px; height: 26px; font-size: 13.5px; }\n\t\t\t.editor .sbody { display: flex; flex-direction: column; gap: 8px; min-width: 0; }\n\t\t\t.editor .trow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }\n\t\t\t.editor input.stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; min-height: var(--tap); padding: 2px 10px; margin-left: -10px; flex: 1 1 auto; width: auto; min-width: 0; }\n\t\t\t.editor .smeta { display: none; color: var(--ink-3); font-size: 14.5px; white-space: nowrap; }\n\t\t\t.editor .sbody:has(> details.more[open]) .smeta { display: inline; }\n\t\t\t.editor .sbody textarea.quiet { padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }\n\t\t\t.editor .sbody:has(> details.more[open]) textarea.quiet { background: var(--card); border-color: var(--line); padding: 8px 12px; margin-left: 0; width: 100%; resize: vertical; }\n\t\t\t.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .pills:not(:has(*)), .editor .sbody:has(> details.more[open]) .pills { display: none; }\n\t\t\t.editor .pill {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600;\n\t\t\t}\n\t\t\t.editor .pill svg { width: 16px; height: 16px; }\n\t\t\t.editor .pill.on { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor li.step .more-body { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }\n\t\t\t.editor .srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }\n\t\t\t.editor .srow .dur { width: 110px; }\n\t\t\t.editor .srow .stage, .editor .srow .part { width: 150px; }\n\t\t\t.editor .att { display: flex; gap: 6px; }\n\t\t\t.editor .att label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600; cursor: pointer; }\n\t\t\t.editor .att input { position: absolute; inset: -1px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; }\n\t\t\t.editor .att label:has(input:checked) { background: var(--sunk); border-color: var(--ink-3); color: var(--ink); }\n\t\t\t.editor .att label.on:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor .att label:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }\n\t\t\t.editor .att svg { width: 16px; height: 16px; }\n\t\t\t.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }\n\t\t\t.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor fieldset.deps legend { padding: 0; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }\n\t\t\t.editor fieldset.deps legend .help { font-weight: 400; }\n\t\t\t.editor .dgrp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 6px 0 2px; }\n\t\t\t.editor .dep-list { display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor label.dep {\n\t\t\t\tdisplay: flex; align-items: center; gap: 12px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);\n\t\t\t}\n\t\t\t.editor label.dep:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); }\n\t\t\t.editor label.dep input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--wattle-ink); }\n\t\t\t.editor label.dep .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n\t\t\t.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }\n\t\t\t.editor label.dep.self .this { font-size: 13px; font-weight: 700; }\n\t\t\t/* Equipment as chips, each with its details in a popover. */\n\t\t\t.editor .chips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }\n\t\t\t.editor li.equipment { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px; border: 1px solid var(--line); background: var(--card); }\n\t\t\t.editor li.equipment .grip { position: static; width: 24px; }\n\t\t\t.editor li.equipment .erow { display: inline-flex; align-items: center; gap: 6px; }\n\t\t\t.editor li.equipment .erow input[type=text] { width: auto; min-width: 5ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-weight: 600; font-size: 15.5px; }\n\t\t\t.editor li.equipment:hover .erow input { border-color: transparent; }\n\t\t\t.editor li.equipment .erow input:focus { border-color: var(--wattle); }\n\t\t\t.editor li.equipment .qual { flex: none; font-style: normal; font-size: 14.5px; }\n\t\t\t.editor li.equipment .ibtn.rm { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more > summary { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more { display: inline-block; }\n\t\t\t.editor li.equipment .more-body { position: absolute; z-index: 6; top: calc(100% + 6px); left: 0; width: min(26rem, 80vw); margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); box-shadow: var(--shadow); }\n\t\t\t.editor .add-equip { display: inline-flex; gap: 4px; align-items: center; }\n\t\t\t.editor .add-equip input[type=text] { width: 200px; }\n\t\t\t/* Save bar */\n\t\t\t.editor .savebar { align-items: center; justify-content: flex-end; background: color-mix(in srgb, var(--paper) 96%, transparent); }\n\t\t\t.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }\n\t\t\t.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }\n\t\t\t.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t@media (max-width: 760px) {\n\t\t\t\t.editor .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .facts.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .two { grid-template-columns: minmax(0, 1fr); }\n\t\t\t\t.editor .more-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t}\n\t\t\t@media (max-width: 560px) {\n\t\t\t\t/* A chip's details span the list, so they stay on screen. */\n\t\t\t\t.editor li.equipment { position: static; }\n\t\t\t\t.editor li.equipment .more-body { left: 12px; right: 12px; width: auto; top: auto; margin-top: 6px; grid-template-columns: minmax(0, 1fr); }\n\t\t\t\t.editor .meta-card { padding: 16px 14px; }\n\t\t\t\t.editor input.ed-name { font-size: 24px; }\n\t\t\t\t.editor .cols { display: none; }\n\t\t\t\t.editor .row { grid-template-columns: 4.5rem minmax(0, 1fr); }\n\t\t\t\t.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }\n\t\t\t\t.editor .c-mark:empty { display: none; }\n\t\t\t\t.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }\n\t\t\t\t.editor .snum { width: 28px; height: 28px; font-size: 14px; }\n\t\t\t\t.editor .chips { padding: 12px; }\n\t\t\t}\n\t\t</style>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-target=\"#editor\" hx-swap=\"morph:outerHTML\" hx-ext=\"morph\"><style>\n\t\t\t.editor { display: flex; flex-direction: column; gap: 22px; }\n\t\t\t.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }\n\t\t\t.editor .sec-h .meta { color: var(--ink-3); font-size: 14px; }\n\t\t\t.editor .fl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }\n\t\t\t.editor .fl > label, .editor .lbl, .editor .lbl-row > label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }\n\t\t\t.editor input[type=text], .editor textarea, .editor select {\n\t\t\t\tdisplay: block; width: 100%; min-height: var(--tap); padding: 8px 12px;\n\t\t\t\tborder: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);\n\t\t\t\tfont: inherit; font-size: 16px; font-weight: 400;\n\t\t\t}\n\t\t\t.editor textarea { resize: vertical; }\n\t\t\t.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }\n\t\t\t.editor input.quiet, .editor textarea.quiet { background: transparent; border-color: transparent; }\n\t\t\t.editor input.quiet:hover, .editor textarea.quiet:hover { border-color: var(--line); }\n\t\t\t.editor input.quiet:focus, .editor textarea.quiet:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font-weight: 400; font-size: 16px; color: var(--ink); cursor: pointer; }\n\t\t\t.editor label.inline input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--wattle-ink); }\n\t\t\t.editor .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }\n\t\t\t.editor .btn.ghost:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .btn svg { width: 18px; height: 18px; }\n\t\t\t.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 0; }\n\t\t\t.editor .alert p { margin: 0; }\n\t\t\t.editor .field-error { color: var(--wattle-ink); font-weight: 600; font-size: 15px; margin: 2px 0 0; }\n\t\t\t.editor .flag { color: var(--grain-ink); font-weight: 700; }\n\t\t\t.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }\n\t\t\t.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }\n\t\t\t.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; color: var(--grain-ink); font-size: 15px; }\n\t\t\t.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }\n\t\t\t.editor ol { list-style: none; padding: 0; margin: 0; }\n\t\t\t.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }\n\t\t\t.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }\n\t\t\t/* Recipe */\n\t\t\t.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }\n\t\t\t.editor input.ed-name { font-family: var(--f-display); font-size: 30px; font-weight: 750; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }\n\t\t\t.editor .facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }\n\t\t\t.editor .facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }\n\t\t\t.editor .fact.yield { grid-column: span 2; }\n\t\t\t.editor .pair { display: flex; gap: 8px; }\n\t\t\t.editor .pair input:first-of-type { width: 72px; flex: none; }\n\t\t\t.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 10px 12px; }\n\t\t\t.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }\n\t\t\t.editor .fl.low > label::before, .editor .fact.low > label::before { content: \"\"; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }\n\t\t\t.editor .fl.low .mark { display: none; }\n\t\t\t.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }\n\t\t\t.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }\n\t\t\t.editor .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding-top: 4px; }\n\t\t\t/* Parts inside a section card */\n\t\t\t.editor .comp + .comp { border-top: 1px solid var(--line); }\n\t\t\t.editor .comp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 8px 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }\n\t\t\t.editor .comp:first-child .comp-h { border-radius: var(--r) var(--r) 0 0; }\n\t\t\t.editor .comp-h .pn, .editor .grp-n { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; flex: none; }\n\t\t\t.editor .comp-h input[type=text] { flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; padding: 0 8px; }\n\t\t\t.editor .comp-h .grip { position: static; }\n\t\t\t.editor .comp-h .tools { gap: 0; flex-wrap: nowrap; }\n\t\t\t.editor .grp { display: flex; align-items: center; gap: 8px; margin: 0; padding: 14px 18px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor input.grp-name { display: none; flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; letter-spacing: normal; text-transform: none; color: var(--ink); padding: 0 8px; }\n\t\t\t:root.editor-drag .editor input.grp-name { display: block; }\n\t\t\t:root.editor-drag .editor .grp-title { display: none; }\n\t\t\t.editor .comp-body { padding: 8px 8px 8px; }\n\t\t\t.editor .add-row { padding: 6px 8px 0; }\n\t\t\t/* The disclosure toggle of a row: a chevron at its end. */\n\t\t\t.editor li.item { position: relative; border-radius: var(--r); }\n\t\t\t.editor details.more > summary {\n\t\t\t\tposition: absolute; top: 6px; right: 4px; width: var(--tap); height: var(--tap);\n\t\t\t\tdisplay: grid; place-items: center; border-radius: var(--r); color: var(--ink-3); cursor: pointer; list-style: none;\n\t\t\t}\n\t\t\t.editor details.more > summary::-webkit-details-marker { display: none; }\n\t\t\t.editor details.more > summary:hover { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor details.more > summary svg { width: 18px; height: 18px; }\n\t\t\t.editor details.more[open] > summary svg { transform: rotate(180deg); }\n\t\t\t.editor .more-body {\n\t\t\t\tdisplay: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 16px 14px; margin: 10px -96px 6px 0;\n\t\t\t\tbackground: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;\n\t\t\t}\n\t\t\t.editor .more-body .full { grid-column: 1 / -1; }\n\t\t\t.editor .more-body .fl { justify-content: flex-end; gap: 6px; }\n\t\t\t.editor .more-body .fl > label.inline { min-height: var(--tap); }\n\t\t\t/* Icon buttons, the drag handle and the help popover. */\n\t\t\t.editor .ibtn {\n\t\t\t\tdisplay: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; flex: none;\n\t\t\t\tborder-radius: var(--r); background: transparent; color: var(--ink-3); cursor: pointer;\n\t\t\t}\n\t\t\t.editor .ibtn:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }\n\t\t\t.editor .ibtn.danger:hover:not(:disabled) { color: var(--wattle-ink); }\n\t\t\t.editor .ibtn:disabled { opacity: 0.35; cursor: default; }\n\t\t\t.editor .ibtn svg { width: 18px; height: 18px; }\n\t\t\t.editor .ibtn.rm { position: absolute; top: 6px; right: 48px; }\n\t\t\t.editor .ibtn.rm svg { width: 15px; height: 15px; }\n\t\t\t.editor .grip {\n\t\t\t\tposition: absolute; left: 0; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;\n\t\t\t\tcolor: var(--slate); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;\n\t\t\t}\n\t\t\t.editor .grip svg { width: 18px; height: 18px; }\n\t\t\t:root.editor-drag .editor .grip { display: grid; }\n\t\t\t.editor .dragging { background: var(--card); box-shadow: var(--shadow); position: relative; z-index: 3; }\n\t\t\t.editor .dragging .grip { cursor: grabbing; }\n\t\t\t.editor .lbl-row { position: relative; display: flex; align-items: center; gap: 4px; }\n\t\t\t.editor .help-tip { position: relative; display: inline-flex; }\n\t\t\t.editor .help-btn { display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: transparent; cursor: help; }\n\t\t\t.editor .help-btn > span:first-child { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); }\n\t\t\t.editor .help-btn svg { width: 16px; height: 16px; }\n\t\t\t.editor .help-pop {\n\t\t\t\tdisplay: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 8px); width: min(300px, 75vw);\n\t\t\t\tpadding: 10px 12px; background: var(--ink); color: var(--paper); border-radius: var(--r);\n\t\t\t\tbox-shadow: var(--shadow); font-size: 14.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;\n\t\t\t}\n\t\t\t.editor .help-tip:hover .help-pop, .editor .help-btn:focus-visible + .help-pop { display: block; }\n\t\t\t/* Ingredient lines: plain text until hovered or focused. */\n\t\t\t.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; }\n\t\t\t.editor .cols { padding: 12px 112px 6px 44px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }\n\t\t\t.editor .cols span { padding-left: 11px; }\n\t\t\t.editor li.line { padding: 6px 112px 6px 36px; }\n\t\t\t.editor li.line + li.line { margin-top: 2px; }\n\t\t\t.editor li.line:hover { background: var(--paper); }\n\t\t\t.editor .row input[type=text] { min-height: var(--tap); padding: 0 10px; border-color: transparent; background: transparent; }\n\t\t\t.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }\n\t\t\t.editor .row input:focus { border-color: var(--wattle); background: var(--card); }\n\t\t\t.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }\n\t\t\t.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }\n\t\t\t/* The ingredient input fits its name, so the qualifiers follow it, muted, and wrap rather than clip. */\n\t\t\t.editor .c-ing input[type=text] { flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%; field-sizing: content; }\n\t\t\t.editor .qual { flex: 1 1 8rem; min-width: 0; color: var(--ink-3); font-style: italic; overflow-wrap: anywhere; }\n\t\t\t.editor .c-mark { display: flex; gap: 6px; align-items: center; }\n\t\t\t/* The confidence dot of a line under review, before its remove button. */\n\t\t\t.editor.reviewing li.line::before {\n\t\t\t\tcontent: \"\"; position: absolute; right: 98px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);\n\t\t\t}\n\t\t\t.editor.reviewing li.line.low::before { background: var(--grain); }\n\t\t\t/* A low line, or one with an issue to check, takes the grain tint as the mockup's beer line. */\n\t\t\t.editor li.item.low, .editor li.item.low:hover, .editor li.line:has(> .hint), .editor li.line:has(> .hint):hover { background: var(--grain-soft); }\n\t\t\t.editor li.item.low .row input, .editor li.line:has(> .hint) .row input { background: var(--card); border-color: var(--line); }\n\t\t\t.editor li.line .hint, .editor li.line > .alert { margin: 2px 0 0 0; }\n\t\t\t.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }\n\t\t\t.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }\n\t\t\t/* Qualifiers as chips. */\n\t\t\t.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .qchip { display: inline-flex; align-items: center; gap: 0; max-width: 100%; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }\n\t\t\t.editor .qchip .grip { position: static; width: 24px; }\n\t\t\t.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 2px 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }\n\t\t\t.editor .qchip input[type=text] { flex: 1 1 auto; width: auto; min-width: min(14ch, 100%); field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }\n\t\t\t.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }\n\t\t\t.editor .qchip .ibtn { width: 36px; }\n\t\t\t.editor .pillbtn {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 650; cursor: pointer;\n\t\t\t}\n\t\t\t.editor .pillbtn svg { width: 16px; height: 16px; }\n\t\t\t/* Steps */\n\t\t\t.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }\n\t\t\t.editor .swatch { width: 16px; height: 16px; border-radius: 3px; background: var(--wattle-soft); }\n\t\t\t.editor .swatch.passive { background: var(--sunk); }\n\t\t\t.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }\n\t\t\t.editor li.step + li.step { border-top: 1px solid var(--line); }\n\t\t\t.editor li.step .grip { top: 14px; left: 4px; }\n\t\t\t.editor li.step .ibtn.rm { top: 14px; right: 50px; }\n\t\t\t.editor li.step details.more > summary { top: 14px; right: 8px; }\n\t\t\t.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }\n\t\t\t.editor li.step.low { background: var(--grain-soft); }\n\t\t\t.editor .snum {\n\t\t\t\twidth: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;\n\t\t\t\tbackground: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;\n\t\t\t}\n\t\t\t.editor .snum.passive { background: var(--sunk); color: var(--ink-2); }\n\t\t\t.editor .snum.sm { width: 26px; height: 26px; font-size: 13.5px; }\n\t\t\t.editor .sbody { display: flex; flex-direction: column; gap: 8px; min-width: 0; }\n\t\t\t.editor .trow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }\n\t\t\t.editor input.stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; min-height: var(--tap); padding: 2px 10px; margin-left: -10px; flex: 1 1 auto; width: auto; min-width: 0; }\n\t\t\t.editor .smeta { display: none; color: var(--ink-3); font-size: 14.5px; white-space: nowrap; }\n\t\t\t.editor .sbody:has(> details.more[open]) .smeta { display: inline; }\n\t\t\t.editor .sbody textarea.quiet { padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }\n\t\t\t.editor .sbody:has(> details.more[open]) textarea.quiet { background: var(--card); border-color: var(--line); padding: 8px 12px; margin-left: 0; width: 100%; resize: vertical; }\n\t\t\t.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }\n\t\t\t.editor .pills:not(:has(*)), .editor .sbody:has(> details.more[open]) .pills { display: none; }\n\t\t\t.editor .pill {\n\t\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600;\n\t\t\t}\n\t\t\t.editor .pill svg { width: 16px; height: 16px; }\n\t\t\t.editor .pill.on { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor li.step .more-body { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }\n\t\t\t.editor .srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }\n\t\t\t.editor .srow .dur { width: 110px; }\n\t\t\t.editor .srow .stage { width: 150px; }\n\t\t\t.editor .att { display: flex; gap: 6px; }\n\t\t\t.editor .att label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600; cursor: pointer; }\n\t\t\t.editor .att input { position: absolute; inset: -1px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; }\n\t\t\t.editor .att label:has(input:checked) { background: var(--sunk); border-color: var(--ink-3); color: var(--ink); }\n\t\t\t.editor .att label.on:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }\n\t\t\t.editor .att label:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }\n\t\t\t.editor .att svg { width: 16px; height: 16px; }\n\t\t\t.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }\n\t\t\t.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor fieldset.deps legend { padding: 0; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }\n\t\t\t.editor fieldset.deps legend .help { font-weight: 400; }\n\t\t\t.editor .dgrp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 6px 0 2px; }\n\t\t\t.editor .dep-list { display: flex; flex-direction: column; gap: 8px; }\n\t\t\t.editor label.dep {\n\t\t\t\tdisplay: flex; align-items: center; gap: 12px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);\n\t\t\t\tborder-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);\n\t\t\t}\n\t\t\t.editor label.dep:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); }\n\t\t\t.editor label.dep input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--wattle-ink); }\n\t\t\t.editor label.dep .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n\t\t\t.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }\n\t\t\t.editor label.dep.self .this { font-size: 13px; font-weight: 700; }\n\t\t\t/* Equipment as chips, each with its details in a popover. */\n\t\t\t.editor .chips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }\n\t\t\t.editor li.equipment { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px; border: 1px solid var(--line); background: var(--card); }\n\t\t\t.editor li.equipment .grip { position: static; width: 24px; }\n\t\t\t.editor li.equipment .erow { display: inline-flex; align-items: center; gap: 6px; }\n\t\t\t.editor li.equipment .erow input[type=text] { width: auto; min-width: 5ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-weight: 600; font-size: 15.5px; }\n\t\t\t.editor li.equipment:hover .erow input { border-color: transparent; }\n\t\t\t.editor li.equipment .erow input:focus { border-color: var(--wattle); }\n\t\t\t.editor li.equipment .qual { flex: none; font-style: normal; font-size: 14.5px; }\n\t\t\t.editor li.equipment .ibtn.rm { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more > summary { position: static; width: 36px; }\n\t\t\t.editor li.equipment details.more { display: inline-block; }\n\t\t\t.editor li.equipment .more-body { position: absolute; z-index: 6; top: calc(100% + 6px); left: 0; width: min(26rem, 80vw); margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); box-shadow: var(--shadow); }\n\t\t\t.editor .add-equip { display: inline-flex; gap: 4px; align-items: center; }\n\t\t\t.editor .add-equip input[type=text] { width: 200px; }\n\t\t\t/* Save bar */\n\t\t\t.editor .savebar { align-items: center; justify-content: flex-end; background: color-mix(in srgb, var(--paper) 96%, transparent); }\n\t\t\t.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }\n\t\t\t.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }\n\t\t\t.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t\t@media (max-width: 760px) {\n\t\t\t\t.editor .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .facts.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t\t.editor .two { grid-template-columns: minmax(0, 1fr); }\n\t\t\t\t.editor .more-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n\t\t\t}\n\t\t\t@media (max-width: 560px) {\n\t\t\t\t/* A chip's details span the list, so they stay on screen. */\n\t\t\t\t.editor li.equipment { position: static; }\n\t\t\t\t.editor li.equipment .more-body { left: 12px; right: 12px; width: auto; top: auto; margin-top: 6px; grid-template-columns: minmax(0, 1fr); }\n\t\t\t\t.editor .meta-card { padding: 16px 14px; }\n\t\t\t\t.editor input.ed-name { font-size: 24px; }\n\t\t\t\t.editor .cols { display: none; }\n\t\t\t\t.editor .row { grid-template-columns: 4.5rem minmax(0, 1fr); }\n\t\t\t\t.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }\n\t\t\t\t.editor .c-mark:empty { display: none; }\n\t\t\t\t.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }\n\t\t\t\t.editor .snum { width: 28px; height: 28px; font-size: 14px; }\n\t\t\t\t.editor .chips { padding: 12px; }\n\t\t\t}\n\t\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -4241,187 +4241,57 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		if len(v.D.Components) > 1 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 377, "<div class=\"fl part\"><div class=\"lbl-row\"><label for=\"")
+		if v.carries(groupStepGraph) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 377, "<div class=\"fl\"><span class=\"lbl\" id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var219 string
-			templ_7745c5c3_Var219, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
+			templ_7745c5c3_Var219, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "att"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 862, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 861, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var219)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 378, "\">Part</label>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = helpTip(tipID("step-part", ci, si), "parts", partHelp).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 379, "</div><select id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 378, "\">Attention</span><div class=\"att\" role=\"radiogroup\" aria-labelledby=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var220 string
-			templ_7745c5c3_Var220, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
+			templ_7745c5c3_Var220, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "att"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 865, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 862, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var220)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 380, "\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 379, "\"><label class=\"on\"><input type=\"radio\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var221 string
-			templ_7745c5c3_Var221, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
+			templ_7745c5c3_Var221, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "passive"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 865, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 864, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var221)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 381, "\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			for oi, o := range v.D.Components {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 382, "<option value=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var222 string
-				templ_7745c5c3_Var222, templ_7745c5c3_Err = templ.ResolveAttributeValue(n0(oi))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 867, Col: 32}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var222)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 383, "\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				if oi == ci {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 384, " selected")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 385, ">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var223 string
-				templ_7745c5c3_Var223, templ_7745c5c3_Err = templ.JoinStringErrs(componentLabel(oi, o))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 867, Col: 81}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var223))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 386, "</option>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 387, "</select></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 388, "  <input type=\"hidden\" name=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var224 string
-			templ_7745c5c3_Var224, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "to"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 874, Col: 55}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var224)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 389, "\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var225 string
-			templ_7745c5c3_Var225, templ_7745c5c3_Err = templ.ResolveAttributeValue(n0(ci))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 874, Col: 72}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var225)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 390, "\"> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		if v.carries(groupStepGraph) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 391, "<div class=\"fl\"><span class=\"lbl\" id=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var226 string
-			templ_7745c5c3_Var226, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "att"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 878, Col: 52}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var226)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 392, "\">Attention</span><div class=\"att\" role=\"radiogroup\" aria-labelledby=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var227 string
-			templ_7745c5c3_Var227, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "att"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 879, Col: 82}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var227)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 393, "\"><label class=\"on\"><input type=\"radio\" name=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var228 string
-			templ_7745c5c3_Var228, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "passive"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 881, Col: 62}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var228)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 394, "\" value=\"\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 380, "\" value=\"\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if !s.Passive {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 395, " checked")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 381, " checked")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 396, ">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 382, ">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -4429,30 +4299,30 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 397, " Hands-on</label> <label><input type=\"radio\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 383, " Hands-on</label> <label><input type=\"radio\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var229 string
-			templ_7745c5c3_Var229, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "passive"))
+			var templ_7745c5c3_Var222 string
+			templ_7745c5c3_Var222, templ_7745c5c3_Err = templ.ResolveAttributeValue(sField(ci, si, "passive"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 886, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 869, Col: 62}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var229)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var222)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 398, "\" value=\"1\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 384, "\" value=\"1\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if s.Passive {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 399, " checked")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 385, " checked")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 400, ">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 386, ">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -4460,12 +4330,12 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 401, " Hands-off</label></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 387, " Hands-off</label></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 402, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 388, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -4475,7 +4345,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 403, "</div></details></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 389, "</div></details></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -4483,7 +4353,7 @@ func stepFields(v view, ci, si, count int, s stepDraft) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 404, "</li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 390, "</li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -4511,226 +4381,226 @@ func stepChooser(v view, legend, help, name, self string, checked []string) temp
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var230 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var230 == nil {
-			templ_7745c5c3_Var230 = templ.NopComponent
+		templ_7745c5c3_Var223 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var223 == nil {
+			templ_7745c5c3_Var223 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 405, "<fieldset class=\"deps\"><legend class=\"lbl\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 391, "<fieldset class=\"deps\"><legend class=\"lbl\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var231 string
-		templ_7745c5c3_Var231, templ_7745c5c3_Err = templ.JoinStringErrs(legend)
+		var templ_7745c5c3_Var224 string
+		templ_7745c5c3_Var224, templ_7745c5c3_Err = templ.JoinStringErrs(legend)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 911, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 894, Col: 11}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var231))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var224))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 406, " ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 392, " ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if help != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 407, "<span class=\"help\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 393, "<span class=\"help\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var232 string
-			templ_7745c5c3_Var232, templ_7745c5c3_Err = templ.JoinStringErrs(help)
+			var templ_7745c5c3_Var225 string
+			templ_7745c5c3_Var225, templ_7745c5c3_Err = templ.JoinStringErrs(help)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 913, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 896, Col: 29}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var232))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var225))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 408, "</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 394, "</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 409, "</legend> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 395, "</legend> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, g := range v.stepGroups() {
 			if len(v.D.Components) > 1 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 410, "<p class=\"dgrp\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 396, "<p class=\"dgrp\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var233 string
-				templ_7745c5c3_Var233, templ_7745c5c3_Err = templ.JoinStringErrs(g.Name)
+				var templ_7745c5c3_Var226 string
+				templ_7745c5c3_Var226, templ_7745c5c3_Err = templ.JoinStringErrs(g.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 918, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 901, Col: 28}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var233))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var226))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 411, "</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 397, "</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 412, " <div class=\"dep-list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 398, " <div class=\"dep-list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, o := range g.Options {
 				if o.ID == self {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 413, "<label class=\"dep self\" title=\"A step cannot wait for itself\"><input type=\"checkbox\" disabled> ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 399, "<label class=\"dep self\" title=\"A step cannot wait for itself\"><input type=\"checkbox\" disabled> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var234 = []any{"snum sm", templ.KV("passive", o.Passive)}
-					templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var234...)
+					var templ_7745c5c3_Var227 = []any{"snum sm", templ.KV("passive", o.Passive)}
+					templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var227...)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 414, "<span class=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 400, "<span class=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var228 string
+					templ_7745c5c3_Var228, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var227).String())
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1, Col: 0}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var228)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 401, "\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var229 string
+					templ_7745c5c3_Var229, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(o.Num))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 908, Col: 86}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var229))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 402, "</span> <span class=\"t\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var230 string
+					templ_7745c5c3_Var230, templ_7745c5c3_Err = templ.JoinStringErrs(o.Title)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 909, Col: 32}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var230))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 403, "</span> <span class=\"this\">This step</span></label>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 404, "<label class=\"dep\"><input type=\"checkbox\" name=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var231 string
+					templ_7745c5c3_Var231, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 914, Col: 41}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var231)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 405, "\" value=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var232 string
+					templ_7745c5c3_Var232, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.ID)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 914, Col: 56}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var232)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 406, "\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if slices.Contains(checked, o.ID) {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 407, " checked")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 408, "> ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var233 = []any{"snum sm", templ.KV("passive", o.Passive)}
+					templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var233...)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 409, "<span class=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var234 string
+					templ_7745c5c3_Var234, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var233).String())
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1, Col: 0}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var234)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 410, "\"><span class=\"sr\">Step </span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var235 string
-					templ_7745c5c3_Var235, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var234).String())
+					templ_7745c5c3_Var235, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(o.Num))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1, Col: 0}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 915, Col: 115}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var235)
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var235))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 415, "\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 411, "</span> <span class=\"t\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var236 string
-					templ_7745c5c3_Var236, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(o.Num))
+					templ_7745c5c3_Var236, templ_7745c5c3_Err = templ.JoinStringErrs(o.Title)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 925, Col: 86}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 916, Col: 32}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var236))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 416, "</span> <span class=\"t\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var237 string
-					templ_7745c5c3_Var237, templ_7745c5c3_Err = templ.JoinStringErrs(o.Title)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 926, Col: 32}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var237))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 417, "</span> <span class=\"this\">This step</span></label>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 418, "<label class=\"dep\"><input type=\"checkbox\" name=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var238 string
-					templ_7745c5c3_Var238, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 931, Col: 41}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var238)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 419, "\" value=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var239 string
-					templ_7745c5c3_Var239, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.ID)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 931, Col: 56}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var239)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 420, "\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if slices.Contains(checked, o.ID) {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 421, " checked")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 422, "> ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var240 = []any{"snum sm", templ.KV("passive", o.Passive)}
-					templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var240...)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 423, "<span class=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var241 string
-					templ_7745c5c3_Var241, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var240).String())
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1, Col: 0}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var241)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 424, "\"><span class=\"sr\">Step </span>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var242 string
-					templ_7745c5c3_Var242, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(o.Num))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 932, Col: 115}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var242))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 425, "</span> <span class=\"t\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var243 string
-					templ_7745c5c3_Var243, templ_7745c5c3_Err = templ.JoinStringErrs(o.Title)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 933, Col: 32}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var243))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 426, "</span></label>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 412, "</span></label>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 427, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 413, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 428, "</fieldset>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 414, "</fieldset>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -4757,12 +4627,12 @@ func equipmentFields(v view) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var244 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var244 == nil {
-			templ_7745c5c3_Var244 = templ.NopComponent
+		templ_7745c5c3_Var237 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var237 == nil {
+			templ_7745c5c3_Var237 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 429, "<section class=\"ed-sec\" aria-labelledby=\"ed-h-equipment\" id=\"ed-equipment\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 415, "<section class=\"ed-sec\" aria-labelledby=\"ed-h-equipment\" id=\"ed-equipment\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -4770,41 +4640,41 @@ func equipmentFields(v view) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 430, "<div class=\"ed-card\"><ol class=\"chips\" data-drag-list=\"move-equip\" data-drag-axis=\"x\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 416, "<div class=\"ed-card\"><ol class=\"chips\" data-drag-list=\"move-equip\" data-drag-axis=\"x\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for ei, e := range v.D.Equipment {
 			if !equipBlank(e) {
-				var templ_7745c5c3_Var245 = []any{"item equipment " + e.Mark.String()}
-				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var245...)
+				var templ_7745c5c3_Var238 = []any{"item equipment " + e.Mark.String()}
+				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var238...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 431, "<li class=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 417, "<li class=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var246 string
-				templ_7745c5c3_Var246, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var245).String())
+				var templ_7745c5c3_Var239 string
+				templ_7745c5c3_Var239, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var238).String())
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1, Col: 0}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var246)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var239)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 432, "\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 418, "\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if e.Mark.LLM {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 433, " data-llm")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 419, " data-llm")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 434, ">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 420, ">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -4813,121 +4683,121 @@ func equipmentFields(v view) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if !e.Mark.zero() {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 435, "<input type=\"hidden\" name=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 421, "<input type=\"hidden\" name=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var247 string
-					templ_7745c5c3_Var247, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "mark"))
+					var templ_7745c5c3_Var240 string
+					templ_7745c5c3_Var240, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "mark"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 955, Col: 54}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 938, Col: 54}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var247)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 436, "\" value=\"")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var240)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var248 string
-					templ_7745c5c3_Var248, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Mark.String())
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 955, Col: 80}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var248)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 422, "\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 437, "\"> ")
+					var templ_7745c5c3_Var241 string
+					templ_7745c5c3_Var241, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Mark.String())
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 938, Col: 80}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var241)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 423, "\"> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 438, "<span class=\"erow\" id=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 424, "<span class=\"erow\" id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var249 string
-				templ_7745c5c3_Var249, templ_7745c5c3_Err = templ.ResolveAttributeValue(equipAnchor(ei))
+				var templ_7745c5c3_Var242 string
+				templ_7745c5c3_Var242, templ_7745c5c3_Err = templ.ResolveAttributeValue(equipAnchor(ei))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 957, Col: 46}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 940, Col: 46}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var249)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 439, "\"><label class=\"sr\" for=\"")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var242)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var250 string
-				templ_7745c5c3_Var250, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 958, Col: 50}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var250)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 425, "\"><label class=\"sr\" for=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 440, "\">Equipment</label> <input id=\"")
+				var templ_7745c5c3_Var243 string
+				templ_7745c5c3_Var243, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 941, Col: 50}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var243)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var251 string
-				templ_7745c5c3_Var251, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 959, Col: 38}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var251)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 426, "\">Equipment</label> <input id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 441, "\" type=\"text\" name=\"")
+				var templ_7745c5c3_Var244 string
+				templ_7745c5c3_Var244, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 942, Col: 38}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var244)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var252 string
-				templ_7745c5c3_Var252, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 959, Col: 78}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var252)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 427, "\" type=\"text\" name=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 442, "\" value=\"")
+				var templ_7745c5c3_Var245 string
+				templ_7745c5c3_Var245, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "name"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 942, Col: 78}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var245)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var253 string
-				templ_7745c5c3_Var253, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Name)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 959, Col: 95}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var253)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 428, "\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 443, "\" list=\"equipment-names\" autocomplete=\"off\"> ")
+				var templ_7745c5c3_Var246 string
+				templ_7745c5c3_Var246, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Name)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 942, Col: 95}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var246)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 429, "\" list=\"equipment-names\" autocomplete=\"off\"> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if strings.TrimSpace(e.Qty) != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 444, "<span class=\"qual\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 430, "<span class=\"qual\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var254 string
-					templ_7745c5c3_Var254, templ_7745c5c3_Err = templ.JoinStringErrs(e.Qty)
+					var templ_7745c5c3_Var247 string
+					templ_7745c5c3_Var247, templ_7745c5c3_Err = templ.JoinStringErrs(e.Qty)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 961, Col: 35}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 944, Col: 35}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var254))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var247))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 445, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 431, "</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -4936,7 +4806,7 @@ func equipmentFields(v view) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 446, "</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 432, "</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -4944,17 +4814,17 @@ func equipmentFields(v view) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 447, "<details class=\"more\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 433, "<details class=\"more\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if e.open() {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 448, " open")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 434, " open")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 449, ">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 435, ">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -4962,7 +4832,7 @@ func equipmentFields(v view) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 450, "<div class=\"more-body\"><div class=\"full\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 436, "<div class=\"more-body\"><div class=\"full\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -4971,117 +4841,117 @@ func equipmentFields(v view) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if e.Err != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 451, "<p class=\"alert\" role=\"alert\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 437, "<p class=\"alert\" role=\"alert\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var255 string
-					templ_7745c5c3_Var255, templ_7745c5c3_Err = templ.JoinStringErrs(e.Err)
+					var templ_7745c5c3_Var248 string
+					templ_7745c5c3_Var248, templ_7745c5c3_Err = templ.JoinStringErrs(e.Err)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 972, Col: 48}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 955, Col: 48}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var255))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var248))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 452, "</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 438, "</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 453, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 439, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if v.carries(groupEquipmentLinks) {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 454, "<div class=\"fl\"><label for=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 440, "<div class=\"fl\"><label for=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var256 string
-					templ_7745c5c3_Var256, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
+					var templ_7745c5c3_Var249 string
+					templ_7745c5c3_Var249, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 977, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 960, Col: 41}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var256)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 455, "\">Quantity</label> <input id=\"")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var249)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var257 string
-					templ_7745c5c3_Var257, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 978, Col: 40}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var257)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 441, "\">Quantity</label> <input id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 456, "\" type=\"text\" name=\"")
+					var templ_7745c5c3_Var250 string
+					templ_7745c5c3_Var250, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 961, Col: 40}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var250)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var258 string
-					templ_7745c5c3_Var258, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 978, Col: 79}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var258)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 442, "\" type=\"text\" name=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 457, "\" value=\"")
+					var templ_7745c5c3_Var251 string
+					templ_7745c5c3_Var251, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "qty"))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 961, Col: 79}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var251)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var259 string
-					templ_7745c5c3_Var259, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Qty)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 978, Col: 95}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var259)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 443, "\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 458, "\"></div>")
+					var templ_7745c5c3_Var252 string
+					templ_7745c5c3_Var252, templ_7745c5c3_Err = templ.ResolveAttributeValue(e.Qty)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 961, Col: 95}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var252)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 444, "\"></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 				if e.OfferProposal || e.Propose {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 459, "<div class=\"fl full\"><label class=\"inline\"><input type=\"checkbox\" name=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 445, "<div class=\"fl full\"><label class=\"inline\"><input type=\"checkbox\" name=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var260 string
-					templ_7745c5c3_Var260, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "propose"))
+					var templ_7745c5c3_Var253 string
+					templ_7745c5c3_Var253, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(ei, "propose"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 983, Col: 84}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 966, Col: 84}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var260)
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var253)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 460, "\" value=\"1\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 446, "\" value=\"1\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if e.Propose {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 461, " checked")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 447, " checked")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 462, "> Add this equipment to the catalog as new and unreviewed</label></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 448, "> Add this equipment to the catalog as new and unreviewed</label></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 				if v.carries(groupEquipmentLinks) && len(v.stepGroups()) > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 463, "<div class=\"full\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 449, "<div class=\"full\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -5089,67 +4959,67 @@ func equipmentFields(v view) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 464, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 450, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 465, "</div></details></li>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 451, "</div></details></li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 466, "<li class=\"add-equip\"><label class=\"sr\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 452, "<li class=\"add-equip\"><label class=\"sr\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var261 string
-		templ_7745c5c3_Var261, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
+		var templ_7745c5c3_Var254 string
+		templ_7745c5c3_Var254, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 997, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 980, Col: 63}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var261)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 467, "\">New equipment</label> <input id=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var254)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var262 string
-		templ_7745c5c3_Var262, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 998, Col: 51}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var262)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 453, "\">New equipment</label> <input id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 468, "\" type=\"text\" name=\"")
+		var templ_7745c5c3_Var255 string
+		templ_7745c5c3_Var255, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 981, Col: 51}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var255)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var263 string
-		templ_7745c5c3_Var263, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 998, Col: 107}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var263)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 454, "\" type=\"text\" name=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 469, "\" list=\"equipment-names\" autocomplete=\"off\" placeholder=\"Add equipment\" data-enter=\"add-equip\"")
+		var templ_7745c5c3_Var256 string
+		templ_7745c5c3_Var256, templ_7745c5c3_Err = templ.ResolveAttributeValue(eField(len(v.D.Equipment), "name"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 981, Col: 107}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var256)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 455, "\" list=\"equipment-names\" autocomplete=\"off\" placeholder=\"Add equipment\" data-enter=\"add-equip\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if v.D.Focus == eField(len(v.D.Equipment), "name") {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 470, " autofocus")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 456, " autofocus")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 471, "> <button type=\"submit\" class=\"ibtn\" name=\"action\" value=\"add-equip\" aria-label=\"Add equipment\" title=\"Add equipment\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 457, "> <button type=\"submit\" class=\"ibtn\" name=\"action\" value=\"add-equip\" aria-label=\"Add equipment\" title=\"Add equipment\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5157,7 +5027,7 @@ func equipmentFields(v view) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 472, "</button></li></ol></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 458, "</button></li></ol></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5185,12 +5055,12 @@ func partsPanel(v view, oob bool) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var264 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var264 == nil {
-			templ_7745c5c3_Var264 = templ.NopComponent
+		templ_7745c5c3_Var257 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var257 == nil {
+			templ_7745c5c3_Var257 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 473, "<section id=\"parts-panel\" class=\"parts-panel\" aria-labelledby=\"ed-h-parts\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 459, "<section id=\"parts-panel\" class=\"parts-panel\" aria-labelledby=\"ed-h-parts\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5198,7 +5068,7 @@ func partsPanel(v view, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 474, "><style>\n\t\t\t.parts-panel .pp-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px 16px 8px; }\n\t\t\t.parts-panel .pp-text { margin: 0 0 10px; color: var(--ink-2); font-size: 15.5px; }\n\t\t\t.parts-panel .pp-part { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }\n\t\t\t.parts-panel .pn { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; }\n\t\t\t.parts-panel .pp-name { display: block; color: var(--ink); overflow-wrap: anywhere; }\n\t\t\t.parts-panel .pp-meta { display: block; font-size: 14px; color: var(--ink-3); }\n\t\t\t.parts-panel .pp-part a { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 14.5px; }\n\t\t\t.parts-panel .pp-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 10px 0 6px; border-top: 1px solid var(--line); }\n\t\t</style>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 460, "><style>\n\t\t\t.parts-panel .pp-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px 16px 8px; }\n\t\t\t.parts-panel .pp-text { margin: 0 0 10px; color: var(--ink-2); font-size: 15.5px; }\n\t\t\t.parts-panel .pp-part { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }\n\t\t\t.parts-panel .pn { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; }\n\t\t\t.parts-panel .pp-name { display: block; color: var(--ink); overflow-wrap: anywhere; }\n\t\t\t.parts-panel .pp-meta { display: block; font-size: 14px; color: var(--ink-3); }\n\t\t\t.parts-panel .pp-part a { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 14.5px; }\n\t\t\t.parts-panel .pp-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 10px 0 6px; border-top: 1px solid var(--line); }\n\t\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5206,112 +5076,112 @@ func partsPanel(v view, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 475, "<div class=\"pp-card\"><p class=\"pp-text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 461, "<div class=\"pp-card\"><p class=\"pp-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var265 string
-		templ_7745c5c3_Var265, templ_7745c5c3_Err = templ.JoinStringErrs(v.partsText())
+		var templ_7745c5c3_Var258 string
+		templ_7745c5c3_Var258, templ_7745c5c3_Err = templ.JoinStringErrs(v.partsText())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1026, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1009, Col: 37}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var265))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var258))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 476, "</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 462, "</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(v.D.Components) > 1 {
 			for ci, c := range v.D.Components {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 477, "<div class=\"pp-part\"><span class=\"pn\" aria-hidden=\"true\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 463, "<div class=\"pp-part\"><span class=\"pn\" aria-hidden=\"true\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var266 string
-				templ_7745c5c3_Var266, templ_7745c5c3_Err = templ.JoinStringErrs(n1(ci))
+				var templ_7745c5c3_Var259 string
+				templ_7745c5c3_Var259, templ_7745c5c3_Err = templ.JoinStringErrs(n1(ci))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1030, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1013, Col: 50}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var266))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 478, "</span> <span><span class=\"pp-name\">")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var259))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var267 string
-				templ_7745c5c3_Var267, templ_7745c5c3_Err = templ.JoinStringErrs(partTitle(c))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1032, Col: 43}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var267))
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 464, "</span> <span><span class=\"pp-name\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 479, "</span> <span class=\"pp-meta\">")
+				var templ_7745c5c3_Var260 string
+				templ_7745c5c3_Var260, templ_7745c5c3_Err = templ.JoinStringErrs(partTitle(c))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1015, Col: 43}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var260))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var268 string
-				templ_7745c5c3_Var268, templ_7745c5c3_Err = templ.JoinStringErrs(partCounts(c))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1033, Col: 44}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var268))
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 465, "</span> <span class=\"pp-meta\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 480, "</span></span> <a href=\"")
+				var templ_7745c5c3_Var261 string
+				templ_7745c5c3_Var261, templ_7745c5c3_Err = templ.JoinStringErrs(partCounts(c))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1016, Col: 44}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var261))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var269 templ.SafeURL
-				templ_7745c5c3_Var269, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + partAnchor(ci)))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1035, Col: 51}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var269))
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 466, "</span></span> <a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 481, "\" aria-label=\"")
+				var templ_7745c5c3_Var262 templ.SafeURL
+				templ_7745c5c3_Var262, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#" + partAnchor(ci)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1018, Col: 51}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var262))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var270 string
-				templ_7745c5c3_Var270, templ_7745c5c3_Err = templ.ResolveAttributeValue("Go to part " + n1(ci))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1035, Col: 89}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var270)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 467, "\" aria-label=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 482, "\">Go to</a></div>")
+				var templ_7745c5c3_Var263 string
+				templ_7745c5c3_Var263, templ_7745c5c3_Err = templ.ResolveAttributeValue("Go to part " + n1(ci))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/editor/editor.templ`, Line: 1018, Col: 89}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var263)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 468, "\">Go to</a></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 483, "<p class=\"pp-tools\"><button type=\"submit\" form=\"editor\" class=\"btn\" name=\"action\" value=\"add-component\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 469, "<p class=\"pp-tools\"><button type=\"submit\" form=\"editor\" class=\"btn\" name=\"action\" value=\"add-component\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(v.D.Components) > 1 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 484, "Add a part")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 470, "Add a part")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 485, "Split into parts")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 471, "Split into parts")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 486, "</button></p></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 472, "</button></p></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

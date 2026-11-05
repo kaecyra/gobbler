@@ -288,7 +288,7 @@ func TestMoveActionsCarryAnItemToAnotherPart(t *testing.T) {
 		t.Fatalf("part 2 steps: %v", got)
 	}
 	m := s.Components[1].Steps[0]
-	if m.Title != "Rest" || m.Kind != "bake" || m.Duration != "1h" || !m.Passive || !reflect.DeepEqual(m.Deps, []string{"a1"}) || m.To != 1 {
+	if m.Title != "Rest" || m.Kind != "bake" || m.Duration != "1h" || !m.Passive || !reflect.DeepEqual(m.Deps, []string{"a1"}) {
 		t.Errorf("the moved step lost fields: %+v", m)
 	}
 	if !reflect.DeepEqual(s.Equipment[0].Steps, []string{"a2"}) {

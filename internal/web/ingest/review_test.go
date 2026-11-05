@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"fmt"
 	"html"
 	"net/http"
 	"net/url"
@@ -22,7 +23,7 @@ func TestReviewIsTheEditorForm(t *testing.T) {
 	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
 	for _, want := range []string{
 		`name="c.0.l.0.qty"`, `name="c.0.l.0.unit"`, `name="c.0.l.0.ing"`, `name="c.0.l.0.optional"`,
-		`name="c.0.s.0.dur"`, `name="c.0.s.0.to"`, `value="add-line:0"`, `value="rm-line:0.0"`, `value="add-qual:0.0"`,
+		`name="c.0.s.0.dur"`, `value="add-line:0"`, `value="rm-line:0.0"`, `value="add-qual:0.0"`,
 		`value="add-component"`, `value="add-equip"`, "Confirm and save", "Cancel",
 	} {
 		if !strings.Contains(body, want) {
@@ -111,10 +112,10 @@ func TestConfirmSavesAnAddedLineARemovedLineAndAMovedStep(t *testing.T) {
 	form.Del("c.0.l.1.ing")
 	form.Del("c.0.l.1.raw")
 	form.Del("c.0.l.1.propose")
-	// A second component, and the weak step placed in it with the step's
-	// component selector.
+	// A second component, and the weak step dragged into it: the browser posts
+	// the step under the other part.
 	form.Set("c.1.name", "Topping")
-	form.Set("c.0.s.1.to", "1")
+	dragStepInForm(form, 0, 1, 1)
 	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
 	}
@@ -364,7 +365,7 @@ func TestFlagsFollowTheirRowsPastBlankRows(t *testing.T) {
 	for k, v := range map[string]string{
 		"c.0.l.2.ing": "dragonfruit zest", "c.0.l.2.propose": "1", "c.0.l.2.raw": "1 dragonfruit zest",
 		"c.0.l.2.mark": "low llm", "c.0.l.2.issue": "ingredient not matched",
-		"c.0.s.2.text": "Bake until goldn", "c.0.s.2.to": "0", "c.0.s.2.mark": "low",
+		"c.0.s.2.text": "Bake until goldn", "c.0.s.2.mark": "low",
 		"e.3.name": "whisk", "e.3.mark": "llm",
 	} {
 		form.Set(k, v)
@@ -373,7 +374,6 @@ func TestFlagsFollowTheirRowsPastBlankRows(t *testing.T) {
 		form.Del(k)
 	}
 	form.Set("c.0.l.1.rule", "linear") // a row present but blank
-	form.Set("c.0.s.1.to", "0")
 	form.Set("e.2.qty", "")
 	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want the save to fail", rec.Code)
@@ -412,7 +412,6 @@ var hiddenGraph = regexp.MustCompile(`<input type="hidden" name="(c\.\d+\.s\.\d+
 func graphForm(body string) url.Values {
 	form := reviewForm()
 	form.Set("c.0.s.2.text", "Cool on a rack.")
-	form.Set("c.0.s.2.to", "0")
 	for i, id := range []string{"s1", "s2", "s3"} {
 		form.Set("c.0.s."+strconv.Itoa(i)+".id", id)
 	}
@@ -532,7 +531,7 @@ func TestConfirmGraphFollowsStepsThroughAnAddAndARemoval(t *testing.T) {
 	}
 }
 
-// Moving a step to another component renumbers it; what depends on it follows.
+// Dragging a step to another component renumbers it; what depends on it follows.
 func TestConfirmGraphFollowsAMovedStep(t *testing.T) {
 	f := newFixture(t)
 	f.drafter.draft = graphDraft()
@@ -540,7 +539,7 @@ func TestConfirmGraphFollowsAMovedStep(t *testing.T) {
 	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
 	form := graphForm(body)
 	form.Set("c.1.name", "Topping")
-	form.Set("c.0.s.0.to", "1") // step 1 leaves for the end: Mix is now step 3
+	dragStepInForm(form, 0, 0, 1) // step 1 leaves for the end: Mix is now step 3
 	if rec := f.do(http.MethodPost, "/"+token+"/confirm", form); rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body)
 	}
@@ -622,7 +621,6 @@ func TestDraggingAcrossPartsMovesTheRowOnTheReviewScreen(t *testing.T) {
 	form.Set("c.1.l.0.ing", "flour")
 	form.Set("c.1.l.0.rule", "linear")
 	form.Set("c.1.s.0.text", "Roll the crust.")
-	form.Set("c.1.s.0.to", "1")
 
 	form.Set("action", "move-line:0.0.1.1")
 	body := f.do(http.MethodPost, "/"+token+"/confirm", form).Body.String()
@@ -649,4 +647,40 @@ func TestDraggingAcrossPartsMovesTheRowOnTheReviewScreen(t *testing.T) {
 	if len(f.store.recipes) != 0 || len(f.store.created) != 0 {
 		t.Error("a drag saved something")
 	}
+}
+
+// dragStepInForm posts a step the way a drag does: under the end of part
+// toCi, with the steps after it in its old part closed up.
+func dragStepInForm(form url.Values, ci, si, toCi int) {
+	take := func(c, st int) url.Values {
+		prefix := fmt.Sprintf("c.%d.s.%d.", c, st)
+		row := url.Values{}
+		for k, v := range form {
+			if f, ok := strings.CutPrefix(k, prefix); ok {
+				row[f] = v
+				delete(form, k)
+			}
+		}
+		return row
+	}
+	put := func(c, st int, row url.Values) {
+		for f, v := range row {
+			form[fmt.Sprintf("c.%d.s.%d.%s", c, st, f)] = v
+		}
+	}
+	count := func(c int) int {
+		n := 0
+		for k := range form {
+			var cc, ss int
+			if _, err := fmt.Sscanf(k, "c.%d.s.%d.", &cc, &ss); err == nil && cc == c && ss+1 > n {
+				n = ss + 1
+			}
+		}
+		return n
+	}
+	row := take(ci, si)
+	for st := si + 1; st < count(ci)+1; st++ {
+		put(ci, st-1, take(ci, st))
+	}
+	put(toCi, count(toCi), row)
 }

@@ -172,7 +172,7 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 	flag("total", d.Total.Value > 0, d.Total.Confidence, d.Total.FromLLM)
 
 	n := 0 // the draft numbers its steps from 1 across every component
-	for ci, c := range d.Components {
+	for _, c := range d.Components {
 		cd := compDraft{Name: c.Name}
 		for _, l := range c.Lines {
 			ld := lineDraft{
@@ -200,7 +200,7 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 		for _, s := range c.Steps {
 			n++
 			sd := stepDraft{
-				ID: stepID(n), Text: s.Text, Duration: durationText(s.Duration), To: ci, Kind: string(s.Kind), Title: s.Title,
+				ID: stepID(n), Text: s.Text, Duration: durationText(s.Duration), Kind: string(s.Kind), Title: s.Title,
 				Mark: mark{Low: low(s.Confidence), LLM: s.FromLLM}, Passive: s.Passive,
 				Graph: graphMark{Cue: s.GraphCue, LLM: s.GraphFromLLM, User: s.GraphByUser},
 			}
