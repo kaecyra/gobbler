@@ -229,23 +229,35 @@ var serveRE = regexp.MustCompile(`(?i)^\W*serv(?:e|ing)\b`)
 
 // stageKindOf proposes a stage kind for a step from its source title and its
 // text. A title that opens with "serve" says so outright; otherwise the text
-// does, when it opens with "serve" and names no other kind (ADR-00020).
+// does, when it opens with "serve" and names no kind at all (ADR-00022). Text
+// that names two kinds is ambiguous, not empty, so it gets none.
 func stageKindOf(title, text string) recipe.StageKind {
 	if serveRE.MatchString(title) {
 		return recipe.StageServe
 	}
-	k := stageKind(text)
-	if k == "" && serveRE.MatchString(text) {
+	kinds := stageKinds(text)
+	if len(kinds) == 0 && serveRE.MatchString(text) {
 		return recipe.StageServe
 	}
-	return k
+	return soleKind(kinds)
 }
 
-// stageKind proposes what a step is doing from its text, or "" when the text
-// does not say. A step whose text names two different kinds ("let it rise,
-// then bake") gets none: precision over recall, since an empty kind is only
-// unknown and the user can set it on the review screen (ADR-00006).
-func stageKind(text string) recipe.StageKind {
+// soleKind is the one kind in kinds, or "" when there are none or several.
+func soleKind(kinds map[recipe.StageKind]bool) recipe.StageKind {
+	if len(kinds) != 1 {
+		return ""
+	}
+	for k := range kinds {
+		return k
+	}
+	return ""
+}
+
+// stageKinds is every kind the text names. A step whose text names two
+// different kinds ("let it rise, then bake") is ambiguous and gets none from
+// soleKind: precision over recall, since an empty kind is only unknown and the
+// user can set it on the review screen (ADR-00006).
+func stageKinds(text string) map[recipe.StageKind]bool {
 	kinds := map[recipe.StageKind]bool{}
 	for _, m := range passiveVerbRE.FindAllString(text, -1) {
 		if k, ok := stageByVerb[strings.ToLower(stageWordRE.FindString(m))]; ok {
@@ -274,11 +286,5 @@ func stageKind(text string) recipe.StageKind {
 	if prepVerbRE.MatchString(text) {
 		kinds[recipe.StagePrep] = true
 	}
-	if len(kinds) != 1 {
-		return ""
-	}
-	for k := range kinds {
-		return k
-	}
-	return ""
+	return kinds
 }

@@ -48,6 +48,7 @@ func TestStageKindIsProposedFromTheInstruction(t *testing.T) {
 		{"Stir before you serve.", ""},
 		{"Chill for 2 hours, then serve.", recipe.StageChill},
 		{"Observe the dough.", ""},
+		{"Serve. Chop the parsley and cook the rice.", ""},
 		// Two kinds in one step is ambiguous, so none is proposed.
 		{"Chop the onion and cook until soft.", ""},
 		{"Let the dough rise, then bake for 20 minutes.", ""},
