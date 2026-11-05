@@ -66,6 +66,16 @@ test.afterAll(async () => {
 });
 
 /** Replaces AudioContext with a recorder so the test can see that a sound was made. */
+// Installs the fake clock and stops it. install() alone leaves it running with
+// real time, so every real millisecond between a timer starting and a check
+// came off the display ("9:" read "8:54" on a loaded machine, #375). Paused,
+// time moves only when a test calls fastForward.
+async function freezeClock(page: Page) {
+  const start = new Date('2030-01-01T12:00:00Z');
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(new Date(start.getTime() + 1000));
+}
+
 async function stubAudio(page: Page) {
   await page.addInitScript(() => {
     (window as any).__beeps = 0;
@@ -260,7 +270,7 @@ test('cook mode is refused without a session', async ({ request }) => {
 
 test('timers run side by side, keep their steps, and finish by the clock', async ({ page }) => {
   await stubAudio(page);
-  await page.clock.install();
+  await freezeClock(page);
   await page.goto(`/recipes/${pizza}/cook`);
   await expect(page.getByTestId('timers-empty')).toBeVisible();
 
@@ -297,7 +307,7 @@ test('timers run side by side, keep their steps, and finish by the clock', async
 });
 
 test('a paused timer holds its time, resumes from it, and keeps that across steps and a reload', async ({ page }) => {
-  await page.clock.install();
+  await freezeClock(page);
   await page.goto(`/recipes/${pizza}/cook`);
   await page.getByTestId('timer-start').click(); // step 1: 10 minutes
   const row = page.getByTestId('timer');
@@ -355,7 +365,7 @@ test('the timers mascot is shown whole, above the box, inside the cook card', as
 });
 
 test('running timers survive a reload', async ({ page }) => {
-  await page.clock.install();
+  await freezeClock(page);
   await page.goto(`/recipes/${pizza}/cook`);
   await page.getByTestId('timer-start').click();
   await page.clock.fastForward(120_000);
@@ -409,7 +419,7 @@ test('a refused wake lock shows a notice and the page keeps working', async ({ p
 
 test('going Back after stepping runs one set of timers: one beep, no dismissed timer back', async ({ page }) => {
   await stubAudio(page);
-  await page.clock.install();
+  await freezeClock(page);
   await page.goto(`/recipes/${pizza}/cook?step=6`);
   await page.getByTestId('timer-start').click();
   await page.getByTestId('prev').click(); // htmx swap, pushes history
@@ -451,7 +461,7 @@ test('a page restored after leaving, or a cancelled exit, asks for the wake lock
 });
 
 test('a running timer\'s button offers a restart, not a silent second start', async ({ page }) => {
-  await page.clock.install();
+  await freezeClock(page);
   await page.goto(`/recipes/${pizza}/cook?step=6`);
   const button = page.getByTestId('timer-start');
   await expect(button).toHaveText('Start timer (1 min)');
