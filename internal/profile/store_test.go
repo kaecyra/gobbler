@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -53,20 +54,29 @@ func TestEnsureCreatesOnceAndKeepsTheAddress(t *testing.T) {
 }
 
 // ADR-00032 obligation 3: the address is random and does not contain the email.
+// A fixed random source makes the address known, so the test cannot fail by an
+// address happening to spell part of the email.
 func TestAddressIsRandomAndHoldsNoEmail(t *testing.T) {
 	ctx := context.Background()
-	s := newStore(t)
-	p, err := s.Ensure(ctx, "ann@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(p.Address) != 22 {
-		t.Errorf("address %q is %d characters, want 22", p.Address, len(p.Address))
-	}
-	for _, part := range []string{"ann", "example", "@"} {
-		if strings.Contains(strings.ToLower(p.Address), part) {
-			t.Errorf("address %q contains %q", p.Address, part)
+	const email = "ann@example.com"
+	draw := func(raw []byte) string {
+		t.Helper()
+		s := newStore(t)
+		s.rand = bytes.NewReader(raw)
+		p, err := s.Ensure(ctx, email)
+		if err != nil {
+			t.Fatal(err)
 		}
+		return p.Address
+	}
+	zeros := make([]byte, addressBytes)
+	ones := bytes.Repeat([]byte{0xff}, addressBytes)
+	// 16 zero bytes encode to 22 "A"; 16 0xff bytes to 21 "_" and a final "w".
+	if got, want := draw(zeros), "AAAAAAAAAAAAAAAAAAAAAA"; got != want {
+		t.Errorf("address = %q, want %q: it must come from the random source", got, want)
+	}
+	if got, want := draw(ones), "_____________________w"; got != want {
+		t.Errorf("address = %q, want %q: it must come from the random source", got, want)
 	}
 }
 
