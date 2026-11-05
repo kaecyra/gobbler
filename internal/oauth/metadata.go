@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"io"
 	"mime"
-	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/netguard"
 )
 
 const (
@@ -65,55 +65,6 @@ func ValidateMetadataURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-// blockedPrefixes are the ranges that are not private, loopback or link-local
-// as net/netip counts them but still never name a public host: carrier-grade
-// NAT, benchmarking, documentation, reserved and IPv6 transition ranges.
-var blockedPrefixes = func() []netip.Prefix {
-	var out []netip.Prefix
-	for _, p := range []string{
-		"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "198.18.0.0/15", "198.51.100.0/24",
-		"203.0.113.0/24", "240.0.0.0/4", "64:ff9b::/96", "64:ff9b:1::/48", "100::/64", "2001:db8::/32", "fec0::/10", "2002::/16",
-	} {
-		out = append(out, netip.MustParsePrefix(p))
-	}
-	return out
-}()
-
-// blockedAddr reports whether gobbler must not connect to a: anything that is
-// not a public unicast address. An IPv4 address inside an IPv6 one is judged
-// as the IPv4 address.
-func blockedAddr(a netip.Addr) bool {
-	a = a.Unmap().WithZone("")
-	if !a.IsGlobalUnicast() || a.IsPrivate() || a.IsLoopback() || a.IsLinkLocalUnicast() || a.IsMulticast() || a.IsUnspecified() {
-		return true
-	}
-	for _, p := range blockedPrefixes {
-		if p.Contains(a) {
-			return true
-		}
-	}
-	return false
-}
-
-// guardDial runs for every connection the metadata client makes, on the
-// address it is about to connect to, after name resolution. Checking there
-// rather than before resolving means a name that resolves to a private address,
-// or changes its answer between a check and the connection, cannot get through.
-func guardDial(_, address string, _ syscall.RawConn) error {
-	host, _, err := net.SplitHostPort(address)
-	if err != nil {
-		return fmt.Errorf("%w: bad address %q", ErrMetadata, address)
-	}
-	a, err := netip.ParseAddr(host)
-	if err != nil {
-		return fmt.Errorf("%w: connecting to a name that was not resolved", ErrMetadata)
-	}
-	if blockedAddr(a) {
-		return fmt.Errorf("%w: the host resolves to an address gobbler does not connect to (%s)", ErrMetadata, a.Unmap())
-	}
-	return nil
-}
-
 // MetadataFetcher loads Client ID Metadata Documents. A document is named by
 // an outsider, so a fetch is HTTPS only, never connects to a private, loopback
 // or link-local address, never follows a redirect, and is bounded in size and
@@ -125,32 +76,20 @@ type MetadataFetcher struct {
 
 // NewMetadataFetcher returns the fetcher the server uses.
 func NewMetadataFetcher() *MetadataFetcher {
-	return newMetadataFetcher(MetadataTimeout, MaxMetadataBytes, guardDial, nil)
+	return newMetadataFetcher(MetadataTimeout, MaxMetadataBytes, nil, nil)
 }
 
-// newMetadataFetcher builds a fetcher. control is the dial guard and tlsConfig
-// the TLS settings (nil for the system roots); tests replace them.
-func newMetadataFetcher(timeout time.Duration, limit int64, control func(network, address string, c syscall.RawConn) error, tlsConfig *tls.Config) *MetadataFetcher {
-	d := &net.Dialer{Timeout: timeout, Control: control}
-	tr := &http.Transport{
-		// No proxy: the guard must see the address of the host itself.
-		Proxy:                  nil,
-		DialContext:            d.DialContext,
-		TLSClientConfig:        tlsConfig,
-		TLSHandshakeTimeout:    timeout,
-		ResponseHeaderTimeout:  timeout,
-		MaxResponseHeaderBytes: 16 << 10,
-		DisableKeepAlives:      true,
-	}
+// newMetadataFetcher builds a fetcher. dial replaces the address guard (nil
+// keeps it) and tlsConfig is the TLS settings (nil for the system roots); tests
+// replace them.
+func newMetadataFetcher(timeout time.Duration, limit int64, dial func(network, address string, c syscall.RawConn) error, tlsConfig *tls.Config) *MetadataFetcher {
 	return &MetadataFetcher{
 		max: limit,
-		client: &http.Client{
-			Transport: tr,
-			Timeout:   timeout,
-			// A redirect could lead anywhere, and the document must be served
-			// from the URL that names the client.
-			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-		},
+		// Zero redirects: a redirect could lead anywhere, and the document must
+		// be served from the URL that names the client.
+		client: netguard.NewClient(netguard.Options{
+			Timeout: timeout, Redirects: 0, MaxHeaderBytes: 16 << 10, TLSConfig: tlsConfig, Dial: dial,
+		}),
 	}
 }
 
