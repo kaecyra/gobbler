@@ -35,8 +35,7 @@ This round was worked in one session, from the owner's feedback, not dispatched 
 - **Serve stage (#394):** wanted. Colour family still to confirm; proposed `active`.
 - **Author notes (#395):** wanted. It needs an ADR first; the model, on-screen name and placement are the open questions listed in the issue.
 
-**Open, and not yet answered:**
-- **Step titles outside WPRM:** the owner asked whether an issue exists to improve step-title parsing beyond #391. #391 reads only WPRM's bold leads. Pasted text and JSON-LD-only pages still fuse a title like "Preheat oven." into the instruction. No issue exists; ask whether to file one.
+**Filed this session, not yet in the graph:** #398 (step titles from text and JSON-LD, not only WPRM markup). Its node goes in with #396's.
 
 **For the owner:**
 - **0.103.0 is not deployed.**
