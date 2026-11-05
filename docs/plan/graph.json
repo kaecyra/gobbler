@@ -3413,7 +3413,7 @@
       "wave": 11,
       "track": null,
       "issue": 406,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/profile/store_test.go"
@@ -4560,6 +4560,12 @@
       "title": "export the top of the rating scale once",
       "merged": "50b91dc",
       "note": "Follow-up from r-recipes-verdict (#400): maxSpoons, journal maxRating and recipes maxRating are one bound."
+    },
+    {
+      "id": "t-profile-address-flake",
+      "title": "make the profile address test deterministic",
+      "merged": "9b38f22",
+      "note": "CI flake on #405: a random base64url address contains 'ann' by chance. Fix with a fixed s.rand reader and an exact expected address, per the issue."
     }
   ],
   "adr_sequence": {
