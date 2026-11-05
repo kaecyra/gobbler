@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
@@ -305,10 +306,30 @@ func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, 
 	return recordKeys(ctx, q, hid, id, r)
 }
 
+// PictureReaper finds and deletes a recipe's picture objects (ADR-00039,
+// Storing). *picture.Reaper satisfies it; this package cannot import that one.
+type PictureReaper interface {
+	// CollectRecipe returns the object keys that belong to recipe id, read in
+	// tx before the recipe is deleted.
+	CollectRecipe(ctx context.Context, tx *sql.Tx, householdID, id int64) ([]string, error)
+	// Remove deletes the objects once the delete has committed. A failure to
+	// delete one is its own to log; it never fails the recipe's deletion.
+	Remove(ctx context.Context, keys []string)
+}
+
 // Delete removes recipe id (of the request's household) with its revisions, proposals, notes, made-it entries and
 // source snapshots, or returns ErrNotFound. A clone of it survives, losing
-// only the pointer to its origin.
+// only the pointer to its origin. It leaves the recipe's picture objects
+// behind; DeleteWithPicture is the delete that removes them.
 func (s *Store) Delete(ctx context.Context, id int64) error {
+	return s.DeleteWithPicture(ctx, id, nil)
+}
+
+// DeleteWithPicture is Delete that also deletes the recipe's picture and its
+// drafts' candidates from the media store (ADR-00039). The keys are collected
+// in the delete's transaction and the objects removed after it commits, so a
+// rolled-back delete keeps its picture. r nil leaves the objects alone.
+func (s *Store) DeleteWithPicture(ctx context.Context, id int64, r PictureReaper) error {
 	if _, err := identity(ctx); err != nil {
 		return err
 	}
@@ -316,9 +337,16 @@ func (s *Store) Delete(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
-	// Through withTx, not the bare pool, so the delete queues with the other
+	var keys []string
+	// Through db.WithTx, not the bare pool, so the delete queues with the other
 	// writers instead of contending with them for the SQLite write lock (#104).
-	return s.withTx(ctx, func(q *storedb.Queries) error {
+	err = db.WithTx(ctx, s.db, s.q, func(q *storedb.Queries, tx *sql.Tx) error {
+		if r != nil {
+			var err error
+			if keys, err = r.CollectRecipe(ctx, tx, hid, id); err != nil {
+				return err
+			}
+		}
 		n, err := q.DeleteRecipe(ctx, storedb.DeleteRecipeParams{ID: id, HouseholdID: hid})
 		if err != nil {
 			return fmt.Errorf("delete recipe %d: %w", id, err)
@@ -328,6 +356,13 @@ func (s *Store) Delete(ctx context.Context, id int64) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	if r != nil {
+		r.Remove(ctx, keys)
+	}
+	return nil
 }
 
 // Clone copies recipe id into a new, independent recipe at version 1 that

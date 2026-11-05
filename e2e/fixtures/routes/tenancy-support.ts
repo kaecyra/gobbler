@@ -412,12 +412,18 @@ export const UNPOPULATED: Record<string, string> = {
   api_key_writes:
     'only an MCP tool writes it, with an API key as its bearer credential (e2e/mcp), and populate() drives the HTML pages. ' +
     'Household deletion reaches it through the household_id cascade (TestDeletingAHouseholdDeletesItsKeyWrites in internal/apikey/lookup_test.go).',
+  draft_candidates:
+    'no page or tool fetches candidates yet: the picture package (internal/picture) has no handler until the review screen node. ' +
+    'Household deletion reaches it through the household_id cascade, and collects its object keys first (TestDeletingAHouseholdDeletesItsPicturesAndCandidates in internal/picture/picture_test.go).',
   oauth_grant_writes:
     'only an MCP tool writes it, with an OAuth access token as its bearer credential (e2e/mcp), and populate() drives the HTML pages. ' +
     'Household deletion reaches it through the household_id cascade (TestDeletingAHouseholdDeletesItsGrantWrites in internal/oauth/writes_test.go).',
   proposal_ingredients:
     'only a draft or edit proposal that names a catalog ingredient writes it, and the draft populate() ingests names none. ' +
     'Household deletion reaches it through the household_id cascade from proposals (internal/store/proposal_test.go).',
+  recipe_pictures:
+    'no page sets a picture yet: the set-picture operation (internal/picture) has no handler until the UI node. ' +
+    'Household deletion reaches it through the household_id cascade, and collects its object keys first (TestDeletingAHouseholdDeletesItsPicturesAndCandidates in internal/picture/picture_test.go).',
   recipe_special_times:
     'no web form creates special times: the editor only preserves them and an LLM draft is the only source, which e2e never runs. ' +
     'Deleting a recipe empties the table (internal/store/recipe_test.go), and household deletion reaches it through the same cascade from recipes.',

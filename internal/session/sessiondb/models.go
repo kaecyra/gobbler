@@ -54,6 +54,17 @@ type Component struct {
 	Name        string
 }
 
+type DraftCandidate struct {
+	ID          int64
+	HouseholdID int64
+	ProposalID  int64
+	Position    int64
+	SourceUrl   string
+	Key         string
+	Width       int64
+	Height      int64
+}
+
 type Equipment struct {
 	ID       int64
 	Name     string
@@ -299,6 +310,13 @@ type RecipeKey struct {
 	HouseholdID int64
 	RecipeID    int64
 	Key         string
+}
+
+type RecipePicture struct {
+	RecipeID    int64
+	HouseholdID int64
+	Key         string
+	UpdatedAt   string
 }
 
 type RecipeSearch struct {

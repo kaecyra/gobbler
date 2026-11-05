@@ -217,11 +217,31 @@ func (s *Store) Leave(ctx context.Context, email string) error {
 // transaction, so a member joining meanwhile cannot lose a household they just
 // entered.
 func (s *Store) Delete(ctx context.Context, householdID int64, by, confirm string) error {
+	return s.DeleteWithPictures(ctx, householdID, by, confirm, nil)
+}
+
+// PictureReaper finds and deletes a household's picture objects (ADR-00039,
+// Storing). *picture.Reaper satisfies it; this package cannot import that one.
+type PictureReaper interface {
+	// CollectHousehold returns the object keys of every recipe picture and
+	// draft candidate of the household, read in tx before the delete.
+	CollectHousehold(ctx context.Context, tx *sql.Tx, householdID int64) ([]string, error)
+	// Remove deletes the objects once the delete has committed. A failure to
+	// delete one is its own to log; it never fails the household's deletion.
+	Remove(ctx context.Context, keys []string)
+}
+
+// DeleteWithPictures is Delete that also deletes the household's picture
+// objects from the media store. The keys are collected before the cascade, in
+// the delete's transaction, and the objects removed after it commits
+// (ADR-00039). r nil leaves the objects alone, which is what Delete does.
+func (s *Store) DeleteWithPictures(ctx context.Context, householdID int64, by, confirm string, r PictureReaper) error {
 	e, err := NormalizeEmail(by)
 	if err != nil {
 		return err
 	}
-	return db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+	var keys []string
+	err = db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, tx *sql.Tx) error {
 		n, err := q.TouchHousehold(ctx, householdID)
 		if err != nil {
 			return fmt.Errorf("lock household %d: %w", householdID, err)
@@ -243,11 +263,23 @@ func (s *Store) Delete(ctx context.Context, householdID int64, by, confirm strin
 		if strings.TrimSpace(confirm) != mine.Name {
 			return fmt.Errorf("household %d: %w", householdID, ErrConfirmation)
 		}
+		if r != nil {
+			if keys, err = r.CollectHousehold(ctx, tx, householdID); err != nil {
+				return err
+			}
+		}
 		if _, err := q.DeleteHousehold(ctx, householdID); err != nil {
 			return fmt.Errorf("delete household %d: %w", householdID, err)
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	if r != nil {
+		r.Remove(ctx, keys)
+	}
+	return nil
 }
 
 // InvalidReason returns the message of an error caused by input the store

@@ -68,3 +68,11 @@ sql:
       go:
         package: oauthdb
         out: internal/oauth/oauthdb
+  - name: picture
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/picture/queries
+    gen:
+      go:
+        package: picturedb
+        out: internal/picture/picturedb
