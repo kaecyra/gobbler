@@ -3350,7 +3350,7 @@
       "wave": 11,
       "track": null,
       "issue": 398,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "r-stage-serve"
       ],
@@ -4572,6 +4572,12 @@
       "title": "find and fix the avatar dialog failed-request e2e flake",
       "merged": "2854585",
       "note": "CI flake on #405 at e2e/profile/avatar.spec.ts:226, cause unknown. Reproduce with --repeat-each, fix the cause (wait on the request, not a delay); no retries. The lane covers the dialog's error display and button handler (static/profile.js), the crop step (static/avatar.js) and the avatar templ and handler, in case the cause is in the page."
+    },
+    {
+      "id": "f-step-titles-text",
+      "title": "read step titles from text and JSON-LD, not only WPRM markup",
+      "merged": "9d5704b",
+      "note": "Owner request 2026-11-05. Rule-based lead-sentence split, flagged low confidence; Tasty bold leads. Bumps ParserVersion."
     }
   ],
   "adr_sequence": {
