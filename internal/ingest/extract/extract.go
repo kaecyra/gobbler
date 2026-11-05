@@ -56,7 +56,8 @@ type InstructionStep struct {
 	Section string `json:"section,omitempty"`
 	Text    string `json:"text"`
 	// Title is the step's own name (schema.org HowToStep "name") when it adds
-	// something to Text; empty otherwise.
+	// something to Text, or else the bold lead a recipe plugin's card opens
+	// the step with, taken off the front of Text; empty otherwise.
 	Title string `json:"title,omitempty"`
 }
 
