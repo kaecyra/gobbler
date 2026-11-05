@@ -2,7 +2,6 @@ package recipe
 
 import (
 	"fmt"
-	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -453,17 +452,8 @@ func compareFields(old, next Recipe) []FieldChange {
 	add(FieldPrep, "Prep time", minutesText(old.Times.Prep), minutesText(next.Times.Prep))
 	add(FieldCook, "Cook time", minutesText(old.Times.Cook), minutesText(next.Times.Cook))
 	add(FieldTotal, "Total time", minutesText(old.Times.Total), minutesText(next.Times.Total))
-	if !reflect.DeepEqual(nonNil(old.Times.Special), nonNil(next.Times.Special)) {
-		add(FieldSpecial, "Waiting times", specialText(old.Times.Special), specialText(next.Times.Special))
-	}
+	add(FieldSpecial, "Waiting times", specialText(old.Times.Special), specialText(next.Times.Special))
 	return out
-}
-
-func nonNil(s []SpecialTime) []SpecialTime {
-	if s == nil {
-		return []SpecialTime{}
-	}
-	return s
 }
 
 func yieldText(y Yield) string { return strings.TrimSpace(y.Qty.String() + " " + y.Unit) }
