@@ -23,8 +23,9 @@ This round was worked in one session, from the owner's feedback, not dispatched 
 - **ADR-00037:** a note is a household scratchpad; it can be edited in place and deleted after a confirm step.
 - **ADR-00038:** the editor morphs the server-rendered form with idiomorph 0.8.0 (vendored, checksum in `internal/web/static/vendor/idiomorph.VERSION.txt`) instead of replacing it.
 
-**In flight:**
-- **#397 (#396):** the equipment chip's details sit under the save bar. The fix is approved with one NIT, which was answered: the commit message's "below the header" is wrong, because `.top` is at 5. Squash with a corrected message once CI passes, then add its node with `record-done`.
+**Also merged:** u-equipment-popover, #397 (df15740, 0.103.1), and the graph PR #399. #399 recorded u-equipment-popover and added f-step-titles-text (#398).
+
+**Nothing is in flight:** no open PRs. The session worktrees are removed.
 
 **Owner calls this session (don't re-ask):**
 - **Wording:** the UI calls a recipe component a "part", everywhere. The data model, ADRs and MCP keep "component".
@@ -35,11 +36,9 @@ This round was worked in one session, from the owner's feedback, not dispatched 
 - **Serve stage (#394):** wanted. Colour family still to confirm; proposed `active`.
 - **Author notes (#395):** wanted. It needs an ADR first; the model, on-screen name and placement are the open questions listed in the issue.
 
-**Filed this session, not yet in the graph:** #398 (step titles from text and JSON-LD, not only WPRM markup). Its node goes in with #396's.
-
 **For the owner:**
-- **0.103.0 is not deployed.**
-- **Dev server:** `/tmp/gobbler-demo` on the host, `:8080`, running a build of main at 0.103.0. Restart it detached: `(GOBBLER_DEV_AUTH_BYPASS=1 GOBBLER_DATA_DIR=/tmp/gobbler-demo/data GOBBLER_OPERATOR_EMAILS=dev@localhost nohup ./gobbler serve >> serve.log 2>&1 < /dev/null &)`. A bare `&` on an `&&` chain keeps the exec-daemon job open until it times out, and the timeout kills the server.
+- **0.103.1 is not deployed.**
+- **Dev server:** `/tmp/gobbler-demo` on the host, `:8080`, running a build of main at 0.103.0 (before #397). Restart it detached: `(GOBBLER_DEV_AUTH_BYPASS=1 GOBBLER_DATA_DIR=/tmp/gobbler-demo/data GOBBLER_OPERATOR_EMAILS=dev@localhost nohup ./gobbler serve >> serve.log 2>&1 < /dev/null &)`. A bare `&` on an `&&` chain keeps the exec-daemon job open until it times out, and the timeout kills the server.
 
 **Lessons:**
 - **An approved mockup is the visual target** (now in `.claude/rules/lessons.md`). The first editor pass was briefed as a checklist that dropped drawn elements, and it was reviewed only for bugs. It shipped below the mockup.
