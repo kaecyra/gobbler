@@ -226,5 +226,12 @@ func (v view) hasLines() bool {
 			return true
 		}
 	}
-	return v.Proposal.marked() && len(v.Proposal.NewParts) > 0
+	if v.Proposal.marked() {
+		for _, p := range v.Proposal.NewParts {
+			if len(p.Lines) > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -23,8 +23,13 @@ var proposedBy = store.Provenance{
 // recipe's id and a way to request pages of it.
 func stored(t *testing.T, edit func(*recipe.Recipe)) (id int64, token string, get func(method, path string, form url.Values) *httptest.ResponseRecorder, rs *store.Store, ctx context.Context) {
 	t.Helper()
+	return storedFrom(t, testRecipe(t), edit)
+}
+
+func storedFrom(t *testing.T, base recipe.Recipe, edit func(*recipe.Recipe)) (id int64, token string, get func(method, path string, form url.Values) *httptest.ResponseRecorder, rs *store.Store, ctx context.Context) {
+	t.Helper()
 	ctx, rs, cs := storeEnv(t)
-	id, err := rs.Create(ctx, testRecipe(t))
+	id, err := rs.Create(ctx, base)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,4 +120,16 @@ func TestRejectTurnsTheProposalDownAndRefusesWhatIsNotTheRecipesPending(t *testi
 		t.Errorf("recipe name = %q, want it unchanged", cur.Name)
 	}
 	mustNotContain(t, get(http.MethodGet, fmt.Sprintf("/recipes/%d", id), nil).Body.String(), `data-testid="proposal-banner"`)
+}
+
+// A part the proposal adds that has steps and no lines must not open an
+// Ingredients section for its steps.
+func TestAddedPartWithOnlyStepsHasNoIngredientsHeading(t *testing.T) {
+	base := recipe.Recipe{Name: "Steps only", Components: []recipe.Component{{Steps: []recipe.Step{{ID: "a", Text: "Do it."}}}}}
+	id, _, get, _, _ := storedFrom(t, base, func(r *recipe.Recipe) {
+		r.Components = append(r.Components, recipe.Component{Name: "Extra", Steps: []recipe.Step{{ID: "new-1", Text: "Do more."}}})
+	})
+	body := get(http.MethodGet, fmt.Sprintf("/recipes/%d", id), nil).Body.String()
+	mustContain(t, body, `data-testid="proposal-part-added"`, "Do more.")
+	mustNotContain(t, body, `id="ingredients-h"`)
 }

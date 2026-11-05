@@ -852,17 +852,17 @@ func recipeBody(v view) templ.Component {
 					}
 				}
 			}
-			if v.Proposal.marked() {
-				for _, part := range v.Proposal.NewParts {
-					templ_7745c5c3_Err = newPartMark(part).Render(ctx, templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
+			}
+		}
+		if v.Proposal.marked() {
+			for _, part := range v.Proposal.NewParts {
+				templ_7745c5c3_Err = newPartMark(part).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</div><section class=\"method\" aria-labelledby=\"steps-h\"><h2 id=\"steps-h\" class=\"sr\">Steps</h2>")

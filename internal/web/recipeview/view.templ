@@ -252,12 +252,12 @@ templ recipeBody(v view) {
 								</div>
 							}
 						}
-						if v.Proposal.marked() {
-							for _, part := range v.Proposal.NewParts {
-								@newPartMark(part)
-							}
-						}
 					</section>
+				}
+				if v.Proposal.marked() {
+					for _, part := range v.Proposal.NewParts {
+						@newPartMark(part)
+					}
 				}
 			</div>
 			<section class="method" aria-labelledby="steps-h">
