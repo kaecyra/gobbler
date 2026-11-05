@@ -60,6 +60,20 @@ func (f fakeRecipes) ListNotes(context.Context, int64) ([]store.Note, error) { r
 
 func (f fakeRecipes) ListMadeIt(context.Context, int64) ([]store.MadeIt, error) { return nil, nil }
 
+// The plain fake has no proposals; the page's marks are covered end to end
+// (e2e/recipeview/proposal.spec.ts).
+func (f fakeRecipes) PendingEdit(context.Context, int64) (store.Proposal, bool, error) {
+	return store.Proposal{}, false, nil
+}
+
+func (f fakeRecipes) GetProposal(_ context.Context, token string) (store.Proposal, error) {
+	return store.Proposal{}, fmt.Errorf("proposal %s: %w", token, store.ErrNotFound)
+}
+
+func (f fakeRecipes) RejectProposal(_ context.Context, token string) error {
+	return fmt.Errorf("proposal %s: %w", token, store.ErrNotFound)
+}
+
 type fakeCatalog struct {
 	ingredients map[int64]catalog.Ingredient
 	equipment   map[int64]catalog.Equipment
@@ -469,6 +483,18 @@ func (failingRecipes) HasThumbnail(context.Context, string) (bool, error) {
 
 func (failingRecipes) Thumbnail(context.Context, int64) (store.Thumbnail, error) {
 	return store.Thumbnail{}, errors.New("disk on fire")
+}
+
+func (failingRecipes) PendingEdit(context.Context, int64) (store.Proposal, bool, error) {
+	return store.Proposal{}, false, errors.New("disk on fire")
+}
+
+func (failingRecipes) GetProposal(context.Context, string) (store.Proposal, error) {
+	return store.Proposal{}, errors.New("disk on fire")
+}
+
+func (failingRecipes) RejectProposal(context.Context, string) error {
+	return errors.New("disk on fire")
 }
 
 func TestSourceURLWithScriptSchemeIsNotLinked(t *testing.T) {

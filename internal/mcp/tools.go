@@ -23,6 +23,7 @@ type tools struct {
 func (t *tools) register(s *mcp.Server) {
 	t.registerRecipes(s)
 	t.registerImport(s)
+	t.registerEdit(s)
 	t.registerShopping(s)
 }
 

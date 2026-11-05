@@ -231,7 +231,7 @@ func (s *Store) update(ctx context.Context, id int64, r recipe.Recipe, expected 
 				return fmt.Errorf("%w: recipe %d is at version %d, not %d", ErrStaleVersion, id, cur.Version, *expected)
 			}
 		}
-		return s.replace(ctx, q, hid, id, r, who, changeEdit, nil)
+		return s.replace(ctx, q, hid, id, r, who, changeEdit, nil, 0)
 	})
 }
 
@@ -253,7 +253,7 @@ func lockRecipe(ctx context.Context, q *storedb.Queries, hid, id int64) error {
 // replace writes r over recipe id inside the transaction q is bound to, after
 // saving the current document as a revision. The caller has locked the recipe
 // and validated r.
-func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe.Recipe, who, change string, restored *int64) error {
+func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe.Recipe, who, change string, restored *int64, proposalID int64) error {
 	units, err := loadUnits(ctx, q)
 	if err != nil {
 		return err
@@ -279,7 +279,7 @@ func (s *Store) replace(ctx context.Context, q *storedb.Queries, hid, id int64, 
 		return err
 	}
 	now := s.stamp()
-	if err := insertRevision(ctx, q, hid, id, cur.Version, old, units, change, restored, now, who); err != nil {
+	if err := insertRevision(ctx, q, hid, id, cur.Version, old, units, change, restored, proposalID, now, who); err != nil {
 		return err
 	}
 	c, err := documentColumns(r)

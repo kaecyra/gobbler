@@ -1,0 +1,54 @@
+/* The pending proposal on the recipe page (ADR-00035): a banner, and marks on
+   the elements it changes. The toggle in the banner is a checkbox; while it is
+   unchecked the marks are hidden by CSS alone and the banner is compact, so the
+   state lasts for the visit without a script and without touching the URL.
+   Colours come from the tokens. */
+.pbanner {
+  background: var(--grain-soft); color: var(--grain-ink); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 14px 18px; margin: 0 0 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.pbanner p { margin: 0; }
+.pbanner .phead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.pbanner .phead strong { font-family: var(--f-display); font-size: 18px; color: var(--ink); }
+.pbanner .pwho, .pbanner .preason { color: var(--ink-2); }
+.pbanner .pactions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pbanner .pactions form { margin: 0; }
+.pbanner .ptoggle { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); color: var(--ink); cursor: pointer; }
+.pbanner .ptoggle input { width: 22px; height: 22px; margin: 0; accent-color: var(--wattle-ink); }
+.pbanner:has(#pmarks:not(:checked)) .pdetail { display: none; }
+.pbanner .pdetail { display: flex; flex-direction: column; gap: 6px; }
+
+/* Nothing is marked until the banner's toggle is on. */
+.pmark { display: none; }
+.pbanner:has(#pmarks:checked) ~ #recipe .pmark { display: block; }
+.pbanner:has(#pmarks:checked) ~ #recipe li.pmark { display: grid; }
+.pbanner:has(#pmarks:checked) ~ #recipe .pmark.pnew { display: inline; }
+
+#recipe ins, #recipe del { text-decoration: none; border-radius: var(--r-sm); padding: 0 4px; }
+#recipe ins { background: var(--grain-soft); color: var(--grain-ink); font-weight: 600; }
+#recipe del { background: var(--wattle-soft); color: var(--wattle-ink); text-decoration: line-through; }
+
+.pfields { margin: 12px 0 0; padding: 0; list-style: none; flex-direction: column; gap: 4px; }
+.pbanner:has(#pmarks:checked) ~ #recipe .pfields { display: flex; }
+.pfields li { font-size: 16px; color: var(--ink-2); }
+.pfields .plabel { font-weight: 650; color: var(--ink); margin-right: 6px; }
+
+/* A line: the live text struck through, the proposed text after it. */
+.pbanner:has(#pmarks:checked) ~ #recipe li.pline-changed > span:first-child,
+.pbanner:has(#pmarks:checked) ~ #recipe li.pline-removed > span:first-child { text-decoration: line-through; color: var(--wattle-ink); }
+.ing li.pmark.padd { display: none; }
+.pbanner:has(#pmarks:checked) ~ #recipe .ing li.pmark.padd { display: block; }
+.ing .pnew { margin-left: 6px; }
+
+/* A step: a note under the live step, with the old and the new text. */
+.method ol li.pmark { grid-template-columns: 44px minmax(0, 1fr); gap: 18px; padding-bottom: 22px; }
+.method ol li.pmark > div:first-child { grid-column: 1; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grain-ink); padding-top: 4px; }
+.method ol li.pmark > div:last-child { grid-column: 2; background: var(--grain-soft); border-radius: var(--r); padding: 10px 14px; }
+.method ol li.pmark p { margin: 4px 0 0; font-size: 17px; color: var(--ink-2); }
+.method ol li.pmark .plabel { font-weight: 650; color: var(--ink); margin: 0; font-size: 15px; }
+.pnewpart { background: var(--grain-soft); border-radius: var(--r); padding: 10px 14px; margin: 12px 0; }
+.pnewpart h3 { margin: 0 0 6px; font-size: 17px; }
+.pnewpart ul { margin: 0; padding-left: 20px; }
+@media (max-width: 560px) {
+  .method ol li.pmark { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+}

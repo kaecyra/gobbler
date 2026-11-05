@@ -15,8 +15,10 @@
 // behind it. A refusal is 401 with the Site's Protected Resource Metadata in
 // WWW-Authenticate (Unauthorized).
 //
-// Tools that create or change a recipe only ever produce a draft that waits on
-// the review screen for a person (ADR-00006). Shopping-list changes apply at
+// Tools that create a recipe only ever produce a draft that waits on the review
+// screen for a person (ADR-00006). A tool that changes an existing recipe
+// produces a proposal that waits in the recipe's editor for a person
+// (ADR-00035). Shopping-list changes apply at
 // once. Every write records the credential that made it (Audit): AuditByKind sends
 // a key's to the key log and a token's to the grant log.
 package mcp

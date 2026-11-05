@@ -38,6 +38,11 @@ type Recipes interface {
 	// count on the page (ADR-00022).
 	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
 	ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error)
+	// PendingEdit, GetProposal and RejectProposal show and turn down an agent's
+	// proposed edit to the recipe (ADR-00035).
+	PendingEdit(ctx context.Context, id int64) (store.Proposal, bool, error)
+	GetProposal(ctx context.Context, token string) (store.Proposal, error)
+	RejectProposal(ctx context.Context, token string) error
 }
 
 // Catalog is what the view reads from the ingredient and equipment catalog.
@@ -57,6 +62,7 @@ func Routes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", handle(d))
 	r.Get(thumbnailRoute, thumbnail(d))
+	r.Post(rejectRoute, reject(d))
 	return r
 }
 
@@ -156,6 +162,10 @@ func handle(d Deps) http.HandlerFunc {
 		v.withJournal(notes, made)
 		if info.ClonedFrom != nil {
 			v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
+		}
+		if v.Proposal, err = proposalFor(r.Context(), d, id, rec, info.Version); err != nil {
+			layout.WriteError(w, r, err)
+			return
 		}
 		layout.Render(w, r, http.StatusOK, recipePage(v))
 	}

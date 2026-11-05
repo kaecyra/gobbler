@@ -76,6 +76,10 @@ type view struct {
 	// Origin is the recipe and version this one was cloned from; nil when it
 	// is not a clone or the original is gone.
 	Origin *originView
+
+	// Proposal is the recipe's pending proposed edit, marked on the page; nil
+	// when it has none (ADR-00035).
+	Proposal *proposalView
 }
 
 type originView struct {
@@ -217,9 +221,16 @@ func (v view) readyIn() string { return v.Total }
 // hasLines reports whether any component has an ingredient line, so a recipe
 // of steps alone shows no empty Ingredients heading.
 func (v view) hasLines() bool {
-	for _, c := range v.Components {
-		if len(c.Lines) > 0 {
+	for ci, c := range v.Components {
+		if len(c.Lines) > 0 || v.Proposal.comp(ci).hasLineAdds() {
 			return true
+		}
+	}
+	if v.Proposal.marked() {
+		for _, p := range v.Proposal.NewParts {
+			if len(p.Lines) > 0 {
+				return true
+			}
 		}
 	}
 	return false

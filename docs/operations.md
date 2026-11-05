@@ -306,6 +306,7 @@ What a client can do:
 |---|---|
 | `search_recipes`, `list_recipes`, `get_recipe` | Read recipes as structured data. |
 | `import_recipe` (a URL or pasted text), `create_recipe_draft` | Produce a **draft** through the rule-first pipeline. It waits on the review screen (`/ingest/<token>`, returned as `review_path`) for a person to confirm; nothing is saved until then. A draft is stored durably (ADR-00035), shared with the web ingest form, and opens for the members of its household only. It survives a restart and expires after 365 days; a household holds at most 20 pending drafts of new recipes, and the 21st is refused with a message saying drafts are waiting for review (nothing is dropped to make room). A rejected, superseded or expired proposal is deleted 60 days after it reached that state, with its unconfirmed source. |
+| `propose_recipe_edit`, `get_recipe_proposal` | Propose a change to an existing recipe: the whole recipe as it should be, the version read with `get_recipe`, and a reason. The recipe is **unchanged** until a person opens `review_path` (the recipe's editor, with the proposal filled in) and saves it. The proposal shows on the recipe page with its reason and the credential that made it, and the accepted edit records both in the recipe's history. A recipe has one pending proposal; a newer one replaces it. If the recipe is saved first, the proposal is stale: `get_recipe_proposal` says so with the recipe's current version, and the agent proposes again. A line whose ingredient the catalog does not have is refused rather than added. |
 | `list_shopping_lists`, `get_shopping_list`, `get_pantry` | Read shopping lists and the pantry. |
 | `create_shopping_list`, `add_recipe_to_shopping_list`, `add_manual_shopping_item`, `check_shopping_item` | Change shopping lists. These **apply at once**. |
 
@@ -313,7 +314,7 @@ Every write is recorded in the `api_key_writes` table (for a key) or the
 `oauth_grant_writes` table (for an OAuth client, see below). Each row names the
 credential by its id and by a snapshot of it (a key's prefix, owner and creation
 time; a grant's client, owner and creation time), because SQLite reuses the id of
-a revoked credential for a later one. The rows outlive the credential. No tool edits an existing recipe: editing as a draft is not built yet.
+a revoked credential for a later one. The rows outlive the credential. `propose_recipe_edit` records a proposal, never a save; `get_recipe_proposal` reports whether it is still pending or has gone stale.
 A tool that lists things returns one page of at most 50
 and a `next_cursor` for the next.
 

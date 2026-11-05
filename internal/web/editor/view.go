@@ -20,6 +20,9 @@ type view struct {
 	// Review is set when the form edits an unsaved ingest draft (ADR-00020
 	// decision 3) rather than a stored recipe; nil for the recipe editor.
 	Review *ReviewOptions
+	// Proposal is the summary of the proposed edit under review, shown above the
+	// form; nil for an ordinary edit.
+	Proposal *proposalView
 }
 
 func (v view) reviewing() bool { return v.Review != nil }

@@ -355,6 +355,7 @@ type Revision struct {
 	Document        string
 	ChangeKind      string
 	RestoredVersion sql.NullInt64
+	ProposalID      sql.NullInt64
 	CreatedAt       string
 	CreatedBy       string
 }

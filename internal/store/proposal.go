@@ -395,8 +395,10 @@ func loadProposal(ctx context.Context, q *storedb.Queries, hid int64, token stri
 	}
 	if row.CredentialKind != "" {
 		c := &Credential{Kind: row.CredentialKind, ID: row.CredentialID, Ref: row.CredentialRef, Owner: row.CredentialOwner}
-		if c.CreatedAt, err = parseTime(row.CredentialCreatedAt); err != nil {
-			return Proposal{}, err
+		if row.CredentialCreatedAt != "" {
+			if c.CreatedAt, err = parseTime(row.CredentialCreatedAt); err != nil {
+				return Proposal{}, err
+			}
 		}
 		p.Credential = c
 	}

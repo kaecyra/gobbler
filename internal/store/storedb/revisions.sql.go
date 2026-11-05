@@ -29,8 +29,8 @@ func (q *Queries) GetRevisionDocument(ctx context.Context, arg GetRevisionDocume
 }
 
 const insertRevision = `-- name: InsertRevision :one
-INSERT INTO revisions (household_id, recipe_id, version, document, change_kind, restored_version, created_at, created_by)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO revisions (household_id, recipe_id, version, document, change_kind, restored_version, proposal_id, created_at, created_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
@@ -41,6 +41,7 @@ type InsertRevisionParams struct {
 	Document        string
 	ChangeKind      string
 	RestoredVersion sql.NullInt64
+	ProposalID      sql.NullInt64
 	CreatedAt       string
 	CreatedBy       string
 }
@@ -53,6 +54,7 @@ func (q *Queries) InsertRevision(ctx context.Context, arg InsertRevisionParams) 
 		arg.Document,
 		arg.ChangeKind,
 		arg.RestoredVersion,
+		arg.ProposalID,
 		arg.CreatedAt,
 		arg.CreatedBy,
 	)

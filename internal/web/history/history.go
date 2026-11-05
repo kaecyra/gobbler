@@ -144,9 +144,17 @@ func list(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
+		// The revision of the version before the current one was written by the
+		// edit that produced the current one, so it names the proposal behind it.
+		var from *store.ProposalRef
+		for _, rev := range revs {
+			if rev.Version == info.Version-1 {
+				from = rev.Proposal
+			}
+		}
 		// The store lists oldest first; the page shows newest first.
 		slices.Reverse(revs)
-		layout.Render(w, r, http.StatusOK, listPage(buildList(id, doc.Name, info, revs)))
+		layout.Render(w, r, http.StatusOK, listPage(buildList(id, doc.Name, info, revs, from)))
 	}
 }
 

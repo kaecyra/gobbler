@@ -32,6 +32,12 @@ const newStepLabel = "new-"
 // are the messages of a rejected save or action.
 type draft struct {
 	Version int64
+	// Proposal is the token of the pending proposal the form reviews (ADR-00035);
+	// empty for an ordinary edit. It rides in a hidden field.
+	Proposal string
+	// review is the summary shown above the form of that proposal, loaded with
+	// it; never read from the form.
+	review *proposalView
 
 	Name, Description, SourceURL, Author string
 	// Video is what was typed in the video field: a YouTube link or a bare ID.
@@ -197,7 +203,7 @@ func parseForm(f url.Values) draft {
 		YieldQty: f.Get("yield_qty"), YieldUnit: f.Get("yield_unit"), Servings: f.Get("servings"),
 		Calories: f.Get("calories"), Tags: f.Get("tags"),
 		Prep: f.Get("prep"), Cook: f.Get("cook"), Total: f.Get("total"),
-		Marks: parseMarks(f),
+		Marks: parseMarks(f), Proposal: strings.TrimSpace(f.Get(fieldProposal)),
 	}
 	for _, ci := range indices(f, "c.") {
 		cp := fmt.Sprintf("c.%d.", ci)
