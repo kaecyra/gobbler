@@ -356,6 +356,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .btn:hover { border-color: var(--ink-3); }
 .btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .btn.accent { background: var(--wattle-ink); color: var(--on-accent); border-color: var(--wattle-ink); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+.btn.ghost:hover { border-color: var(--line); }
 .btn:disabled { opacity: 0.4; cursor: default; }
 
 /* Segmented control: buttons or links, one marked aria-pressed or aria-current. */

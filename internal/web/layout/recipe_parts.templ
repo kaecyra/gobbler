@@ -29,8 +29,8 @@ templ RecipeMetaRow(m RecipeMeta) {
 			</span>
 		}
 		if m.Spoons > 0 {
-			<span class="spoons" role="img" aria-label={ verdict(m.Spoons) } title={ verdict(m.Spoons) } data-testid="rating">
-				for _, on := range spoonsOn(m.Spoons) {
+			<span class="spoons" role="img" aria-label={ Verdict(m.Spoons) } title={ Verdict(m.Spoons) } data-testid="rating">
+				for _, on := range SpoonsOn(m.Spoons) {
 					@Spoon(on)
 				}
 			</span>

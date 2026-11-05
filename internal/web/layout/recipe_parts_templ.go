@@ -137,7 +137,7 @@ func RecipeMetaRow(m RecipeMeta) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(verdict(m.Spoons))
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(Verdict(m.Spoons))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/recipe_parts.templ`, Line: 32, Col: 65}
 			}
@@ -150,7 +150,7 @@ func RecipeMetaRow(m RecipeMeta) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(verdict(m.Spoons))
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(Verdict(m.Spoons))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/recipe_parts.templ`, Line: 32, Col: 93}
 			}
@@ -162,7 +162,7 @@ func RecipeMetaRow(m RecipeMeta) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, on := range spoonsOn(m.Spoons) {
+			for _, on := range SpoonsOn(m.Spoons) {
 				templ_7745c5c3_Err = Spoon(on).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

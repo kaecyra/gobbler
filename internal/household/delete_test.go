@@ -86,7 +86,7 @@ func fill(t *testing.T, d *sql.DB, h household.Household, name string) {
 	if err := s.Update(ctx, id, r); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(ctx, id, "a note"); err != nil {
+	if _, err := s.AddNote(ctx, id, "a note", false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.AddMadeIt(ctx, id, store.MadeIt{Comment: "great"}); err != nil {

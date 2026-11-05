@@ -16,11 +16,11 @@ func TestNotesAreTimestampedAttributedAndListed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	first, err := s.AddNote(ctx, id, "needs more salt")
+	first, err := s.AddNote(ctx, id, "needs more salt", false)
 	if err != nil {
 		t.Fatalf("AddNote: %v", err)
 	}
-	if _, err := s.AddNote(ctx, id, "baked 5 minutes longer"); err != nil {
+	if _, err := s.AddNote(ctx, id, "baked 5 minutes longer", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -46,10 +46,10 @@ func TestNoteValidationAndMissingRecipe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(ctx, id, "  \n"); !errors.Is(err, ErrInvalid) {
+	if _, err := s.AddNote(ctx, id, "  \n", false); !errors.Is(err, ErrInvalid) {
 		t.Errorf("blank note = %v, want ErrInvalid", err)
 	}
-	if _, err := s.AddNote(ctx, id+9, "hi"); !errors.Is(err, ErrNotFound) {
+	if _, err := s.AddNote(ctx, id+9, "hi", false); !errors.Is(err, ErrNotFound) {
 		t.Errorf("note on missing recipe = %v, want ErrNotFound", err)
 	}
 	if _, err := s.ListNotes(ctx, id+9); !errors.Is(err, ErrNotFound) {

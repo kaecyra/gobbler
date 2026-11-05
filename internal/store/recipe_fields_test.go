@@ -135,7 +135,7 @@ func TestRecipeFieldColumnsRefuseValuesOutsideTheirSets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(a, id, "a tip"); err != nil {
+	if _, err := s.AddNote(a, id, "a tip", false); err != nil {
 		t.Fatal(err)
 	}
 	for _, q := range []string{

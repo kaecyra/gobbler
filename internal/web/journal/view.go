@@ -7,6 +7,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // view is everything the journal templates show: the stored journal, newest
@@ -20,6 +21,7 @@ type view struct {
 	Made     []store.MadeIt
 
 	NoteBody        string
+	NotePinned      bool
 	NoteError       string
 	RatingError     string
 	MadeOn          string
@@ -59,7 +61,8 @@ func (v view) base() string { return journalPath(v.RecipeID) }
 
 func (v view) ratingIs(n int) bool { return v.Rating != nil && *v.Rating == n }
 
-func stars() []int {
+// ratings lists the ratings a form offers, 1 to 5 spoons.
+func ratings() []int {
 	out := make([]int, 0, maxRating)
 	for n := minRating; n <= maxRating; n++ {
 		out = append(out, n)
@@ -67,9 +70,36 @@ func stars() []int {
 	return out
 }
 
-func stamp(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") + " UTC" }
+// spoonOn says whether spoon n of the rating picker is filled: every spoon up
+// to the rating is.
+func (v view) spoonOn(n int) bool { return v.Rating != nil && n <= *v.Rating }
 
-func starText(n int) string { return strconv.Itoa(n) + " of " + strconv.Itoa(maxRating) }
+// madeRatingIs says whether n is the rating in the made-it form; 0 is none.
+func (v view) madeRatingIs(n int) bool {
+	if n == 0 {
+		return v.MadeRating == ""
+	}
+	return v.MadeRating == strconv.Itoa(n)
+}
+
+// verdict is the word of a rating, "Not rated" for none.
+func verdict(r *int) string {
+	if r == nil {
+		return layout.Verdict(0)
+	}
+	return layout.Verdict(*r)
+}
+
+// day is a calendar date as the journal shows it, "9 Mar 2024".
+func day(t time.Time) string { return t.Format("2 Jan 2006") }
+
+// madeTimes counts the made-it log: "1 time", "3 times".
+func madeTimes(n int) string {
+	if n == 1 {
+		return "1 time"
+	}
+	return strconv.Itoa(n) + " times"
+}
 
 // pinPath is where the pin toggle of note n posts.
 func (v view) pinPath(n store.Note) string {

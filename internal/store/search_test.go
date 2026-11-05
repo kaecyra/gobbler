@@ -62,7 +62,7 @@ func TestSearchMatchesEachIndexedField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(ctx, id, "Burns easily under the grill"); err != nil {
+	if _, err := s.AddNote(ctx, id, "Burns easily under the grill", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -116,7 +116,7 @@ func TestSearchRanksNameAboveNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(ctx, noted, "tastes like pie"); err != nil {
+	if _, err := s.AddNote(ctx, noted, "tastes like pie", false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.Create(ctx, simpleRecipe("Zzz Pie")); err != nil {
@@ -217,7 +217,7 @@ func TestIndexFollowsCreateEditNoteRestoreCloneDelete(t *testing.T) {
 	wantNames(t, mustSearch(t, s, "batter"), "Waffles")
 
 	// Note.
-	if _, err := s.AddNote(ctx, id, "serve with maple syrup"); err != nil {
+	if _, err := s.AddNote(ctx, id, "serve with maple syrup", false); err != nil {
 		t.Fatal(err)
 	}
 	wantNames(t, mustSearch(t, s, "maple"), "Waffles")

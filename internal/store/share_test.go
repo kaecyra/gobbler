@@ -60,7 +60,7 @@ func newShareFixture(t *testing.T) shareFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddNote(f.a, f.recipe, "sender's private note"); err != nil {
+	if _, err := s.AddNote(f.a, f.recipe, "sender's private note", false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.AddMadeIt(f.a, f.recipe, MadeIt{Comment: "sender's private comment"}); err != nil {
