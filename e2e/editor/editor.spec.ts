@@ -7,21 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
 import { expectTapTargets } from '../fixtures/tap';
 import { userCopy } from '../fixtures/copy';
-
-// dragRow drags a row by its handle onto another row, releasing at frac of the
-// target's height.
-async function dragRow(page: Page, from: Locator, to: Locator, frac: number) {
-  await to.scrollIntoViewIfNeeded();
-  const grip = (await from.locator('.grip').first().boundingBox())!;
-  const target = (await to.boundingBox())!;
-  const x = grip.x + grip.width / 2;
-  const y0 = grip.y + grip.height / 2;
-  const y1 = target.y + target.height * frac;
-  await page.mouse.move(x, y0);
-  await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
-  await page.mouse.up();
-}
+import { dragRow, scrollDrift, watchScroll } from './drag';
 
 // The editor needs a recipe in the database, which the shared server of the
 // suite does not have. This spec seeds its own data directory through the real
@@ -376,6 +362,19 @@ test('without JavaScript, Save in the bar saves', async ({ browser }) => {
   await ctx.close();
 });
 
+// The name box under Steps is a script's convenience: it has no name, so
+// typing in it without a script would be lost. It is hidden then, and the
+// read-only title shows instead.
+test('without JavaScript, the Steps name box is hidden and the part title shows', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
+  const page = await ctx.newPage();
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('#ed-steps input[data-part-name]').first()).toBeHidden();
+  await expect(page.locator('#ed-steps .grp-title').first()).toBeVisible();
+  await expect(page.locator('[name="c.0.name"]')).toBeVisible();
+  await ctx.close();
+});
+
 test('without JavaScript, Enter in a field saves', async ({ browser }) => {
   const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
   const page = await ctx.newPage();
@@ -402,18 +401,11 @@ test('Add qualifier keeps the page in place and focuses the new qualifier', asyn
   const n = await page.locator('[name^="c.0.l.0.q."][name$=".text"]').count();
   // Sample the scroll position on every frame, so a jump that is scrolled
   // back afterwards still fails.
-  await page.evaluate(() => {
-    const w = window as unknown as { ys: number[] };
-    w.ys = [];
-    const t0 = performance.now();
-    const f = () => { w.ys.push(window.scrollY); if (performance.now() - t0 < 1500) requestAnimationFrame(f); };
-    requestAnimationFrame(f);
-  });
+  await watchScroll(page, 1500);
   await add.click();
   await expect(page.locator(`[name="c.0.l.0.q.${n}.text"]`)).toBeFocused();
   await page.waitForTimeout(1600);
-  const ys = await page.evaluate(() => (window as unknown as { ys: number[] }).ys);
-  const worst = Math.max(...ys.map((y) => Math.abs(y - before)));
+  const worst = await scrollDrift(page, before);
   expect(worst, `scrollY moved up to ${worst}px from ${before}`).toBeLessThanOrEqual(4);
 });
 
@@ -428,4 +420,121 @@ test('dragging a step by its handle reorders the steps', async ({ page }) => {
   await dragRow(page, steps.nth(0), steps.nth(1), 0.8);
   await expect(page.locator('[name="c.0.s.0.text"]')).toHaveValue(second);
   await expect(page.locator('[name="c.0.s.1.text"]')).toHaveValue(first);
+});
+
+// Parts are dragged between by the same handle as within one. The page ends
+// with Dough, Glaze and Topping from the tests above; these rows are read from
+// the page rather than assumed.
+test('dragging an ingredient into another part saves it there at the dropped position, with every field', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 1400 });
+  await page.goto(`/recipes/${id}/edit`);
+  const lines = (ci: number) => page.locator(`ol[data-drag-list="move-line:${ci}"] > li.line`);
+  const get = (ci: number, li: number, f: string) => page.locator(`[name="c.${ci}.l.${li}.${f}"]`).inputValue();
+  const was = { qty: await get(0, 0, 'qty'), unit: await get(0, 0, 'unit'), ing: await get(0, 0, 'ing') };
+  const before0 = await lines(0).count();
+  const before1 = await lines(1).count();
+  expect(before1, 'part 2 has a line to drop onto').toBeGreaterThan(0);
+  await dragRow(page, lines(0).nth(0), lines(1).nth(0), 0.8);
+  await expect(lines(0)).toHaveCount(before0 - 1);
+  await expect(lines(1)).toHaveCount(before1 + 1);
+  const at = async () => ({ qty: await get(1, 1, 'qty'), unit: await get(1, 1, 'unit'), ing: await get(1, 1, 'ing') });
+  expect(await at()).toEqual(was);
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(lines(1)).toHaveCount(before1 + 1);
+  expect(await at()).toEqual(was);
+});
+
+test('dragging a step into another part saves it there with its title, kind, duration, dependencies and equipment', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 1400 });
+  await page.goto(`/recipes/${id}/edit`);
+  const steps = (ci: number) => page.locator(`ol[data-drag-list="move-step:${ci}"] > li.step`);
+  const field = (ci: number, si: number, f: string) => page.locator(`[name="c.${ci}.s.${si}.${f}"]`);
+  const moving = await steps(0).count() - 1;
+  const key = await field(0, moving, 'id').inputValue();
+  const was = {
+    text: await field(0, moving, 'text').inputValue(),
+    dur: await field(0, moving, 'dur').inputValue(),
+    title: await field(0, moving, 'title').inputValue(),
+    kind: await field(0, moving, 'kind').inputValue(),
+    deps: await page.locator(`[name="c.0.s.${moving}.dep"]:checked`).evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value)),
+  };
+  expect(was.deps.length, 'the step depends on another').toBeGreaterThan(0);
+  // Link a piece of equipment to the step, so the move has a link to keep.
+  await page.locator('#ed-equipment input[placeholder="Add equipment"]').fill('whisk');
+  await page.getByRole('button', { name: 'Add equipment' }).click();
+  // The answer focuses the next empty slot, and may scroll to it; let that settle.
+  await expect(page.locator('#ed-equipment input[placeholder="Add equipment"]')).toBeFocused();
+  await page.locator('li.equipment').first().locator('summary').click();
+  const link = page.locator(`li.equipment [name="e.0.step"][value="${key}"]`);
+  await link.check();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const n1 = await steps(1).count();
+  await dragRow(page, steps(0).nth(moving), steps(1).nth(0), 0.2);
+  await expect(steps(1)).toHaveCount(n1 + 1);
+  await expect(field(1, 0, 'id')).toHaveValue(key);
+  const now = async () => ({
+    text: await field(1, 0, 'text').inputValue(),
+    dur: await field(1, 0, 'dur').inputValue(),
+    title: await field(1, 0, 'title').inputValue(),
+    kind: await field(1, 0, 'kind').inputValue(),
+    deps: await page.locator('[name="c.1.s.0.dep"]:checked').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value)),
+  });
+  expect(await now()).toEqual(was);
+  await expect(link).toBeChecked();
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(field(1, 0, 'id')).toHaveValue(key);
+  expect(await now()).toEqual(was);
+  await page.locator('li.equipment').first().locator('summary').click();
+  await expect(link).toBeChecked();
+});
+
+test('dragging a row into another part does not jump the page', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto(`/recipes/${id}/edit`);
+  const steps = (ci: number) => page.locator(`ol[data-drag-list="move-step:${ci}"] > li.step`);
+  const n0 = await steps(0).count();
+  const n1 = await steps(1).count();
+  // Put the source a little below the header, so the target is on screen too.
+  const top = (await steps(0).nth(n0 - 1).boundingBox())!.y;
+  await page.evaluate((dy) => window.scrollBy(0, dy), top - 220);
+  expect(await page.evaluate(() => window.scrollY), 'the rows are mid-page').toBeGreaterThan(100);
+  // The source is above the target, so it moves down into the next part.
+  // Both rows must be on screen, clear of the edge where a drag scrolls the page.
+  const source = steps(0).nth(n0 - 1);
+  const target = steps(1).nth(0);
+  expect((await source.boundingBox())!.y, 'the dragged row is on screen').toBeGreaterThan(100);
+  const t = (await target.boundingBox())!;
+  expect(t.y + t.height, 'the target row is on screen').toBeLessThan(900 - 100);
+  const before = await page.evaluate(() => window.scrollY);
+  await watchScroll(page, 2500);
+  await dragRow(page, source, target, 0.8);
+  await page.waitForTimeout(2600);
+  const worst = await scrollDrift(page, before);
+  await expect(steps(1)).toHaveCount(n1 + 1);
+  expect(worst, `scrollY moved up to ${worst}px`).toBeLessThanOrEqual(4);
+});
+
+// One name, two inputs: the one under Steps has no name, so the form posts the
+// one under Ingredients.
+test('a part is named from Steps as well as Ingredients, the two kept in step, and the typed name is saved', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  const ingredients = page.locator('[name="c.1.name"]');
+  const steps = page.locator('#ed-steps input[data-part-name="1"]');
+  await expect(steps).toHaveValue(await ingredients.inputValue());
+  await expect(steps).not.toHaveAttribute('name', /.*/);
+  await steps.fill('Icing');
+  await expect(ingredients).toHaveValue('Icing');
+  await ingredients.fill('Frosting');
+  await expect(steps).toHaveValue('Frosting');
+  await steps.fill('Sugar glaze');
+  expect(await page.locator('form#editor [name="c.1.name"]').count(), 'one input posts the name').toBe(1);
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(ingredients).toHaveValue('Sugar glaze');
+  await expect(steps).toHaveValue('Sugar glaze');
 });

@@ -610,3 +610,43 @@ func TestConfirmRejectsAVideoThatIsNotYouTube(t *testing.T) {
 		t.Errorf("no message for the video field: %s", rec.Body)
 	}
 }
+
+// A line or a step dragged into another part posts a four-position move; the
+// review screen answers with it in the other part, and nothing is saved.
+func TestDraggingAcrossPartsMovesTheRowOnTheReviewScreen(t *testing.T) {
+	f := newFixture(t)
+	token := f.ingestText(t)
+	form := reviewForm()
+	form.Set("c.0.name", "Filling")
+	form.Set("c.1.name", "Crust")
+	form.Set("c.1.l.0.ing", "flour")
+	form.Set("c.1.l.0.rule", "linear")
+	form.Set("c.1.s.0.text", "Roll the crust.")
+	form.Set("c.1.s.0.to", "1")
+
+	form.Set("action", "move-line:0.0.1.1")
+	body := f.do(http.MethodPost, "/"+token+"/confirm", form).Body.String()
+	if !strings.Contains(body, `value="Filling"`) || !strings.Contains(body, `value="Crust"`) {
+		t.Fatalf("part names lost: %s", body)
+	}
+	i := strings.Index(body, `name="c.1.l.1.ing"`)
+	if i < 0 || !strings.Contains(body[i:i+200], `value="butter"`) {
+		t.Errorf("the dragged line is not second in part 2")
+	}
+	if strings.Contains(body, `name="c.0.l.1.ing"`) {
+		t.Error("part 1 still has two lines")
+	}
+
+	form.Set("action", "move-step:0.1.1.0")
+	body = f.do(http.MethodPost, "/"+token+"/confirm", form).Body.String()
+	if !strings.Contains(body, `name="c.1.s.1.text"`) || !strings.Contains(body, "Bake until goldn") {
+		t.Fatalf("the dragged step is not in part 2")
+	}
+	j := strings.Index(body, `name="c.1.s.0.text"`)
+	if j < 0 || !strings.Contains(body[j:], "Bake until goldn") || strings.Index(body[j:], "Bake until goldn") > strings.Index(body[j:], "Roll the crust.") {
+		t.Error("the dragged step did not land first in part 2")
+	}
+	if len(f.store.recipes) != 0 || len(f.store.created) != 0 {
+		t.Error("a drag saved something")
+	}
+}

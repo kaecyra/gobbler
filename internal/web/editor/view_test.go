@@ -238,9 +238,68 @@ func TestMoveActionsReorderWithinAList(t *testing.T) {
 	}
 }
 
+// A drag across parts posts "move-...:<from part>.<from>.<to part>.<to>": the
+// item leaves one part and lands at that position in another, whole. A step
+// keeps its id, so its dependencies and equipment links stay valid.
+func TestMoveActionsCarryAnItemToAnotherPart(t *testing.T) {
+	d := twoComponents()
+	d.Components[0].Lines = []lineDraft{{Ingredient: "a", Qty: "2", Unit: "cup", Quals: []qualDraft{{Text: "sifted"}}}, {Ingredient: "b"}}
+	d.Components[1].Lines = []lineDraft{{Ingredient: "c"}, {Ingredient: "d"}}
+	if err := d.apply("move-line:0.0.1.1"); err != nil {
+		t.Fatal(err)
+	}
+	if got := d.Components[0].Lines; len(got) != 1 || got[0].Ingredient != "b" {
+		t.Errorf("part 1 lines: %+v", got)
+	}
+	moved := d.Components[1].Lines
+	if len(moved) != 3 || moved[0].Ingredient != "c" || moved[1].Ingredient != "a" || moved[2].Ingredient != "d" {
+		t.Fatalf("part 2 lines: %+v", moved)
+	}
+	if moved[1].Qty != "2" || moved[1].Unit != "cup" || len(moved[1].Quals) != 1 {
+		t.Errorf("the moved line lost fields: %+v", moved[1])
+	}
+	// An emptied part stays a part, and a line can be dropped into it.
+	if err := d.apply("move-line:0.0.1.0"); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Components) != 2 || len(d.Components[0].Lines) != 0 {
+		t.Fatalf("emptied part: %+v", d.Components)
+	}
+	if err := d.apply("move-line:1.0.0.0"); err != nil {
+		t.Fatal(err)
+	}
+	if got := d.Components[0].Lines; len(got) != 1 || got[0].Ingredient != "b" {
+		t.Errorf("drop into an empty part: %+v", got)
+	}
+
+	s := twoComponents()
+	s.Components[0].Steps[1].Title = "Rest"
+	s.Components[0].Steps[1].Duration = "1h"
+	s.Components[0].Steps[1].Passive = true
+	s.Components[0].Steps[1].Kind = "bake"
+	s.Equipment[0].Steps = []string{"a2"}
+	if err := s.apply("move-step:0.1.1.0"); err != nil {
+		t.Fatal(err)
+	}
+	if got := stepIDsOf(s.Components[0]); !reflect.DeepEqual(got, []string{"a1"}) {
+		t.Errorf("part 1 steps: %v", got)
+	}
+	if got := stepIDsOf(s.Components[1]); !reflect.DeepEqual(got, []string{"a2", "b1"}) {
+		t.Fatalf("part 2 steps: %v", got)
+	}
+	m := s.Components[1].Steps[0]
+	if m.Title != "Rest" || m.Kind != "bake" || m.Duration != "1h" || !m.Passive || !reflect.DeepEqual(m.Deps, []string{"a1"}) || m.To != 1 {
+		t.Errorf("the moved step lost fields: %+v", m)
+	}
+	if !reflect.DeepEqual(s.Equipment[0].Steps, []string{"a2"}) {
+		t.Errorf("equipment link: %v", s.Equipment[0].Steps)
+	}
+}
+
 func TestMoveActionsOutOfRangeAreRefused(t *testing.T) {
 	for _, action := range []string{
 		"move-line:0.0.4", "move-line:0.4.0", "move-line:0.1", "move-line:2.0.0",
+		"move-line:0.0.0.2", "move-step:0.0.0.1", "move-line:0.0.0.0", "move-line:0.0.2.0", "move-line:0.0.1.9", "move-line:0.5.1.0", "move-step:0.0.1.5", "move-step:0.2.1.0", "move-step:0.0.3.0",
 		"move-qual:0.0.0.1", "move-step:0.0.2", "move-equip:0.3", "move-equip:0", "move-component:0.2",
 	} {
 		d := twoComponents()
