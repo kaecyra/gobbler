@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { pasteText } from './helpers';
+import { userCopy } from '../fixtures/copy';
 
 // The ingest form and the review screen (ADR-00006): nothing is saved until
 // the user confirms. The URL path is exercised against a local fixture HTTP
@@ -590,4 +591,32 @@ test('a collapsed source box does not leave an empty column beside the editor', 
   const sum = (await page.locator('.srcbox-wrap').boundingBox())!;
   const ed = (await page.locator('.review-body .editor').first().boundingBox())!;
   expect(sum.y + sum.height, 'summary stays out of the editor').toBeLessThanOrEqual(ed.y + 1);
+});
+
+// The parts panel sits under the source box and follows the form: its button
+// belongs to the editor form, and the htmx answer swaps it out of band.
+test('the parts panel under the source splits a one-part draft and lists the parts', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/ingest');
+  await pasteText(page, PANCAKES);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  const panel = page.locator('.review-side #parts-panel');
+  await expect(panel).toContainText('This recipe is one part.');
+  await panel.getByRole('button', { name: 'Split into parts' }).click();
+  await expect(page.locator('[name="c.1.name"]')).toBeVisible();
+  await expect(panel).toContainText('This recipe has two parts.');
+  await expect(panel.getByRole('link', { name: 'Go to part 2' })).toHaveAttribute('href', '#part-2');
+  await expect(panel).toContainText('Unnamed part');
+  await expect(page.locator('#parts-panel')).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+});
+
+// The UI calls a recipe component a "part" (docs/ui/design.md).
+test('the review screen never says component', async ({ page }) => {
+  await page.goto('/ingest');
+  await pasteText(page, PANCAKES);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await page.locator('#parts-panel').getByRole('button', { name: 'Split into parts' }).click();
+  await expect(page.locator('[name="c.1.name"]')).toBeVisible();
+  expect(await userCopy(page)).not.toMatch(/\bcomponents?\b/i);
 });

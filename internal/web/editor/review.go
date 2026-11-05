@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"slices"
 	"strconv"
@@ -22,10 +23,18 @@ import (
 // the answer in place, so a button of its own could not leave for another.
 const CancelFormID = "review-cancel"
 
-// ReviewOptions says where a review screen's buttons post.
+// ReviewOptions says where a review screen's buttons post, and what the
+// parts panel can say about the source.
 type ReviewOptions struct {
 	// Action is where the form and its structural buttons post.
 	Action string
+	// SourceParts is how many headings the source listed its ingredients
+	// under. While the draft has that many parts, the panel says the parts
+	// came from them.
+	SourceParts int
+	// PartsBeside is set when the page shows the parts panel itself, beside
+	// the form (Form.Parts), so the form leaves it out.
+	PartsBeside bool
 }
 
 // Unsaved hosts the editor on an ingest draft that is not stored yet
@@ -45,6 +54,24 @@ type Form struct{ v view }
 // Component renders the form. It is a fragment of one <form>, the same one the
 // recipe editor swaps in place.
 func (f Form) Component() templ.Component { return editorForm(f.v) }
+
+// Parts renders the parts panel for a page that shows it beside the form
+// (ReviewOptions.PartsBeside). Its buttons belong to the form.
+func (f Form) Parts() templ.Component { return partsPanel(f.v, false) }
+
+// Fragment is the form as an htmx answer: the form, and the parts panel beside
+// it swapped out of band when the page shows one, so both follow the edit.
+func (f Form) Fragment() templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := editorForm(f.v).Render(ctx, w); err != nil {
+			return err
+		}
+		if f.v.Review == nil || !f.v.Review.PartsBeside {
+			return nil
+		}
+		return partsPanel(f.v, true).Render(ctx, w)
+	})
+}
 
 // WithProblems returns f showing msgs as problems with the recipe as a whole.
 func (f Form) WithProblems(msgs ...string) Form {

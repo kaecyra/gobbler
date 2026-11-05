@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/a-h/templ"
+
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -112,9 +114,9 @@ func n1(i int) string { return strconv.Itoa(i + 1) }
 
 func componentLabel(ci int, c compDraft) string {
 	if strings.TrimSpace(c.Name) == "" {
-		return "Component " + n1(ci)
+		return "Part " + n1(ci)
 	}
-	return "Component " + n1(ci) + ": " + c.Name
+	return "Part " + n1(ci) + ": " + c.Name
 }
 
 // stepTitle names a step in a list of steps: its title, or the start of its
@@ -168,7 +170,7 @@ func componentName(ci int, c compDraft) string {
 	if n := strings.TrimSpace(c.Name); n != "" {
 		return n
 	}
-	return "Component " + n1(ci)
+	return "Part " + n1(ci)
 }
 
 // stepNum is the place of step si of component ci in the whole recipe,
@@ -215,12 +217,71 @@ func (v view) equipmentFor(id string) []string {
 }
 
 // lineRef names line li of component ci for a person, unique in the form:
-// "line 2", or "Glaze line 2" when the recipe has more than one component.
+// "line 2", or "Glaze line 2" when the recipe has more than one part.
 func (v view) lineRef(ci, li int) string {
 	if len(v.D.Components) > 1 {
 		return componentName(ci, v.D.Components[ci]) + " line " + n1(li)
 	}
 	return "line " + n1(li)
+}
+
+// partAnchor is the id of a part's group in the ingredients section.
+func partAnchor(ci int) string { return "part-" + n1(ci) }
+
+// partTitle is a part's name in the parts panel.
+func partTitle(c compDraft) string {
+	if n := strings.TrimSpace(c.Name); n != "" {
+		return n
+	}
+	return "Unnamed part"
+}
+
+// partCounts is "4 ingredients · 3 steps" for a part.
+func partCounts(c compDraft) string {
+	return plural(len(c.Lines), "ingredient", "ingredients") + " · " + plural(len(c.Steps), "step", "steps")
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return strconv.Itoa(n) + " " + many
+}
+
+// countWords spells the small counts the parts panel reads out.
+var countWords = []string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"}
+
+func countWord(n int) string {
+	if n >= 0 && n < len(countWords) {
+		return countWords[n]
+	}
+	return strconv.Itoa(n)
+}
+
+// partsText is the sentence at the top of the parts panel. On the review
+// screen, while the draft still has one part for each heading the source
+// listed its ingredients under, it says the parts came from those headings.
+// Cook mode names the part of each step beside the step count
+// (internal/web/cook), which is what the sentence claims.
+func (v view) partsText() string {
+	n := len(v.D.Components)
+	if n <= 1 {
+		return "This recipe is one part. If the page groups its ingredients, say for a dough and a glaze, split them into parts so each keeps its own steps."
+	}
+	rest := "Each part keeps its own ingredients and steps, and cook mode names the part of each step as you go."
+	w := countWord(n)
+	if v.Review != nil && v.Review.SourceParts == n {
+		return "The page lists its ingredients under " + w + " headings, so the recipe is read as " + w + " parts. " + rest
+	}
+	return "This recipe has " + w + " parts. " + rest
+}
+
+// oobAttrs marks the copy of the parts panel an htmx answer swaps out of band.
+func oobAttrs(oob bool) templ.Attributes {
+	if oob {
+		return templ.Attributes{"hx-swap-oob": "true"}
+	}
+	return templ.Attributes{}
 }
 
 // tipID is the id of a help popover, unique in the form.

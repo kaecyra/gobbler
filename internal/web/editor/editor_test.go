@@ -675,7 +675,7 @@ func TestBlankNameAndNoComponentsAreRefused(t *testing.T) {
 	}
 	res = e.post(f)
 	res.wantStatus(t, http.StatusBadRequest)
-	res.wantBody(t, "at least one component")
+	res.wantBody(t, "at least one part")
 }
 
 func TestStaleSaveWithAProposalCreatesNoCatalogEntry(t *testing.T) {

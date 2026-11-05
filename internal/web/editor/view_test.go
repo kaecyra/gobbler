@@ -171,7 +171,7 @@ func TestLineNamesAreUniqueAcrossComponents(t *testing.T) {
 		t.Errorf("one component: %q", got)
 	}
 	two := view{D: draft{Components: []compDraft{{Name: "Dough"}, {}}}}
-	if a, b := two.lineRef(0, 0), two.lineRef(1, 0); a != "Dough line 1" || b != "Component 2 line 1" {
+	if a, b := two.lineRef(0, 0), two.lineRef(1, 0); a != "Dough line 1" || b != "Part 2 line 1" {
 		t.Errorf("two components: %q, %q", a, b)
 	}
 }
@@ -269,5 +269,32 @@ func TestAddActionsFocusTheNewControl(t *testing.T) {
 		if d.Focus != tc.want {
 			t.Errorf("%s: Focus = %q, want %q", tc.action, d.Focus, tc.want)
 		}
+	}
+}
+
+// The parts panel credits the source's headings only while the draft still
+// has one part for each of them.
+func TestPartsTextSaysWhereThePartsCameFrom(t *testing.T) {
+	three := []compDraft{{}, {}, {}}
+	for _, tc := range []struct {
+		name   string
+		v      view
+		prefix string
+	}{
+		{"one part", view{D: draft{Components: []compDraft{{}}}}, "This recipe is one part."},
+		{"a stored recipe", view{D: draft{Components: three}}, "This recipe has three parts."},
+		{"a draft as the page had it", view{D: draft{Components: three}, Review: &ReviewOptions{SourceParts: 3}}, "The page lists its ingredients under three headings, so the recipe is read as three parts."},
+		{"a draft with a part added", view{D: draft{Components: three}, Review: &ReviewOptions{SourceParts: 2}}, "This recipe has three parts."},
+		{"past the words", view{D: draft{Components: make([]compDraft, 12)}}, "This recipe has 12 parts."},
+	} {
+		if got := tc.v.partsText(); !strings.HasPrefix(got, tc.prefix) {
+			t.Errorf("%s: %q", tc.name, got)
+		}
+	}
+	if got := partCounts(compDraft{Lines: []lineDraft{{}}, Steps: []stepDraft{{}, {}}}); got != "1 ingredient · 2 steps" {
+		t.Errorf("partCounts = %q", got)
+	}
+	if partTitle(compDraft{Name: "  "}) != "Unnamed part" || partTitle(compDraft{Name: "Glaze"}) != "Glaze" {
+		t.Error("partTitle")
 	}
 }

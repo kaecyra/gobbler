@@ -241,6 +241,9 @@ templ editorForm(v view) {
 		// input, not a button, so it never takes a button's styles.
 		<input type="submit" name="action" value="save" hidden/>
 		@metaFields(v)
+		if v.Review == nil || !v.Review.PartsBeside {
+			@partsPanel(v, false)
+		}
 		@ingredientFields(v)
 		@stepSection(v)
 		@equipmentFields(v)
@@ -460,12 +463,6 @@ templ ingredientFields(v view) {
 			for ci, c := range v.D.Components {
 				@componentLines(v, ci, c)
 			}
-			<p class="tools add">
-				<button type="submit" class="btn ghost" name="action" value="add-component">
-					@layout.Icon(layout.IconPlus)
-					Add component
-				</button>
-			</p>
 		</div>
 	</section>
 }
@@ -508,25 +505,25 @@ templ helpTip(id, about, text string) {
 
 const (
 	qualifierHelp = "Words that describe the ingredient without changing how much you buy: chopped, softened, room temperature. They show beside the ingredient on the recipe and stay off the shopping list."
-	componentHelp = "A part of the recipe with its own ingredients and steps, such as the dough and the filling. The recipe page shows each named part under its own heading, and cook mode names the part each step belongs to."
+	partHelp      = "A part of the recipe with its own ingredients and steps, such as the dough and the filling. The recipe page shows each named part under its own heading, and cook mode names the part each step belongs to."
 )
 
 // componentLines is one component in the ingredients section: its name and
 // the controls that move or remove the whole component, then its lines.
 templ componentLines(v view, ci int, c compDraft) {
-	<div class="comp component">
+	<div class="comp component" id={ partAnchor(ci) }>
 		<div class="comp-h">
 			@grip()
 			<div class="fl">
 				<div class="lbl-row">
-					<label for={ cField(ci, "name") }>Component { n1(ci) } name</label>
-					@helpTip(tipID("comp", ci), "components", componentHelp)
+					<label for={ cField(ci, "name") }>Part { n1(ci) } name</label>
+					@helpTip(tipID("comp", ci), "parts", partHelp)
 				</div>
 				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Leave empty for a recipe without parts" autofocus?={ v.D.Focus == cField(ci, "name") }/>
 			</div>
 			<p class="tools">
-				@moveButtons(act("up-component", ci), act("down-component", ci), "component "+n1(ci), ci == 0, ci == len(v.D.Components)-1)
-				@iconButton(act("rm-component", ci), "Remove component "+n1(ci), layout.IconClose, false, "danger")
+				@moveButtons(act("up-component", ci), act("down-component", ci), "part "+n1(ci), ci == 0, ci == len(v.D.Components)-1)
+				@iconButton(act("rm-component", ci), "Remove part "+n1(ci), layout.IconClose, false, "danger")
 			</p>
 		</div>
 		if len(c.Lines) > 0 {
@@ -777,8 +774,8 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 					}
 					<div class="fl">
 						<div class="lbl-row">
-							<label for={ sField(ci, si, "to") }>Component</label>
-							@helpTip(tipID("step-comp", ci, si), "components", componentHelp)
+							<label for={ sField(ci, si, "to") }>Part</label>
+							@helpTip(tipID("step-part", ci, si), "parts", partHelp)
 						</div>
 						<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
 							for oi, o := range v.D.Components {
@@ -900,6 +897,51 @@ templ equipmentFields(v view) {
 					</button>
 				</p>
 			</div>
+		</div>
+	</section>
+}
+
+// partsPanel lists the parts of the recipe, says what a part is, and offers
+// to add one. On the review screen it sits under the source box, outside the
+// form, so its button names the form; oob marks the copy an htmx answer
+// carries to replace it there.
+templ partsPanel(v view, oob bool) {
+	<section id="parts-panel" class="parts-panel" aria-labelledby="ed-h-parts" { oobAttrs(oob)... }>
+		<style>
+			.parts-panel .pp-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px 16px; }
+			.parts-panel .pp-text { margin: 0 0 10px; color: var(--ink-2); font-size: 15.5px; }
+			.parts-panel .pp-part { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+			.parts-panel .pn { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; }
+			.parts-panel .pp-name { display: block; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+			.parts-panel .pp-meta { display: block; font-size: 14px; color: var(--ink-3); }
+			.parts-panel .pp-part a { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 14.5px; }
+			.parts-panel .pp-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding-top: 10px; }
+			.parts-panel .pp-part + .pp-tools { border-top: 1px solid var(--line); }
+		</style>
+		@sectionHead("ed-h-parts", "Parts of this recipe")
+		<div class="pp-card">
+			<p class="pp-text">{ v.partsText() }</p>
+			if len(v.D.Components) > 1 {
+				for ci, c := range v.D.Components {
+					<div class="pp-part">
+						<span class="pn" aria-hidden="true">{ n1(ci) }</span>
+						<span>
+							<span class="pp-name">{ partTitle(c) }</span>
+							<span class="pp-meta">{ partCounts(c) }</span>
+						</span>
+						<a href={ templ.SafeURL("#" + partAnchor(ci)) } aria-label={ "Go to part " + n1(ci) }>Go to</a>
+					</div>
+				}
+			}
+			<p class="pp-tools">
+				<button type="submit" form="editor" class="btn" name="action" value="add-component">
+					if len(v.D.Components) > 1 {
+						Add a part
+					} else {
+						Split into parts
+					}
+				</button>
+			</p>
 		</div>
 	</section>
 }

@@ -35,7 +35,7 @@ func styles() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<style>\n\t\t.add-top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 22px; }\n\t\t.src-seg { position: relative; display: inline-flex; background: var(--sunk); border-radius: var(--r); padding: 3px; }\n\t\t.src-seg > label, .src-seg > a {\n\t\t\tdisplay: inline-flex; align-items: center; min-height: var(--tap); padding: 6px 16px;\n\t\t\tborder-radius: var(--r-sm); cursor: pointer; font-size: 15.5px; font-weight: 600;\n\t\t\tcolor: var(--ink-2); text-decoration: none;\n\t\t}\n\t\t.src-seg > label:hover, .src-seg > a:hover { color: var(--ink); }\n\t\t#src-link:checked ~ label[for=src-link], #src-text:checked ~ label[for=src-text], .src-seg > a[aria-current=page] {\n\t\t\tbackground: var(--card); color: var(--ink); box-shadow: var(--shadow);\n\t\t}\n\t\t#src-link:focus-visible ~ label[for=src-link], #src-text:focus-visible ~ label[for=src-text] {\n\t\t\toutline: 2px solid var(--wattle); outline-offset: 2px;\n\t\t}\n\t\t.add:has(#src-link:checked) .pane-text, .add:has(#src-text:checked) .pane-link { display: none; }\n\t\t.ingest-form { display: flex; flex-direction: column; gap: 18px; max-width: 760px; }\n\t\t.ingest-form .field { display: flex; flex-direction: column; gap: 6px; }\n\t\t.ingest-form label.field-label { font-weight: 600; }\n\t\t.ingest-form input[type=url], .ingest-form input[type=file], .ingest-form textarea {\n\t\t\twidth: 100%; font: inherit; color: var(--ink); background: var(--card);\n\t\t\tborder: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; min-height: var(--tap);\n\t\t}\n\t\t.ingest-form input[type=file] { padding: 8px 12px; }\n\t\t.ingest-form textarea { min-height: 12rem; font-family: var(--f-mono); font-size: 14px; line-height: 1.65; }\n\t\t.ingest-form input:focus-visible, .ingest-form textarea:focus-visible { outline: none; border-color: var(--wattle); }\n\t\t.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }\n\t\t.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }\n\t\t.retry-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; }\n\t\t.retry-form .muted { font-size: 14px; max-width: 60ch; }\n\t\t.via { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }\n\t\t.via .chip {\n\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: var(--r);\n\t\t\tbackground: var(--sunk); color: var(--ink-2); font-size: 14.5px; font-weight: 600;\n\t\t}\n\t\t.via .chip.need { background: var(--grain-soft); color: var(--grain-ink); }\n\t\t.via .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t.via .from { color: var(--ink-3); font-size: 14px; margin-left: 4px; }\n\t\t.review-note { margin: 0 0 10px; max-width: 70ch; }\n\t\t.review-note.check { background: var(--grain-soft); border-radius: var(--r); padding: 10px 14px; }\n\t\t.review-note .flag { color: var(--grain-ink); font-weight: 700; margin-right: 0.4rem; }\n\t\t.review-note .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }\n\t\t.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }\n\t\t.review-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }\n\t\t.review-grid:not(:has(.srcbox-wrap[open])) { grid-template-columns: minmax(0, 1fr); }\n\t\t/* Clears the sticky site header: the same 90px offset as .ingr in layout/recipe.css. */\n\t\t.review-grid > .srcbox-wrap[open] { position: sticky; top: 90px; max-height: calc(100vh - 106px); overflow-y: auto; }\n\t\t@media (max-width: 860px) {\n\t\t\t.review-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }\n\t\t\t.review-grid > .srcbox-wrap, .review-grid > .srcbox-wrap[open] { position: static; max-height: none; overflow-y: visible; }\n\t\t}\n\t\t.srcbox-wrap { margin: 0 0 18px; }\n\t\t/* The source pane's heading is a section heading (.sec-h), as the editor's are. */\n\t\t.srcbox-wrap > summary { cursor: pointer; list-style: none; }\n\t\t.srcbox-wrap > summary::-webkit-details-marker { display: none; }\n\t\t.srcbox-wrap > summary .toggle { font-size: 14px; color: var(--ink-3); }\n\t\t.srcbox-wrap[open] > summary .toggle.show, .srcbox-wrap:not([open]) > summary .toggle.hide { display: none; }\n\t\t.srcbox {\n\t\t\tbackground: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;\n\t\t\tfont-family: var(--f-mono); font-size: 14px; line-height: 1.65; color: var(--ink-2); overflow-x: auto;\n\t\t}\n\t\t.srcbox .src-h { margin-top: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; color: var(--ink-3); }\n\t\t.srcbox .src-h:first-child { margin-top: 0; }\n\t\t.srcbox div { white-space: pre-wrap; }\n\t\t.srcbox mark { background: var(--grain-soft); color: var(--ink); border-radius: var(--r-sm); padding: 0 2px; box-shadow: inset 0 -2px 0 var(--grain); }\n\t</style>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<style>\n\t\t.add-top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 22px; }\n\t\t.src-seg { position: relative; display: inline-flex; background: var(--sunk); border-radius: var(--r); padding: 3px; }\n\t\t.src-seg > label, .src-seg > a {\n\t\t\tdisplay: inline-flex; align-items: center; min-height: var(--tap); padding: 6px 16px;\n\t\t\tborder-radius: var(--r-sm); cursor: pointer; font-size: 15.5px; font-weight: 600;\n\t\t\tcolor: var(--ink-2); text-decoration: none;\n\t\t}\n\t\t.src-seg > label:hover, .src-seg > a:hover { color: var(--ink); }\n\t\t#src-link:checked ~ label[for=src-link], #src-text:checked ~ label[for=src-text], .src-seg > a[aria-current=page] {\n\t\t\tbackground: var(--card); color: var(--ink); box-shadow: var(--shadow);\n\t\t}\n\t\t#src-link:focus-visible ~ label[for=src-link], #src-text:focus-visible ~ label[for=src-text] {\n\t\t\toutline: 2px solid var(--wattle); outline-offset: 2px;\n\t\t}\n\t\t.add:has(#src-link:checked) .pane-text, .add:has(#src-text:checked) .pane-link { display: none; }\n\t\t.ingest-form { display: flex; flex-direction: column; gap: 18px; max-width: 760px; }\n\t\t.ingest-form .field { display: flex; flex-direction: column; gap: 6px; }\n\t\t.ingest-form label.field-label { font-weight: 600; }\n\t\t.ingest-form input[type=url], .ingest-form input[type=file], .ingest-form textarea {\n\t\t\twidth: 100%; font: inherit; color: var(--ink); background: var(--card);\n\t\t\tborder: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; min-height: var(--tap);\n\t\t}\n\t\t.ingest-form input[type=file] { padding: 8px 12px; }\n\t\t.ingest-form textarea { min-height: 12rem; font-family: var(--f-mono); font-size: 14px; line-height: 1.65; }\n\t\t.ingest-form input:focus-visible, .ingest-form textarea:focus-visible { outline: none; border-color: var(--wattle); }\n\t\t.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }\n\t\t.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }\n\t\t.retry-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; }\n\t\t.retry-form .muted { font-size: 14px; max-width: 60ch; }\n\t\t.via { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }\n\t\t.via .chip {\n\t\t\tdisplay: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: var(--r);\n\t\t\tbackground: var(--sunk); color: var(--ink-2); font-size: 14.5px; font-weight: 600;\n\t\t}\n\t\t.via .chip.need { background: var(--grain-soft); color: var(--grain-ink); }\n\t\t.via .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }\n\t\t.via .from { color: var(--ink-3); font-size: 14px; margin-left: 4px; }\n\t\t.review-note { margin: 0 0 10px; max-width: 70ch; }\n\t\t.review-note.check { background: var(--grain-soft); border-radius: var(--r); padding: 10px 14px; }\n\t\t.review-note .flag { color: var(--grain-ink); font-weight: 700; margin-right: 0.4rem; }\n\t\t.review-note .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }\n\t\t.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }\n\t\t.review-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }\n\t\t.review-grid:not(:has(.srcbox-wrap[open])) { grid-template-columns: minmax(0, 1fr); }\n\t\t/* Clears the sticky site header: the same 90px offset as .ingr in layout/recipe.css. */\n\t\t.review-grid > .review-side:has(.srcbox-wrap[open]) { position: sticky; top: 90px; max-height: calc(100vh - 106px); overflow-y: auto; }\n\t\t@media (max-width: 860px) {\n\t\t\t.review-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }\n\t\t\t.review-grid > .review-side, .review-grid > .review-side:has(.srcbox-wrap[open]) { position: static; max-height: none; overflow-y: visible; }\n\t\t}\n\t\t.srcbox-wrap { margin: 0 0 18px; }\n\t\t/* The source pane's heading is a section heading (.sec-h), as the editor's are. */\n\t\t.srcbox-wrap > summary { cursor: pointer; list-style: none; }\n\t\t.srcbox-wrap > summary::-webkit-details-marker { display: none; }\n\t\t.srcbox-wrap > summary .toggle { font-size: 14px; color: var(--ink-3); }\n\t\t.srcbox-wrap[open] > summary .toggle.show, .srcbox-wrap:not([open]) > summary .toggle.hide { display: none; }\n\t\t.srcbox {\n\t\t\tbackground: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;\n\t\t\tfont-family: var(--f-mono); font-size: 14px; line-height: 1.65; color: var(--ink-2); overflow-x: auto;\n\t\t}\n\t\t.srcbox .src-h { margin-top: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; color: var(--ink-3); }\n\t\t.srcbox .src-h:first-child { margin-top: 0; }\n\t\t.srcbox div { white-space: pre-wrap; }\n\t\t.srcbox mark { background: var(--grain-soft); color: var(--ink); border-radius: var(--r-sm); padding: 0 2px; box-shadow: inset 0 -2px 0 var(--grain); }\n\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -309,15 +309,29 @@ func reviewPage(v reviewView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = sourceBox(v.Draft).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if len(sourceRows(v.Draft)) > 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"review-side\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = sourceBox(v.Draft).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = v.Form.Parts().Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 			templ_7745c5c3_Err = v.Form.Component().Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -355,68 +369,68 @@ func sourceBox(d ingestcore.Draft) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if rows := sourceRows(d); len(rows) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<details class=\"srcbox-wrap\" open><summary class=\"sec-h\"><h2>What the source said</h2><span class=\"toggle hide\">Hide</span><span class=\"toggle show\">Show</span></summary><div class=\"srcbox\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<details class=\"srcbox-wrap\" open><summary class=\"sec-h\"><h2>What the source said</h2><span class=\"toggle hide\">Hide</span><span class=\"toggle show\">Show</span></summary><div class=\"srcbox\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, r := range rows {
 				if r.Heading {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"src-h\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"src-h\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var14 string
 					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(r.Text)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 165, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 170, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else if r.Low {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div><mark>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div><mark>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var15 string
 					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(r.Text)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 167, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 172, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</mark><span class=\"sr\">(needs a look)</span></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</mark><span class=\"sr\">(needs a look)</span></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(r.Text)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 169, Col: 19}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 174, Col: 19}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div></details>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</div></details>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -447,74 +461,55 @@ func summary(d ingestcore.Draft) templ.Component {
 			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<section aria-label=\"Confidence\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<section aria-label=\"Confidence\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if d.LLMError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<div class=\"error\" role=\"alert\"><p><strong>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"error\" role=\"alert\"><p><strong>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(d.LLMError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 182, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 187, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</strong></p><p>The draft below is unchanged. You can still review and save it.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</strong></p><p>The draft below is unchanged. You can still review and save it.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"via\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"via\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if d.UsedLLM {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"chip\">Read with the LLM</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"chip\">Read with the LLM</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<span class=\"chip\">Read by the rule-based parser</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<span class=\"chip\">Read by the rule-based parser</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if !d.UsedLLM && !d.BelowThreshold {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"chip\">Confidence ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span class=\"chip\">Confidence ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(percent(d.Overall))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 193, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 198, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</span> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		if n := lowLineCount(d); n > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span class=\"chip need\"><span class=\"dot\" aria-hidden=\"true\"></span>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var20 string
-			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(lowLinesText(n))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 196, Col: 89}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -523,126 +518,145 @@ func summary(d ingestcore.Draft) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<span class=\"from\">Read from ")
+		if n := lowLineCount(d); n > 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<span class=\"chip need\"><span class=\"dot\" aria-hidden=\"true\"></span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(lowLinesText(n))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 201, Col: 89}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</span> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<span class=\"from\">Read from ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(sourceText(d))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 199, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 204, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, " using ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, " using ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(string(d.Method))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 199, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 204, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, ". ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, ". ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if d.ParserVersion != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "Parser version ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "Parser version ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(d.ParserVersion)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 201, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 206, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, ".")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, ".")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</span></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</span></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if d.UsedLLM {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"review-note\"><strong class=\"llm-mark\">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<p class=\"review-note\"><strong class=\"llm-mark\">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if d.BelowThreshold {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<p class=\"review-note check\"><strong class=\"flag\">Check this draft.</strong> The rules are not sure they read it correctly (confidence ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<p class=\"review-note check\"><strong class=\"flag\">Check this draft.</strong> The rules are not sure they read it correctly (confidence ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var24 string
 			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(percent(d.Overall))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 208, Col: 158}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 213, Col: 158}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, " of the ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, " of the ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(percent(d.Threshold))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 208, Col: 190}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 213, Col: 190}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, " needed). Look over every flagged item.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, " needed). Look over every flagged item.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if len(d.Issues) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<ul class=\"issues\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<ul class=\"issues\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, i := range d.Issues {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<li>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(issueText(i))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 213, Col: 23}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ingest/ingest.templ`, Line: 218, Col: 23}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</li>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</ul>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</ul>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

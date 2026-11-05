@@ -53,10 +53,10 @@ templ styles() {
 		.review-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }
 		.review-grid:not(:has(.srcbox-wrap[open])) { grid-template-columns: minmax(0, 1fr); }
 		/* Clears the sticky site header: the same 90px offset as .ingr in layout/recipe.css. */
-		.review-grid > .srcbox-wrap[open] { position: sticky; top: 90px; max-height: calc(100vh - 106px); overflow-y: auto; }
+		.review-grid > .review-side:has(.srcbox-wrap[open]) { position: sticky; top: 90px; max-height: calc(100vh - 106px); overflow-y: auto; }
 		@media (max-width: 860px) {
 			.review-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
-			.review-grid > .srcbox-wrap, .review-grid > .srcbox-wrap[open] { position: static; max-height: none; overflow-y: visible; }
+			.review-grid > .review-side, .review-grid > .review-side:has(.srcbox-wrap[open]) { position: static; max-height: none; overflow-y: visible; }
 		}
 		.srcbox-wrap { margin: 0 0 18px; }
 		/* The source pane's heading is a section heading (.sec-h), as the editor's are. */
@@ -146,7 +146,12 @@ templ reviewPage(v reviewView) {
 			}
 			<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
 			<div class="review-grid">
-				@sourceBox(v.Draft)
+				if len(sourceRows(v.Draft)) > 0 {
+					<div class="review-side">
+						@sourceBox(v.Draft)
+						@v.Form.Parts()
+					</div>
+				}
 				@v.Form.Component()
 			</div>
 		</div>

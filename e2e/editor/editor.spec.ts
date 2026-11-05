@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
 import { expectTapTargets } from '../fixtures/tap';
+import { userCopy } from '../fixtures/copy';
 
 // The editor needs a recipe in the database, which the shared server of the
 // suite does not have. This spec seeds its own data directory through the real
@@ -147,12 +148,12 @@ test('an ingredient the catalog does not know is refused until it is proposed', 
   expect(await revisions(page)).toBe(0);
 });
 
-test('edits and saves a recipe: new component, line with qualifier, step with dependency', async ({ page }) => {
+test('edits and saves a recipe: new part, line with qualifier, step with dependency', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('[name="name"]').fill('E2E Edited Loaf');
   await page.locator('[name="c.0.l.0.qty"]').fill('1½');
 
-  await page.getByRole('button', { name: 'Add component' }).click();
+  await page.getByRole('button', { name: 'Add a part' }).click();
   await expect(page.locator('[name="c.2.name"]')).toBeVisible();
   await page.locator('[name="c.2.name"]').fill('Topping');
 
@@ -197,7 +198,7 @@ test('edits and saves a recipe: new component, line with qualifier, step with de
   expect(await revisions(page)).toBe(1);
 });
 
-test('moves a step to another component and reorders steps', async ({ page }) => {
+test('moves a step to another part and reorders steps', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('li.step').nth(0).locator('summary').click();
   await page.locator('[name="c.0.s.0.to"]').selectOption('1');
@@ -228,6 +229,17 @@ test('a stale save is rejected rather than overwriting a newer edit', async ({ b
   await expect(page.locator('[name="name"]')).toHaveValue('Edited from the old form');
   await page.goto(`/recipes/${id}`);
   await expect(page.getByRole('heading', { name: 'Edited in another tab' })).toBeVisible();
+});
+
+// The UI calls a recipe component a "part" (docs/ui/design.md); the recipe
+// here has several, so every per-part control is on the page.
+test('the editor never says component, and lists the parts with links to them', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  const panel = page.locator('#parts-panel');
+  await expect(panel).toContainText(/This recipe has \w+ parts\./);
+  await expect(panel.getByRole('link', { name: 'Go to part 1' })).toHaveAttribute('href', '#part-1');
+  await expect(page.locator('#part-1 [name="c.0.name"]')).toHaveCount(1);
+  expect(await userCopy(page)).not.toMatch(/\bcomponents?\b/i);
 });
 
 test('a recipe that does not exist is a 404', async ({ page }) => {
