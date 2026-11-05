@@ -6,19 +6,39 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Round 22 (2026-11-05): in progress
 
-**In flight** (dispatched together; worktrees at `.claude/worktrees/wt-<issue>`, each provisioned with `npm ci`):
+**Merged** (squash SHA; under the standing authority unless noted):
 
-| Node | Issue | Branch | Migration |
+| Node | PR | SHA | Schema | VERSION |
+|---|---|---|---|---|
+| (graph: m-avatar-keys lane) | #434 | 1d7a227 | none | none |
+| m-media-fit | #437 | 44b5445 | none | 0.108.0 |
+| d-picture-mockup | #435 | ce4fa50 | none | none (owner approved: "its good") |
+| m-avatar-keys | #439 | 71ffa14 | none | 0.109.0 |
+
+**Open:**
+
+| Node | Issue | PR | State |
 |---|---|---|---|
-| a-mcp-recipe-edit | #353 | feat/353-mcp-recipe-edit | schema 00029 |
-| m-fetch-guard | #421 | feat/421-fetch-guard | none |
-| m-media-fit | #422 | feat/422-media-fit | none |
-| i-image-candidates | #424 | feat/424-image-candidates | none |
-| d-picture-mockup | #428 | feat/428-picture-mockup | none |
+| (ADR-00040 + m-fetch-guard lane) | — | #436 | review findings fixed and resolved; first CI run hung on "install e2e dependencies", cancelled and rerun |
+| i-image-candidates | #424 | #438 | round 2 clean (NIT fixed); worker rebasing to 0.110.0 |
+| m-fetch-guard | #421 | none yet | worker implementing ADR-00040 (loopback under the dev bypass); lane +internal/ingest/ingest.go via #436 |
+| a-mcp-recipe-edit | #353 | none yet | worker done (8 commits, migration 00029 checked: rows copied unchanged); dispatcher gate running; needs rebase to the next VERSION before merge |
 
-**Next:** m-avatar-keys (#423) when a slot frees; it overlaps none of the five.
+**Worktrees:** wt-353, wt-421, wt-424.
 
-**Board:** host still has overseer 0.18.2, so only `--local` renders run; PR/CI state on the board is not refreshed.
+**Migration numbers:** schema 00029 to a-mcp-recipe-edit. **ADR numbers:** 00040 to m-fetch-guard.
+
+**Owner calls this round (don't re-ask):**
+- **#421 loopback:** option A. Fetches may reach loopback (127.0.0.0/8, ::1) only while the dev auth bypass is on; every other private range stays refused; the OAuth metadata fetch keeps refusing loopback. ADR-00040.
+- **Picture mockup approved as drawn.** No card-width cap, so #425's candidate minimum is the widest band: 533 × 150 CSS px, 1066 × 300 at 2×.
+- **Person id in media keys is the profile `address`** (no person_id column exists); accepted in #439.
+
+**Next to dispatch:** s-picture-store (#425) once a-mcp-recipe-edit and m-fetch-guard merge (it also needs i-image-candidates; its candidate minimum is 1066 × 300). w-picture-serve and i-draft-pictures follow it.
+
+**Lessons:**
+- **Concurrent `make check` runs collide on golangci-lint's lock and load e2e into flakes.** Retry on "parallel golangci-lint is running"; rerun a failing unrelated spec alone before calling it a flake.
+- **Tell a worker the VERSION to bump against main as it will be at merge, or tell it to re-bump after rebase.** "Stays 0.108.0" was wrong once #437 merged; the worker caught it.
+- **A CI run can hang on dependency install.** Compare against other runs' step; cancel and rerun.
 
 ## Round 21 (2026-11-05): drag between parts, step titles, flakes
 
