@@ -152,7 +152,10 @@ func handle(d Deps) http.HandlerFunc {
 		}
 		v.Notice = notice
 		if d.Pictures != nil {
-			if v.Picture, err = d.Pictures.Src(r.Context(), id); err != nil {
+			// A recipe deleted since it was read has no picture to show: an
+			// answer, not a failure. Any other error is one.
+			v.Picture, err = d.Pictures.Src(r.Context(), id)
+			if err != nil && !errors.Is(err, store.ErrNotFound) {
 				layout.WriteError(w, r, fmt.Errorf("find picture of recipe %d: %w", id, err))
 				return
 			}
