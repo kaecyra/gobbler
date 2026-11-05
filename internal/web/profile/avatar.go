@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 
@@ -28,10 +29,11 @@ const (
 )
 
 // AvatarSrc is the address of a profile's uploaded avatar. The key is the
-// avatar's reference from the profile; it is in the query so that a new upload
-// is a new address and no cache keeps showing the old one.
+// avatar's reference from the profile (people/<person>/avatar/<version>.webp);
+// its version alone goes in the query, so that a new upload is a new address
+// and no cache keeps showing the old one, and the key's path stays out of it.
 func AvatarSrc(address, key string) string {
-	v := strings.TrimSuffix(strings.TrimPrefix(key, "avatars/"), ".webp")
+	v := strings.TrimSuffix(path.Base(key), ".webp")
 	return Pattern + "/" + address + "/avatar?v=" + url.QueryEscape(v)
 }
 

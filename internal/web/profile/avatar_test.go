@@ -267,10 +267,18 @@ func TestStatusFragmentShowsEachState(t *testing.T) {
 }
 
 func TestAvatarSrcChangesWithTheAvatar(t *testing.T) {
-	a := AvatarSrc("addr22", "avatars/one.webp")
-	b := AvatarSrc("addr22", "avatars/two.webp")
-	if a == b || !strings.HasPrefix(a, "/profile/addr22/avatar?v=") || strings.Contains(a, "webp") {
+	a := AvatarSrc("addr22", "people/person22/avatar/one.webp")
+	b := AvatarSrc("addr22", "people/person22/avatar/two.webp")
+	if a == b || a != "/profile/addr22/avatar?v=one" {
 		t.Errorf("AvatarSrc = %q, %q", a, b)
+	}
+}
+
+// The address carries the version alone: not the person's id, not the path.
+func TestAvatarSrcCarriesNoPersonID(t *testing.T) {
+	src := AvatarSrc("addr22", "people/person-secret/avatar/ver1.webp")
+	if strings.Contains(src, "person-secret") || strings.Contains(src, "people") {
+		t.Errorf("AvatarSrc = %q leaks the key's path", src)
 	}
 }
 
