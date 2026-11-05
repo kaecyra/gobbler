@@ -24,6 +24,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
+	"github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
@@ -83,6 +84,9 @@ type Deps struct {
 	// and deleted with a household (ADR-00039). Nil means the store the
 	// configuration asks for (media.New), which is the one avatars use.
 	Media media.Store
+	// Pictures is the picture service the draft store, the review screen and
+	// the picture routes share. Nil means one over DB and Media.
+	Pictures *picture.Service
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -129,8 +133,11 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		}
 		d.Media = m
 	}
+	if d.Pictures == nil {
+		d.Pictures = picture.New(d.DB, d.Media, store.New(d.DB), picture.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger)
+	}
 	if d.Drafts == nil {
-		d.Drafts = ingest.NewDrafts(store.New(d.DB))
+		d.Drafts = ingest.NewDrafts(store.New(d.DB)).WithPictures(d.Pictures)
 	}
 
 	var members memberLookup = household.New(d.DB)

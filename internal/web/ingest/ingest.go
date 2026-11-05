@@ -35,6 +35,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
 	"github.com/kaecyra/gobbler/internal/parse"
+	"github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/editor"
@@ -80,6 +81,17 @@ type Deps struct {
 	// the MCP endpoint is what lets an agent's draft open here (ADR-00034); nil
 	// means the proposals table in DB.
 	Pending *ingestcore.Drafts
+	// Pictures reads a draft's picture candidates for the picker and keeps the
+	// chosen one when a draft is saved (ADR-00039). Nil leaves a saved recipe
+	// without a picture, and a draft that has candidates cannot be reviewed.
+	Pictures PictureService
+}
+
+// PictureService is what the review screen needs of the picture service:
+// *picture.Service satisfies it.
+type PictureService interface {
+	Candidates(ctx context.Context, proposalID int64) ([]picture.Candidate, error)
+	ingestcore.PictureKeeper
 }
 
 type handler struct {
@@ -88,6 +100,8 @@ type handler struct {
 	// unsaved is the recipe editor over the unsaved draft.
 	unsaved editor.Unsaved
 	drafts  *ingestcore.Drafts
+	// pictures lists the candidates the picker shows.
+	pictures PictureService
 	// photoCache holds the photos behind OCR drafts, in memory only.
 	photoCache *ingestcore.Photos
 	retrier    Retrier
@@ -110,6 +124,9 @@ type handler struct {
 // not take the rule-based path down (see handler.llmInitErr).
 func Routes(d Deps) http.Handler {
 	h := &handler{drafts: d.Pending, photoCache: ingestcore.NewPhotos(time.Now), log: d.Logger}
+	if d.Pictures != nil {
+		h.pictures = d.Pictures
+	}
 	rec := store.New(d.DB)
 	if h.drafts == nil {
 		h.drafts = ingestcore.NewDrafts(rec)
@@ -136,7 +153,11 @@ func Routes(d Deps) http.Handler {
 		h.photos = pipeline
 		h.ocr = ocr.Runner{}
 		h.retrier = pipeline.Fallback()
-		h.saver = ingestcore.NewSaver(rec, cat).WithThumbnails(d.Thumbnails)
+		saver := ingestcore.NewSaver(rec, cat).WithThumbnails(d.Thumbnails)
+		if d.Pictures != nil {
+			saver = saver.WithPictures(d.Pictures)
+		}
+		h.saver = saver
 		h.unsaved = editor.NewUnsaved(cat)
 	}
 	return h.routes()
@@ -203,6 +224,8 @@ type reviewView struct {
 	// PhotoGone is set for a draft read from a photo that has left memory
 	// (ADR-00035): the photo is never stored.
 	PhotoGone bool
+	// Picker is the picture picker above the editor.
+	Picker pickerView
 }
 
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
@@ -396,8 +419,13 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 		layout.Render(w, r, http.StatusOK, form.Fragment())
 		return
 	}
+	picker, err := h.picker(r.Context(), d)
+	if err != nil {
+		layout.WriteError(w, r, fmt.Errorf("open review: %w", err))
+		return
+	}
 	layout.Render(w, r, status, reviewPage(reviewView{
-		Token: token, Draft: d, Form: *form,
+		Token: token, Draft: d, Form: *form, Picker: picker,
 		CanRetry: h.retrier != nil && h.retrier.Configured(),
 		// A draft read from a photo whose photo is no longer in memory:
 		// asking the LLM again reads the recognised text alone.
@@ -424,6 +452,12 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	base, ok := h.draft(w, r, token)
 	if !ok {
+		return
+	}
+	// The choice rides in the editor's form (the picker's radios belong to it),
+	// so it is kept with the draft even when the form is shown again.
+	if err := h.choosePicture(r.Context(), token, r.PostForm.Get(fieldPicture), &base); err != nil {
+		layout.WriteError(w, r, err)
 		return
 	}
 	out, err := h.unsaved.Submit(r.Context(), r.PostForm, base, reviewOptions(token, base))

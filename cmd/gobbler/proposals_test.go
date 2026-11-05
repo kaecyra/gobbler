@@ -63,7 +63,7 @@ func TestStartProposalSweepsExpiresOldProposals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sweeps := startProposalSweeps(ctx, d)
+	sweeps := startProposalSweeps(ctx, d, nil)
 	t.Cleanup(sweeps.Stop)
 	deadline := time.Now().Add(5 * time.Second)
 	for {
