@@ -2871,7 +2871,8 @@
         "a-recipe-proposals",
         "a-oauth-limits",
         "r-stage-serve",
-        "u-drag-between-parts"
+        "u-drag-between-parts",
+        "u-step-part-select"
       ],
       "owns": [
         "internal/mcp/**",
@@ -3443,6 +3444,62 @@
       "needs_migration": null,
       "adrs": [],
       "note": "CI flake on #405 at e2e/profile/avatar.spec.ts:226, cause unknown. Reproduce with --repeat-each, fix the cause (wait on the request, not a delay); no retries. The lane covers the dialog's error display and button handler (static/profile.js), the crop step (static/avatar.js) and the avatar templ and handler, in case the cause is in the page."
+    },
+    {
+      "id": "r-card-spoons-bound",
+      "title": "draw the card spoons from layout.MaxSpoons",
+      "wave": 11,
+      "track": null,
+      "issue": 410,
+      "status": "todo",
+      "depends_on": [
+        "r-rating-bound"
+      ],
+      "owns": [
+        "internal/web/recipes/parts.templ",
+        "internal/web/recipes/parts_templ.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Follow-up from #409: the recipe card's spoon loop still counts to a literal 5."
+    },
+    {
+      "id": "p-avatar-late-swap",
+      "title": "keep the picture dialog's error when a late reset swap lands",
+      "wave": 11,
+      "track": null,
+      "issue": 414,
+      "status": "todo",
+      "depends_on": [
+        "t-avatar-dialog-flake"
+      ],
+      "owns": [
+        "internal/web/static/profile.js",
+        "e2e/profile/avatar.spec.ts"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Found in #415 by reading profile.js: a reset swap that lands after a failed upload clears the error. Needs an e2e test that delays the reset response."
+    },
+    {
+      "id": "u-step-part-select",
+      "title": "remove the step Part select; drag is the only way to move between parts",
+      "wave": 11,
+      "track": null,
+      "issue": 416,
+      "status": "todo",
+      "depends_on": [
+        "u-drag-between-parts"
+      ],
+      "owns": [
+        "internal/web/editor/**",
+        "e2e/editor/**",
+        "e2e/ingest/**",
+        "internal/web/ingest/review_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner call 2026-11-05 (ib on #413): drag only, so the #119 per-step Part select goes. Ordered before a-mcp-recipe-edit, which owns the same editor globs. The .to fields still posted by internal/web/routes_test.go, internal/web/ingest/ingest_test.go and e2e/fixtures/routes/tenancy-support.ts stay as they are: they become the 'a post carrying c.N.s.M.to changes nothing' case, so do not edit them."
     }
   ],
   "shared_files": [
