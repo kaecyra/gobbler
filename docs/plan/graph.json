@@ -3634,7 +3634,7 @@
       "wave": 12,
       "track": null,
       "issue": 427,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "s-picture-store"
       ],
@@ -4946,6 +4946,12 @@
         "00039"
       ],
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D1-D5. Candidate minimum size is a named constant until d-picture-mockup sets the card size."
+    },
+    {
+      "id": "w-picture-serve",
+      "title": "serve recipe pictures and draft candidates after admission",
+      "merged": "7bfbf5f",
+      "note": "Also owns the picture wiring: household delete adapter (DeleteWithPictures + Reaper) in internal/web/picture, with a granted edit of the MemberRoutes Deps line in internal/web/routes.go."
     }
   ],
   "adr_sequence": {
