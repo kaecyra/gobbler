@@ -1,8 +1,41 @@
-# Overseer handoff: 2026-11-05, round 19
+# Overseer handoff: 2026-11-05, round 20
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 20 (2026-11-05): serve stage, verdict refactor, cook timer flake
+
+**Merged** (squash SHA; all under the standing authority):
+
+| Node | PR | SHA | Schema | VERSION |
+|---|---|---|---|---|
+| r-recipes-verdict | #400 | 4c5abf1 | none | 0.103.2 |
+| t-cook-timers-flake | #402 | 85b36c5 | none | 0.103.3 |
+| r-stage-serve | #403 | f406b64 | 00028 | 0.104.0 |
+| (graph) | #405 | ddf3e22 | none | none |
+
+- **#403** took three review rounds, all on the ingest serve rule. Round 2 reached the lessons.md "same family twice" stop, and the owner chose to fix. Final rule: a source title opening with "serve" is `serve`; in the text, an opening "serve" counts as one kind among those the verbs name, so it is `serve` only when nothing else is named. `ParserVersion` 12.
+- **#405** added u-drag-between-parts (#404) and r-rating-bound (#401), and ordered a-mcp-recipe-edit after u-drag-between-parts (both own `e2e/editor/**`). The owner then had `internal/web/ingest/review_test.go` added to the drag lane.
+
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
+
+**Owner calls this session (don't re-ask):**
+- **Serve stage colour:** `active` (coral).
+- **Drag between parts (#404):** ingredient lines and steps both drag between parts; the part name is editable in Steps too, one value with two inputs kept in sync; drag only, no "Move to part" control and no fallback without scripts.
+- **"Without scripts there is no reorder"** (round 19) was a consequence of "drag handles only", not a separate ruling. The owner did not remember it; explain it if it comes up again.
+
+**Unmapped issues (no node yet):** #406 (`TestAddressIsRandomAndHoldsNoEmail` fails by chance; fix with the fixed `s.rand` reader) and #407 (`e2e/profile/avatar.spec.ts:226` failed once in CI, cause unknown). Both hit #405's CI. They need nodes before dispatch.
+
+**Next three to dispatch:** u-drag-between-parts (#404, the owner's fresh request; unblocks a-mcp-recipe-edit), f-step-titles-text (#398, ready since r-stage-serve merged; owns `internal/ingest/*.go`, no overlap with #404), r-rating-bound (#401, small; its lane touches `internal/web/recipes/model.go` and `internal/web/journal/**`, no overlap with either).
+
+**For the owner:** 0.104.0 is not deployed. It carries migration 00028, which rebuilds `steps`, `step_dependencies` and `recipe_equipment_steps` (rows copied unchanged; verified three times).
+
+**Lessons:**
+- **The repo forbids the "Generated with Claude Code" PR line** (git-workflow.md); the harness reminder asks for it. The repo rule wins. It was stripped from #400, #402 and #403 after the first review noticed.
+- **Workers share `/tmp`.** Two workers used the same backup path (`/tmp/m.bak`) and one briefly corrupted its own file. Tell workers to keep scratch files in their worktree or use `mktemp`.
+- **Host has overseer 0.18.2, not 0.20.1.** `render.ts --refresh-state` cannot run host-side at this session's plugin version; the board was rendered locally (no PR/CI state).
+- **`gh pr merge --delete-branch` from the host also removes the local worktree and branch** for a branch checked out in a worktree.
 
 ## Round 19 (2026-11-05): owner UI feedback on the editor and journal, worked directly
 
