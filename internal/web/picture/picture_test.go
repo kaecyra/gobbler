@@ -303,6 +303,9 @@ func TestStoreFailureIsNotMistakenForAMissingPicture(t *testing.T) {
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("a failing store = %d, want 500", w.Code)
 	}
+	if cc := w.Header().Get("Cache-Control"); cc != "no-store" || w.Header().Get("ETag") != "" {
+		t.Errorf("a failing store answered Cache-Control %q, ETag %q, want no-store and no ETag: an error must not be cached as the picture", cc, w.Header().Get("ETag"))
+	}
 }
 
 type failingMedia struct{}

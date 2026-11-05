@@ -202,14 +202,23 @@ func (h *handler) missing(w http.ResponseWriter, r *http.Request, key, owner str
 		notFound(w, r, fmt.Errorf("picture object %q: %w", key, layout.ErrNotFound))
 		return
 	}
+	failed(w)
 	layout.WriteError(w, r, fmt.Errorf("read picture object %q: %w", key, err))
 }
 
 // notFound answers 404 and keeps the answer out of every cache: the picture
 // may be set a moment later.
 func notFound(w http.ResponseWriter, r *http.Request, err error) {
-	w.Header().Set("Cache-Control", "no-store")
+	failed(w)
 	layout.WriteError(w, r, err)
+}
+
+// failed clears the validators and cache lifetime a handler set before it knew
+// the bytes were readable: an error must never be cached, least of all as
+// immutable for a year at a versioned address.
+func failed(w http.ResponseWriter) {
+	w.Header().Del("ETag")
+	w.Header().Set("Cache-Control", "no-store")
 }
 
 // notModified sets the validators and answers 304 when the browser holds the
