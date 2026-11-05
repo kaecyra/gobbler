@@ -42,6 +42,7 @@ const (
 	IconMail     IconName = "mail"
 	IconMenu     IconName = "menu"
 	IconMoon     IconName = "moon"
+	IconMore     IconName = "more"
 	IconPencil   IconName = "pencil"
 	IconPlus     IconName = "plus"
 	IconPot      IconName = "pot"
@@ -86,6 +87,7 @@ var lineGlyphs = map[IconName]lineGlyph{
 	IconLibrary:  {body: `<path d="M4 5h4v15H4zM10 5h4v15h-4zM15.6 6.2l3.4-.9 3 14.2-3.4.9z"></path>`},
 	IconMail:     {body: `<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3.5 7l8.5 6 8.5-6"></path>`},
 	IconMenu:     {body: `<path d="M4 7h16M4 12h16M4 17h16"></path>`},
+	IconMore:     {body: `<circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle>`, stroke: "2.5"},
 	IconMoon:     {body: `<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path>`},
 	IconPencil:   {body: `<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>`, stroke: "2", size: 20},
 	IconPlus:     {body: `<rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M12 8.5v7M8.5 12h7"></path>`},

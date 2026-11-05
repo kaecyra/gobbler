@@ -20,9 +20,16 @@ type view struct {
 	Notes    []store.Note
 	Made     []store.MadeIt
 
-	NoteBody        string
-	NotePinned      bool
-	NoteError       string
+	NoteBody   string
+	NotePinned bool
+	NoteError  string
+	// EditingID is the note shown as an edit form, with EditBody in it and
+	// EditError above it; DeletingID is the note asking to confirm its delete.
+	// Zero is none.
+	EditingID       int64
+	EditBody        string
+	EditError       string
+	DeletingID      int64
 	RatingError     string
 	MadeOn          string
 	MadeRating      string
@@ -101,9 +108,25 @@ func madeTimes(n int) string {
 	return strconv.Itoa(n) + " times"
 }
 
+// note finds note id among the journal's notes.
+func (v view) note(id int64) (store.Note, bool) {
+	for _, n := range v.Notes {
+		if n.ID == id {
+			return n, true
+		}
+	}
+	return store.Note{}, false
+}
+
+// notePath is note n's own URL: the edit form posts its body there, and
+// /edit and /delete below it are the edit form and the delete confirmation.
+func (v view) notePath(n store.Note) string {
+	return v.base() + "/notes/" + strconv.FormatInt(n.ID, 10)
+}
+
 // pinPath is where the pin toggle of note n posts.
 func (v view) pinPath(n store.Note) string {
-	return v.base() + "/notes/" + strconv.FormatInt(n.ID, 10) + "/pin"
+	return v.notePath(n) + "/pin"
 }
 
 // pinValue is what the toggle of n posts: the opposite of its state.

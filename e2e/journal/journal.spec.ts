@@ -212,3 +212,69 @@ test('a note is pinned as a tip as it is added', async ({ page }) => {
   await expect(note.getByRole('button', { name: 'Unpin' })).toBeVisible();
   await expect(page.getByLabel('Pin as a tip')).not.toBeChecked();
 });
+
+const noteIDOf = async (note: import('@playwright/test').Locator) =>
+  ((await note.locator('form.pin-form').getAttribute('action')) ?? '').match(/\/notes\/(\d+)\/pin$/)?.[1];
+
+// ADR-00037: a note's body is edited in its place from the note's menu.
+test('a note is edited in its place from its menu', async ({ page }) => {
+  await page.goto(`/recipes/${id}/journal`);
+  const sugar = page.locator('.notes li').filter({ hasText: 'Use less sugar next time' });
+  const noteID = await noteIDOf(sugar);
+  expect(noteID).toBeTruthy();
+
+  const opened = page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/notes/${noteID}/edit`));
+  await sugar.getByLabel('More for this note').click();
+  await sugar.getByRole('link', { name: 'Edit' }).click();
+  expect((await opened).status()).toBe(200);
+  const field = page.getByLabel('Edit note');
+  await expect(field).toHaveValue('Use less sugar next time');
+
+  // An empty body is refused in place, and the note is unchanged.
+  await field.fill('   ');
+  await page.getByRole('button', { name: 'Save note' }).click();
+  await expect(page.getByRole('alert')).toContainText('Write something');
+
+  const saved = page.waitForResponse((r) => r.url().endsWith(`/recipes/${id}/journal/notes/${noteID}`) && r.request().method() === 'POST');
+  await page.getByLabel('Edit note').fill('Use a third less sugar');
+  await page.getByRole('button', { name: 'Save note' }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByLabel('Edit note')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.notes li').filter({ hasText: 'Use a third less sugar' })).toHaveCount(1);
+  await expect(page.locator('.notes li').filter({ hasText: 'Use less sugar next time' })).toHaveCount(0);
+});
+
+// The delete asks first, and both the edit and the delete work without scripts.
+test('a note is deleted only after confirming, without scripts', async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false });
+  const page = await context.newPage();
+  try {
+    await page.goto(`/recipes/${id}/journal`);
+    const noteID = await noteIDOf(page.locator('.notes li').filter({ hasText: 'Needs more salt' }));
+    expect(noteID).toBeTruthy();
+
+    // Edit without scripts: the form is a page, and the save redirects back.
+    await page.goto(`/recipes/${id}/journal/notes/${noteID}/edit`);
+    await page.getByLabel('Edit note').fill('Needs more salt, early');
+    await page.getByRole('button', { name: 'Save note' }).click();
+    await expect(page).toHaveURL(`/recipes/${id}/journal`);
+    const note = page.locator('.notes li').filter({ hasText: 'Needs more salt, early' });
+    await expect(note).toHaveCount(1);
+
+    // Keep leaves the note where it was.
+    await note.getByLabel('More for this note').click();
+    await note.getByRole('link', { name: 'Delete' }).click();
+    await expect(page).toHaveURL(`/recipes/${id}/journal/notes/${noteID}/delete`);
+    await expect(page.getByText('Delete this note?')).toBeVisible();
+    await page.getByRole('link', { name: 'Keep' }).click();
+    await expect(page.locator('.notes li').filter({ hasText: 'Needs more salt, early' })).toHaveCount(1);
+
+    await page.goto(`/recipes/${id}/journal/notes/${noteID}/delete`);
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page).toHaveURL(`/recipes/${id}/journal`);
+    await expect(page.locator('.notes li').filter({ hasText: 'Needs more salt' })).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});

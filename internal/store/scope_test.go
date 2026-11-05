@@ -205,6 +205,8 @@ func TestNoHouseholdOnContextFailsEveryCall(t *testing.T) {
 		"ListRevisions":     func() error { _, err := s.ListRevisions(bare, id); return err },
 		"AddNote":           func() error { _, err := s.AddNote(bare, id, "n", false); return err },
 		"ListNotes":         func() error { _, err := s.ListNotes(bare, id); return err },
+		"UpdateNoteBody":    func() error { return s.UpdateNoteBody(bare, id, 1, "n") },
+		"DeleteNote":        func() error { return s.DeleteNote(bare, id, 1) },
 		"AddMadeIt":         func() error { _, err := s.AddMadeIt(bare, id, MadeIt{}); return err },
 		"ListMadeIt":        func() error { _, err := s.ListMadeIt(bare, id); return err },
 		"AddSnapshot":       func() error { return s.AddSnapshot(bare, id, SnapshotText, []byte("t")) },

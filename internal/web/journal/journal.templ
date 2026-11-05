@@ -67,10 +67,24 @@ templ journalStyles() {
 		.note-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13.5px; color: var(--ink-3); }
 		.note-tip { display: inline-flex; align-items: center; gap: 6px; color: var(--wattle-ink); font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 		.note-tip svg { width: 18px; height: 18px; }
-		/* The body comes before the pin in the markup, so it is read first; the
-		   grid puts the pin beside the meta and the body. */
+		/* The body comes before the actions in the markup, so it is read first;
+		   the grid puts the actions beside the meta and the body. */
 		.note-body { grid-column: 1; grid-row: 2; margin: 0; font-size: 17.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
-		.pin-form { grid-column: 2; grid-row: 1 / span 2; margin: 0; align-self: start; }
+		.note-actions { grid-column: 2; grid-row: 1 / span 2; display: flex; align-items: flex-start; gap: 4px; }
+		.pin-form { margin: 0; }
+		.note.editing { background: var(--paper); }
+		.note-edit { grid-column: 1 / -1; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+		.note-confirm { margin: 0; font-weight: 600; }
+		.note-menu { position: relative; }
+		.note-menu summary { display: grid; place-items: center; width: var(--tap); height: var(--tap); border-radius: var(--r); color: var(--ink-3); cursor: pointer; list-style: none; }
+		.note-menu summary::-webkit-details-marker { display: none; }
+		.note-menu summary:hover, .note-menu[open] summary { background: var(--sunk); }
+		.note-menu summary svg { width: 18px; height: 18px; }
+		.note-menu-items { position: absolute; right: 0; top: calc(var(--tap) + 4px); z-index: 2; min-width: 140px; padding: 4px; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+		.note-menu-items a { display: flex; align-items: center; min-height: var(--tap); padding: 0 12px; border-radius: var(--r); color: var(--ink); text-decoration: none; font-weight: 600; }
+		.note-menu-items a:hover { background: var(--sunk); }
+		.journal .danger { color: var(--wattle-ink); }
+		.journal .btn.danger:not(.ghost) { border-color: var(--wattle-ink); }
 		.pin { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
 		.pin svg { width: 16px; height: 16px; }
 		.pin:hover { border-color: var(--ink-3); }
@@ -134,27 +148,99 @@ templ notesPart(v view) {
 			} else {
 				<ul class="journal-list notes">
 					for _, n := range v.Notes {
-						<li class="note">
-							<div class="note-meta">
-								if n.Pinned {
-									<span class="note-tip">
-										@layout.Icon(layout.IconBulb)
-										Tip
-									</span>
-									<span aria-hidden="true">·</span>
-								}
-								<span>{ n.CreatedBy }</span>
-								<span aria-hidden="true">·</span>
-								<time datetime={ n.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }>{ day(n.CreatedAt.UTC()) }</time>
-							</div>
-							<p class="note-body">{ n.Body }</p>
-							@pinForm(v, n)
-						</li>
+						if n.ID == v.EditingID {
+							@noteEditing(v, n)
+						} else if n.ID == v.DeletingID {
+							@noteDeleting(v, n)
+						} else {
+							<li class="note">
+								@noteMeta(n, "")
+								<p class="note-body">{ n.Body }</p>
+								<div class="note-actions">
+									@pinForm(v, n)
+									@noteMenu(v, n)
+								</div>
+							</li>
+						}
 					}
 				</ul>
 			}
 		</div>
 	</section>
+}
+
+// noteMeta is a note's tip mark, author and day, with state ("editing") after
+// them when it is set.
+templ noteMeta(n store.Note, state string) {
+	<div class="note-meta">
+		if n.Pinned {
+			<span class="note-tip">
+				@layout.Icon(layout.IconBulb)
+				Tip
+			</span>
+			<span aria-hidden="true">·</span>
+		}
+		<span>{ n.CreatedBy }</span>
+		<span aria-hidden="true">·</span>
+		<time datetime={ n.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }>{ day(n.CreatedAt.UTC()) }</time>
+		if state != "" {
+			<span aria-hidden="true">·</span>
+			<span>{ state }</span>
+		}
+	</div>
+}
+
+// noteMenu holds the rarer actions on a note (ADR-00037). It is a disclosure,
+// so it opens without scripts; each item is a link that loads the journal
+// with the note in that state.
+templ noteMenu(v view, n store.Note) {
+	<details class="note-menu">
+		<summary aria-label="More for this note" title="More for this note">
+			@layout.Icon(layout.IconMore)
+		</summary>
+		<div class="note-menu-items">
+			<a href={ templ.SafeURL(v.notePath(n) + "/edit") } hx-get={ v.notePath(n) + "/edit" } hx-target="#journal" hx-swap="outerHTML">Edit</a>
+			<a href={ templ.SafeURL(v.notePath(n) + "/delete") } hx-get={ v.notePath(n) + "/delete" } hx-target="#journal" hx-swap="outerHTML" class="danger">Delete</a>
+		</div>
+	</details>
+}
+
+// noteEditing is a note as an edit form in its own place. Cancel reloads the
+// journal as it is stored.
+templ noteEditing(v view, n store.Note) {
+	<li class="note editing">
+		@noteMeta(n, "editing")
+		<form class="note-edit" method="post" action={ templ.SafeURL(v.notePath(n)) } hx-post={ v.notePath(n) } hx-target="#journal" hx-swap="outerHTML">
+			<label for="journal-edit-note" class="sr">Edit note</label>
+			if v.EditError != "" {
+				<p class="alert" role="alert">{ v.EditError }</p>
+			}
+			<textarea id="journal-edit-note" class="journal-field" name="body" rows="3" autofocus>{ v.EditBody }</textarea>
+			<div class="journal-row">
+				<a class="btn ghost danger" href={ templ.SafeURL(v.notePath(n) + "/delete") } hx-get={ v.notePath(n) + "/delete" } hx-target="#journal" hx-swap="outerHTML">Delete note</a>
+				<span class="grow"></span>
+				<a class="btn ghost" href={ templ.SafeURL(v.base()) } hx-get={ v.base() } hx-target="#journal" hx-swap="outerHTML">Cancel</a>
+				<button type="submit" class="btn">Save note</button>
+			</div>
+		</form>
+	</li>
+}
+
+// noteDeleting asks to confirm a delete in the note's place; only the post
+// deletes. Keep reloads the journal unchanged.
+templ noteDeleting(v view, n store.Note) {
+	<li class="note editing">
+		@noteMeta(n, "")
+		<form class="note-edit" method="post" action={ templ.SafeURL(v.notePath(n) + "/delete") } hx-post={ v.notePath(n) + "/delete" } hx-target="#journal" hx-swap="outerHTML">
+			<p class="note-body">{ n.Body }</p>
+			<p class="note-confirm" id="journal-delete-question">Delete this note?</p>
+			<div class="journal-row" role="group" aria-labelledby="journal-delete-question">
+				<span class="grow"></span>
+				<a class="btn ghost" href={ templ.SafeURL(v.base()) } hx-get={ v.base() } hx-target="#journal" hx-swap="outerHTML" autofocus>Keep</a>
+				<button type="submit" class="btn danger">Delete</button>
+			</div>
+		</form>
+	</li>
 }
 
 // pinForm is the toggle that makes a note a tip, shown in the recipe view, or

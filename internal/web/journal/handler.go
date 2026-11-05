@@ -49,6 +49,8 @@ type Journal interface {
 	AddNote(ctx context.Context, id int64, body string, pinned bool) (store.Note, error)
 	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
 	SetNotePinned(ctx context.Context, id, noteID int64, pinned bool) error
+	UpdateNoteBody(ctx context.Context, id, noteID int64, body string) error
+	DeleteNote(ctx context.Context, id, noteID int64) error
 	AddMadeIt(ctx context.Context, id int64, e store.MadeIt) (store.MadeIt, error)
 	ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error)
 }
@@ -69,6 +71,10 @@ func Routes(d Deps) chi.Router {
 	r.Get("/", h.show)
 	r.Post("/notes", h.addNote)
 	r.Post("/notes/{noteID}/pin", h.pinNote)
+	r.Get("/notes/{noteID}/edit", h.editNote)
+	r.Post("/notes/{noteID}", h.saveNote)
+	r.Get("/notes/{noteID}/delete", h.confirmDelete)
+	r.Post("/notes/{noteID}/delete", h.deleteNote)
 	r.Post("/rating", h.setRating)
 	r.Post("/made", h.addMadeIt)
 	return r
@@ -137,10 +143,8 @@ func (h *handler) pinNote(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	raw := chi.URLParam(r, "noteID")
-	noteID, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || noteID <= 0 {
-		layout.WriteError(w, r, fmt.Errorf("note id %q: %w", raw, layout.ErrNotFound))
+	noteID, ok := noteIDParam(w, r)
+	if !ok {
 		return
 	}
 	var pinned bool
@@ -154,6 +158,108 @@ func (h *handler) pinNote(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.Journal.SetNotePinned(r.Context(), id, noteID, pinned); err != nil {
 		layout.WriteError(w, r, fmt.Errorf("pin note %d of recipe %d: %w", noteID, id, err))
+		return
+	}
+	h.finish(w, r, id, formProblem{}, nil)
+}
+
+// editNote shows the journal with note noteID as an edit form in its place
+// (ADR-00037). It is a GET so the Edit link works without scripts.
+func (h *handler) editNote(w http.ResponseWriter, r *http.Request) {
+	h.showNote(w, r, func(v *view, n store.Note) { v.EditingID, v.EditBody = n.ID, n.Body })
+}
+
+// confirmDelete shows the journal with a confirmation in the place of note
+// noteID. Nothing is deleted until the confirmation is posted.
+func (h *handler) confirmDelete(w http.ResponseWriter, r *http.Request) {
+	h.showNote(w, r, func(v *view, n store.Note) { v.DeletingID = n.ID })
+}
+
+// showNote renders the journal with mark applied to note noteID; a note that
+// is not one of this recipe's is a 404.
+func (h *handler) showNote(w http.ResponseWriter, r *http.Request, mark func(*view, store.Note)) {
+	id, ok := recipeID(w, r)
+	if !ok {
+		return
+	}
+	noteID, ok := noteIDParam(w, r)
+	if !ok {
+		return
+	}
+	v, err := h.load(r.Context(), id)
+	if err != nil {
+		layout.WriteError(w, r, err)
+		return
+	}
+	n, found := v.note(noteID)
+	if !found {
+		layout.WriteError(w, r, fmt.Errorf("note %d of recipe %d: %w", noteID, id, layout.ErrNotFound))
+		return
+	}
+	mark(&v, n)
+	h.render(w, r, http.StatusOK, v)
+}
+
+// saveNote replaces the body of note noteID. An empty body is shown again in
+// the edit form with the message, like an empty new note.
+func (h *handler) saveNote(w http.ResponseWriter, r *http.Request) {
+	id, form, ok := h.post(w, r)
+	if !ok {
+		return
+	}
+	noteID, ok := noteIDParam(w, r)
+	if !ok {
+		return
+	}
+	body := form.Get("body")
+	var problem formProblem
+	if strings.TrimSpace(body) == "" {
+		// The message belongs to a note of this recipe: a foreign or missing
+		// note is a 404 whatever was posted, as it is for a non-empty body.
+		if err := h.requireNote(r.Context(), id, noteID); err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
+		problem = formProblem{edit: emptyNoteMessage}
+	} else if err := h.Journal.UpdateNoteBody(r.Context(), id, noteID, body); err != nil {
+		// As in addNote: the empty body is handled above, so any other
+		// ErrInvalid is a mismatch with the store and a bad request.
+		if errors.Is(err, store.ErrInvalid) {
+			err = fmt.Errorf("%w: %w", layout.ErrInvalid, err)
+		}
+		layout.WriteError(w, r, fmt.Errorf("edit note %d of recipe %d: %w", noteID, id, err))
+		return
+	}
+	h.finish(w, r, id, problem, func(v *view) { v.EditingID, v.EditBody = noteID, body })
+}
+
+// requireNote is ErrNotFound unless noteID is one of recipe id's notes (a
+// missing recipe is ErrNotFound too).
+func (h *handler) requireNote(ctx context.Context, id, noteID int64) error {
+	notes, err := h.Journal.ListNotes(ctx, id)
+	if err != nil {
+		return fmt.Errorf("list notes of recipe %d: %w", id, err)
+	}
+	for _, n := range notes {
+		if n.ID == noteID {
+			return nil
+		}
+	}
+	return fmt.Errorf("note %d of recipe %d: %w", noteID, id, layout.ErrNotFound)
+}
+
+// deleteNote removes note noteID: the post of the delete confirmation.
+func (h *handler) deleteNote(w http.ResponseWriter, r *http.Request) {
+	id, _, ok := h.post(w, r)
+	if !ok {
+		return
+	}
+	noteID, ok := noteIDParam(w, r)
+	if !ok {
+		return
+	}
+	if err := h.Journal.DeleteNote(r.Context(), id, noteID); err != nil {
+		layout.WriteError(w, r, fmt.Errorf("delete note %d of recipe %d: %w", noteID, id, err))
 		return
 	}
 	h.finish(w, r, id, formProblem{}, nil)
@@ -222,7 +328,7 @@ func (h *handler) addMadeIt(w http.ResponseWriter, r *http.Request) {
 
 // formProblem is the message of each form that rejected its input; the zero
 // value means the post was accepted.
-type formProblem struct{ note, rating, date, madeRating string }
+type formProblem struct{ note, edit, rating, date, madeRating string }
 
 // finish answers a post. An accepted post from a plain form redirects to the
 // journal page (post/redirect/get); with HTMX it returns the fragment. A
@@ -242,7 +348,7 @@ func (h *handler) finish(w http.ResponseWriter, r *http.Request, id int64, p for
 	}
 	status := http.StatusOK
 	if !accepted {
-		v.NoteError, v.RatingError, v.DateError, v.MadeRatingError = p.note, p.rating, p.date, p.madeRating
+		v.NoteError, v.EditError, v.RatingError, v.DateError, v.MadeRatingError = p.note, p.edit, p.rating, p.date, p.madeRating
 		if keep != nil {
 			keep(&v)
 		}
@@ -301,6 +407,18 @@ func recipeID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 		return 0, false
 	}
 	return id, true
+}
+
+// noteIDParam reads the note id from the path; one that is not a positive
+// number is a 404, as no note has it.
+func noteIDParam(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	raw := chi.URLParam(r, "noteID")
+	noteID, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || noteID <= 0 {
+		layout.WriteError(w, r, fmt.Errorf("note id %q: %w", raw, layout.ErrNotFound))
+		return 0, false
+	}
+	return noteID, true
 }
 
 // parseRating reads a rating field: empty is no rating (nil, valid), otherwise

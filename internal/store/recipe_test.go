@@ -410,6 +410,8 @@ func TestWritesNeedAnIdentity(t *testing.T) {
 		"Restore":     func() error { return s.Restore(bare, id, 1) },
 		"Clone":       func() error { _, err := s.Clone(bare, id); return err },
 		"AddNote":     func() error { _, err := s.AddNote(bare, id, "n", false); return err },
+		"UpdateNote":  func() error { return s.UpdateNoteBody(bare, id, 1, "n") },
+		"DeleteNote":  func() error { return s.DeleteNote(bare, id, 1) },
 		"AddMadeIt":   func() error { _, err := s.AddMadeIt(bare, id, MadeIt{}); return err },
 		"AddSnapshot": func() error { return s.AddSnapshot(bare, id, SnapshotText, []byte("t")) },
 	}
