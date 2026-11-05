@@ -42,7 +42,8 @@ var plugins = []pluginReader{
 // groups are adopted only when they hold exactly the same ingredients, in the
 // same order, as raw.Ingredients (compared by words, since plugins and
 // JSON-LD punctuate differently). Anything else keeps the flat list; a
-// mismatched card is a page we do not understand, not an error.
+// mismatched card is a page we do not understand, not an error. Step sections
+// and titles are merged the same way (mergeSteps).
 func applyPlugins(doc *html.Node, raw *Raw) {
 	for _, p := range plugins {
 		groups := p.ingredients(doc)
@@ -52,7 +53,7 @@ func applyPlugins(doc *html.Node, raw *Raw) {
 			}
 		}
 		if len(raw.Instructions) > 0 {
-			if steps := p.steps(doc); sectioned(steps) {
+			if steps := p.steps(doc); sectioned(steps) || titled(steps) {
 				if merged, ok := mergeSteps(steps, raw.Instructions); ok {
 					raw.Instructions = merged
 				}
@@ -108,21 +109,59 @@ func mergeGroups(groups []IngredientGroup, flat []string) ([]IngredientGroup, bo
 	return out, true
 }
 
-// mergeSteps names the sections of steps the structured field gave flat. It
-// does nothing when raw already carries sections of its own.
+func titled(steps []InstructionStep) bool {
+	for _, s := range steps {
+		if s.Title != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// mergeSteps takes the sections and titles of steps onto the structured
+// field's own steps, matched by position once every step agrees by words.
+// Sections are taken only when the structured field has none of its own, and
+// a title only for a step that has none: the structured field stays
+// authoritative.
 func mergeSteps(steps, flat []InstructionStep) ([]InstructionStep, bool) {
-	if len(steps) != len(flat) || sectioned(flat) {
+	if len(steps) != len(flat) {
 		return nil, false
 	}
+	ownSections := sectioned(flat)
 	out := make([]InstructionStep, len(flat))
 	for i, s := range steps {
 		if wordKey(s.Text) != wordKey(flat[i].Text) {
 			return nil, false
 		}
 		out[i] = flat[i]
-		out[i].Section = s.Section
+		if !ownSections {
+			out[i].Section = s.Section
+		}
+		if out[i].Title == "" {
+			out[i].Title, out[i].Text = splitTitle(s.Title, flat[i].Text)
+		}
 	}
 	return out, true
+}
+
+// splitTitle takes a plugin's step title off the front of the structured
+// step's text, where schema.org flattens it ("Preheat oven. Heat oven to
+// 350°F."). The title is taken only when the text opens with it and the
+// punctuation that closed it, and something follows: otherwise the text is
+// returned whole with no title, so no instruction is lost.
+func splitTitle(title, text string) (string, string) {
+	if title == "" || !strings.HasPrefix(text, title) {
+		return "", text
+	}
+	rest := text[len(title):]
+	if !strings.HasPrefix(rest, ".") && !strings.HasPrefix(rest, ":") {
+		return "", text
+	}
+	rest = strings.TrimLeft(rest, ". :")
+	if rest == "" {
+		return "", text
+	}
+	return title, rest
 }
 
 // wordKey is the lower-case words of s, sorted, so punctuation and the order
@@ -174,19 +213,66 @@ func allWithClass(root *html.Node, class string) []*html.Node {
 	return out
 }
 
-// itemsWithClass lists the li elements under root carrying class.
+// itemsWithClass lists the text of the li elements under root carrying class.
 func itemsWithClass(root *html.Node, class string) []string {
 	var out []string
+	for _, n := range itemNodes(root, class) {
+		out = append(out, textOf(n))
+	}
+	return out
+}
+
+// itemNodes lists the li elements under root carrying class that hold text.
+func itemNodes(root *html.Node, class string) []*html.Node {
+	var out []*html.Node
 	walk(root, func(n *html.Node) bool {
 		if isElem(n, "li") && hasClass(n, class) {
-			if t := textOf(n); t != "" {
-				out = append(out, t)
+			if textOf(n) != "" {
+				out = append(out, n)
 			}
 			return false
 		}
 		return true
 	})
 	return out
+}
+
+// boldLead is the title a bold run opening n gives its step: "Preheat oven"
+// from <strong>Preheat oven. </strong>Heat oven to 350°F. The run must close
+// with a full stop or a colon, so bold that only stresses the opening words
+// ("<b>Do not</b> stir") is no title; bold later in the step never is. Spans
+// and paragraphs wrapping the run are looked through. It gives "" for none.
+func boldLead(n *html.Node) string {
+	for n != nil {
+		first := firstContent(n)
+		if first == nil || first.Type != html.ElementNode {
+			return ""
+		}
+		switch first.Data {
+		case "strong", "b":
+			lead := textOf(first)
+			if !strings.HasSuffix(lead, ".") && !strings.HasSuffix(lead, ":") {
+				return ""
+			}
+			return strings.TrimRight(lead, ". :")
+		case "span", "p":
+			n = first
+		default:
+			return ""
+		}
+	}
+	return ""
+}
+
+// firstContent is n's first child that is not a comment or blank text.
+func firstContent(n *html.Node) *html.Node {
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.CommentNode || c.Type == html.TextNode && strings.TrimSpace(c.Data) == "" {
+			continue
+		}
+		return c
+	}
+	return nil
 }
 
 // --- WP Recipe Maker: every group is a container with its own name element.
@@ -216,8 +302,11 @@ func wprmSteps(doc *html.Node) []InstructionStep {
 	var out []InstructionStep
 	for _, g := range allWithClass(wprmCard(doc), "wprm-recipe-instruction-group") {
 		name := wprmGroupName(g)
-		for _, t := range itemsWithClass(g, "wprm-recipe-instruction") {
-			out = append(out, InstructionStep{Section: name, Text: t})
+		for _, li := range itemNodes(g, "wprm-recipe-instruction") {
+			out = append(out, InstructionStep{
+				Section: name, Text: textOf(li),
+				Title: boldLead(firstWithClass(li, "wprm-recipe-instruction-text")),
+			})
 		}
 	}
 	return out
