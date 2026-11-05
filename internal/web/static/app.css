@@ -546,10 +546,11 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* Choosing hides the prompt without a script. */
 .picker:has(input:checked) .pick-note.unchosen { display: none; }
 
-/* Recipe pictures (ADR-00039, docs/ui/design.md "Recipe pictures"). A recipe
+/* Recipe pictures (ADR-00039, the "Recipe picture" item under Components in
+   docs/ui/design.md). A recipe
    with no picture, or whose picture object is gone, gets a placeholder band;
    its variant is the recipe id modulo 6, chosen where the page is built, so a
-   seventh variant needs a Go constant changed with it. Tokens only. */
+   seventh variant needs layout.BandVariants changed with it. Tokens only. */
 .ph0 { background: radial-gradient(color-mix(in srgb, var(--wattle) 30%, transparent) 1.6px, transparent 2.2px) 0 0 / 14px 14px, var(--wattle-soft); }
 .ph1 { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--grain) 26%, transparent) 0 6px, transparent 6px 15px), var(--grain-soft); }
 .ph2 { background: linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 18px 18px, linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 18px 18px, var(--sunk); }
