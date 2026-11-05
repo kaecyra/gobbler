@@ -198,9 +198,6 @@ func recipeFromJSONLD(m map[string]any, ids map[string]map[string]any) Raw {
 		TotalTime:   jsonString(m["totalTime"]),
 		ImageURLs:   jsonImages(m["image"]),
 	}
-	if p := primaryImage(ids); p != "" {
-		r.ImageURLs = append(r.ImageURLs, p)
-	}
 	r.Ingredients = jsonStrings(m["recipeIngredient"])
 	if len(r.Ingredients) == 0 {
 		r.Ingredients = jsonStrings(m["ingredients"])

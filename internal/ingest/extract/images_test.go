@@ -69,3 +69,47 @@ func TestImageCandidatesMicrodata(t *testing.T) {
 		t.Errorf("candidates\n got %q\nwant %q", got, want)
 	}
 }
+
+const yoastWebPage = `<script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+ {"@type":"WebPage","@id":"https://www.example.com/r/#webpage","primaryImageOfPage":{"@id":"https://www.example.com/r/#primaryimage"}},
+ {"@type":"ImageObject","@id":"https://www.example.com/r/#primaryimage","url":"https://www.example.com/img/primary.jpg"},
+ {"@type":"Person","@id":"https://www.example.com/#me","image":{"@type":"ImageObject","@id":"https://www.example.com/me.jpg","url":"https://www.example.com/me.jpg"}}
+]}</script>`
+
+func TestImageCandidatesPrimaryFromAnotherBlock(t *testing.T) {
+	page := `<html><head><meta property="og:image" content="https://www.example.com/og.jpg">` +
+		`<script type="application/ld+json">{"@context":"https://schema.org","@type":"Recipe","name":"Soup","recipeIngredient":["1 egg"],"image":"https://www.example.com/a.jpg"}</script>` +
+		yoastWebPage + `</head></html>`
+	got := imagesOf(t, page, "https://www.example.com/r/")
+	want := []string{"https://www.example.com/og.jpg", "https://www.example.com/a.jpg", "https://www.example.com/img/primary.jpg"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("candidates\n got %q\nwant %q", got, want)
+	}
+}
+
+func TestImageCandidatesPrimaryForMicrodata(t *testing.T) {
+	page := `<html><head>` + yoastWebPage + `</head><body>
+	<div itemscope itemtype="https://schema.org/Recipe"><h1 itemprop="name">Soup</h1>
+	<img itemprop="image" src="/one.jpg"><li itemprop="recipeIngredient">1 egg</li></div></body></html>`
+	res := mustExtract(t, page, "https://www.example.com/r/")
+	if res.Method != MethodMicrodata {
+		t.Fatalf("method %s, want microdata", res.Method)
+	}
+	want := []string{"https://www.example.com/one.jpg", "https://www.example.com/img/primary.jpg"}
+	if got := res.Recipe.ImageURLs; !reflect.DeepEqual(got, want) {
+		t.Errorf("candidates\n got %q\nwant %q", got, want)
+	}
+}
+
+func TestPrimaryImageRefBeatsSuffix(t *testing.T) {
+	// "a" sorts before "z", so an interleaved loop would pick the suffix match.
+	page := `<html><head><script type="application/ld+json">{"@graph":[
+	 {"@type":"ImageObject","@id":"https://www.example.com/a#primaryimage","url":"https://www.example.com/suffix.jpg"},
+	 {"@type":"ImageObject","@id":"https://www.example.com/z-named","url":"https://www.example.com/named.jpg"},
+	 {"@type":"WebPage","@id":"https://www.example.com/page","primaryImageOfPage":{"@id":"https://www.example.com/z-named"}},
+	 {"@type":"Recipe","name":"Soup","recipeIngredient":["1 egg"]}]}</script></head></html>`
+	want := []string{"https://www.example.com/named.jpg"}
+	if got := imagesOf(t, page, "https://www.example.com/r/"); !reflect.DeepEqual(got, want) {
+		t.Errorf("candidates\n got %q\nwant %q", got, want)
+	}
+}

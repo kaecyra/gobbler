@@ -191,25 +191,26 @@ func (r *Registry) Extract(page []byte, sourceURL string) (Result, error) {
 		base = nil
 	}
 	og := ogImage(doc)
+	primary := primaryImage(pageIDs(doc))
 
 	raw, issues, ok := extractJSONLD(doc)
 	res.Issues = append(res.Issues, issues...)
 	if ok {
 		applyPlugins(doc, &raw)
 		applyEmbeddedVideo(doc, &raw)
-		raw.setImages(og, base)
+		raw.setImages(og, primary, base)
 		return res.withRecipe(MethodJSONLD, raw), nil
 	}
 	if raw, ok := extractMicrodata(doc); ok {
 		applyPlugins(doc, &raw)
 		applyEmbeddedVideo(doc, &raw)
-		raw.setImages(og, base)
+		raw.setImages(og, primary, base)
 		return res.withRecipe(MethodMicrodata, raw), nil
 	}
 	if base != nil && base.Host != "" {
 		if e, found := r.lookup(base.Hostname()); found {
 			if raw, ok := e.Extract(doc, base); ok && raw.usable() {
-				raw.setImages(og, base)
+				raw.setImages(og, primary, base)
 				return res.withRecipe(MethodSite, raw), nil
 			}
 		}

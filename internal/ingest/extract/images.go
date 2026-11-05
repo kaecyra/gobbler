@@ -1,6 +1,7 @@
 package extract
 
 import (
+	"encoding/json"
 	"net/url"
 	"sort"
 	"strings"
@@ -24,11 +25,12 @@ func ogImage(doc *html.Node) string {
 	return found
 }
 
-// setImages puts the page's og:image ahead of the candidates the recipe's own
-// markup gave, resolves each against the page URL and drops repeats, keeping
-// the first (ADR-00039). The result is ordered best guess first.
-func (r *Raw) setImages(og string, page *url.URL) {
+// setImages orders the candidates: the page's og:image, then those the
+// recipe's own markup gave, then the page's primary ImageObject. It resolves
+// each against the page URL and drops repeats, keeping the first (ADR-00039).
+func (r *Raw) setImages(og, primary string, page *url.URL) {
 	in := append([]string{og}, r.ImageURLs...)
+	in = append(in, primary)
 	seen := map[string]bool{}
 	out := make([]string, 0, len(in))
 	for _, s := range in {
@@ -75,8 +77,32 @@ func jsonImages(v any) []string {
 	return nil
 }
 
-// primaryImage returns the URL of the page's primary ImageObject within a
-// JSON-LD block: the object a node names in primaryImageOfPage, or else one
+// pageIDs is indexByID over every JSON-LD block on the page, in document
+// order with the first object for an @id winning. Yoast puts its graph in one
+// script and a recipe plugin's Recipe in another, so the primary image is
+// looked up across all of them. A block that does not parse is skipped here;
+// extractJSONLD reports it.
+func pageIDs(doc *html.Node) map[string]map[string]any {
+	all := map[string]map[string]any{}
+	walk(doc, func(n *html.Node) bool {
+		if !isElem(n, "script") || !isJSONLDType(attr(n, "type")) {
+			return true
+		}
+		var data any
+		if json.Unmarshal([]byte(scriptText(n)), &data) == nil {
+			for id, obj := range indexByID(data) {
+				if _, dup := all[id]; !dup {
+					all[id] = obj
+				}
+			}
+		}
+		return false
+	})
+	return all
+}
+
+// primaryImage returns the URL of the page's primary ImageObject within the
+// page's JSON-LD: the object a node names in primaryImageOfPage, or else one
 // whose @id ends "#primaryimage" (Yoast's convention), resolved by @id. "" when
 // the block names none. Author headshots and logos are also ImageObjects, and
 // are never taken for it.
@@ -91,15 +117,18 @@ func primaryImage(ids map[string]map[string]any) string {
 		}
 		return ""
 	}
-	var want []string
+	// primaryImageOfPage refs first, then #primaryimage ids; each group in
+	// sorted @id order so the result is deterministic.
+	var want, bySuffix []string
 	for _, id := range sortedIDs(ids) {
-		if strings.HasSuffix(id, "#primaryimage") {
-			want = append(want, id)
-		}
 		if ref := refID(ids[id]["primaryImageOfPage"]); ref != "" {
 			want = append(want, ref)
 		}
+		if strings.HasSuffix(id, "#primaryimage") {
+			bySuffix = append(bySuffix, id)
+		}
 	}
+	want = append(want, bySuffix...)
 	for _, id := range want {
 		if obj, ok := ids[id]; ok && hasType(obj["@type"], "ImageObject") {
 			if u := jsonImages(obj); len(u) > 0 {
