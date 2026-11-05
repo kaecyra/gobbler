@@ -3451,7 +3451,7 @@
       "wave": 11,
       "track": null,
       "issue": 410,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "r-rating-bound"
       ],
@@ -4641,6 +4641,12 @@
       "title": "drag ingredients and steps between parts; name a part from Steps",
       "merged": "1925b83",
       "note": "Owner request 2026-11-05: drag only, no fallback without scripts; part name editable in Steps, synced with Ingredients. After r-stage-serve: both own internal/web/editor/**."
+    },
+    {
+      "id": "r-card-spoons-bound",
+      "title": "draw the card spoons from layout.MaxSpoons",
+      "merged": "a6509e8",
+      "note": "Follow-up from #409: the recipe card's spoon loop still counts to a literal 5."
     }
   ],
   "adr_sequence": {
