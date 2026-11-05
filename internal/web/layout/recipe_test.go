@@ -44,8 +44,8 @@ func intPtr(n int) *int { return &n }
 
 func TestNewRecipeMetaClampsAndLeavesUnsetFieldsEmpty(t *testing.T) {
 	m := NewRecipeMeta(recipe.Recipe{SpiceLevel: intPtr(9), Rating: intPtr(12), MealType: recipe.MealDrink})
-	if m.Spice != recipe.MaxSpiceLevel || m.Spoons != maxSpoons || m.Meal != "Drink" {
-		t.Errorf("meta = %+v, want spice %d, spoons %d, Drink", m, recipe.MaxSpiceLevel, maxSpoons)
+	if m.Spice != recipe.MaxSpiceLevel || m.Spoons != MaxSpoons || m.Meal != "Drink" {
+		t.Errorf("meta = %+v, want spice %d, spoons %d, Drink", m, recipe.MaxSpiceLevel, MaxSpoons)
 	}
 	m = NewRecipeMeta(recipe.Recipe{SpiceLevel: intPtr(0), Rating: intPtr(0)})
 	if m.Spice != 0 || m.Spoons != 0 || m.Meal != "" || m.SourceHost != "" {
@@ -265,4 +265,17 @@ func TestStepShowsWhichPassiveStepsItCanRunDuring(t *testing.T) {
 	body = renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", During: []int{2, 3}}, "4"))
 	has(t, body, "during steps 2, 3")
 	lacks(t, renderPart(t, RecipeStep(RecipeStepView{Text: "Stir."}, "1")), "during")
+}
+
+func TestVerdictNamesEveryRatingAndNothingOutsideTheScale(t *testing.T) {
+	for n := 0; n <= MaxSpoons; n++ {
+		if Verdict(n) == "" {
+			t.Errorf("Verdict(%d) is empty, want a word", n)
+		}
+	}
+	for _, n := range []int{-1, MaxSpoons + 1, 99} {
+		if got := Verdict(n); got != "" {
+			t.Errorf("Verdict(%d) = %q, want empty outside 0 to %d", n, got, MaxSpoons)
+		}
+	}
 }

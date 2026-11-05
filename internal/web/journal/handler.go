@@ -31,11 +31,9 @@ const Pattern = "/recipes/{id}/journal"
 // maxFormBytes bounds a journal form body; a note is prose, not a document.
 const maxFormBytes = 64 << 10
 
-// Rating bounds: a rating is a whole number of spoons.
-const (
-	minRating = 1
-	maxRating = 5
-)
+// minRating is the lowest rating: a rating is a whole number of spoons, up to
+// layout.MaxSpoons.
+const minRating = 1
 
 // dateLayout is the form of the made-it date, as in the date input and the
 // store.
@@ -429,7 +427,7 @@ func parseRating(s string) (rating *int, valid bool) {
 		return nil, true
 	}
 	n, err := strconv.Atoi(s)
-	if err != nil || n < minRating || n > maxRating {
+	if err != nil || n < minRating || n > layout.MaxSpoons {
 		return nil, false
 	}
 	return &n, true

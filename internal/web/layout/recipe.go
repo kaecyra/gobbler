@@ -30,8 +30,10 @@ var heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
 // accessible name of the spoons.
 var verdicts = [...]string{"Not rated", "Not again", "It was fine", "Good", "Make it again", "House favourite"}
 
-// maxSpoons is the top of the rating scale.
-const maxSpoons = 5
+// MaxSpoons is the top of the rating scale, the one definition of it: the
+// journal validates a submitted rating against it and the recipe cards guard
+// on it.
+const MaxSpoons = 5
 
 //go:embed recipe.css
 var recipeStylesheet string
@@ -113,7 +115,7 @@ func NewRecipeMeta(r recipe.Recipe) RecipeMeta {
 		m.Spice = min(*r.SpiceLevel, recipe.MaxSpiceLevel)
 	}
 	if r.Rating != nil && *r.Rating > 0 {
-		m.Spoons = min(*r.Rating, maxSpoons)
+		m.Spoons = min(*r.Rating, MaxSpoons)
 	}
 	return m
 }
@@ -131,13 +133,19 @@ func sourceHost(raw string) string {
 // heatLabel names the chilis for screen readers.
 func heatLabel(level int) string { return heatLabels[level] }
 
-// Verdict is the word of a rating of 0 to 5 spoons ("Not rated" for 0): the
-// accessible name of the spoons wherever they are drawn or chosen.
-func Verdict(spoons int) string { return verdicts[spoons] }
+// Verdict is the word of a rating of 0 to MaxSpoons spoons ("Not rated" for 0):
+// the accessible name of the spoons wherever they are drawn or chosen. A rating
+// outside that range has no word, so it is "".
+func Verdict(spoons int) string {
+	if spoons < 0 || spoons >= len(verdicts) {
+		return ""
+	}
+	return verdicts[spoons]
+}
 
 // SpoonsOn lists the five spoons of a rating of n, true for the filled ones.
 func SpoonsOn(n int) []bool {
-	out := make([]bool, maxSpoons)
+	out := make([]bool, MaxSpoons)
 	for i := range out {
 		out[i] = i < n
 	}
