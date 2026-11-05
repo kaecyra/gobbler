@@ -3406,6 +3406,43 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Follow-up from r-recipes-verdict (#400): maxSpoons, journal maxRating and recipes maxRating are one bound."
+    },
+    {
+      "id": "t-profile-address-flake",
+      "title": "make the profile address test deterministic",
+      "wave": 11,
+      "track": null,
+      "issue": 406,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/profile/store_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "CI flake on #405: a random base64url address contains 'ann' by chance. Fix with a fixed s.rand reader and an exact expected address, per the issue."
+    },
+    {
+      "id": "t-avatar-dialog-flake",
+      "title": "find and fix the avatar dialog failed-request e2e flake",
+      "wave": 11,
+      "track": null,
+      "issue": 407,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "e2e/profile/avatar.spec.ts",
+        "internal/web/static/avatar.js",
+        "internal/web/profile/avatar.go",
+        "internal/web/profile/avatar.templ",
+        "internal/web/profile/avatar_view.go",
+        "internal/web/profile/avatar_test.go",
+        "internal/web/profile/avatar_templ.go",
+        "internal/web/static/profile.js"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "CI flake on #405 at e2e/profile/avatar.spec.ts:226, cause unknown. Reproduce with --repeat-each, fix the cause (wait on the request, not a delay); no retries. The lane covers the dialog's error display and button handler (static/profile.js), the crop step (static/avatar.js) and the avatar templ and handler, in case the cause is in the page."
     }
   ],
   "shared_files": [
