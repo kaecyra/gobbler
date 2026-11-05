@@ -3555,7 +3555,9 @@
       "depends_on": [],
       "owns": [
         "internal/profile/avatar.go",
-        "internal/profile/avatar_test.go"
+        "internal/profile/avatar_test.go",
+        "internal/web/profile/avatar.go",
+        "internal/web/profile/avatar_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
