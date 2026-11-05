@@ -182,6 +182,9 @@ lets it move behind that boundary unchanged.
 - It refuses to connect to any address that is not public unicast, checked
   when the connection is dialled, after DNS resolution. It ignores proxy
   environment variables so that it sees the address actually dialled.
+  *Amended by [ADR-00040](00040-loopback-fetches-under-the-dev-bypass.md):
+  loopback is admitted for the page and image fetches while the dev auth bypass
+  is on.*
 - Recipe page and image fetches follow at most 5 redirects; each hop must be
   `http` or `https`, and each hop's connection passes the same guard. The
   OAuth metadata fetch still refuses every redirect.

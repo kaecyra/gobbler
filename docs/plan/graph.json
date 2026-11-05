@@ -3522,10 +3522,13 @@
         "internal/oauth/export_test.go",
         "internal/ingest/fetch.go",
         "internal/ingest/fetch_test.go",
-        "internal/ingest/ingest_test.go"
+        "internal/ingest/ingest_test.go",
+        "internal/ingest/ingest.go"
       ],
       "needs_migration": null,
-      "adrs": [],
+      "adrs": [
+        "00040"
+      ],
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D8. Page-fetch change in its own commit."
     },
     {
@@ -4898,7 +4901,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00039",
+    "last_used": "00040",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
