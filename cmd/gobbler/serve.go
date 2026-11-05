@@ -12,6 +12,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/media"
+	"github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -59,7 +61,11 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 		return fmt.Errorf("migrate database: %w", err)
 	}
 
-	sweeps := startProposalSweeps(ctx, d)
+	pictureMedia, err := media.New(cfg)
+	if err != nil {
+		return fmt.Errorf("open media storage: %w", err)
+	}
+	sweeps := startProposalSweeps(ctx, d, picture.NewReaper(pictureMedia, slog.Default()))
 	defer sweeps.Stop() // before the database closes
 
 	backups, err := startBackups(ctx, cfg, d)
@@ -70,7 +76,7 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	// backups.Runner is the live job: hand it to anything that triggers a
 	// backup or reads its status, never build a second Runner.
 
-	deps := web.Deps{Config: cfg, DB: d, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)}
+	deps := web.Deps{Config: cfg, DB: d, Media: pictureMedia, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)}
 	var authOpts []auth.Option
 	if cfg.OIDC.Configured() {
 		if deps.Sessions, deps.SignIn, err = newSignIn(cfg, d); err != nil {

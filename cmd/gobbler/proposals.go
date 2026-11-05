@@ -34,8 +34,19 @@ func (p proposalSweeps) Stop() { p.stop() }
 // that fails is logged and tried again at the next tick: it is housekeeping,
 // nothing a person is waiting on, and an expired proposal that lingers an hour
 // longer harms no one.
-func startProposalSweeps(ctx context.Context, d *sql.DB) proposalSweeps {
-	return runProposalSweeps(ctx, store.New(d), proposalSweepEvery)
+func startProposalSweeps(ctx context.Context, d *sql.DB, pictures store.ObjectRemover) proposalSweeps {
+	return runProposalSweeps(ctx, pictureSweeper{store.New(d), pictures}, proposalSweepEvery)
+}
+
+// pictureSweeper is the store's sweep that also removes the picture candidates
+// of the drafts it prunes (ADR-00039).
+type pictureSweeper struct {
+	*store.Store
+	pictures store.ObjectRemover
+}
+
+func (p pictureSweeper) Sweep(ctx context.Context) (store.SweepResult, error) {
+	return p.SweepWithPictures(ctx, p.pictures)
 }
 
 func runProposalSweeps(ctx context.Context, s proposalSweeper, every time.Duration) proposalSweeps {

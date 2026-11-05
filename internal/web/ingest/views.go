@@ -85,3 +85,6 @@ func needLookText(n int) string {
 	}
 	return fmt.Sprintf("%d items need a look", n)
 }
+
+// pickSize is a candidate's caption line: its pixel size.
+func pickSize(o pickOption) string { return fmt.Sprintf("%d × %d", o.Width, o.Height) }

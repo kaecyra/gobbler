@@ -149,6 +149,7 @@ templ reviewPage(v reviewView) {
 			if v.PhotoGone {
 				<p class="muted" id="photo-gone">The photo this recipe was read from is no longer available. Asking the LLM again reads the recognised text alone.</p>
 			}
+			@picker(v.Picker)
 			<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
 			<div class="review-grid">
 				if len(sourceRows(v.Draft)) > 0 {
@@ -161,6 +162,43 @@ templ reviewPage(v reviewView) {
 			</div>
 		</div>
 	}
+}
+
+// picker is the picture picker (ADR-00039, Choosing): the draft's candidates
+// and "No picture". Its radios belong to the editor's form, so the choice is
+// posted with the confirm.
+templ picker(p pickerView) {
+	<div class="picker">
+		<span class="eyebrow">Picture</span>
+		<div class="picker-row" role="radiogroup" aria-label="Picture for this recipe">
+			for _, o := range p.Options {
+				<label class="pick">
+					<input class="sr" type="radio" name={ fieldPicture } value={ o.Value } form={ editorFormID } checked?={ o.Checked }/>
+					<span class="th">
+						<img src={ o.Src } alt="" loading="lazy" decoding="async"/>
+						<i class="tick" aria-hidden="true"></i>
+					</span>
+					<span class="cap"><b>Recipe image</b><br/>{ pickSize(o) }</span>
+				</label>
+			}
+			<label class="pick none">
+				<input class="sr" type="radio" name={ fieldPicture } value={ pictureNone } form={ editorFormID } checked?={ p.NoneChecked }/>
+				<span class="th"><span class="no-pic" aria-hidden="true"></span><i class="tick" aria-hidden="true"></i></span>
+				<span class="cap"><b>No picture</b><br/>Shows a coloured band</span>
+			</label>
+		</div>
+		if len(p.Options) == 0 {
+			<p class="pick-note" role="status">
+				@layout.Icon(layout.IconAlert)
+				This source had no usable pictures.
+			</p>
+		} else if !p.Chosen {
+			<p class="pick-note unchosen" role="status">
+				@layout.Icon(layout.IconAlert)
+				Pick a picture, or No picture, before saving.
+			</p>
+		}
+	</div>
 }
 
 // sourceBox shows the ingredient lines as the source wrote them, with the

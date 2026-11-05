@@ -504,3 +504,44 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .profile-who { min-width: 0; }
 .profile-who h1 { font-size: clamp(24px, 4vw, 30px); overflow-wrap: anywhere; }
 .profile-who p { margin: 0; overflow-wrap: anywhere; }
+
+/* ---- picture picker on the review screen (internal/web/ingest) ---- */
+
+.picker { margin: 0 0 22px; }
+.picker > .eyebrow { display: block; line-height: 1.65; }
+.picker-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.pick {
+  position: relative; width: 132px; display: flex; flex-direction: column; gap: 6px; text-align: left;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 6px 8px;
+  cursor: pointer; min-height: var(--tap);
+}
+.pick:hover { border-color: var(--ink-3); }
+.pick .th { display: block; height: 84px; border-radius: var(--r-sm); overflow: hidden; background: var(--sunk); position: relative; }
+.pick .th img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.pick .cap { font-size: 12.5px; color: var(--ink-3); line-height: 1.3; }
+.pick b { font-size: 14px; font-weight: 650; }
+.pick:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+.pick:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }
+/* The tick is drawn with borders: the picker owns no icon in the shared set. */
+.pick .tick {
+  display: none; position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ok);
+}
+.pick .tick::after {
+  content: ""; position: absolute; left: 8px; top: 4px; width: 5px; height: 10px;
+  border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.pick:has(input:checked) .tick { display: block; }
+.pick.none .th { display: grid; place-items: center; color: var(--ink-3); border: 1px dashed var(--slate); background: var(--sunk); }
+/* "No picture": an empty frame struck through, as the mockup draws it. */
+.pick.none .no-pic {
+  display: block; width: 20px; height: 18px; border: 2px solid currentColor; border-radius: var(--r-sm);
+  background: linear-gradient(to bottom right, transparent calc(50% - 1px), currentColor calc(50% - 1px), currentColor calc(50% + 1px), transparent calc(50% + 1px));
+}
+.pick-note {
+  display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 10px 14px; border-radius: var(--r);
+  background: var(--grain-soft); color: var(--grain-ink); font-size: 15px;
+}
+.pick-note svg { width: 18px; height: 18px; flex: none; }
+/* Choosing hides the prompt without a script. */
+.picker:has(input:checked) .pick-note.unchosen { display: none; }
