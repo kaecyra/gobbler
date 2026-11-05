@@ -35,6 +35,9 @@ type draft struct {
 	// Proposal is the token of the pending proposal the form reviews (ADR-00035);
 	// empty for an ordinary edit. It rides in a hidden field.
 	Proposal string
+	// review is the summary shown above the form of that proposal, loaded with
+	// it; never read from the form.
+	review *proposalView
 
 	Name, Description, SourceURL, Author string
 	// Video is what was typed in the video field: a YouTube link or a bare ID.

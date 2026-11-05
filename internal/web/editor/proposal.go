@@ -70,13 +70,10 @@ func (h *handler) refuse(w http.ResponseWriter, r *http.Request, message string)
 	layout.Render(w, r, http.StatusConflict, layout.ErrorPage(http.StatusConflict, message))
 }
 
-// proposalFor builds the summary of p against the recipe as it is now.
-func (h *handler) proposalFor(ctx context.Context, p store.Proposal, names lookups) (*proposalView, error) {
-	cur, err := h.Recipes.Get(ctx, p.RecipeID)
-	if err != nil {
-		return nil, fmt.Errorf("load recipe %d: %w", p.RecipeID, err)
-	}
-	return &proposalView{Token: p.Token, By: p.Describe(), Reason: p.Reason, Changes: summarize(cur, *p.Edit, names)}, nil
+// summaryOf builds the summary of p against the live recipe it would
+// change, from what the caller already loaded.
+func summaryOf(live recipe.Recipe, p store.Proposal, names lookups) *proposalView {
+	return &proposalView{Token: p.Token, By: p.Describe(), Reason: p.Reason, Changes: summarize(live, *p.Edit, names)}
 }
 
 // openForReview refuses, with the message to show, when the form's proposal can

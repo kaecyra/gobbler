@@ -17,6 +17,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -114,7 +115,10 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
-	if token := r.URL.Query().Get(fieldProposal); token != "" {
+	token := strings.TrimSpace(r.URL.Query().Get(fieldProposal))
+	var review *proposalView
+	live := rec
+	if token != "" {
 		// The proposal is read after the version, as the recipe is: a save in
 		// between leaves a form at the older version, refused on save.
 		p, ok := h.openForReview(w, r, id, info.Version, token)
@@ -122,10 +126,11 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rec = *p.Edit
+		review = summaryOf(live, p, names)
 	}
 	d := fromRecipe(rec, names)
 	d.Version = info.Version
-	d.Proposal = r.URL.Query().Get(fieldProposal)
+	d.Proposal, d.review = token, review
 	h.render(w, r, http.StatusOK, id, d, names)
 }
 
@@ -165,6 +170,7 @@ func (h *handler) post(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
+		d.review = summaryOf(base, p, names)
 		base = *p.Edit
 	}
 
@@ -266,17 +272,7 @@ func staleStatus(r *http.Request) int {
 
 func (h *handler) render(w http.ResponseWriter, r *http.Request, status int, id int64, d draft, names lookups) {
 	v := view{ID: id, D: d, Names: names}
-	if d.Proposal != "" {
-		p, err := h.Recipes.GetProposal(r.Context(), d.Proposal)
-		if err != nil {
-			layout.WriteError(w, r, fmt.Errorf("load proposal: %w", err))
-			return
-		}
-		if v.Proposal, err = h.proposalFor(r.Context(), p, names); err != nil {
-			layout.WriteError(w, r, err)
-			return
-		}
-	}
+	v.Proposal = d.review
 	if FromHTMX(r) {
 		layout.Render(w, r, status, editorForm(v))
 		return
