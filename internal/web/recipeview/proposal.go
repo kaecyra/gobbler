@@ -3,9 +3,7 @@ package recipeview
 import (
 	"context"
 	_ "embed"
-	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -121,7 +119,7 @@ func (c compMarks) step(i int) stepMark {
 func (p *proposalView) marked() bool { return p != nil && !p.Stale }
 
 func reviewHref(id int64, token string) string {
-	return editHref(id) + "?" + url.Values{"proposal": {token}}.Encode()
+	return editHref(id) + "?" + url.Values{fieldProposal: {token}}.Encode()
 }
 
 func rejectHref(id int64) string { return recipePath(id) + rejectRoute }
@@ -324,12 +322,7 @@ func reject(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("proposal is not one for recipe %d: %w", id, layout.ErrNotFound))
 			return
 		}
-		switch err := d.Recipes.RejectProposal(r.Context(), token); {
-		case errors.Is(err, store.ErrNotPending):
-			slog.WarnContext(r.Context(), "request rejected", "error", err.Error(), "status", http.StatusConflict, "method", r.Method, "path", r.URL.Path)
-			layout.Render(w, r, http.StatusConflict, layout.ErrorPage(http.StatusConflict, "This proposal is no longer pending, so there is nothing to reject."))
-			return
-		case err != nil:
+		if err := d.Recipes.RejectProposal(r.Context(), token); err != nil {
 			layout.WriteError(w, r, fmt.Errorf("reject proposal: %w", err))
 			return
 		}

@@ -51,6 +51,7 @@ var statusTable = []struct {
 	{store.ErrNotFound, http.StatusNotFound},
 	{display.ErrInvalid, http.StatusBadRequest},
 	{store.ErrStaleVersion, http.StatusConflict},
+	{store.ErrNotPending, http.StatusConflict},
 	{household.ErrNotFound, http.StatusNotFound},
 	{household.ErrInvalid, http.StatusBadRequest},
 	{household.ErrConfirmation, http.StatusBadRequest},
