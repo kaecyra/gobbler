@@ -547,3 +547,15 @@ func TestSettingAPictureOnADeletedRecipeIsNotFound(t *testing.T) {
 		t.Fatalf("Choose on a deleted recipe = %v, want ErrNotFound", err)
 	}
 }
+
+func TestChooseRefusesBytesThatAreNotAnImage(t *testing.T) {
+	e := newEnv(t)
+	rid := e.recipe(t, "")
+	_, err := e.svc.Choose(e.ctx, rid, picture.Found{WebP: []byte("not an image")})
+	if _, refused := media.RefusalText(err); !refused {
+		t.Fatalf("Choose(junk) = %v, want a *media.Refusal", err)
+	}
+	if _, ok, _ := e.svc.Key(e.ctx, rid); ok {
+		t.Error("junk bytes were stored as the picture")
+	}
+}

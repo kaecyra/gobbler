@@ -325,5 +325,15 @@ func (s *Service) Refind(ctx context.Context, id int64) ([]Found, error) {
 // the previous one. It returns the new key. Bytes that are not a valid image
 // are a *media.Refusal.
 func (s *Service) Choose(ctx context.Context, id int64, f Found) (string, error) {
-	return s.setProcessed(ctx, id, f.WebP)
+	// The bytes may have been rebuilt from request data: process them again
+	// here rather than trust them (ADR-00039, Storing).
+	d, err := media.Decode(f.WebP)
+	if err != nil {
+		return "", err
+	}
+	webp, err := media.Picture(d.Image)
+	if err != nil {
+		return "", err
+	}
+	return s.setProcessed(ctx, id, webp)
 }
