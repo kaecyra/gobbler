@@ -3666,7 +3666,7 @@
       "wave": 12,
       "track": null,
       "issue": 429,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "d-picture-mockup",
         "i-draft-pictures",
@@ -3679,7 +3679,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3. Match the approved mockup side by side."
+      "note": "Also owns the picture wiring: picture service built once in newRouter; Drafts/Saver .WithPictures; cmd/gobbler/proposals.go SweepWithPictures (granted edits to existing lines)."
     },
     {
       "id": "u-picture-cards",
