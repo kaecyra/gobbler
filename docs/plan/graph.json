@@ -2869,7 +2869,8 @@
         "a-mcp-endpoint",
         "a-mcp-oauth",
         "a-recipe-proposals",
-        "a-oauth-limits"
+        "a-oauth-limits",
+        "r-stage-serve"
       ],
       "owns": [
         "internal/mcp/**",
@@ -3268,6 +3269,60 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Fails under load in CI and locally (cook.spec.ts timers test); passes alone."
+    },
+    {
+      "id": "r-stage-serve",
+      "title": "add serve as a step stage kind",
+      "wave": 11,
+      "track": null,
+      "issue": 394,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/**",
+        "docs/adr/00022-adopt-the-mockup-design.md",
+        "docs/ui/design.md",
+        "internal/web/ribbon/**",
+        "internal/ingest/*.go",
+        "internal/llm/**",
+        "internal/web/editor/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "Owner request 2026-11-05. Amends ADR-00022's closed stage set in place (undeployed project); colour family to confirm with the owner (proposed active)."
+    },
+    {
+      "id": "r-author-notes",
+      "title": "parse, store and show the recipe author's notes",
+      "wave": 11,
+      "track": null,
+      "issue": 395,
+      "status": "todo",
+      "depends_on": [
+        "r-stage-serve",
+        "a-mcp-recipe-edit",
+        "t-cook-timers-flake"
+      ],
+      "owns": [
+        "internal/recipe/**",
+        "internal/store/**",
+        "internal/web/editor/**",
+        "internal/web/ingest/**",
+        "internal/web/recipeview/**",
+        "internal/web/cook/**",
+        "e2e/editor/**",
+        "e2e/ingest/**",
+        "e2e/recipeview/**",
+        "e2e/cook/**",
+        "internal/ingest/*.go",
+        "internal/ingest/extract/*.go",
+        "internal/ingest/extract/testdata/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "blocked": "needs an ADR: author-notes model, on-screen name and placement (#395 open decision)",
+      "note": "Owner request 2026-11-05. Amends ADR-00004's data model. WPRM .wprm-recipe-notes and Tasty .tasty-recipes-notes; nothing in JSON-LD."
     }
   ],
   "shared_files": [
