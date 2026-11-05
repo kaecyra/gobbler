@@ -62,6 +62,7 @@ func TestYieldKeepsAStatedUnit(t *testing.T) {
 		"bare then servings":   {[]string{"4", "4 servings"}, "4", ""},
 		"unreadable then bare": {[]string{"a few", "4"}, "4", ""},
 		"loaf then bare":       {[]string{"1 loaf", "6"}, "", "loaf"},
+		"first bare wins":      {[]string{"4", "6", "1 loaf"}, "4", "loaf"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			a := &assembler{d: &Draft{}}
