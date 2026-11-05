@@ -262,7 +262,6 @@ func encode(d draft) url.Values {
 			f.Set(sField(ci, si, "dur"), s.Duration)
 			f.Set(sField(ci, si, "kind"), s.Kind)
 			f.Set(sField(ci, si, "title"), s.Title)
-			f.Set(sField(ci, si, "to"), strconv.Itoa(s.To))
 			setFlag(f, sField(ci, si, "passive"), s.Passive)
 			f[sField(ci, si, "dep")] = append([]string(nil), s.Deps...)
 		}
@@ -733,7 +732,6 @@ func TestAStepAddedInTheEditorIsSavedWithAStoreKey(t *testing.T) {
 	f := e.form()
 	n := len(before.Components[0].Steps)
 	f.Set(sField(0, n, "text"), "Brush with egg.")
-	f.Set(sField(0, n, "to"), "0")
 	// The page labelled the new step when it was added, so that another step
 	// can depend on it before anything is saved.
 	f.Set(sField(0, n, "id"), "new-1")

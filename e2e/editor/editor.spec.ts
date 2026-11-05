@@ -197,18 +197,11 @@ test('edits and saves a recipe: new part, line with qualifier, step with depende
   expect(await revisions(page)).toBe(1);
 });
 
-test('moves a step to another part and reorders steps', async ({ page }) => {
+test('a step has no part control: dragging is the only way to move it between parts', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('li.step').nth(0).locator('summary').click();
-  await page.locator('[name="c.0.s.0.to"]').selectOption('1');
-  // Moves apply on the next post of the form; any action will do.
-  await page.locator('#ed-steps .component').nth(1).getByRole('button', { name: 'Add step' }).click();
-  await expect(page.locator('[name="c.1.s.2.text"]')).toBeVisible();
-  await expect(page.locator('[name="c.0.s.0.text"]')).toHaveValue('Let the dough rest.');
-  await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Mix the dough.');
-  await dragRow(page, page.locator('li.step').nth(2), page.locator('li.step').nth(1), 0.2);
-  await expect(page.locator('[name="c.1.s.0.text"]')).toHaveValue('Mix the dough.');
-  await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Glaze the loaf.');
+  await expect(page.locator('li.step').nth(0).getByLabel('Part', { exact: true })).toHaveCount(0);
+  await expect(page.locator('[name$=".to"]')).toHaveCount(0);
 });
 
 test('a stale save is rejected rather than overwriting a newer edit', async ({ browser, page }) => {

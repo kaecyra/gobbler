@@ -97,10 +97,8 @@ type stepDraft struct {
 	// Kind is a stage kind name, or empty; Title is free text.
 	Kind, Title string
 	Deps        []string
-	// To is the component the step is in now, or is being moved to.
-	To   int
-	Err  string
-	Mark mark
+	Err         string
+	Mark        mark
 	// Graph is where Passive and Deps came from, from review.
 	Graph graphMark
 }
@@ -135,7 +133,7 @@ func fromRecipe(r recipe.Recipe, names lookups) draft {
 	if r.SpiceLevel != nil {
 		d.Spice = strconv.Itoa(*r.SpiceLevel)
 	}
-	for ci, c := range r.Components {
+	for _, c := range r.Components {
 		cd := compDraft{Name: c.Name}
 		for _, l := range c.Lines {
 			ld := lineDraft{
@@ -155,7 +153,7 @@ func fromRecipe(r recipe.Recipe, names lookups) draft {
 		for _, s := range c.Steps {
 			cd.Steps = append(cd.Steps, stepDraft{
 				ID: string(s.ID), Text: s.Text, Duration: durationText(s.Duration), Passive: s.Passive,
-				Kind: string(s.Kind), Title: s.Title, Deps: stepIDs(s.DependsOn), To: ci,
+				Kind: string(s.Kind), Title: s.Title, Deps: stepIDs(s.DependsOn),
 			})
 		}
 		d.Components = append(d.Components, cd)
@@ -222,13 +220,9 @@ func parseForm(f url.Values) draft {
 		}
 		for _, si := range indices(f, cp+"s.") {
 			sp := fmt.Sprintf("%ss.%d.", cp, si)
-			to, err := strconv.Atoi(f.Get(sp + "to"))
-			if err != nil {
-				to = len(d.Components)
-			}
 			c.Steps = append(c.Steps, stepDraft{
 				ID: strings.TrimSpace(f.Get(sp + "id")), Text: f.Get(sp + "text"), Duration: f.Get(sp + "dur"),
-				Passive: f.Get(sp+"passive") != "", Kind: f.Get(sp + "kind"), Title: f.Get(sp + "title"), Deps: nonEmpty(f[sp+"dep"]), To: to,
+				Passive: f.Get(sp+"passive") != "", Kind: f.Get(sp + "kind"), Title: f.Get(sp + "title"), Deps: nonEmpty(f[sp+"dep"]),
 				Mark: parseMark(f.Get(sp + "mark")), Graph: parseGraphMark(f.Get(sp + "graph")),
 			})
 		}
@@ -274,41 +268,15 @@ func indices(f url.Values, prefix string) []int {
 	return out
 }
 
-// arrange applies the moves the user asked for with a step's component
-// selector, gives every step an id, and drops references to steps that are
-// gone. It runs on every post, before any action.
+// arrange gives every step an id and drops references to steps that are
+// gone. It runs on every post, before any action. A step changes part only
+// through a move-step action, which is what a drag posts.
 func (d *draft) arrange() {
-	type move struct{ from, pos, to int }
-	var moves []move
-	for ci, c := range d.Components {
-		for si, s := range c.Steps {
-			if s.To != ci && s.To >= 0 && s.To < len(d.Components) {
-				moves = append(moves, move{ci, si, s.To})
-			}
-		}
-	}
-	// Collect first, then remove from the back so positions stay valid.
-	var moved []struct {
-		to   int
-		step stepDraft
-	}
-	for i := len(moves) - 1; i >= 0; i-- {
-		m := moves[i]
-		c := &d.Components[m.from]
-		moved = append(moved, struct {
-			to   int
-			step stepDraft
-		}{m.to, c.Steps[m.pos]})
-		c.Steps = slices.Delete(c.Steps, m.pos, m.pos+1)
-	}
-	for i := len(moved) - 1; i >= 0; i-- {
-		d.Components[moved[i].to].Steps = append(d.Components[moved[i].to].Steps, moved[i].step)
-	}
 	d.settle()
 }
 
-// settle makes the draft self-consistent: every step has a unique id, its To
-// is its position, and no dependency or equipment link names a missing step.
+// settle makes the draft self-consistent: every step has a unique id and no
+// dependency or equipment link names a missing step.
 //
 // A stored step's id is its key, which the store assigned and never reuses
 // (ADR-00035). A step added here has no key yet, so it gets a label that is not
@@ -348,7 +316,6 @@ func (d *draft) settle() {
 		c := &d.Components[ci]
 		for si := range c.Steps {
 			s := &c.Steps[si]
-			s.To = ci
 			if s.ID == "" {
 				for used[newStepLabel+strconv.Itoa(next)] {
 					next++

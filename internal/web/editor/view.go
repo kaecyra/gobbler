@@ -111,13 +111,6 @@ func act(verb string, pos ...int) string {
 // Labels for people: positions are shown from one.
 func n1(i int) string { return strconv.Itoa(i + 1) }
 
-func componentLabel(ci int, c compDraft) string {
-	if strings.TrimSpace(c.Name) == "" {
-		return "Part " + n1(ci)
-	}
-	return "Part " + n1(ci) + ": " + c.Name
-}
-
 // stepTitle names a step in a list of steps: its title, or the start of its
 // instruction when it has none.
 func stepTitle(s stepDraft) string {

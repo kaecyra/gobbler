@@ -50,7 +50,6 @@ func postedGraphForm(t *testing.T, e *env, u Unsaved, base ingestcore.Draft) url
 	for i, s := range []string{"Mix.", "Bake.", "Cool."} {
 		p := "c.0.s." + string(rune('0'+i)) + "."
 		v.Set(p+"text", s)
-		v.Set(p+"to", "0")
 		v.Set(p+"id", "s"+string(rune('1'+i)))
 	}
 	v.Set("c.0.s.1.passive", "1")
@@ -94,7 +93,6 @@ func TestGraphProvenanceSurvivesUntilTheUserEditsThatStep(t *testing.T) {
 
 	v = postedGraphForm(t, e, u, graphBase())
 	v.Set("c.0.s.3.text", "Serve.")
-	v.Set("c.0.s.3.to", "0")
 	v.Set("c.0.s.3.dep", "s3")
 	steps = submitGraph(t, e, u, v)
 	if len(steps) != 4 || steps[3].GraphCue || steps[3].GraphFromLLM || !steps[3].GraphByUser || !slices.Equal(steps[3].DependsOn, []int{3}) {

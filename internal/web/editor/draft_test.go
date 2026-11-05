@@ -10,8 +10,8 @@ import (
 func twoComponents() draft {
 	return draft{
 		Components: []compDraft{
-			{Name: "A", Steps: []stepDraft{{ID: "a1", Text: "one", To: 0}, {ID: "a2", Text: "two", To: 0, Deps: []string{"a1"}}}},
-			{Name: "B", Steps: []stepDraft{{ID: "b1", Text: "three", To: 1, Deps: []string{"a2"}}}},
+			{Name: "A", Steps: []stepDraft{{ID: "a1", Text: "one"}, {ID: "a2", Text: "two", Deps: []string{"a1"}}}},
+			{Name: "B", Steps: []stepDraft{{ID: "b1", Text: "three", Deps: []string{"a2"}}}},
 		},
 		Equipment: []equipDraft{{Name: "whisk", Steps: []string{"a1", "b1"}}},
 	}
@@ -23,25 +23,6 @@ func stepIDsOf(c compDraft) []string {
 		out = append(out, s.ID)
 	}
 	return out
-}
-
-func TestArrangeMovesAStepToAnotherComponent(t *testing.T) {
-	d := twoComponents()
-	d.Components[0].Steps[0].To = 1 // a1 moves to B
-	d.arrange()
-	if got := stepIDsOf(d.Components[0]); !reflect.DeepEqual(got, []string{"a2"}) {
-		t.Errorf("A steps = %v, want [a2]", got)
-	}
-	if got := stepIDsOf(d.Components[1]); !reflect.DeepEqual(got, []string{"b1", "a1"}) {
-		t.Errorf("B steps = %v, want [b1 a1]", got)
-	}
-	if d.Components[1].Steps[1].To != 1 {
-		t.Error("a moved step must report its new component")
-	}
-	// Dependencies and equipment links follow the step by id.
-	if !reflect.DeepEqual(d.Components[0].Steps[0].Deps, []string{"a1"}) || !reflect.DeepEqual(d.Equipment[0].Steps, []string{"a1", "b1"}) {
-		t.Errorf("a move must keep references: %v, %v", d.Components[0].Steps[0].Deps, d.Equipment[0].Steps)
-	}
 }
 
 func TestRemovingAStepDropsReferencesToIt(t *testing.T) {
@@ -86,8 +67,8 @@ func TestNewStepsGetUniqueIDs(t *testing.T) {
 // step of the recipe.)
 func TestANewStepReusingARemovedLabelInheritsNoLinks(t *testing.T) {
 	d := parseForm(url.Values{
-		"c.0.s.0.text": {"Preheat."}, "c.0.s.0.to": {"0"},
-		"c.0.s.1.text": {"Bake."}, "c.0.s.1.to": {"0"}, "c.0.s.1.id": {"stp-k3f9x2qa"}, "c.0.s.1.dep": {"new-1"},
+		"c.0.s.0.text": {"Preheat."},
+		"c.0.s.1.text": {"Bake."}, "c.0.s.1.id": {"stp-k3f9x2qa"}, "c.0.s.1.dep": {"new-1"},
 		"e.0.name": {"oven"}, "e.0.step": {"new-1", "stp-k3f9x2qa"},
 	})
 	d.arrange()
@@ -153,5 +134,21 @@ func TestParseFormDoesNotConfuseCaloriesWithComponents(t *testing.T) {
 	d := parseForm(f)
 	if len(d.Components) != 0 || d.Calories != "200" || d.Cook != "5 min" {
 		t.Errorf("draft = %+v", d)
+	}
+}
+
+// Dragging is the only way to move a step between parts (#416): a post that
+// still carries a step's old part field changes nothing.
+func TestAPostedStepPartFieldMovesNothing(t *testing.T) {
+	d := parseForm(url.Values{
+		"c.0.name": {"A"}, "c.0.s.0.id": {"a1"}, "c.0.s.0.text": {"one"}, "c.0.s.0.to": {"1"},
+		"c.1.name": {"B"}, "c.1.s.0.id": {"b1"}, "c.1.s.0.text": {"two"}, "c.1.s.0.to": {"1"},
+	})
+	d.arrange()
+	if got := stepIDsOf(d.Components[0]); !reflect.DeepEqual(got, []string{"a1"}) {
+		t.Errorf("A steps = %v, want [a1]", got)
+	}
+	if got := stepIDsOf(d.Components[1]); !reflect.DeepEqual(got, []string{"b1"}) {
+		t.Errorf("B steps = %v, want [b1]", got)
 	}
 }

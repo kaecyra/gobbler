@@ -218,7 +218,7 @@ templ editorForm(v view) {
 			.editor li.step .more-body { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }
 			.editor .srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 			.editor .srow .dur { width: 110px; }
-			.editor .srow .stage, .editor .srow .part { width: 150px; }
+			.editor .srow .stage { width: 150px; }
 			.editor .att { display: flex; gap: 6px; }
 			.editor .att label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600; cursor: pointer; }
 			.editor .att input { position: absolute; inset: -1px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; }
@@ -855,23 +855,6 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 									}
 								</select>
 							</div>
-						}
-						if len(v.D.Components) > 1 {
-							<div class="fl part">
-								<div class="lbl-row">
-									<label for={ sField(ci, si, "to") }>Part</label>
-									@helpTip(tipID("step-part", ci, si), "parts", partHelp)
-								</div>
-								<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
-									for oi, o := range v.D.Components {
-										<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
-									}
-								</select>
-							</div>
-						} else {
-							// One part: nowhere to move the step, but parseForm reads a
-							// missing part as "a new one", so it is posted all the same.
-							<input type="hidden" name={ sField(ci, si, "to") } value={ n0(ci) }/>
 						}
 						if v.carries(groupStepGraph) {
 							<div class="fl">
