@@ -337,3 +337,96 @@ func TestPreviewIsAJPEGThatFits(t *testing.T) {
 		}
 	}
 }
+
+func TestPictureKeepsTheWholeImageWithinBoundsAndNeverScalesUp(t *testing.T) {
+	cases := []struct {
+		name         string
+		w, h         int
+		wantW, wantH int
+	}{
+		{"landscape", 3000, 2000, 1024, 683},
+		{"portrait", 2000, 3000, 683, 1024},
+		{"square", 2048, 2048, 1024, 1024},
+		{"already small", 200, 100, 200, 100},
+		{"small portrait", 100, 300, 100, 300},
+		{"exactly the limit", 1024, 1024, 1024, 1024},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out, err := Picture(halves(tc.w, tc.h))
+			if err != nil {
+				t.Fatal(err)
+			}
+			img, format, err := image.Decode(bytes.NewReader(out))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if format != "webp" {
+				t.Errorf("format = %q, want webp", format)
+			}
+			if b := img.Bounds(); b.Dx() != tc.wantW || b.Dy() != tc.wantH {
+				t.Fatalf("size = %v, want %dx%d", b, tc.wantW, tc.wantH)
+			}
+			// Nothing is cropped: the left edge stays red, the right edge blue.
+			b := img.Bounds()
+			lr, _, lb, _ := img.At(2, b.Dy()/2).RGBA()
+			rr, _, rb, _ := img.At(b.Dx()-3, b.Dy()/2).RGBA()
+			if lr>>8 < 200 || lb>>8 > 60 {
+				t.Errorf("left edge should be red, got r=%d b=%d", lr>>8, lb>>8)
+			}
+			if rb>>8 < 200 || rr>>8 > 60 {
+				t.Errorf("right edge should be blue, got r=%d b=%d", rr>>8, rb>>8)
+			}
+		})
+	}
+}
+
+func TestPictureIsLossyWebPWithNoMetadata(t *testing.T) {
+	src := taggedJPEG(t, halves(1500, 1000), 1)
+	for _, marker := range []string{"Exif", "ICC_PROFILE", "xmpmeta", "SECRETPLACE"} {
+		if !bytes.Contains(src, []byte(marker)) {
+			t.Fatalf("test fixture lacks %q", marker)
+		}
+	}
+	d, err := Decode(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := Picture(d.Image)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chunks := riffChunks(t, out)
+	for _, c := range chunks {
+		switch c {
+		case "EXIF", "XMP ", "ICCP":
+			t.Errorf("stored picture has a %q chunk; chunks = %v", c, chunks)
+		}
+	}
+	if !slices.Contains(chunks, "VP8 ") {
+		t.Errorf("want a lossy VP8 chunk, chunks = %v", chunks)
+	}
+	for _, leak := range []string{"Exif", "GPS", "ICC_PROFILE", "xmpmeta", "SECRETPLACE"} {
+		if bytes.Contains(out, []byte(leak)) {
+			t.Errorf("stored picture contains %q", leak)
+		}
+	}
+}
+
+func TestPictureIsUprightForExifOrientation(t *testing.T) {
+	d, err := Decode(taggedJPEG(t, halves(200, 100), 6))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := Picture(d.Image)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := image.DecodeConfig(bytes.NewReader(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Width != 100 || got.Height != 200 {
+		t.Errorf("size = %dx%d, want 100x200", got.Width, got.Height)
+	}
+}

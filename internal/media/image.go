@@ -31,7 +31,7 @@ const (
 	// maxPixels bounds the memory a decode may take: a small file can claim
 	// enormous dimensions.
 	maxPixels = 50_000_000
-	// webpQuality is the lossy WebP quality of a stored avatar.
+	// webpQuality is the lossy WebP quality of a stored avatar or picture.
 	webpQuality = 82
 )
 
@@ -151,7 +151,28 @@ func Avatar(img image.Image, c Crop) ([]byte, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
-	src := c.rect(img.Bounds())
+	out, err := scaleToWebP(img, c.rect(img.Bounds()))
+	if err != nil {
+		return nil, fmt.Errorf("encode avatar as WebP: %w", err)
+	}
+	return out, nil
+}
+
+// Picture scales img to fit MaxSide by MaxSide without cropping, never up, and
+// encodes it as lossy WebP with no metadata (ADR-00039). img comes from Decode,
+// so any EXIF orientation is already applied.
+func Picture(img image.Image) ([]byte, error) {
+	out, err := scaleToWebP(img, img.Bounds())
+	if err != nil {
+		return nil, fmt.Errorf("encode picture as WebP: %w", err)
+	}
+	return out, nil
+}
+
+// scaleToWebP scales the src part of img to fit MaxSide by MaxSide and encodes
+// it as lossy WebP. The encoder writes the pixels only, so no EXIF, XMP or ICC
+// profile survives (ADR-00033).
+func scaleToWebP(img image.Image, src image.Rectangle) ([]byte, error) {
 	w, h := fit(src.Dx(), src.Dy(), MaxSide)
 	dst := image.NewNRGBA(image.Rect(0, 0, w, h))
 	xdraw.CatmullRom.Scale(dst, dst.Bounds(), img, src, xdraw.Src, nil)
@@ -159,7 +180,7 @@ func Avatar(img image.Image, c Crop) ([]byte, error) {
 	opts.Quality = webpQuality
 	var buf bytes.Buffer
 	if err := webp.Encode(&buf, dst, opts); err != nil {
-		return nil, fmt.Errorf("encode avatar as WebP: %w", err)
+		return nil, err
 	}
 	return buf.Bytes(), nil
 }
