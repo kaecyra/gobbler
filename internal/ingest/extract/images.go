@@ -104,7 +104,7 @@ func pageIDs(doc *html.Node) map[string]map[string]any {
 // primaryImage returns the URL of the page's primary ImageObject within the
 // page's JSON-LD: the object a node names in primaryImageOfPage, or else one
 // whose @id ends "#primaryimage" (Yoast's convention), resolved by @id. "" when
-// the block names none. Author headshots and logos are also ImageObjects, and
+// the page names none. Author headshots and logos are also ImageObjects, and
 // are never taken for it.
 func primaryImage(ids map[string]map[string]any) string {
 	refID := func(v any) string {
