@@ -3242,7 +3242,7 @@
       "wave": 11,
       "track": null,
       "issue": 386,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-journal-restyle",
         "u-library-panels"
@@ -4455,6 +4455,12 @@
       "title": "draw an equipment chip's details above the save bar",
       "merged": "df15740340d596c81d834fe12f80c677ec5f6373",
       "note": "Owner report 2026-11-05. z-index 6, the help popovers' layer."
+    },
+    {
+      "id": "r-recipes-verdict",
+      "title": "use layout.Verdict instead of a local verdict list in recipes",
+      "merged": "4c5abf1",
+      "note": "Follow-up from u-journal-restyle review: one verdict list."
     }
   ],
   "adr_sequence": {
