@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/mcp"
+	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
@@ -77,6 +79,10 @@ type Deps struct {
 	// Drafts holds the drafts that wait on the review screen. Nil means the
 	// proposals table in DB (ADR-00035).
 	Drafts *ingest.Drafts
+	// Media is the store recipe pictures and draft candidates are read from
+	// and deleted with a household (ADR-00039). Nil means the store the
+	// configuration asks for (media.New), which is the one avatars use.
+	Media media.Store
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -115,6 +121,13 @@ func newRouter(d Deps) (*chi.Mux, error) {
 
 	if d.MCPVerifier == nil {
 		d.MCPVerifier = mcp.OAuthVerifier{Tokens: oauth.New(d.DB), Next: mcp.KeyVerifier{Keys: apikey.New(d.DB)}}
+	}
+	if d.Media == nil {
+		m, err := media.New(d.Config)
+		if err != nil {
+			return nil, fmt.Errorf("web: open media storage: %w", err)
+		}
+		d.Media = m
 	}
 	if d.Drafts == nil {
 		d.Drafts = ingest.NewDrafts(store.New(d.DB))
