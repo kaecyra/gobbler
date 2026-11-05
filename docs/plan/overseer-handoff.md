@@ -1,8 +1,24 @@
-# Overseer handoff: 2026-11-05, round 21 closed; recipe-image nodes added
+# Overseer handoff: 2026-11-05, round 22 in progress
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 22 (2026-11-05): in progress
+
+**In flight** (dispatched together; worktrees at `.claude/worktrees/wt-<issue>`, each provisioned with `npm ci`):
+
+| Node | Issue | Branch | Migration |
+|---|---|---|---|
+| a-mcp-recipe-edit | #353 | feat/353-mcp-recipe-edit | schema 00029 |
+| m-fetch-guard | #421 | feat/421-fetch-guard | none |
+| m-media-fit | #422 | feat/422-media-fit | none |
+| i-image-candidates | #424 | feat/424-image-candidates | none |
+| d-picture-mockup | #428 | feat/428-picture-mockup | none |
+
+**Next:** m-avatar-keys (#423) when a slot frees; it overlaps none of the five.
+
+**Board:** host still has overseer 0.18.2, so only `--local` renders run; PR/CI state on the board is not refreshed.
 
 ## Round 21 (2026-11-05): drag between parts, step titles, flakes
 
