@@ -3469,7 +3469,7 @@
       "wave": 11,
       "track": null,
       "issue": 414,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "t-avatar-dialog-flake"
       ],
@@ -4647,6 +4647,12 @@
       "title": "draw the card spoons from layout.MaxSpoons",
       "merged": "a6509e8",
       "note": "Follow-up from #409: the recipe card's spoon loop still counts to a literal 5."
+    },
+    {
+      "id": "p-avatar-late-swap",
+      "title": "keep the picture dialog's error when a late reset swap lands",
+      "merged": "a0d6af9",
+      "note": "Found in #415 by reading profile.js: a reset swap that lands after a failed upload clears the error. Needs an e2e test that delays the reset response."
     }
   ],
   "adr_sequence": {
