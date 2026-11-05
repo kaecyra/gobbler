@@ -58,6 +58,10 @@ export async function seededServer(portVar: string, prefix: string) {
       }
       if (dataDir) rmSync(dataDir, { recursive: true, force: true });
     },
+    /** Deletes the media objects of recipe id's picture, which leaves the recipe pointing at nothing. */
+    dropPicture(id: number) {
+      rmSync(join(dataDir, 'media', 'recipes', String(id)), { recursive: true, force: true });
+    },
     /** Adds the fixture recipes; returns their ids by name. */
     seed(): Record<string, number> {
       const out = execFileSync('go', ['run', './e2e/recipes/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });

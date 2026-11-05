@@ -7,10 +7,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/kaecyra/gobbler/e2e/recipes/picseed"
 	"github.com/kaecyra/gobbler/e2e/seedutil"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/quantity"
@@ -60,6 +62,11 @@ func run(dir string) error {
 			return fmt.Errorf("create %q: %w", doc.Name, err)
 		}
 		ids[doc.Name] = id
+		if c, ok := pictured[doc.Name]; ok {
+			if err := picseed.Give(ctx, d, dir, id, c); err != nil {
+				return err
+			}
+		}
 		for _, n := range r.notes {
 			if _, err := st.AddNote(ctx, id, n, false); err != nil {
 				return fmt.Errorf("note on %q: %w", doc.Name, err)
@@ -73,6 +80,14 @@ func run(dir string) error {
 		}
 	}
 	return json.NewEncoder(os.Stdout).Encode(ids)
+}
+
+// pictured are the recipes that get a picture; the rest show the placeholder
+// band. Slow Ribs' object is deleted by the library spec to show a recipe whose
+// picture is missing from the store.
+var pictured = map[string]color.RGBA{
+	"Tomato Soup": {R: 200, G: 70, B: 50},
+	"Slow Ribs":   {R: 120, G: 70, B: 40},
 }
 
 type madeAt struct {

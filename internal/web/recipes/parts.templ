@@ -70,11 +70,59 @@ templ ribbonAssets() {
 	<script src={ ribbon.ScriptPath } defer></script>
 }
 
+// cardPicture is the top of a card (ADR-00039, Showing): the recipe's picture,
+// full-bleed and fading into the card, or the placeholder band of the same
+// height, which also sits under a picture while it loads and is all that is
+// left when the picture's object is gone (pictureFallback). The band carries
+// the recipe's meal-type picture and one of the .ph0 to .ph5 variants. It is
+// decoration, so it has no accessible name and the card's title link is the
+// way in.
+templ cardPicture(c cardView) {
+	<div class={ "rpic", "ph", "ph" + itoa(bandVariant(c.ID)) } data-testid="card-picture" data-pic?={ c.Picture != "" }>
+		if c.Picture != "" {
+			<img src={ c.Picture } alt="" width="1024" height="300" loading="lazy" decoding="async" data-pic-img/>
+		}
+		if c.Meal != "" {
+			<span class="phmark">
+				@layout.MealIcon(c.Meal)
+			</span>
+		}
+	</div>
+}
+
+// pictureFallback turns a picture that fails to load into its placeholder
+// band: the library answers a recipe's picture address with 404 when the
+// object is missing from the media store (the picture route logs it), and an
+// <img> cannot fall back by itself. It listens once per page and also looks at
+// pictures that had already failed when it ran. An htmx swap runs it again for
+// the new cards.
+templ pictureFallback() {
+	<script>
+		(function () {
+			function drop(img) {
+				var box = img.closest('[data-pic]');
+				if (box) box.removeAttribute('data-pic');
+				img.remove();
+			}
+			if (!window.gobblerPictureFallback) {
+				window.gobblerPictureFallback = true;
+				document.addEventListener('error', function (e) {
+					if (e.target && e.target.tagName === 'IMG' && e.target.hasAttribute('data-pic-img')) drop(e.target);
+				}, true);
+			}
+			document.querySelectorAll('img[data-pic-img]').forEach(function (img) {
+				if (img.complete && img.naturalWidth === 0) drop(img);
+			});
+		})();
+	</script>
+}
+
 // recipeCard is one library card: meal type and chilis, title and source,
 // components, key ingredients, rating and made-it line, and the time ribbon
 // pinned to the bottom. The title link is stretched over the whole card.
 templ recipeCard(c cardView) {
 	<article class="rcard">
+		@cardPicture(c)
 		<div class="ctop">
 			if c.Meal != "" {
 				@mealType(c.Meal, c.MealLabel)

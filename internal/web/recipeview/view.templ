@@ -147,6 +147,52 @@ templ videoPlayer(v view) {
 	<script src={ videoScriptPath } defer></script>
 }
 
+// pictureHeader is the top of the page (ADR-00039, Showing): the recipe's
+// picture kept short, or the placeholder band at the same height, with the
+// title over the fade so the ingredients stay high on a tablet. The band also
+// sits under a picture while it loads and is what remains when the picture's
+// object is gone (pictureFallback).
+templ pictureHeader(v view) {
+	<div class={ "rhero", "ph" + strconv.Itoa(bandVariant(v.ID)) } data-testid="recipe-picture" data-pic?={ v.Picture != "" }>
+		if v.Picture != "" {
+			<img src={ v.Picture } alt="" width="1124" height="210" decoding="async" data-pic-img/>
+		}
+		if v.Meta.MealType != "" {
+			<span class="phmark">
+				@layout.MealIcon(v.Meta.MealType)
+			</span>
+		}
+		<h1>{ v.Name }</h1>
+	</div>
+	@pictureFallback()
+}
+
+// pictureFallback turns a picture that fails to load into its placeholder
+// band: the picture route answers 404 when the object is missing from the
+// media store (and logs it), and an <img> cannot fall back by itself. It
+// listens once per page and also looks at a picture that had already failed
+// when it ran. An htmx swap of the recipe runs it again.
+templ pictureFallback() {
+	<script>
+		(function () {
+			function drop(img) {
+				var box = img.closest('[data-pic]');
+				if (box) box.removeAttribute('data-pic');
+				img.remove();
+			}
+			if (!window.gobblerPictureFallback) {
+				window.gobblerPictureFallback = true;
+				document.addEventListener('error', function (e) {
+					if (e.target && e.target.tagName === 'IMG' && e.target.hasAttribute('data-pic-img')) drop(e.target);
+				}, true);
+			}
+			document.querySelectorAll('img[data-pic-img]').forEach(function (img) {
+				if (img.complete && img.naturalWidth === 0) drop(img);
+			});
+		})();
+	</script>
+}
+
 templ recipeBody(v view) {
 	<article id="recipe" class="recipe">
 		<nav class="crumbs" aria-label="Breadcrumb">
@@ -158,9 +204,9 @@ templ recipeBody(v view) {
 				<span aria-current="page">{ v.Name }</span>
 			}
 		</nav>
+		@pictureHeader(v)
 		<div class="rhead">
 			<div>
-				<h1>{ v.Name }</h1>
 				if v.Description != "" {
 					<p class="lede">{ v.Description }</p>
 				}

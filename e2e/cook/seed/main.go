@@ -8,9 +8,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"os"
 	"time"
 
+	"github.com/kaecyra/gobbler/e2e/recipes/picseed"
 	"github.com/kaecyra/gobbler/e2e/seedutil"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/quantity"
@@ -76,6 +78,10 @@ func run(dir string) error {
 	}
 	emptyID, err := store.New(d).Create(ctx, recipe.Recipe{Name: "E2E Water", Components: []recipe.Component{{}}})
 	if err != nil {
+		return err
+	}
+	// The pizza has a picture, so the spec can show that cook mode draws none.
+	if err := picseed.Give(ctx, d, dir, pizzaID, color.RGBA{R: 220, G: 160, B: 60}); err != nil {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"pizza": pizzaID, "empty": emptyID})

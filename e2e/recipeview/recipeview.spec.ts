@@ -497,3 +497,45 @@ test('a step offered while a passive step waits is tagged with that step', async
   // The step that waits for the chop is not offered, so it has no such tag.
   await expect(page.locator('.step', { hasText: 'Simmer the sauce.' }).getByTestId('during')).toHaveCount(0);
 });
+
+// Recipe pictures (ADR-00039, Showing): a short header with the title over the
+// fade, or the placeholder band of the same height.
+test('the header shows the recipe picture short, with the title over it', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  const hero = page.getByTestId('recipe-picture');
+  const img = hero.locator('img');
+  await expect(img).toHaveAttribute('src', new RegExp(`^/recipes/${id}/picture\\?v=`));
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  const box = (await hero.boundingBox())!;
+  expect(box.height).toBe(210);
+  // The title is inside the picture, near its bottom, and is still the page's h1.
+  const title = page.getByRole('heading', { name: 'E2E Sponge', level: 1 });
+  const t = (await title.boundingBox())!;
+  expect(t.y).toBeGreaterThanOrEqual(box.y);
+  expect(t.y + t.height).toBeLessThanOrEqual(box.y + box.height + 1);
+  expect(t.y).toBeGreaterThan(box.y + box.height / 2);
+  await expect(hero.locator('.phmark')).toBeHidden();
+});
+
+test('a recipe without a picture shows the placeholder band at the same height, with its meal type', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  const hero = page.getByTestId('recipe-picture');
+  await expect(hero.locator('img')).toHaveCount(0);
+  await expect(hero).toHaveClass(new RegExp(`\\bph${styledId % 6}\\b`));
+  await expect(hero.locator('.phmark svg')).toBeVisible();
+  expect((await hero.boundingBox())!.height).toBe(210);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 800 });
+  expect((await hero.boundingBox())!.height).toBe(160);
+});
+
+test('a recipe whose picture object is missing shows the placeholder band, not a broken image', async ({ page }) => {
+  rmSync(join(dataDir, 'media', 'recipes', String(meanwhileId)), { recursive: true, force: true });
+  const missing = page.waitForResponse((r) => r.url().includes(`/recipes/${meanwhileId}/picture`));
+  await page.goto(`/recipes/${meanwhileId}`);
+  expect((await missing).status()).toBe(404);
+  const hero = page.getByTestId('recipe-picture');
+  await expect(hero.locator('img')).toHaveCount(0);
+  await expect(hero).toHaveClass(new RegExp(`\\bph${meanwhileId % 6}\\b`));
+  expect((await hero.boundingBox())!.height).toBe(210);
+});

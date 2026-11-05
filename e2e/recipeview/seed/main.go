@@ -12,9 +12,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"os"
 	"time"
 
+	"github.com/kaecyra/gobbler/e2e/recipes/picseed"
 	"github.com/kaecyra/gobbler/e2e/seedutil"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/quantity"
@@ -152,6 +154,13 @@ func run(dir string) error {
 	meanwhileID, err := store.New(d).Create(ctx, pizza)
 	if err != nil {
 		return err
+	}
+	// Two recipes have a picture: the first, and the meanwhile recipe, whose
+	// object the spec deletes. The clone and the styled recipe have none.
+	for _, pid := range []int64{id, meanwhileID} {
+		if err := picseed.Give(ctx, d, dir, pid, color.RGBA{R: 60, G: 130, B: 90}); err != nil {
+			return err
+		}
 	}
 	cloneID, err := store.New(d).Clone(ctx, id)
 	if err != nil {

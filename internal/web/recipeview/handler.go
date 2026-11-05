@@ -55,6 +55,16 @@ type Catalog interface {
 type Deps struct {
 	Recipes Recipes
 	Catalog Catalog
+	// Pictures gives the address of the recipe's picture. Nil shows the
+	// placeholder band for every recipe.
+	Pictures Pictures
+}
+
+// Pictures finds the picture of a recipe (ADR-00039). The picture package's
+// service, through internal/web/picture.Srcs, satisfies it.
+type Pictures interface {
+	// Src is the address of recipe id's picture, empty when it has none.
+	Src(ctx context.Context, id int64) (string, error)
 }
 
 // Routes returns the routes of the recipe view, relative to Pattern.
@@ -141,6 +151,12 @@ func handle(d Deps) http.HandlerFunc {
 			return
 		}
 		v.Notice = notice
+		if d.Pictures != nil {
+			if v.Picture, err = d.Pictures.Src(r.Context(), id); err != nil {
+				layout.WriteError(w, r, fmt.Errorf("find picture of recipe %d: %w", id, err))
+				return
+			}
+		}
 		if rec.VideoID != "" {
 			has, err := d.Recipes.HasThumbnail(r.Context(), rec.VideoID)
 			if err != nil {

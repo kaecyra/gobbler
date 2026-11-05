@@ -192,6 +192,64 @@ test.describe('with recipes', () => {
     expect(foreign).toEqual([]);
   });
 
+  test('a card shows its picture full-bleed at the top, and the placeholder band when it has none', async ({ page }) => {
+    await page.goto('/recipes');
+    const soup = card(page, 'Tomato Soup');
+    const img = soup.locator('.rpic img');
+    await expect(img).toHaveAttribute('src', new RegExp(`^/recipes/${ids['Tomato Soup']}/picture\\?v=`));
+    await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+    // The picture sits above the meal type and spans the card's width.
+    const cardBox = (await soup.boundingBox())!;
+    const picBox = (await soup.getByTestId('card-picture').boundingBox())!;
+    expect(picBox.y - cardBox.y).toBeLessThanOrEqual(2);
+    expect(picBox.width).toBeGreaterThanOrEqual(cardBox.width - 4);
+    expect(picBox.height).toBe(150);
+    await expect(soup.locator('.rpic .phmark')).toBeHidden();
+
+    // No picture: the band, same height, with the meal-type picture and the variant of the id.
+    for (const name of ['Lemon Cake', 'Beef Stew']) {
+      const band = card(page, name).getByTestId('card-picture');
+      await expect(band.locator('img')).toHaveCount(0);
+      await expect(band).toHaveClass(new RegExp(`\\bph${ids[name]! % 6}\\b`));
+      await expect(band.locator('.phmark svg')).toBeVisible();
+      expect((await band.boundingBox())!.height).toBe(150);
+    }
+    expect(ids['Lemon Cake']! % 6).not.toBe(ids['Beef Stew']! % 6);
+  });
+
+  test('search results show the pictures too', async ({ page }) => {
+    await page.goto('/recipes');
+    await searchbox(page).fill('tomato');
+    await expect(cards(page)).toHaveCount(1);
+    await expect(cards(page).locator('.rpic img')).toHaveCount(1);
+  });
+
+  test('the home page and the side panels show no picture', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.rpic, .rhero')).toHaveCount(0);
+    await page.goto('/recipes');
+    await expect(page.locator('aside.side .rpic, aside.side img[src*="/picture"]')).toHaveCount(0);
+  });
+
+  test('a recipe whose picture object is missing shows its placeholder band, not a broken image', async ({ page }) => {
+    const ribs = (p: import('@playwright/test').Page) => card(p, 'Slow Ribs').getByTestId('card-picture');
+    // The picture is there until the object goes. (Asked outside the page, which would keep the
+    // answer in its cache and never ask again.)
+    const src = (await (await page.request.get('/recipes')).text()).match(new RegExp(`/recipes/${ids['Slow Ribs']}/picture\\?v=[\\w-]+`))?.[0];
+    expect(src, 'the library links the picture').toBeTruthy();
+    expect((await page.request.get(src!)).status()).toBe(200);
+
+    srv.dropPicture(ids['Slow Ribs']!);
+    const missing = page.waitForResponse((r) => r.url().includes(`/recipes/${ids['Slow Ribs']}/picture`));
+    await page.goto('/recipes');
+    expect((await missing).status()).toBe(404);
+    await expect(ribs(page).locator('img')).toHaveCount(0);
+    await expect(ribs(page)).not.toHaveAttribute('data-pic', '');
+    await expect(ribs(page).locator('.phmark svg')).toBeVisible();
+    await expect(ribs(page)).toHaveClass(new RegExp(`\\bph${ids['Slow Ribs']! % 6}\\b`));
+    expect((await ribs(page).boundingBox())!.height).toBe(150);
+  });
+
   test.describe('time ribbon', () => {
     const knotsRibbon = (page: import('@playwright/test').Page) => card(page, 'Cardamom Knots').locator('[data-rib]');
     // Sets the width of a card, so the ribbon refits as it would in a narrower grid cell.

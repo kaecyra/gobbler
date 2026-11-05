@@ -10,6 +10,7 @@ package recipes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -48,9 +49,19 @@ type Library interface {
 	Idle(ctx context.Context) ([]store.Card, error)
 }
 
+// Pictures finds the picture of a recipe (ADR-00039). The picture package's
+// service, through internal/web/picture.Srcs, satisfies it.
+type Pictures interface {
+	// Src is the address of recipe id's picture, empty when it has none.
+	Src(ctx context.Context, id int64) (string, error)
+}
+
 // Deps is what the routes need.
 type Deps struct {
 	Library Library
+	// Pictures gives the address of a recipe's picture for its card. Nil
+	// shows every card with the placeholder band.
+	Pictures Pictures
 	// Now is the clock; time.Now when nil.
 	Now func() time.Time
 }
@@ -106,6 +117,10 @@ func library(d Deps) http.HandlerFunc {
 			return
 		}
 		res := buildResults(q, group, found, d.now())
+		if err := d.addPictures(r.Context(), res.Groups); err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
 		if targets(r, "results") {
 			layout.Render(w, r, http.StatusOK, resultsFragment(res))
 			return
@@ -133,6 +148,29 @@ func library(d Deps) http.HandlerFunc {
 		}
 		layout.Render(w, r, http.StatusOK, libraryPage(res, side))
 	}
+}
+
+// addPictures sets the address of each card's picture. A recipe deleted since
+// the cards were read has no picture to show, which is an answer, not a
+// failure; any other error is.
+func (d Deps) addPictures(ctx context.Context, groups []groupView) error {
+	if d.Pictures == nil {
+		return nil
+	}
+	for gi := range groups {
+		for ci := range groups[gi].Cards {
+			c := &groups[gi].Cards[ci]
+			src, err := d.Pictures.Src(ctx, c.ID)
+			if errors.Is(err, store.ErrNotFound) {
+				continue
+			}
+			if err != nil {
+				return fmt.Errorf("find picture of recipe %d: %w", c.ID, err)
+			}
+			c.Picture = src
+		}
+	}
+	return nil
 }
 
 // ideaParam reads the suggestion index from the URL; absent is the first idea.

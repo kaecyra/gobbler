@@ -54,6 +54,16 @@ const libraryStyle = `
 .rfoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); padding-top: 4px; margin-top: auto; }
 .rcard .rib { margin: 4px -16px 0; }
 
+/* A card's picture, or the placeholder band of the same height (ADR-00039; the
+   .ph0 to .ph5 variants are in the shared stylesheet). It bleeds to the card's
+   edges and fades into the card where the text starts. */
+.rpic { position: relative; margin: -16px -16px -10px; height: var(--pic-h, 150px); overflow: hidden; flex: none; display: grid; place-items: center; padding-bottom: 14px; }
+.rpic > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.rpic::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 38%, color-mix(in srgb, var(--card) 70%, transparent) 72%, var(--card) 100%); pointer-events: none; }
+.rpic .phmark { position: relative; z-index: 1; width: 56px; height: 56px; border-radius: var(--r); background: color-mix(in srgb, var(--card) 82%, transparent); border: 1px solid var(--line); display: grid; place-items: center; color: var(--walnut); }
+.rpic .phmark svg { width: 32px; height: 32px; display: block; }
+.rpic[data-pic] .phmark { display: none; }
+
 .side { display: flex; flex-direction: column; gap: 28px; }
 .lib.home .side { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: 24px; max-width: 1040px; margin: 34px auto 0; align-items: start; }
 @media (max-width: 900px) { .lib.home .side { grid-template-columns: minmax(0, 1fr); max-width: 620px; } }

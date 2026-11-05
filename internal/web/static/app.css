@@ -545,3 +545,29 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .pick-note svg { width: 18px; height: 18px; flex: none; }
 /* Choosing hides the prompt without a script. */
 .picker:has(input:checked) .pick-note.unchosen { display: none; }
+
+/* Recipe pictures (ADR-00039, docs/ui/design.md "Recipe pictures"). A recipe
+   with no picture, or whose picture object is gone, gets a placeholder band;
+   its variant is the recipe id modulo 6, chosen where the page is built, so a
+   seventh variant needs a Go constant changed with it. Tokens only. */
+.ph0 { background: radial-gradient(color-mix(in srgb, var(--wattle) 30%, transparent) 1.6px, transparent 2.2px) 0 0 / 14px 14px, var(--wattle-soft); }
+.ph1 { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--grain) 26%, transparent) 0 6px, transparent 6px 15px), var(--grain-soft); }
+.ph2 { background: linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 18px 18px, linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 18px 18px, var(--sunk); }
+.ph3 { background: radial-gradient(circle at 50% 100%, transparent 9px, color-mix(in srgb, var(--st-mint-b) 34%, transparent) 10px 11px, transparent 12px) 0 0 / 24px 14px, color-mix(in srgb, var(--st-mint-b) 20%, var(--card)); }
+.ph4 { background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--st-sky-b) 26%, transparent) 0 5px, transparent 5px 14px), color-mix(in srgb, var(--st-sky-b) 14%, var(--card)); }
+.ph5 { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--st-butter-b) 24%, transparent) 0 4px, transparent 4px 12px), repeating-linear-gradient(-45deg, color-mix(in srgb, var(--st-butter-b) 24%, transparent) 0 4px, transparent 4px 12px), color-mix(in srgb, var(--st-butter-b) 14%, var(--card)); }
+
+/* The recipe page header: a short picture or band with the title over the fade. */
+.rhero { position: relative; height: var(--hero-h, 210px); border-radius: var(--r); overflow: hidden; margin-bottom: 6px; }
+.rhero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 20%, color-mix(in srgb, var(--paper) 78%, transparent) 62%, var(--paper) 94%); pointer-events: none; }
+.rhero .phmark { position: absolute; z-index: 1; top: 22px; right: 28px; width: 72px; height: 72px; border-radius: var(--r); background: color-mix(in srgb, var(--card) 82%, transparent); border: 1px solid var(--line); display: grid; place-items: center; color: var(--walnut); }
+.rhero .phmark svg { width: 40px; height: 40px; display: block; }
+.rhero[data-pic] .phmark { display: none; }
+.rhero h1 { position: absolute; z-index: 2; left: 20px; right: 20px; bottom: 6px; font-size: clamp(28px, 4.4vw, 40px); font-weight: 700; max-width: 22ch; }
+@media (max-width: 560px) {
+  .rhero { --hero-h: 160px; }
+  .rhero h1 { left: 14px; right: 14px; }
+  .rhero .phmark { top: 14px; right: 14px; width: 56px; height: 56px; }
+  .rhero .phmark svg { width: 32px; height: 32px; }
+}
