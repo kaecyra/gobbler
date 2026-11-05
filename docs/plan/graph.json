@@ -2870,7 +2870,8 @@
         "a-mcp-oauth",
         "a-recipe-proposals",
         "a-oauth-limits",
-        "r-stage-serve"
+        "r-stage-serve",
+        "u-drag-between-parts"
       ],
       "owns": [
         "internal/mcp/**",
@@ -3362,6 +3363,48 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner request 2026-11-05. Rule-based lead-sentence split, flagged low confidence; Tasty bold leads. Bumps ParserVersion."
+    },
+    {
+      "id": "u-drag-between-parts",
+      "title": "drag ingredients and steps between parts; name a part from Steps",
+      "wave": 11,
+      "track": null,
+      "issue": 404,
+      "status": "todo",
+      "depends_on": [
+        "r-stage-serve"
+      ],
+      "owns": [
+        "internal/web/editor/**",
+        "internal/web/static/editor.js",
+        "e2e/editor/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner request 2026-11-05: drag only, no fallback without scripts; part name editable in Steps, synced with Ingredients. After r-stage-serve: both own internal/web/editor/**."
+    },
+    {
+      "id": "r-rating-bound",
+      "title": "export the top of the rating scale once",
+      "wave": 11,
+      "track": null,
+      "issue": 401,
+      "status": "todo",
+      "depends_on": [
+        "r-recipes-verdict"
+      ],
+      "owns": [
+        "internal/web/layout/recipe.go",
+        "internal/web/layout/recipe_test.go",
+        "internal/web/journal/handler.go",
+        "internal/web/journal/view.go",
+        "internal/web/recipes/model.go",
+        "internal/web/recipes/model_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Follow-up from r-recipes-verdict (#400): maxSpoons, journal maxRating and recipes maxRating are one bound."
     }
   ],
   "shared_files": [
