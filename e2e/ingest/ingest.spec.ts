@@ -1,7 +1,8 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { pasteText } from './helpers';
+import { dragRow } from '../editor/drag';
 import { userCopy } from '../fixtures/copy';
 
 // The ingest form and the review screen (ADR-00006): nothing is saved until
@@ -647,26 +648,6 @@ test("an equipment chip's open details sit above the save bar", async ({ page })
   expect(onTop, 'the open details are drawn above the save bar').toBe(true);
 });
 
-// dragIntoPart drags a row by its handle into the middle of a part's box,
-// measuring the box again once the row is previewed there: taking the row out
-// of the first part moves the parts below it up.
-async function dragIntoPart(page: Page, row: Locator, part: Locator) {
-  await part.scrollIntoViewIfNeeded();
-  const grip = (await row.locator('.grip').first().boundingBox())!;
-  const x = grip.x + grip.width / 2;
-  const y0 = grip.y + grip.height / 2;
-  const mid = async () => {
-    const b = (await part.boundingBox())!;
-    return b.y + b.height / 2;
-  };
-  const y1 = await mid();
-  await page.mouse.move(x, y0);
-  await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
-  for (let i = 0; i < 3; i++) await page.mouse.move(x, await mid());
-  await page.mouse.up();
-}
-
 // A row dragged by its handle into another part, and a part named from Steps,
 // on the review screen: the same editor form as the recipe editor.
 test('on review a line and a step are dragged into an empty part and a part is named from Steps', async ({ page }) => {
@@ -684,13 +665,13 @@ test('on review a line and a step are dragged into an empty part and a part is n
   expect(await lines(1).count(), 'the new part is empty').toBe(0);
 
   const ing = await page.locator(`[name="c.0.l.${nLines - 1}.ing"]`).inputValue();
-  await dragIntoPart(page, lines(0).nth(nLines - 1), page.locator('#ed-ingredients .component').nth(1));
+  await dragRow(page, lines(0).nth(nLines - 1), page.locator('#ed-ingredients .component').nth(1), 0.5);
   await expect(lines(1)).toHaveCount(1);
   await expect(lines(0)).toHaveCount(nLines - 1);
   await expect(page.locator('[name="c.1.l.0.ing"]')).toHaveValue(ing);
 
   const text = await page.locator(`[name="c.0.s.${nSteps - 1}.text"]`).inputValue();
-  await dragIntoPart(page, steps(0).nth(nSteps - 1), page.locator('#ed-steps .component').nth(1));
+  await dragRow(page, steps(0).nth(nSteps - 1), page.locator('#ed-steps .component').nth(1), 0.5);
   await expect(steps(1)).toHaveCount(1);
   await expect(steps(0)).toHaveCount(nSteps - 1);
   await expect(page.locator('[name="c.1.s.0.text"]')).toHaveValue(text);

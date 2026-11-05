@@ -7,41 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
 import { expectTapTargets } from '../fixtures/tap';
 import { userCopy } from '../fixtures/copy';
-
-// dragRow drags a row by its handle onto another row, releasing at frac of the
-// target's height.
-async function dragRow(page: Page, from: Locator, to: Locator, frac: number) {
-  await to.scrollIntoViewIfNeeded();
-  const grip = (await from.locator('.grip').first().boundingBox())!;
-  const target = (await to.boundingBox())!;
-  const x = grip.x + grip.width / 2;
-  const y0 = grip.y + grip.height / 2;
-  const y1 = target.y + target.height * frac;
-  await page.mouse.move(x, y0);
-  await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
-  await page.mouse.up();
-}
-
-// dragInto is dragRow for a row that leaves one part for another. Taking the row
-// out of the first part moves everything below it up, so the target is
-// measured again at the end, with the row already previewed in its new place.
-async function dragInto(page: Page, from: Locator, to: Locator, frac: number) {
-  await to.scrollIntoViewIfNeeded();
-  const grip = (await from.locator('.grip').first().boundingBox())!;
-  const x = grip.x + grip.width / 2;
-  const y0 = grip.y + grip.height / 2;
-  const t = (await to.boundingBox())!;
-  const y1 = t.y + t.height * frac;
-  await page.mouse.move(x, y0);
-  await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
-  for (let i = 0; i < 3; i++) {
-    const live = (await to.boundingBox())!;
-    await page.mouse.move(x, live.y + live.height * frac);
-  }
-  await page.mouse.up();
-}
+import { dragRow, scrollDrift, watchScroll } from './drag';
 
 // The editor needs a recipe in the database, which the shared server of the
 // suite does not have. This spec seeds its own data directory through the real
@@ -396,6 +362,19 @@ test('without JavaScript, Save in the bar saves', async ({ browser }) => {
   await ctx.close();
 });
 
+// The name box under Steps is a script's convenience: it has no name, so
+// typing in it without a script would be lost. It is hidden then, and the
+// read-only title shows instead.
+test('without JavaScript, the Steps name box is hidden and the part title shows', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
+  const page = await ctx.newPage();
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator('#ed-steps input[data-part-name]').first()).toBeHidden();
+  await expect(page.locator('#ed-steps .grp-title').first()).toBeVisible();
+  await expect(page.locator('[name="c.0.name"]')).toBeVisible();
+  await ctx.close();
+});
+
 test('without JavaScript, Enter in a field saves', async ({ browser }) => {
   const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL: origin });
   const page = await ctx.newPage();
@@ -422,18 +401,11 @@ test('Add qualifier keeps the page in place and focuses the new qualifier', asyn
   const n = await page.locator('[name^="c.0.l.0.q."][name$=".text"]').count();
   // Sample the scroll position on every frame, so a jump that is scrolled
   // back afterwards still fails.
-  await page.evaluate(() => {
-    const w = window as unknown as { ys: number[] };
-    w.ys = [];
-    const t0 = performance.now();
-    const f = () => { w.ys.push(window.scrollY); if (performance.now() - t0 < 1500) requestAnimationFrame(f); };
-    requestAnimationFrame(f);
-  });
+  await watchScroll(page, 1500);
   await add.click();
   await expect(page.locator(`[name="c.0.l.0.q.${n}.text"]`)).toBeFocused();
   await page.waitForTimeout(1600);
-  const ys = await page.evaluate(() => (window as unknown as { ys: number[] }).ys);
-  const worst = Math.max(...ys.map((y) => Math.abs(y - before)));
+  const worst = await scrollDrift(page, before);
   expect(worst, `scrollY moved up to ${worst}px from ${before}`).toBeLessThanOrEqual(4);
 });
 
@@ -450,42 +422,6 @@ test('dragging a step by its handle reorders the steps', async ({ page }) => {
   await expect(page.locator('[name="c.0.s.1.text"]')).toHaveValue(first);
 });
 
-// dragSampled drags a row by its handle onto a row of another part and
-// releases at frac of that row's height, sampling the scroll position on every
-// frame from the press until the answer has morphed in, so a jump that is
-// scrolled back afterwards still fails (ADR-00038). Both rows must already be
-// on screen, clear of the edge where a drag scrolls the page. Returns the
-// worst scroll movement.
-async function dragSampled(page: Page, from: Locator, to: Locator, frac: number): Promise<number> {
-  const before = await page.evaluate(() => window.scrollY);
-  const grip = (await from.locator('.grip').first().boundingBox())!;
-  const target = (await to.boundingBox())!;
-  const h = page.viewportSize()!.height;
-  expect(grip.y, 'the dragged row is on screen').toBeGreaterThan(100);
-  expect(target.y + target.height, 'the target row is on screen').toBeLessThan(h - 100);
-  await page.evaluate(() => {
-    const w = window as unknown as { ys: number[] };
-    w.ys = [];
-    const t0 = performance.now();
-    const f = () => { w.ys.push(window.scrollY); if (performance.now() - t0 < 2500) requestAnimationFrame(f); };
-    requestAnimationFrame(f);
-  });
-  const x = grip.x + grip.width / 2;
-  const y0 = grip.y + grip.height / 2;
-  const y1 = target.y + target.height * frac;
-  await page.mouse.move(x, y0);
-  await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y0 + ((y1 - y0) * i) / 10);
-  for (let i = 0; i < 3; i++) {
-    const live = (await to.boundingBox())!;
-    await page.mouse.move(x, live.y + live.height * frac);
-  }
-  await page.mouse.up();
-  await page.waitForTimeout(2600);
-  const ys = await page.evaluate(() => (window as unknown as { ys: number[] }).ys);
-  return Math.max(...ys.map((y) => Math.abs(y - before)));
-}
-
 // Parts are dragged between by the same handle as within one. The page ends
 // with Dough, Glaze and Topping from the tests above; these rows are read from
 // the page rather than assumed.
@@ -498,7 +434,7 @@ test('dragging an ingredient into another part saves it there at the dropped pos
   const before0 = await lines(0).count();
   const before1 = await lines(1).count();
   expect(before1, 'part 2 has a line to drop onto').toBeGreaterThan(0);
-  await dragInto(page, lines(0).nth(0), lines(1).nth(0), 0.8);
+  await dragRow(page, lines(0).nth(0), lines(1).nth(0), 0.8);
   await expect(lines(0)).toHaveCount(before0 - 1);
   await expect(lines(1)).toHaveCount(before1 + 1);
   const at = async () => ({ qty: await get(1, 1, 'qty'), unit: await get(1, 1, 'unit'), ing: await get(1, 1, 'ing') });
@@ -535,7 +471,7 @@ test('dragging a step into another part saves it there with its title, kind, dur
   await link.check();
   await page.evaluate(() => window.scrollTo(0, 0));
   const n1 = await steps(1).count();
-  await dragInto(page, steps(0).nth(moving), steps(1).nth(0), 0.2);
+  await dragRow(page, steps(0).nth(moving), steps(1).nth(0), 0.2);
   await expect(steps(1)).toHaveCount(n1 + 1);
   await expect(field(1, 0, 'id')).toHaveValue(key);
   const now = async () => ({
@@ -567,7 +503,17 @@ test('dragging a row into another part does not jump the page', async ({ page })
   await page.evaluate((dy) => window.scrollBy(0, dy), top - 220);
   expect(await page.evaluate(() => window.scrollY), 'the rows are mid-page').toBeGreaterThan(100);
   // The source is above the target, so it moves down into the next part.
-  const worst = await dragSampled(page, steps(0).nth(n0 - 1), steps(1).nth(0), 0.8);
+  // Both rows must be on screen, clear of the edge where a drag scrolls the page.
+  const source = steps(0).nth(n0 - 1);
+  const target = steps(1).nth(0);
+  expect((await source.boundingBox())!.y, 'the dragged row is on screen').toBeGreaterThan(100);
+  const t = (await target.boundingBox())!;
+  expect(t.y + t.height, 'the target row is on screen').toBeLessThan(900 - 100);
+  const before = await page.evaluate(() => window.scrollY);
+  await watchScroll(page, 2500);
+  await dragRow(page, source, target, 0.8);
+  await page.waitForTimeout(2600);
+  const worst = await scrollDrift(page, before);
   await expect(steps(1)).toHaveCount(n1 + 1);
   expect(worst, `scrollY moved up to ${worst}px`).toBeLessThanOrEqual(4);
 });
