@@ -75,7 +75,7 @@ templ RecipeStep(s RecipeStepView, number string) {
 						<span class={ "stag", templ.KV("t", s.Passive) }>{ s.Time }</span>
 					}
 					if len(s.After) > 0 {
-						<span class="stag dep" data-testid="after">{ afterText(s.After) }</span>
+						<span class="stag dep" data-testid="after">{ AfterText(s.After) }</span>
 					}
 					if len(s.During) > 0 {
 						<span class="stag dep" data-testid="during">{ duringText(s.During) }</span>

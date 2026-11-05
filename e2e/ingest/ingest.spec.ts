@@ -175,10 +175,12 @@ test('the review controls are at least 44px tall', async ({ page }) => {
   await pasteText(page, MESSY);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
-  await expectTall(page, '.review-body .editor button');
-  await expectTall(page, '.review-body .editor input[type=text]');
-  await expectTall(page, '.review-body .editor select');
-  await expectTall(page, '.review-body .editor label.inline');
+  // Measured as shown: controls inside a closed disclosure are not drawn.
+  await expectTall(page, '.review-body .editor button:visible');
+  await expectTall(page, '.review-body .editor input[type=text]:visible');
+  await expectTall(page, '.review-body .editor select:visible');
+  await expectTall(page, '.review-body .editor label.inline:visible');
+  await expectTall(page, '.review-body .editor summary:visible');
   await expectTall(page, '.srcbox-wrap summary');
 });
 
@@ -286,7 +288,7 @@ Cook on a hot greased griddle until golden on both sides.
   await expect(page.getByLabel('Prep time')).toHaveValue('20 min');
   await expect(page.getByLabel('Cook time')).toHaveValue('70 min');
   await expect(page.getByLabel('Yield amount')).toHaveValue('12');
-  await expect(page.getByLabel('Yield unit (for example loaf)')).toHaveValue('pancakes');
+  await expect(page.getByLabel('Yield unit')).toHaveValue('pancakes');
   // Read as fields, so the label text is not left in a step or the description.
   await expect(page.locator('textarea').filter({ hasText: 'Prep time' })).toHaveCount(0);
 });
@@ -353,13 +355,16 @@ test('an amount, a unit and a whole line can be corrected on review before anyth
   await first.getByLabel('Unit', { exact: true }).fill('tbsp');
 
   // A structural button keeps what was typed and saves nothing.
-  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  // Remove line sits in the line's details.
+  await page.locator('li.line').last().locator('summary').click();
+  await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
   await expect(page.locator('li.line')).toHaveCount(2);
   await expect(page.locator('li.line').nth(0).getByLabel('Quantity')).toHaveValue('3');
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
   await page.getByRole('button', { name: 'Add ingredient line' }).click();
   await expect(page.locator('li.line')).toHaveCount(3);
-  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  // A line just added comes back with its details open.
+  await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
@@ -381,14 +386,17 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   await first.getByLabel('Quantity').fill('3');
   await first.getByLabel('Unit', { exact: true }).fill('tbsp');
 
-  // Step 3 follows step 1 instead of step 2, and step 2 is passive.
+  // Step 3 follows step 1 instead of step 2, and step 2 is passive. Both are
+  // set in the steps' details.
+  await page.locator('li.step').nth(1).locator('summary').click();
+  await page.locator('li.step').nth(2).locator('summary').click();
   await page.locator('[name="c.0.s.2.dep"][value="s2"]').uncheck();
   await page.locator('[name="c.0.s.2.dep"][value="s1"]').check();
   await page.locator('[name="c.0.s.1.passive"]').check();
 
   // A structural button keeps the edit.
   await page.getByRole('button', { name: 'Add ingredient line' }).click();
-  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
   await expect(page.locator('[name="c.0.s.2.dep"][value="s1"]')).toBeChecked();
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
@@ -491,6 +499,9 @@ test('meal type, stage kinds and step titles from the page reach review and are 
   await expect(page.locator('[name="c.0.s.2.kind"]')).toHaveValue('bake');
 
   // Each can be changed or cleared before anything is saved.
+  // A stage kind is set in the step's details.
+  await page.locator('li.step').nth(1).locator('summary').click();
+  await page.locator('li.step').nth(2).locator('summary').click();
   await page.locator('[name="c.0.s.2.kind"]').selectOption('roast');
   await page.locator('[name="c.0.s.1.kind"]').selectOption('');
 

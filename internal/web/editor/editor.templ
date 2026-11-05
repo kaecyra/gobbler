@@ -2,6 +2,8 @@ package editor
 
 import (
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -23,40 +25,166 @@ templ editorPage(v view) {
 // structural button (add, remove, move) changes the draft and shows the form
 // again, Save validates it and stores it. The first submit button in the markup is
 // the one the Enter key presses.
+//
+// Each section is a heading above a card. Ingredients and steps are separate
+// sections, each grouped by component; the form is read back by field name
+// (parseForm), never by where a field sits, so the grouping is only layout.
+// A line, a step and a piece of equipment show a compact row, and keep the
+// rest of their fields in a disclosure that starts open when the item has
+// something to check.
 templ editorForm(v view) {
-	<form id="editor" class="editor" method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
+	<form id="editor" class={ v.formClass() } method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
 		<style>
-			.editor fieldset { border: 1px solid var(--line); border-radius: var(--r); background: var(--card); margin: 16px 0; padding: 8px 16px 16px; min-width: 0; }
-			.editor legend { font-family: var(--f-display); font-weight: 700; padding: 0 6px; }
-			.editor h2 { font-size: 22px; margin: 24px 0 4px; }
-			.editor h3 { font-size: 17px; margin: 16px 0 4px; }
-			.editor label { display: block; font-weight: 600; font-size: 15px; color: var(--ink-2); margin-top: 10px; }
+			.editor { display: flex; flex-direction: column; gap: 26px; }
+			.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
+			.editor .fl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+			.editor .fl > label, .editor .lbl { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
 			.editor input[type=text], .editor textarea, .editor select {
-				display: block; width: 100%; min-height: var(--tap); margin-top: 4px; padding: 8px 12px;
+				display: block; width: 100%; min-height: var(--tap); padding: 8px 12px;
 				border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);
-				font: inherit; font-weight: 400;
+				font: inherit; font-size: 16px; font-weight: 400;
 			}
+			.editor textarea { resize: vertical; }
 			.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }
-			.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); margin-top: 0; font-weight: 400; color: var(--ink); }
-			.editor label.inline input { width: 22px; height: 22px; flex: none; accent-color: var(--wattle-ink); }
-			.editor summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; font-weight: 600; color: var(--ink-2); }
-			.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 8px 0; }
+			.editor input.quiet, .editor textarea.quiet { background: transparent; border-color: transparent; }
+			.editor input.quiet:hover, .editor textarea.quiet:hover { border-color: var(--line); }
+			.editor input.quiet:focus, .editor textarea.quiet:focus { border-color: var(--wattle); background: var(--card); }
+			.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font-weight: 400; font-size: 16px; color: var(--ink); cursor: pointer; }
+			.editor label.inline input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--wattle-ink); }
+			.editor .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+			.editor .btn.ghost:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
+			.editor .btn.ghost.danger { color: var(--wattle-ink); }
+			.editor .btn svg { width: 18px; height: 18px; }
+			.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 0; }
 			.editor .alert p { margin: 0; }
-			.editor .field-error { color: var(--wattle-ink); font-weight: 600; margin: 4px 0 0; }
-			.editor .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0 12px; }
-			.editor ol { list-style: none; padding-left: 0; margin: 0; }
-			.editor li.item { border-top: 1px solid var(--line); padding: 12px 0; }
-			.editor li.item:first-child { border-top: 0; }
-			.editor .grid > div { display: flex; flex-direction: column; justify-content: flex-end; }
-			@media (min-width: 700px) { .editor .line-grid { grid-template-columns: minmax(5rem, 0.6fr) minmax(6rem, 0.8fr) minmax(10rem, 2fr) minmax(8rem, 1fr); } }
-			.editor .flag::before { content: ""; display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--grain); margin-right: 6px; }
-			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
-			.editor .deps { margin-top: 8px; }
-			.editor .deps label { font-weight: 400; margin-top: 0; }
-			.editor .low { background: var(--grain-soft); border-radius: var(--r); padding-inline: 12px; }
-			.editor li.item.low { border-top-color: transparent; }
-			.editor .flag { color: var(--grain-ink); font-weight: 700; margin-right: 6px; }
-			.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; margin-right: 6px; font-size: 0.8em; }
+			.editor .field-error { color: var(--wattle-ink); font-weight: 600; font-size: 15px; margin: 2px 0 0; }
+			.editor .flag { color: var(--grain-ink); font-weight: 700; }
+			.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }
+			.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+			.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; color: var(--grain-ink); font-size: 15px; }
+			.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 3px; }
+			.editor ol { list-style: none; padding: 0; margin: 0; }
+			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+			.editor .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+			/* Recipe */
+			.editor .meta { padding: 22px 24px 18px; display: flex; flex-direction: column; gap: 18px; }
+			.editor .ed-name { font-family: var(--f-display); font-size: clamp(24px, 4vw, 30px); font-weight: 700; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }
+			.editor .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 12px 10px; }
+			.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 8px 10px; }
+			.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); }
+			.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }
+			.editor details.more-meta { border-top: 1px solid var(--line); }
+			.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 600; color: var(--ink-2); }
+			.editor .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 12px 14px; padding: 4px 0 8px; }
+			/* Components */
+			.editor .comp { padding: 12px 12px 14px; }
+			.editor .comp + .comp { border-top: 1px solid var(--line); }
+			.editor .comp-h { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 8px; padding: 0 4px 8px; }
+			.editor .comp-h .fl { flex: 1 1 18rem; }
+			.editor .comp-h .tools { margin-left: auto; gap: 0; }
+			.editor .comp-h input { font-family: var(--f-display); font-weight: 700; font-size: 18px; }
+			.editor .comp-name { font-size: 17px; margin: 4px 8px 6px; }
+			.editor .add { padding: 10px 16px 14px; border-top: 1px solid var(--line); }
+			/* The disclosure toggle of a row: a chevron at its top right. */
+			.editor li.item { position: relative; border-radius: var(--r); }
+			.editor details.more > summary {
+				position: absolute; top: 6px; right: 4px; width: var(--tap); height: var(--tap);
+				display: grid; place-items: center; border-radius: var(--r); color: var(--ink-3); cursor: pointer; list-style: none;
+			}
+			.editor details.more > summary::-webkit-details-marker { display: none; }
+			.editor details.more > summary:hover { background: var(--sunk); color: var(--ink); }
+			.editor details.more > summary svg { width: 20px; height: 20px; }
+			.editor details.more[open] > summary svg { transform: rotate(180deg); }
+			.editor .more-body {
+				display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 12px 14px; margin: 10px 0 4px;
+				background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px;
+			}
+			.editor .more-body .full { grid-column: 1 / -1; }
+			.editor .more-body .fl { justify-content: flex-end; }
+			.editor .more-body .help { margin: -6px 0 0; font-size: 14px; color: var(--ink-3); }
+			/* Ingredient lines */
+			.editor .cols, .editor .row { display: grid; grid-template-columns: 5.5rem 7rem minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+			.editor .cols { padding: 0 52px 4px 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+			.editor .cols span { padding-left: 13px; }
+			.editor.reviewing .cols { padding-left: 26px; }
+			.editor li.line, .editor li.equipment { padding: 6px 52px 6px 8px; }
+			.editor li.line + li.line, .editor li.equipment + li.equipment { margin-top: 2px; }
+			.editor.reviewing li.line { padding-left: 26px; }
+			.editor li.item:hover { background: var(--paper); }
+			.editor .row.erow { grid-template-columns: minmax(0, 1fr) auto; }
+			.editor .row input { border-color: transparent; background: transparent; }
+			.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }
+			.editor .row input:focus { border-color: var(--wattle); background: var(--card); }
+			.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }
+			.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }
+			.editor .c-ing input { flex: 1 1 8rem; min-width: 0; }
+			.editor .qual { color: var(--ink-3); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
+			.editor .c-mark { display: flex; gap: 6px; align-items: center; }
+			/* The confidence dot of a line under review. */
+			.editor.reviewing li.line::before {
+				content: ""; position: absolute; left: 10px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
+			}
+			.editor.reviewing li.line.low::before { background: var(--grain); }
+			.editor li.item.low, .editor li.item.low:hover { background: var(--grain-soft); }
+			.editor li.item.low .row input { background: var(--card); border-color: var(--line); }
+			.editor .quals { display: flex; flex-direction: column; gap: 8px; }
+			.editor .qualifier { display: grid; grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr); gap: 6px 8px; align-items: center; }
+			.editor .qualifier .tools { grid-column: 1 / -1; justify-content: flex-end; }
+			.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }
+			/* Steps */
+			.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }
+			.editor .legend + .legend { margin-left: 6px; }
+			.editor .swatch { width: 14px; height: 14px; border-radius: var(--r-sm); background: var(--wattle-soft); }
+			.editor .swatch.passive { background: var(--sunk); }
+			.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 16px 56px 14px 14px; }
+			.editor li.step + li.step { border-top: 1px solid var(--line); border-radius: 0; }
+			.editor li.step.low { border-radius: var(--r); }
+			.editor li.step details.more > summary { top: 12px; right: 6px; }
+			.editor .snum {
+				width: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;
+				background: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;
+			}
+			.editor .snum.passive { background: var(--sunk); color: var(--ink-2); }
+			.editor .snum.sm { width: 26px; height: 26px; font-size: 13.5px; }
+			.editor .sbody { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+			.editor .stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); }
+			.editor .sbody textarea.quiet { padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }
+			.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+			.editor .pill {
+				display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border: 1px solid var(--line);
+				border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600;
+			}
+			.editor .pill svg { width: 16px; height: 16px; }
+			.editor .pill.on { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }
+			.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }
+			.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+			.editor fieldset.deps legend { padding: 0; margin-bottom: 6px; }
+			.editor .grp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 4px 0 0; }
+			.editor .dep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 8px; }
+			.editor label.dep {
+				display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 4px 12px; border: 1px solid var(--line);
+				border-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);
+			}
+			.editor label.dep:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); }
+			.editor label.dep input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--wattle-ink); }
+			.editor label.dep .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }
+			.editor label.dep.self .this { font-size: 13px; font-weight: 700; }
+			/* Save bar */
+			.editor .savebar { align-items: center; }
+			.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }
+			.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }
+			.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
+			@media (max-width: 560px) {
+				.editor .meta { padding: 16px 14px; }
+				.editor .cols { display: none; }
+				.editor .row { grid-template-columns: 5rem minmax(0, 1fr); }
+				.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }
+				.editor .c-mark:empty { display: none; }
+				.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 50px; }
+				.editor .snum { width: 28px; height: 28px; font-size: 14px; }
+				.editor .comp { padding-inline: 4px; }
+			}
 		</style>
 		if v.carries(groupVersion) {
 			<input type="hidden" name="version" value={ v.version() }/>
@@ -69,15 +197,12 @@ templ editorForm(v view) {
 			</div>
 		}
 		// The default button for the Enter key: the visible Save is last, in the
-		// sticky bar, and implicit submission presses the first submit button. An input, not a
-		// button: the review screen styles every .editor button as a visible control.
+		// sticky bar, and implicit submission presses the first submit button. An
+		// input, not a button, so it never takes a button's styles.
 		<input type="submit" name="action" value="save" hidden/>
 		@metaFields(v)
-		<h2>Components</h2>
-		for ci, c := range v.D.Components {
-			@componentFields(v, ci, c)
-		}
-		<p class="tools"><button type="submit" class="btn" name="action" value="add-component">Add component</button></p>
+		@ingredientFields(v)
+		@stepSection(v)
 		@equipmentFields(v)
 		@saveBar(v)
 		<datalist id="ingredient-names">
@@ -101,9 +226,14 @@ templ editorForm(v view) {
 // saveBar is the primary action, stuck to the bottom of the viewport while the
 // form scrolls (above the tab bar on a phone): Save for a stored recipe, which
 // Cancel leaves for the recipe; Confirm and save for a draft under review, which
-// Cancel discards. It is last in the form, so it never covers a field.
+// Cancel discards. It is last in the form, so it never covers a field. While
+// items of a draft are marked low confidence, it counts them and links the
+// first.
 templ saveBar(v view) {
 	<div class="savebar">
+		if n, first := v.needsLook(); n > 0 {
+			<p class="look"><span class="dot" aria-hidden="true"></span>{ needsLookText(n) } <a href={ templ.SafeURL("#" + first) }>Show the first one</a></p>
+		}
 		<button type="submit" class="btn accent" name="action" value="save">{ v.saveLabel() }</button>
 		if v.reviewing() {
 			<button type="submit" form={ CancelFormID } class="btn" formnovalidate>Cancel</button>
@@ -111,6 +241,12 @@ templ saveBar(v view) {
 			<a class="btn" href={ templ.SafeURL(v.back()) }>Cancel</a>
 		}
 	</div>
+}
+
+// sectionHead is the heading above a section's card, the one style every
+// section of the form uses.
+templ sectionHead(id, title string) {
+	<div class="sec-h"><h2 id={ id }>{ title }</h2>{ children... }</div>
 }
 
 // badges are the words that flag an item of a draft under review.
@@ -123,11 +259,47 @@ templ badges(m mark) {
 	}
 }
 
+// llmBadge is the LLM word alone, for a row whose low mark is a hint of its own.
+templ llmBadge(m mark) {
+	if m.LLM {
+		<strong class="llm-mark">LLM</strong>
+	}
+}
+
+// checkHint is the line under a flagged item: what to check, with the alert
+// icon.
+templ checkHint(low bool, issues []string, fallback string) {
+	if low || len(issues) > 0 {
+		<p class="hint">
+			@layout.Icon(layout.IconAlert)
+			<span>
+				if low {
+					<strong class="flag">Check:</strong>
+				}
+				if len(issues) > 0 {
+					{ strings.Join(issues, "; ") }
+				} else {
+					{ fallback }
+				}
+			</span>
+		</p>
+	}
+}
+
+// moreToggle is the summary of a row's disclosure: a chevron, named for the
+// item it opens.
+templ moreToggle(name string) {
+	<summary>
+		@layout.Icon(layout.IconChevron)
+		<span class="sr">{ name } details</span>
+	</summary>
+}
+
 // markInput carries a metadata field's mark through the form.
 templ markInput(v view, field string) {
 	if m := v.D.mark(field); !m.zero() {
 		<input type="hidden" name={ markName(field) } value={ m.String() }/>
-		<div class={ m.String() }>@badges(m)</div>
+		<div class={ "mark " + m.String() }>@badges(m)</div>
 	}
 }
 
@@ -137,150 +309,160 @@ templ fieldError(v view, field string) {
 	}
 }
 
-templ metaFields(v view) {
-	<fieldset>
-		<legend>Recipe</legend>
-		<label for="f-name">Name</label>
-		@markInput(v, "name")
-		<input id="f-name" type="text" name="name" value={ v.D.Name }/>
-		@fieldError(v, "name")
-		<label for="f-description">Description</label>
-		@markInput(v, "description")
-		<textarea id="f-description" name="description" rows="3">{ v.D.Description }</textarea>
-		<div class="grid">
-			<div>
-				<label for="f-author">Author</label>
-				@markInput(v, "author")
-				<input id="f-author" type="text" name="author" value={ v.D.Author }/>
-			</div>
-			if v.carries(groupVideo) {
-				<div>
-					<label for="f-video">YouTube video (link or ID, optional)</label>
-					<input id="f-video" type="text" name="video" value={ v.D.Video } autocomplete="off" spellcheck="false"/>
-					@fieldError(v, "video")
-				</div>
-			}
-			if v.carries(groupSource) {
-				<div>
-					<label for="f-source">Source URL</label>
-					<input id="f-source" type="text" name="source_url" value={ v.D.SourceURL }/>
-				</div>
-				<div>
-					<label for="f-tags">Tags (comma separated)</label>
-					<input id="f-tags" type="text" name="tags" value={ v.D.Tags }/>
-				</div>
-			}
-		</div>
-		if v.carries(groupRecipeFields) {
-			<div class="grid">
-				<div>
-					<label for="f-meal-type">Meal type</label>
-					<select id="f-meal-type" name="meal_type">
-						<option value="" selected?={ v.D.MealType == "" }>Not set</option>
-						for _, m := range mealOptions() {
-							<option value={ m } selected?={ v.D.MealType == m }>{ m }</option>
-						}
-					</select>
-					@fieldError(v, "meal_type")
-				</div>
-				<div>
-					<label for="f-cuisine">Cuisine</label>
-					<select id="f-cuisine" name="cuisine">
-						<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
-						for _, c := range cuisineOptions() {
-							<option value={ c.Key } selected?={ v.D.Cuisine == c.Key }>{ c.Label }</option>
-						}
-					</select>
-					@fieldError(v, "cuisine")
-				</div>
-				<div>
-					<label for="f-spice">Spice level</label>
-					<select id="f-spice" name="spice">
-						<option value="" selected?={ v.D.Spice == "" }>Not set</option>
-						for _, n := range spiceOptions() {
-							<option value={ n } selected?={ v.D.Spice == n }>{ n } of 3</option>
-						}
-					</select>
-					@fieldError(v, "spice")
-				</div>
-			</div>
+// fact is one field of the recipe's grid of facts; field names its mark.
+templ fact(v view, id, name, label, value, field, errField, placeholder string) {
+	<div class={ "fl fact " + v.D.mark(field).String() }>
+		<label for={ id }>{ label }</label>
+		if field != "" {
+			@markInput(v, field)
 		}
-		<div class="grid">
-			<div>
-				<label for="f-yield-qty">Yield amount</label>
-				@markInput(v, "yield")
-				<input id="f-yield-qty" type="text" name="yield_qty" value={ v.D.YieldQty }/>
-				@fieldError(v, "yield_qty")
-			</div>
-			<div>
-				<label for="f-yield-unit">Yield unit (for example loaf)</label>
-				<input id="f-yield-unit" type="text" name="yield_unit" value={ v.D.YieldUnit }/>
-			</div>
-			<div>
-				<label for="f-servings">Servings</label>
-				<input id="f-servings" type="text" name="servings" value={ v.D.Servings }/>
-				@fieldError(v, "servings")
-			</div>
-			<div>
-				<label for="f-calories">Calories per serving</label>
-				<input id="f-calories" type="text" name="calories" value={ v.D.Calories }/>
-				@fieldError(v, "calories")
-			</div>
-		</div>
-		<div class="grid">
-			<div>
-				<label for="f-prep">Prep time</label>
-				@markInput(v, "prep")
-				<input id="f-prep" type="text" name="prep" value={ v.D.Prep }/>
-				@fieldError(v, "prep")
-			</div>
-			<div>
-				<label for="f-cook">Cook time</label>
-				@markInput(v, "cook")
-				<input id="f-cook" type="text" name="cook" value={ v.D.Cook }/>
-				@fieldError(v, "cook")
-			</div>
-			<div>
-				<label for="f-total">Total time (empty to work it out)</label>
-				@markInput(v, "total")
-				<input id="f-total" type="text" name="total" value={ v.D.Total }/>
-				@fieldError(v, "total")
-			</div>
-		</div>
-	</fieldset>
+		<input id={ id } type="text" name={ name } value={ value } placeholder={ placeholder }/>
+		if errField != "" {
+			@fieldError(v, errField)
+		}
+	</div>
 }
 
-templ componentFields(v view, ci int, c compDraft) {
-	<fieldset class="component">
-		<legend>{ componentLabel(ci, c) }</legend>
-		<label for={ cField(ci, "name") }>Component name (empty for a recipe without parts)</label>
-		<input id={ cField(ci, "name") } type="text" name={ cField(ci, "name") } value={ c.Name }/>
-		<p class="tools">
-			<button type="submit" class="btn" name="action" value={ act("up-component", ci) } disabled?={ ci == 0 }>Move component up</button>
-			<button type="submit" class="btn" name="action" value={ act("down-component", ci) } disabled?={ ci == len(v.D.Components)-1 }>Move component down</button>
-			<button type="submit" class="btn" name="action" value={ act("rm-component", ci) }>Remove component</button>
-		</p>
-		<h3>Ingredients</h3>
+templ metaFields(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-recipe">
+		@sectionHead("ed-h-recipe", "Recipe")
+		<div class="ed-card meta">
+			<div class={ "fl " + v.D.mark("name").String() }>
+				<label for="f-name">Name</label>
+				@markInput(v, "name")
+				<input id="f-name" class="quiet ed-name" type="text" name="name" value={ v.D.Name }/>
+				@fieldError(v, "name")
+			</div>
+			<div class={ "fl " + v.D.mark("description").String() }>
+				<label for="f-description">Description</label>
+				@markInput(v, "description")
+				<textarea id="f-description" name="description" rows="2">{ v.D.Description }</textarea>
+			</div>
+			<div class="facts">
+				@fact(v, "f-yield-qty", "yield_qty", "Yield amount", v.D.YieldQty, "yield", "yield_qty", "")
+				@fact(v, "f-yield-unit", "yield_unit", "Yield unit", v.D.YieldUnit, "", "", "loaf")
+				@fact(v, "f-servings", "servings", "Servings", v.D.Servings, "", "servings", "")
+				@fact(v, "f-calories", "calories", "Calories per serving", v.D.Calories, "", "calories", "")
+				@fact(v, "f-prep", "prep", "Prep time", v.D.Prep, "prep", "prep", "")
+				@fact(v, "f-cook", "cook", "Cook time", v.D.Cook, "cook", "cook", "")
+				@fact(v, "f-total", "total", "Total time", v.D.Total, "total", "total", "Worked out if empty")
+				if v.carries(groupRecipeFields) {
+					<div class="fl fact">
+						<label for="f-meal-type">Meal type</label>
+						<select id="f-meal-type" name="meal_type">
+							<option value="" selected?={ v.D.MealType == "" }>Not set</option>
+							for _, m := range mealOptions() {
+								<option value={ m } selected?={ v.D.MealType == m }>{ m }</option>
+							}
+						</select>
+						@fieldError(v, "meal_type")
+					</div>
+					<div class="fl fact">
+						<label for="f-cuisine">Cuisine</label>
+						<select id="f-cuisine" name="cuisine">
+							<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
+							for _, c := range cuisineOptions() {
+								<option value={ c.Key } selected?={ v.D.Cuisine == c.Key }>{ c.Label }</option>
+							}
+						</select>
+						@fieldError(v, "cuisine")
+					</div>
+					<div class="fl fact">
+						<label for="f-spice">Spice level</label>
+						<select id="f-spice" name="spice">
+							<option value="" selected?={ v.D.Spice == "" }>Not set</option>
+							for _, n := range spiceOptions() {
+								<option value={ n } selected?={ v.D.Spice == n }>{ n } of 3</option>
+							}
+						</select>
+						@fieldError(v, "spice")
+					</div>
+				}
+			</div>
+			<details class="more-meta" open?={ v.metaOpen() }>
+				<summary>{ metaSummary(v) }</summary>
+				<div class="two">
+					if v.carries(groupSource) {
+						<div class="fl">
+							<label for="f-source">Source URL</label>
+							<input id="f-source" type="text" name="source_url" value={ v.D.SourceURL }/>
+						</div>
+					}
+					<div class={ "fl " + v.D.mark("author").String() }>
+						<label for="f-author">Author</label>
+						@markInput(v, "author")
+						<input id="f-author" type="text" name="author" value={ v.D.Author }/>
+					</div>
+					if v.carries(groupVideo) {
+						<div class="fl">
+							<label for="f-video">YouTube video (link or ID, optional)</label>
+							<input id="f-video" type="text" name="video" value={ v.D.Video } autocomplete="off" spellcheck="false"/>
+							@fieldError(v, "video")
+						</div>
+					}
+					if v.carries(groupSource) {
+						<div class="fl">
+							<label for="f-tags">Tags (comma separated)</label>
+							<input id="f-tags" type="text" name="tags" value={ v.D.Tags }/>
+						</div>
+					}
+				</div>
+			</details>
+		</div>
+	</section>
+}
+
+templ ingredientFields(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-ingredients" id="ed-ingredients">
+		@sectionHead("ed-h-ingredients", "Ingredients")
+		<div class="ed-card">
+			for ci, c := range v.D.Components {
+				@componentLines(v, ci, c)
+			}
+			<p class="tools add">
+				<button type="submit" class="btn ghost" name="action" value="add-component">
+					@layout.Icon(layout.IconPlus)
+					Add component
+				</button>
+			</p>
+		</div>
+	</section>
+}
+
+// componentLines is one component in the ingredients section: its name and
+// the controls that move or remove the whole component, then its lines.
+templ componentLines(v view, ci int, c compDraft) {
+	<div class="comp component">
+		<div class="comp-h">
+			<div class="fl">
+				<label for={ cField(ci, "name") }>Component { n1(ci) } name</label>
+				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Leave empty for a recipe without parts"/>
+			</div>
+			<p class="tools">
+				<button type="submit" class="btn ghost" name="action" value={ act("up-component", ci) } disabled?={ ci == 0 }>Move component up</button>
+				<button type="submit" class="btn ghost" name="action" value={ act("down-component", ci) } disabled?={ ci == len(v.D.Components)-1 }>Move component down</button>
+				<button type="submit" class="btn ghost danger" name="action" value={ act("rm-component", ci) }>Remove component</button>
+			</p>
+		</div>
+		if len(c.Lines) > 0 {
+			<div class="cols" aria-hidden="true"><span>Qty</span><span>Unit</span><span>Ingredient</span></div>
+		}
 		<ol>
 			for li, l := range c.Lines {
 				@lineFields(v, ci, li, len(c.Lines), l)
 			}
 		</ol>
-		<p class="tools"><button type="submit" class="btn" name="action" value={ act("add-line", ci) }>Add ingredient line</button></p>
-		<h3>Steps</h3>
-		<ol>
-			for si, s := range c.Steps {
-				@stepFields(v, ci, si, len(c.Steps), s)
-			}
-		</ol>
-		<p class="tools"><button type="submit" class="btn" name="action" value={ act("add-step", ci) }>Add step</button></p>
-	</fieldset>
+		<p class="tools">
+			<button type="submit" class="btn ghost" name="action" value={ act("add-line", ci) }>
+				@layout.Icon(layout.IconPlus)
+				Add ingredient line
+			</button>
+		</p>
+	</div>
 }
 
 templ lineFields(v view, ci, li, count int, l lineDraft) {
 	<li class={ "item line " + l.Mark.String() } data-low?={ l.Mark.Low } data-llm?={ l.Mark.LLM }>
-		@badges(l.Mark)
-		<strong>Line { n1(li) }</strong>
 		if l.Key != "" {
 			<input type="hidden" name={ lField(ci, li, "key") } value={ l.Key }/>
 		}
@@ -289,198 +471,325 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 		}
 		for _, issue := range l.Issues {
 			<input type="hidden" name={ lField(ci, li, "issue") } value={ issue }/>
-			<span class="muted">{ issue }</span>
 		}
+		if !v.carries(groupScaling) {
+			<input type="hidden" name={ lField(ci, li, "rule") } value={ l.Rule }/>
+		}
+		<div class="row" id={ lineAnchor(ci, li) }>
+			<div>
+				<label class="sr" for={ lField(ci, li, "qty") }>Quantity</label>
+				<input id={ lField(ci, li, "qty") } class="qty" type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off"/>
+			</div>
+			<div>
+				<label class="sr" for={ lField(ci, li, "unit") }>Unit</label>
+				<input id={ lField(ci, li, "unit") } type="text" name={ lField(ci, li, "unit") } value={ l.Unit } list="unit-names" autocomplete="off"/>
+			</div>
+			<div class="c-ing">
+				<label class="sr" for={ lField(ci, li, "ing") }>Ingredient</label>
+				<input id={ lField(ci, li, "ing") } type="text" name={ lField(ci, li, "ing") } value={ l.Ingredient } list="ingredient-names" autocomplete="off"/>
+				if q := l.qualText(); q != "" {
+					<span class="qual">{ q }</span>
+				}
+			</div>
+			<div class="c-mark">
+				@llmBadge(l.Mark)
+			</div>
+		</div>
+		@checkHint(l.Mark.Low, l.Issues, "the rules were not sure how to read this line.")
 		if l.Err != "" {
 			<p class="alert" role="alert">{ l.Err }</p>
 		}
-		<div class="grid line-grid">
-			<div>
-				<label for={ lField(ci, li, "qty") }>Quantity</label>
-				<input id={ lField(ci, li, "qty") } type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off"/>
-			</div>
-			<div>
-				<label for={ lField(ci, li, "unit") }>Unit</label>
-				<input id={ lField(ci, li, "unit") } type="text" name={ lField(ci, li, "unit") } value={ l.Unit } list="unit-names" autocomplete="off"/>
-			</div>
-			<div>
-				<label for={ lField(ci, li, "ing") }>Ingredient</label>
-				<input id={ lField(ci, li, "ing") } type="text" name={ lField(ci, li, "ing") } value={ l.Ingredient } list="ingredient-names" autocomplete="off"/>
-			</div>
-			if v.carries(groupScaling) {
-				<div>
-					<label for={ lField(ci, li, "rule") }>Scaling</label>
-					<select id={ lField(ci, li, "rule") } name={ lField(ci, li, "rule") }>
-						for _, r := range ruleOptions() {
-							<option value={ r } selected?={ l.ruleIs(r) }>{ r }</option>
-						}
-					</select>
+		<details class="more" open?={ l.open() }>
+			@moreToggle("Line " + n1(li))
+			<div class="more-body">
+				<div class="fl full">
+					<label for={ lField(ci, li, "raw") }>Original text</label>
+					<input id={ lField(ci, li, "raw") } class="raw" type="text" name={ lField(ci, li, "raw") } value={ l.Raw }/>
 				</div>
-			} else {
-				<input type="hidden" name={ lField(ci, li, "rule") } value={ l.Rule }/>
-			}
-		</div>
-		<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Optional</label>
-		if l.OfferProposal || l.Propose {
-			<label class="inline"><input type="checkbox" name={ lField(ci, li, "propose") } value="1" checked?={ l.Propose }/> Add this ingredient to the catalog as new and unreviewed</label>
-		}
-		<label for={ lField(ci, li, "raw") }>Original text</label>
-		<input id={ lField(ci, li, "raw") } type="text" name={ lField(ci, li, "raw") } value={ l.Raw }/>
-		<details open?={ l.hasPackage() }>
-			<summary>Package size (for example the 14 oz of 1 (14 oz) can)</summary>
-			<div class="grid">
-				<div>
+				<div class="fl">
 					<label for={ lField(ci, li, "pkgqty") }>Package amount</label>
 					<input id={ lField(ci, li, "pkgqty") } type="text" name={ lField(ci, li, "pkgqty") } value={ l.PkgQty }/>
 				</div>
-				<div>
+				<div class="fl">
 					<label for={ lField(ci, li, "pkgunit") }>Package unit</label>
 					<input id={ lField(ci, li, "pkgunit") } type="text" name={ lField(ci, li, "pkgunit") } value={ l.PkgUnit } list="unit-names"/>
 				</div>
-			</div>
-		</details>
-		for qi, q := range l.Quals {
-			<div class="grid qualifier">
-				<div>
-					<label for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
-					<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
-						for _, k := range qualKinds() {
-							<option value={ k } selected?={ q.Kind == k }>{ k }</option>
-						}
-					</select>
+				<p class="help full">Package size is for a can or packet: the 14 oz of "1 (14 oz) can".</p>
+				if v.carries(groupScaling) {
+					<div class="fl">
+						<label for={ lField(ci, li, "rule") }>Scaling</label>
+						<select id={ lField(ci, li, "rule") } name={ lField(ci, li, "rule") }>
+							for _, r := range ruleOptions() {
+								<option value={ r } selected?={ l.ruleIs(r) }>{ r }</option>
+							}
+						</select>
+					</div>
+				}
+				<div class="fl">
+					<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Optional</label>
 				</div>
-				<div>
-					<label for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
-					<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text }/>
+				if l.OfferProposal || l.Propose {
+					<div class="fl full">
+						<label class="inline"><input type="checkbox" name={ lField(ci, li, "propose") } value="1" checked?={ l.Propose }/> Add this ingredient to the catalog as new and unreviewed</label>
+					</div>
+				}
+				<div class="fl full quals">
+					if len(l.Quals) > 0 {
+						<span class="lbl">Qualifiers</span>
+					}
+					for qi, q := range l.Quals {
+						<div class="qualifier">
+							<label class="sr" for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
+							<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
+								for _, k := range qualKinds() {
+									<option value={ k } selected?={ q.Kind == k }>{ k }</option>
+								}
+							</select>
+							<label class="sr" for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
+							<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text }/>
+							<p class="tools">
+								<button type="submit" class="btn ghost" name="action" value={ act("up-qual", ci, li, qi) } disabled?={ qi == 0 }>Move qualifier up</button>
+								<button type="submit" class="btn ghost" name="action" value={ act("down-qual", ci, li, qi) } disabled?={ qi == len(l.Quals)-1 }>Move qualifier down</button>
+								<button type="submit" class="btn ghost danger" name="action" value={ act("rm-qual", ci, li, qi) }>Remove qualifier</button>
+							</p>
+						</div>
+					}
+					<p class="tools">
+						<button type="submit" class="btn" name="action" value={ act("add-qual", ci, li) }>
+							@layout.Icon(layout.IconPlus)
+							Add qualifier
+						</button>
+					</p>
 				</div>
-				<p class="tools">
-					<button type="submit" class="btn" name="action" value={ act("up-qual", ci, li, qi) } disabled?={ qi == 0 }>Move qualifier up</button>
-					<button type="submit" class="btn" name="action" value={ act("down-qual", ci, li, qi) } disabled?={ qi == len(l.Quals)-1 }>Move qualifier down</button>
-					<button type="submit" class="btn" name="action" value={ act("rm-qual", ci, li, qi) }>Remove qualifier</button>
+				<p class="actions">
+					<button type="submit" class="btn ghost" name="action" value={ act("up-line", ci, li) } disabled?={ li == 0 }>Move line up</button>
+					<button type="submit" class="btn ghost" name="action" value={ act("down-line", ci, li) } disabled?={ li == count-1 }>Move line down</button>
+					<button type="submit" class="btn ghost danger" name="action" value={ act("rm-line", ci, li) }>Remove line</button>
 				</p>
 			</div>
-		}
-		<p class="tools">
-			<button type="submit" class="btn" name="action" value={ act("add-qual", ci, li) }>Add qualifier</button>
-			<button type="submit" class="btn" name="action" value={ act("up-line", ci, li) } disabled?={ li == 0 }>Move line up</button>
-			<button type="submit" class="btn" name="action" value={ act("down-line", ci, li) } disabled?={ li == count-1 }>Move line down</button>
-			<button type="submit" class="btn" name="action" value={ act("rm-line", ci, li) }>Remove line</button>
-		</p>
+		</details>
 	</li>
+}
+
+templ stepSection(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-steps" id="ed-steps">
+		@sectionHead("ed-h-steps", "Steps") {
+			<span class="legend"><span class="swatch" aria-hidden="true"></span>hands-on</span>
+			<span class="legend"><span class="swatch passive" aria-hidden="true"></span>hands-off</span>
+		}
+		<div class="ed-card">
+			for ci, c := range v.D.Components {
+				<div class="comp component">
+					if len(v.D.Components) > 1 || strings.TrimSpace(c.Name) != "" {
+						<h3 class="comp-name">{ componentName(ci, c) }</h3>
+					}
+					<ol>
+						for si, s := range c.Steps {
+							@stepFields(v, ci, si, len(c.Steps), s)
+						}
+					</ol>
+					<p class="tools">
+						<button type="submit" class="btn ghost" name="action" value={ act("add-step", ci) }>
+							@layout.Icon(layout.IconPlus)
+							Add step
+						</button>
+					</p>
+				</div>
+			}
+		</div>
+	</section>
 }
 
 templ stepFields(v view, ci, si, count int, s stepDraft) {
 	<li class={ "item step " + s.Mark.String() } data-low?={ s.Mark.Low } data-llm?={ s.Mark.LLM }>
-		@badges(s.Mark)
-		<strong>Step { n1(si) }</strong>
-		if !s.Mark.zero() {
-			<input type="hidden" name={ sField(ci, si, "mark") } value={ s.Mark.String() }/>
-		}
-		if s.Err != "" {
-			<p class="alert" role="alert">{ s.Err }</p>
-		}
-		<input type="hidden" name={ sField(ci, si, "id") } value={ s.ID }/>
-		if v.carries(groupRecipeFields) {
-			<div class="grid">
-				<div>
-					<label for={ sField(ci, si, "title") }>Title (optional)</label>
-					<input id={ sField(ci, si, "title") } type="text" name={ sField(ci, si, "title") } value={ s.Title }/>
-				</div>
-				<div>
-					<label for={ sField(ci, si, "kind") }>Stage kind (optional)</label>
-					<select id={ sField(ci, si, "kind") } name={ sField(ci, si, "kind") }>
-						<option value="" selected?={ s.Kind == "" }>Not set</option>
-						for _, k := range stageOptions() {
-							<option value={ k } selected?={ s.Kind == k }>{ k }</option>
-						}
-					</select>
-				</div>
-			</div>
-		}
-		<label for={ sField(ci, si, "text") }>Instruction</label>
-		<textarea id={ sField(ci, si, "text") } name={ sField(ci, si, "text") } rows="3">{ s.Text }</textarea>
-		<div class="grid">
-			<div>
-				<label for={ sField(ci, si, "dur") }>Duration</label>
-				<input id={ sField(ci, si, "dur") } type="text" name={ sField(ci, si, "dur") } value={ s.Duration }/>
-			</div>
-			<div>
-				<label for={ sField(ci, si, "to") }>Component</label>
-				<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
-					for oi, o := range v.D.Components {
-						<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
-					}
-				</select>
-			</div>
-		</div>
-		if v.carries(groupStepGraph) {
-			if s.Graph.Read != "" {
-				<input type="hidden" name={ sField(ci, si, "graph") } value={ s.Graph.String() }/>
+		<span class={ "snum", templ.KV("passive", s.Passive) }>
+			<span class="sr">Step </span>{ strconv.Itoa(v.stepNum(ci, si)) }
+			if s.Passive {
+				<span class="sr">, hands-off</span>
 			}
-			if s.Graph.LLM {
-				<p class="llm"><strong class="llm-mark">LLM</strong> suggested this step's order and passive flag. Check them.</p>
+		</span>
+		<div class="sbody" id={ stepAnchor(ci, si) }>
+			if !s.Mark.zero() {
+				<input type="hidden" name={ sField(ci, si, "mark") } value={ s.Mark.String() }/>
 			}
-			<label class="inline"><input type="checkbox" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/> Passive (no attention needed while it runs)</label>
-			<details class="deps" open?={ len(s.Deps) > 0 }>
-				<summary>Depends on</summary>
-				for _, o := range v.stepOptions() {
-					if o.ID != s.ID {
-						<label class="inline"><input type="checkbox" name={ sField(ci, si, "dep") } value={ o.ID } checked?={ slices.Contains(s.Deps, o.ID) }/> { o.Label }</label>
-					}
+			<input type="hidden" name={ sField(ci, si, "id") } value={ s.ID }/>
+			if v.carries(groupRecipeFields) {
+				<label class="sr" for={ sField(ci, si, "title") }>Step { strconv.Itoa(v.stepNum(ci, si)) } title (optional)</label>
+				<input id={ sField(ci, si, "title") } class="quiet stitle" type="text" name={ sField(ci, si, "title") } value={ s.Title } placeholder="Add a title"/>
+			}
+			<label class="sr" for={ sField(ci, si, "text") }>Step { strconv.Itoa(v.stepNum(ci, si)) } instruction</label>
+			<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="2">{ s.Text }</textarea>
+			<div class="pills">
+				if strings.TrimSpace(s.Duration) != "" {
+					<span class="pill">
+						@layout.Icon(layout.IconClock)
+						{ s.Duration }
+					</span>
 				}
+				if s.Kind != "" {
+					<span class="pill">{ s.Kind }</span>
+				}
+				if a := v.after(s); a != "" {
+					<span class="pill on">{ a }</span>
+				}
+				for _, e := range v.equipmentFor(s.ID) {
+					<span class="pill">{ e }</span>
+				}
+				@llmBadge(s.Mark)
+			</div>
+			@checkHint(s.Mark.Low, nil, "the rules were not sure how to read this step.")
+			if s.Err != "" {
+				<p class="alert" role="alert">{ s.Err }</p>
+			}
+			if v.carries(groupStepGraph) {
+				if s.Graph.Read != "" {
+					<input type="hidden" name={ sField(ci, si, "graph") } value={ s.Graph.String() }/>
+				}
+				if s.Graph.LLM {
+					<p class="llm"><strong class="llm-mark">LLM</strong> suggested this step's order and passive flag. Check them.</p>
+				}
+			}
+			<details class="more" open?={ s.open() }>
+				@moreToggle("Step " + strconv.Itoa(v.stepNum(ci, si)))
+				<div class="more-body">
+					<div class="fl">
+						<label for={ sField(ci, si, "dur") }>Duration</label>
+						<input id={ sField(ci, si, "dur") } type="text" name={ sField(ci, si, "dur") } value={ s.Duration }/>
+					</div>
+					if v.carries(groupRecipeFields) {
+						<div class="fl">
+							<label for={ sField(ci, si, "kind") }>Stage kind (optional)</label>
+							<select id={ sField(ci, si, "kind") } name={ sField(ci, si, "kind") }>
+								<option value="" selected?={ s.Kind == "" }>Not set</option>
+								for _, k := range stageOptions() {
+									<option value={ k } selected?={ s.Kind == k }>{ k }</option>
+								}
+							</select>
+						</div>
+					}
+					<div class="fl">
+						<label for={ sField(ci, si, "to") }>Component</label>
+						<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
+							for oi, o := range v.D.Components {
+								<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
+							}
+						</select>
+					</div>
+					if v.carries(groupStepGraph) {
+						<div class="fl full">
+							<label class="inline"><input type="checkbox" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/> Hands-off: it needs no attention while it runs</label>
+						</div>
+						<div class="full">
+							@stepChooser(v, "Starts after", sField(ci, si, "dep"), s.ID, s.Deps)
+						</div>
+					}
+					<p class="actions">
+						<button type="submit" class="btn ghost" name="action" value={ act("up-step", ci, si) } disabled?={ si == 0 }>Move step up</button>
+						<button type="submit" class="btn ghost" name="action" value={ act("down-step", ci, si) } disabled?={ si == count-1 }>Move step down</button>
+						<button type="submit" class="btn ghost danger" name="action" value={ act("rm-step", ci, si) }>Remove step</button>
+					</p>
+				</div>
 			</details>
-		}
-		<p class="tools">
-			<button type="submit" class="btn" name="action" value={ act("up-step", ci, si) } disabled?={ si == 0 }>Move step up</button>
-			<button type="submit" class="btn" name="action" value={ act("down-step", ci, si) } disabled?={ si == count-1 }>Move step down</button>
-			<button type="submit" class="btn" name="action" value={ act("rm-step", ci, si) }>Remove step</button>
-		</p>
+		</div>
 	</li>
 }
 
-templ equipmentFields(v view) {
-	<h2>Equipment</h2>
-	<ol>
-		for ei, e := range v.D.Equipment {
-			<li class={ "item equipment " + e.Mark.String() } data-llm?={ e.Mark.LLM }>
-				@badges(e.Mark)
-				<strong>Equipment { n1(ei) }</strong>
-				if !e.Mark.zero() {
-					<input type="hidden" name={ eField(ei, "mark") } value={ e.Mark.String() }/>
-				}
-				if e.Err != "" {
-					<p class="alert" role="alert">{ e.Err }</p>
-				}
-				<div class="grid">
-					<div>
-						<label for={ eField(ei, "name") }>Equipment</label>
-						<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
-					</div>
-					if v.carries(groupEquipmentLinks) {
-						<div>
-							<label for={ eField(ei, "qty") }>Quantity</label>
-							<input id={ eField(ei, "qty") } type="text" name={ eField(ei, "qty") } value={ e.Qty }/>
-						</div>
+// stepChooser offers every step of the recipe as a checkbox named name,
+// grouped by component, with checked ticked. The step self is listed in its
+// place but cannot be chosen: a step cannot wait for itself. Its checkbox is
+// disabled and has no name, so it never posts.
+templ stepChooser(v view, legend, name, self string, checked []string) {
+	<fieldset class="deps">
+		<legend class="lbl">{ legend }</legend>
+		for _, g := range v.stepGroups() {
+			if len(v.D.Components) > 1 {
+				<p class="grp">{ g.Name }</p>
+			}
+			<div class="dep-grid">
+				for _, o := range g.Options {
+					if o.ID == self {
+						<label class="dep self" title="A step cannot wait for itself">
+							<input type="checkbox" disabled/>
+							<span class={ "snum sm", templ.KV("passive", o.Passive) }>{ strconv.Itoa(o.Num) }</span>
+							<span class="t">{ o.Title }</span>
+							<span class="this">This step</span>
+						</label>
+					} else {
+						<label class="dep">
+							<input type="checkbox" name={ name } value={ o.ID } checked?={ slices.Contains(checked, o.ID) }/>
+							<span class={ "snum sm", templ.KV("passive", o.Passive) }><span class="sr">Step </span>{ strconv.Itoa(o.Num) }</span>
+							<span class="t">{ o.Title }</span>
+						</label>
 					}
-				</div>
-				if e.OfferProposal || e.Propose {
-					<label class="inline"><input type="checkbox" name={ eField(ei, "propose") } value="1" checked?={ e.Propose }/> Add this equipment to the catalog as new and unreviewed</label>
 				}
-				if v.carries(groupEquipmentLinks) {
-					<details class="deps" open?={ len(e.Steps) > 0 }>
-						<summary>Used in steps</summary>
-						for _, o := range v.stepOptions() {
-							<label class="inline"><input type="checkbox" name={ eField(ei, "step") } value={ o.ID } checked?={ slices.Contains(e.Steps, o.ID) }/> { o.Label }</label>
-						}
-					</details>
-				}
-				<p class="tools">
-					<button type="submit" class="btn" name="action" value={ act("up-equip", ei) } disabled?={ ei == 0 }>Move equipment up</button>
-					<button type="submit" class="btn" name="action" value={ act("down-equip", ei) } disabled?={ ei == len(v.D.Equipment)-1 }>Move equipment down</button>
-					<button type="submit" class="btn" name="action" value={ act("rm-equip", ei) }>Remove equipment</button>
-				</p>
-			</li>
+			</div>
 		}
-	</ol>
-	<p class="tools"><button type="submit" class="btn" name="action" value="add-equip">Add equipment</button></p>
+	</fieldset>
+}
+
+templ equipmentFields(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-equipment" id="ed-equipment">
+		@sectionHead("ed-h-equipment", "Equipment")
+		<div class="ed-card">
+			<div class="comp">
+				<ol>
+					for ei, e := range v.D.Equipment {
+						<li class={ "item equipment " + e.Mark.String() } data-llm?={ e.Mark.LLM }>
+							if !e.Mark.zero() {
+								<input type="hidden" name={ eField(ei, "mark") } value={ e.Mark.String() }/>
+							}
+							<div class="row erow" id={ equipAnchor(ei) }>
+								<div class="c-ing">
+									<label class="sr" for={ eField(ei, "name") }>Equipment</label>
+									<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
+									if strings.TrimSpace(e.Qty) != "" {
+										<span class="qual">{ e.Qty }</span>
+									}
+								</div>
+								<div class="c-mark">
+									@llmBadge(e.Mark)
+								</div>
+							</div>
+							@checkHint(e.Mark.Low, nil, "the rules were not sure of this equipment.")
+							if e.Err != "" {
+								<p class="alert" role="alert">{ e.Err }</p>
+							}
+							<details class="more" open?={ e.open() }>
+								@moreToggle("Equipment " + n1(ei))
+								<div class="more-body">
+									if v.carries(groupEquipmentLinks) {
+										<div class="fl">
+											<label for={ eField(ei, "qty") }>Quantity</label>
+											<input id={ eField(ei, "qty") } type="text" name={ eField(ei, "qty") } value={ e.Qty }/>
+										</div>
+									}
+									if e.OfferProposal || e.Propose {
+										<div class="fl full">
+											<label class="inline"><input type="checkbox" name={ eField(ei, "propose") } value="1" checked?={ e.Propose }/> Add this equipment to the catalog as new and unreviewed</label>
+										</div>
+									}
+									if v.carries(groupEquipmentLinks) && len(v.stepGroups()) > 0 {
+										<div class="full">
+											@stepChooser(v, "Used in steps", eField(ei, "step"), "", e.Steps)
+										</div>
+									}
+									<p class="actions">
+										<button type="submit" class="btn ghost" name="action" value={ act("up-equip", ei) } disabled?={ ei == 0 }>Move equipment up</button>
+										<button type="submit" class="btn ghost" name="action" value={ act("down-equip", ei) } disabled?={ ei == len(v.D.Equipment)-1 }>Move equipment down</button>
+										<button type="submit" class="btn ghost danger" name="action" value={ act("rm-equip", ei) }>Remove equipment</button>
+									</p>
+								</div>
+							</details>
+						</li>
+					}
+				</ol>
+				<p class="tools">
+					<button type="submit" class="btn ghost" name="action" value="add-equip">
+						@layout.Icon(layout.IconPlus)
+						Add equipment
+					</button>
+				</p>
+			</div>
+		</div>
+	</section>
 }

@@ -109,6 +109,8 @@ test('the video field takes a YouTube link or ID; anything else is rejected inli
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator('[name="video"]')).toHaveValue('');
   await page.locator('[name="name"]').fill('Never Saved Either');
+  // The video field sits in the closed "Source, author, video and tags" disclosure.
+  await page.locator('details.more-meta summary').click();
   await page.locator('[name="video"]').fill('https://vimeo.com/12345');
   await save(page);
   await expect(page.getByRole('alert').filter({ hasText: 'is not a YouTube video' })).toBeVisible();
@@ -154,7 +156,9 @@ test('edits and saves a recipe: new component, line with qualifier, step with de
   await expect(page.locator('[name="c.2.name"]')).toBeVisible();
   await page.locator('[name="c.2.name"]').fill('Topping');
 
-  const topping = page.locator('fieldset.component').nth(2);
+  // Ingredients and steps are separate sections, each grouped by component.
+  const topping = page.locator('#ed-ingredients .component').nth(2);
+  const toppingSteps = page.locator('#ed-steps .component').nth(2);
   await topping.getByRole('button', { name: 'Add ingredient line' }).click();
   await expect(page.locator('[name="c.2.l.0.qty"]')).toBeVisible();
   await page.locator('[name="c.2.l.0.qty"]').fill('2-3');
@@ -166,11 +170,11 @@ test('edits and saves a recipe: new component, line with qualifier, step with de
   await page.locator('[name="c.2.l.0.q.0.kind"]').selectOption('preparation');
   await page.locator('[name="c.2.l.0.q.0.text"]').fill('melted');
 
-  await topping.getByRole('button', { name: 'Add step' }).click();
+  // A step just added comes back with its details open.
+  await toppingSteps.getByRole('button', { name: 'Add step' }).click();
   await expect(page.locator('[name="c.2.s.0.text"]')).toBeVisible();
   await page.locator('[name="c.2.s.0.text"]').fill('Brush on the melted butter.');
   await page.locator('[name="c.2.s.0.dur"]').fill('5 min');
-  await topping.locator('li.step summary').click();
   const glaze = await stepKey(page, 1, 0);
   await page.locator(`[name="c.2.s.0.dep"][value="${glaze}"]`).check();
 
@@ -195,12 +199,14 @@ test('edits and saves a recipe: new component, line with qualifier, step with de
 
 test('moves a step to another component and reorders steps', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
+  await page.locator('li.step').nth(0).locator('summary').click();
   await page.locator('[name="c.0.s.0.to"]').selectOption('1');
   // Moves apply on the next post of the form; any action will do.
-  await page.locator('fieldset.component').nth(1).getByRole('button', { name: 'Add step' }).click();
+  await page.locator('#ed-steps .component').nth(1).getByRole('button', { name: 'Add step' }).click();
   await expect(page.locator('[name="c.1.s.2.text"]')).toBeVisible();
   await expect(page.locator('[name="c.0.s.0.text"]')).toHaveValue('Let the dough rest.');
   await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Mix the dough.');
+  await page.locator('li.step').nth(2).locator('summary').click();
   await page.locator('li.step').nth(2).getByRole('button', { name: 'Move step up' }).click();
   await expect(page.locator('[name="c.1.s.0.text"]')).toHaveValue('Mix the dough.');
   await expect(page.locator('[name="c.1.s.1.text"]')).toHaveValue('Glaze the loaf.');
@@ -234,6 +240,7 @@ test('meal type, spice level, stage kind and step title are set in the editor an
   await expect(page.locator('[name="spice"]')).toHaveValue('');
   await page.locator('[name="meal_type"]').selectOption('dessert');
   await page.locator('[name="spice"]').selectOption('0');
+  await page.locator('li.step').nth(0).locator('summary').click();
   await page.locator('[name="c.0.s.0.kind"]').selectOption('braise');
   await page.locator('[name="c.0.s.0.title"]').fill('Start the braise');
   await save(page);
@@ -247,6 +254,7 @@ test('meal type, spice level, stage kind and step title are set in the editor an
 
   await page.locator('[name="meal_type"]').selectOption('');
   await page.locator('[name="spice"]').selectOption('');
+  await page.locator('li.step').nth(0).locator('summary').click();
   await page.locator('[name="c.0.s.0.kind"]').selectOption('');
   await page.locator('[name="c.0.s.0.title"]').fill('');
   await save(page);

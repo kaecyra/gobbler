@@ -37,13 +37,18 @@ templ styles() {
 		.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
 		.retry-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; }
 		.retry-form .muted { font-size: 14px; max-width: 60ch; }
-		.via { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-3); margin-bottom: 12px; }
-		.via span { background: var(--sunk); padding: 2px 8px; border-radius: var(--r); color: var(--ink-2); }
-		.via span.need { background: var(--grain-soft); color: var(--grain-ink); }
+		.via { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+		.via .chip {
+			display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: var(--r);
+			background: var(--sunk); color: var(--ink-2); font-size: 14.5px; font-weight: 600;
+		}
+		.via .chip.need { background: var(--grain-soft); color: var(--grain-ink); }
+		.via .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
+		.via .from { color: var(--ink-3); font-size: 14px; margin-left: 4px; }
 		.review-note { margin: 0 0 10px; max-width: 70ch; }
 		.review-note.check { background: var(--grain-soft); border-radius: var(--r); padding: 10px 14px; }
-		.review-note .flag, .review-body .editor .flag { color: var(--grain-ink); font-weight: 700; margin-right: 0.4rem; }
-		.llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
+		.review-note .flag { color: var(--grain-ink); font-weight: 700; margin-right: 0.4rem; }
+		.review-note .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
 		.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }
 		.review-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }
 		.review-grid:not(:has(.srcbox-wrap[open])) { grid-template-columns: minmax(0, 1fr); }
@@ -51,10 +56,14 @@ templ styles() {
 		.review-grid > .srcbox-wrap[open] { position: sticky; top: 90px; max-height: calc(100vh - 106px); overflow-y: auto; }
 		@media (max-width: 860px) {
 			.review-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
-			.review-grid > .srcbox-wrap { position: static; max-height: none; overflow-y: visible; }
+			.review-grid > .srcbox-wrap, .review-grid > .srcbox-wrap[open] { position: static; max-height: none; overflow-y: visible; }
 		}
 		.srcbox-wrap { margin: 0 0 18px; }
-		.srcbox-wrap summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; }
+		/* The source pane's heading is a section heading (.sec-h), as the editor's are. */
+		.srcbox-wrap > summary { cursor: pointer; list-style: none; }
+		.srcbox-wrap > summary::-webkit-details-marker { display: none; }
+		.srcbox-wrap > summary .toggle { font-size: 14px; color: var(--ink-3); }
+		.srcbox-wrap[open] > summary .toggle.show, .srcbox-wrap:not([open]) > summary .toggle.hide { display: none; }
 		.srcbox {
 			background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;
 			font-family: var(--f-mono); font-size: 14px; line-height: 1.65; color: var(--ink-2); overflow-x: auto;
@@ -63,25 +72,6 @@ templ styles() {
 		.srcbox .src-h:first-child { margin-top: 0; }
 		.srcbox div { white-space: pre-wrap; }
 		.srcbox mark { background: var(--grain-soft); color: var(--ink); border-radius: var(--r-sm); padding: 0 2px; box-shadow: inset 0 -2px 0 var(--grain); }
-		/* The recipe editor draws the form; its marks are restyled here for the
-		   review screen, with higher specificity than its own rules. */
-		.review-body .editor .low { border-left: 0; padding-left: 0; background: var(--grain-soft); border-radius: var(--r); }
-		.review-body .editor li.item { position: relative; padding: 0.5rem 0.75rem 0.5rem 2rem; border-radius: var(--r); }
-		.review-body .editor li.item.line::before {
-			content: ""; position: absolute; left: 0.8rem; top: 1.05rem; width: 10px; height: 10px;
-			border-radius: 50%; background: var(--ok);
-		}
-		.review-body .editor li.item.low { border-top-color: transparent; }
-		.review-body .editor li.item.line.low::before { background: var(--grain); }
-		.review-body .editor button {
-			display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); padding: 8px 18px;
-			border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink);
-			font-weight: 600; font-size: 16px; cursor: pointer;
-		}
-		.review-body .editor button[value=save] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-		.review-body .editor input[type=text], .review-body .editor select, .review-body .editor input[type=number] { min-height: var(--tap); border-radius: var(--r); }
-		.review-body .editor textarea { border-radius: var(--r); }
-		.review-body .editor label.inline { min-height: var(--tap); }
 	</style>
 }
 
@@ -140,7 +130,7 @@ templ reviewPage(v reviewView) {
 		<div class="screen-h">
 			<div>
 				<h1>Review recipe</h1>
-				<p>Nothing is saved until you confirm. Lines marked amber need a look.</p>
+				<p>Nothing is saved until you confirm. Items marked amber need a look.</p>
 			</div>
 		</div>
 		<div class="review-body">
@@ -168,7 +158,7 @@ templ reviewPage(v reviewView) {
 templ sourceBox(d ingestcore.Draft) {
 	if rows := sourceRows(d); len(rows) > 0 {
 		<details class="srcbox-wrap" open>
-			<summary><span class="eyebrow">What the source said</span></summary>
+			<summary class="sec-h"><h2>What the source said</h2><span class="toggle hide">Hide</span><span class="toggle show">Show</span></summary>
 			<div class="srcbox">
 				for _, r := range rows {
 					if r.Heading {
@@ -195,23 +185,27 @@ templ summary(d ingestcore.Draft) {
 		}
 		<div class="via">
 			if d.UsedLLM {
-				<span>Read with the LLM</span>
+				<span class="chip">Read with the LLM</span>
 			} else {
-				<span>Read by the rule-based parser</span>
+				<span class="chip">Read by the rule-based parser</span>
+			}
+			if !d.UsedLLM && !d.BelowThreshold {
+				<span class="chip">Confidence { percent(d.Overall) }</span>
 			}
 			if n := lowLineCount(d); n > 0 {
-				<span class="need">{ lowLinesText(n) }</span>
+				<span class="chip need"><span class="dot" aria-hidden="true"></span>{ lowLinesText(n) }</span>
 			}
+			<span class="from">
+				Read from { sourceText(d) } using { string(d.Method) }.
+				if d.ParserVersion != "" {
+					Parser version { d.ParserVersion }.
+				}
+			</span>
 		</div>
 		if d.UsedLLM {
 			<p class="review-note"><strong class="llm-mark">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>
 		} else if d.BelowThreshold {
 			<p class="review-note check"><strong class="flag">Check this draft.</strong> The rules are not sure they read it correctly (confidence { percent(d.Overall) } of the { percent(d.Threshold) } needed). Look over every flagged item.</p>
-		} else {
-			<p class="review-note">Confidence { percent(d.Overall) }.</p>
-		}
-		if d.ParserVersion != "" {
-			<p class="review-note muted">Parser version { d.ParserVersion }.</p>
 		}
 		if len(d.Issues) > 0 {
 			<ul class="issues">
@@ -220,6 +214,5 @@ templ summary(d ingestcore.Draft) {
 				}
 			</ul>
 		}
-		<p class="review-note muted">Read from { sourceText(d) } using { string(d.Method) }.</p>
 	</section>
 }

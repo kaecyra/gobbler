@@ -431,7 +431,7 @@ func RecipeStep(s RecipeStepView, number string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var22 string
-				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(afterText(s.After))
+				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(AfterText(s.After))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/layout/recipe_parts.templ`, Line: 78, Col: 69}
 				}

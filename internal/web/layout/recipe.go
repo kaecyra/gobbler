@@ -145,9 +145,10 @@ func spoonsOn(n int) []bool {
 // chilis lists the peppers of the spice scale.
 func chilis(n int) []struct{} { return make([]struct{}, n) }
 
-// afterText renders "after step 3" or "after steps 3, 4, 5" for the steps a
-// step waits for.
-func afterText(nums []int) string { return stepRefs("after", nums) }
+// AfterText renders "after step 3" or "after steps 3, 4, 5" for the steps a
+// step waits for. The editor tags a closed step with it too, so both read the
+// same.
+func AfterText(nums []int) string { return stepRefs("after", nums) }
 
 // duringText is "during step 3", the inverse of a Meanwhile callout.
 func duringText(nums []int) string { return stepRefs("during", nums) }
