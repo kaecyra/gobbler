@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-05, round 20
+# Overseer handoff: 2026-11-05, round 21
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -17,24 +17,26 @@ This file holds the volatile state the graph does not. The durable record is `do
 | f-step-titles-text | #411 | 9d5704b | none | 0.105.0 |
 | (graph) | #417 | fddf8dd | none | none |
 | u-drag-between-parts | #413 | 1925b83 | none | 0.106.0 |
+| r-card-spoons-bound | #418 | a6509e8 | none | 0.106.1 |
+| p-avatar-late-swap | #420 | a0d6af9 | none | 0.106.2 |
+| u-step-part-select | #419 | b1e8459 | none | 0.107.0 |
 
 - **#411:** `ParserVersion` 13. A split title is flagged at confidence 0.6. The LLM fallback can therefore replace a split step when the draft has no ingredient lines; this is disclosed in the PR.
 - **#413:** round 2's new no-script test found a real CSS bug (the Steps name box showed without JS and lost input), fixed in the PR.
 
-**In flight** (dispatched from d8a1814, worktrees `.claude/worktrees/wt-N`):
+- **#420:** the close-time reset carries `X-Avatar-Reset: close`, and its swap no longer clears the error. The test was red 10 of 10 against the old script.
+- **#419:** removes the per-step Part select and the `.to` field. The out-of-lane `.to` posts in `routes_test.go`, `ingest/ingest_test.go` and the tenancy fixture stay, as the "changes nothing" case.
 
-| Node | Issue | Branch | VERSION target |
-|---|---|---|---|
-| r-card-spoons-bound | #410 | refactor/410-card-spoons-bound | 0.106.1 |
-| p-avatar-late-swap | #414 | fix/414-avatar-late-swap | 0.106.1 (collides with #410; re-bump at merge) |
-| u-step-part-select | #416 | feat/416-step-part-select | 0.107.0 |
+**Nothing is in flight:** no open PRs, no worktrees, no workers.
+
+**Open decisions, recipe images (owner request, uncovered):** `docs/proposals/recipe-images.md` holds the five open forks and the verified facts. Decision 1 (storage) was presented with the dispatcher's lean (a), and the owner has not answered yet. Continue with `/overseer:decide docs/proposals/recipe-images.md`, then write the ADR (it amends ADR-00011) and the nodes, including a mockup step.
 
 **Owner calls this session (don't re-ask):**
 - **Step "Part" select (#416):** remove it; dragging is the only way to move between parts. a-mcp-recipe-edit now depends on u-step-part-select (#417).
 
-**Next after these:** a-mcp-recipe-edit (#353) once u-step-part-select merges. r-author-notes still needs its ADR.
+**Next to dispatch:** a-mcp-recipe-edit (#353, needs a schema migration number: 00029) (all its dependencies are merged). It is large; give it a fresh session. r-author-notes still needs its ADR.
 
-**For the owner:** 0.106.0 is not deployed (0.104.0 carried migration 00028).
+**For the owner:** 0.107.0 is not deployed (0.104.0 carried migration 00028).
 
 **Lessons:**
 - **Every worker bumps VERSION, so every merge after the first conflicts.** Each rebase is a worker round trip plus a fresh CI run. Merge in a fixed order and send the rebase as soon as the previous PR lands.

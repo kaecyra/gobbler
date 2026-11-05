@@ -3487,7 +3487,7 @@
       "wave": 11,
       "track": null,
       "issue": 416,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-drag-between-parts"
       ],
@@ -4653,6 +4653,12 @@
       "title": "keep the picture dialog's error when a late reset swap lands",
       "merged": "a0d6af9",
       "note": "Found in #415 by reading profile.js: a reset swap that lands after a failed upload clears the error. Needs an e2e test that delays the reset response."
+    },
+    {
+      "id": "u-step-part-select",
+      "title": "remove the step Part select; drag is the only way to move between parts",
+      "merged": "b1e8459",
+      "note": "Owner call 2026-11-05 (ib on #413): drag only, so the #119 per-step Part select goes. Ordered before a-mcp-recipe-edit, which owns the same editor globs. The .to fields still posted by internal/web/routes_test.go, internal/web/ingest/ingest_test.go and e2e/fixtures/routes/tenancy-support.ts stay as they are: they become the 'a post carrying c.N.s.M.to changes nothing' case, so do not edit them."
     }
   ],
   "adr_sequence": {
