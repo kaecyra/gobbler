@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-05, round 21
+# Overseer handoff: 2026-11-05, round 21 closed; recipe-image nodes added
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -20,6 +20,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 | r-card-spoons-bound | #418 | a6509e8 | none | 0.106.1 |
 | p-avatar-late-swap | #420 | a0d6af9 | none | 0.106.2 |
 | u-step-part-select | #419 | b1e8459 | none | 0.107.0 |
+| (ADR-00039 and graph) | #431 | 74f239d | none | none |
 
 - **#411:** `ParserVersion` 13. A split title is flagged at confidence 0.6. The LLM fallback can therefore replace a split step when the draft has no ingredient lines; this is disclosed in the PR.
 - **#413:** round 2's new no-script test found a real CSS bug (the Steps name box showed without JS and lost input), fixed in the PR.
@@ -29,12 +30,32 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Nothing is in flight:** no open PRs, no worktrees, no workers.
 
-**Recipe images: decisions closed 2026-11-05.** `docs/proposals/recipe-images.md` holds D1–D10: media-store storage, owner-named keys (`recipes/<id>/…`, `people/<id>/…`), candidates chosen on the review screen, a set-picture operation (upload, re-find, remove) outside revisions, no MCP tool, one guarded fetcher for page/image/OAuth fetches, cards plus a short page header, hashed placeholder variants. ADR-00039 is written (amends ADR-00011 and ADR-00033). Wave 12 nodes, issues #421–#430: m-fetch-guard, m-media-fit, m-avatar-keys, i-image-candidates and d-picture-mockup are dispatchable now; s-picture-store, i-draft-pictures and u-picture-cards also wait on a-mcp-recipe-edit (shared store and recipeview files); the UI nodes wait on the mockup merging, which is the owner's approval. r-author-notes moved to wave 12 behind the image nodes. After u-picture-cards ships, reseed the demo (ADR-00039 obligation 15). The owner's discrete-API request is a separate open proposal, `docs/proposals/discrete-api.md`, for its own `/overseer:decide`.
+**Recipe images (ADR-00039, merged in #431).** Decided in conversation 2026-11-05; the record is `docs/proposals/recipe-images.md` (D1–D10). Wave 12 adds:
+
+| Node | Issue | Waits on |
+|---|---|---|
+| m-fetch-guard | #421 | nothing |
+| m-media-fit | #422 | nothing |
+| m-avatar-keys | #423 | nothing |
+| i-image-candidates | #424 | nothing |
+| d-picture-mockup | #428 | nothing; the owner approves it on its PR, and merging it is that approval |
+| s-picture-store | #425 | #421, #422, #424, a-mcp-recipe-edit (needs a schema migration number) |
+| i-draft-pictures | #426 | s-picture-store, a-mcp-recipe-edit |
+| w-picture-serve | #427 | s-picture-store |
+| u-picture-picker | #429 | mockup, i-draft-pictures, w-picture-serve |
+| u-picture-cards | #430 | mockup, s-picture-store, w-picture-serve, u-picture-picker, a-mcp-recipe-edit |
+| o-demo-reseed | #432 | u-picture-cards shipped and deployed; operator action, owns no files |
+| l-discrete-api | #433 | blocked: needs its own `/overseer:decide` on `docs/proposals/discrete-api.md` |
+
+r-author-notes moved to wave 12 behind the image nodes it overlaps. The UI nodes (#429, #430) are briefed with the approved mockup as the visual target and a side-by-side check (lessons.md). The candidate minimum size in #425 is a named constant until the mockup sets the card size.
 
 **Owner calls this session (don't re-ask):**
 - **Step "Part" select (#416):** remove it; dragging is the only way to move between parts. a-mcp-recipe-edit now depends on u-step-part-select (#417).
+- **Recipe pictures (ADR-00039):** the person chooses from fetched candidates or "No picture"; keys `recipes/<id>/`, `people/<id>/`, never household-first (recipes stay household-owned per ADR-00018; the owner raised free-standing recipes and set it aside); no MCP tool sets a picture; setting from a typed URL is out; one guarded fetcher, at most 5 redirects; cards plus a short header; placeholder variant = recipe id mod N, never random.
+- **Garage is running** in the deployment as the S3 endpoint for backups and media.
+- **Discrete API:** the owner wants the work behind the handlers split into a discrete API, same binary for now. Build images as domain functions with no logic in handlers; decide the API separately.
 
-**Next to dispatch:** a-mcp-recipe-edit (#353, needs a schema migration number: 00029) (all its dependencies are merged). It is large; give it a fresh session. r-author-notes still needs its ADR.
+**Next to dispatch:** a-mcp-recipe-edit (#353, needs a schema migration number: 00029; all its dependencies are merged; large, give it a fresh session), and in parallel the five image nodes with no dependencies: m-fetch-guard, m-media-fit, m-avatar-keys, i-image-candidates, d-picture-mockup. Check their lanes against a-mcp-recipe-edit's before dispatching together (the validator shows none overlapping). r-author-notes still needs its ADR; l-discrete-api needs its decision session.
 
 **For the owner:** 0.107.0 is not deployed (0.104.0 carried migration 00028).
 
