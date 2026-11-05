@@ -35,6 +35,10 @@ const maxFormBytes = 64 << 10
 // layout.MaxSpoons.
 const minRating = 1
 
+// ratingMessage names the accepted ratings from the bounds the validation
+// uses, so it cannot drift from them.
+var ratingMessage = fmt.Sprintf("Rating must be a whole number from %d to %d.", minRating, layout.MaxSpoons)
+
 // dateLayout is the form of the made-it date, as in the date input and the
 // store.
 const dateLayout = "2006-01-02"
@@ -84,7 +88,6 @@ type handler struct{ Deps }
 // of a rejected input is in the log.
 const (
 	emptyNoteMessage = "Write something before saving the note."
-	ratingMessage    = "Rating must be a whole number from 1 to 5."
 	dateMessage      = "Enter the date as YYYY-MM-DD, for example 2024-03-09."
 )
 

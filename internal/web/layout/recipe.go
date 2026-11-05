@@ -143,7 +143,7 @@ func Verdict(spoons int) string {
 	return verdicts[spoons]
 }
 
-// SpoonsOn lists the five spoons of a rating of n, true for the filled ones.
+// SpoonsOn lists the MaxSpoons spoons of a rating of n, true for the filled ones.
 func SpoonsOn(n int) []bool {
 	out := make([]bool, MaxSpoons)
 	for i := range out {
