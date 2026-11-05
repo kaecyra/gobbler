@@ -4,6 +4,43 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
+## Round 21 (2026-11-05): drag between parts, step titles, flakes
+
+**Merged** (squash SHA; all under the standing authority):
+
+| Node | PR | SHA | Schema | VERSION |
+|---|---|---|---|---|
+| (graph) | #408 | c4584ff | none | none |
+| r-rating-bound | #409 | 50b91dc | none | 0.104.1 |
+| t-profile-address-flake | #412 | 9b38f22 | none | 0.104.2 |
+| t-avatar-dialog-flake | #415 | 2854585 | none | 0.104.3 |
+| f-step-titles-text | #411 | 9d5704b | none | 0.105.0 |
+| (graph) | #417 | fddf8dd | none | none |
+| u-drag-between-parts | #413 | 1925b83 | none | 0.106.0 |
+
+- **#411:** `ParserVersion` 13. A split title is flagged at confidence 0.6. The LLM fallback can therefore replace a split step when the draft has no ingredient lines; this is disclosed in the PR.
+- **#413:** round 2's new no-script test found a real CSS bug (the Steps name box showed without JS and lost input), fixed in the PR.
+
+**In flight** (dispatched from d8a1814, worktrees `.claude/worktrees/wt-N`):
+
+| Node | Issue | Branch | VERSION target |
+|---|---|---|---|
+| r-card-spoons-bound | #410 | refactor/410-card-spoons-bound | 0.106.1 |
+| p-avatar-late-swap | #414 | fix/414-avatar-late-swap | 0.106.1 (collides with #410; re-bump at merge) |
+| u-step-part-select | #416 | feat/416-step-part-select | 0.107.0 |
+
+**Owner calls this session (don't re-ask):**
+- **Step "Part" select (#416):** remove it; dragging is the only way to move between parts. a-mcp-recipe-edit now depends on u-step-part-select (#417).
+
+**Next after these:** a-mcp-recipe-edit (#353) once u-step-part-select merges. r-author-notes still needs its ADR.
+
+**For the owner:** 0.106.0 is not deployed (0.104.0 carried migration 00028).
+
+**Lessons:**
+- **Every worker bumps VERSION, so every merge after the first conflicts.** Each rebase is a worker round trip plus a fresh CI run. Merge in a fixed order and send the rebase as soon as the previous PR lands.
+- **The bump check counts a test-only change as source** (#412, #415). Tell test-only workers to bump.
+- **Local render cannot clear `board: STALE`.** Rendering without `--refresh-state` never touches `board-state.json`, and the host still has overseer 0.18.2.
+
 ## Round 20 (2026-11-05): serve stage, verdict refactor, cook timer flake
 
 **Merged** (squash SHA; all under the standing authority):
