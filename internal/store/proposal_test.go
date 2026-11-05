@@ -670,3 +670,54 @@ func TestReplacingAnEditProposalAsADraftIsInvalidNotStale(t *testing.T) {
 		t.Errorf("ReplaceDraft on an edit proposal = %v, want ErrInvalid", err)
 	}
 }
+
+// keyRemover records the objects SweepWithPictures asks to be removed.
+type keyRemover struct{ removed []string }
+
+func (r *keyRemover) Remove(_ context.Context, keys []string) { r.removed = append(r.removed, keys...) }
+
+// Pruning a finished draft deletes its candidates' objects (ADR-00039): the
+// rows go with the proposal, so the keys are read before it is deleted. A draft
+// still in its sixty days keeps its candidates.
+func TestSweepWithPicturesRemovesPrunedDraftsCandidates(t *testing.T) {
+	s, d := newTestStore(t)
+	ctx := authedCtx(t)
+	seedCatalog(t, d)
+	clock := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	s.now = func() time.Time { return clock }
+
+	rejected, err := s.ProposeDraft(ctx, draftInput(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting, err := s.ProposeDraft(ctx, draftInput(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate := func(token string) string {
+		t.Helper()
+		p, err := s.GetProposal(ctx, token)
+		if err != nil {
+			t.Fatal(err)
+		}
+		key := fmt.Sprintf("drafts/%d/1.webp", p.ID)
+		if _, err := d.Exec(`INSERT INTO draft_candidates (household_id, proposal_id, position, source_url, key, width, height)
+			SELECT household_id, id, 1, 'https://example.test/a.jpg', ?, 1200, 400 FROM proposals WHERE token = ?`, key, token); err != nil {
+			t.Fatal(err)
+		}
+		return key
+	}
+	gone, kept := candidate(rejected), candidate(waiting)
+	if err := s.RejectProposal(ctx, rejected); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &keyRemover{}
+	clock = clock.Add(FinishedLifetime + time.Hour)
+	if _, err := s.SweepWithPictures(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.removed) != 1 || r.removed[0] != gone {
+		t.Errorf("removed = %v, want only the pruned draft's %q (not %q)", r.removed, gone, kept)
+	}
+}

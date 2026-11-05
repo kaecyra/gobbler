@@ -103,6 +103,9 @@ type Provenance struct {
 
 // Proposal is one stored proposal.
 type Proposal struct {
+	// ID is the proposal's row id. The draft's picture candidates are kept
+	// under it (ADR-00039); the token is what a person or agent holds.
+	ID int64
 	// Token names the proposal on the review screens. It cannot be guessed.
 	Token string
 	Kind  ProposalKind
@@ -382,7 +385,7 @@ func loadProposal(ctx context.Context, q *storedb.Queries, hid int64, token stri
 		return Proposal{}, readErr("proposal", err)
 	}
 	p := Proposal{
-		Token: row.Token, Kind: ProposalKind(row.Kind), State: ProposalState(row.State),
+		ID: row.ID, Token: row.Token, Kind: ProposalKind(row.Kind), State: ProposalState(row.State),
 		RecipeID: row.RecipeID.Int64, BaseVersion: row.BaseVersion.Int64, ResultRecipeID: row.ResultRecipeID.Int64,
 		Document:   []byte(row.Document),
 		Provenance: Provenance{Person: row.ProposedBy, Tool: row.Tool, Reason: row.Reason},
@@ -605,7 +608,22 @@ type SweepResult struct {
 // never touched. It is idempotent and meant to run at start-up and then
 // periodically.
 func (s *Store) Sweep(ctx context.Context) (SweepResult, error) {
+	return s.SweepWithPictures(ctx, nil)
+}
+
+// ObjectRemover deletes media objects by key once a delete has committed.
+// *picture.Reaper satisfies it; this package cannot import that one.
+type ObjectRemover interface {
+	Remove(ctx context.Context, keys []string)
+}
+
+// SweepWithPictures is Sweep that also deletes the picture candidates of the
+// drafts it prunes (ADR-00039): their rows go with the proposal, so the keys
+// are read in the sweep's transaction before the delete and the objects removed
+// after it commits. A rolled-back sweep keeps its objects. r nil leaves them.
+func (s *Store) SweepWithPictures(ctx context.Context, r ObjectRemover) (SweepResult, error) {
 	var res SweepResult
+	var keys []string
 	err := s.withTx(ctx, func(q *storedb.Queries) error {
 		now := s.now()
 		pending, err := q.ListPendingProposalAges(ctx)
@@ -636,6 +654,15 @@ func (s *Store) Sweep(ctx context.Context) (SweepResult, error) {
 			if now.Before(at.Add(FinishedLifetime)) {
 				continue
 			}
+			if r != nil {
+				// Read from draft_candidates here rather than through
+				// internal/picture, which imports this package.
+				ks, err := q.ListProposalCandidateKeys(ctx, storedb.ListProposalCandidateKeysParams{HouseholdID: p.HouseholdID, ProposalID: p.ID})
+				if err != nil {
+					return readErr(fmt.Sprintf("candidates of proposal %d", p.ID), err)
+				}
+				keys = append(keys, ks...)
+			}
 			if err := q.DeleteProposal(ctx, p.ID); err != nil {
 				return fmt.Errorf("delete proposal %d: %w", p.ID, err)
 			}
@@ -651,5 +678,11 @@ func (s *Store) Sweep(ctx context.Context) (SweepResult, error) {
 		}
 		return nil
 	})
-	return res, err
+	if err != nil {
+		return res, err
+	}
+	if r != nil {
+		r.Remove(ctx, keys)
+	}
+	return res, nil
 }
