@@ -33,24 +33,34 @@ func TestStageKindIsProposedFromTheInstruction(t *testing.T) {
 		{"Cook the pasta until al dente.", recipe.StageCook},
 		{"Chop the onions finely.", recipe.StagePrep},
 		{"Peel and dice the carrots.", recipe.StagePrep},
+		{"Serve with rice.", recipe.StageServe},
+		{"Serving suggestion: with rice.", recipe.StageServe},
 
 		// Nothing the vocabulary reads.
 		{"Mix the flour and water.", ""},
-		{"Serve with rice.", ""},
 		{"", ""},
 		// Not instructions: adjectives, ingredients, other phrases.
 		{"Add the roasted peppers and baked beans.", ""},
 		{"Add the carrots and roast beef.", ""},
 		{"Use a stand mixer on low.", ""},
 		{"Stir while the sauce simmers.", ""},
+		{"Stir before you serve.", ""},
+		{"Observe the dough.", ""},
+		// Serving is a kind only when the text opens with it; later, the verbs decide.
+		{"Slice and serve.", recipe.StagePrep},
+		{"Chill for 2 hours, then serve.", recipe.StageChill},
+		// An opening "serve" beside another kind is two kinds.
+		{"Serve. Chop the parsley and cook the rice.", ""},
+		{"Serve immediately. Refrigerate leftovers for up to 3 days.", ""},
+		{"Serve and slice at the table.", ""},
 		// Two kinds in one step is ambiguous, so none is proposed.
 		{"Chop the onion and cook until soft.", ""},
 		{"Let the dough rise, then bake for 20 minutes.", ""},
 		{"Cook the rice, then simmer for 10 minutes.", ""},
 	}
 	for _, c := range cases {
-		if got := stageKind(c.text); got != c.want {
-			t.Errorf("stageKind(%q) = %q, want %q", c.text, got, c.want)
+		if got := stageKindOf("", c.text); got != c.want {
+			t.Errorf("stageKindOf(%q) = %q, want %q", c.text, got, c.want)
 		}
 	}
 }

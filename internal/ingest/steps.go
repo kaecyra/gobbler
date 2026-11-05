@@ -222,11 +222,43 @@ var (
 	waitWordRE = regexp.MustCompile(`(?i)\b(rest|rise|stand|sit|cool|set|proof|prove)\b`)
 )
 
-// stageKind proposes what a step is doing from its text, or "" when the text
-// does not say. A step whose text names two different kinds ("let it rise,
-// then bake") gets none: precision over recall, since an empty kind is only
-// unknown and the user can set it on the review screen (ADR-00006).
-func stageKind(text string) recipe.StageKind {
+// serveRE matches a step that is the serving: a title or text that opens with
+// the word "serve" or "serving". Only the opening counts, so "Slice and serve"
+// and "Stir before you serve" are left to the verb rules.
+var serveRE = regexp.MustCompile(`(?i)^\W*serv(?:e|ing)\b`)
+
+// stageKindOf proposes a stage kind for a step from its source title and its
+// text. A title that opens with "serve" says so outright. In the text, an
+// opening "serve" counts as the kind serve beside the kinds the verbs name, so
+// serve alone is serve and serve with another kind is ambiguous and gets none
+// (ADR-00022, ADR-00006).
+func stageKindOf(title, text string) recipe.StageKind {
+	if serveRE.MatchString(title) {
+		return recipe.StageServe
+	}
+	kinds := stageKinds(text)
+	if serveRE.MatchString(text) {
+		kinds[recipe.StageServe] = true
+	}
+	return soleKind(kinds)
+}
+
+// soleKind is the one kind in kinds, or "" when there are none or several.
+func soleKind(kinds map[recipe.StageKind]bool) recipe.StageKind {
+	if len(kinds) != 1 {
+		return ""
+	}
+	for k := range kinds {
+		return k
+	}
+	return ""
+}
+
+// stageKinds is every kind the text names. A step whose text names two
+// different kinds ("let it rise, then bake") is ambiguous and gets none from
+// soleKind: precision over recall, since an empty kind is only unknown and the
+// user can set it on the review screen (ADR-00006).
+func stageKinds(text string) map[recipe.StageKind]bool {
 	kinds := map[recipe.StageKind]bool{}
 	for _, m := range passiveVerbRE.FindAllString(text, -1) {
 		if k, ok := stageByVerb[strings.ToLower(stageWordRE.FindString(m))]; ok {
@@ -255,11 +287,5 @@ func stageKind(text string) recipe.StageKind {
 	if prepVerbRE.MatchString(text) {
 		kinds[recipe.StagePrep] = true
 	}
-	if len(kinds) != 1 {
-		return ""
-	}
-	for k := range kinds {
-		return k
-	}
-	return ""
+	return kinds
 }
