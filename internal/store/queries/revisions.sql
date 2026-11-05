@@ -1,6 +1,6 @@
 -- name: InsertRevision :one
-INSERT INTO revisions (household_id, recipe_id, version, document, change_kind, restored_version, created_at, created_by)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO revisions (household_id, recipe_id, version, document, change_kind, restored_version, proposal_id, created_at, created_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 
 -- name: InsertRevisionIngredient :exec

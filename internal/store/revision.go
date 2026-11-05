@@ -13,8 +13,9 @@ import (
 
 // Kinds of change recorded on a revision: what replaced the stored document.
 const (
-	changeEdit    = "edit"
-	changeRestore = "restore"
+	changeEdit     = "edit"
+	changeRestore  = "restore"
+	changeProposal = "proposal"
 )
 
 // Revision describes one saved earlier version of a recipe. Version is the
@@ -26,9 +27,12 @@ type Revision struct {
 	CreatedAt time.Time
 	Author    string
 	Restored  *int64
+	// Proposal is the proposal whose acceptance replaced this version; nil
+	// for an ordinary edit or a restore (ADR-00035).
+	Proposal *ProposalRef
 }
 
-func insertRevision(ctx context.Context, q *storedb.Queries, hid, recipeID, version int64, doc recipe.Recipe, units *unitTable, change string, restored *int64, now, who string) error {
+func insertRevision(ctx context.Context, q *storedb.Queries, hid, recipeID, version int64, doc recipe.Recipe, units *unitTable, change string, restored *int64, proposalID int64, now, who string) error {
 	body, err := encodeDocument(doc, units)
 	if err != nil {
 		return fmt.Errorf("revision of recipe %d: %w", recipeID, err)
@@ -39,7 +43,7 @@ func insertRevision(ctx context.Context, q *storedb.Queries, hid, recipeID, vers
 	}
 	revID, err := q.InsertRevision(ctx, storedb.InsertRevisionParams{
 		HouseholdID: hid, RecipeID: recipeID, Version: version, Document: string(body), ChangeKind: change,
-		RestoredVersion: restoredVersion, CreatedAt: now, CreatedBy: who,
+		RestoredVersion: restoredVersion, ProposalID: optionalID(proposalID), CreatedAt: now, CreatedBy: who,
 	})
 	if err != nil {
 		return wrapWrite(fmt.Sprintf("write revision %d of recipe %d", version, recipeID), err)
@@ -83,6 +87,21 @@ func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error)
 				rev.Restored = &r.RestoredVersion.Int64
 			}
 			out = append(out, rev)
+		}
+		refs, err := q.ListRevisionProposals(ctx, storedb.ListRevisionProposalsParams{RecipeID: id, HouseholdID: hid})
+		if err != nil {
+			return readErr("revision proposals", err)
+		}
+		for _, r := range refs {
+			ref, err := proposalRef(r.Token, r.Reason, r.Tool, r.ProposedBy, r.CredentialKind, r.CredentialID, r.CredentialRef, r.CredentialOwner, r.CredentialCreatedAt, r.CreatedAt)
+			if err != nil {
+				return err
+			}
+			for i := range out {
+				if out[i].Version == r.Version {
+					out[i].Proposal = &ref
+				}
+			}
 		}
 		return nil
 	})
@@ -171,6 +190,6 @@ func (s *Store) Restore(ctx context.Context, id, version int64) error {
 		if err := target.Validate(); err != nil {
 			return fmt.Errorf("validate version %d of recipe %d: %w", version, id, err)
 		}
-		return s.replace(ctx, q, hid, id, target, who, changeRestore, &version)
+		return s.replace(ctx, q, hid, id, target, who, changeRestore, &version, 0)
 	})
 }
