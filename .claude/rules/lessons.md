@@ -46,3 +46,19 @@ statement, copy that reads as machine-written undercuts the statement.
 **Rule.** Load `tim:content-style` before drafting any user-facing words,
 including suggestions in conversation, and check each draft against its list of
 machine-written constructions before showing it.
+
+## An approved mockup is the visual target, checked side by side
+
+**Mistake.** The editor redesign was approved from a mockup. The brief to the
+implementing agent turned the mockup into a requirements list and told it to
+skip some of what was drawn, drag handles among them. The result was reviewed
+for bugs, not against the mockup.
+
+**Cost.** The owner had to point out that the shipped screen looked much less
+polished than the mockup and lacked its drag handles. That took a second
+implementation pass, which ran close to an hour.
+
+**Rule.** Hand the implementer the rendered mockup as the target. Leave nothing
+in it out unless the owner says so. Before showing the result, screenshot it at
+the mockup's width and list every difference from the mockup. Close each one,
+or name the owner's override or the data limit that keeps it.
