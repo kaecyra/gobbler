@@ -263,6 +263,13 @@ func (s *Service) deleteCandidates(ctx context.Context, hid, proposalID int64) e
 // all of the draft's candidates. A position the draft has no candidate for is
 // store.ErrNotFound.
 func (s *Service) Promote(ctx context.Context, proposalID int64, position int, id int64) (string, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return "", err
+	}
+	// Held from reading the rows to deleting them, so a FetchCandidates on the
+	// proposal cannot replace the object at the fixed key in between.
+	defer s.proposals.lock(proposalID)()
 	cs, err := s.Candidates(ctx, proposalID)
 	if err != nil {
 		return "", err
@@ -284,7 +291,7 @@ func (s *Service) Promote(ctx context.Context, proposalID int64, position int, i
 	if err != nil {
 		return "", err
 	}
-	if err := s.DeleteCandidates(ctx, proposalID); err != nil {
+	if err := s.deleteCandidates(ctx, hid, proposalID); err != nil {
 		// The picture is set; the leftovers go when the proposal is pruned.
 		s.log.WarnContext(ctx, "delete promoted draft's candidates", "proposal_id", proposalID, "error", err.Error())
 	}

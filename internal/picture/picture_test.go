@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -558,4 +559,66 @@ func TestChooseRefusesBytesThatAreNotAnImage(t *testing.T) {
 	if _, ok, _ := e.svc.Key(e.ctx, rid); ok {
 		t.Error("junk bytes were stored as the picture")
 	}
+}
+
+func TestPromoteWaitsForAFetchOnTheSameDraft(t *testing.T) {
+	e := newEnv(t)
+	a, b := pic(t, 1200, 400, 3), pic(t, 1200, 400, 5)
+	var slow sync.Once
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/b.png" {
+			slow.Do(func() { time.Sleep(300 * time.Millisecond) }) // keep the fetch in flight
+			_, _ = w.Write(b)
+			return
+		}
+		_, _ = w.Write(a)
+	}))
+	defer srv.Close()
+	pid := e.draft(t)
+	if cs, err := e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/a.png"}); err != nil || len(cs) != 1 {
+		t.Fatalf("setup: %v, %v", cs, err)
+	}
+	rid := e.recipe(t, "")
+	done := make(chan []picture.Candidate)
+	go func() {
+		cs, _ := e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/b.png"}) // replaces the candidates with b
+		done <- cs
+	}()
+	time.Sleep(100 * time.Millisecond) // the fetch is now downloading b
+	key, err := e.svc.Promote(e.ctx, pid, 1, rid)
+	fetched := <-done
+	if err != nil {
+		t.Fatalf("Promote during a fetch = %v; it must wait for the fetch and promote its result", err)
+	}
+	if len(fetched) != 1 {
+		t.Fatalf("fetch = %v", fetched)
+	}
+	got, err := e.media.Get(context.Background(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := media.Decode(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := media.Decode(b)
+	wp, _ := media.Picture(want.Image)
+	wd, _ := media.Decode(wp)
+	if pixelsDiffer(d.Image, wd.Image) {
+		t.Error("the promoted picture is not the one the fetch stored")
+	}
+}
+
+func pixelsDiffer(a, b image.Image) bool {
+	if a.Bounds() != b.Bounds() {
+		return true
+	}
+	for y := a.Bounds().Min.Y; y < a.Bounds().Max.Y; y += 17 {
+		for x := a.Bounds().Min.X; x < a.Bounds().Max.X; x += 17 {
+			if a.At(x, y) != b.At(x, y) {
+				return true
+			}
+		}
+	}
+	return false
 }
