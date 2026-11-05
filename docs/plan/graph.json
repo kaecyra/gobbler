@@ -3614,7 +3614,7 @@
       "wave": 12,
       "track": null,
       "issue": 426,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "s-picture-store",
         "a-mcp-recipe-edit"
@@ -4952,6 +4952,12 @@
       "title": "serve recipe pictures and draft candidates after admission",
       "merged": "7bfbf5f",
       "note": "Also owns the picture wiring: household delete adapter (DeleteWithPictures + Reaper) in internal/web/picture, with a granted edit of the MemberRoutes Deps line in internal/web/routes.go."
+    },
+    {
+      "id": "i-draft-pictures",
+      "title": "fetch picture candidates for URL drafts and promote the chosen one on confirm",
+      "merged": "ed47bf4",
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3, D6."
     }
   ],
   "adr_sequence": {
