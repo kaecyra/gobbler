@@ -87,26 +87,31 @@ func TestPastedTextSplitsLeadSentences(t *testing.T) {
 	d := ruleDraft(t, e, recipeWith(
 		"1. Preheat oven. Heat the oven to 375F and butter a loaf pan.",
 		"2. Make the batter. Whisk the flour and beer.",
-		"3. Serve. Slice with a bread knife.",
-		"4. Cool on a rack before slicing."))
+		"3. Add the butter. Pour the melted butter over the batter.",
+		"4. Bake. Bake for 50 minutes.",
+		"5. Serve. Slice with a bread knife.",
+		"6. Cool on a rack before slicing."))
 	got := flatSteps(d)
-	if len(got) != 4 {
-		t.Fatalf("steps = %+v, want four", got)
+	if len(got) != 6 {
+		t.Fatalf("steps = %+v, want six", got)
 	}
-	wantTitles := []string{"Preheat oven", "Make the batter", "Serve", ""}
+	wantTitles := []string{"Preheat oven", "Make the batter", "Add the butter", "Bake", "Serve", ""}
 	for i, s := range got {
 		low := s.Confidence < d.Threshold
 		if s.Title != wantTitles[i] || low != (wantTitles[i] != "") {
 			t.Errorf("step %d = title %q conf %v, want title %q flagged=%v", i+1, s.Title, s.Confidence, wantTitles[i], wantTitles[i] != "")
 		}
 	}
-	if got[2].Kind != recipe.StageServe {
-		t.Errorf("split title Serve gave kind %q, want serve", got[2].Kind)
+	if got[3].Kind != recipe.StageBake || got[3].Duration != 50*time.Minute {
+		t.Errorf("Bake step kind %q duration %v, want bake and 50m0s", got[3].Kind, got[3].Duration)
+	}
+	if got[4].Kind != recipe.StageServe {
+		t.Errorf("split title Serve gave kind %q, want serve", got[4].Kind)
 	}
 }
 
-// A split must never lose the time a step states, even when the time is in
-// what became the title.
+// A step whose lead states a time is not split, and a split step keeps the
+// time its instruction states.
 func TestSplitStepsKeepTheirDuration(t *testing.T) {
 	e := newEnv(t)
 	res := extract.Result{Method: extract.MethodJSONLD, Recipe: &extract.Raw{
