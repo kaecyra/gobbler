@@ -113,3 +113,53 @@ func TestPluginDoesNotOverrideJSONLDSections(t *testing.T) {
 		t.Errorf("section = %q, want the JSON-LD one", got)
 	}
 }
+
+// WPRM cards open a step with a bold title that schema.org flattens into the
+// text (#391). The honey beer bread page states every step this way.
+func TestWPRMBoldLeadsBecomeStepTitles(t *testing.T) {
+	res := mustExtract(t, fixture(t, "real_wprm_step_titles"), fixtureURL)
+	var titles []string
+	for _, s := range res.Recipe.Instructions {
+		titles = append(titles, s.Title)
+	}
+	want := []string{"Preheat oven", "Make the batter", "Add the butter", "Bake", "Serve"}
+	if !reflect.DeepEqual(titles, want) {
+		t.Errorf("titles = %q, want %q", titles, want)
+	}
+	if got := res.Recipe.Instructions[0].Text; got != "Heat oven to 350°F." {
+		t.Errorf("first step text = %q, want the title taken off", got)
+	}
+}
+
+func TestWPRMBoldLeadCases(t *testing.T) {
+	const lead = `<strong>Preheat oven. </strong>Heat oven to 350°F.`
+	for name, tc := range map[string]struct {
+		card, title, text string
+	}{
+		"split":        {lead, "Preheat oven", "Heat oven to 350°F."},
+		"colon":        {`<b>Preheat oven:</b> Heat oven to 350°F.`, "Preheat oven", "Heat oven to 350°F."},
+		"wrapped":      {`<span><strong>Preheat oven.</strong> Heat oven to 350°F.</span>`, "Preheat oven", "Heat oven to 350°F."},
+		"no bold":      {`Preheat oven. Heat oven to 350°F.`, "", "Preheat oven. Heat oven to 350°F."},
+		"mid-sentence": {`Preheat oven. <strong>Heat oven</strong> to 350°F.`, "", "Preheat oven. Heat oven to 350°F."},
+		"emphasis":     {`<strong>Preheat</strong> oven. Heat oven to 350°F.`, "", "Preheat oven. Heat oven to 350°F."},
+		"all bold":     {`<strong>Preheat oven. Heat oven to 350°F.</strong>`, "", "Preheat oven. Heat oven to 350°F."},
+	} {
+		t.Run(name, func(t *testing.T) {
+			page := strings.Replace(fixture(t, "real_wprm_step_titles"), lead, tc.card, 1)
+			got := mustExtract(t, page, fixtureURL).Recipe.Instructions[0]
+			if got.Title != tc.title || got.Text != tc.text {
+				t.Errorf("step = %q / %q, want %q / %q", got.Title, got.Text, tc.title, tc.text)
+			}
+		})
+	}
+}
+
+// A HowToStep name the page gives is kept over the card's bold lead.
+func TestWPRMBoldLeadKeepsAStructuredTitle(t *testing.T) {
+	page := strings.Replace(fixture(t, "real_wprm_step_titles"),
+		`"name":"Preheat oven. Heat oven to 350°F."`, `"name":"Warm up"`, 1)
+	got := mustExtract(t, page, fixtureURL).Recipe.Instructions[0]
+	if got.Title != "Warm up" || got.Text != "Preheat oven. Heat oven to 350°F." {
+		t.Errorf("step = %+v, want the HowToStep name and the whole text", got)
+	}
+}

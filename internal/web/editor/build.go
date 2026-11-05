@@ -122,7 +122,7 @@ func validationMessage(err error) string {
 		}
 		return err.Error() + "."
 	case errors.Is(err, recipe.ErrNoComponents):
-		return "A recipe needs at least one component. Add one before saving."
+		return "A recipe needs at least one part. Add one before saving."
 	}
 	return err.Error() + "."
 }

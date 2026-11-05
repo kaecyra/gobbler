@@ -55,7 +55,9 @@ func Confirm(d Draft) (Confirmed, error) {
 		for li, l := range c.Lines {
 			lines++
 			if l.Ingredient == 0 && normalizeName(l.Name) == "" {
-				problems = append(problems, fmt.Errorf("component %d line %d (%q) has no ingredient", ci+1, li+1, l.Raw))
+				// Shown on the review screen, which calls a component a part
+				// (docs/ui/design.md).
+				problems = append(problems, fmt.Errorf("part %d line %d (%q) has no ingredient", ci+1, li+1, l.Raw))
 			}
 		}
 	}

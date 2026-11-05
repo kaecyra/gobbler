@@ -1,0 +1,41 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Honey Beer Bread",
+    "yield": [
+      "1",
+      "1 loaf"
+    ],
+    "ingredients": [
+      "3 cups all-purpose flour",
+      "1 tablespoon baking powder",
+      "1 teaspoon fine sea salt",
+      "1/4 cup honey*",
+      "1 bottle (12 ounces) beer",
+      "1/4 cup butter (melted)"
+    ],
+    "instructions": [
+      {
+        "text": "Heat oven to 350°F.",
+        "title": "Preheat oven"
+      },
+      {
+        "text": "In a large mixing bowl, stir together the flour, baking powder and salt until combined. Slowly pour the beer and honey into the flour mixture, and stir until combined.",
+        "title": "Make the batter"
+      },
+      {
+        "text": "Pour half of the melted butter into the bottom of a 9x5-inch bread pan, and brush it around to grease the inside of the pan. Add the batter and spread it out in an even layer. Then brush the remaining melted butter evenly on top of the batter.",
+        "title": "Add the butter"
+      },
+      {
+        "text": "Bake for 40 to 50 minutes, until a toothpick or knife inserted in the middle comes out clean. Remove and transfer the pan to a wire baking rack and let the bread cool for at least 10 minutes.",
+        "title": "Bake"
+      },
+      {
+        "text": "Slice with a bread knife, serve warm and enjoy!",
+        "title": "Serve"
+      }
+    ]
+  }
+}

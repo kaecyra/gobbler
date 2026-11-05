@@ -364,17 +364,27 @@ func (h *handler) draft(w http.ResponseWriter, r *http.Request, token string) (i
 	return d, true
 }
 
-// reviewOptions is where the review form's buttons post.
-func reviewOptions(token string) editor.ReviewOptions {
-	return editor.ReviewOptions{Action: "/ingest/" + token + "/confirm"}
+// reviewOptions is where the review form's buttons post, and what the parts
+// panel beside it can say about d's source. The panel sits under the source
+// box, so it is shown beside the form only when there is a source box.
+func reviewOptions(token string, d ingestcore.Draft) editor.ReviewOptions {
+	rows := sourceRows(d)
+	headings := 0
+	for _, r := range rows {
+		if r.Heading {
+			headings++
+		}
+	}
+	return editor.ReviewOptions{Action: "/ingest/" + token + "/confirm", SourceParts: headings, PartsBeside: len(rows) > 0}
 }
 
 // renderReview shows d in the editor. form, when set, is the editor form to
 // show instead of a fresh one (what the user typed, with its messages). A
-// request from htmx gets the form alone, to swap in place.
+// request from htmx gets the form alone, to swap in place, with the parts
+// panel beside it out of band.
 func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status int, token string, d ingestcore.Draft, form *editor.Form) {
 	if form == nil {
-		f, err := h.unsaved.Open(r.Context(), d, reviewOptions(token))
+		f, err := h.unsaved.Open(r.Context(), d, reviewOptions(token, d))
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("open review: %w", err))
 			return
@@ -383,7 +393,7 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 	}
 	if editor.FromHTMX(r) {
 		// htmx does not swap a 4xx, so the form alone is answered with a 200.
-		layout.Render(w, r, http.StatusOK, form.Component())
+		layout.Render(w, r, http.StatusOK, form.Fragment())
 		return
 	}
 	layout.Render(w, r, status, reviewPage(reviewView{
@@ -416,7 +426,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	out, err := h.unsaved.Submit(r.Context(), r.PostForm, base, reviewOptions(token))
+	out, err := h.unsaved.Submit(r.Context(), r.PostForm, base, reviewOptions(token, base))
 	if err != nil {
 		layout.WriteError(w, r, fmt.Errorf("read review form: %w", err))
 		return

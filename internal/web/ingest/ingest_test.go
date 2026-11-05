@@ -463,7 +463,7 @@ func TestReviewShowsTheParserVersion(t *testing.T) {
 	f := newFixture(t)
 	token := f.ingestText(t)
 	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
-	if want := "Parser version " + ingestcore.ParserVersion; !strings.Contains(body, want) {
+	if want := "parser " + ingestcore.ParserVersion; !strings.Contains(body, want) {
 		t.Errorf("review lacks %q", want)
 	}
 }
