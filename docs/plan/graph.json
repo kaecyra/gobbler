@@ -3572,7 +3572,7 @@
       "wave": 12,
       "track": null,
       "issue": 424,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/ingest/extract/*.go",
@@ -4916,6 +4916,12 @@
       "title": "store avatars under people/<person_id>/ keys",
       "merged": "71ffa14",
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D2."
+    },
+    {
+      "id": "i-image-candidates",
+      "title": "return ordered picture candidates, og:image first",
+      "merged": "7b344ba",
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D3."
     }
   ],
   "adr_sequence": {
