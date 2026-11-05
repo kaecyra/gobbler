@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-05, round 22 closing
+# Overseer handoff: 2026-11-05, round 22 closed
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -22,14 +22,15 @@ This file holds the volatile state the graph does not. The durable record is `do
 | w-picture-serve | #445 | 7bfbf5f | none | 0.114.0 |
 | i-draft-pictures | #444 | ed47bf4 | none | 0.115.0 |
 | u-picture-picker | #446 | 4386b98 | none | 0.116.0 |
+| u-picture-cards | #448 | 9b51b4a | none | 0.117.0 |
 
 **Open:**
 
 | Node | Issue | PR | State |
 |---|---|---|---|
-| u-picture-cards | #430 | #448 | round 2 clean, all threads resolved; rebased onto main at 0.117.0; merges on green CI |
+| (none) | | | |
 
-**Worktrees:** wt-430 (u-picture-cards).
+**Worktrees:** none.
 
 **Migration numbers:** schema 00029 to a-mcp-recipe-edit, 00030 to s-picture-store. **ADR numbers:** 00040 to m-fetch-guard.
 
@@ -41,7 +42,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 - **Person id in media keys is the profile `address`**; accepted in #439.
 - **Owner wants speed:** stack dependent nodes on unmerged branches rather than wait for merges; the dispatcher re-stacks with cherry-pick after each merge.
 
-**Next:** after #448, the picture feature is complete; o-demo-reseed (#432) becomes dispatchable, and r-author-notes (#395). l-discrete-api needs its decide session; i-site-extractors and l-meal-planning stay parked.
+**Next:** the picture feature is complete; o-demo-reseed (#432) becomes dispatchable, and r-author-notes (#395). l-discrete-api needs its decide session; i-site-extractors and l-meal-planning stay parked.
 
 **Lessons:**
 - **Concurrent `make check` runs collide on golangci-lint's lock and load e2e into flakes.** Retry on "parallel golangci-lint is running"; rerun a failing unrelated spec alone before calling it a flake.
