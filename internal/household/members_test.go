@@ -340,3 +340,42 @@ func TestDepartedIssuerWritesNoInvitation(t *testing.T) {
 		t.Errorf("invitations: %d before, %d after the refused invite", before, after)
 	}
 }
+
+// fakeReaper records what DeleteWithPictures asks of it, and whether the
+// household row was still there when it collected.
+type fakeReaper struct {
+	collected []int64
+	stillHere bool
+	removed   []string
+}
+
+func (r *fakeReaper) CollectHousehold(ctx context.Context, tx *sql.Tx, id int64) ([]string, error) {
+	r.collected = append(r.collected, id)
+	err := tx.QueryRowContext(ctx, `SELECT count(*) > 0 FROM households WHERE id = ?`, id).Scan(&r.stillHere)
+	return []string{"recipes/1/a.webp"}, err
+}
+
+func (r *fakeReaper) Remove(_ context.Context, keys []string) { r.removed = append(r.removed, keys...) }
+
+func TestDeleteWithPicturesCollectsBeforeTheCascadeAndRemovesAfter(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	h := f.create("Alpha Kitchen", "ann@example.com")
+	r := &fakeReaper{}
+
+	if err := f.s.DeleteWithPictures(ctx, h.ID, "ann@example.com", "wrong", r); !errors.Is(err, ErrConfirmation) {
+		t.Fatalf("refused delete = %v, want ErrConfirmation", err)
+	}
+	if len(r.removed) != 0 {
+		t.Fatalf("a refused delete removed objects: %v", r.removed)
+	}
+	if err := f.s.DeleteWithPictures(ctx, h.ID, "ann@example.com", "Alpha Kitchen", r); err != nil {
+		t.Fatal(err)
+	}
+	if !r.stillHere {
+		t.Error("keys were collected after the household was gone; the cascade would already have taken them")
+	}
+	if len(r.removed) != 1 || r.removed[0] != "recipes/1/a.webp" {
+		t.Errorf("removed = %v, want the collected key", r.removed)
+	}
+}

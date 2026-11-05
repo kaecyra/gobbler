@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
@@ -573,5 +574,44 @@ func TestReadsSeeOneSnapshot(t *testing.T) {
 	}
 	if got, _ := s.ListNotes(ctx, id); len(got) != 1 {
 		t.Errorf("notes after the read = %d, want 1", len(got))
+	}
+}
+
+type fakeReaper struct {
+	collected [][2]int64
+	stillHere bool
+	removed   []string
+}
+
+func (r *fakeReaper) CollectRecipe(ctx context.Context, tx *sql.Tx, hid, id int64) ([]string, error) {
+	r.collected = append(r.collected, [2]int64{hid, id})
+	err := tx.QueryRowContext(ctx, `SELECT count(*) > 0 FROM recipes WHERE id = ?`, id).Scan(&r.stillHere)
+	return []string{"recipes/1/a.webp"}, err
+}
+
+func (r *fakeReaper) Remove(_ context.Context, keys []string) { r.removed = append(r.removed, keys...) }
+
+func TestDeleteWithPictureCollectsBeforeTheDeleteAndRemovesAfter(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := authedCtx(t)
+	id, err := s.Create(ctx, simpleRecipe("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := &fakeReaper{}
+	if err := s.DeleteWithPicture(otherCtx(t), id, r); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("delete by another household = %v, want ErrNotFound", err)
+	}
+	if len(r.removed) != 0 {
+		t.Fatalf("a failed delete removed objects: %v", r.removed)
+	}
+	if err := s.DeleteWithPicture(ctx, id, r); err != nil {
+		t.Fatal(err)
+	}
+	if !r.stillHere {
+		t.Error("keys were collected after the recipe was deleted")
+	}
+	if len(r.removed) != 1 {
+		t.Errorf("removed = %v, want the collected key", r.removed)
 	}
 }
