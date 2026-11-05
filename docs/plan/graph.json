@@ -3703,7 +3703,14 @@
         "e2e/home/**",
         "e2e/cook/**",
         "internal/web/static/app.css",
-        "docs/ui/design.md"
+        "docs/ui/design.md",
+        "internal/web/layout/picture.go",
+        "internal/web/layout/picture.templ",
+        "internal/web/layout/picture_templ.go",
+        "internal/web/layout/picture_test.go",
+        "internal/web/picture/srcs.go",
+        "internal/web/picture/srcs_test.go",
+        "internal/web/static/picture.js"
       ],
       "needs_migration": null,
       "adrs": [],
