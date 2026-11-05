@@ -67,7 +67,9 @@ templ journalStyles() {
 		.note-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13.5px; color: var(--ink-3); }
 		.note-tip { display: inline-flex; align-items: center; gap: 6px; color: var(--wattle-ink); font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 		.note-tip svg { width: 18px; height: 18px; }
-		.note-body { grid-column: 1; margin: 0; font-size: 17.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+		/* The body comes before the pin in the markup, so it is read first; the
+		   grid puts the pin beside the meta and the body. */
+		.note-body { grid-column: 1; grid-row: 2; margin: 0; font-size: 17.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
 		.pin-form { grid-column: 2; grid-row: 1 / span 2; margin: 0; align-self: start; }
 		.pin { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
 		.pin svg { width: 16px; height: 16px; }
@@ -145,8 +147,8 @@ templ notesPart(v view) {
 								<span aria-hidden="true">·</span>
 								<time datetime={ n.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }>{ day(n.CreatedAt.UTC()) }</time>
 							</div>
-							@pinForm(v, n)
 							<p class="note-body">{ n.Body }</p>
+							@pinForm(v, n)
 						</li>
 					}
 				</ul>

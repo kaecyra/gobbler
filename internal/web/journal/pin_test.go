@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -36,6 +37,19 @@ func TestANoteIsPinnedAsATipAndUnpinned(t *testing.T) {
 		t.Error("the note is still pinned after unpinning")
 	}
 	mustContain(t, rec.Body.String(), `name="pinned" value="1"`, "Pin as tip")
+}
+
+// The note's body is read before its pin button; the grid places the button.
+func TestANoteBodyComesBeforeItsPinButton(t *testing.T) {
+	e := newEnv(t)
+	if _, err := e.store.AddNote(e.ctx, e.id, "salt early", false); err != nil {
+		t.Fatal(err)
+	}
+	body := e.do(http.MethodGet, e.path(""), nil, htmx...).Body.String()
+	note, pin := strings.Index(body, `<p class="note-body">salt early</p>`), strings.Index(body, `class="pin-form"`)
+	if note < 0 || pin < 0 || note > pin {
+		t.Errorf("note body at %d, pin form at %d; want the body first", note, pin)
+	}
 }
 
 func TestPinningAPlainPostRedirects(t *testing.T) {
