@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -35,7 +36,11 @@ type DraftStore interface {
 }
 
 // Drafts holds the drafts awaiting review.
-type Drafts struct{ store DraftStore }
+type Drafts struct {
+	store DraftStore
+	// pictures fetches and holds URL drafts' picture candidates; nil holds none.
+	pictures Pictures
+}
 
 // NewDrafts returns the drafts held in s.
 func NewDrafts(s DraftStore) *Drafts { return &Drafts{store: s} }
@@ -58,6 +63,7 @@ func (d *Drafts) Add(ctx context.Context, dr Draft, by store.Provenance) (string
 	if err != nil {
 		return "", fmt.Errorf("hold draft: %w", err)
 	}
+	d.fetchCandidates(ctx, token, dr)
 	return token, nil
 }
 
@@ -88,6 +94,14 @@ func (d *Drafts) Get(ctx context.Context, token string) (Draft, error) {
 	if err != nil {
 		return Draft{}, fmt.Errorf("read draft: %w", err)
 	}
+	dr.ProposalID = p.ID
+	if d.pictures != nil {
+		cs, err := d.pictures.Candidates(ctx, p.ID)
+		if err != nil {
+			return Draft{}, fmt.Errorf("read draft's picture candidates: %w", err)
+		}
+		dr.Candidates = len(cs)
+	}
 	return dr, nil
 }
 
@@ -102,10 +116,28 @@ func (d *Drafts) Replace(ctx context.Context, token string, dr Draft) error {
 	return draftGone(err, "replace draft")
 }
 
-// Discard rejects the pending draft for token. It is kept, as rejected, for
+// Discard rejects the pending draft for token and deletes its picture candidates. It is kept, as rejected, for
 // store.FinishedLifetime and then deleted with its source.
 func (d *Drafts) Discard(ctx context.Context, token string) error {
-	return draftGone(d.store.RejectProposal(ctx, token), "discard draft")
+	var id int64
+	if d.pictures != nil {
+		p, err := d.store.GetProposal(ctx, token)
+		if err != nil {
+			return draftGone(err, "discard draft")
+		}
+		id = p.ID
+	}
+	if err := draftGone(d.store.RejectProposal(ctx, token), "discard draft"); err != nil {
+		return err
+	}
+	if id != 0 {
+		// The draft is discarded; a candidate that outlives this call goes
+		// when the proposal is pruned, so a failure is logged, not returned.
+		if err := d.pictures.DeleteCandidates(ctx, id); err != nil {
+			slog.WarnContext(ctx, "delete discarded draft's picture candidates", "proposal_id", id, "error", err.Error())
+		}
+	}
+	return nil
 }
 
 // draftGone reports a draft that is not there to change as ErrDraftGone.

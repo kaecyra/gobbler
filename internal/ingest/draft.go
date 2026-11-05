@@ -186,6 +186,20 @@ type Draft struct {
 
 	Components []Component
 
+	// ImageURLs are the page's picture candidates, best guess first (ADR-00039),
+	// set by a URL import and empty for pasted text and photos. They are not
+	// part of the draft document: Drafts.Add fetches them once, when the draft
+	// is held.
+	ImageURLs []string
+	// Picture is the person's choice among the draft's picture candidates, or
+	// PictureNone (ADR-00039, Choosing). It is part of the draft document.
+	Picture PictureChoice
+	// Candidates is how many picture candidates the held draft has and
+	// ProposalID the proposal that holds them. Drafts.Get sets both from the
+	// held draft; they are not in the document.
+	Candidates int
+	ProposalID int64
+
 	// Equipment is what the recipe uses, in reading order, once each.
 	Equipment []Equipment
 

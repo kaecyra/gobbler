@@ -108,6 +108,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 	d.Cook = duration(raw.CookDuration)
 	d.Total = duration(raw.TotalDuration)
 	d.VideoID = raw.VideoID
+	d.ImageURLs = raw.ImageURLs
 	d.MealType = mealTypeFor(raw.Categories)
 	d.Cuisine = cuisineFor(raw.Cuisines)
 

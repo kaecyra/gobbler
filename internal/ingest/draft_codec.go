@@ -111,6 +111,7 @@ type docDraft struct {
 	Total       docField[int64]    `json:"total"`
 
 	VideoID    string `json:"video_id,omitempty"`
+	Picture    int    `json:"picture,omitempty"`
 	MealType   string `json:"meal_type,omitempty"`
 	SpiceLevel *int   `json:"spice_level,omitempty"`
 	Cuisine    string `json:"cuisine,omitempty"`
@@ -176,7 +177,7 @@ func EncodeDraft(d Draft) ([]byte, error) {
 		Prep:        docField[int64]{int64(d.Prep.Value), d.Prep.Confidence, d.Prep.FromLLM},
 		Cook:        docField[int64]{int64(d.Cook.Value), d.Cook.Confidence, d.Cook.FromLLM},
 		Total:       docField[int64]{int64(d.Total.Value), d.Total.Confidence, d.Total.FromLLM},
-		VideoID:     d.VideoID, MealType: string(d.MealType), SpiceLevel: d.SpiceLevel, Cuisine: string(d.Cuisine),
+		VideoID:     d.VideoID, Picture: int(d.Picture), MealType: string(d.MealType), SpiceLevel: d.SpiceLevel, Cuisine: string(d.Cuisine),
 		Overall: d.Overall, Threshold: d.Threshold, BelowThreshold: d.BelowThreshold,
 		UsedLLM: d.UsedLLM, LLMError: d.LLMError, Issues: d.Issues, Proposed: d.Proposed,
 	}
@@ -256,7 +257,7 @@ func DecodeDraft(doc []byte, snap store.Snapshot) (Draft, error) {
 		Prep:        Field[time.Duration]{time.Duration(in.Prep.V), in.Prep.C, in.Prep.LLM},
 		Cook:        Field[time.Duration]{time.Duration(in.Cook.V), in.Cook.C, in.Cook.LLM},
 		Total:       Field[time.Duration]{time.Duration(in.Total.V), in.Total.C, in.Total.LLM},
-		VideoID:     in.VideoID, MealType: recipe.MealType(in.MealType), SpiceLevel: in.SpiceLevel, Cuisine: recipe.Cuisine(in.Cuisine),
+		VideoID:     in.VideoID, Picture: PictureChoice(in.Picture), MealType: recipe.MealType(in.MealType), SpiceLevel: in.SpiceLevel, Cuisine: recipe.Cuisine(in.Cuisine),
 		Overall: in.Overall, Threshold: in.Threshold, BelowThreshold: in.BelowThreshold,
 		UsedLLM: in.UsedLLM, LLMError: in.LLMError, Issues: in.Issues, Proposed: in.Proposed,
 	}
