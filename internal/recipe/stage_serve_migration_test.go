@@ -21,7 +21,7 @@ func TestServeStageMigrationKeepsPopulatedSteps(t *testing.T) {
 	t.Cleanup(func() { _ = d.Close() })
 
 	// The schema as it stood before the serve migration.
-	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("99999")); err != nil {
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00028")); err != nil {
 		t.Fatal(err)
 	}
 	for _, q := range []string{
