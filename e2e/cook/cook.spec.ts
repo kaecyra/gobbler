@@ -65,7 +65,6 @@ test.afterAll(async () => {
   if (dataDir) rmSync(dataDir, { recursive: true, force: true });
 });
 
-/** Replaces AudioContext with a recorder so the test can see that a sound was made. */
 // Installs the fake clock and stops it. install() alone leaves it running with
 // real time, so every real millisecond between a timer starting and a check
 // came off the display ("9:" read "8:54" on a loaded machine, #375). Paused,
@@ -76,6 +75,7 @@ async function freezeClock(page: Page) {
   await page.clock.pauseAt(new Date(start.getTime() + 1000));
 }
 
+/** Replaces AudioContext with a recorder so the test can see that a sound was made. */
 async function stubAudio(page: Page) {
   await page.addInitScript(() => {
     (window as any).__beeps = 0;
