@@ -78,7 +78,7 @@ test('an uploaded photo is read, reviewed, and saved only when confirmed', async
 
   await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Photo Pancakes');
-  await expect(page.getByLabel('Original text').first()).toHaveValue('2 cups all-purpose flour');
+  await expect(page.locator('[name="c.0.l.0.raw"]')).toHaveValue('2 cups all-purpose flour');
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);

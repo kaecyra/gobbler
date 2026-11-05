@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { pasteText } from './helpers';
+import { userCopy } from '../fixtures/copy';
 
 // The ingest form and the review screen (ADR-00006): nothing is saved until
 // the user confirms. The URL path is exercised against a local fixture HTTP
@@ -175,10 +176,12 @@ test('the review controls are at least 44px tall', async ({ page }) => {
   await pasteText(page, MESSY);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
-  await expectTall(page, '.review-body .editor button');
-  await expectTall(page, '.review-body .editor input[type=text]');
-  await expectTall(page, '.review-body .editor select');
-  await expectTall(page, '.review-body .editor label.inline');
+  // Measured as shown: controls inside a closed disclosure are not drawn.
+  await expectTall(page, '.review-body .editor button:visible');
+  await expectTall(page, '.review-body .editor input[type=text]:visible');
+  await expectTall(page, '.review-body .editor select:visible');
+  await expectTall(page, '.review-body .editor label.inline:visible');
+  await expectTall(page, '.review-body .editor summary:visible');
   await expectTall(page, '.srcbox-wrap summary');
 });
 
@@ -228,7 +231,9 @@ test('a low-confidence line is marked in grain with a dot, never a left border',
   const ok = await style('li.line:not([data-low])');
   expect(ok.dot).toBe(probe.ok);
   // Equipment items carry no confidence dot.
-  await page.getByRole('button', { name: 'Add equipment' }).first().click();
+  // Equipment is added by typing into the empty slot after the chips.
+  await page.getByPlaceholder('Add equipment').fill('whisk');
+  await page.getByRole('button', { name: 'Add equipment' }).click();
   const equipment = page.locator('li.item.equipment');
   await expect(equipment.first()).toBeVisible();
   expect(await equipment.first().evaluate((el) => getComputedStyle(el, '::before').content)).toBe('none');
@@ -260,7 +265,7 @@ test('pasted text goes to review, then confirm saves and redirects to the recipe
   await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
-  await expect(page.getByLabel('Original text').first()).toHaveValue('2 cups all-purpose flour');
+  await expect(page.locator('[name="c.0.l.0.raw"]')).toHaveValue('2 cups all-purpose flour');
 
   await page.getByLabel('Name', { exact: true }).fill('Best Pancakes');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
@@ -286,7 +291,7 @@ Cook on a hot greased griddle until golden on both sides.
   await expect(page.getByLabel('Prep time')).toHaveValue('20 min');
   await expect(page.getByLabel('Cook time')).toHaveValue('70 min');
   await expect(page.getByLabel('Yield amount')).toHaveValue('12');
-  await expect(page.getByLabel('Yield unit (for example loaf)')).toHaveValue('pancakes');
+  await expect(page.getByLabel('Yield unit')).toHaveValue('pancakes');
   // Read as fields, so the label text is not left in a step or the description.
   await expect(page.locator('textarea').filter({ hasText: 'Prep time' })).toHaveCount(0);
 });
@@ -298,10 +303,10 @@ test('a low-confidence line is highlighted in words, a confident one is not', as
 
   const flagged = page.locator('li.line[data-low]');
   await expect(flagged).toHaveCount(1);
-  await expect(flagged.getByLabel('Original text')).toHaveValue(/glorp/);
+  await expect(flagged.locator('input[name$=".raw"]')).toHaveValue(/glorp/);
   await expect(flagged).toContainText('Check:');
   const confident = page.locator('li.line:not([data-low])');
-  await expect(confident.getByLabel('Original text')).toHaveValue(/all-purpose flour/);
+  await expect(confident.locator('input[name$=".raw"]')).toHaveValue(/all-purpose flour/);
   await expect(confident).not.toContainText('Check:');
 });
 
@@ -353,13 +358,13 @@ test('an amount, a unit and a whole line can be corrected on review before anyth
   await first.getByLabel('Unit', { exact: true }).fill('tbsp');
 
   // A structural button keeps what was typed and saves nothing.
-  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
   await expect(page.locator('li.line')).toHaveCount(2);
   await expect(page.locator('li.line').nth(0).getByLabel('Quantity')).toHaveValue('3');
   await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
-  await page.getByRole('button', { name: 'Add ingredient line' }).click();
+  await page.getByRole('button', { name: 'Add ingredient' }).click();
   await expect(page.locator('li.line')).toHaveCount(3);
-  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
@@ -381,14 +386,17 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   await first.getByLabel('Quantity').fill('3');
   await first.getByLabel('Unit', { exact: true }).fill('tbsp');
 
-  // Step 3 follows step 1 instead of step 2, and step 2 is passive.
+  // Step 3 follows step 1 instead of step 2, and step 2 is passive. Both are
+  // set in the steps' details.
+  await page.locator('li.step').nth(1).locator('summary').click();
+  await page.locator('li.step').nth(2).locator('summary').click();
   await page.locator('[name="c.0.s.2.dep"][value="s2"]').uncheck();
   await page.locator('[name="c.0.s.2.dep"][value="s1"]').check();
-  await page.locator('[name="c.0.s.1.passive"]').check();
+  await page.locator('[name="c.0.s.1.passive"][value="1"]').check();
 
   // A structural button keeps the edit.
-  await page.getByRole('button', { name: 'Add ingredient line' }).click();
-  await page.getByRole('button', { name: 'Remove line' }).last().click();
+  await page.getByRole('button', { name: 'Add ingredient' }).click();
+  await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
   await expect(page.locator('[name="c.0.s.2.dep"][value="s1"]')).toBeChecked();
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
@@ -403,8 +411,9 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   await expect(page.locator(`[name="c.0.s.2.dep"][value="${s1}"]`)).toBeChecked();
   await expect(page.locator(`[name="c.0.s.2.dep"][value="${s2}"]`)).not.toBeChecked();
   await expect(page.locator(`[name="c.0.s.1.dep"][value="${s1}"]`)).toBeChecked();
-  await expect(page.locator('[name="c.0.s.1.passive"]')).toBeChecked();
-  await expect(page.locator('[name="c.0.s.0.passive"]')).not.toBeChecked();
+  // Attention is a pair of radios: hands-off posts 1, hands-on posts nothing.
+  await expect(page.locator('[name="c.0.s.1.passive"][value="1"]')).toBeChecked();
+  await expect(page.locator('[name="c.0.s.0.passive"][value="1"]')).not.toBeChecked();
 });
 
 test('cancel discards the draft and saves nothing', async ({ page, request }) => {
@@ -433,8 +442,8 @@ test('a URL is fetched from the fixture server and reviewed', async ({ page }) =
   await page.getByLabel('Recipe URL').fill(`${fixtureURL}/toast`);
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fixture Toast');
-  await expect(page.getByLabel('Original text').first()).toHaveValue('2 slices bread');
-  await expect(page.getByText(`Read from ${fixtureURL}/toast`)).toBeVisible();
+  await expect(page.locator('[name="c.0.l.0.raw"]')).toHaveValue('2 slices bread');
+  await expect(page.getByText(`From ${fixtureURL}/toast`)).toBeVisible();
 });
 
 test('a failed fetch shows a message on the form and no draft', async ({ page }) => {
@@ -491,6 +500,9 @@ test('meal type, stage kinds and step titles from the page reach review and are 
   await expect(page.locator('[name="c.0.s.2.kind"]')).toHaveValue('bake');
 
   // Each can be changed or cleared before anything is saved.
+  // A stage kind is set in the step's details.
+  await page.locator('li.step').nth(1).locator('summary').click();
+  await page.locator('li.step').nth(2).locator('summary').click();
   await page.locator('[name="c.0.s.2.kind"]').selectOption('roast');
   await page.locator('[name="c.0.s.1.kind"]').selectOption('');
 
@@ -582,4 +594,32 @@ test('a collapsed source box does not leave an empty column beside the editor', 
   const sum = (await page.locator('.srcbox-wrap').boundingBox())!;
   const ed = (await page.locator('.review-body .editor').first().boundingBox())!;
   expect(sum.y + sum.height, 'summary stays out of the editor').toBeLessThanOrEqual(ed.y + 1);
+});
+
+// The parts panel sits under the source box and follows the form: its button
+// belongs to the editor form, and the htmx answer swaps it out of band.
+test('the parts panel under the source splits a one-part draft and lists the parts', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/ingest');
+  await pasteText(page, PANCAKES);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  const panel = page.locator('.review-side #parts-panel');
+  await expect(panel).toContainText('This recipe is one part.');
+  await panel.getByRole('button', { name: 'Split into parts' }).click();
+  await expect(page.locator('[name="c.1.name"]')).toBeVisible();
+  await expect(panel).toContainText('This recipe has two parts.');
+  await expect(panel.getByRole('link', { name: 'Go to part 2' })).toHaveAttribute('href', '#part-2');
+  await expect(panel).toContainText('Unnamed part');
+  await expect(page.locator('#parts-panel')).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+});
+
+// The UI calls a recipe component a "part" (docs/ui/design.md).
+test('the review screen never says component', async ({ page }) => {
+  await page.goto('/ingest');
+  await pasteText(page, PANCAKES);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await page.locator('#parts-panel').getByRole('button', { name: 'Split into parts' }).click();
+  await expect(page.locator('[name="c.1.name"]')).toBeVisible();
+  expect(await userCopy(page)).not.toMatch(/\bcomponents?\b/i);
 });

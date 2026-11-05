@@ -1,0 +1,8 @@
+idiomorph-ext.min.js is idiomorph 0.8.0: dist/idiomorph-ext.min.js from the
+idiomorph npm package (Idiomorph plus its htmx "morph" extension), vendored
+unmodified (ADR-00038). 0.8.0 is the registry's "latest" dist-tag, published
+2026-09-05. Checked with `npm view idiomorph dist-tags time` on 2026-11-05.
+Package tarball sha1, as published by the registry:
+ef5ad8cef99027fa1e961d6ce194bd5edbda06f7
+SHA-256 of idiomorph-ext.min.js: 5811b9a7eda14878b7dab4378bf60432e1bb6f11fcfb970cc26540642650181e
+Licence: Zero-Clause BSD. To upgrade, replace the file and update this note.

@@ -2,6 +2,8 @@ package editor
 
 import (
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -23,40 +25,259 @@ templ editorPage(v view) {
 // structural button (add, remove, move) changes the draft and shows the form
 // again, Save validates it and stores it. The first submit button in the markup is
 // the one the Enter key presses.
+//
+// Each section is a heading above a card, drawn after the reviewed mockup of
+// the review screen. Ingredients and steps are separate sections, each grouped
+// by part; the form is read back by field name (parseForm), never by where a
+// field sits, so the grouping is only layout. A line, a step and a piece of
+// equipment show a compact row, and keep the rest of their fields in a
+// disclosure that starts open when the item has something to check.
 templ editorForm(v view) {
-	<form id="editor" class="editor" method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="outerHTML">
+	<form id="editor" class={ v.formClass() } method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="morph:outerHTML" hx-ext="morph">
 		<style>
-			.editor fieldset { border: 1px solid var(--line); border-radius: var(--r); background: var(--card); margin: 16px 0; padding: 8px 16px 16px; min-width: 0; }
-			.editor legend { font-family: var(--f-display); font-weight: 700; padding: 0 6px; }
-			.editor h2 { font-size: 22px; margin: 24px 0 4px; }
-			.editor h3 { font-size: 17px; margin: 16px 0 4px; }
-			.editor label { display: block; font-weight: 600; font-size: 15px; color: var(--ink-2); margin-top: 10px; }
+			.editor { display: flex; flex-direction: column; gap: 22px; }
+			.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
+			.editor .sec-h .meta { color: var(--ink-3); font-size: 14px; }
+			.editor .fl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+			.editor .fl > label, .editor .lbl, .editor .lbl-row > label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
 			.editor input[type=text], .editor textarea, .editor select {
-				display: block; width: 100%; min-height: var(--tap); margin-top: 4px; padding: 8px 12px;
+				display: block; width: 100%; min-height: var(--tap); padding: 8px 12px;
 				border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); color: var(--ink);
-				font: inherit; font-weight: 400;
+				font: inherit; font-size: 16px; font-weight: 400;
 			}
+			.editor textarea { resize: vertical; }
 			.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }
-			.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); margin-top: 0; font-weight: 400; color: var(--ink); }
-			.editor label.inline input { width: 22px; height: 22px; flex: none; accent-color: var(--wattle-ink); }
-			.editor summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; font-weight: 600; color: var(--ink-2); }
-			.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 8px 0; }
+			.editor input.quiet, .editor textarea.quiet { background: transparent; border-color: transparent; }
+			.editor input.quiet:hover, .editor textarea.quiet:hover { border-color: var(--line); }
+			.editor input.quiet:focus, .editor textarea.quiet:focus { border-color: var(--wattle); background: var(--card); }
+			.editor label.inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font-weight: 400; font-size: 16px; color: var(--ink); cursor: pointer; }
+			.editor label.inline input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--wattle-ink); }
+			.editor .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+			.editor .btn.ghost:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
+			.editor .btn svg { width: 18px; height: 18px; }
+			.editor .alert { background: var(--grain-soft); color: var(--grain-ink); border-radius: var(--r); padding: 10px 14px; margin: 0; }
 			.editor .alert p { margin: 0; }
-			.editor .field-error { color: var(--wattle-ink); font-weight: 600; margin: 4px 0 0; }
-			.editor .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0 12px; }
-			.editor ol { list-style: none; padding-left: 0; margin: 0; }
-			.editor li.item { border-top: 1px solid var(--line); padding: 12px 0; }
-			.editor li.item:first-child { border-top: 0; }
-			.editor .grid > div { display: flex; flex-direction: column; justify-content: flex-end; }
-			@media (min-width: 700px) { .editor .line-grid { grid-template-columns: minmax(5rem, 0.6fr) minmax(6rem, 0.8fr) minmax(10rem, 2fr) minmax(8rem, 1fr); } }
-			.editor .flag::before { content: ""; display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--grain); margin-right: 6px; }
-			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
-			.editor .deps { margin-top: 8px; }
-			.editor .deps label { font-weight: 400; margin-top: 0; }
-			.editor .low { background: var(--grain-soft); border-radius: var(--r); padding-inline: 12px; }
-			.editor li.item.low { border-top-color: transparent; }
-			.editor .flag { color: var(--grain-ink); font-weight: 700; margin-right: 6px; }
-			.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; margin-right: 6px; font-size: 0.8em; }
+			.editor .field-error { color: var(--wattle-ink); font-weight: 600; font-size: 15px; margin: 2px 0 0; }
+			.editor .flag { color: var(--grain-ink); font-weight: 700; }
+			.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }
+			.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+			.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; color: var(--grain-ink); font-size: 15px; }
+			.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
+			.editor ol { list-style: none; padding: 0; margin: 0; }
+			.editor .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+			.editor .help { margin: 0; font-size: 14px; color: var(--ink-3); }
+			/* Recipe */
+			.editor .meta-card { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }
+			.editor input.ed-name { font-family: var(--f-display); font-size: 30px; font-weight: 750; padding: 4px 10px; margin-left: -10px; width: calc(100% + 10px); }
+			.editor .facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+			.editor .facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+			.editor .fact.yield { grid-column: span 2; }
+			.editor .pair { display: flex; gap: 8px; }
+			.editor .pair input:first-of-type { width: 72px; flex: none; }
+			.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 10px 12px; }
+			.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }
+			.editor .fl.low > label::before, .editor .fact.low > label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
+			.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }
+			.editor .fl.low .mark { display: none; }
+			.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }
+			.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }
+			.editor .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding-top: 4px; }
+			/* Parts inside a section card */
+			.editor .comp + .comp { border-top: 1px solid var(--line); }
+			.editor .comp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 8px 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+			.editor .comp:first-child .comp-h { border-radius: var(--r) var(--r) 0 0; }
+			.editor .comp-h .pn, .editor .grp-n { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; flex: none; }
+			.editor .comp-h input[type=text] { flex: 1 1 12rem; width: auto; min-width: 0; font-weight: 700; font-size: 17px; padding: 0 8px; }
+			.editor .comp-h .grip { position: static; }
+			.editor .comp-h .tools { gap: 0; flex-wrap: nowrap; }
+			.editor .grp { display: flex; align-items: center; gap: 8px; margin: 0; padding: 14px 18px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+			.editor .comp-body { padding: 8px 8px 8px; }
+			.editor .add-row { padding: 6px 8px 0; }
+			/* The disclosure toggle of a row: a chevron at its end. */
+			.editor li.item { position: relative; border-radius: var(--r); }
+			.editor details.more > summary {
+				position: absolute; top: 6px; right: 4px; width: var(--tap); height: var(--tap);
+				display: grid; place-items: center; border-radius: var(--r); color: var(--ink-3); cursor: pointer; list-style: none;
+			}
+			.editor details.more > summary::-webkit-details-marker { display: none; }
+			.editor details.more > summary:hover { background: var(--sunk); color: var(--ink); }
+			.editor details.more > summary svg { width: 18px; height: 18px; }
+			.editor details.more[open] > summary svg { transform: rotate(180deg); }
+			.editor .more-body {
+				display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 16px 14px; margin: 10px -96px 6px 0;
+				background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px;
+			}
+			.editor .more-body .full { grid-column: 1 / -1; }
+			.editor .more-body .fl { justify-content: flex-end; gap: 6px; }
+			.editor .more-body .fl > label.inline { min-height: var(--tap); }
+			/* Icon buttons, the drag handle and the help popover. */
+			.editor .ibtn {
+				display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; flex: none;
+				border-radius: var(--r); background: transparent; color: var(--ink-3); cursor: pointer;
+			}
+			.editor .ibtn:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
+			.editor .ibtn.danger:hover:not(:disabled) { color: var(--wattle-ink); }
+			.editor .ibtn:disabled { opacity: 0.35; cursor: default; }
+			.editor .ibtn svg { width: 18px; height: 18px; }
+			.editor .ibtn.rm { position: absolute; top: 6px; right: 48px; }
+			.editor .ibtn.rm svg { width: 15px; height: 15px; }
+			.editor .grip {
+				position: absolute; left: 0; top: 6px; width: 32px; height: var(--tap); display: none; place-items: center;
+				color: var(--slate); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+			}
+			.editor .grip svg { width: 18px; height: 18px; }
+			:root.editor-drag .editor .grip { display: grid; }
+			.editor .dragging { background: var(--card); box-shadow: var(--shadow); position: relative; z-index: 3; }
+			.editor .dragging .grip { cursor: grabbing; }
+			.editor .lbl-row { position: relative; display: flex; align-items: center; gap: 4px; }
+			.editor .help-tip { position: relative; display: inline-flex; }
+			.editor .help-btn { display: inline-grid; place-items: center; width: 32px; height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: transparent; cursor: help; }
+			.editor .help-btn > span:first-child { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); }
+			.editor .help-btn svg { width: 16px; height: 16px; }
+			.editor .help-pop {
+				display: none; position: absolute; z-index: 6; left: 0; top: calc(100% + 8px); width: min(300px, 75vw);
+				padding: 10px 12px; background: var(--ink); color: var(--paper); border-radius: var(--r);
+				box-shadow: var(--shadow); font-size: 14.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;
+			}
+			.editor .help-tip:hover .help-pop, .editor .help-btn:focus-visible + .help-pop { display: block; }
+			/* Ingredient lines: plain text until hovered or focused. */
+			.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+			.editor .cols { padding: 12px 112px 6px 44px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+			.editor .cols span { padding-left: 11px; }
+			.editor li.line { padding: 6px 112px 6px 36px; }
+			.editor li.line + li.line { margin-top: 2px; }
+			.editor li.line:hover { background: var(--paper); }
+			.editor .row input[type=text] { min-height: var(--tap); padding: 0 10px; border-color: transparent; background: transparent; }
+			.editor li.item:hover .row input { border-color: var(--line); background: var(--card); }
+			.editor .row input:focus { border-color: var(--wattle); background: var(--card); }
+			.editor .row .qty { font-variant-numeric: tabular-nums; font-weight: 650; }
+			.editor .c-ing { display: flex; align-items: center; gap: 8px; min-width: 0; }
+			/* The ingredient input fits its name, so the qualifiers follow it, muted, and wrap rather than clip. */
+			.editor .c-ing input[type=text] { flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%; field-sizing: content; }
+			.editor .qual { flex: 1 1 8rem; min-width: 0; color: var(--ink-3); font-style: italic; overflow-wrap: anywhere; }
+			.editor .c-mark { display: flex; gap: 6px; align-items: center; }
+			/* The confidence dot of a line under review, before its remove button. */
+			.editor.reviewing li.line::before {
+				content: ""; position: absolute; right: 98px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
+			}
+			.editor.reviewing li.line.low::before { background: var(--grain); }
+			/* A low line, or one with an issue to check, takes the grain tint as the mockup's beer line. */
+			.editor li.item.low, .editor li.item.low:hover, .editor li.line:has(> .hint), .editor li.line:has(> .hint):hover { background: var(--grain-soft); }
+			.editor li.item.low .row input, .editor li.line:has(> .hint) .row input { background: var(--card); border-color: var(--line); }
+			.editor li.line .hint, .editor li.line > .alert { margin: 2px 0 0 0; }
+			.editor .raw { font-family: var(--f-mono); font-size: 14.5px; color: var(--ink-2); }
+			.editor p.raw.from { margin: 0; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); overflow-wrap: anywhere; }
+			/* Qualifiers as chips. */
+			.editor .qual-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+			.editor .qchip { display: inline-flex; align-items: center; gap: 0; max-width: 100%; min-height: var(--tap); padding: 0 2px 0 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
+			.editor .qchip .grip { position: static; width: 24px; }
+			.editor .qchip select[id] { width: auto; min-height: var(--tap); padding: 0 2px 0 4px; border-color: transparent; background: transparent; color: var(--ink-3); font-size: 14.5px; font-weight: 500; }
+			.editor .qchip input[type=text] { flex: 1 1 auto; width: auto; min-width: min(14ch, 100%); field-sizing: content; min-height: var(--tap); padding: 0 8px; border-color: transparent; background: transparent; font-size: 15.5px; }
+			.editor .qchip select:focus, .editor .qchip input:focus { border-color: var(--wattle); }
+			.editor .qchip .ibtn { width: 36px; }
+			.editor .pillbtn {
+				display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);
+				border-radius: var(--r); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 650; cursor: pointer;
+			}
+			.editor .pillbtn svg { width: 16px; height: 16px; }
+			/* Steps */
+			.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }
+			.editor .swatch { width: 16px; height: 16px; border-radius: 3px; background: var(--wattle-soft); }
+			.editor .swatch.passive { background: var(--sunk); }
+			.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }
+			.editor li.step + li.step { border-top: 1px solid var(--line); }
+			.editor li.step .grip { top: 14px; left: 4px; }
+			.editor li.step .ibtn.rm { top: 14px; right: 50px; }
+			.editor li.step details.more > summary { top: 14px; right: 8px; }
+			.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }
+			.editor li.step.low { background: var(--grain-soft); }
+			.editor .snum {
+				width: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;
+				background: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;
+			}
+			.editor .snum.passive { background: var(--sunk); color: var(--ink-2); }
+			.editor .snum.sm { width: 26px; height: 26px; font-size: 13.5px; }
+			.editor .sbody { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+			.editor .trow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+			.editor input.stitle { font-family: var(--f-display); font-size: 18px; font-weight: 700; min-height: var(--tap); padding: 2px 10px; margin-left: -10px; flex: 1 1 auto; width: auto; min-width: 0; }
+			.editor .smeta { display: none; color: var(--ink-3); font-size: 14.5px; white-space: nowrap; }
+			.editor .sbody:has(> details.more[open]) .smeta { display: inline; }
+			.editor .sbody textarea.quiet { padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }
+			.editor .sbody:has(> details.more[open]) textarea.quiet { background: var(--card); border-color: var(--line); padding: 8px 12px; margin-left: 0; width: 100%; resize: vertical; }
+			.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+			.editor .pills:not(:has(*)), .editor .sbody:has(> details.more[open]) .pills { display: none; }
+			.editor .pill {
+				display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line);
+				border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600;
+			}
+			.editor .pill svg { width: 16px; height: 16px; }
+			.editor .pill.on { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }
+			.editor li.step .more-body { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }
+			.editor .srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+			.editor .srow .dur { width: 110px; }
+			.editor .srow .stage, .editor .srow .part { width: 150px; }
+			.editor .att { display: flex; gap: 6px; }
+			.editor .att label { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink-2); font-size: 14.5px; font-weight: 600; cursor: pointer; }
+			.editor .att input { position: absolute; inset: -1px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; }
+			.editor .att label:has(input:checked) { background: var(--sunk); border-color: var(--ink-3); color: var(--ink); }
+			.editor .att label.on:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }
+			.editor .att label:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }
+			.editor .att svg { width: 16px; height: 16px; }
+			.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }
+			.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+			.editor fieldset.deps legend { padding: 0; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }
+			.editor fieldset.deps legend .help { font-weight: 400; }
+			.editor .dgrp { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 6px 0 2px; }
+			.editor .dep-list { display: flex; flex-direction: column; gap: 8px; }
+			.editor label.dep {
+				display: flex; align-items: center; gap: 12px; min-height: var(--tap); padding: 0 12px; border: 1px solid var(--line);
+				border-radius: var(--r); background: var(--card); cursor: pointer; font-size: 16px; font-weight: 400; color: var(--ink);
+			}
+			.editor label.dep:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); }
+			.editor label.dep input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--wattle-ink); }
+			.editor label.dep .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.editor label.dep.self { background: var(--sunk); border-style: dashed; color: var(--ink-3); cursor: not-allowed; }
+			.editor label.dep.self .this { font-size: 13px; font-weight: 700; }
+			/* Equipment as chips, each with its details in a popover. */
+			.editor .chips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 20px; }
+			.editor li.equipment { display: inline-flex; align-items: center; gap: 2px; min-height: var(--tap); padding: 0 2px; border: 1px solid var(--line); background: var(--card); }
+			.editor li.equipment .grip { position: static; width: 24px; }
+			.editor li.equipment .erow { display: inline-flex; align-items: center; gap: 6px; }
+			.editor li.equipment .erow input[type=text] { width: auto; min-width: 5ch; field-sizing: content; min-height: var(--tap); padding: 0 6px; border-color: transparent; background: transparent; font-weight: 600; font-size: 15.5px; }
+			.editor li.equipment:hover .erow input { border-color: transparent; }
+			.editor li.equipment .erow input:focus { border-color: var(--wattle); }
+			.editor li.equipment .qual { flex: none; font-style: normal; font-size: 14.5px; }
+			.editor li.equipment .ibtn.rm { position: static; width: 36px; }
+			.editor li.equipment details.more > summary { position: static; width: 36px; }
+			.editor li.equipment details.more { display: inline-block; }
+			.editor li.equipment .more-body { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: min(26rem, 80vw); margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); box-shadow: var(--shadow); }
+			.editor .add-equip { display: inline-flex; gap: 4px; align-items: center; }
+			.editor .add-equip input[type=text] { width: 200px; }
+			/* Save bar */
+			.editor .savebar { align-items: center; justify-content: flex-end; background: color-mix(in srgb, var(--paper) 96%, transparent); }
+			.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }
+			.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }
+			.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
+			@media (max-width: 760px) {
+				.editor .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+				.editor .facts.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+				.editor .two { grid-template-columns: minmax(0, 1fr); }
+				.editor .more-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+			}
+			@media (max-width: 560px) {
+				/* A chip's details span the list, so they stay on screen. */
+				.editor li.equipment { position: static; }
+				.editor li.equipment .more-body { left: 12px; right: 12px; width: auto; top: auto; margin-top: 6px; grid-template-columns: minmax(0, 1fr); }
+				.editor .meta-card { padding: 16px 14px; }
+				.editor input.ed-name { font-size: 24px; }
+				.editor .cols { display: none; }
+				.editor .row { grid-template-columns: 4.5rem minmax(0, 1fr); }
+				.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }
+				.editor .c-mark:empty { display: none; }
+				.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }
+				.editor .snum { width: 28px; height: 28px; font-size: 14px; }
+				.editor .chips { padding: 12px; }
+			}
 		</style>
 		if v.carries(groupVersion) {
 			<input type="hidden" name="version" value={ v.version() }/>
@@ -69,15 +290,15 @@ templ editorForm(v view) {
 			</div>
 		}
 		// The default button for the Enter key: the visible Save is last, in the
-		// sticky bar, and implicit submission presses the first submit button. An input, not a
-		// button: the review screen styles every .editor button as a visible control.
+		// sticky bar, and implicit submission presses the first submit button. An
+		// input, not a button, so it never takes a button's styles.
 		<input type="submit" name="action" value="save" hidden/>
 		@metaFields(v)
-		<h2>Components</h2>
-		for ci, c := range v.D.Components {
-			@componentFields(v, ci, c)
+		if v.Review == nil || !v.Review.PartsBeside {
+			@partsPanel(v, false)
 		}
-		<p class="tools"><button type="submit" class="btn" name="action" value="add-component">Add component</button></p>
+		@ingredientFields(v)
+		@stepSection(v)
 		@equipmentFields(v)
 		@saveBar(v)
 		<datalist id="ingredient-names">
@@ -95,22 +316,35 @@ templ editorForm(v view) {
 				<option value={ n }></option>
 			}
 		</datalist>
+		<script src={ morphPath } defer></script>
+		<script src={ scriptPath } defer></script>
 	</form>
 }
 
 // saveBar is the primary action, stuck to the bottom of the viewport while the
 // form scrolls (above the tab bar on a phone): Save for a stored recipe, which
 // Cancel leaves for the recipe; Confirm and save for a draft under review, which
-// Cancel discards. It is last in the form, so it never covers a field.
+// Cancel discards. It is last in the form, so it never covers a field. While
+// items of a draft are marked low confidence, it counts them and links the
+// first.
 templ saveBar(v view) {
 	<div class="savebar">
-		<button type="submit" class="btn accent" name="action" value="save">{ v.saveLabel() }</button>
+		if n, first := v.needsLook(); n > 0 {
+			<p class="look"><span class="dot" aria-hidden="true"></span>{ needsLookText(n) } <a href={ templ.SafeURL("#" + first) }>Show the first one</a></p>
+		}
 		if v.reviewing() {
 			<button type="submit" form={ CancelFormID } class="btn" formnovalidate>Cancel</button>
 		} else {
 			<a class="btn" href={ templ.SafeURL(v.back()) }>Cancel</a>
 		}
+		<button type="submit" class="btn accent" name="action" value="save">{ v.saveLabel() }</button>
 	</div>
+}
+
+// sectionHead is the heading above a section's card, the one style every
+// section of the form uses. Children sit at its right: a count, a key.
+templ sectionHead(id, title string) {
+	<div class="sec-h"><h2 id={ id }>{ title }</h2>{ children... }</div>
 }
 
 // badges are the words that flag an item of a draft under review.
@@ -123,11 +357,47 @@ templ badges(m mark) {
 	}
 }
 
+// llmBadge is the LLM word alone, for a row whose low mark is a hint of its own.
+templ llmBadge(m mark) {
+	if m.LLM {
+		<strong class="llm-mark">LLM</strong>
+	}
+}
+
+// checkHint is the line under a flagged item: what to check, with the alert
+// icon.
+templ checkHint(low bool, issues []string, fallback string) {
+	if low || len(issues) > 0 {
+		<p class="hint">
+			@layout.Icon(layout.IconAlert)
+			<span>
+				if low {
+					<strong class="flag">Check:</strong>
+				}
+				if len(issues) > 0 {
+					{ strings.Join(issues, "; ") }
+				} else {
+					{ fallback }
+				}
+			</span>
+		</p>
+	}
+}
+
+// moreToggle is the summary of a row's disclosure: a chevron, named for the
+// item it opens.
+templ moreToggle(name string) {
+	<summary>
+		@layout.Icon(layout.IconChevron)
+		<span class="sr">Details of { name }</span>
+	</summary>
+}
+
 // markInput carries a metadata field's mark through the form.
 templ markInput(v view, field string) {
 	if m := v.D.mark(field); !m.zero() {
 		<input type="hidden" name={ markName(field) } value={ m.String() }/>
-		<div class={ m.String() }>@badges(m)</div>
+		<div class={ "mark " + m.String() }>@badges(m)</div>
 	}
 }
 
@@ -137,150 +407,218 @@ templ fieldError(v view, field string) {
 	}
 }
 
-templ metaFields(v view) {
-	<fieldset>
-		<legend>Recipe</legend>
-		<label for="f-name">Name</label>
-		@markInput(v, "name")
-		<input id="f-name" type="text" name="name" value={ v.D.Name }/>
-		@fieldError(v, "name")
-		<label for="f-description">Description</label>
-		@markInput(v, "description")
-		<textarea id="f-description" name="description" rows="3">{ v.D.Description }</textarea>
-		<div class="grid">
-			<div>
-				<label for="f-author">Author</label>
-				@markInput(v, "author")
-				<input id="f-author" type="text" name="author" value={ v.D.Author }/>
-			</div>
-			if v.carries(groupVideo) {
-				<div>
-					<label for="f-video">YouTube video (link or ID, optional)</label>
-					<input id="f-video" type="text" name="video" value={ v.D.Video } autocomplete="off" spellcheck="false"/>
-					@fieldError(v, "video")
-				</div>
+// fact is one field of the recipe's grid of facts; field names its mark. The
+// label shows the short word of the mockup and reads the whole name, such as
+// "Prep" shown and "Prep time" read.
+templ fact(v view, id, name, label, labelRest, value, field, errField, placeholder string) {
+	<div class={ "fl fact " + v.D.mark(field).String() }>
+		<label for={ id }>
+			{ label }
+			if labelRest != "" {
+				<span class="sr">{ " " + labelRest }</span>
 			}
-			if v.carries(groupSource) {
-				<div>
-					<label for="f-source">Source URL</label>
-					<input id="f-source" type="text" name="source_url" value={ v.D.SourceURL }/>
-				</div>
-				<div>
-					<label for="f-tags">Tags (comma separated)</label>
-					<input id="f-tags" type="text" name="tags" value={ v.D.Tags }/>
-				</div>
-			}
-		</div>
-		if v.carries(groupRecipeFields) {
-			<div class="grid">
-				<div>
-					<label for="f-meal-type">Meal type</label>
-					<select id="f-meal-type" name="meal_type">
-						<option value="" selected?={ v.D.MealType == "" }>Not set</option>
-						for _, m := range mealOptions() {
-							<option value={ m } selected?={ v.D.MealType == m }>{ m }</option>
-						}
-					</select>
-					@fieldError(v, "meal_type")
-				</div>
-				<div>
-					<label for="f-cuisine">Cuisine</label>
-					<select id="f-cuisine" name="cuisine">
-						<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
-						for _, c := range cuisineOptions() {
-							<option value={ c.Key } selected?={ v.D.Cuisine == c.Key }>{ c.Label }</option>
-						}
-					</select>
-					@fieldError(v, "cuisine")
-				</div>
-				<div>
-					<label for="f-spice">Spice level</label>
-					<select id="f-spice" name="spice">
-						<option value="" selected?={ v.D.Spice == "" }>Not set</option>
-						for _, n := range spiceOptions() {
-							<option value={ n } selected?={ v.D.Spice == n }>{ n } of 3</option>
-						}
-					</select>
-					@fieldError(v, "spice")
-				</div>
-			</div>
+		</label>
+		if field != "" {
+			@markInput(v, field)
 		}
-		<div class="grid">
-			<div>
-				<label for="f-yield-qty">Yield amount</label>
-				@markInput(v, "yield")
-				<input id="f-yield-qty" type="text" name="yield_qty" value={ v.D.YieldQty }/>
-				@fieldError(v, "yield_qty")
-			</div>
-			<div>
-				<label for="f-yield-unit">Yield unit (for example loaf)</label>
-				<input id="f-yield-unit" type="text" name="yield_unit" value={ v.D.YieldUnit }/>
-			</div>
-			<div>
-				<label for="f-servings">Servings</label>
-				<input id="f-servings" type="text" name="servings" value={ v.D.Servings }/>
-				@fieldError(v, "servings")
-			</div>
-			<div>
-				<label for="f-calories">Calories per serving</label>
-				<input id="f-calories" type="text" name="calories" value={ v.D.Calories }/>
-				@fieldError(v, "calories")
-			</div>
-		</div>
-		<div class="grid">
-			<div>
-				<label for="f-prep">Prep time</label>
-				@markInput(v, "prep")
-				<input id="f-prep" type="text" name="prep" value={ v.D.Prep }/>
-				@fieldError(v, "prep")
-			</div>
-			<div>
-				<label for="f-cook">Cook time</label>
-				@markInput(v, "cook")
-				<input id="f-cook" type="text" name="cook" value={ v.D.Cook }/>
-				@fieldError(v, "cook")
-			</div>
-			<div>
-				<label for="f-total">Total time (empty to work it out)</label>
-				@markInput(v, "total")
-				<input id="f-total" type="text" name="total" value={ v.D.Total }/>
-				@fieldError(v, "total")
-			</div>
-		</div>
-	</fieldset>
+		<input id={ id } type="text" name={ name } value={ value } placeholder={ placeholder }/>
+		if errField != "" {
+			@fieldError(v, errField)
+		}
+	</div>
 }
 
-templ componentFields(v view, ci int, c compDraft) {
-	<fieldset class="component">
-		<legend>{ componentLabel(ci, c) }</legend>
-		<label for={ cField(ci, "name") }>Component name (empty for a recipe without parts)</label>
-		<input id={ cField(ci, "name") } type="text" name={ cField(ci, "name") } value={ c.Name }/>
-		<p class="tools">
-			<button type="submit" class="btn" name="action" value={ act("up-component", ci) } disabled?={ ci == 0 }>Move component up</button>
-			<button type="submit" class="btn" name="action" value={ act("down-component", ci) } disabled?={ ci == len(v.D.Components)-1 }>Move component down</button>
-			<button type="submit" class="btn" name="action" value={ act("rm-component", ci) }>Remove component</button>
-		</p>
-		<h3>Ingredients</h3>
-		<ol>
-			for li, l := range c.Lines {
-				@lineFields(v, ci, li, len(c.Lines), l)
+templ metaFields(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-recipe">
+		@sectionHead("ed-h-recipe", "Recipe")
+		<div class="ed-card meta-card">
+			<div class={ "fl " + v.D.mark("name").String() }>
+				<label for="f-name">Name</label>
+				@markInput(v, "name")
+				<input id="f-name" class="quiet ed-name" type="text" name="name" value={ v.D.Name }/>
+				@fieldError(v, "name")
+			</div>
+			<div class={ "fl " + v.D.mark("description").String() }>
+				<label for="f-description">Description</label>
+				@markInput(v, "description")
+				<textarea id="f-description" name="description" rows="2">{ v.D.Description }</textarea>
+			</div>
+			<div class="facts">
+				<div class={ "fl fact yield " + v.D.mark("yield").String() }>
+					<label for="f-yield-qty">Yield<span class="sr">{ " amount" }</span></label>
+					@markInput(v, "yield")
+					<div class="pair">
+						<input id="f-yield-qty" type="text" name="yield_qty" value={ v.D.YieldQty } placeholder="1"/>
+						<label class="sr" for="f-yield-unit">Yield unit</label>
+						<input id="f-yield-unit" type="text" name="yield_unit" value={ v.D.YieldUnit } placeholder="loaf"/>
+					</div>
+					@fieldError(v, "yield_qty")
+				</div>
+				@fact(v, "f-servings", "servings", "Servings", "", v.D.Servings, "", "servings", "")
+				@fact(v, "f-calories", "calories", "Calories", "per serving", v.D.Calories, "", "calories", "per serving")
+				@fact(v, "f-prep", "prep", "Prep", "time", v.D.Prep, "prep", "prep", "")
+				@fact(v, "f-cook", "cook", "Cook", "time", v.D.Cook, "cook", "cook", "")
+			</div>
+			<div class="facts four">
+				@fact(v, "f-total", "total", "Total", "time", v.D.Total, "total", "total", "worked out")
+				if v.carries(groupRecipeFields) {
+					<div class="fl fact">
+						<label for="f-meal-type">Meal type</label>
+						<select id="f-meal-type" name="meal_type">
+							<option value="" selected?={ v.D.MealType == "" }>Not set</option>
+							for _, m := range mealOptions() {
+								<option value={ m } selected?={ v.D.MealType == m }>{ m }</option>
+							}
+						</select>
+						@fieldError(v, "meal_type")
+					</div>
+					<div class="fl fact">
+						<label for="f-cuisine">Cuisine</label>
+						<select id="f-cuisine" name="cuisine">
+							<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
+							for _, c := range cuisineOptions() {
+								<option value={ c.Key } selected?={ v.D.Cuisine == c.Key }>{ c.Label }</option>
+							}
+						</select>
+						@fieldError(v, "cuisine")
+					</div>
+					<div class="fl fact">
+						<label for="f-spice">Spice<span class="sr">{ " level" }</span></label>
+						<select id="f-spice" name="spice">
+							<option value="" selected?={ v.D.Spice == "" }>Not set</option>
+							for _, n := range spiceOptions() {
+								<option value={ n } selected?={ v.D.Spice == n }>{ spiceLabel(n) }</option>
+							}
+						</select>
+						@fieldError(v, "spice")
+					</div>
+				}
+			</div>
+			<details class="more-meta" open>
+				<summary>{ v.metaSummary() }</summary>
+				<div class="two">
+					if v.carries(groupSource) {
+						<div class="fl">
+							<label for="f-source">Source</label>
+							<input id="f-source" type="text" name="source_url" value={ v.D.SourceURL }/>
+						</div>
+					}
+					<div class={ "fl " + v.D.mark("author").String() }>
+						<label for="f-author">Author</label>
+						@markInput(v, "author")
+						<input id="f-author" type="text" name="author" value={ v.D.Author }/>
+					</div>
+					if v.carries(groupVideo) {
+						<div class="fl">
+							<label for="f-video">YouTube video<span class="sr">{ " (link or ID, optional)" }</span></label>
+							<input id="f-video" type="text" name="video" value={ v.D.Video } autocomplete="off" spellcheck="false" placeholder="Paste a link or video ID"/>
+							@fieldError(v, "video")
+						</div>
+					}
+					if v.carries(groupSource) {
+						<div class="fl">
+							<label for="f-tags">Tags<span class="sr">{ " (comma separated)" }</span></label>
+							<input id="f-tags" type="text" name="tags" value={ v.D.Tags } placeholder="Comma separated"/>
+						</div>
+					}
+				</div>
+			</details>
+		</div>
+	</section>
+}
+
+templ ingredientFields(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-ingredients" id="ed-ingredients">
+		@sectionHead("ed-h-ingredients", "Ingredients") {
+			<span class="meta">{ v.ingredientsMeta() }</span>
+		}
+		<div class="ed-card" data-drag-list="move-component">
+			for ci, c := range v.D.Components {
+				@componentLines(v, ci, c)
 			}
-		</ol>
-		<p class="tools"><button type="submit" class="btn" name="action" value={ act("add-line", ci) }>Add ingredient line</button></p>
-		<h3>Steps</h3>
-		<ol>
-			for si, s := range c.Steps {
-				@stepFields(v, ci, si, len(c.Steps), s)
-			}
-		</ol>
-		<p class="tools"><button type="submit" class="btn" name="action" value={ act("add-step", ci) }>Add step</button></p>
-	</fieldset>
+		</div>
+	</section>
+}
+
+// grip is the drag handle of a row; editor.js shows it and does the drag.
+templ grip() {
+	<span class="grip" aria-hidden="true">
+		@layout.Icon(layout.IconGrip)
+	</span>
+}
+
+// iconButton is a structural button drawn as an icon alone, named by label.
+templ iconButton(action, label string, icon layout.IconName, disabled bool, class string) {
+	<button type="submit" class={ "ibtn " + class } name="action" value={ action } aria-label={ label } title={ label } disabled?={ disabled }>
+		@layout.Icon(icon)
+	</button>
+}
+
+// helpTip is an info button that shows text in a popover on hover and on
+// keyboard focus, with CSS alone. The text is the button's description, so a
+// screen reader reads it too.
+templ helpTip(id, about, text string) {
+	<span class="help-tip">
+		<button type="button" class="help-btn" aria-describedby={ id }>
+			<span>
+				@layout.Icon(layout.IconInfo)
+			</span>
+			<span class="sr">About { about }</span>
+		</button>
+		<span class="help-pop" role="tooltip" id={ id }>{ text }</span>
+	</span>
+}
+
+const (
+	qualifierHelp = "Words that describe the ingredient without changing how much you buy: chopped, softened, room temperature. They show beside the ingredient on the recipe and stay off the shopping list."
+	packageHelp   = "The size of the can or packet the line counts in: the 14 oz of \"1 (14 oz) can\". The shopping list adds lines together only when their package size matches."
+	partHelp      = "A part of the recipe with its own ingredients and steps, such as the dough and the filling. The recipe page shows each named part under its own heading, and cook mode names the part each step belongs to."
+)
+
+// componentLines is one part in the ingredients section. A recipe of one
+// unnamed part shows only its lines, under the column heads, as the mockup
+// draws it; otherwise each part has a header row with its number, its name and
+// the controls that move or remove it.
+templ componentLines(v view, ci int, c compDraft) {
+	<div class="comp component" id={ partAnchor(ci) }>
+		if v.partHeaders() {
+			<div class="comp-h">
+				<span class="pn" aria-hidden="true">{ n1(ci) }</span>
+				<div class="lbl-row">
+					<label for={ cField(ci, "name") }>Part<span class="sr">{ " " + n1(ci) + " name" }</span></label>
+					@helpTip(tipID("comp", ci), "parts", partHelp)
+				</div>
+				<input id={ cField(ci, "name") } class="quiet" type="text" name={ cField(ci, "name") } value={ c.Name } placeholder="Name this part" autofocus?={ v.D.Focus == cField(ci, "name") }/>
+				@grip()
+				<p class="tools">
+					@iconButton(act("rm-component", ci), "Remove part "+n1(ci), layout.IconClose, false, "danger")
+				</p>
+			</div>
+		} else {
+			<input type="hidden" name={ cField(ci, "name") } value={ c.Name }/>
+		}
+		if !v.partHeaders() && len(c.Lines) > 0 {
+			<div class="cols" aria-hidden="true"><span>Qty</span><span>Unit</span><span>Ingredient</span></div>
+		}
+		<div class="comp-body">
+			<ol data-drag-list={ "move-line:" + n0(ci) }>
+				for li, l := range c.Lines {
+					@lineFields(v, ci, li, len(c.Lines), l)
+				}
+			</ol>
+			<p class="tools add-row">
+				<button type="submit" class="btn ghost" name="action" value={ act("add-line", ci) }>
+					@layout.Icon(layout.IconPlus)
+					Add ingredient
+				</button>
+			</p>
+		</div>
+	</div>
 }
 
 templ lineFields(v view, ci, li, count int, l lineDraft) {
 	<li class={ "item line " + l.Mark.String() } data-low?={ l.Mark.Low } data-llm?={ l.Mark.LLM }>
-		@badges(l.Mark)
-		<strong>Line { n1(li) }</strong>
+		@grip()
 		if l.Key != "" {
 			<input type="hidden" name={ lField(ci, li, "key") } value={ l.Key }/>
 		}
@@ -289,198 +627,412 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 		}
 		for _, issue := range l.Issues {
 			<input type="hidden" name={ lField(ci, li, "issue") } value={ issue }/>
-			<span class="muted">{ issue }</span>
 		}
+		if !v.carries(groupScaling) {
+			<input type="hidden" name={ lField(ci, li, "rule") } value={ l.Rule }/>
+		}
+		<div class="row" id={ lineAnchor(ci, li) } data-item={ l.Key }>
+			<div>
+				<label class="sr" for={ lField(ci, li, "qty") }>Quantity</label>
+				<input id={ lField(ci, li, "qty") } class="qty" type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off" autofocus?={ v.D.Focus == lField(ci, li, "qty") }/>
+			</div>
+			<div>
+				<label class="sr" for={ lField(ci, li, "unit") }>Unit</label>
+				<input id={ lField(ci, li, "unit") } type="text" name={ lField(ci, li, "unit") } value={ l.Unit } list="unit-names" autocomplete="off"/>
+			</div>
+			<div class="c-ing">
+				<label class="sr" for={ lField(ci, li, "ing") }>Ingredient</label>
+				<input id={ lField(ci, li, "ing") } type="text" name={ lField(ci, li, "ing") } value={ l.Ingredient } list="ingredient-names" autocomplete="off"/>
+				if q := l.qualText(); q != "" {
+					<span class="qual">{ q }</span>
+				}
+			</div>
+			<div class="c-mark">
+				@llmBadge(l.Mark)
+			</div>
+		</div>
+		@iconButton(act("rm-line", ci, li), "Remove "+v.lineRef(ci, li), layout.IconClose, false, "rm danger")
+		@checkHint(l.Mark.Low, l.Issues, "the rules were not sure how to read this line.")
 		if l.Err != "" {
 			<p class="alert" role="alert">{ l.Err }</p>
 		}
-		<div class="grid line-grid">
-			<div>
-				<label for={ lField(ci, li, "qty") }>Quantity</label>
-				<input id={ lField(ci, li, "qty") } type="text" name={ lField(ci, li, "qty") } value={ l.Qty } autocomplete="off"/>
-			</div>
-			<div>
-				<label for={ lField(ci, li, "unit") }>Unit</label>
-				<input id={ lField(ci, li, "unit") } type="text" name={ lField(ci, li, "unit") } value={ l.Unit } list="unit-names" autocomplete="off"/>
-			</div>
-			<div>
-				<label for={ lField(ci, li, "ing") }>Ingredient</label>
-				<input id={ lField(ci, li, "ing") } type="text" name={ lField(ci, li, "ing") } value={ l.Ingredient } list="ingredient-names" autocomplete="off"/>
-			</div>
-			if v.carries(groupScaling) {
-				<div>
-					<label for={ lField(ci, li, "rule") }>Scaling</label>
-					<select id={ lField(ci, li, "rule") } name={ lField(ci, li, "rule") }>
-						for _, r := range ruleOptions() {
-							<option value={ r } selected?={ l.ruleIs(r) }>{ r }</option>
-						}
-					</select>
-				</div>
-			} else {
-				<input type="hidden" name={ lField(ci, li, "rule") } value={ l.Rule }/>
-			}
-		</div>
-		<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Optional</label>
-		if l.OfferProposal || l.Propose {
-			<label class="inline"><input type="checkbox" name={ lField(ci, li, "propose") } value="1" checked?={ l.Propose }/> Add this ingredient to the catalog as new and unreviewed</label>
-		}
-		<label for={ lField(ci, li, "raw") }>Original text</label>
-		<input id={ lField(ci, li, "raw") } type="text" name={ lField(ci, li, "raw") } value={ l.Raw }/>
-		<details open?={ l.hasPackage() }>
-			<summary>Package size (for example the 14 oz of 1 (14 oz) can)</summary>
-			<div class="grid">
-				<div>
-					<label for={ lField(ci, li, "pkgqty") }>Package amount</label>
+		<details class="more" open?={ l.open() }>
+			@moreToggle(v.lineRef(ci, li))
+			<div class="more-body">
+				@rawField(ci, li, l)
+				<div class="fl">
+					<div class="lbl-row">
+						<label for={ lField(ci, li, "pkgqty") }>Package amount</label>
+						@helpTip(tipID("pkg", ci, li), "package size", packageHelp)
+					</div>
 					<input id={ lField(ci, li, "pkgqty") } type="text" name={ lField(ci, li, "pkgqty") } value={ l.PkgQty }/>
 				</div>
-				<div>
+				<div class="fl">
 					<label for={ lField(ci, li, "pkgunit") }>Package unit</label>
 					<input id={ lField(ci, li, "pkgunit") } type="text" name={ lField(ci, li, "pkgunit") } value={ l.PkgUnit } list="unit-names"/>
 				</div>
+				if v.carries(groupScaling) {
+					<div class="fl">
+						<label for={ lField(ci, li, "rule") }>Scaling</label>
+						<select id={ lField(ci, li, "rule") } name={ lField(ci, li, "rule") }>
+							for _, r := range ruleOptions() {
+								<option value={ r } selected?={ l.ruleIs(r) }>{ r }</option>
+							}
+						</select>
+					</div>
+				}
+				<div class="fl">
+					<span class="lbl" aria-hidden="true">Optional</span>
+					<label class="inline"><input type="checkbox" name={ lField(ci, li, "optional") } value="1" checked?={ l.Optional }/> Can be left out<span class="sr"> (optional)</span></label>
+				</div>
+				if l.OfferProposal || l.Propose {
+					<div class="fl full">
+						<label class="inline"><input type="checkbox" name={ lField(ci, li, "propose") } value="1" checked?={ l.Propose }/> Add this ingredient to the catalog as new and unreviewed</label>
+					</div>
+				}
+				<div class="fl full">
+					<div class="lbl-row">
+						<span class="lbl">Qualifiers</span>
+						@helpTip(tipID("qual", ci, li), "qualifiers", qualifierHelp)
+					</div>
+					<div class="qual-list" data-drag-list={ "move-qual:" + n0(ci) + "." + n0(li) } data-drag-axis="x">
+						for qi, q := range l.Quals {
+							<span class="qchip">
+								@grip()
+								<label class="sr" for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
+								<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
+									for _, k := range qualKinds() {
+										<option value={ k } selected?={ q.Kind == k }>{ k }</option>
+									}
+								</select>
+								<label class="sr" for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
+								<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text } placeholder="chopped" autofocus?={ v.D.Focus == qField(ci, li, qi, "text") }/>
+								@iconButton(act("rm-qual", ci, li, qi), "Remove qualifier "+n1(qi), layout.IconClose, false, "danger")
+							</span>
+						}
+						<button type="submit" class="pillbtn" name="action" value={ act("add-qual", ci, li) }>
+							@layout.Icon(layout.IconPlus)
+							Add qualifier
+						</button>
+					</div>
+				</div>
 			</div>
 		</details>
-		for qi, q := range l.Quals {
-			<div class="grid qualifier">
-				<div>
-					<label for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
-					<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
-						for _, k := range qualKinds() {
-							<option value={ k } selected?={ q.Kind == k }>{ k }</option>
-						}
-					</select>
-				</div>
-				<div>
-					<label for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>
-					<input id={ qField(ci, li, qi, "text") } type="text" name={ qField(ci, li, qi, "text") } value={ q.Text }/>
-				</div>
-				<p class="tools">
-					<button type="submit" class="btn" name="action" value={ act("up-qual", ci, li, qi) } disabled?={ qi == 0 }>Move qualifier up</button>
-					<button type="submit" class="btn" name="action" value={ act("down-qual", ci, li, qi) } disabled?={ qi == len(l.Quals)-1 }>Move qualifier down</button>
-					<button type="submit" class="btn" name="action" value={ act("rm-qual", ci, li, qi) }>Remove qualifier</button>
-				</p>
+	</li>
+}
+
+// rawField is a line's original text. A line with an ingredient is shown from
+// the catalog, so its text is only a record of what the source said: it is
+// shown read-only and posted unchanged. A line with no ingredient is shown on
+// the recipe as this text, so there it is the field to edit.
+templ rawField(ci, li int, l lineDraft) {
+	if strings.TrimSpace(l.Ingredient) != "" {
+		<input type="hidden" name={ lField(ci, li, "raw") } value={ l.Raw }/>
+		if strings.TrimSpace(l.Raw) != "" {
+			<div class="fl full">
+				<span class="lbl">From the source</span>
+				<p class="raw from">{ l.Raw }</p>
 			</div>
 		}
-		<p class="tools">
-			<button type="submit" class="btn" name="action" value={ act("add-qual", ci, li) }>Add qualifier</button>
-			<button type="submit" class="btn" name="action" value={ act("up-line", ci, li) } disabled?={ li == 0 }>Move line up</button>
-			<button type="submit" class="btn" name="action" value={ act("down-line", ci, li) } disabled?={ li == count-1 }>Move line down</button>
-			<button type="submit" class="btn" name="action" value={ act("rm-line", ci, li) }>Remove line</button>
-		</p>
-	</li>
+	} else {
+		<div class="fl full">
+			<label for={ lField(ci, li, "raw") }>Text shown on the recipe</label>
+			<input id={ lField(ci, li, "raw") } class="raw" type="text" name={ lField(ci, li, "raw") } value={ l.Raw }/>
+			<p class="help">With no ingredient set, the recipe and the shopping list show this text as written.</p>
+		</div>
+	}
+}
+
+templ stepSection(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-steps" id="ed-steps">
+		@sectionHead("ed-h-steps", "Steps") {
+			<span class="legend"><span class="swatch" aria-hidden="true"></span>hands-on</span>
+			<span class="legend"><span class="swatch passive" aria-hidden="true"></span>hands-off</span>
+		}
+		<div class="ed-card">
+			for ci, c := range v.D.Components {
+				<div class="comp component">
+					if v.partHeaders() {
+						<p class="grp"><span class="grp-n" aria-hidden="true">{ n1(ci) }</span>{ partTitle(c) }</p>
+					}
+					<ol data-drag-list={ "move-step:" + n0(ci) }>
+						for si, s := range c.Steps {
+							@stepFields(v, ci, si, len(c.Steps), s)
+						}
+					</ol>
+					<p class="tools add-row">
+						<button type="submit" class="btn ghost" name="action" value={ act("add-step", ci) }>
+							@layout.Icon(layout.IconPlus)
+							Add step
+						</button>
+					</p>
+				</div>
+			}
+		</div>
+	</section>
 }
 
 templ stepFields(v view, ci, si, count int, s stepDraft) {
 	<li class={ "item step " + s.Mark.String() } data-low?={ s.Mark.Low } data-llm?={ s.Mark.LLM }>
-		@badges(s.Mark)
-		<strong>Step { n1(si) }</strong>
-		if !s.Mark.zero() {
-			<input type="hidden" name={ sField(ci, si, "mark") } value={ s.Mark.String() }/>
-		}
-		if s.Err != "" {
-			<p class="alert" role="alert">{ s.Err }</p>
-		}
-		<input type="hidden" name={ sField(ci, si, "id") } value={ s.ID }/>
-		if v.carries(groupRecipeFields) {
-			<div class="grid">
-				<div>
-					<label for={ sField(ci, si, "title") }>Title (optional)</label>
-					<input id={ sField(ci, si, "title") } type="text" name={ sField(ci, si, "title") } value={ s.Title }/>
-				</div>
-				<div>
-					<label for={ sField(ci, si, "kind") }>Stage kind (optional)</label>
-					<select id={ sField(ci, si, "kind") } name={ sField(ci, si, "kind") }>
-						<option value="" selected?={ s.Kind == "" }>Not set</option>
-						for _, k := range stageOptions() {
-							<option value={ k } selected?={ s.Kind == k }>{ k }</option>
-						}
-					</select>
-				</div>
-			</div>
-		}
-		<label for={ sField(ci, si, "text") }>Instruction</label>
-		<textarea id={ sField(ci, si, "text") } name={ sField(ci, si, "text") } rows="3">{ s.Text }</textarea>
-		<div class="grid">
-			<div>
-				<label for={ sField(ci, si, "dur") }>Duration</label>
-				<input id={ sField(ci, si, "dur") } type="text" name={ sField(ci, si, "dur") } value={ s.Duration }/>
-			</div>
-			<div>
-				<label for={ sField(ci, si, "to") }>Component</label>
-				<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
-					for oi, o := range v.D.Components {
-						<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
-					}
-				</select>
-			</div>
-		</div>
-		if v.carries(groupStepGraph) {
-			if s.Graph.Read != "" {
-				<input type="hidden" name={ sField(ci, si, "graph") } value={ s.Graph.String() }/>
+		@grip()
+		<span class={ "snum", templ.KV("passive", s.Passive) }>
+			<span class="sr">Step </span>{ strconv.Itoa(v.stepNum(ci, si)) }
+			if s.Passive {
+				<span class="sr">, hands-off</span>
 			}
-			if s.Graph.LLM {
-				<p class="llm"><strong class="llm-mark">LLM</strong> suggested this step's order and passive flag. Check them.</p>
+		</span>
+		<div class="sbody" id={ stepAnchor(ci, si) } data-item={ s.ID }>
+			if !s.Mark.zero() {
+				<input type="hidden" name={ sField(ci, si, "mark") } value={ s.Mark.String() }/>
 			}
-			<label class="inline"><input type="checkbox" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/> Passive (no attention needed while it runs)</label>
-			<details class="deps" open?={ len(s.Deps) > 0 }>
-				<summary>Depends on</summary>
-				for _, o := range v.stepOptions() {
-					if o.ID != s.ID {
-						<label class="inline"><input type="checkbox" name={ sField(ci, si, "dep") } value={ o.ID } checked?={ slices.Contains(s.Deps, o.ID) }/> { o.Label }</label>
-					}
+			<input type="hidden" name={ sField(ci, si, "id") } value={ s.ID }/>
+			<div class="trow">
+				if v.carries(groupRecipeFields) {
+					<label class="sr" for={ sField(ci, si, "title") }>Step { strconv.Itoa(v.stepNum(ci, si)) } title (optional)</label>
+					<input id={ sField(ci, si, "title") } class="quiet stitle" type="text" name={ sField(ci, si, "title") } value={ s.Title } placeholder="Add a title"/>
 				}
+				<span class="smeta">{ v.stepMeta(ci, s) }</span>
+			</div>
+			<label class="sr" for={ sField(ci, si, "text") }>Step { strconv.Itoa(v.stepNum(ci, si)) } instruction</label>
+			<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="1" autofocus?={ v.D.Focus == sField(ci, si, "text") }>{ s.Text }</textarea>
+			<div class="pills">
+				if strings.TrimSpace(s.Duration) != "" {
+					<span class="pill">
+						@layout.Icon(layout.IconClock)
+						{ s.Duration }
+					</span>
+				}
+				if s.Kind != "" {
+					<span class="pill">{ s.Kind }</span>
+				}
+				if a := v.after(s); a != "" {
+					<span class="pill on">{ a }</span>
+				}
+				for _, e := range v.equipmentFor(s.ID) {
+					<span class="pill">{ e }</span>
+				}
+				@llmBadge(s.Mark)
+			</div>
+			@checkHint(s.Mark.Low, nil, "the rules were not sure how to read this step.")
+			if s.Err != "" {
+				<p class="alert" role="alert">{ s.Err }</p>
+			}
+			if v.carries(groupStepGraph) {
+				if s.Graph.Read != "" {
+					<input type="hidden" name={ sField(ci, si, "graph") } value={ s.Graph.String() }/>
+				}
+				if s.Graph.LLM {
+					<p class="llm"><strong class="llm-mark">LLM</strong> suggested this step's order and passive flag. Check them.</p>
+				}
+			}
+			<details class="more" open?={ s.open() }>
+				@moreToggle("step " + strconv.Itoa(v.stepNum(ci, si)))
+				<div class="more-body">
+					<div class="srow">
+						<div class="fl dur">
+							<label for={ sField(ci, si, "dur") }>Duration</label>
+							<input id={ sField(ci, si, "dur") } type="text" name={ sField(ci, si, "dur") } value={ s.Duration }/>
+						</div>
+						if v.carries(groupRecipeFields) {
+							<div class="fl stage">
+								<label for={ sField(ci, si, "kind") }>Stage<span class="sr">{ " kind (optional)" }</span></label>
+								<select id={ sField(ci, si, "kind") } name={ sField(ci, si, "kind") }>
+									<option value="" selected?={ s.Kind == "" }>Not set</option>
+									for _, k := range stageOptions() {
+										<option value={ k } selected?={ s.Kind == k }>{ k }</option>
+									}
+								</select>
+							</div>
+						}
+						if len(v.D.Components) > 1 {
+							<div class="fl part">
+								<div class="lbl-row">
+									<label for={ sField(ci, si, "to") }>Part</label>
+									@helpTip(tipID("step-part", ci, si), "parts", partHelp)
+								</div>
+								<select id={ sField(ci, si, "to") } name={ sField(ci, si, "to") }>
+									for oi, o := range v.D.Components {
+										<option value={ n0(oi) } selected?={ oi == ci }>{ componentLabel(oi, o) }</option>
+									}
+								</select>
+							</div>
+						} else {
+							// One part: nowhere to move the step, but parseForm reads a
+							// missing part as "a new one", so it is posted all the same.
+							<input type="hidden" name={ sField(ci, si, "to") } value={ n0(ci) }/>
+						}
+						if v.carries(groupStepGraph) {
+							<div class="fl">
+								<span class="lbl" id={ sField(ci, si, "att") }>Attention</span>
+								<div class="att" role="radiogroup" aria-labelledby={ sField(ci, si, "att") }>
+									<label class="on">
+										<input type="radio" name={ sField(ci, si, "passive") } value="" checked?={ !s.Passive }/>
+										@layout.Icon(layout.IconHand)
+										Hands-on
+									</label>
+									<label>
+										<input type="radio" name={ sField(ci, si, "passive") } value="1" checked?={ s.Passive }/>
+										@layout.Icon(layout.IconClock)
+										Hands-off
+									</label>
+								</div>
+							</div>
+						}
+					</div>
+					if v.carries(groupStepGraph) {
+						@stepChooser(v, "Starts after", "Cook mode uses these to suggest what to do while a hands-off step runs.", sField(ci, si, "dep"), s.ID, s.Deps)
+					}
+				</div>
 			</details>
-		}
-		<p class="tools">
-			<button type="submit" class="btn" name="action" value={ act("up-step", ci, si) } disabled?={ si == 0 }>Move step up</button>
-			<button type="submit" class="btn" name="action" value={ act("down-step", ci, si) } disabled?={ si == count-1 }>Move step down</button>
-			<button type="submit" class="btn" name="action" value={ act("rm-step", ci, si) }>Remove step</button>
-		</p>
+		</div>
+		@iconButton(act("rm-step", ci, si), "Remove step "+strconv.Itoa(v.stepNum(ci, si)), layout.IconClose, false, "rm danger")
 	</li>
 }
 
-templ equipmentFields(v view) {
-	<h2>Equipment</h2>
-	<ol>
-		for ei, e := range v.D.Equipment {
-			<li class={ "item equipment " + e.Mark.String() } data-llm?={ e.Mark.LLM }>
-				@badges(e.Mark)
-				<strong>Equipment { n1(ei) }</strong>
-				if !e.Mark.zero() {
-					<input type="hidden" name={ eField(ei, "mark") } value={ e.Mark.String() }/>
-				}
-				if e.Err != "" {
-					<p class="alert" role="alert">{ e.Err }</p>
-				}
-				<div class="grid">
-					<div>
-						<label for={ eField(ei, "name") }>Equipment</label>
-						<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
-					</div>
-					if v.carries(groupEquipmentLinks) {
-						<div>
-							<label for={ eField(ei, "qty") }>Quantity</label>
-							<input id={ eField(ei, "qty") } type="text" name={ eField(ei, "qty") } value={ e.Qty }/>
-						</div>
+// stepChooser offers every step of the recipe as a checkbox named name,
+// grouped by part, with checked ticked, one per line. The step self is listed
+// in its place but cannot be chosen: a step cannot wait for itself. Its
+// checkbox is disabled and has no name, so it never posts.
+templ stepChooser(v view, legend, help, name, self string, checked []string) {
+	<fieldset class="deps">
+		<legend class="lbl">
+			{ legend }
+			if help != "" {
+				<span class="help">{ help }</span>
+			}
+		</legend>
+		for _, g := range v.stepGroups() {
+			if len(v.D.Components) > 1 {
+				<p class="dgrp">{ g.Name }</p>
+			}
+			<div class="dep-list">
+				for _, o := range g.Options {
+					if o.ID == self {
+						<label class="dep self" title="A step cannot wait for itself">
+							<input type="checkbox" disabled/>
+							<span class={ "snum sm", templ.KV("passive", o.Passive) }>{ strconv.Itoa(o.Num) }</span>
+							<span class="t">{ o.Title }</span>
+							<span class="this">This step</span>
+						</label>
+					} else {
+						<label class="dep">
+							<input type="checkbox" name={ name } value={ o.ID } checked?={ slices.Contains(checked, o.ID) }/>
+							<span class={ "snum sm", templ.KV("passive", o.Passive) }><span class="sr">Step </span>{ strconv.Itoa(o.Num) }</span>
+							<span class="t">{ o.Title }</span>
+						</label>
 					}
-				</div>
-				if e.OfferProposal || e.Propose {
-					<label class="inline"><input type="checkbox" name={ eField(ei, "propose") } value="1" checked?={ e.Propose }/> Add this equipment to the catalog as new and unreviewed</label>
 				}
-				if v.carries(groupEquipmentLinks) {
-					<details class="deps" open?={ len(e.Steps) > 0 }>
-						<summary>Used in steps</summary>
-						for _, o := range v.stepOptions() {
-							<label class="inline"><input type="checkbox" name={ eField(ei, "step") } value={ o.ID } checked?={ slices.Contains(e.Steps, o.ID) }/> { o.Label }</label>
-						}
-					</details>
-				}
-				<p class="tools">
-					<button type="submit" class="btn" name="action" value={ act("up-equip", ei) } disabled?={ ei == 0 }>Move equipment up</button>
-					<button type="submit" class="btn" name="action" value={ act("down-equip", ei) } disabled?={ ei == len(v.D.Equipment)-1 }>Move equipment down</button>
-					<button type="submit" class="btn" name="action" value={ act("rm-equip", ei) }>Remove equipment</button>
-				</p>
-			</li>
+			</div>
 		}
-	</ol>
-	<p class="tools"><button type="submit" class="btn" name="action" value="add-equip">Add equipment</button></p>
+	</fieldset>
+}
+
+// equipmentFields draws the equipment as chips, each with its details in a
+// popover, and a field that adds one more: the next equipment slot, posted
+// with the form. A blank row is not drawn; the build drops it anyway.
+templ equipmentFields(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-equipment" id="ed-equipment">
+		@sectionHead("ed-h-equipment", "Equipment")
+		<div class="ed-card">
+			<ol class="chips" data-drag-list="move-equip" data-drag-axis="x">
+				for ei, e := range v.D.Equipment {
+					if !equipBlank(e) {
+						<li class={ "item equipment " + e.Mark.String() } data-llm?={ e.Mark.LLM }>
+							@grip()
+							if !e.Mark.zero() {
+								<input type="hidden" name={ eField(ei, "mark") } value={ e.Mark.String() }/>
+							}
+							<span class="erow" id={ equipAnchor(ei) }>
+								<label class="sr" for={ eField(ei, "name") }>Equipment</label>
+								<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
+								if strings.TrimSpace(e.Qty) != "" {
+									<span class="qual">{ e.Qty }</span>
+								}
+								@llmBadge(e.Mark)
+							</span>
+							@iconButton(act("rm-equip", ei), "Remove "+equipRef(e, ei), layout.IconClose, false, "rm danger")
+							<details class="more" open?={ e.open() }>
+								@moreToggle(equipRef(e, ei))
+								<div class="more-body">
+									<div class="full">
+										@checkHint(e.Mark.Low, nil, "the rules were not sure of this equipment.")
+										if e.Err != "" {
+											<p class="alert" role="alert">{ e.Err }</p>
+										}
+									</div>
+									if v.carries(groupEquipmentLinks) {
+										<div class="fl">
+											<label for={ eField(ei, "qty") }>Quantity</label>
+											<input id={ eField(ei, "qty") } type="text" name={ eField(ei, "qty") } value={ e.Qty }/>
+										</div>
+									}
+									if e.OfferProposal || e.Propose {
+										<div class="fl full">
+											<label class="inline"><input type="checkbox" name={ eField(ei, "propose") } value="1" checked?={ e.Propose }/> Add this equipment to the catalog as new and unreviewed</label>
+										</div>
+									}
+									if v.carries(groupEquipmentLinks) && len(v.stepGroups()) > 0 {
+										<div class="full">
+											@stepChooser(v, "Used in steps", "", eField(ei, "step"), "", e.Steps)
+										</div>
+									}
+								</div>
+							</details>
+						</li>
+					}
+				}
+				<li class="add-equip">
+					<label class="sr" for={ eField(len(v.D.Equipment), "name") }>New equipment</label>
+					<input id={ eField(len(v.D.Equipment), "name") } type="text" name={ eField(len(v.D.Equipment), "name") } list="equipment-names" autocomplete="off" placeholder="Add equipment" data-enter="add-equip" autofocus?={ v.D.Focus == eField(len(v.D.Equipment), "name") }/>
+					<button type="submit" class="ibtn" name="action" value="add-equip" aria-label="Add equipment" title="Add equipment">
+						@layout.Icon(layout.IconPlus)
+					</button>
+				</li>
+			</ol>
+		</div>
+	</section>
+}
+
+// partsPanel lists the parts of the recipe, says what a part is, and offers
+// to add one. On the review screen it sits under the source box, outside the
+// form, so its button names the form; oob marks the copy an htmx answer
+// carries to replace it there.
+templ partsPanel(v view, oob bool) {
+	<section id="parts-panel" class="parts-panel" aria-labelledby="ed-h-parts" { oobAttrs(oob)... }>
+		<style>
+			.parts-panel .pp-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px 16px 8px; }
+			.parts-panel .pp-text { margin: 0 0 10px; color: var(--ink-2); font-size: 15.5px; }
+			.parts-panel .pp-part { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+			.parts-panel .pn { width: 26px; height: 26px; border-radius: var(--r); background: var(--wattle-soft); color: var(--wattle-ink); display: grid; place-items: center; font-weight: 750; font-size: 13.5px; }
+			.parts-panel .pp-name { display: block; color: var(--ink); overflow-wrap: anywhere; }
+			.parts-panel .pp-meta { display: block; font-size: 14px; color: var(--ink-3); }
+			.parts-panel .pp-part a { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 14.5px; }
+			.parts-panel .pp-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 10px 0 6px; border-top: 1px solid var(--line); }
+		</style>
+		@sectionHead("ed-h-parts", "Parts of this recipe")
+		<div class="pp-card">
+			<p class="pp-text">{ v.partsText() }</p>
+			if len(v.D.Components) > 1 {
+				for ci, c := range v.D.Components {
+					<div class="pp-part">
+						<span class="pn" aria-hidden="true">{ n1(ci) }</span>
+						<span>
+							<span class="pp-name">{ partTitle(c) }</span>
+							<span class="pp-meta">{ partCounts(c) }</span>
+						</span>
+						<a href={ templ.SafeURL("#" + partAnchor(ci)) } aria-label={ "Go to part " + n1(ci) }>Go to</a>
+					</div>
+				}
+			}
+			<p class="pp-tools">
+				<button type="submit" form="editor" class="btn" name="action" value="add-component">
+					if len(v.D.Components) > 1 {
+						Add a part
+					} else {
+						Split into parts
+					}
+				</button>
+			</p>
+		</div>
+	</section>
 }
