@@ -137,13 +137,14 @@ const (
 	StageSimmer   StageKind = "simmer"
 	StageBraise   StageKind = "braise"
 	StageCook     StageKind = "cook"
+	StageServe    StageKind = "serve"
 )
 
 // StageKinds lists the closed set of stage kinds.
 func StageKinds() []StageKind {
 	return []StageKind{
 		StagePrep, StageRise, StageRest, StageSteep, StageMarinate, StageChill,
-		StageBake, StageRoast, StageSimmer, StageBraise, StageCook,
+		StageBake, StageRoast, StageSimmer, StageBraise, StageCook, StageServe,
 	}
 }
 

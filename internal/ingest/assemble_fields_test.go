@@ -94,6 +94,28 @@ func TestAssembleTakesMealTypeAndStepTitlesFromTheSource(t *testing.T) {
 	}
 }
 
+func TestAssembleReadsAServeStepAsServe(t *testing.T) {
+	e := newEnv(t)
+	// The honey beer bread: the last step is titled "Serve" but its text opens
+	// with a prep verb, and a bare "Serve." has no title at all.
+	res := extract.Result{Method: extract.MethodJSONLD, Recipe: &extract.Raw{
+		Name: "Honey Beer Bread", Ingredients: []string{"3 cups flour"},
+		Instructions: []extract.InstructionStep{
+			{Title: "Bake", Text: "Bake for 40 to 50 minutes, until a toothpick comes out clean."},
+			{Title: "Serve", Text: "Slice with a bread knife, serve warm and enjoy!"},
+			{Text: "Serve."},
+		},
+	}}
+	d, err := e.pipeline(t, nil).assemble(e.ctx, Source{}, res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := flatSteps(d)
+	if len(steps) != 3 || steps[0].Kind != recipe.StageBake || steps[1].Kind != recipe.StageServe || steps[2].Kind != recipe.StageServe {
+		t.Errorf("kinds = %+v, want bake, serve, serve", steps)
+	}
+}
+
 func TestParserVersionCoversStageKindsAndMealType(t *testing.T) {
 	// A draft with a meal type, titles or stage kinds must be told apart from
 	// one made before the rules read them (ParserVersion's contract).

@@ -63,7 +63,7 @@ Options considered:
      is unambiguous and leaves it empty otherwise.
    - **Spice level**, 0 to 3. Never set by ingest.
    - **Step stage kind**, from a closed set (`prep`, `rise`, `rest`, `steep`,
-     `marinate`, `chill`, `bake`, `roast`, `simmer`, `braise`, `cook`), beside
+     `marinate`, `chill`, `bake`, `roast`, `simmer`, `braise`, `cook`, `serve`), beside
      the existing active/passive flag, which keeps its meaning. Rule-based
      ingest proposes a kind from the step text; an unknown kind is empty, not
      an error ([ADR-00006](00006-rule-first-ingestion.md)).

@@ -222,6 +222,25 @@ var (
 	waitWordRE = regexp.MustCompile(`(?i)\b(rest|rise|stand|sit|cool|set|proof|prove)\b`)
 )
 
+// serveRE matches a step that is the serving: a title or text that opens with
+// the word "serve" or "serving". Only the opening counts, so "Slice and serve"
+// and "Stir before you serve" are left to the verb rules.
+var serveRE = regexp.MustCompile(`(?i)^\W*serv(?:e|ing)\b`)
+
+// stageKindOf proposes a stage kind for a step from its source title and its
+// text. A title that opens with "serve" says so outright; otherwise the text
+// does, when it opens with "serve" and names no other kind (ADR-00020).
+func stageKindOf(title, text string) recipe.StageKind {
+	if serveRE.MatchString(title) {
+		return recipe.StageServe
+	}
+	k := stageKind(text)
+	if k == "" && serveRE.MatchString(text) {
+		return recipe.StageServe
+	}
+	return k
+}
+
 // stageKind proposes what a step is doing from its text, or "" when the text
 // does not say. A step whose text names two different kinds ("let it rise,
 // then bake") gets none: precision over recall, since an empty kind is only

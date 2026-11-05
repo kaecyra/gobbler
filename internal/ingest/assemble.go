@@ -152,8 +152,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 				byName[strings.ToLower(name)] = i
 			}
 		}
-		st := step(text, 1)
-		st.Title = strings.TrimSpace(s.Title)
+		st := step(strings.TrimSpace(s.Title), text, 1)
 		comps[i].Steps = append(comps[i].Steps, st)
 	}
 	if len(comps) > 1 && len(comps[0].Lines) == 0 && len(comps[0].Steps) == 0 {
@@ -189,7 +188,7 @@ func (a *assembler) fromSections(sec parse.Sections) {
 		for _, s := range sc.Steps {
 			if text := strings.TrimSpace(s); text != "" {
 				// A heading-less split guesses which text is a step.
-				c.Steps = append(c.Steps, step(text, sec.Confidence))
+				c.Steps = append(c.Steps, step("", text, sec.Confidence))
 			}
 		}
 		d.Components = append(d.Components, c)
@@ -307,12 +306,12 @@ func duration(d time.Duration) Field[time.Duration] {
 
 // step builds a step, reading its duration from the text: the sum of every
 // duration written in it, taking the upper bound of a range.
-func step(text string, confidence float64) Step {
+func step(title, text string, confidence float64) Step {
 	var total time.Duration
 	for _, f := range parse.FindDurations(text) {
 		total += f.Max
 	}
-	return Step{Text: text, Duration: total, Confidence: confidence, Kind: stageKind(text)}
+	return Step{Text: text, Duration: total, Confidence: confidence, Kind: stageKindOf(title, text), Title: title}
 }
 
 func calories(s string) Field[int] {

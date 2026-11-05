@@ -27,14 +27,14 @@ const (
 
 // familyOf maps a step to its colour family (docs/ui/design.md, Time ribbon).
 // Hands-on time is always coral, so a step that is not passive is FamilyActive
-// whatever its kind. Prep is coral too, even if marked passive. An unkinded
+// whatever its kind. Prep and serve are coral too, even if marked passive. An unkinded
 // passive step is slate.
 func familyOf(kind recipe.StageKind, passive bool) Family {
 	if !passive {
 		return FamilyActive
 	}
 	switch kind {
-	case recipe.StagePrep:
+	case recipe.StagePrep, recipe.StageServe:
 		return FamilyActive
 	case recipe.StageRise, recipe.StageRest:
 		return FamilySky
