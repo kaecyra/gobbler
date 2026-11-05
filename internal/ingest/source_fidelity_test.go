@@ -49,24 +49,32 @@ func TestIngestChickenCutletPageIsFaithful(t *testing.T) {
 }
 
 // A yield with a unit still reads as a yield; only a bare number is servings.
+// A bare number does not end the reading: WPRM states ["1", "1 loaf"] (#382).
 func TestYieldKeepsAStatedUnit(t *testing.T) {
 	for name, tc := range map[string]struct {
-		yield          string
+		yield          []string
 		servings, unit string
 	}{
-		"bare":     {"4", "4", ""},
-		"servings": {"4 servings", "4", "servings"},
-		"loaf":     {"1 loaf", "", "loaf"},
+		"bare":                 {[]string{"4"}, "4", ""},
+		"servings":             {[]string{"4 servings"}, "4", "servings"},
+		"loaf":                 {[]string{"1 loaf"}, "", "loaf"},
+		"bare then loaf":       {[]string{"1", "1 loaf"}, "1", "loaf"},
+		"bare then servings":   {[]string{"4", "4 servings"}, "4", ""},
+		"unreadable then bare": {[]string{"a few", "4"}, "4", ""},
+		"loaf then bare":       {[]string{"1 loaf", "6"}, "", "loaf"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			a := &assembler{d: &Draft{}}
-			a.yield([]string{tc.yield})
+			a.yield(tc.yield)
 			got := ""
 			if a.d.Servings.Confidence > 0 {
 				got = a.d.Servings.Value.String()
 			}
 			if got != tc.servings || a.d.Yield.Value.Unit != tc.unit {
 				t.Errorf("servings %q yield unit %q, want %q and %q", got, a.d.Yield.Value.Unit, tc.servings, tc.unit)
+			}
+			if len(a.d.Issues) != 0 {
+				t.Errorf("issues = %v, want none for a readable yield", a.d.Issues)
 			}
 		})
 	}
