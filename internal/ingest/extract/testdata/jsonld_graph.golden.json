@@ -35,7 +35,9 @@
       }
     ],
     "calories": "210 calories",
-    "image_url": "https://example.com/img/lemon.jpg"
+    "image_urls": [
+      "https://example.com/img/lemon.jpg"
+    ]
   },
   "issues": [
     "malformed_jsonld"

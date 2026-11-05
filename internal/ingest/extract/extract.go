@@ -94,7 +94,11 @@ type Raw struct {
 	// mapping them onto the cuisine list is the assembler's job (ADR-00025).
 	Cuisines []string `json:"cuisines,omitempty"`
 	Calories string   `json:"calories,omitempty"`
-	ImageURL string   `json:"image_url,omitempty"`
+	// ImageURLs are candidate pictures, best guess first, without repeats and
+	// resolved against the page URL: the page's og:image, then each entry of
+	// the recipe's own "image", then the page's primary ImageObject where the
+	// JSON-LD names one. Never an author's or publisher's image (ADR-00039).
+	ImageURLs []string `json:"image_urls,omitempty"`
 	// VideoID is the 11-character ID of a YouTube video the page names in its
 	// schema.org "video" property (ADR-00021 decision 5), else of the first
 	// YouTube embed in the page body (ADR-00023); empty when there is neither
@@ -182,22 +186,30 @@ func (r *Registry) Extract(page []byte, sourceURL string) (Result, error) {
 		return Result{}, fmt.Errorf("parse html: %w", err)
 	}
 	res := Result{SourceURL: sourceURL}
+	base, perr := url.Parse(sourceURL)
+	if perr != nil {
+		base = nil
+	}
+	og := ogImage(doc)
 
 	raw, issues, ok := extractJSONLD(doc)
 	res.Issues = append(res.Issues, issues...)
 	if ok {
 		applyPlugins(doc, &raw)
 		applyEmbeddedVideo(doc, &raw)
+		raw.setImages(og, base)
 		return res.withRecipe(MethodJSONLD, raw), nil
 	}
 	if raw, ok := extractMicrodata(doc); ok {
 		applyPlugins(doc, &raw)
 		applyEmbeddedVideo(doc, &raw)
+		raw.setImages(og, base)
 		return res.withRecipe(MethodMicrodata, raw), nil
 	}
-	if u, perr := url.Parse(sourceURL); perr == nil && u.Host != "" {
-		if e, found := r.lookup(u.Hostname()); found {
-			if raw, ok := e.Extract(doc, u); ok && raw.usable() {
+	if base != nil && base.Host != "" {
+		if e, found := r.lookup(base.Hostname()); found {
+			if raw, ok := e.Extract(doc, base); ok && raw.usable() {
+				raw.setImages(og, base)
 				return res.withRecipe(MethodSite, raw), nil
 			}
 		}

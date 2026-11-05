@@ -81,7 +81,13 @@
     "cuisines": [
       "Japanese"
     ],
-    "image_url": "https://japan.recipetineats.com/wp-content/uploads/2020/04/Chicken_Cutlet_4478_sq.jpg",
+    "image_urls": [
+      "https://japan.recipetineats.com/wp-content/uploads/2020/04/Chicken_Cutlet_4478.jpg",
+      "https://japan.recipetineats.com/wp-content/uploads/2020/04/Chicken_Cutlet_4478_sq.jpg",
+      "https://japan.recipetineats.com/wp-content/uploads/2020/04/Chicken_Cutlet_4478_sq-500x500.jpg",
+      "https://japan.recipetineats.com/wp-content/uploads/2020/04/Chicken_Cutlet_4478_sq-500x375.jpg",
+      "https://japan.recipetineats.com/wp-content/uploads/2020/04/Chicken_Cutlet_4478_sq-480x270.jpg"
+    ],
     "video_id": "L57S_S22Mf8"
   }
 }
