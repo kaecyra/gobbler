@@ -3534,7 +3534,7 @@
       "wave": 12,
       "track": null,
       "issue": 422,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/media/image.go",
@@ -4895,6 +4895,12 @@
       "title": "remove the step Part select; drag is the only way to move between parts",
       "merged": "b1e8459",
       "note": "Owner call 2026-11-05 (ib on #413): drag only, so the #119 per-step Part select goes. Ordered before a-mcp-recipe-edit, which owns the same editor globs. The .to fields still posted by internal/web/routes_test.go, internal/web/ingest/ingest_test.go and e2e/fixtures/routes/tenancy-support.ts stay as they are: they become the 'a post carrying c.N.s.M.to changes nothing' case, so do not edit them."
+    },
+    {
+      "id": "m-media-fit",
+      "title": "scale a picture to fit without cropping",
+      "merged": "44b5445",
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D1."
     }
   ],
   "adr_sequence": {
