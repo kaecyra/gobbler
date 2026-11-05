@@ -68,10 +68,10 @@ func (v view) base() string { return journalPath(v.RecipeID) }
 
 func (v view) ratingIs(n int) bool { return v.Rating != nil && *v.Rating == n }
 
-// ratings lists the ratings a form offers, 1 to 5 spoons.
+// ratings lists the ratings a form offers, minRating to layout.MaxSpoons spoons.
 func ratings() []int {
-	out := make([]int, 0, maxRating)
-	for n := minRating; n <= maxRating; n++ {
+	out := make([]int, 0, layout.MaxSpoons)
+	for n := minRating; n <= layout.MaxSpoons; n++ {
 		out = append(out, n)
 	}
 	return out

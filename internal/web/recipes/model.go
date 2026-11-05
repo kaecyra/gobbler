@@ -73,12 +73,9 @@ var (
 	}
 )
 
-// heatLabels name 1 to 3 chilis; the words for 1 to maxRating spoons are
+// heatLabels name 1 to 3 chilis; the words for 1 to layout.MaxSpoons spoons are
 // layout.Verdict.
 var heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
-
-// maxRating is the top of the spoon scale, the last rating layout.Verdict names.
-const maxRating = 5
 
 // timeBands are the "time to table" groups, shortest first; the last has no
 // upper bound. A recipe with no time at all is in noTimeTitle.
@@ -103,7 +100,7 @@ func cardFor(c store.Card, now time.Time) cardView {
 	if c.SpiceLevel != nil && *c.SpiceLevel >= 1 && *c.SpiceLevel < len(heatLabels) {
 		v.Spice, v.SpiceLabel = *c.SpiceLevel, heatLabels[*c.SpiceLevel]
 	}
-	if c.Rating != nil && *c.Rating >= 1 && *c.Rating <= maxRating {
+	if c.Rating != nil && *c.Rating >= 1 && *c.Rating <= layout.MaxSpoons {
 		v.Rating, v.RatingLabel = *c.Rating, layout.Verdict(*c.Rating)
 	}
 	return v
