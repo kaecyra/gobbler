@@ -123,10 +123,7 @@ type handler struct {
 // d.Provider or is selected from d.LLM; a provider that cannot be built does
 // not take the rule-based path down (see handler.llmInitErr).
 func Routes(d Deps) http.Handler {
-	h := &handler{drafts: d.Pending, photoCache: ingestcore.NewPhotos(time.Now), log: d.Logger}
-	if d.Pictures != nil {
-		h.pictures = d.Pictures
-	}
+	h := &handler{drafts: d.Pending, photoCache: ingestcore.NewPhotos(time.Now), log: d.Logger, pictures: d.Pictures}
 	rec := store.New(d.DB)
 	if h.drafts == nil {
 		h.drafts = ingestcore.NewDrafts(rec)
