@@ -3703,6 +3703,37 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D9, D10. Match the approved mockup side by side."
+    },
+    {
+      "id": "l-discrete-api",
+      "title": "a discrete API behind the web handlers",
+      "wave": 12,
+      "track": null,
+      "issue": 433,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "docs/proposals/discrete-api.md"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "needs its own /overseer:decide session and ADR (docs/proposals/discrete-api.md)",
+      "note": "Owner request 2026-11-05 (recipe-images D7). Lane is the proposal until the ADR shapes the build nodes."
+    },
+    {
+      "id": "o-demo-reseed",
+      "title": "reseed the demo through the picture choice",
+      "wave": 12,
+      "track": null,
+      "issue": 432,
+      "status": "todo",
+      "depends_on": [
+        "u-picture-cards"
+      ],
+      "owns": [],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00039 obligation 15. An operator action on the deployed site after u-picture-cards ships; no repository files."
     }
   ],
   "shared_files": [
