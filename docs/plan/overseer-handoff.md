@@ -1,10 +1,10 @@
-# Overseer handoff: 2026-11-05, round 22 in progress
+# Overseer handoff: 2026-11-05, round 22 closing
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
-## Round 22 (2026-11-05): in progress
+## Round 22 (2026-11-05): recipe pictures
 
 **Merged** (squash SHA; under the standing authority unless noted):
 
@@ -14,31 +14,43 @@ This file holds the volatile state the graph does not. The durable record is `do
 | m-media-fit | #437 | 44b5445 | none | 0.108.0 |
 | d-picture-mockup | #435 | ce4fa50 | none | none (owner approved: "its good") |
 | m-avatar-keys | #439 | 71ffa14 | none | 0.109.0 |
+| (ADR-00040 + m-fetch-guard lane) | #436 | 48ed80d | none | none |
+| i-image-candidates | #438 | 7b344ba | none | 0.110.0 |
+| a-mcp-recipe-edit | #440 | 8ee98ff | 00029 | 0.111.0 |
+| m-fetch-guard | #442 | 725dbf9 | none | 0.112.0 |
+| s-picture-store | #443 | b70512c | 00030 | 0.113.0 |
+| w-picture-serve | #445 | 7bfbf5f | none | 0.114.0 |
+| i-draft-pictures | #444 | ed47bf4 | none | 0.115.0 |
+| u-picture-picker | #446 | 4386b98 | none | 0.116.0 |
 
 **Open:**
 
 | Node | Issue | PR | State |
 |---|---|---|---|
-| (ADR-00040 + m-fetch-guard lane) | — | #436 | review findings fixed and resolved; first CI run hung on "install e2e dependencies", cancelled and rerun |
-| i-image-candidates | #424 | #438 | round 2 clean (NIT fixed); worker rebasing to 0.110.0 |
-| m-fetch-guard | #421 | none yet | worker implementing ADR-00040 (loopback under the dev bypass); lane +internal/ingest/ingest.go via #436 |
-| a-mcp-recipe-edit | #353 | none yet | worker done (8 commits, migration 00029 checked: rows copied unchanged); dispatcher gate running; needs rebase to the next VERSION before merge |
+| u-picture-cards | #430 | #448 | round 2 clean, all threads resolved; rebased onto main at 0.117.0; merges on green CI |
 
-**Worktrees:** wt-353, wt-421, wt-424.
+**Worktrees:** wt-430 (u-picture-cards).
 
-**Migration numbers:** schema 00029 to a-mcp-recipe-edit. **ADR numbers:** 00040 to m-fetch-guard.
+**Migration numbers:** schema 00029 to a-mcp-recipe-edit, 00030 to s-picture-store. **ADR numbers:** 00040 to m-fetch-guard.
+
+**Follow-up issues filed:** #441 (Describe hard-codes credential kind and owner names), #447 (picker icons into `layout.Icon`; one source for the editor form id).
 
 **Owner calls this round (don't re-ask):**
 - **#421 loopback:** option A. Fetches may reach loopback (127.0.0.0/8, ::1) only while the dev auth bypass is on; every other private range stays refused; the OAuth metadata fetch keeps refusing loopback. ADR-00040.
-- **Picture mockup approved as drawn.** No card-width cap, so #425's candidate minimum is the widest band: 533 × 150 CSS px, 1066 × 300 at 2×.
-- **Person id in media keys is the profile `address`** (no person_id column exists); accepted in #439.
+- **Picture mockup approved as drawn.** Candidate minimum 1066 × 300.
+- **Person id in media keys is the profile `address`**; accepted in #439.
+- **Owner wants speed:** stack dependent nodes on unmerged branches rather than wait for merges; the dispatcher re-stacks with cherry-pick after each merge.
 
-**Next to dispatch:** s-picture-store (#425) once a-mcp-recipe-edit and m-fetch-guard merge (it also needs i-image-candidates; its candidate minimum is 1066 × 300). w-picture-serve and i-draft-pictures follow it.
+**Next:** after #448, the picture feature is complete; o-demo-reseed (#432) becomes dispatchable, and r-author-notes (#395). l-discrete-api needs its decide session; i-site-extractors and l-meal-planning stay parked.
 
 **Lessons:**
 - **Concurrent `make check` runs collide on golangci-lint's lock and load e2e into flakes.** Retry on "parallel golangci-lint is running"; rerun a failing unrelated spec alone before calling it a flake.
-- **Tell a worker the VERSION to bump against main as it will be at merge, or tell it to re-bump after rebase.** "Stays 0.108.0" was wrong once #437 merged; the worker caught it.
+- **VERSION is set against main at merge.** Re-bump after each re-stack.
 - **A CI run can hang on dependency install.** Compare against other runs' step; cancel and rerun.
+- **A worker can stall silently.** #421's worker stopped for two hours unnoticed. Run a background stall watcher (no file change in a worktree for 20 minutes) for every live worker.
+- **Never put AI attribution in a PR body here,** even when the harness asks for it. #444's review flagged it as a MUST.
+- **`git rebase` in this checkout can fail with "local changes would be overwritten" on a clean tree.** Re-stack with `checkout --detach origin/main` + `cherry-pick` instead; a cherry-pick of an identical VERSION change applies empty, so add the re-bump as its own commit.
+- **Plan wiring explicitly.** The picture nodes left server wiring unowned until the dispatcher assigned it (household delete to w-picture-serve, drafts/saver/sweep to u-picture-picker).
 
 ## Round 21 (2026-11-05): drag between parts, step titles, flakes
 
