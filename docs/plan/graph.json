@@ -3499,7 +3499,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Owner call 2026-11-05 (ib on #413): drag only, so the #119 per-step Part select goes. Ordered before a-mcp-recipe-edit, which owns the same editor globs."
+      "note": "Owner call 2026-11-05 (ib on #413): drag only, so the #119 per-step Part select goes. Ordered before a-mcp-recipe-edit, which owns the same editor globs. The .to fields still posted by internal/web/routes_test.go, internal/web/ingest/ingest_test.go and e2e/fixtures/routes/tenancy-support.ts stay as they are: they become the 'a post carrying c.N.s.M.to changes nothing' case, so do not edit them."
     }
   ],
   "shared_files": [
