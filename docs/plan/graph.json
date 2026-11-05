@@ -3513,7 +3513,7 @@
       "wave": 12,
       "track": null,
       "issue": 421,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/netguard/**",
@@ -4928,6 +4928,15 @@
       "title": "edit an existing recipe over MCP as a draft for review",
       "merged": "8ee98ff",
       "note": "ADR-00035 review half (obligations 1, 8-11). Split from a-mcp-endpoint on the owner's call (2026-11-03). An MCP tool proposes an edit as a pending proposal (a-recipe-proposals); a person reviews it in the editor with a change summary, sees it inline on the recipe page (toggle hides the marks for the visit; cook mode and share links never show it), and accepting writes a revision of kind proposal that refers to it. A stale proposal cannot be accepted. The two-version comparison, paired by stp-/lin- keys, is pure logic in internal/recipe."
+    },
+    {
+      "id": "m-fetch-guard",
+      "title": "one guarded fetcher for page, image and OAuth fetches",
+      "merged": "725dbf9",
+      "adrs": [
+        "00040"
+      ],
+      "note": "ADR-00039; decision record docs/proposals/recipe-images.md D8. Page-fetch change in its own commit."
     }
   ],
   "adr_sequence": {
