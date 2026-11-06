@@ -56,9 +56,12 @@ func (q *Queries) AttachSnapshot(ctx context.Context, arg AttachSnapshotParams) 
 }
 
 const countPendingDrafts = `-- name: CountPendingDrafts :one
-SELECT COUNT(*) FROM proposals WHERE household_id = ? AND kind = 'draft' AND state = 'pending'
+SELECT COUNT(*) FROM proposals
+WHERE household_id = ? AND kind = 'draft' AND state = 'pending' AND json_extract(document, '$.reimport') IS NULL
 `
 
+// A re-import draft (ADR-00042) names its recipe in the document and is not a
+// draft of a new recipe, so the bound on those does not count it.
 func (q *Queries) CountPendingDrafts(ctx context.Context, householdID int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countPendingDrafts, householdID)
 	var count int64
@@ -390,6 +393,48 @@ func (q *Queries) ListPendingProposalAges(ctx context.Context) ([]ListPendingPro
 	for rows.Next() {
 		var i ListPendingProposalAgesRow
 		if err := rows.Scan(&i.ID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingReimports = `-- name: ListPendingReimports :many
+SELECT id, token FROM proposals
+WHERE household_id = ?1 AND kind = 'draft' AND state = 'pending'
+  AND CAST(json_extract(document, '$.reimport.recipe') AS INTEGER) = CAST(?2 AS INTEGER)
+`
+
+type ListPendingReimportsParams struct {
+	HouseholdID int64
+	RecipeID    int64
+}
+
+type ListPendingReimportsRow struct {
+	ID    int64
+	Token string
+}
+
+// The pending re-import drafts of a recipe. A recipe has at most one, kept by
+// the transaction that writes it, not by an index: the table's own check
+// gives a draft no recipe column (ADR-00042).
+func (q *Queries) ListPendingReimports(ctx context.Context, arg ListPendingReimportsParams) ([]ListPendingReimportsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPendingReimports, arg.HouseholdID, arg.RecipeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingReimportsRow
+	for rows.Next() {
+		var i ListPendingReimportsRow
+		if err := rows.Scan(&i.ID, &i.Token); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

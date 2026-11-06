@@ -74,6 +74,10 @@ type Store struct {
 	db  *sql.DB
 	q   *storedb.Queries
 	now func() time.Time
+	// objects deletes the picture candidates of the re-import drafts a new
+	// proposal or a recipe's deletion ends (WithObjects); nil leaves them to
+	// the sweep.
+	objects ObjectRemover
 }
 
 // New returns a Store over d, which must already be migrated.

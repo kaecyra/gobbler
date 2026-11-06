@@ -47,8 +47,12 @@ func proposalRef(token, reason, tool, person, credKind string, credID int64, cre
 // version, the recipe's current one. A stale proposal cannot be accepted: it
 // holds the content of an older version, and accepting it would undo whatever
 // was saved since (ADR-00035). Staleness is computed, never stored. A draft of
-// a new recipe has no base and is never stale.
+// a new recipe has no base and is never stale; a re-import is stale once the
+// recipe is at a version other than the one it started from (ADR-00042).
 func (p Proposal) StaleAt(version int64) bool {
+	if p.Reimport != nil {
+		return p.Reimport.BaseVersion != version
+	}
 	return p.Kind == ProposalEdit && p.BaseVersion != version
 }
 

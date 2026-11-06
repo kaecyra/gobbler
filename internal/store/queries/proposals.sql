@@ -42,8 +42,19 @@ FROM proposals WHERE token = sqlc.arg(token) AND household_id = sqlc.arg(househo
 SELECT token FROM proposals
 WHERE recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id) AND kind = 'edit' AND state = 'pending';
 
+-- A re-import draft (ADR-00042) names its recipe in the document and is not a
+-- draft of a new recipe, so the bound on those does not count it.
 -- name: CountPendingDrafts :one
-SELECT COUNT(*) FROM proposals WHERE household_id = ? AND kind = 'draft' AND state = 'pending';
+SELECT COUNT(*) FROM proposals
+WHERE household_id = ? AND kind = 'draft' AND state = 'pending' AND json_extract(document, '$.reimport') IS NULL;
+
+-- The pending re-import drafts of a recipe. A recipe has at most one, kept by
+-- the transaction that writes it, not by an index: the table's own check
+-- gives a draft no recipe column (ADR-00042).
+-- name: ListPendingReimports :many
+SELECT id, token FROM proposals
+WHERE household_id = sqlc.arg(household_id) AND kind = 'draft' AND state = 'pending'
+  AND CAST(json_extract(document, '$.reimport.recipe') AS INTEGER) = CAST(sqlc.arg(recipe_id) AS INTEGER);
 
 -- A proposal changes state only while it is pending.
 -- name: SetProposalState :execrows
