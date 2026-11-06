@@ -4091,7 +4091,7 @@
       "wave": 13,
       "track": null,
       "issue": 498,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "i-split-steps"
       ],
@@ -5456,6 +5456,12 @@
       "title": "suggestion fields open the full list, not only the current value",
       "merged": "d5064c5",
       "note": "Owner-reported (#488): the datalist arrow implies a dropdown but Chrome lists only matches for the current text. After a-api-recipes, which owns internal/web/editor/** now."
+    },
+    {
+      "id": "i-line-qualifiers",
+      "title": "keep every word and its case when a line's extras become qualifiers",
+      "merged": "06625bc",
+      "note": "internal/ingest/ingest.go only for the ParserVersion bump: main's value plus one at merge, redone after any rebase (lessons.md). i-split-steps bumps it too, hence the edge."
     }
   ],
   "adr_sequence": {
