@@ -118,8 +118,8 @@ type handler struct {
 	initErr error
 }
 
-// Routes returns the ingest routes, to be mounted at /ingest. The pipeline,
-// catalog and recipe store are built over d.DB. The LLM provider comes from
+// Routes returns the ingest routes, to be mounted at /ingest. The pipeline
+// and catalog are built over d.DB; drafts and saved recipes are d.Recipes. The LLM provider comes from
 // d.Provider or is selected from d.LLM; a provider that cannot be built does
 // not take the rule-based path down (see handler.llmInitErr).
 func Routes(d Deps) http.Handler {

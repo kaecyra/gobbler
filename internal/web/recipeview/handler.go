@@ -27,7 +27,8 @@ import (
 // the same prefix; this one owns the bare recipe URL.
 const Pattern = "/recipes/{id}"
 
-// Recipes is what the view reads from the recipe store.
+// Recipes is what the view reads from the recipe service
+// (*apirecipes.Service satisfies it).
 type Recipes interface {
 	Get(ctx context.Context, c apirecipes.Caller, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, c apirecipes.Caller, id int64) (apirecipes.Info, error)

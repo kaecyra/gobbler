@@ -3,7 +3,7 @@
 // their dependencies (ADR-00004). Quantities are read by package quantity
 // (ADR-00005), ingredients, units and equipment are chosen from the catalog
 // (ADR-00008), and the step graph is checked by package recipe. Saving goes
-// through the recipe store, which writes the revision holding the prior
+// through the recipe service (internal/api/recipes), whose store writes the revision holding the prior
 // document; the editor never writes SQL and never touches a source snapshot.
 // The author of an edit is the verified identity on the request context
 // (ADR-00030). It is mounted from internal/web (ADR-00012). The same form is
