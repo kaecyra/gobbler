@@ -114,7 +114,7 @@ The router builds the store, the pictures and the reaper with `apirecipes.NewSto
 `NewReaper`. Fetching and reading a page into a draft stays in `ingest`, a library the adapters call;
 the service holds its result.
 
-`api/journal` is the third resource: the notes, rating and made-it log of a recipe for `internal/web/journal`, built over the recipe store (the journal has no domain package of its own) with the same `Caller` and membership check.
+`api/journal` holds the notes, rating and made-it log of a recipe for `internal/web/journal`, built over the recipe store (the journal has no domain package of its own) with the same `Caller` and membership check.
 
 ## Configuration
 

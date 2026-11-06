@@ -125,9 +125,18 @@ func TestEveryOperationRefusesANonMember(t *testing.T) {
 			}
 		}
 	}
-	notes, err := f.rec.ListNotes(ctx, id)
+	hctx := household.WithContext(ctx, f.smiths)
+	notes, err := f.rec.ListNotes(hctx, id)
 	if err != nil || len(notes) != 0 {
 		t.Errorf("a refused AddNote must not write: notes = %v, err = %v", notes, err)
+	}
+	made, err := f.rec.ListMadeIt(hctx, id)
+	if err != nil || len(made) != 0 {
+		t.Errorf("a refused AddMadeIt must not write: made = %v, err = %v", made, err)
+	}
+	rec, err := f.rec.Get(hctx, id)
+	if err != nil || rec.Rating != nil {
+		t.Errorf("a refused SetRating must not write: rating = %v, err = %v", rec.Rating, err)
 	}
 }
 
@@ -200,14 +209,21 @@ func TestSetRatingWritesARevision(t *testing.T) {
 	if err != nil || rec.Rating == nil || *rec.Rating != 4 {
 		t.Fatalf("rating = %v, err = %v", rec.Rating, err)
 	}
-	after, _ := f.rec.ListRevisions(household.WithContext(ctx, f.smiths), f.recipe)
+	after, err := f.rec.ListRevisions(household.WithContext(ctx, f.smiths), f.recipe)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(after) != len(before)+1 {
 		t.Errorf("revisions %d -> %d, want one more", len(before), len(after))
 	}
 	if err := f.svc.SetRating(ctx, f.ann, f.recipe, nil); err != nil {
 		t.Fatal(err)
 	}
-	if rec, _ = f.svc.Recipe(ctx, f.ann, f.recipe); rec.Rating != nil {
+	rec, err = f.svc.Recipe(ctx, f.ann, f.recipe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Rating != nil {
 		t.Errorf("rating after clear = %v, want nil", *rec.Rating)
 	}
 }

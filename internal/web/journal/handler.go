@@ -3,8 +3,9 @@
 // fragment (or, without HTMX, as a page of its own), so the recipe page can
 // include it by URL without this package importing the recipe view or the
 // reverse (ADR-00012). Persistence is the recipe store (ADR-00004), reached
-// through internal/api/journal (ADR-00043); the author of a note or entry is the verified identity on the request context, never a
-// form field (ADR-00030). It is mounted from internal/web.
+// through internal/api/journal (ADR-00043); the author of a note or entry is
+// the verified identity on the request context, never a form field
+// (ADR-00030). It is mounted from internal/web.
 package journal
 
 import (
