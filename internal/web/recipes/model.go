@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
@@ -94,7 +94,7 @@ var timeBands = []struct {
 
 const noTimeTitle = "No time set"
 
-func cardFor(c store.Card, now time.Time) cardView {
+func cardFor(c apirecipes.Card, now time.Time) cardView {
 	v := cardView{
 		ID: c.ID, Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: mealLabels[c.MealType], Cuisine: c.Cuisine.Label(),
 		Components: c.Components, Key: c.KeyIngredients,
@@ -112,7 +112,7 @@ func cardFor(c store.Card, now time.Time) cardView {
 
 // timeToTable is how long a recipe takes: its timed steps added up, else the
 // total time the source stated.
-func timeToTable(c store.Card) time.Duration {
+func timeToTable(c apirecipes.Card) time.Duration {
 	if t := ribbon.Build(c.Steps).Total; t > 0 {
 		return t
 	}
@@ -120,7 +120,7 @@ func timeToTable(c store.Card) time.Duration {
 }
 
 // buildResults groups the found cards. An unknown group falls back to meal.
-func buildResults(q, group string, found []store.Card, now time.Time) results {
+func buildResults(q, group string, found []apirecipes.Card, now time.Time) results {
 	if group != groupTime {
 		group = groupMeal
 	}
@@ -134,7 +134,7 @@ func buildResults(q, group string, found []store.Card, now time.Time) results {
 	return res
 }
 
-func groupByMeal(found []store.Card, now time.Time) []groupView {
+func groupByMeal(found []apirecipes.Card, now time.Time) []groupView {
 	var out []groupView
 	for _, m := range append(recipe.MealTypes(), "") {
 		g := groupView{Title: "Other", Meal: m}
@@ -153,7 +153,7 @@ func groupByMeal(found []store.Card, now time.Time) []groupView {
 	return out
 }
 
-func groupByTime(found []store.Card, now time.Time) []groupView {
+func groupByTime(found []apirecipes.Card, now time.Time) []groupView {
 	groups := make([]groupView, len(timeBands)+1)
 	for i, b := range timeBands {
 		groups[i].Title = b.Title

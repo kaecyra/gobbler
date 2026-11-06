@@ -1,12 +1,15 @@
 package web
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/catalog"
@@ -57,7 +60,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
 	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
-	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: store.New(d.DB), Pictures: pictures.Srcs{Pictures: d.Pictures}}))
+	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: d.Recipes, Pictures: recipePictures(d)}))
 	// The home page: "/" is registered here and nowhere else.
 	r.Get("/", homeRoute(d))
 	mountCatalog(r, d)
@@ -234,4 +237,19 @@ func mountPictures(r chi.Router, d Deps) {
 	deps := pictures.Deps{Pictures: d.Pictures, Media: d.Media, Logger: d.Logger}
 	r.Mount(pictures.Pattern, pictures.Routes(deps))
 	r.Mount(pictures.DraftsPattern, pictures.DraftRoutes(deps))
+}
+
+// sessionPictureKeys is the picture key lookup the recipe screens' Pictures
+// take, over the recipe service: it asks as the caller of the request the
+// context carries, and the service refuses one that is not a member.
+type sessionPictureKeys struct{ svc *apirecipes.Service }
+
+func (k sessionPictureKeys) Key(ctx context.Context, id int64) (string, bool, error) {
+	return k.svc.PictureKey(ctx, caller.FromContext(ctx), id)
+}
+
+// recipePictures gives the library and the recipe page the address of a
+// recipe's picture.
+func recipePictures(d Deps) pictures.Srcs {
+	return pictures.Srcs{Pictures: sessionPictureKeys{svc: d.Recipes}}
 }

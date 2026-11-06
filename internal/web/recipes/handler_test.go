@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -24,7 +25,7 @@ type fakeLibrary struct {
 	reads int
 }
 
-func (f *fakeLibrary) Cards(_ context.Context, q store.SearchQuery) ([]store.Card, error) {
+func (f *fakeLibrary) Cards(_ context.Context, _ apirecipes.Caller, q store.SearchQuery) ([]store.Card, error) {
 	if f.reads == 0 {
 		f.got = q // the search itself; later reads are for the side panels
 	}
@@ -32,11 +33,13 @@ func (f *fakeLibrary) Cards(_ context.Context, q store.SearchQuery) ([]store.Car
 	return f.cards, f.err
 }
 
-func (f *fakeLibrary) RecentlyMade(context.Context, int) ([]store.MadeEntry, error) {
+func (f *fakeLibrary) RecentlyMade(context.Context, apirecipes.Caller, int) ([]store.MadeEntry, error) {
 	return f.recent, f.err
 }
 
-func (f *fakeLibrary) Idle(context.Context) ([]store.Card, error) { return f.idle, f.err }
+func (f *fakeLibrary) Idle(context.Context, apirecipes.Caller) ([]store.Card, error) {
+	return f.idle, f.err
+}
 
 var today = time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)
 
