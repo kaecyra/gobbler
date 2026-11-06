@@ -352,6 +352,9 @@ func (s *Store) insertSharedSnapshots(ctx context.Context, q *storedb.Queries, h
 		// A share carries every snapshot of the recipe it copies, so a kind
 		// may repeat (ADR-00042) and AddSnapshot's one-per-kind check is not
 		// applied.
+		if !SnapshotKind(sn.Kind).Valid() {
+			return fmt.Errorf("%w: share snapshot kind %q", ErrCorrupt, sn.Kind)
+		}
 		if err := s.writeSnapshot(ctx, q, hid, recipeID, SnapshotInput{Kind: SnapshotKind(sn.Kind), Content: sn.Content}, who); err != nil {
 			return fmt.Errorf("copy shared snapshot: %w", err)
 		}

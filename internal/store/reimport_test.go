@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
 
 // reimportDoc is a draft document that re-imports recipe id from version base.
@@ -400,5 +401,24 @@ func TestShareCopiesEverySnapshotOfAReimportedRecipe(t *testing.T) {
 	}
 	if len(got) != 2 || string(got[0].Content) != "<html>first import</html>" || string(got[1].Content) != "<html>fetched again</html>" {
 		t.Errorf("shared snapshots = %+v, want the original then the re-import", got)
+	}
+}
+
+// A share document holding a snapshot kind the store does not know is stored
+// data gone bad, not a caller's bad input.
+func TestSharedSnapshotOfAnUnknownKindIsCorrupt(t *testing.T) {
+	s, d := newTestStore(t)
+	_, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	id := recipeWithSource(ctx, t, s, ids.salt)
+	body, err := json.Marshal([]shareSnapshot{{Kind: "carrier_pigeon", Content: []byte("x")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = s.withTx(ctx, func(q *storedb.Queries) error {
+		return s.insertSharedSnapshots(ctx, q, testHouseholdID, id, sql.NullString{String: string(body), Valid: true}, "dev@localhost")
+	})
+	if !errors.Is(err, ErrCorrupt) || errors.Is(err, ErrInvalid) {
+		t.Errorf("unknown snapshot kind in a share = %v, want ErrCorrupt and not ErrInvalid", err)
 	}
 }
