@@ -249,9 +249,9 @@ templ recipeBody(v view) {
 										for li, l := range c.Lines {
 											<li class={ lineClass(v.Proposal.comp(ci).line(li)) }>
 												if l.Exact != "" {
-													<span title={ "exact: " + l.Exact }>{ l.Text }</span>
+													<span title={ "exact: " + l.Exact }>@lineText(l)</span>
 												} else {
-													<span>{ l.Text }</span>
+													<span>@lineText(l)</span>
 												}
 												if l.Unscaled {
 													<span class="muted"> (not scaled or converted: ingredient not matched)</span>
@@ -672,4 +672,17 @@ templ newPartMark(p newPart) {
 			}
 		</ul>
 	</div>
+}
+
+// lineText is an ingredient line's text with each qualifier in its own muted
+// italic element, set off by a space rather than a comma. Line.Text keeps the
+// comma form for every other surface.
+templ lineText(l display.Line) {
+	{ l.Head }
+	for _, q := range l.Qualifiers {
+		<span class="qual" data-testid="qualifier">{ q }</span>
+	}
+	if l.Tail != "" {
+		{ l.Tail }
+	}
 }

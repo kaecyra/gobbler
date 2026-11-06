@@ -24,7 +24,16 @@ type Equipment interface {
 
 // Line is one formatted ingredient line.
 type Line struct {
+	// Text is the whole line as plain text, qualifiers joined to the name with
+	// commas. Cook mode, shopping and MCP read it.
 	Text string
+	// Head is the amount and name, Qualifiers the line's qualifier texts in
+	// order, and Tail the "to taste" and "(optional)" marks. They are Text in
+	// pieces, for a surface that styles the qualifiers apart. An unresolved
+	// line is all Head.
+	Head       string
+	Qualifiers []string
+	Tail       string
 	// Exact is the unrounded amount, shown on hover, empty when nothing was
 	// rounded.
 	Exact string
@@ -49,7 +58,7 @@ func NewLineBuilder(cat Ingredients, o Options) *LineBuilder {
 // Build scales, converts and rounds one line.
 func (b *LineBuilder) Build(ctx context.Context, l recipe.IngredientLine) (Line, error) {
 	if l.Ingredient == 0 {
-		return Line{Text: l.Raw, Unscaled: true}, nil
+		return Line{Text: l.Raw, Head: l.Raw, Unscaled: true}, nil
 	}
 	ing, ok := b.cache[l.Ingredient]
 	if !ok {
@@ -86,19 +95,24 @@ func (b *LineBuilder) Build(ctx context.Context, l recipe.IngredientLine) (Line,
 		}
 	}
 
-	text := strings.Join(nonEmpty([]string{shown.String(), ing.Name}), " ")
-	var quals []string
+	lv.Head = strings.Join(nonEmpty([]string{shown.String(), ing.Name}), " ")
 	for _, q := range l.Qualifiers {
-		quals = append(quals, q.Text)
+		lv.Qualifiers = append(lv.Qualifiers, q.Text)
 	}
-	if len(quals) > 0 {
-		text += ", " + strings.Join(quals, ", ")
-	}
+	var tail []string
 	if l.Rule == quantity.RuleToTaste {
-		text += " to taste"
+		tail = append(tail, "to taste")
 	}
 	if l.Optional {
-		text += " (optional)"
+		tail = append(tail, "(optional)")
+	}
+	lv.Tail = strings.Join(tail, " ")
+	text := lv.Head
+	if len(lv.Qualifiers) > 0 {
+		text += ", " + strings.Join(lv.Qualifiers, ", ")
+	}
+	if lv.Tail != "" {
+		text += " " + lv.Tail
 	}
 	lv.Text = text
 	return lv, nil
