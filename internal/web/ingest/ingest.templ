@@ -173,17 +173,17 @@ templ picker(p pickerView) {
 		<div class="picker-row" role="radiogroup" aria-label="Picture for this recipe">
 			for _, o := range p.Options {
 				<label class="pick">
-					<input class="sr" type="radio" name={ fieldPicture } value={ o.Value } form={ editorFormID } checked?={ o.Checked }/>
+					<input class="sr" type="radio" name={ fieldPicture } value={ o.Value } form={ editor.FormID } checked?={ o.Checked }/>
 					<span class="th">
 						<img src={ o.Src } alt="" loading="lazy" decoding="async"/>
-						<i class="tick" aria-hidden="true"></i>
+						<i class="tick">@layout.Icon(layout.IconCheck)</i>
 					</span>
 					<span class="cap"><b>Recipe image</b><br/>{ pickSize(o) }</span>
 				</label>
 			}
 			<label class="pick none">
-				<input class="sr" type="radio" name={ fieldPicture } value={ pictureNone } form={ editorFormID } checked?={ p.NoneChecked }/>
-				<span class="th"><span class="no-pic" aria-hidden="true"></span><i class="tick" aria-hidden="true"></i></span>
+				<input class="sr" type="radio" name={ fieldPicture } value={ pictureNone } form={ editor.FormID } checked?={ p.NoneChecked }/>
+				<span class="th">@layout.Icon(layout.IconNone)<i class="tick">@layout.Icon(layout.IconCheck)</i></span>
 				<span class="cap"><b>No picture</b><br/>Shows a coloured band</span>
 			</label>
 		</div>

@@ -27,6 +27,7 @@ const (
 	IconBack     IconName = "back"
 	IconBasket   IconName = "basket"
 	IconBulb     IconName = "bulb"
+	IconCheck    IconName = "check"
 	IconChevron  IconName = "chevron"
 	IconClock    IconName = "clock"
 	IconClose    IconName = "close"
@@ -43,6 +44,7 @@ const (
 	IconMenu     IconName = "menu"
 	IconMoon     IconName = "moon"
 	IconMore     IconName = "more"
+	IconNone     IconName = "none"
 	IconPencil   IconName = "pencil"
 	IconPlus     IconName = "plus"
 	IconPot      IconName = "pot"
@@ -73,6 +75,7 @@ var lineGlyphs = map[IconName]lineGlyph{
 	IconBack:     {body: `<path d="M15 5l-7 7 7 7"></path>`, stroke: "2"},
 	IconBasket:   {body: `<path d="M3 10h18l-2 10H5zM8 10l3-6M16 10l-3-6M9 14v3M12 14v3M15 14v3"></path>`},
 	IconBulb:     {body: `<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path>`},
+	IconCheck:    {body: `<path d="M5 13l4.4 4.4L19 7.6"></path>`, stroke: "4.4"},
 	IconChevron:  {body: `<path d="M6 9l6 6 6-6"></path>`, stroke: "1.8"},
 	IconClock:    {body: `<circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path>`},
 	IconClose:    {body: `<path d="M6 6l12 12M18 6 6 18"></path>`, stroke: "1.9"},
@@ -89,6 +92,7 @@ var lineGlyphs = map[IconName]lineGlyph{
 	IconMenu:     {body: `<path d="M4 7h16M4 12h16M4 17h16"></path>`},
 	IconMore:     {body: `<circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle>`, stroke: "2.5"},
 	IconMoon:     {body: `<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path>`},
+	IconNone:     {body: `<rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 19 20 5"></path>`},
 	IconPencil:   {body: `<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>`, stroke: "2", size: 20},
 	IconPlus:     {body: `<rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M12 8.5v7M8.5 12h7"></path>`},
 	IconPot:      {body: `<path d="M4 11h16v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3zM2 11h2M20 11h2M9 7.5c0-1 1-1.5 1-2.5M14 7.5c0-1 1-1.5 1-2.5"></path>`, stroke: "1.9"},

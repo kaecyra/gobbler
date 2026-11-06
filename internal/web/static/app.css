@@ -522,22 +522,14 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .pick b { font-size: 14px; font-weight: 650; }
 .pick:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
 .pick:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }
-/* The tick is drawn with borders: the picker owns no icon in the shared set. */
 .pick .tick {
   display: none; position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%;
-  background: var(--ok);
+  background: var(--ok); color: var(--on-accent); place-items: center;
 }
-.pick .tick::after {
-  content: ""; position: absolute; left: 8px; top: 4px; width: 5px; height: 10px;
-  border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
-}
-.pick:has(input:checked) .tick { display: block; }
+.pick .tick svg { width: 12px; height: 12px; display: block; }
+.pick:has(input:checked) .tick { display: grid; }
 .pick.none .th { display: grid; place-items: center; color: var(--ink-3); border: 1px dashed var(--slate); background: var(--sunk); }
-/* "No picture": an empty frame struck through, as the mockup draws it. */
-.pick.none .no-pic {
-  display: block; width: 20px; height: 18px; border: 2px solid currentColor; border-radius: var(--r-sm);
-  background: linear-gradient(to bottom right, transparent calc(50% - 1px), currentColor calc(50% - 1px), currentColor calc(50% + 1px), transparent calc(50% + 1px));
-}
+.pick.none .th > svg { width: 30px; height: 30px; }
 .pick-note {
   display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 10px 14px; border-radius: var(--r);
   background: var(--grain-soft); color: var(--grain-ink); font-size: 15px;

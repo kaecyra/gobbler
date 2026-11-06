@@ -13,13 +13,10 @@ import (
 
 const (
 	// fieldPicture is the picker's radio group. Its radios belong to the
-	// editor's form (see editorFormID), so the choice is posted with the edits.
+	// editor's form (editor.FormID), so the choice is posted with the edits.
 	fieldPicture = "picture"
 	// pictureNone is the value of the "No picture" radio.
 	pictureNone = "none"
-	// editorFormID is the id of the editor's form (editor.templ), which the
-	// picker sits outside of.
-	editorFormID = "editor"
 )
 
 // pickOption is one candidate in the picker.

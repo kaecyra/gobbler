@@ -236,3 +236,21 @@ test('the picker matches the mockup at its width', async ({ page: p }, info) => 
   expect((await pick.locator('.th').boundingBox())!.height).toBe(84);
   await p.locator('.picker').screenshot({ path: info.outputPath('picker.png') });
 });
+
+test('the tick and the No picture frame are drawings from the icon set', async ({ page: p }) => {
+  await review(p, '/with-pictures');
+  const none = picker(p).locator('.pick.none');
+  // The frame is an svg, not a box drawn in CSS.
+  await expect(none.locator('.th > svg')).toHaveCount(1);
+  await expect(none.locator('.tick svg')).toHaveCount(1);
+  await expect(none.locator('.tick')).toBeHidden();
+  await none.click();
+  await expect(none.locator('.tick')).toBeVisible();
+  await expect(none.locator('.tick svg path')).toBeVisible();
+  // The tick stays 12px inside its circle on every option, not the frame's size.
+  for (const pick of await picker(p).locator('.pick').all()) {
+    if (!(await pick.getByRole('radio').isChecked())) await pick.click();
+    const box = (await pick.locator('.tick svg').boundingBox())!;
+    expect([Math.round(box.width), Math.round(box.height)]).toEqual([12, 12]);
+  }
+});

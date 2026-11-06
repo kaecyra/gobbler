@@ -33,7 +33,7 @@ templ editorPage(v view) {
 // equipment show a compact row, and keep the rest of their fields in a
 // disclosure that starts open when the item has something to check.
 templ editorForm(v view) {
-	<form id="editor" class={ v.formClass() } method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target="#editor" hx-swap="morph:outerHTML" hx-ext="morph">
+	<form id={ FormID } class={ v.formClass() } method="post" action={ templ.SafeURL(v.action()) } hx-post={ v.action() } hx-target={ "#" + FormID } hx-swap="morph:outerHTML" hx-ext="morph">
 		<style>
 			.editor { display: flex; flex-direction: column; gap: 22px; }
 			.editor .ed-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
@@ -1049,7 +1049,7 @@ templ partsPanel(v view, oob bool) {
 				}
 			}
 			<p class="pp-tools">
-				<button type="submit" form="editor" class="btn" name="action" value="add-component">
+				<button type="submit" form={ FormID } class="btn" name="action" value="add-component">
 					if len(v.D.Components) > 1 {
 						Add a part
 					} else {
