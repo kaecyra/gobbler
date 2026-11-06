@@ -4018,7 +4018,7 @@
       "wave": 13,
       "track": null,
       "issue": 488,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "a-api-recipes"
       ],
@@ -5429,6 +5429,12 @@
       "title": "split a source step that holds several numbered steps",
       "merged": "c5ec13c",
       "note": "Owner-reported (#492): halfbakedharvest publishes its whole method as one step (one HowToStep, one WPRM instruction of display-block spans). Split by structure first, then by an ascending inline enumerator run; reuse #490's enumerator pattern. After i-step-numbers (same lane)."
+    },
+    {
+      "id": "u-editor-suggest-list",
+      "title": "suggestion fields open the full list, not only the current value",
+      "merged": "d5064c5",
+      "note": "Owner-reported (#488): the datalist arrow implies a dropdown but Chrome lists only matches for the current text. After a-api-recipes, which owns internal/web/editor/** now."
     }
   ],
   "adr_sequence": {
