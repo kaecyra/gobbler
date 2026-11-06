@@ -61,10 +61,6 @@ linters:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-rest (#471): the journal.
-            - "!**/internal/web/journal/handler.go"
-            - "!**/internal/web/journal/view.go"
-            - "!**/internal/web/journal/journal_templ.go"
             # a-api-rest (#471): the status table names the store's sentinels.
             - "!**/internal/web/layout/httperr.go"
           deny:

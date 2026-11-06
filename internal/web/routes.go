@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
+	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
@@ -48,7 +49,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Recipes: d.Recipes, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
 	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB), Pictures: recipePictures(d)}))
 	r.Mount(recipeview.DeletePattern, recipeview.DeleteRoutes(recipeview.DeleteDeps{Recipes: d.Recipes}))
-	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: apirecipes.NewStore(d.DB)}))
+	mountJournal(r, d)
 	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
@@ -66,6 +67,25 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountMCP(r, d)
 	mountOAuth(r, d)
 	mountPictures(r, d)
+}
+
+// mountJournal mounts the recipe journal over the journal service. A service
+// that cannot be built leaves the route answering 500 with the cause, as the
+// shopping pages do, so a bad build is a loud failure and not a missing page.
+func mountJournal(r chi.Router, d Deps) {
+	svc, err := apijournal.New(apijournal.Deps{Recipes: apirecipes.NewStore(d.DB), Members: household.New(d.DB)})
+	if err != nil {
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("journal unavailable", "error", err.Error())
+		r.Mount(journal.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the journal is not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
+	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: svc}))
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its

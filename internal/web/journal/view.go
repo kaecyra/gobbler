@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -17,8 +17,8 @@ type view struct {
 	RecipeID int64
 	Name     string
 	Rating   *int
-	Notes    []store.Note
-	Made     []store.MadeIt
+	Notes    []apijournal.Note
+	Made     []apijournal.MadeIt
 
 	NoteBody   string
 	NotePinned bool
@@ -40,11 +40,11 @@ type view struct {
 
 // newView orders the store's lists newest first and prefills the made-it date
 // with today (UTC, the zone the store uses for its own default).
-func newView(id int64, rec recipe.Recipe, notes []store.Note, made []store.MadeIt, now time.Time) view {
+func newView(id int64, rec recipe.Recipe, notes []apijournal.Note, made []apijournal.MadeIt, now time.Time) view {
 	v := view{
 		RecipeID: id, Name: rec.Name, Rating: rec.Rating,
-		Notes:  append([]store.Note(nil), notes...),
-		Made:   append([]store.MadeIt(nil), made...),
+		Notes:  append([]apijournal.Note(nil), notes...),
+		Made:   append([]apijournal.MadeIt(nil), made...),
 		MadeOn: now.UTC().Format(dateLayout),
 	}
 	sort.SliceStable(v.Notes, func(i, j int) bool {
@@ -109,28 +109,28 @@ func madeTimes(n int) string {
 }
 
 // note finds note id among the journal's notes.
-func (v view) note(id int64) (store.Note, bool) {
+func (v view) note(id int64) (apijournal.Note, bool) {
 	for _, n := range v.Notes {
 		if n.ID == id {
 			return n, true
 		}
 	}
-	return store.Note{}, false
+	return apijournal.Note{}, false
 }
 
 // notePath is note n's own URL: the edit form posts its body there, and
 // /edit and /delete below it are the edit form and the delete confirmation.
-func (v view) notePath(n store.Note) string {
+func (v view) notePath(n apijournal.Note) string {
 	return v.base() + "/notes/" + strconv.FormatInt(n.ID, 10)
 }
 
 // pinPath is where the pin toggle of note n posts.
-func (v view) pinPath(n store.Note) string {
+func (v view) pinPath(n apijournal.Note) string {
 	return v.notePath(n) + "/pin"
 }
 
 // pinValue is what the toggle of n posts: the opposite of its state.
-func pinValue(n store.Note) string {
+func pinValue(n apijournal.Note) string {
 	if n.Pinned {
 		return "0"
 	}

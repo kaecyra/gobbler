@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
@@ -70,7 +71,11 @@ func newEnv(t *testing.T) *env {
 	r := chi.NewRouter()
 	// The real router authenticates before the features; do the same.
 	r.Use(a.Middleware(nil), asMember(hh))
-	r.Mount(Pattern, Routes(Deps{Journal: s}))
+	svc, err := apijournal.New(apijournal.Deps{Recipes: s, Members: household.New(d)})
+	if err != nil {
+		t.Fatalf("journal service: %v", err)
+	}
+	r.Mount(Pattern, Routes(Deps{Journal: svc}))
 	return &env{t: t, ctx: authed, store: s, h: r, id: id}
 }
 

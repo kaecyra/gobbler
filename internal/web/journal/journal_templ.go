@@ -11,7 +11,7 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 
-	"github.com/kaecyra/gobbler/internal/store"
+	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -364,7 +364,7 @@ func notesPart(v view) templ.Component {
 
 // noteMeta is a note's tip mark, author and day, with state ("editing") after
 // them when it is set.
-func noteMeta(n store.Note, state string) templ.Component {
+func noteMeta(n apijournal.Note, state string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -476,7 +476,7 @@ func noteMeta(n store.Note, state string) templ.Component {
 // noteMenu holds the rarer actions on a note (ADR-00037). It is a disclosure,
 // so it opens without scripts; each item is a link that loads the journal
 // with the note in that state.
-func noteMenu(v view, n store.Note) templ.Component {
+func noteMenu(v view, n apijournal.Note) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -567,7 +567,7 @@ func noteMenu(v view, n store.Note) templ.Component {
 
 // noteEditing is a note as an edit form in its own place. Cancel reloads the
 // journal as it is stored.
-func noteEditing(v view, n store.Note) templ.Component {
+func noteEditing(v view, n apijournal.Note) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -720,7 +720,7 @@ func noteEditing(v view, n store.Note) templ.Component {
 
 // noteDeleting asks to confirm a delete in the note's place; only the post
 // deletes. Keep reloads the journal unchanged.
-func noteDeleting(v view, n store.Note) templ.Component {
+func noteDeleting(v view, n apijournal.Note) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -824,7 +824,7 @@ func noteDeleting(v view, n store.Note) templ.Component {
 
 // pinForm is the toggle that makes a note a tip, shown in the recipe view, or
 // takes it back.
-func pinForm(v view, n store.Note) templ.Component {
+func pinForm(v view, n apijournal.Note) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
