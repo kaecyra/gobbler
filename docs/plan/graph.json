@@ -3300,7 +3300,7 @@
       "wave": 12,
       "track": null,
       "issue": 395,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "r-stage-serve",
         "a-mcp-recipe-edit",
@@ -3892,7 +3892,7 @@
       "wave": 13,
       "track": null,
       "issue": 469,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "l-discrete-api"
       ],
@@ -3903,7 +3903,8 @@
         ".golangci.yml",
         "e2e/shopping/**",
         "internal/mcp/server.go",
-        "internal/mcp/tools.go"
+        "internal/mcp/tools.go",
+        "internal/mcp/mcp_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
@@ -3950,7 +3951,7 @@
       "wave": 12,
       "track": null,
       "issue": 468,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-recipe-delete",
         "u-home-suggest-card"
@@ -4139,6 +4140,11 @@
     },
     {
       "path": "internal/oauth/oauthdb/**",
+      "mode": "open",
+      "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
+    },
+    {
+      "path": "internal/picture/picturedb/**",
       "mode": "open",
       "note": "GENERATED sqlc output: never hand-edited, regenerated with make generate from the repository root. Every migration regenerates its models.go. Writers may share a round; they merge in sequence, and the later one rebases onto main and runs make generate before it merges."
     }
@@ -5246,6 +5252,11 @@
         "00043"
       ],
       "note": "Owner request 2026-11-05 (recipe-images D7). Lane is the proposal until the ADR shapes the build nodes."
+    },
+    {
+      "id": "u-card-width",
+      "title": "one source for the library card width",
+      "merged": "f671446"
     }
   ],
   "adr_sequence": {

@@ -1,8 +1,27 @@
-# Overseer handoff: 2026-11-06, round 23 closed
+# Overseer handoff: 2026-11-06, round 24 in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 24 (2026-11-06): author notes, shopping API pilot, card width
+
+**In flight** (dispatched 2026-11-06, Sonnet workers, worktrees under `.claude/worktrees/`):
+
+| Node | Issue | Worktree | Branch | Migration |
+|---|---|---|---|---|
+| r-author-notes | #395 | wt-395 | feat/395-author-notes | schema 00031 |
+| a-api-shopping | #469 | wt-469 | refactor/469-api-shopping | none |
+| u-card-width | #468 | wt-468 | fix/468-card-width | none |
+
+- **#474** (graph, merged e5b7fc3): a-api-shopping gained `internal/mcp/server.go` and `tools.go`;
+  i-reimport moved to wave 13 and waits on it. Node note grants the routes.go edit exception and a
+  depguard file exception for `internal/web/editor/build.go` (owned by r-author-notes), removed by
+  a-api-recipes (#470).
+- Labels: #469, #462 moved dor:blocked to dor:ready; #395 gained dor:ready.
+
+**Next after these:** i-reimport (#462) once r-author-notes and a-api-shopping merge; a-api-recipes
+after i-reimport.
 
 ## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
 
