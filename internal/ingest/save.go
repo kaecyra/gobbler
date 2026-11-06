@@ -67,6 +67,12 @@ func Confirm(d Draft) (Confirmed, error) {
 	if err := checkStepGraph(d.Components); err != nil {
 		problems = append(problems, err)
 	}
+	for i, n := range d.AuthorNotes {
+		if err := (recipe.AuthorNote{Title: n.Title, Text: n.Text}).Validate(); err != nil {
+			// Shown on the review screen, which calls the section Author's Notes.
+			problems = append(problems, fmt.Errorf("author note %d (%s): %w", i+1, notePreview(n), err))
+		}
+	}
 	if !d.Source.Kind.Valid() || !d.Source.intact() {
 		problems = append(problems, errors.New("the source snapshot does not match the ingested input"))
 	}
@@ -359,5 +365,20 @@ func toRecipe(d Draft, comps []recipe.Component, links []recipe.EquipmentLink) r
 		n := d.Calories.Value
 		r.CaloriesPerServing = &n
 	}
+	for _, n := range d.AuthorNotes {
+		r.AuthorNotes = append(r.AuthorNotes, recipe.AuthorNote{Title: n.Title, Text: n.Text})
+	}
 	return r
+}
+
+// notePreview names a note in a message: its title, else the start of its text.
+func notePreview(n AuthorNote) string {
+	if n.Title != "" {
+		return n.Title
+	}
+	r := []rune(n.Text)
+	if len(r) > 30 {
+		return string(r[:30]) + "..."
+	}
+	return n.Text
 }

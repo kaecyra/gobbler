@@ -176,3 +176,78 @@ func TestTastyBoldLeadsBecomeStepTitles(t *testing.T) {
 		t.Errorf("steps = %+v, want the first titled Preheat oven with the lead off its text, the second untitled", got)
 	}
 }
+
+const notesPage = `<html><head><script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Recipe","name":"Katsu","recipeIngredient":["1 egg"],"recipeInstructions":[{"@type":"HowToStep","text":"Fry."}]}
+</script></head><body>%s</body></html>`
+
+func notesOf(t *testing.T, body string) []Note {
+	t.Helper()
+	res := mustExtract(t, strings.Replace(notesPage, "%s", body, 1), fixtureURL)
+	if res.Recipe == nil {
+		t.Fatalf("no recipe: %+v", res)
+	}
+	return res.Recipe.Notes
+}
+
+func TestPluginNotesWPRM(t *testing.T) {
+	got := notesOf(t, `<div class="wprm-recipe-container"><div class="wprm-recipe-notes-container">
+<div class="wprm-recipe-header">Recipe Notes</div>
+<p><strong>Honey:</strong> Never give it to infants.</p>
+<p>Keeps   three
+days.</p><p>  </p><ul><li>Freezes well.</li></ul></div></div>`)
+	want := []Note{
+		{Title: "Honey", Text: "Never give it to infants."},
+		{Text: "Keeps three days."},
+		{Text: "Freezes well."},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("notes = %+v, want %+v", got, want)
+	}
+}
+
+// The Tasty Recipes markup is written from recollection, like the other
+// plugin fixtures; a page that differs only fails to match.
+func TestPluginNotesTasty(t *testing.T) {
+	got := notesOf(t, `<div class="tasty-recipes-notes"><h3>Notes</h3><div class="tasty-recipes-notes-body">
+<p>Use <em>cold</em> butter.</p><p>Swap the milk for oat milk.</p></div></div>`)
+	want := []Note{{Text: "Use cold butter."}, {Text: "Swap the milk for oat milk."}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("notes = %+v, want %+v", got, want)
+	}
+}
+
+func TestPluginNotesWithoutParagraphsIsOneNote(t *testing.T) {
+	got := notesOf(t, `<div class="tasty-recipes-notes"><h3>Notes</h3>Keep it cold.<br>Serve fast.</div>`)
+	want := []Note{{Text: "Keep it cold. Serve fast."}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("notes = %+v, want %+v", got, want)
+	}
+}
+
+func TestNoNotesBlockGivesNoNotes(t *testing.T) {
+	if got := notesOf(t, `<p>Hello</p>`); got != nil {
+		t.Errorf("notes = %+v, want none", got)
+	}
+}
+
+// The RecipeTin Eats card keeps every paragraph of its notes block, the
+// nutrition dump included: ingest drops nothing, and flags it instead.
+func TestPluginNotesFromARealCard(t *testing.T) {
+	res := mustExtract(t, fixture(t, "real_recipetineats_graph"), fixtureURL)
+	notes := res.Recipe.Notes
+	if len(notes) != 13 {
+		t.Fatalf("got %d notes, want the 13 paragraphs of the block: %+v", len(notes), notes)
+	}
+	if !strings.HasPrefix(notes[0].Text, "1. I used chicken thigh fillets") {
+		t.Errorf("first note = %q", notes[0].Text)
+	}
+	if last := notes[len(notes)-1].Text; !strings.HasPrefix(last, "serving: 209g calories: 566kcal") {
+		t.Errorf("last note = %q, want the nutrition paragraph kept", last)
+	}
+	for _, n := range notes {
+		if strings.Contains(n.Text, "Recipe Notes") {
+			t.Errorf("the block's heading became a note: %q", n.Text)
+		}
+	}
+}

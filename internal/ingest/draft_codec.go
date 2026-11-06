@@ -77,6 +77,13 @@ type docStep struct {
 	GraphByUser  bool    `json:"graph_by_user,omitempty"`
 }
 
+type docAuthorNote struct {
+	Title      string   `json:"title,omitempty"`
+	Text       string   `json:"text"`
+	Confidence float64  `json:"confidence"`
+	Issues     []string `json:"issues,omitempty"`
+}
+
 type docComponent struct {
 	Name    string    `json:"name,omitempty"`
 	Lines   []docLine `json:"lines,omitempty"`
@@ -118,6 +125,8 @@ type docDraft struct {
 
 	Components []docComponent `json:"components"`
 	Equipment  []docEquipment `json:"equipment,omitempty"`
+
+	AuthorNotes []docAuthorNote `json:"author_notes,omitempty"`
 
 	Overall        float64  `json:"overall"`
 	Threshold      float64  `json:"threshold"`
@@ -212,6 +221,9 @@ func EncodeDraft(d Draft) ([]byte, error) {
 	for _, e := range d.Equipment {
 		out.Equipment = append(out.Equipment, docEquipment{Name: e.Name, Equipment: int64(e.Equipment), FromLLM: e.FromLLM})
 	}
+	for _, n := range d.AuthorNotes {
+		out.AuthorNotes = append(out.AuthorNotes, docAuthorNote{Title: n.Title, Text: n.Text, Confidence: n.Confidence, Issues: n.Issues})
+	}
 	b, err := json.Marshal(out)
 	if err != nil {
 		return nil, fmt.Errorf("encode draft document: %w", err)
@@ -292,6 +304,9 @@ func DecodeDraft(doc []byte, snap store.Snapshot) (Draft, error) {
 	}
 	for _, de := range in.Equipment {
 		d.Equipment = append(d.Equipment, Equipment{Name: de.Name, Equipment: recipe.EquipmentID(de.Equipment), FromLLM: de.FromLLM})
+	}
+	for _, dn := range in.AuthorNotes {
+		d.AuthorNotes = append(d.AuthorNotes, AuthorNote{Title: dn.Title, Text: dn.Text, Confidence: dn.Confidence, Issues: dn.Issues})
 	}
 	return d, nil
 }

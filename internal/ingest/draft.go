@@ -186,6 +186,12 @@ type Draft struct {
 
 	Components []Component
 
+	// AuthorNotes are the candidate author notes the source's notes block gave,
+	// in order (ADR-00041). The review screen shows them as rows to trim,
+	// reorder or remove; one over the limit or reading as junk arrives at low
+	// confidence, and none is dropped by ingest.
+	AuthorNotes []AuthorNote
+
 	// ImageURLs are the page's picture candidates, best guess first (ADR-00039),
 	// set by a URL import and empty for pasted text and photos. They are not
 	// part of the draft document: Drafts.Add fetches them once, when the draft

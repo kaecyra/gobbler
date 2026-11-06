@@ -28,13 +28,16 @@ type pluginReader struct {
 	name        string
 	ingredients func(doc *html.Node) []IngredientGroup
 	steps       func(doc *html.Node) []InstructionStep
+	// notes reads the card's notes block, one Note per paragraph or list item;
+	// nil for a plugin whose notes block we do not read.
+	notes func(doc *html.Node) []Note
 }
 
 // plugins are tried in order; the first that yields groups wins.
 var plugins = []pluginReader{
-	{"wprm", wprmIngredients, wprmSteps},
-	{"tasty", tastyIngredients, tastySteps},
-	{"create", createIngredients, createSteps},
+	{"wprm", wprmIngredients, wprmSteps, wprmNotes},
+	{"tasty", tastyIngredients, tastySteps, tastyNotes},
+	{"create", createIngredients, createSteps, nil},
 }
 
 // applyPlugins merges the groups a recipe plugin on the page carries into raw,
@@ -45,6 +48,11 @@ var plugins = []pluginReader{
 // mismatched card is a page we do not understand, not an error. Step sections
 // and titles are merged the same way (mergeSteps).
 func applyPlugins(doc *html.Node, raw *Raw) {
+	for _, p := range plugins {
+		if raw.Notes == nil && p.notes != nil {
+			raw.Notes = p.notes(doc)
+		}
+	}
 	for _, p := range plugins {
 		groups := p.ingredients(doc)
 		if named(groups) {
@@ -390,4 +398,65 @@ func headedSteps(container *html.Node) []InstructionStep {
 		out = append(out, InstructionStep{Section: name, Text: textOf(li), Title: boldLead(li)})
 	})
 	return out
+}
+
+// --- Notes. A card prints its notes as paragraphs (or list items) under a
+// heading of its own; each paragraph is a candidate note and none is dropped,
+// whatever it holds (ADR-00041): the assembler flags what is not a short tip.
+
+func wprmNotes(doc *html.Node) []Note {
+	return notesIn(firstWithClass(wprmCard(doc), "wprm-recipe-notes-container"))
+}
+
+func tastyNotes(doc *html.Node) []Note {
+	return notesIn(firstWithClass(doc, "tasty-recipes-notes"))
+}
+
+// notesIn reads the paragraphs and list items of a notes block, skipping its
+// heading. A block with neither gives the text beside its heading as one note.
+func notesIn(block *html.Node) []Note {
+	if block == nil {
+		return nil
+	}
+	var out []Note
+	walk(block, func(n *html.Node) bool {
+		switch {
+		case isNotesHeading(n):
+			return false
+		case isElem(n, "p") || isElem(n, "li"):
+			if text := textOf(n); text != "" {
+				title, text := splitTitle(boldLead(n), text)
+				out = append(out, Note{Title: title, Text: text})
+			}
+			return false
+		}
+		return true
+	})
+	if len(out) == 0 {
+		var parts []string
+		for c := block.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && isNotesHeading(c) {
+				continue
+			}
+			if c.Type == html.TextNode {
+				parts = append(parts, c.Data)
+			} else if c.Type == html.ElementNode {
+				parts = append(parts, textOf(c))
+			}
+		}
+		if text := collapse(strings.Join(parts, " ")); text != "" {
+			out = append(out, Note{Text: text})
+		}
+	}
+	return out
+}
+
+// isNotesHeading is the heading a notes block prints over its notes: a
+// heading element, or WP Recipe Maker's header div.
+func isNotesHeading(n *html.Node) bool {
+	if n.Type != html.ElementNode {
+		return false
+	}
+	h := len(n.Data) == 2 && n.Data[0] == 'h' && n.Data[1] >= '1' && n.Data[1] <= '6'
+	return h || hasClass(n, "wprm-recipe-header")
 }

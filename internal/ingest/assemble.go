@@ -111,6 +111,7 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 	d.ImageURLs = raw.ImageURLs
 	d.MealType = mealTypeFor(raw.Categories)
 	d.Cuisine = cuisineFor(raw.Cuisines)
+	d.AuthorNotes = authorNotes(raw.Notes)
 
 	// A raw recipe lists ingredients once: in the groups a recipe plugin
 	// printed when extract found them, else in the first, unnamed component.
