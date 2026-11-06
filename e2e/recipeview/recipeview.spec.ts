@@ -30,6 +30,7 @@ let laterId = 0;
 let styledId = 0;
 let doomedId = 0;
 let doomedCloneId = 0;
+let listedId = 0;
 let thumbnails: Awaited<ReturnType<typeof startThumbnailHost>> | undefined;
 
 test.use({ baseURL: origin });
@@ -42,7 +43,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId } = JSON.parse(out));
   thumbnails = await startThumbnailHost();
   server = spawn(bin, ['serve'], {
     env: {
@@ -583,5 +584,17 @@ test.describe('deleting a recipe', () => {
     expect((await page.goto(`/recipes/${doomedCloneId}`))?.status()).toBe(200);
     await expect(page.getByRole('heading', { name: 'E2E Doomed Stew', level: 1 })).toBeVisible();
     await expect(page.getByTestId('origin')).toHaveCount(0);
+  });
+
+  test('a recipe on a shopping list says so and stays until it is taken off', async ({ page }) => {
+    await page.goto(`/recipes/${listedId}/delete`);
+    await page.getByTestId('delete-input').fill('DELETE');
+    const [res] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith(`/recipes/${listedId}/delete`) && r.request().method() === 'POST'),
+      page.getByTestId('delete-submit').click(),
+    ]);
+    expect(res.status()).toBe(409);
+    await expect(page.getByText('This recipe is on a shopping list. Remove it from the list first, then delete it.')).toBeVisible();
+    expect((await page.request.get(`/recipes/${listedId}`)).status()).toBe(200);
   });
 });

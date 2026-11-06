@@ -125,3 +125,32 @@ func TestRecipePageOffersDelete(t *testing.T) {
 	_, body := serve(t, fakeRecipes{1: testRecipe(t)}, "/recipes/1")
 	mustContain(t, body, `data-testid="delete-link"`, `href="/recipes/1/delete"`, "Delete recipe")
 }
+
+// failingDeleter finds every recipe and fails every delete with err.
+type failingDeleter struct {
+	*store.Store
+	err error
+}
+
+func (f failingDeleter) DeleteWithPicture(context.Context, int64, store.PictureReaper) error {
+	return f.err
+}
+
+func TestDeleteOfARecipeOnAShoppingListSaysSoWithA409(t *testing.T) {
+	ctx, rs, _ := storeEnv(t)
+	id, err := rs.Create(ctx, testRecipe(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := failingDeleter{Store: rs, err: fmt.Errorf("delete recipe %d: %w", id, store.ErrOnShoppingList)}
+	r := chi.NewRouter()
+	r.Mount(DeletePattern, DeleteRoutes(DeleteDeps{Recipes: d}))
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/recipes/%d/delete", id), strings.NewReader(url.Values{"confirm": {"DELETE"}}.Encode())).WithContext(ctx)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", rec.Code)
+	}
+	mustContain(t, rec.Body.String(), "on a shopping list", "Remove it from the list first")
+}

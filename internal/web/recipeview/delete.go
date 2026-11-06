@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -45,17 +44,9 @@ func DeleteRoutes(d DeleteDeps) chi.Router {
 	return r
 }
 
-func deleteID(r *http.Request) (int64, error) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil || id <= 0 {
-		return 0, fmt.Errorf("recipe id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound)
-	}
-	return id, nil
-}
-
 func showDelete(d DeleteDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := deleteID(r)
+		id, err := recipeID(r)
 		if err != nil {
 			layout.WriteError(w, r, err)
 			return
@@ -74,7 +65,7 @@ func showDelete(d DeleteDeps) http.HandlerFunc {
 // does, before the confirmation is looked at.
 func doDelete(d DeleteDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := deleteID(r)
+		id, err := recipeID(r)
 		if err != nil {
 			layout.WriteError(w, r, err)
 			return
@@ -87,8 +78,9 @@ func doDelete(d DeleteDeps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("delete recipe %d: type %s to confirm: %w", id, deleteWord, layout.ErrInvalid))
 			return
 		}
+		// The store's error already says which recipe it was deleting.
 		if err := d.Recipes.DeleteWithPicture(r.Context(), id, d.Reaper); err != nil {
-			layout.WriteError(w, r, fmt.Errorf("delete recipe %d: %w", id, err))
+			layout.WriteError(w, r, err)
 			return
 		}
 		http.Redirect(w, r, libraryPath, http.StatusSeeOther)

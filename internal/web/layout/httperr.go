@@ -52,6 +52,7 @@ var statusTable = []struct {
 	{display.ErrInvalid, http.StatusBadRequest},
 	{store.ErrStaleVersion, http.StatusConflict},
 	{store.ErrNotPending, http.StatusConflict},
+	{store.ErrOnShoppingList, http.StatusConflict},
 	{household.ErrNotFound, http.StatusNotFound},
 	{household.ErrInvalid, http.StatusBadRequest},
 	{household.ErrConfirmation, http.StatusBadRequest},
