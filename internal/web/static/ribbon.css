@@ -40,14 +40,6 @@
 .rib-butter  { border-color: var(--st-butter-b);  color: var(--st-butter-i);  background: color-mix(in srgb, var(--st-butter-b) var(--st-butter-a), transparent); }
 .rib-slate   { border-color: var(--slate);        color: var(--ink-2);        background: color-mix(in srgb, var(--slate) 22%, transparent); }
 
-/* On a card the ribbon is chrome along its bottom edge: square blocks, no outer
-   border. The card sets the negative side margins that make it full width. */
-.rib-card { --rib-h: 34px; }
-.rib-card .rib-lv { gap: 2px; }
-.rib-card .rib-seg { border-radius: 0; border-bottom-width: 0; }
-.rib-card .rib-seg:first-child { border-left-width: 0; }
-.rib-card .rib-seg:last-child { border-right-width: 0; }
-
 .rib-big { --rib-h: 40px; }
 .rib-big .rib-lv { gap: 4px; }
 .rib-big .rib-seg { font-size: 15px; padding: 0 12px; gap: 8px; }

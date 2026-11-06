@@ -4156,7 +4156,7 @@
       "wave": 13,
       "track": null,
       "issue": 511,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "a-api-recipes"
       ],
@@ -4401,7 +4401,8 @@
         "internal/web/editor/editor.templ",
         "internal/web/editor/editor_templ.go",
         "e2e/ingest/**",
-        "e2e/editor/**"
+        "e2e/editor/**",
+        "internal/web/editor/errors_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
@@ -4413,7 +4414,7 @@
       "wave": 13,
       "track": null,
       "issue": 526,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/recipe/display/**",
@@ -4456,7 +4457,7 @@
       "wave": 13,
       "track": null,
       "issue": 528,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/recipes/**",
@@ -5857,6 +5858,24 @@
       "id": "a-api-sharing",
       "title": "recipe sharing goes through internal/api/sharing",
       "merged": "5d8d4e9",
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
+    },
+    {
+      "id": "u-qualifier-style",
+      "title": "qualifiers in the recipe page's ingredient list are muted italic, separated by space, not comma",
+      "merged": "0a4ffc8",
+      "note": "Owner's design call, 2026-11-06: on the recipe page's ingredient list, show each qualifier in a muted italic style, separated from the name and from each other by a space, not a comma. Colours from the tokens. Change only the recipe page's ingredient list (frontend.md); cook mode, shopping and the editor keep their current text."
+    },
+    {
+      "id": "u-card-total-time",
+      "title": "library cards show the total time only, not the time ribbon",
+      "merged": "53a23f4",
+      "note": "Owner's design call, 2026-11-06: library cards (the library and the home suggestion card) drop the time ribbon pinned to the card's bottom edge and show only the recipe's total time, as a small clock icon and the time in the card's meta text, not edge to edge. The recipe page's large 'Ready in about' ribbon is unchanged. Update docs/ui/design.md's Time ribbon component and the home suggestion card text to match, in the same PR. Delete card-only ribbon code that nothing calls afterwards. The total is the figure the library's time grouping (timeToTable in internal/web/recipes) already uses for that card, so a card never contradicts the time group it sits under. It may differ from the recipe page's 'Ready in about' figure, which needs step data the card does not carry."
+    },
+    {
+      "id": "a-api-journal",
+      "title": "the journal goes through internal/api/journal",
+      "merged": "cd31e01",
       "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     }
   ],

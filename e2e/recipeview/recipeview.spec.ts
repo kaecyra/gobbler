@@ -91,6 +91,20 @@ test('shows the recipe as written', async ({ page }) => {
   await expect(page.getByTestId('total')).toContainText('55 min');
 });
 
+test('qualifiers show as muted italic text set off by spaces, not commas', async ({ page }) => {
+  await page.goto(`/recipes/${styledId}`);
+  const row = page.locator('.ing li', { hasText: 'e2e whole milk' });
+  const quals = row.getByTestId('qualifier');
+  await expect(quals).toHaveText(['warmed', 'divided']);
+  await expect(quals.first()).toHaveCSS('font-style', 'italic');
+  const plain = await row.getByText('e2e whole milk').first().evaluate((el) => getComputedStyle(el).color);
+  const muted = await quals.first().evaluate((el) => getComputedStyle(el).color);
+  expect(muted).not.toBe(plain);
+  expect((await row.locator('span').first().innerText()).trim()).toBe('1 cup e2e whole milk warmed divided');
+  // The ribs line has no qualifiers and so no qualifier element.
+  await expect(page.locator('.ing li', { hasText: 'e2e short ribs' }).getByTestId('qualifier')).toHaveCount(0);
+});
+
 test('the Edit link opens the editor form for that recipe', async ({ page }) => {
   await page.goto(`/recipes/${id}`);
   await page.getByTestId('edit-link').click();

@@ -80,7 +80,10 @@ test.describe('with recipes', () => {
     await expect(card).toHaveCount(1);
     await expect(card.getByRole('heading', { level: 3 })).toHaveText('Beef Stew');
     await expect(card.getByTestId('card-picture')).toHaveClass(/\brpic\b/);
-    await expect(card.locator('[data-rib]')).toHaveAttribute('role', 'img');
+    // The total time is text with a clock, not a ribbon: 20 + 150 minutes.
+    await expect(card.locator('[data-rib]')).toHaveCount(0);
+    await expect(card.getByTestId('card-time')).toHaveText('2h 50m');
+    await expect(card.getByTestId('card-time').locator('svg')).toHaveCount(1);
     // The card opens the recipe from anywhere on it; no separate button does.
     await expect(suggest.getByRole('link', { name: 'Open recipe' })).toHaveCount(0);
     await expect(card.getByRole('link', { name: 'Beef Stew' })).toHaveAttribute('href', `/recipes/${ids['Beef Stew']}`);

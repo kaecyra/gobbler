@@ -3,7 +3,7 @@ package journal
 import (
 	"strconv"
 
-	"github.com/kaecyra/gobbler/internal/store"
+	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -169,7 +169,7 @@ templ notesPart(v view) {
 
 // noteMeta is a note's tip mark, author and day, with state ("editing") after
 // them when it is set.
-templ noteMeta(n store.Note, state string) {
+templ noteMeta(n apijournal.Note, state string) {
 	<div class="note-meta">
 		if n.Pinned {
 			<span class="note-tip">
@@ -191,7 +191,7 @@ templ noteMeta(n store.Note, state string) {
 // noteMenu holds the rarer actions on a note (ADR-00037). It is a disclosure,
 // so it opens without scripts; each item is a link that loads the journal
 // with the note in that state.
-templ noteMenu(v view, n store.Note) {
+templ noteMenu(v view, n apijournal.Note) {
 	<details class="note-menu">
 		<summary aria-label="More for this note" title="More for this note">
 			@layout.Icon(layout.IconMore)
@@ -205,7 +205,7 @@ templ noteMenu(v view, n store.Note) {
 
 // noteEditing is a note as an edit form in its own place. Cancel reloads the
 // journal as it is stored.
-templ noteEditing(v view, n store.Note) {
+templ noteEditing(v view, n apijournal.Note) {
 	<li class="note editing">
 		@noteMeta(n, "editing")
 		<form class="note-edit" method="post" action={ templ.SafeURL(v.notePath(n)) } hx-post={ v.notePath(n) } hx-target="#journal" hx-swap="outerHTML">
@@ -226,7 +226,7 @@ templ noteEditing(v view, n store.Note) {
 
 // noteDeleting asks to confirm a delete in the note's place; only the post
 // deletes. Keep reloads the journal unchanged.
-templ noteDeleting(v view, n store.Note) {
+templ noteDeleting(v view, n apijournal.Note) {
 	<li class="note editing">
 		@noteMeta(n, "")
 		<form class="note-edit" method="post" action={ templ.SafeURL(v.notePath(n) + "/delete") } hx-post={ v.notePath(n) + "/delete" } hx-target="#journal" hx-swap="outerHTML">
@@ -243,7 +243,7 @@ templ noteDeleting(v view, n store.Note) {
 
 // pinForm is the toggle that makes a note a tip, shown in the recipe view, or
 // takes it back.
-templ pinForm(v view, n store.Note) {
+templ pinForm(v view, n apijournal.Note) {
 	<form class="pin-form" method="post" action={ templ.SafeURL(v.pinPath(n)) } hx-post={ v.pinPath(n) } hx-target="#journal" hx-swap="outerHTML">
 		<input type="hidden" name="pinned" value={ pinValue(n) }/>
 		if n.Pinned {
