@@ -56,7 +56,7 @@ index below in the same commit.
 | [00039](00039-recipe-pictures.md) | A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header | Amended by [00040](00040-loopback-fetches-under-the-dev-bypass.md), [00042](00042-reimport.md) |
 | [00040](00040-loopback-fetches-under-the-dev-bypass.md) | The fetch guard admits loopback only while the dev auth bypass is on | Accepted |
 | [00041](00041-author-notes.md) | A recipe keeps its author's notes as a short list that ends the step chain | Accepted |
-| [00042](00042-reimport.md) | A saved recipe with a source URL is re-imported as an edit proposal against its current version | Accepted |
+| [00042](00042-reimport.md) | A saved recipe with a source URL is re-imported through ingestion's review screen, and saving writes a new revision | Accepted |
 
 ## What needs one
 
