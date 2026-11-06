@@ -10,11 +10,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/video"
 )
 
@@ -156,7 +156,7 @@ func (h *handler) propose(ctx context.Context, rec *recipe.Recipe, props []propo
 				}
 				id = e.ID
 			} else {
-				i, err := h.Catalog.CreateIngredient(ctx, catalog.Ingredient{Name: p.name, Aisle: shopping.Uncategorised, Reviewed: false})
+				i, err := h.Catalog.CreateIngredient(ctx, catalog.Ingredient{Name: p.name, Aisle: apishop.Uncategorised, Reviewed: false})
 				if err != nil {
 					return fmt.Errorf("add ingredient %q to the catalog: %w", p.name, err)
 				}

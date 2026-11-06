@@ -59,7 +59,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
-	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
+	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: d.Recipes, Pictures: recipePictures(d)}))
 	// The home page: "/" is registered here and nowhere else.
 	r.Get("/", homeRoute(d))

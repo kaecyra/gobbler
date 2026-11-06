@@ -21,10 +21,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
-	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -42,18 +42,19 @@ const morphPath = "/static/vendor/idiomorph-ext.min.js"
 // maxFormBytes bounds an editor form body; a long recipe is still prose.
 const maxFormBytes = 1 << 20
 
-// Recipes is what the editor needs from the recipe store.
+// Recipes is what the editor needs from the recipe service
+// (*apirecipes.Service satisfies it).
 type Recipes interface {
-	Get(ctx context.Context, id int64) (recipe.Recipe, error)
-	Info(ctx context.Context, id int64) (store.Info, error)
-	UpdateIfVersion(ctx context.Context, id, expectedVersion int64, r recipe.Recipe) error
+	Get(ctx context.Context, c apirecipes.Caller, id int64) (recipe.Recipe, error)
+	Info(ctx context.Context, c apirecipes.Caller, id int64) (apirecipes.Info, error)
+	UpdateIfVersion(ctx context.Context, c apirecipes.Caller, id, expectedVersion int64, r recipe.Recipe) error
 	// GetProposal and AcceptEdit review an agent's proposed edit in this editor
 	// (ADR-00035): saving the form with a proposal's token accepts it.
-	GetProposal(ctx context.Context, token string) (store.Proposal, error)
-	AcceptEdit(ctx context.Context, token string, expectedVersion int64, r recipe.Recipe) error
-	// HasThumbnail and SaveThumbnail keep the preview image of a recipe's video
+	GetProposal(ctx context.Context, c apirecipes.Caller, token string) (apirecipes.Proposal, error)
+	AcceptEdit(ctx context.Context, c apirecipes.Caller, token string, expectedVersion int64, r recipe.Recipe) error
+	// KeepThumbnail keeps the preview image of a saved recipe's video
 	// (ADR-00021).
-	video.ThumbnailStore
+	KeepThumbnail(ctx context.Context, c apirecipes.Caller, id int64, videoID string)
 }
 
 // Catalog is what the editor needs from the catalog: matching what the user
@@ -73,9 +74,6 @@ type Catalog interface {
 type Deps struct {
 	Recipes Recipes
 	Catalog Catalog
-	// Thumbnails downloads the preview image of a recipe's video when the
-	// recipe is saved; nil means YouTube's image host.
-	Thumbnails video.ThumbnailSource
 }
 
 // Routes returns the routes of the editor, relative to Pattern.
@@ -100,12 +98,12 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 	}
 	// Info first: if the recipe changes between the two reads the form carries
 	// the older version and the save is refused as stale, never the reverse.
-	info, err := h.Recipes.Info(r.Context(), id)
+	info, err := h.Recipes.Info(r.Context(), caller.FromContext(r.Context()), id)
 	if err != nil {
 		layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 		return
 	}
-	rec, err := h.Recipes.Get(r.Context(), id)
+	rec, err := h.Recipes.Get(r.Context(), caller.FromContext(r.Context()), id)
 	if err != nil {
 		layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 		return
@@ -150,7 +148,7 @@ func (h *handler) post(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("%w: form version %q", layout.ErrInvalid, form.Get(fieldVersion)))
 		return
 	}
-	base, err := h.Recipes.Get(r.Context(), id)
+	base, err := h.Recipes.Get(r.Context(), caller.FromContext(r.Context()), id)
 	if err != nil {
 		layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 		return
@@ -204,13 +202,13 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		// Catch the common stale save before it adds anything to the catalog.
 		// A change landing after this check is still refused by
 		// UpdateIfVersion below, with the proposed entries left in the catalog.
-		info, err := h.Recipes.Info(ctx, id)
+		info, err := h.Recipes.Info(ctx, caller.FromContext(ctx), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
 		if info.Version != d.Version {
-			h.stale(w, r, id, d, names, fmt.Errorf("%w: recipe %d is at version %d, not %d", store.ErrStaleVersion, id, info.Version, d.Version), staleMessage)
+			h.stale(w, r, id, d, names, fmt.Errorf("%w: recipe %d is at version %d, not %d", apirecipes.ErrStaleVersion, id, info.Version, d.Version), staleMessage)
 			return
 		}
 	}
@@ -219,23 +217,23 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		return
 	}
 	if d.Proposal != "" {
-		err = h.Recipes.AcceptEdit(ctx, d.Proposal, d.Version, rec)
+		err = h.Recipes.AcceptEdit(ctx, caller.FromContext(ctx), d.Proposal, d.Version, rec)
 	} else {
-		err = h.Recipes.UpdateIfVersion(ctx, id, d.Version, rec)
+		err = h.Recipes.UpdateIfVersion(ctx, caller.FromContext(ctx), id, d.Version, rec)
 	}
 	if msg, ok := acceptFailure(err); ok {
 		h.stale(w, r, id, d, names, err, msg)
 		return
 	}
 	switch {
-	case errors.Is(err, store.ErrStaleVersion):
+	case errors.Is(err, apirecipes.ErrStaleVersion):
 		h.stale(w, r, id, d, names, err, staleMessage)
 		return
 	case err != nil:
 		layout.WriteError(w, r, fmt.Errorf("save recipe %d: %w", id, err))
 		return
 	}
-	video.KeepThumbnail(ctx, h.Recipes, h.Thumbnails, id, rec.VideoID)
+	h.Recipes.KeepThumbnail(ctx, caller.FromContext(ctx), id, rec.VideoID)
 	to := recipePath(id)
 	if FromHTMX(r) {
 		w.Header().Set("HX-Redirect", to)
@@ -267,7 +265,7 @@ func staleStatus(r *http.Request) int {
 	if FromHTMX(r) {
 		return http.StatusOK
 	}
-	return layout.StatusFor(store.ErrStaleVersion)
+	return layout.StatusFor(apirecipes.ErrStaleVersion)
 }
 
 func (h *handler) render(w http.ResponseWriter, r *http.Request, status int, id int64, d draft, names lookups) {

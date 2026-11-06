@@ -68,6 +68,10 @@ type Unit = catalog.Unit
 // RecipeBrief is a recipe as listed for choosing one (store.Summary).
 type RecipeBrief = store.Summary
 
+// Uncategorised is the aisle of ingredients with no aisle and of free-text
+// items (shopping.Uncategorised).
+const Uncategorised = domain.Uncategorised
+
 // The errors a service method returns, for callers to branch on with errors.Is.
 var (
 	ErrNotFound          = domain.ErrNotFound
