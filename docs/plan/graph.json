@@ -3925,7 +3925,8 @@
         "a-api-shopping",
         "i-reimport",
         "u-home-suggest-card",
-        "u-card-width"
+        "u-card-width",
+        "m-picture-user-agent"
       ],
       "owns": [
         "internal/api/recipes/**",
@@ -3983,6 +3984,23 @@
       "needs_migration": null,
       "adrs": [],
       "blocked": "placeholder: split into one node per resource once a-api-shopping and a-api-recipes set the pattern"
+    },
+    {
+      "id": "m-picture-user-agent",
+      "title": "picture candidate downloads send the configured User-Agent",
+      "wave": 13,
+      "track": null,
+      "issue": 483,
+      "status": "todo",
+      "depends_on": [
+        "i-reimport"
+      ],
+      "owns": [
+        "internal/picture/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Bug (#483): candidate downloads send Go's default agent and some sites answer 403. May edit the existing internal/web/web.go line that builds the picture service, to pass the configured user agent (an exception to web.go's append-only rule). After i-reimport, which edits the adjacent drafts-store line."
     }
   ],
   "shared_files": [
