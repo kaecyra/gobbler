@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -23,7 +24,7 @@ import (
 
 type fakeRecipes map[int64]recipe.Recipe
 
-func (f fakeRecipes) Get(_ context.Context, id int64) (recipe.Recipe, error) {
+func (f fakeRecipes) Get(_ context.Context, _ apirecipes.Caller, id int64) (recipe.Recipe, error) {
 	r, ok := f[id]
 	if !ok {
 		return recipe.Recipe{}, fmt.Errorf("recipe %d: %w", id, store.ErrNotFound)

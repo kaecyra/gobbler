@@ -52,7 +52,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Pictures: pictures.Srcs{Pictures: d.Pictures}}))
 	r.Mount(recipeview.DeletePattern, recipeview.DeleteRoutes(recipeview.DeleteDeps{Recipes: store.New(d.DB), Reaper: domain.NewReaper(d.Media, d.Logger)}))
 	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: store.New(d.DB)}))
-	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB)}))
+	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Thumbnails: thumbs}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))

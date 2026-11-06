@@ -17,7 +17,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
+	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
@@ -29,6 +31,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
@@ -87,6 +90,9 @@ type Deps struct {
 	// Pictures is the picture service the draft store, the review screen and
 	// the picture routes share. Nil means one over DB and Media.
 	Pictures *picture.Service
+	// Recipes is the recipe service the recipe screens share (ADR-00043). Nil
+	// means one over DB, Media and Pictures.
+	Recipes *apirecipes.Service
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -140,6 +146,18 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		// A new re-import supersedes the recipe's pending one (ADR-00042); the store
 		// deletes the superseded draft's picture candidates.
 		d.Drafts = ingest.NewDrafts(store.New(d.DB).WithObjects(picture.NewReaper(d.Media, d.Logger))).WithPictures(d.Pictures)
+	}
+
+	if d.Recipes == nil {
+		svc, err := apirecipes.New(apirecipes.Deps{
+			Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Members: household.New(d.DB),
+			Pictures: d.Pictures, Reaper: picture.NewReaper(d.Media, d.Logger),
+			Thumbnails: video.NewFetcherAt(d.Config.Video.ThumbnailHost),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("web: build the recipe service: %w", err)
+		}
+		d.Recipes = svc
 	}
 
 	var members memberLookup = household.New(d.DB)
