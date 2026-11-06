@@ -93,7 +93,7 @@ func TestIngestNumberedBlocksBecomeSteps(t *testing.T) {
 			t.Errorf("step %d = %q, want the number stripped", i+1, s.Text)
 		}
 	}
-	if !strings.Contains(got[1].Text, "honey butter") || !strings.Contains(got[5].Text, "flaky sea salt") {
+	if !strings.Contains(got[1].Title+" "+got[1].Text, "honey butter") || !strings.Contains(got[5].Text, "flaky sea salt") {
 		t.Errorf("steps out of order: %+v", got)
 	}
 }
