@@ -3311,7 +3311,9 @@
         "s-picture-store",
         "i-draft-pictures",
         "u-picture-picker",
-        "u-picture-cards"
+        "u-picture-cards",
+        "r-credential-describe",
+        "u-picker-icons"
       ],
       "owns": [
         "internal/recipe/**",
@@ -3746,6 +3748,45 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00039 obligation 15. An operator action on the deployed site after u-picture-cards ships; no repository files."
+    },
+    {
+      "id": "r-credential-describe",
+      "title": "Describe reads credential kinds and owner prefix from their owners",
+      "wave": 12,
+      "track": null,
+      "issue": 441,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/store/proposal_edit.go",
+        "internal/store/proposal_edit_test.go",
+        "internal/apikey/**",
+        "internal/mcp/**",
+        "internal/credential/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Follow-up from #440 NIT 7. Kind constants move to a package mcp and store can both import; apikey exports its owner-prefix builder or parser."
+    },
+    {
+      "id": "u-picker-icons",
+      "title": "picker tick and no-picture icons in layout.Icon; editor.FormID one source",
+      "wave": 12,
+      "track": null,
+      "issue": 447,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/layout/icon.go",
+        "internal/web/layout/icon_test.go",
+        "internal/web/static/app.css",
+        "internal/web/ingest/**",
+        "internal/web/editor/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Follow-up from #446. Icons drawn as in docs/ui/mockup.html (data-ic=none). Closes difference 3 of #446's mockup comparison."
     }
   ],
   "shared_files": [
