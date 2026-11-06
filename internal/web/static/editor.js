@@ -38,6 +38,15 @@
 
   function form() { return document.getElementById('editor'); }
 
+  // --ed-top is the site header's height: where the refused-save callout sticks
+  // and how far the error links stop short of the top.
+  function headerHeight() {
+    var top = document.querySelector('.top');
+    if (top) document.documentElement.style.setProperty('--ed-top', top.offsetHeight + 'px');
+  }
+  headerHeight();
+  window.addEventListener('resize', headerHeight);
+
   // ---- keeping opened rows open, focusing the new control ----
 
   if (window.Idiomorph) {
