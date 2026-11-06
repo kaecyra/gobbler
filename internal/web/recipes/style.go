@@ -70,20 +70,16 @@ const libraryStyle = `
 .lib.home .side .panel { border: 0; box-shadow: var(--shadow); padding: 20px 22px; }
 .lib.home .side > :only-child { grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 620px; }
 .lib.solo { grid-template-columns: minmax(0, 1fr); }
-.suggest { display: flex; flex-direction: column; gap: 8px; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 18px 20px 20px; }
 .sg-voice { display: flex; align-items: center; gap: 10px; }
 .sg-voice img { width: 44px; height: 44px; object-fit: contain; object-position: bottom; transform: scaleX(-1); flex: none; display: block; }
 .sg-voice p { margin: 0; font-family: var(--f-display); font-size: 15.5px; font-style: italic; color: var(--ink-2); }
-.sg-home { display: flex; flex-direction: column; gap: 12px; }
+.suggest { display: flex; flex-direction: column; gap: 12px; }
+.suggest .sg-next { align-self: flex-start; }
+/* On home the card is a library card's width, left-aligned; in the library's side it fills the panel. */
+.lib.home .suggest .rcard { max-width: 360px; }
 .sg-voice > div { display: flex; flex-direction: column; gap: 2px; }
 .sg-voice .sg-when { font-family: var(--f-body); font-size: 13px; font-style: normal; color: var(--ink-3); }
-.sg-home .sg-next { align-self: flex-start; }
-.sg-name { font-size: clamp(22px, 2.4vw, 28px); font-weight: 700; line-height: 1.15; }
-.sg-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; color: var(--ink-3); }
-.suggest .rib { margin-top: 6px; }
-.sg-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 4px; }
 .sg-next { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 15px; font-weight: 600; color: var(--wattle-ink); text-underline-offset: 3px; }
-.lib:not(.home) .sg-name { font-size: 21px; }
 .made { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .made li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); align-items: center; }
 .made li:first-child { border-top: 0; padding-top: 0; }

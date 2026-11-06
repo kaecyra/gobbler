@@ -89,6 +89,8 @@ func TestCardShowsTheCuisineLabelOnlyWhenSet(t *testing.T) {
 	with := card(1, "Katsu", recipe.MealMain)
 	with.Cuisine = recipe.CuisineMiddleEastern
 	_, body, _ := get(t, &fakeLibrary{cards: []store.Card{with, card(2, "Plain", recipe.MealMain)}}, "/?group=time", nil)
+	// The grid only: the side's suggestion is one more card, of Katsu or Plain.
+	body, _, _ = strings.Cut(body, "<aside")
 	if n := strings.Count(body, `data-testid="card-cuisine"`); n != 1 || !strings.Contains(body, "Middle Eastern") {
 		t.Errorf("cuisine lines = %d, want 1 labelled Middle Eastern:\n%s", n, body)
 	}

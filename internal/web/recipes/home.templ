@@ -38,7 +38,7 @@ templ homePage(h homeView) {
 				<div class="lib home">
 					<div class="side">
 						if h.Suggest != nil {
-							@homeSuggestion(*h.Suggest)
+							@suggestion(*h.Suggest)
 						}
 						@recentPanel(h.Recent)
 					</div>
@@ -49,45 +49,11 @@ templ homePage(h homeView) {
 }
 
 // suggestion is the pick on home and in the library's side: a recipe never
-// made, or not made for a while. The mascot is the speaker of the voice line.
-// "Another idea" asks for the next one and replaces just this block.
-templ suggestion(s suggestView) {
-	<article class="suggest" id="suggest" aria-label="A suggestion from gobbler">
-		<div class="sg-voice">
-			<img src={ layout.MascotTasting } alt="" width="44" height="44"/>
-			<p>{ s.Voice }</p>
-		</div>
-		<h2 class="sg-name">{ s.Card.Name }</h2>
-		<div class="sg-meta">
-			if s.Card.Meal != "" {
-				@mealType(s.Card.Meal, s.Card.MealLabel)
-			}
-			<span>{ s.When }</span>
-			if s.Card.Rating > 0 {
-				@spoons(s.Card.Rating, s.Card.RatingLabel)
-			}
-		</div>
-		@ribbon.Inline(s.Card.Ribbon)
-		<div class="sg-act">
-			<a class="btn accent" href={ templ.SafeURL(s.Card.Href) }>Open recipe</a>
-			if s.NextHref != "" {
-				<a
-					class="sg-next"
-					href={ templ.SafeURL(s.NextHref) }
-					hx-get={ s.NextHref }
-					hx-target="#suggest"
-					hx-swap="outerHTML"
-				>Another idea</a>
-			}
-		</div>
-	</article>
-}
-
-// homeSuggestion is the home page's pick: the mascot's voice line and when the
+// made, or not made for a while. It is the mascot's voice line and when the
 // recipe was last made above a library card (recipeCard, so it looks and opens
 // like any other), and "Another idea" below it, which replaces just this block.
-templ homeSuggestion(s suggestView) {
-	<div class="sg-home" id="suggest" aria-label="A suggestion from gobbler">
+templ suggestion(s suggestView) {
+	<div class="suggest" id="suggest" aria-label="A suggestion from gobbler">
 		<div class="sg-voice">
 			<img src={ layout.MascotTasting } alt="" width="44" height="44"/>
 			<div>

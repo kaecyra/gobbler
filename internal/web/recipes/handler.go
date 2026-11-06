@@ -106,7 +106,12 @@ func library(d Deps) http.HandlerFunc {
 			idle, now := store.IdleOrder(all), d.now()
 			// No idea left (a recipe was made since the page loaded) is an
 			// answer, not an error: an empty 200 removes the card.
-			if sg := suggestFor(ideasFrom(idle, now, forgotPick(idle, now)), idea, now, ideaHref(q, group)); sg != nil {
+			sg := suggestFor(ideasFrom(idle, now, forgotPick(idle, now)), idea, now, ideaHref(q, group))
+			if err := d.addSuggestPicture(r.Context(), sg); err != nil {
+				layout.WriteError(w, r, err)
+				return
+			}
+			if sg != nil {
 				layout.Render(w, r, http.StatusOK, suggestion(*sg))
 			}
 			return
@@ -146,6 +151,10 @@ func library(d Deps) http.HandlerFunc {
 			Forgot:  forgotFor(forgot, now),
 			Suggest: suggestFor(ideasFrom(idle, now, forgot), idea, now, ideaHref(q, group)),
 		}
+		if err := d.addSuggestPicture(r.Context(), side.Suggest); err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
 		layout.Render(w, r, http.StatusOK, libraryPage(res, side))
 	}
 }
@@ -181,6 +190,15 @@ func (d Deps) addPicture(ctx context.Context, c *cardView) error {
 	return nil
 }
 
+// addSuggestPicture sets the picture of a suggestion's card; a nil suggestion
+// has none to set.
+func (d Deps) addSuggestPicture(ctx context.Context, s *suggestView) error {
+	if s == nil {
+		return nil
+	}
+	return d.addPicture(ctx, &s.Card)
+}
+
 // ideaParam reads the suggestion index from the URL; absent is the first idea.
 func ideaParam(r *http.Request) (int, error) {
 	raw := r.URL.Query().Get(paramIdea)
@@ -210,17 +228,15 @@ func Home(d Deps) http.HandlerFunc {
 		// Home has no forgot panel, so its suggestion skips nothing.
 		now := d.now()
 		v := homeView{Empty: len(idle) == 0, Suggest: suggestFor(ideasFrom(idle, now, nil), idea, now, homeHref)}
-		if v.Suggest != nil {
-			if err := d.addPicture(r.Context(), &v.Suggest.Card); err != nil {
-				layout.WriteError(w, r, err)
-				return
-			}
+		if err := d.addSuggestPicture(r.Context(), v.Suggest); err != nil {
+			layout.WriteError(w, r, err)
+			return
 		}
 		varyOnHTMX(w)
 		if targets(r, "suggest") {
 			// As on the library: no idea left answers with an empty 200.
 			if v.Suggest != nil {
-				layout.Render(w, r, http.StatusOK, homeSuggestion(*v.Suggest))
+				layout.Render(w, r, http.StatusOK, suggestion(*v.Suggest))
 			}
 			return
 		}

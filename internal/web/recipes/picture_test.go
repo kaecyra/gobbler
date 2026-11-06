@@ -86,3 +86,25 @@ func TestHomeSuggestionIsALibraryCardWithItsPicture(t *testing.T) {
 		t.Errorf("a picture lookup failure gave status %d, want 500", code)
 	}
 }
+
+func TestLibrarySuggestionIsALibraryCardWithItsPicture(t *testing.T) {
+	lib := &fakeLibrary{cards: []store.Card{card(4, "Never cake", recipe.MealDessert)}, idle: nil}
+	lib.idle = lib.cards
+	h := Routes(Deps{Library: lib, Pictures: fakePictures{src: "/recipes/4/picture?v=abc"}, Now: func() time.Time { return today }})
+	for name, header := range map[string]map[string]string{
+		"page":     nil,
+		"fragment": {"HX-Request": "true", "HX-Target": "suggest"},
+	} {
+		_, body, _ := do(t, h, "/?q=zzz", header)
+		start := strings.Index(body, `id="suggest"`)
+		if start < 0 {
+			t.Fatalf("%s: no suggestion:\n%s", name, body)
+		}
+		got := body[start:]
+		for _, want := range []string{`<article class="rcard">`, `src="/recipes/4/picture?v=abc"`} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s: the suggestion lacks %s", name, want)
+			}
+		}
+	}
+}

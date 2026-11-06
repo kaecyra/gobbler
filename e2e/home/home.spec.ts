@@ -47,8 +47,8 @@ test.describe('with recipes', () => {
     await searchbox(page).click();
     await searchbox(page).pressSequentially('lemon', { delay: 40 });
     await expect(page).toHaveURL(/\/recipes\?q=lemon$/);
-    await expect(page.locator('.rcard')).toHaveCount(1);
-    await expect(page.locator('.rcard')).toContainText('Lemon Cake');
+    await expect(page.locator('.cards .rcard')).toHaveCount(1);
+    await expect(page.locator('.cards .rcard')).toContainText('Lemon Cake');
     // The box was kept through the swap: still focused, nothing lost.
     await expect(searchbox(page)).toBeFocused();
     await expect(searchbox(page)).toHaveValue('lemon');
@@ -67,7 +67,7 @@ test.describe('with recipes', () => {
     await searchbox(page).fill('stew');
     await searchbox(page).press('Enter');
     await expect(page).toHaveURL(/\/recipes\?q=stew/);
-    await expect(page.locator('.rcard')).toContainText('Beef Stew');
+    await expect(page.locator('.cards .rcard')).toContainText('Beef Stew');
   });
 
   test('the suggestion is a library card, and "Another idea" cycles', async ({ page }) => {
@@ -90,6 +90,19 @@ test.describe('with recipes', () => {
     // A swap, not a navigation: the address is still home, the hero still there.
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { name: 'What are we making?' })).toBeVisible();
+  });
+
+  test('the suggested card is a library card wide, left-aligned under the voice line', async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.goto('/');
+    const card = (await page.locator('#suggest .rcard').boundingBox())!;
+    const voice = (await page.locator('#suggest .sg-voice').boundingBox())!;
+    expect(card.width).toBeLessThanOrEqual(361);
+    expect(card.width).toBeGreaterThanOrEqual(260);
+    expect(Math.abs(card.x - voice.x)).toBeLessThanOrEqual(2);
+    await page.goto('/recipes');
+    const grid = (await page.locator('.cards .rcard').first().boundingBox())!;
+    expect(Math.abs(card.width - grid.width)).toBeLessThanOrEqual(4);
   });
 
   test('clicking the suggested card opens the recipe', async ({ page }) => {
