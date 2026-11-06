@@ -3892,7 +3892,7 @@
       "wave": 13,
       "track": null,
       "issue": 469,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "l-discrete-api"
       ],
@@ -5257,6 +5257,12 @@
       "id": "u-card-width",
       "title": "one source for the library card width",
       "merged": "f671446"
+    },
+    {
+      "id": "a-api-shopping",
+      "title": "shopping service layer pilot (internal/api/shopping)",
+      "merged": "de00177",
+      "note": "ADR-00043 pilot. May edit the existing shopping lines in internal/web/routes.go (an exception to its append-only rule) to build and mount through internal/api/shopping. internal/web/editor/build.go imports shopping for the Uncategorised aisle constant and belongs to r-author-notes, then a-api-recipes: give it a depguard file exception commented with a-api-recipes (#470), which removes it. i-reimport waits on this node because both own internal/mcp/server.go and tools.go."
     }
   ],
   "adr_sequence": {
