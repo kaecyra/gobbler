@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 24, m-picture-user-agent in flight
+# Overseer handoff: 2026-11-06, round 24 closed, #494 in review
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -20,13 +20,63 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 | (ADR-00042 correction, owner ruling ib-89c94bbedfa8) | #480 | d031bc0 | none | none |
 | (graph: i-reimport wiring test, web.go exception) | #482 | 60c51c9 | none | none |
-| (graph: m-picture-user-agent node) | #484 | ae45bab | none | none |
 | i-reimport | #481 | 1f37b72 | 00032 | 0.121.0 |
 
-**In flight:** m-picture-user-agent (#483), worktree wt-483, branch fix/483-picture-user-agent, no
-migration, target 0.121.1. Owner-reported bug: picture downloads sent Go's default user agent and
-gimmesomeoven.com answers 403; the page fetch already sends the configured agent. After merge, re-run
-https://www.gimmesomeoven.com/honey-beer-bread/ by hand and check the 1392x2088 og:image is offered.
+| (graph: m-picture-user-agent node) | #484 | ae45bab | none | none |
+| m-picture-user-agent | #485 | 621c0b3 | none | 0.121.1 |
+| (graph: a-api-recipes lane) | #486 | ebd89ca | none | none |
+
+| (graph: m-picture-user-agent, a-api-recipes lane, caller, u-editor-suggest-list, i-step-numbers, i-split-steps) | #484 #486 #487 #489 #491 #493 | | none | none |
+
+**Open PRs (review agents were running at handoff; read their posted reviews on GitHub):**
+- **#494 a-api-recipes (#470)**, branch refactor/470-api-recipes, VERSION 0.121.2. Large: internal/api/caller
+  extracted (shopping moved onto it), internal/api/recipes, all recipe web packages + MCP switched,
+  depguard `recipes-through-api` with five file exceptions for a-api-rest (#471). Picture stays a domain
+  package. Worker's out-of-lane home.go line sanctioned (#493). Follow-up for a-api-rest:
+  tools_shopping.go shopCaller duplicates callerOf.
+- **#495 i-step-numbers (#490): MERGED** eff2976, VERSION 0.122.0, ParserVersion 15. i-split-steps (#492) is now dispatchable.
+- **Review state at handoff:**
+  - #495: APPROVED with one SHOULD (fallback.go:297 strip untested); sent back to the worker for a test,
+    worktree wt-490.
+  - #494: CHANGES_REQUESTED, one MUST: golangci-lint v2 skips generated files, so depguard never sees
+    *_templ.go; journal_templ.go imports store unexcepted and docs/design.md:107 overclaims. Sent back,
+    worktree wt-470. NIT, out of lane: internal/web/reimport_wiring_test.go:27's comment still names
+    mountMCP's store (now the router-built recipe service); fix it in a-api-rest or a small node.
+  - If either worker's report did not arrive before this session ended, read the branch, re-brief a
+    fresh worker from the review threads, and resolve each thread after verifying the fix.
+- Both bump from 0.121.1: whichever merges second re-bumps against main (merge origin/main, no rebase).
+- Triage: send findings to a fresh worker (the old ones are gone with this session); recreate the worktree
+  from the pushed branch and `cd e2e && npm ci`.
+
+**Queued (dispatch after the above):**
+- i-split-steps (#492), after i-step-numbers: halfbakedharvest publishes its method as one HowToStep /
+  one WPRM instruction of display-block spans with inline "1. … 2. …". Split by structure, then by an
+  ascending enumerator run; reuse #490's pattern. Issue body has the evidence. (Sally's dinner rolls were
+  a mix-up: that page parses into 10 steps fine.)
+- u-editor-suggest-list (#488), after a-api-recipes: datalist arrow lists only the current value.
+
+- **#496, no node yet:** the qualifier chip's × escapes its pill when two chips share a row (owner
+  screenshot in feedback/, untracked). Editor lane, so add a node after u-editor-suggest-list. The same
+  screenshot shows parser issues to triage into their own issue: "°F" lowercased, "(43°C)" and "whole"
+  dropped from "1 cup (240ml) whole milk, warmed to about 110°F (43°C)", and the unrecognised-text
+  warning firing although the text became qualifiers.
+- #494 fix 1b3bc52 (depguard reads generated files via linters.exclusions.generated: disable plus an
+  exclusion for every other linter on templ/sqlc output) is pushed; #495 has merged, so #494 must merge origin/main, re-bump VERSION to 0.122.1 and rewrap the long docs/design.md
+  line, then push, resolve the MUST thread and merge.
+
+**Owner, deployed:** VM runs 0.121.1 (GOBBLER_VERSION in /opt/gobbler/.env; nano needs
+TERM=xterm-256color). Picture fix (#483) to be confirmed by re-importing the beer bread page.
+
+**Lessons this round:**
+- Tightening an auth check: list every credential kind first (ADR-00031). The dispatcher's own send-back
+  broke household keys on #477; review caught it.
+- The contract's shared-file list is now generated from graph.json into the scratchpad; hand-copying
+  missed tenancy-support.ts and picturedb.
+- Workers must not file owner inbox items; lane questions come to the dispatcher (a-api-recipes did).
+- Check what the VM runs before debugging a deployed fix: `docker compose images` (#483 was 0.121.0).
+- Confirm which URL the owner means before investigating; two imports close together got crossed.
+- Probe the real pipeline offline with a throwaway _test.go in a detached worktree (newEnv/serve helpers
+  in internal/ingest/helpers_test.go); container DNS blocks live fetches, so run live probes on the host.
 
 - **a-api-shopping pattern** (for a-api-recipes): `Service.Op(ctx, Caller, ...)`; `Caller{Person,
   Household, HouseholdKey}`; `enter()` checks membership with `household.ForEmail` unless the caller is
@@ -40,9 +90,8 @@ https://www.gimmesomeoven.com/honey-beer-bread/ by hand and check the 1392x2088 
   picturedb. Generate it from `shared_files` instead.
 - Labels: #469, #462 moved dor:blocked to dor:ready; #395 gained dor:ready.
 
-**Next:** a-api-recipes (#470) after m-picture-user-agent; it also removes the editor/build.go
-depguard exception. o-demo-reseed (#432) still waits on a deploy. Migration numbers: schema last used
-00032.
+**Next:** a-api-rest (#471) splits into per-resource nodes once a-api-recipes sets the pattern.
+o-demo-reseed (#432) still waits on a deploy. Schema migrations last used 00032.
 
 ## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
 
