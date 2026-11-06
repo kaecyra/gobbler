@@ -61,7 +61,11 @@ func applyPlugins(doc *html.Node, raw *Raw) {
 			}
 		}
 		if len(raw.Instructions) > 0 {
-			if steps := p.steps(doc); sectioned(steps) || titled(steps) {
+			steps := p.steps(doc)
+			if split, ok := splitByBlocks(steps, raw.Instructions); ok {
+				steps, raw.Instructions = expandBlocks(steps), split
+			}
+			if sectioned(steps) || titled(steps) {
 				if merged, ok := mergeSteps(steps, raw.Instructions); ok {
 					raw.Instructions = merged
 				}
@@ -71,6 +75,87 @@ func applyPlugins(doc *html.Node, raw *Raw) {
 			return
 		}
 	}
+}
+
+// splitByBlocks splits the structured field's steps where the plugin's card
+// holds several blocks for one of them (#492). It applies only when the card
+// has a step for each of the structured field's, and the blocks of every step
+// it splits, joined, have the same textKey as the structured step they
+// replace: the same letters and digits in the same order, however each prints
+// punctuation. A card that disagrees is a page we do not understand and
+// splits nothing.
+func splitByBlocks(steps, flat []InstructionStep) ([]InstructionStep, bool) {
+	if len(steps) != len(flat) {
+		return nil, false
+	}
+	var split bool
+	out := make([]InstructionStep, 0, len(flat))
+	for i, s := range steps {
+		if len(s.blocks) < 2 {
+			out = append(out, flat[i])
+			continue
+		}
+		if textKey(strings.Join(s.blocks, " ")) != textKey(flat[i].Text) {
+			return nil, false
+		}
+		split = true
+		for j, b := range s.blocks {
+			piece := InstructionStep{Section: flat[i].Section, Text: b}
+			if j == 0 {
+				piece.Title = flat[i].Title
+			}
+			out = append(out, piece)
+		}
+	}
+	return out, split
+}
+
+// expandBlocks gives the card's steps the same split as splitByBlocks, so the
+// two lists still line up for mergeSteps. A bold title stays with the first
+// block.
+func expandBlocks(steps []InstructionStep) []InstructionStep {
+	out := make([]InstructionStep, 0, len(steps))
+	for _, s := range steps {
+		if len(s.blocks) < 2 {
+			out = append(out, s)
+			continue
+		}
+		for i, b := range s.blocks {
+			e := InstructionStep{Section: s.Section, Text: b}
+			if i == 0 {
+				e.Title = s.Title
+			}
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// stepBlocks is the text of each block n holds as direct children: `<p>`
+// elements and display-block spans, with WPRM's spacer divs and blank text
+// between them ignored. It gives nil unless there are at least two.
+func stepBlocks(n *html.Node) []string {
+	if n == nil {
+		return nil
+	}
+	var out []string
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type != html.ElementNode {
+			continue
+		}
+		block := isElem(c, "p") ||
+			isElem(c, "span") && strings.Contains(strings.ReplaceAll(attr(c, "style"), " ", ""), "display:block")
+		if !block {
+			continue
+		}
+		if t := textOf(c); t != "" {
+			out = append(out, t)
+		}
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	return out
 }
 
 func named(groups []IngredientGroup) bool {
@@ -170,6 +255,34 @@ func splitTitle(title, text string) (string, string) {
 		return "", text
 	}
 	return title, rest
+}
+
+// textKey is s's letters and digits in order, lower-case, with character
+// references decoded and the multiplication sign read as an "x". A "/", ".",
+// "-" or "," between two digits is kept ("1/4", "1.5", "4-5", "1,000"; an en
+// or em dash reads as "-"), so "1/4 cup" never keys as "14 cup". JSON-LD and
+// the card print one text differently: "&#x27;" for an apostrophe, "9x13" for
+// "9×13". Unlike wordKey it keeps the order, so a split that reorders text
+// does not pass.
+func textKey(s string) string {
+	rs := []rune(strings.ToLower(html.UnescapeString(s)))
+	var b strings.Builder
+	for i, r := range rs {
+		switch {
+		case r == '\u00d7':
+			b.WriteByte('x')
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			b.WriteRune(r)
+		case strings.ContainsRune("/.-,\u2013\u2014", r):
+			if i > 0 && i+1 < len(rs) && unicode.IsDigit(rs[i-1]) && unicode.IsDigit(rs[i+1]) {
+				if r == '\u2013' || r == '\u2014' {
+					r = '-'
+				}
+				b.WriteRune(r)
+			}
+		}
+	}
+	return b.String()
 }
 
 // wordKey is the lower-case words of s, sorted, so punctuation and the order
@@ -313,7 +426,8 @@ func wprmSteps(doc *html.Node) []InstructionStep {
 		for _, li := range itemNodes(g, "wprm-recipe-instruction") {
 			out = append(out, InstructionStep{
 				Section: name, Text: textOf(li),
-				Title: boldLead(firstWithClass(li, "wprm-recipe-instruction-text")),
+				Title:  boldLead(firstWithClass(li, "wprm-recipe-instruction-text")),
+				blocks: stepBlocks(firstWithClass(li, "wprm-recipe-instruction-text")),
 			})
 		}
 	}
@@ -395,7 +509,7 @@ func headedGroups(container *html.Node) []IngredientGroup {
 func headedSteps(container *html.Node) []InstructionStep {
 	var out []InstructionStep
 	headedItems(container, func(name string, li *html.Node) {
-		out = append(out, InstructionStep{Section: name, Text: textOf(li), Title: boldLead(li)})
+		out = append(out, InstructionStep{Section: name, Text: textOf(li), Title: boldLead(li), blocks: stepBlocks(li)})
 	})
 	return out
 }

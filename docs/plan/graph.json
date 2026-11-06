@@ -4018,7 +4018,7 @@
       "wave": 13,
       "track": null,
       "issue": 488,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "a-api-recipes"
       ],
@@ -4054,7 +4054,7 @@
       "wave": 13,
       "track": null,
       "issue": 492,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "i-step-numbers"
       ],
@@ -4084,6 +4084,25 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Same lane as u-editor-suggest-list (editor.templ holds the chip styles), so it runs after it."
+    },
+    {
+      "id": "i-line-qualifiers",
+      "title": "keep every word and its case when a line's extras become qualifiers",
+      "wave": 13,
+      "track": null,
+      "issue": 498,
+      "status": "todo",
+      "depends_on": [
+        "i-split-steps"
+      ],
+      "owns": [
+        "internal/parse/line*.go",
+        "internal/parse/testdata/lines/**",
+        "internal/ingest/ingest.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "internal/ingest/ingest.go only for the ParserVersion bump: main's value plus one at merge, redone after any rebase (lessons.md). i-split-steps bumps it too, hence the edge."
     }
   ],
   "shared_files": [
@@ -5404,6 +5423,12 @@
       "title": "recipes onto internal/api/recipes",
       "merged": "cdadce1",
       "note": "ADR-00043 obligation 3, following a-api-shopping's pattern (internal/api/shopping package doc, docs/design.md). Import and re-import are recipe operations (#470), so the lane includes the ingest web package and the MCP import/re-import tools. May edit the existing recipe-store lines in internal/web/routes.go and internal/web/web.go (exception to append-only) to build through internal/api/recipes. Importers of the recipe domain under internal/web or internal/mcp outside this lane get a depguard file exception naming a-api-rest (#471). Removes the internal/web/editor/build.go shopping exception."
+    },
+    {
+      "id": "i-split-steps",
+      "title": "split a source step that holds several numbered steps",
+      "merged": "c5ec13c",
+      "note": "Owner-reported (#492): halfbakedharvest publishes its whole method as one step (one HowToStep, one WPRM instruction of display-block spans). Split by structure first, then by an ascending inline enumerator run; reuse #490's enumerator pattern. After i-step-numbers (same lane)."
     }
   ],
   "adr_sequence": {
