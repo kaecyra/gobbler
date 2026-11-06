@@ -173,10 +173,11 @@ func mountProfile(r chi.Router, d Deps) {
 // membership check, so its tools run in the credential's household. Its stores
 // share the merging catalog's hooks like the shopping pages do.
 func mountMCP(r chi.Router, d Deps) {
-	cat, rec := catalog.New(d.DB), store.New(d.DB)
-	// propose_recipe_edit supersedes a pending re-import (ADR-00042); this is the
-	// store that does it, so it deletes the re-import's picture candidates.
-	rec = rec.WithObjects(domain.NewReaper(d.Media, d.Logger))
+	// propose_recipe_edit supersedes a pending re-import (ADR-00042); the recipe
+	// service d.Recipes does it with a store that deletes the re-import's
+	// picture candidates. rec is the store the shopping service reads recipes
+	// from and the merge hooks and usage counters attach to.
+	cat, rec := catalog.New(d.DB), apirecipes.NewStore(d.DB)
 	usage := catalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
@@ -187,7 +188,7 @@ func mountMCP(r chi.Router, d Deps) {
 	if log == nil {
 		log = slog.Default()
 	}
-	deps, err := mcp.NewDeps(rec, shop, household.New(d.DB), cat, d.Drafts, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
+	deps, err := mcp.NewDeps(d.Recipes, rec, shop, household.New(d.DB), cat, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
 	if err == nil {
 		var h http.Handler
 		if h, err = mcp.Routes(deps); err == nil {

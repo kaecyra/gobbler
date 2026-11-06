@@ -22,7 +22,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
-	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
@@ -80,9 +79,6 @@ type Deps struct {
 	// MCPVerifier checks the bearer credential of the MCP endpoint (ADR-00034).
 	// Nil means API keys (ADR-00031) and OAuth access tokens (ADR-00034).
 	MCPVerifier mcp.Verifier
-	// Drafts holds the drafts that wait on the review screen. Nil means the
-	// proposals table in DB (ADR-00035).
-	Drafts *ingest.Drafts
 	// Media is the store recipe pictures and draft candidates are read from
 	// and deleted with a household (ADR-00039). Nil means the store the
 	// configuration asks for (media.New), which is the one avatars use.
@@ -142,12 +138,6 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	if d.Pictures == nil {
 		d.Pictures = picture.New(d.DB, d.Media, store.New(d.DB), picture.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger).WithUserAgent(d.Config.Ingestion.UserAgent)
 	}
-	if d.Drafts == nil {
-		// A new re-import supersedes the recipe's pending one (ADR-00042); the store
-		// deletes the superseded draft's picture candidates.
-		d.Drafts = ingest.NewDrafts(store.New(d.DB).WithObjects(picture.NewReaper(d.Media, d.Logger))).WithPictures(d.Pictures)
-	}
-
 	if d.Recipes == nil {
 		svc, err := apirecipes.New(apirecipes.Deps{
 			Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Members: household.New(d.DB),

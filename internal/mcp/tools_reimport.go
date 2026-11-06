@@ -39,7 +39,7 @@ func (t *tools) reimportRecipe(ctx context.Context, _ *mcp.CallToolRequest, in r
 	if in.ID <= 0 {
 		return nil, reimportOut{}, refuse("give the recipe's id")
 	}
-	token, err := t.reimporter.Start(ctx, in.ID, provenance(c, h.ID, tool))
+	token, err := t.Recipes.StartReimport(ctx, callerOf(c, h), in.ID, t.Drafter, provenance(c, h.ID, tool))
 	if err != nil {
 		return nil, reimportOut{}, t.toolError(ctx, tool, err)
 	}

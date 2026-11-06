@@ -9,8 +9,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
-	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // maxDraftText bounds the text of one import or draft, the way the web form
@@ -68,7 +70,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 		if u, perr := url.Parse(rawURL); perr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return nil, draftOut{}, refuse("url must be an http or https address")
 		}
-		if err := t.checkRoom(ctx, tool); err != nil {
+		if err := t.checkRoom(ctx, callerOf(c, h), tool); err != nil {
 			return nil, draftOut{}, err
 		}
 		d, err = t.Drafter.FromURL(ctx, rawURL)
@@ -76,7 +78,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 		if len(text) > maxDraftText {
 			return nil, draftOut{}, refuse("the text is too long: at most %d bytes", maxDraftText)
 		}
-		if err := t.checkRoom(ctx, tool); err != nil {
+		if err := t.checkRoom(ctx, callerOf(c, h), tool); err != nil {
 			return nil, draftOut{}, err
 		}
 		d, err = t.Drafter.FromText(ctx, text)
@@ -84,7 +86,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
-	return t.hold(ctx, tool, c, h.ID, d)
+	return t.hold(ctx, tool, c, h, d)
 }
 
 func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, in createDraftIn) (*mcp.CallToolResult, draftOut, error) {
@@ -112,7 +114,7 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	if b.Len() > maxDraftText {
 		return nil, draftOut{}, refuse("the recipe is too long: at most %d bytes", maxDraftText)
 	}
-	if err := t.checkRoom(ctx, tool); err != nil {
+	if err := t.checkRoom(ctx, callerOf(c, h), tool); err != nil {
 		return nil, draftOut{}, err
 	}
 	d, err := t.Drafter.FromText(ctx, b.String())
@@ -120,35 +122,35 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	d.Name = ingest.Field[string]{Value: name, Confidence: 1}
-	return t.hold(ctx, tool, c, h.ID, d)
+	return t.hold(ctx, tool, c, h, d)
 }
 
 // checkRoom refuses, with the message hold gives, a household that already holds
 // the most drafts it may, before anything is fetched or read for a draft that
 // would be turned away. hold's check where the draft is written stays the
 // authority.
-func (t *tools) checkRoom(ctx context.Context, tool string) error {
-	full, err := t.Drafts.Full(ctx)
+func (t *tools) checkRoom(ctx context.Context, rc apirecipes.Caller, tool string) error {
+	full, err := t.Recipes.DraftsFull(ctx, rc)
 	if err != nil {
 		return t.toolError(ctx, tool, err)
 	}
 	if full {
-		return refuse("%s", store.ErrDraftLimit)
+		return refuse("%s", apirecipes.ErrDraftLimit)
 	}
 	return nil
 }
 
 // hold puts the draft where the review screen finds it and records the write.
-func (t *tools) hold(ctx context.Context, tool string, c Credential, hid int64, d ingest.Draft) (*mcp.CallToolResult, draftOut, error) {
-	token, err := t.Drafts.Add(ctx, d, provenance(c, hid, tool))
-	if errors.Is(err, store.ErrDraftLimit) {
+func (t *tools) hold(ctx context.Context, tool string, c Credential, h household.Household, d ingest.Draft) (*mcp.CallToolResult, draftOut, error) {
+	token, err := t.Recipes.AddDraft(ctx, callerOf(c, h), d, provenance(c, h.ID, tool))
+	if errors.Is(err, apirecipes.ErrDraftLimit) {
 		// Say so as it is: the agent can tell its user to review the drafts.
-		return nil, draftOut{}, refuse("%s", store.ErrDraftLimit)
+		return nil, draftOut{}, refuse("%s", apirecipes.ErrDraftLimit)
 	}
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
-	if err := t.recordWrite(ctx, c, hid, tool, "draft "+token[:8]); err != nil {
+	if err := t.recordWrite(ctx, c, h.ID, tool, "draft "+token[:8]); err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	low := 0

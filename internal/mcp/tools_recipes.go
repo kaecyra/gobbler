@@ -5,9 +5,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 )
 
 type searchIn struct {
@@ -75,7 +76,7 @@ type recipeOut struct {
 	Components  []componentOut `json:"components"`
 }
 
-func summaryOf(s store.Summary) recipeSummary {
+func summaryOf(s apirecipes.Summary) recipeSummary {
 	return recipeSummary{
 		ID: s.ID, Name: s.Name, Description: s.Description, Tags: s.Tags, Rating: s.Rating,
 		PrepMinutes: int(s.Prep.Minutes()), CookMinutes: int(s.Cook.Minutes()), TotalMinutes: int(s.Total.Minutes()),
@@ -101,10 +102,11 @@ func (t *tools) registerRecipes(s *mcp.Server) {
 }
 
 func (t *tools) page(ctx context.Context, tool, query, cursor string, limit int) (*mcp.CallToolResult, Page[recipeSummary], error) {
-	if _, _, err := scoped(ctx); err != nil {
+	rc, err := recipeCaller(ctx)
+	if err != nil {
 		return nil, Page[recipeSummary]{}, t.toolError(ctx, tool, err)
 	}
-	found, err := t.Recipes.Search(ctx, store.SearchQuery{Text: query})
+	found, err := t.Recipes.Search(ctx, rc, apirecipes.SearchQuery{Text: query})
 	if err != nil {
 		return nil, Page[recipeSummary]{}, t.toolError(ctx, tool, err)
 	}
@@ -128,17 +130,18 @@ func (t *tools) listRecipes(ctx context.Context, _ *mcp.CallToolRequest, in list
 }
 
 func (t *tools) getRecipe(ctx context.Context, _ *mcp.CallToolRequest, in getRecipeIn) (*mcp.CallToolResult, recipeOut, error) {
-	if _, _, err := scoped(ctx); err != nil {
+	rc, err := recipeCaller(ctx)
+	if err != nil {
 		return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
 	}
 	// Info first: a recipe saved between the two reads shows an older version
 	// than its content, and an edit made against it is refused as stale, never
 	// the reverse.
-	info, err := t.Recipes.Info(ctx, in.ID)
+	info, err := t.Recipes.Info(ctx, rc, in.ID)
 	if err != nil {
 		return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
 	}
-	r, err := t.Recipes.Get(ctx, in.ID)
+	r, err := t.Recipes.Get(ctx, rc, in.ID)
 	if err != nil {
 		return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
 	}
