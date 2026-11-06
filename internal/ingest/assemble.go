@@ -328,7 +328,9 @@ func step(title, text string, confidence float64) Step {
 // enumeratorPattern matches the number a source writes into a step: an
 // optional "Step", the number, and its punctuation ("1.", "1)", "(1)", "1:",
 // "1 -", "Step 1:"). It is the one definition of an enumerator: stepNumberRE
-// reads it at the start of a step, enumeratorRE finds it inside one.
+// reads it at the start of a step, enumeratorRE finds it inside one. The
+// section parser (internal/parse) keeps the number on a pasted step's text, so
+// this is the only place a source number is recognised and removed.
 const enumeratorPattern = `(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+[.):]|\d+\s+[-\x{2013}\x{2014}]`
 
 // stepNumberRE is an enumerator opening a step, with the whitespace after it.

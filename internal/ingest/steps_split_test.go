@@ -128,6 +128,7 @@ func TestAssembleSplitsNumberedStepsInPastedText(t *testing.T) {
 		"(1) Mix the flour and salt. (2) Bake for 30 minutes. (3) Serve warm.",
 		"1. Mix the flour and salt. 2. Bake for 30 minutes. 3. Serve warm.",
 		"1) Mix the flour and salt. 2) Bake for 30 minutes. 3) Serve warm.",
+		"1. Mix the flour and salt. (2) Bake for 30 minutes. (3) Serve warm.",
 	} {
 		t.Run(line[:3], func(t *testing.T) { assertPastedSplit(t, line) })
 	}
@@ -163,5 +164,44 @@ func TestAssemblePastedNumberedLinesStaySeparate(t *testing.T) {
 	got := flatSteps(d)
 	if len(got) != 2 || got[0].Text != "Mix." || got[1].Text != "Bake." {
 		t.Errorf("steps = %+v, want Mix. and Bake.", got)
+	}
+}
+
+// Pasted lines that must not split, and the multi-line shapes (#502). Each
+// case lists the step texts, numbers removed.
+func TestAssemblePastedNumberedEdgeCases(t *testing.T) {
+	cases := []struct {
+		name, steps string
+		want        []string
+	}{
+		{"quantity after a number", "1. Preheat oven to 350. 2 eggs go in later",
+			[]string{"Preheat oven to 350. 2 eggs go in later"}},
+		{"bare word before a number", "1. Bake for 2. Then cool",
+			[]string{"Bake for 2. Then cool"}},
+		// One step: splitLead makes "Mix" its title and leaves "2." as text.
+		{"empty tail", "1. Mix. 2.", []string{"2."}},
+		// Line 1 holds a run of two and line 2 starts a new line at 3: the
+		// first line splits, the second is its own step.
+		{"run then a numbered line", "1. Mix. 2. Rest.\n3. Serve.",
+			[]string{"Mix.", "Rest.", "Serve."}},
+		{"separate numbered lines", "1. Mix.\n2. Bake.", []string{"Mix.", "Bake."}},
+		{"bare number line", "1\nMix.\n2\nBake.", []string{"Mix.", "Bake."}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			res := extract.Result{Method: extract.MethodText, Text: "Bread\n\nIngredients\n3 cups flour\n\nInstructions\n" + tc.steps + "\n"}
+			d, err := e.pipeline(t, nil).assemble(e.ctx, Source{}, res)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, s := range flatSteps(d) {
+				got = append(got, s.Text)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("steps = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

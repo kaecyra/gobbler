@@ -92,16 +92,16 @@ func TestSplitSectionsCases(t *testing.T) {
 			ing: [][]string{{"1 onion"}}, steps: [][]string{{"Chop the onion.", "Cook it."}},
 		},
 		{
-			name:  "numbered step markers stripped with several styles",
+			name:  "numbered step markers kept on the text in several styles",
 			in:    "T\nIngredients\n1 egg\nDirections\n1. One\n2) Two\n3: Three\nStep 4: Four",
 			title: "T", names: []string{""},
-			ing: [][]string{{"1 egg"}}, steps: [][]string{{"One", "Two", "Three", "Four"}},
+			ing: [][]string{{"1 egg"}}, steps: [][]string{{"1. One", "2) Two", "3: Three", "Step 4: Four"}},
 		},
 		{
 			name:  "wrapped numbered step continues previous step",
 			in:    "T\nIngredients\n1 egg\nDirections\n1. Beat the\negg well.\n2. Fry.",
 			title: "T", names: []string{""},
-			ing: [][]string{{"1 egg"}}, steps: [][]string{{"Beat the egg well.", "Fry."}},
+			ing: [][]string{{"1 egg"}}, steps: [][]string{{"1. Beat the egg well.", "2. Fry."}},
 		},
 		{
 			name:  "bulleted steps",
