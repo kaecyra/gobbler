@@ -320,6 +320,32 @@ func step(title, text string, confidence float64) Step {
 	return Step{Text: text, Duration: total, Confidence: confidence, Kind: stageKindOf(title, text), Title: title}
 }
 
+// stepNumberRE matches the number a source writes into a step: an optional
+// "Step", the number, its punctuation ("1.", "1)", "(1)", "1:", "1 -", "Step
+// 1:") and the whitespace after it. The whitespace is required, so a leading
+// quantity ("1.5 cups", "350°F", "1/2 the dough") and a bare time ("10
+// minutes") never match.
+var stepNumberRE = regexp.MustCompile(`^(?:(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+[.):]|\d+\s+[-\x{2013}\x{2014}])\s+`)
+
+// stripStepNumber removes the source's own step number from the start of a
+// step. gobbler numbers steps itself, in an order that can differ from the
+// source's. Text that would be left empty, or a dash form that leads into a
+// range ("1 - 2 minutes"), is returned unchanged.
+func stripStepNumber(text string) string {
+	loc := stepNumberRE.FindStringIndex(text)
+	if loc == nil {
+		return text
+	}
+	rest := strings.TrimSpace(text[loc[1]:])
+	if rest == "" {
+		return text
+	}
+	if m := text[:loc[1]]; strings.ContainsAny(m, "-\u2013\u2014") && rest[0] >= '0' && rest[0] <= '9' {
+		return text
+	}
+	return rest
+}
+
 // sourceStep builds a step the source stated. When the source gave no title
 // and the text opens with a short lead sentence, the lead becomes the title,
 // the rest the instruction, and the step is flagged low confidence
@@ -328,6 +354,7 @@ func step(title, text string, confidence float64) Step {
 // like "Bake." named; a lead that opens with "serve" is the kind serve either
 // way (stageKindOf).
 func sourceStep(title, text string, confidence float64) Step {
+	text = stripStepNumber(text)
 	if title == "" {
 		if lead, rest, ok := splitLead(text); ok {
 			st := step(lead, text, min(confidence, splitTitleConfidence))

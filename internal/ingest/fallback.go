@@ -294,7 +294,7 @@ func (f *Fallback) fillGaps(ctx context.Context, rule Draft, gaps Gaps, s Struct
 			if len(c.Steps) == 0 {
 				for _, text := range sc.Steps {
 					if text = strings.TrimSpace(text); text != "" {
-						st := step("", text, llmFieldConfidence)
+						st := step("", stripStepNumber(text), llmFieldConfidence)
 						st.FromLLM = true
 						c.Steps = append(c.Steps, st)
 					}
