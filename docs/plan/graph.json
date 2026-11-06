@@ -3953,7 +3953,8 @@
         "internal/mcp/mcp_test.go",
         "internal/mcp/mcp_edit_test.go",
         "internal/api/caller/**",
-        "internal/api/shopping/**"
+        "internal/api/shopping/**",
+        "internal/web/home.go"
       ],
       "needs_migration": null,
       "adrs": [],
@@ -4046,6 +4047,25 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner request (#490). Enumerators only, never a leading quantity or time; one place for every step path; ParserVersion bump."
+    },
+    {
+      "id": "i-split-steps",
+      "title": "split a source step that holds several numbered steps",
+      "wave": 13,
+      "track": null,
+      "issue": 492,
+      "status": "todo",
+      "depends_on": [
+        "i-step-numbers"
+      ],
+      "owns": [
+        "internal/ingest/*.go",
+        "internal/ingest/extract/*.go",
+        "internal/ingest/extract/testdata/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner-reported (#492): halfbakedharvest publishes its whole method as one step (one HowToStep, one WPRM instruction of display-block spans). Split by structure first, then by an ascending inline enumerator run; reuse #490's enumerator pattern. After i-step-numbers (same lane)."
     }
   ],
   "shared_files": [
