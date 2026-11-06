@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/apikey"
+	"github.com/kaecyra/gobbler/internal/credential"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store/storedb"
 )
@@ -129,16 +130,16 @@ func (p Provenance) Describe() string {
 	}
 	kind := c.Kind
 	switch kind {
-	case "api_key":
+	case credential.KindAPIKey:
 		kind = "API key"
-	case "oauth_grant":
+	case credential.KindOAuth:
 		kind = "OAuth client"
 	}
 	out := kind
 	if c.Ref != "" {
 		out += " " + c.Ref
 	}
-	if p.Person != "" && !strings.HasPrefix(p.Person, "household:") {
+	if p.Person != "" && !apikey.IsHouseholdOwner(p.Person) {
 		out += " (" + p.Person + ")"
 	}
 	return out

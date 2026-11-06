@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/apikey/apikeydb"
@@ -109,15 +110,26 @@ func (s *Store) RecordWrite(ctx context.Context, p Principal, householdID int64,
 	return nil
 }
 
-// owner is how the write log names the key's owner: the email of a personal
-// key, or "household:<id>". It is the one place that builds the name, for
-// RecordWrite and Writes alike.
-func (p Principal) owner() string {
-	if p.Email != "" {
-		return p.Email
+// householdOwnerPrefix starts the owner name of a household key.
+const householdOwnerPrefix = "household:"
+
+// OwnerName is how a key's owner is named in the write log and on a proposal:
+// the email of a personal key, or "household:<id>". It is the one place that
+// builds the name; IsHouseholdOwner reads it back.
+func OwnerName(email string, householdID int64) string {
+	if email != "" {
+		return email
 	}
-	return fmt.Sprintf("household:%d", p.HouseholdID)
+	return fmt.Sprintf("%s%d", householdOwnerPrefix, householdID)
 }
+
+// IsHouseholdOwner reports whether an owner name, as built by OwnerName, names
+// a household key rather than a person.
+func IsHouseholdOwner(owner string) bool {
+	return strings.HasPrefix(owner, householdOwnerPrefix)
+}
+
+func (p Principal) owner() string { return OwnerName(p.Email, p.HouseholdID) }
 
 // Writes returns what the key p names has written, oldest first. It matches the
 // key's prefix, owner and creation time as well as its id, because SQLite gives

@@ -1,8 +1,7 @@
 package mcp
 
 import (
-	"fmt"
-
+	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
@@ -11,10 +10,7 @@ import (
 // logs keep), and the person it acts as. A household credential acts for no one
 // person, so it is attributed to its household, as the key write log does.
 func provenance(c Credential, hid int64, tool string) store.Provenance {
-	owner := c.Email
-	if owner == "" {
-		owner = fmt.Sprintf("household:%d", hid)
-	}
+	owner := apikey.OwnerName(c.Email, hid)
 	return store.Provenance{
 		Person: owner,
 		Credential: &store.Credential{
