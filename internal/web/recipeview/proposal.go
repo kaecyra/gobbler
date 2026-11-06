@@ -71,7 +71,7 @@ type newPart struct {
 // removes it. Kind is empty for a line it leaves alone.
 type lineMark struct {
 	Kind          recipe.ChangeKind
-	New           string
+	New           display.Line
 	Edited, Moved bool
 }
 
@@ -88,8 +88,8 @@ type stepMark struct {
 // First is what it adds ahead of the first.
 type compMarks struct {
 	Lines      []lineMark
-	LinesFirst []string
-	LinesAfter map[int][]string
+	LinesFirst []display.Line
+	LinesAfter map[int][]display.Line
 	Steps      []stepMark
 	StepsFirst []string
 	StepsAfter map[int][]string
@@ -141,8 +141,9 @@ func buildProposal(ctx context.Context, cat Catalog, live recipe.Recipe, p apire
 	d := recipe.Compare(live, *p.Edit)
 	pv.Changes = d.Count()
 	lines := display.NewLineBuilder(cat, display.Default())
+	built := func(l recipe.IngredientLine) (display.Line, error) { return lines.Build(ctx, l) }
 	text := func(l recipe.IngredientLine) (string, error) {
-		b, err := lines.Build(ctx, l)
+		b, err := built(l)
 		return b.Text, err
 	}
 
@@ -179,7 +180,7 @@ func buildProposal(ctx context.Context, cat Catalog, live recipe.Recipe, p apire
 	pv.Comps = make([]compMarks, len(live.Components))
 	for ci, c := range live.Components {
 		pv.Comps[ci] = compMarks{
-			Lines: make([]lineMark, len(c.Lines)), LinesAfter: map[int][]string{},
+			Lines: make([]lineMark, len(c.Lines)), LinesAfter: map[int][]display.Line{},
 			Steps: make([]stepMark, len(c.Steps)), StepsAfter: map[int][]string{},
 		}
 		for li, l := range c.Lines {
@@ -196,11 +197,11 @@ func buildProposal(ctx context.Context, cat Catalog, live recipe.Recipe, p apire
 		at := lineAt[c.Old.Key]
 		m := lineMark{Kind: c.Kind, Edited: c.Edited, Moved: c.Moved}
 		if c.New != nil {
-			t, err := text(*c.New)
+			b, err := built(*c.New)
 			if err != nil {
 				return nil, err
 			}
-			m.New = t
+			m.New = b
 		}
 		pv.Comps[at.comp].Lines[at.at] = m
 	}
@@ -242,7 +243,7 @@ func buildProposal(ctx context.Context, cat Catalog, live recipe.Recipe, p apire
 				after = at.at
 				continue
 			}
-			t, err := text(l)
+			t, err := built(l)
 			if err != nil {
 				return nil, err
 			}

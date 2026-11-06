@@ -206,6 +206,9 @@ func TestLineBuilder(t *testing.T) {
 	if got, _ = NewLineBuilder(cat, Default()).Build(ctx, opt); got.Text != "2 bay leaf, torn (optional)" {
 		t.Errorf("qualifier and optional = %q", got.Text)
 	}
+	if got.Head != "2 bay leaf" || len(got.Qualifiers) != 1 || got.Qualifiers[0] != "torn" || got.Tail != "(optional)" {
+		t.Errorf("pieces = head %q, qualifiers %q, tail %q", got.Head, got.Qualifiers, got.Tail)
+	}
 	taste := recipe.IngredientLine{Ingredient: 2, Rule: quantity.RuleToTaste}
 	if got, _ = NewLineBuilder(cat, Default()).Build(ctx, taste); got.Text != "bay leaf to taste" {
 		t.Errorf("to taste = %q", got.Text)
