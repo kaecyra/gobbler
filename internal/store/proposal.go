@@ -26,9 +26,11 @@ type ProposalKind string
 
 // Proposal kinds.
 const (
-	// ProposalDraft is the draft of a new recipe from ingestion. Its document
-	// is ingestion's own and opaque here, except for the ingredient ids it
-	// names (see proposal_doc.go). It carries a source snapshot.
+	// ProposalDraft is an ingestion draft: of a new recipe, or, when its
+	// document carries a "reimport" marker, a re-import that replaces a saved
+	// recipe (ADR-00042; see reimport.go). Its document is ingestion's own and
+	// opaque here, except for the ingredient ids it names and that marker (see
+	// proposal_doc.go). It carries a source snapshot.
 	ProposalDraft ProposalKind = "draft"
 	// ProposalEdit is a proposed new version of an existing recipe, made
 	// against one version of it. Its document is the revision document format.
@@ -115,11 +117,15 @@ type Proposal struct {
 	RecipeID, BaseVersion int64
 	// ResultRecipeID is the recipe a confirmed draft created; zero otherwise.
 	ResultRecipeID int64
-	// Document is the stored document: a draft's, opaque to the store, or an
-	// edit's revision document.
+	// Document is the stored document: a draft's, opaque to the store apart from
+	// the ingredient ids and the re-import marker it names, or an edit's revision
+	// document.
 	Document []byte
 	// Edit is the recipe an edit proposes; nil for a draft.
 	Edit *recipe.Recipe
+	// Reimport is set for a draft that replaces a saved recipe instead of
+	// creating one (ADR-00042); nil for a draft of a new recipe and for an edit.
+	Reimport *Reimport
 	// Snapshot is a draft's source; nil for an edit, and for a draft whose
 	// snapshot is gone.
 	Snapshot *Snapshot
@@ -157,7 +163,13 @@ func (p Provenance) validate() error {
 // source as a snapshot that has no recipe yet, and returns its token. A
 // household holds at most MaxPendingDrafts pending drafts: the next is
 // ErrDraftLimit, and nothing is dropped to make room. Edit proposals are not
-// counted.
+// counted, nor are re-imports.
+//
+// A document with a "reimport" marker is a re-import of a saved recipe
+// (ADR-00042; see reimport.go). It is not bounded; it is refused with
+// ErrStaleVersion when the recipe is not at the marker's version, and it
+// supersedes the recipe's pending edit and pending re-import, as ProposeEdit
+// does.
 func (s *Store) ProposeDraft(ctx context.Context, in DraftInput) (string, error) {
 	hid, err := scope(ctx)
 	if err != nil {
@@ -176,20 +188,32 @@ func (s *Store) ProposeDraft(ctx context.Context, in DraftInput) (string, error)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
+	re, err := draftReimport(in.Document)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
 	token, err := newToken()
 	if err != nil {
 		return "", err
 	}
+	var keys []string
 	err = s.withTx(ctx, func(q *storedb.Queries) error {
-		held, err := q.CountPendingDrafts(ctx, hid)
-		if err != nil {
-			return readErr("pending drafts", err)
-		}
-		if held >= MaxPendingDrafts {
-			return ErrDraftLimit
+		now := s.stamp()
+		if re == nil {
+			held, err := q.CountPendingDrafts(ctx, hid)
+			if err != nil {
+				return readErr("pending drafts", err)
+			}
+			if held >= MaxPendingDrafts {
+				return ErrDraftLimit
+			}
+		} else {
+			var err error
+			if keys, err = s.supersedeForReimport(ctx, q, hid, *re, now); err != nil {
+				return err
+			}
 		}
 		sum := sha256.Sum256(in.Source.Content)
-		now := s.stamp()
 		snapID, err := q.InsertUnattachedSnapshot(ctx, storedb.InsertUnattachedSnapshotParams{
 			HouseholdID: hid, Kind: string(in.Source.Kind), Content: in.Source.Content, Sha256: hex.EncodeToString(sum[:]),
 			CreatedAt: now, CreatedBy: in.Person, ParserVersion: in.Source.ParserVersion,
@@ -202,7 +226,24 @@ func (s *Store) ProposeDraft(ctx context.Context, in DraftInput) (string, error)
 	if err != nil {
 		return "", err
 	}
+	s.removeObjects(ctx, keys)
 	return token, nil
+}
+
+// supersedeForReimport checks that the recipe is at the version the re-import
+// started from and ends what was waiting to change it.
+func (s *Store) supersedeForReimport(ctx context.Context, q *storedb.Queries, hid int64, re Reimport, now string) ([]string, error) {
+	if err := lockRecipe(ctx, q, hid, re.RecipeID); err != nil {
+		return nil, err
+	}
+	cur, err := loadInfo(ctx, q, hid, re.RecipeID)
+	if err != nil {
+		return nil, err
+	}
+	if cur.Version != re.BaseVersion {
+		return nil, fmt.Errorf("%w: recipe %d is at version %d, not %d", ErrStaleVersion, re.RecipeID, cur.Version, re.BaseVersion)
+	}
+	return s.endPendingProposals(ctx, q, hid, re.RecipeID, now)
 }
 
 // PendingDrafts is how many drafts of new recipes the household on ctx has
@@ -228,7 +269,8 @@ func (s *Store) PendingDrafts(ctx context.Context) (int, error) {
 
 // ProposeEdit stores r as a pending proposal to replace recipe id, made
 // against baseVersion, and returns its token. A recipe has at most one pending
-// proposal: the one it had, if any, is kept with its state set to superseded.
+// proposal: the one it had, an edit or a re-import, is kept with its state set
+// to superseded.
 // A baseVersion that is not the recipe's current version is ErrStaleVersion
 // and writes nothing. r is validated as a whole recipe; a new step carries a
 // document-local label, as in any other write (recipe.StepID).
@@ -247,6 +289,7 @@ func (s *Store) ProposeEdit(ctx context.Context, id, baseVersion int64, r recipe
 	if err != nil {
 		return "", err
 	}
+	var keys []string
 	err = s.withTx(ctx, func(q *storedb.Queries) error {
 		if err := lockRecipe(ctx, q, hid, id); err != nil {
 			return err
@@ -271,14 +314,15 @@ func (s *Store) ProposeEdit(ctx context.Context, id, baseVersion int64, r recipe
 			return err
 		}
 		now := s.stamp()
-		if _, err := q.SetPendingEditSuperseded(ctx, storedb.SetPendingEditSupersededParams{StateAt: now, RecipeID: sql.NullInt64{Int64: id, Valid: true}, HouseholdID: hid}); err != nil {
-			return fmt.Errorf("supersede the pending proposal for recipe %d: %w", id, err)
+		if keys, err = s.endPendingProposals(ctx, q, hid, id, now); err != nil {
+			return err
 		}
 		return s.insertProposal(ctx, q, hid, token, ProposalEdit, id, baseVersion, sql.NullInt64{}, body, d.ingredientIDs(), by, now)
 	})
 	if err != nil {
 		return "", err
 	}
+	s.removeObjects(ctx, keys)
 	return token, nil
 }
 
@@ -405,6 +449,11 @@ func loadProposal(ctx context.Context, q *storedb.Queries, hid int64, token stri
 		}
 		p.Credential = c
 	}
+	if p.Kind == ProposalDraft {
+		if p.Reimport, err = draftReimport(p.Document); err != nil {
+			return Proposal{}, fmt.Errorf("%w: proposal %s: %w", ErrCorrupt, token, err)
+		}
+	}
 	if p.Kind == ProposalEdit {
 		units, err := loadUnits(ctx, q)
 		if err != nil {
@@ -449,6 +498,10 @@ func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) erro
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
+	replacing, err := draftReimport(doc)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
 	return s.withTx(ctx, func(q *storedb.Queries) error {
 		row, err := q.GetProposal(ctx, storedb.GetProposalParams{Token: token, HouseholdID: hid})
 		if errors.Is(err, sql.ErrNoRows) {
@@ -458,7 +511,14 @@ func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) erro
 			return readErr("proposal", err)
 		}
 		if ProposalKind(row.Kind) != ProposalDraft {
-			return fmt.Errorf("%w: proposal is not a draft of a new recipe", ErrInvalid)
+			return fmt.Errorf("%w: proposal is not a draft", ErrInvalid)
+		}
+		held, err := draftReimport([]byte(row.Document))
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrCorrupt, err)
+		}
+		if !sameReimport(held, replacing) {
+			return fmt.Errorf("%w: a draft cannot change the recipe it re-imports", ErrInvalid)
 		}
 		n, err := q.UpdateDraftDocument(ctx, storedb.UpdateDraftDocumentParams{Document: string(doc), ID: row.ID, HouseholdID: hid})
 		if err != nil {
@@ -475,6 +535,13 @@ func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) erro
 		}
 		return indexProposal(ctx, q, hid, row.ID, ids)
 	})
+}
+
+func sameReimport(a, b *Reimport) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 // RejectProposal turns the pending proposal with token down. It is kept for
@@ -532,6 +599,11 @@ func (s *Store) CreateFromDraft(ctx context.Context, token string, r recipe.Reci
 		}
 		if ProposalKind(row.Kind) != ProposalDraft {
 			return fmt.Errorf("%w: proposal is not a draft of a new recipe", ErrInvalid)
+		}
+		if re, err := draftReimport([]byte(row.Document)); err != nil {
+			return fmt.Errorf("%w: %w", ErrCorrupt, err)
+		} else if re != nil {
+			return fmt.Errorf("%w: proposal is a re-import, saved with AcceptReimport", ErrInvalid)
 		}
 		if ProposalState(row.State) != ProposalPending {
 			return ErrNotPending

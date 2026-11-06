@@ -28,6 +28,12 @@ func (twoCandidates) Candidates(context.Context, int64) ([]picture.Candidate, er
 
 func (twoCandidates) DeleteCandidates(context.Context, int64) error { return nil }
 
+func (twoCandidates) Key(context.Context, int64) (string, bool, error) {
+	return "recipes/5/abc.webp", true, nil
+}
+
+func (twoCandidates) Remove(context.Context, int64) error { return nil }
+
 func (twoCandidates) Promote(context.Context, int64, int, int64) (string, error) { return "", nil }
 
 // pickerFixture is a fixture whose drafts have two picture candidates.

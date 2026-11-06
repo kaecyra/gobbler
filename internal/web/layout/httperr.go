@@ -41,6 +41,7 @@ var statusTable = []struct {
 	// ErrFetch wraps whatever the HTTP client or the OS returned, so it is
 	// above every row that cause could match.
 	{ingestcore.ErrFetch, http.StatusBadGateway},
+	{ingestcore.ErrNoSourceURL, http.StatusConflict},
 	{ErrNotFound, http.StatusNotFound},
 	{catalog.ErrNotFound, http.StatusNotFound},
 	{ErrInvalid, http.StatusBadRequest},

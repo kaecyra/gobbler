@@ -226,6 +226,8 @@ const PROBES: Probe[] = [
   { ...hidden('POST', (i) => `/ingest/${i.token}/cancel`), other: 303, otherLocation: '/ingest' },
   { ...hidden('POST', () => '/ingest', () => ({ text: '1 cup other flour\nStir.' })), other: 303 },
   { ...hidden('POST', () => '/ingest/photo'), other: 400 },
+  // Re-importing another household's recipe finds no recipe to fetch the source of (ADR-00042).
+  hidden('POST', (i) => `/ingest/reimport/${i.recipe}`),
 
   // Sharing: only the sender can send its recipe, and only the recipient can act on a share.
   hidden('GET', (i) => `/shares/new/${i.recipe}`),

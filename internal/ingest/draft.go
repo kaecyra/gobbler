@@ -200,6 +200,10 @@ type Draft struct {
 	// Picture is the person's choice among the draft's picture candidates, or
 	// PictureNone (ADR-00039, Choosing). It is part of the draft document.
 	Picture PictureChoice
+	// Reimport is set when the draft replaces a saved recipe instead of creating
+	// one (ADR-00042): the recipe and the version the re-import started from.
+	// It is part of the draft document, where the store reads it.
+	Reimport *Reimport
 	// Candidates is how many picture candidates the held draft has and
 	// ProposalID the proposal that holds them. Drafts.Get sets both from the
 	// held draft; they are not in the document.

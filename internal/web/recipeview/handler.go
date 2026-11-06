@@ -43,6 +43,9 @@ type Recipes interface {
 	PendingEdit(ctx context.Context, id int64) (store.Proposal, bool, error)
 	GetProposal(ctx context.Context, token string) (store.Proposal, error)
 	RejectProposal(ctx context.Context, token string) error
+	// PendingReimport finds the recipe's pending re-import from its source
+	// (ADR-00042), which the page announces in a banner.
+	PendingReimport(ctx context.Context, id int64) (store.Proposal, bool, error)
 }
 
 // Catalog is what the view reads from the ingredient and equipment catalog.
@@ -193,6 +196,11 @@ func handle(d Deps) http.HandlerFunc {
 			v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
 		}
 		if v.Proposal, err = proposalFor(r.Context(), d, id, rec, info.Version); err != nil {
+			layout.WriteError(w, r, err)
+			return
+		}
+		v.CanReimport = rec.SourceURL != ""
+		if v.Reimport, err = reimportFor(r.Context(), d, id, rec.SourceURL, info.Version); err != nil {
 			layout.WriteError(w, r, err)
 			return
 		}

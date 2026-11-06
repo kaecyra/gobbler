@@ -349,11 +349,21 @@ func (s *Store) DeleteWithPicture(ctx context.Context, id int64, r PictureReaper
 	// Through db.WithTx, not the bare pool, so the delete queues with the other
 	// writers instead of contending with them for the SQLite write lock (#104).
 	err = db.WithTx(ctx, s.db, s.q, func(q *storedb.Queries, tx *sql.Tx) error {
+		// A re-import draft names its recipe in its document, so no foreign key
+		// ends it with the recipe: end it here, with its candidates.
+		ender := s
 		if r != nil {
-			var err error
+			ender = s.WithObjects(r)
+		}
+		drafted, err := ender.endPendingReimports(ctx, q, hid, id, s.stamp())
+		if err != nil {
+			return err
+		}
+		if r != nil {
 			if keys, err = r.CollectRecipe(ctx, tx, hid, id); err != nil {
 				return err
 			}
+			keys = append(keys, drafted...)
 		}
 		n, err := q.DeleteRecipe(ctx, storedb.DeleteRecipeParams{ID: id, HouseholdID: hid})
 		if err != nil {

@@ -34,13 +34,18 @@ type currentRow struct {
 
 // proposalNote is what history says of a proposal: who made it, through which
 // credential, and why (ADR-00035).
-type proposalNote struct{ By, Reason string }
+type proposalNote struct {
+	By, Reason string
+	// Reimport says the version came from saving a re-import (ADR-00042): the
+	// reason is then the whole note, "Re-imported from <source host>".
+	Reimport bool
+}
 
 func noteOf(p *store.ProposalRef) *proposalNote {
 	if p == nil {
 		return nil
 	}
-	return &proposalNote{By: p.Describe(), Reason: p.Reason}
+	return &proposalNote{By: p.Describe(), Reason: p.Reason, Reimport: p.Reimport}
 }
 
 type revisionRow struct {

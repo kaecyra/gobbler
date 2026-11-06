@@ -98,6 +98,7 @@ func (s *Store) ListRevisions(ctx context.Context, id int64) ([]Revision, error)
 			if err != nil {
 				return err
 			}
+			ref.Reimport = r.Reimport
 			byVersion[r.Version] = ref
 		}
 		for i := range out {

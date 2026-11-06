@@ -17,6 +17,9 @@ const (
 	fieldPicture = "picture"
 	// pictureNone is the value of the "No picture" radio.
 	pictureNone = "none"
+	// pictureKeep is the value of the "Keep current picture" radio, offered on a
+	// re-import (ADR-00042).
+	pictureKeep = "keep"
 )
 
 // pickOption is one candidate in the picker.
@@ -37,13 +40,33 @@ type pickerView struct {
 	NoneChecked bool
 	// Chosen is whether any option is the choice.
 	Chosen bool
+	// Keep is "Keep current picture", offered only on a re-import and its
+	// default. KeepSrc is the address of the picture it keeps, empty when the
+	// recipe has none.
+	Keep        bool
+	KeepChecked bool
+	KeepSrc     string
 }
 
 // picker builds the picker for d. A draft with candidates starts with no
 // choice, and confirm refuses until one is made.
 func (h *handler) picker(ctx context.Context, d ingestcore.Draft) (pickerView, error) {
-	v := pickerView{NoneChecked: d.Picture == ingestcore.PictureNone || d.Candidates == 0}
-	v.Chosen = v.NoneChecked
+	v := pickerView{NoneChecked: d.Picture == ingestcore.PictureNone || (d.Candidates == 0 && d.Reimport == nil)}
+	if d.Reimport != nil {
+		// Keeping the picture is the default, so no choice is ever missing.
+		v.Keep = true
+		v.KeepChecked = d.Picture == ingestcore.PictureKeep || d.Picture == ingestcore.PictureUnchosen
+		if h.pictures != nil {
+			key, ok, err := h.pictures.Key(ctx, d.Reimport.RecipeID)
+			if err != nil {
+				return pickerView{}, fmt.Errorf("read the recipe's picture: %w", err)
+			}
+			if ok {
+				v.KeepSrc = webpicture.Src(d.Reimport.RecipeID, key)
+			}
+		}
+	}
+	v.Chosen = v.NoneChecked || v.KeepChecked
 	if d.Candidates == 0 {
 		return v, nil
 	}
@@ -73,14 +96,16 @@ func (h *handler) choosePicture(ctx context.Context, token, value string, base *
 		return nil
 	}
 	choice := ingestcore.PictureNone
-	if value != pictureNone {
+	if value == pictureKeep {
+		choice = ingestcore.PictureKeep
+	} else if value != pictureNone {
 		n, err := strconv.Atoi(value)
 		if err != nil || n < 1 {
 			return fmt.Errorf("picture %q: %w", value, layout.ErrInvalid)
 		}
 		choice = ingestcore.PictureChoice(n)
 	}
-	if choice == base.Picture {
+	if choice == base.Picture || (choice == ingestcore.PictureKeep && base.Picture == ingestcore.PictureUnchosen && base.Reimport != nil) {
 		return nil
 	}
 	err := h.drafts.ChoosePicture(ctx, token, choice)

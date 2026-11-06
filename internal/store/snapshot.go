@@ -13,7 +13,9 @@ import (
 )
 
 // ErrSnapshotExists is returned when a recipe already has a source snapshot of
-// that kind. A snapshot is stored once and there is no way to replace it.
+// that kind and a caller asked to add another. Nothing replaces a snapshot; the
+// only way a recipe gains a second of a kind is a saved re-import
+// (AcceptReimport, ADR-00042).
 var ErrSnapshotExists = errors.New("source snapshot already stored")
 
 // SnapshotKind says what the ingested input was (ADR-00004).
@@ -57,8 +59,8 @@ type Snapshot struct {
 // and deletes one no recipe holds. None of that changes content, and none is
 // exported as a snapshot operation.
 
-// AddSnapshot stores the ingested input of recipe id. Each kind is stored once
-// per recipe; a second AddSnapshot of the same kind is ErrSnapshotExists and
+// AddSnapshot stores the ingested input of recipe id. It adds a kind once; a
+// second AddSnapshot of the same kind is ErrSnapshotExists and
 // leaves the first untouched. A missing recipe is ErrNotFound.
 func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, content []byte) error {
 	who, err := identity(ctx)
@@ -81,7 +83,7 @@ func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, co
 }
 
 // insertSnapshot writes one snapshot with no recorded parser version: what
-// AddSnapshot and a shared recipe's snapshots are.
+// AddSnapshot stores.
 func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, kind SnapshotKind, content []byte, who string) error {
 	return s.insertVersionedSnapshot(ctx, q, hid, id, SnapshotInput{Kind: kind, Content: content}, who)
 }
@@ -89,9 +91,12 @@ func (s *Store) insertSnapshot(ctx context.Context, q *storedb.Queries, hid, id 
 // insertVersionedSnapshot writes one snapshot inside the transaction q is
 // bound to. The caller holds the write lock on the recipe, which makes the
 // existence check and the insert atomic, so no concurrent writer can slip a
-// duplicate in between; the UNIQUE constraint is the backstop.
+// duplicate in between. Since migration 00032 nothing in the schema backs the
+// check up: this is the only guard for a kind given twice. A caller that may
+// legitimately add a second snapshot of a kind (a share copying a re-imported
+// recipe) uses writeSnapshot.
 func (s *Store) insertVersionedSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, in SnapshotInput, who string) error {
-	kind, content := in.Kind, in.Content
+	kind := in.Kind
 	if !kind.Valid() {
 		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, kind)
 	}
@@ -102,13 +107,22 @@ func (s *Store) insertVersionedSnapshot(ctx context.Context, q *storedb.Queries,
 	if existing > 0 {
 		return fmt.Errorf("%w: recipe %d kind %s", ErrSnapshotExists, id, kind)
 	}
-	sum := sha256.Sum256(content)
-	err = q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
-		HouseholdID: hid, RecipeID: nullID(id), Kind: string(kind), Content: content, Sha256: hex.EncodeToString(sum[:]),
+	return s.writeSnapshot(ctx, q, hid, id, in, who)
+}
+
+// writeSnapshot hashes and stores one snapshot of recipe id with no check for
+// another of its kind.
+func (s *Store) writeSnapshot(ctx context.Context, q *storedb.Queries, hid, id int64, in SnapshotInput, who string) error {
+	if !in.Kind.Valid() {
+		return fmt.Errorf("%w: snapshot kind %q", ErrInvalid, in.Kind)
+	}
+	sum := sha256.Sum256(in.Content)
+	err := q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
+		HouseholdID: hid, RecipeID: nullID(id), Kind: string(in.Kind), Content: in.Content, Sha256: hex.EncodeToString(sum[:]),
 		CreatedAt: s.stamp(), CreatedBy: who, ParserVersion: in.ParserVersion,
 	})
 	if err != nil {
-		return fmt.Errorf("write %s snapshot of recipe %d: %w", kind, id, err)
+		return fmt.Errorf("write %s snapshot of recipe %d: %w", in.Kind, id, err)
 	}
 	return nil
 }

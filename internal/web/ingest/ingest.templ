@@ -33,6 +33,7 @@ templ styles() {
 		.ingest-form input[type=file] { padding: 8px 12px; }
 		.ingest-form textarea { min-height: 12rem; font-family: var(--f-mono); font-size: 14px; line-height: 1.65; }
 		.ingest-form input:focus-visible, .ingest-form textarea:focus-visible { outline: none; border-color: var(--wattle); }
+		.reimport-note { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
 		.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 		.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
 		.retry-form { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; }
@@ -149,6 +150,9 @@ templ reviewPage(v reviewView) {
 			if v.PhotoGone {
 				<p class="muted" id="photo-gone">The photo this recipe was read from is no longer available. Asking the LLM again reads the recognised text alone.</p>
 			}
+			if v.Reimport != nil {
+				<p class="reimport-note" role="status" data-testid="reimport-callout">Saving replaces the current recipe. Your earlier edits are kept in History.</p>
+			}
 			@picker(v.Picker)
 			<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
 			<div class="review-grid">
@@ -171,6 +175,26 @@ templ picker(p pickerView) {
 	<div class="picker">
 		<span class="eyebrow">Picture</span>
 		<div class="picker-row" role="radiogroup" aria-label="Picture for this recipe">
+			if p.Keep {
+				<label class="pick keep" data-testid="pick-keep">
+					<input class="sr" type="radio" name={ fieldPicture } value={ pictureKeep } form={ editor.FormID } checked?={ p.KeepChecked }/>
+					<span class="th">
+						if p.KeepSrc != "" {
+							<img src={ p.KeepSrc } alt="" loading="lazy" decoding="async"/>
+						} else {
+							@layout.Icon(layout.IconNone)
+						}
+						<i class="tick">@layout.Icon(layout.IconCheck)</i>
+					</span>
+					<span class="cap"><b>Keep current picture</b><br/>
+						if p.KeepSrc != "" {
+							Left as it is
+						} else {
+							The recipe has none
+						}
+					</span>
+				</label>
+			}
 			for _, o := range p.Options {
 				<label class="pick">
 					<input class="sr" type="radio" name={ fieldPicture } value={ o.Value } form={ editor.FormID } checked?={ o.Checked }/>

@@ -9,7 +9,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
-// A draft of a new recipe waits for review as a pending proposal in the
+// A draft of a new recipe, or of a re-import of a saved recipe (ADR-00042),
+// waits for review as a pending proposal in the
 // proposals table (ADR-00035), under a random token, until the person confirms
 // or discards it or a year passes. That replaces the in-memory table drafts
 // were held in, which expired after an hour and was emptied by a restart.
@@ -22,7 +23,7 @@ import (
 
 // ErrDraftGone is returned (wrapped) for a token that names no pending draft of
 // the household: unknown, another household's, already confirmed or discarded,
-// expired, or a proposal that is not a draft of a new recipe.
+// expired, or a proposal that is not an ingestion draft.
 var ErrDraftGone = errors.New("that draft is no longer available")
 
 // DraftStore is what Drafts calls on the proposals table; *store.Store
@@ -46,8 +47,10 @@ type Drafts struct {
 func NewDrafts(s DraftStore) *Drafts { return &Drafts{store: s} }
 
 // Add holds d for the household on ctx and returns the token that retrieves it.
-// The household holds at most store.MaxPendingDrafts: past that Add returns
-// store.ErrDraftLimit and holds nothing, and no older draft is dropped. d's
+// The household holds at most store.MaxPendingDrafts drafts of new recipes:
+// past that Add returns store.ErrDraftLimit and holds nothing, and no older
+// draft is dropped. A re-import (d.Reimport set) is not counted or refused for
+// the limit; it supersedes the recipe's pending edit or re-import. d's
 // source is stored with it as a source snapshot that confirming attaches to the
 // recipe; the photo behind an OCR source is not stored.
 func (d *Drafts) Add(ctx context.Context, dr Draft, by store.Provenance) (string, error) {

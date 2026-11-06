@@ -134,7 +134,7 @@ func Routes(d Deps) (http.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("mcp: %w", err)
 	}
-	t := &tools{Deps: d, log: log, shop: shop}
+	t := &tools{Deps: d, log: log, shop: shop, reimporter: ingest.NewReimporter(d.Recipes, d.Drafter, d.Drafts)}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "gobbler", Version: version}, &mcp.ServerOptions{
 		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once.",
 	})

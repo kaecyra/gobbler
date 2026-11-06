@@ -102,6 +102,11 @@ type docYield struct {
 	Unit string  `json:"unit,omitempty"`
 }
 
+type docReimport struct {
+	Recipe      int64 `json:"recipe"`
+	BaseVersion int64 `json:"base_version"`
+}
+
 type docDraft struct {
 	ParserVersion string `json:"parser_version,omitempty"`
 	SourceURL     string `json:"source_url,omitempty"`
@@ -117,11 +122,12 @@ type docDraft struct {
 	Cook        docField[int64]    `json:"cook"`
 	Total       docField[int64]    `json:"total"`
 
-	VideoID    string `json:"video_id,omitempty"`
-	Picture    int    `json:"picture,omitempty"`
-	MealType   string `json:"meal_type,omitempty"`
-	SpiceLevel *int   `json:"spice_level,omitempty"`
-	Cuisine    string `json:"cuisine,omitempty"`
+	VideoID    string       `json:"video_id,omitempty"`
+	Picture    int          `json:"picture,omitempty"`
+	Reimport   *docReimport `json:"reimport,omitempty"`
+	MealType   string       `json:"meal_type,omitempty"`
+	SpiceLevel *int         `json:"spice_level,omitempty"`
+	Cuisine    string       `json:"cuisine,omitempty"`
 
 	Components []docComponent `json:"components"`
 	Equipment  []docEquipment `json:"equipment,omitempty"`
@@ -189,6 +195,9 @@ func EncodeDraft(d Draft) ([]byte, error) {
 		VideoID:     d.VideoID, Picture: int(d.Picture), MealType: string(d.MealType), SpiceLevel: d.SpiceLevel, Cuisine: string(d.Cuisine),
 		Overall: d.Overall, Threshold: d.Threshold, BelowThreshold: d.BelowThreshold,
 		UsedLLM: d.UsedLLM, LLMError: d.LLMError, Issues: d.Issues, Proposed: d.Proposed,
+	}
+	if d.Reimport != nil {
+		out.Reimport = &docReimport{Recipe: d.Reimport.RecipeID, BaseVersion: d.Reimport.BaseVersion}
 	}
 	yq, err := encodeQ(d.Yield.Value.Qty)
 	if err != nil {
@@ -272,6 +281,9 @@ func DecodeDraft(doc []byte, snap store.Snapshot) (Draft, error) {
 		VideoID:     in.VideoID, Picture: PictureChoice(in.Picture), MealType: recipe.MealType(in.MealType), SpiceLevel: in.SpiceLevel, Cuisine: recipe.Cuisine(in.Cuisine),
 		Overall: in.Overall, Threshold: in.Threshold, BelowThreshold: in.BelowThreshold,
 		UsedLLM: in.UsedLLM, LLMError: in.LLMError, Issues: in.Issues, Proposed: in.Proposed,
+	}
+	if in.Reimport != nil {
+		d.Reimport = &Reimport{RecipeID: in.Reimport.Recipe, BaseVersion: in.Reimport.BaseVersion}
 	}
 	var err error
 	yq, err := decodeQ(in.Yield.V.Qty)

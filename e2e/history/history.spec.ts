@@ -25,6 +25,7 @@ let dataDir = '';
 let server: ChildProcess | undefined;
 let edited = 0;
 let plain = 0;
+let reimported = 0;
 
 test.use({ baseURL: origin });
 // The tests change one database in order: one worker, in sequence.
@@ -35,7 +36,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_HISTORY_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-history-'));
   const out = execFileSync('go', ['run', './e2e/history/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ edited, plain } = JSON.parse(out));
+  ({ edited, plain, reimported } = JSON.parse(out));
   server = spawn(bin, ['serve'], {
     env: {
       PATH: process.env.PATH ?? '',
@@ -185,4 +186,14 @@ test('every control on a version page is at least 44px tall', async ({ page }) =
   await expectTall(page, 'restore summary', '.restore summary');
   await page.getByText('Restore this version').click();
   await expectTall(page, 'restore button', '.restore button');
+});
+
+// ADR-00042 obligation 11: the version a saved re-import wrote says where it
+// came from, by the source's host, on the list and on the current version.
+test('history says a version was written by a re-import from the source host', async ({ page }) => {
+  await page.goto(`/recipes/${reimported}/history`);
+  await expect(page.getByTestId('current-proposal')).toHaveText('Re-imported from recipes.example.test.');
+  await expect(page.getByTestId('revision-proposal')).toHaveText('Re-imported from recipes.example.test.');
+  await expect(page.getByTestId('revision-proposal')).not.toContainText('Proposed by');
+  await expect(page.getByTestId('revision')).toContainText('replaced by a saved proposal');
 });

@@ -9,6 +9,22 @@ import (
 	"context"
 )
 
+const deleteProposalCandidates = `-- name: DeleteProposalCandidates :exec
+DELETE FROM draft_candidates WHERE household_id = ? AND proposal_id = ?
+`
+
+type DeleteProposalCandidatesParams struct {
+	HouseholdID int64
+	ProposalID  int64
+}
+
+// A superseded re-import draft's candidates are deleted at once, rows and
+// (by the caller, after commit) objects, instead of waiting for the sweep.
+func (q *Queries) DeleteProposalCandidates(ctx context.Context, arg DeleteProposalCandidatesParams) error {
+	_, err := q.db.ExecContext(ctx, deleteProposalCandidates, arg.HouseholdID, arg.ProposalID)
+	return err
+}
+
 const listProposalCandidateKeys = `-- name: ListProposalCandidateKeys :many
 
 SELECT key FROM draft_candidates WHERE household_id = ? AND proposal_id = ?
