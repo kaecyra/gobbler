@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 24, m-picture-user-agent in flight
+# Overseer handoff: 2026-11-06, round 24, a-api-recipes in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -20,13 +20,17 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 | (ADR-00042 correction, owner ruling ib-89c94bbedfa8) | #480 | d031bc0 | none | none |
 | (graph: i-reimport wiring test, web.go exception) | #482 | 60c51c9 | none | none |
-| (graph: m-picture-user-agent node) | #484 | ae45bab | none | none |
 | i-reimport | #481 | 1f37b72 | 00032 | 0.121.0 |
 
-**In flight:** m-picture-user-agent (#483), worktree wt-483, branch fix/483-picture-user-agent, no
-migration, target 0.121.1. Owner-reported bug: picture downloads sent Go's default user agent and
-gimmesomeoven.com answers 403; the page fetch already sends the configured agent. After merge, re-run
-https://www.gimmesomeoven.com/honey-beer-bread/ by hand and check the 1392x2088 og:image is offered.
+| (graph: m-picture-user-agent node) | #484 | ae45bab | none | none |
+| m-picture-user-agent | #485 | 621c0b3 | none | 0.121.1 |
+| (graph: a-api-recipes lane) | #486 | ebd89ca | none | none |
+
+**In flight:** a-api-recipes (#470), worktree wt-470, branch refactor/470-api-recipes, no migration,
+target 0.121.2. Large; told to stop at a green coherent point if it cannot finish.
+
+**For the owner:** after the next deploy, re-import https://www.gimmesomeoven.com/honey-beer-bread/ and
+check the 1392x2088 og:image is offered (#483 acceptance; needs the live fetch).
 
 - **a-api-shopping pattern** (for a-api-recipes): `Service.Op(ctx, Caller, ...)`; `Caller{Person,
   Household, HouseholdKey}`; `enter()` checks membership with `household.ForEmail` unless the caller is
@@ -40,9 +44,8 @@ https://www.gimmesomeoven.com/honey-beer-bread/ by hand and check the 1392x2088 
   picturedb. Generate it from `shared_files` instead.
 - Labels: #469, #462 moved dor:blocked to dor:ready; #395 gained dor:ready.
 
-**Next:** a-api-recipes (#470) after m-picture-user-agent; it also removes the editor/build.go
-depguard exception. o-demo-reseed (#432) still waits on a deploy. Migration numbers: schema last used
-00032.
+**Next:** a-api-rest (#471) splits into per-resource nodes once a-api-recipes sets the pattern.
+o-demo-reseed (#432) still waits on a deploy. Schema migrations last used 00032.
 
 ## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
 
