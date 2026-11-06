@@ -15,10 +15,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -28,24 +29,24 @@ const Pattern = "/recipes/{id}"
 
 // Recipes is what the view reads from the recipe store.
 type Recipes interface {
-	Get(ctx context.Context, id int64) (recipe.Recipe, error)
-	Info(ctx context.Context, id int64) (store.Info, error)
+	Get(ctx context.Context, c apirecipes.Caller, id int64) (recipe.Recipe, error)
+	Info(ctx context.Context, c apirecipes.Caller, id int64) (apirecipes.Info, error)
 	// HasThumbnail and Thumbnail serve the preview image of the recipe's video
 	// (ADR-00021). Thumbnail is by recipe, never by video ID.
-	HasThumbnail(ctx context.Context, videoID string) (bool, error)
-	Thumbnail(ctx context.Context, id int64) (store.Thumbnail, error)
+	HasThumbnail(ctx context.Context, c apirecipes.Caller, videoID string) (bool, error)
+	Thumbnail(ctx context.Context, c apirecipes.Caller, id int64) (apirecipes.Thumbnail, error)
 	// ListNotes and ListMadeIt feed the tips (pinned notes) and the made
 	// count on the page (ADR-00022).
-	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
-	ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error)
+	ListNotes(ctx context.Context, c apirecipes.Caller, id int64) ([]apirecipes.Note, error)
+	ListMadeIt(ctx context.Context, c apirecipes.Caller, id int64) ([]apirecipes.MadeIt, error)
 	// PendingEdit, GetProposal and RejectProposal show and turn down an agent's
 	// proposed edit to the recipe (ADR-00035).
-	PendingEdit(ctx context.Context, id int64) (store.Proposal, bool, error)
-	GetProposal(ctx context.Context, token string) (store.Proposal, error)
-	RejectProposal(ctx context.Context, token string) error
+	PendingEdit(ctx context.Context, c apirecipes.Caller, id int64) (apirecipes.Proposal, bool, error)
+	GetProposal(ctx context.Context, c apirecipes.Caller, token string) (apirecipes.Proposal, error)
+	RejectProposal(ctx context.Context, c apirecipes.Caller, token string) error
 	// PendingReimport finds the recipe's pending re-import from its source
 	// (ADR-00042), which the page announces in a banner.
-	PendingReimport(ctx context.Context, id int64) (store.Proposal, bool, error)
+	PendingReimport(ctx context.Context, c apirecipes.Caller, id int64) (apirecipes.Proposal, bool, error)
 }
 
 // Catalog is what the view reads from the ingredient and equipment catalog.
@@ -97,7 +98,7 @@ func thumbnail(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, err)
 			return
 		}
-		t, err := d.Recipes.Thumbnail(r.Context(), id)
+		t, err := d.Recipes.Thumbnail(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load thumbnail of recipe %d: %w", id, err))
 			return
@@ -129,12 +130,12 @@ func handle(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, err)
 			return
 		}
-		rec, err := d.Recipes.Get(r.Context(), id)
+		rec, err := d.Recipes.Get(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
-		info, err := d.Recipes.Info(r.Context(), id)
+		info, err := d.Recipes.Info(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load info of recipe %d: %w", id, err))
 			return
@@ -168,25 +169,25 @@ func handle(d Deps) http.HandlerFunc {
 			// A recipe deleted since it was read has no picture to show: an
 			// answer, not a failure. Any other error is one.
 			v.Picture, err = d.Pictures.Src(r.Context(), id)
-			if err != nil && !errors.Is(err, store.ErrNotFound) {
+			if err != nil && !errors.Is(err, apirecipes.ErrNotFound) {
 				layout.WriteError(w, r, fmt.Errorf("find picture of recipe %d: %w", id, err))
 				return
 			}
 		}
 		if rec.VideoID != "" {
-			has, err := d.Recipes.HasThumbnail(r.Context(), rec.VideoID)
+			has, err := d.Recipes.HasThumbnail(r.Context(), caller.FromContext(r.Context()), rec.VideoID)
 			if err != nil {
 				layout.WriteError(w, r, fmt.Errorf("check thumbnail of recipe %d: %w", id, err))
 				return
 			}
 			v.HasThumbnail = has
 		}
-		notes, err := d.Recipes.ListNotes(r.Context(), id)
+		notes, err := d.Recipes.ListNotes(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load notes of recipe %d: %w", id, err))
 			return
 		}
-		made, err := d.Recipes.ListMadeIt(r.Context(), id)
+		made, err := d.Recipes.ListMadeIt(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load made-it log of recipe %d: %w", id, err))
 			return

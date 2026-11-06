@@ -29,7 +29,7 @@ func newReimportFixture(t *testing.T, sourceURL string) *reimportFixture {
 		t.Fatal(err)
 	}
 	return &reimportFixture{id: id, rs: rs, ctx: ctx, get: func() string {
-		rec := serveRequest(t, rs, cs, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/recipes/%d", id), nil).WithContext(ctx))
+		rec := serveRequest(t, serviceFor(ctx, t, rs, nil), cs, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/recipes/%d", id), nil).WithContext(ctx))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d", rec.Code)
 		}

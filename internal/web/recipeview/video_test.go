@@ -33,7 +33,7 @@ func videoRecipe(t *testing.T, videoID string, thumb bool) (page func(path strin
 		}
 	}
 	return func(path string) *httptest.ResponseRecorder {
-		return serveRequest(t, rs, cs, httptest.NewRequest(http.MethodGet, path, nil).WithContext(ctx))
+		return serveRequest(t, serviceFor(ctx, t, rs, nil), cs, httptest.NewRequest(http.MethodGet, path, nil).WithContext(ctx))
 	}, id, rs
 }
 
@@ -89,7 +89,7 @@ func TestPageOfARecipeWithoutAVideoHasNoPlayer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec := serveRequest(t, rs, cs, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/recipes/%d", id), nil).WithContext(ctx))
+	rec := serveRequest(t, serviceFor(ctx, t, rs, nil), cs, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/recipes/%d", id), nil).WithContext(ctx))
 	mustNotContain(t, rec.Body.String(), `data-testid="video"`, "video.js", "video.css")
 }
 

@@ -13,6 +13,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+	"github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
@@ -34,7 +37,27 @@ func (f *fakeReaper) Remove(_ context.Context, keys []string) {
 	}
 }
 
-func deleteRequest(ctx context.Context, t *testing.T, rs *store.Store, reaper store.PictureReaper, method, path string, form url.Values) *httptest.ResponseRecorder {
+// devMembers admits the one household the test context names.
+type devMembers struct{ h household.Household }
+
+func (m devMembers) ForEmail(context.Context, string) (household.Household, error) { return m.h, nil }
+
+// serviceFor is the recipe service over rs for the household ctx names, with
+// reaper standing in for the media store.
+func serviceFor(ctx context.Context, t *testing.T, rs *store.Store, reaper apirecipes.Reaper) *apirecipes.Service {
+	t.Helper()
+	h, ok := household.FromContext(ctx)
+	if !ok {
+		t.Fatal("no household on the test context")
+	}
+	svc, err := apirecipes.New(apirecipes.Deps{Recipes: rs, Catalog: catalog.New(nil), Members: devMembers{h}, Reaper: reaper})
+	if err != nil {
+		t.Fatalf("recipes service: %v", err)
+	}
+	return svc
+}
+
+func deleteRequest(ctx context.Context, t *testing.T, rs *store.Store, reaper apirecipes.Reaper, method, path string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
 	var req *http.Request
 	if form != nil {
@@ -44,7 +67,7 @@ func deleteRequest(ctx context.Context, t *testing.T, rs *store.Store, reaper st
 		req = httptest.NewRequest(method, path, nil)
 	}
 	r := chi.NewRouter()
-	r.Mount(DeletePattern, DeleteRoutes(DeleteDeps{Recipes: rs, Reaper: reaper}))
+	r.Mount(DeletePattern, DeleteRoutes(DeleteDeps{Recipes: serviceFor(ctx, t, rs, reaper)}))
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req.WithContext(ctx))
 	return rec
@@ -128,11 +151,11 @@ func TestRecipePageOffersDelete(t *testing.T) {
 
 // failingDeleter finds every recipe and fails every delete with err.
 type failingDeleter struct {
-	*store.Store
+	*apirecipes.Service
 	err error
 }
 
-func (f failingDeleter) DeleteWithPicture(context.Context, int64, store.PictureReaper) error {
+func (f failingDeleter) Delete(context.Context, apirecipes.Caller, int64) error {
 	return f.err
 }
 
@@ -142,7 +165,7 @@ func TestDeleteOfARecipeOnAShoppingListSaysSoWithA409(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := failingDeleter{Store: rs, err: fmt.Errorf("delete recipe %d: %w", id, store.ErrOnShoppingList)}
+	d := failingDeleter{Service: serviceFor(ctx, t, rs, nil), err: fmt.Errorf("delete recipe %d: %w", id, store.ErrOnShoppingList)}
 	r := chi.NewRouter()
 	r.Mount(DeletePattern, DeleteRoutes(DeleteDeps{Recipes: d}))
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/recipes/%d/delete", id), strings.NewReader(url.Values{"confirm": {"DELETE"}}.Encode())).WithContext(ctx)

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -49,7 +50,7 @@ func storedFrom(t *testing.T, base recipe.Recipe, edit func(*recipe.Recipe)) (id
 		} else {
 			req = httptest.NewRequest(method, path, nil)
 		}
-		return serveRequest(t, rs, cs, req.WithContext(ctx))
+		return serveRequest(t, serviceFor(ctx, t, rs, nil), cs, req.WithContext(ctx))
 	}, rs, ctx
 }
 
@@ -113,7 +114,7 @@ func TestRejectTurnsTheProposalDownAndRefusesWhatIsNotTheRecipesPending(t *testi
 	if rec := get(http.MethodPost, path, url.Values{"proposal": {token}}); rec.Code != http.StatusConflict {
 		t.Errorf("rejecting twice: status %d, want 409", rec.Code)
 	}
-	if p, err := rs.GetProposal(ctx, token); err != nil || p.State != store.ProposalRejected {
+	if p, err := rs.GetProposal(ctx, token); err != nil || p.State != apirecipes.ProposalRejected {
 		t.Errorf("proposal = %+v (%v), want rejected", p.State, err)
 	}
 	if cur, _ := rs.Get(ctx, id); cur.Name != "Sponge <cake>" {
