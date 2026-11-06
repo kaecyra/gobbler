@@ -529,7 +529,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .pick .tick svg { width: 12px; height: 12px; display: block; }
 .pick:has(input:checked) .tick { display: grid; }
 .pick.none .th { display: grid; place-items: center; color: var(--ink-3); border: 1px dashed var(--slate); background: var(--sunk); }
-.pick.none .th svg { width: 30px; height: 30px; }
+.pick.none .th > svg { width: 30px; height: 30px; }
 .pick-note {
   display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 10px 14px; border-radius: var(--r);
   background: var(--grain-soft); color: var(--grain-ink); font-size: 15px;

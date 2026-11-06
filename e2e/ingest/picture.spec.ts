@@ -247,4 +247,10 @@ test('the tick and the No picture frame are drawings from the icon set', async (
   await none.click();
   await expect(none.locator('.tick')).toBeVisible();
   await expect(none.locator('.tick svg path')).toBeVisible();
+  // The tick stays 12px inside its circle on every option, not the frame's size.
+  for (const pick of await picker(p).locator('.pick').all()) {
+    if (!(await pick.getByRole('radio').isChecked())) await pick.click();
+    const box = (await pick.locator('.tick svg').boundingBox())!;
+    expect([Math.round(box.width), Math.round(box.height)]).toEqual([12, 12]);
+  }
 });
