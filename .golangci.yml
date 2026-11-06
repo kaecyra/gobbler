@@ -1,6 +1,26 @@
 version: "2"
 
 linters:
+  # golangci-lint v2 hides every issue in a file with a "Code generated ... DO
+  # NOT EDIT." header (exclusions.generated: lax, the default). Every
+  # *_templ.go carries one, so the depguard fences below never saw a templ file.
+  # The setting is global, not per linter, so it is turned off and the other
+  # linters are excluded from the two kinds of generated code this repository
+  # has (templ and sqlc output) by the rules here. depguard alone still reads
+  # them, which is what makes the fences cover templ files.
+  exclusions:
+    generated: disable
+    rules:
+      - path: '(_templ\.go|/[a-z]+db/[^/]+\.go)$'
+        linters:
+          - errcheck
+          - errorlint
+          - govet
+          - ineffassign
+          - nolintlint
+          - revive
+          - staticcheck
+          - unused
   default: standard # errcheck, govet, ineffassign, staticcheck, unused
   enable:
     - depguard
@@ -44,6 +64,7 @@ linters:
             # a-api-rest (#471): the journal.
             - "!**/internal/web/journal/handler.go"
             - "!**/internal/web/journal/view.go"
+            - "!**/internal/web/journal/journal_templ.go"
             # a-api-rest (#471): recipe sharing.
             - "!**/internal/web/sharing/handler.go"
             # a-api-rest (#471): the status table names the store's sentinels.
