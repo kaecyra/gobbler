@@ -275,16 +275,18 @@ func TestPluginNotesFromARealCard(t *testing.T) {
 func TestWPRMBlocksSplitASingleStatedStep(t *testing.T) {
 	res := mustExtract(t, fixture(t, "real_wprm_numbered_block"), fixtureURL)
 	got := res.Recipe.Instructions
-	if len(got) != 4 {
-		t.Fatalf("steps = %+v, want four", got)
+	if len(got) != 6 {
+		t.Fatalf("steps = %+v, want six", got)
 	}
-	if !strings.HasPrefix(got[0].Text, "1. In the bowl") || !strings.HasPrefix(got[3].Text, "4. Lightly dust") {
-		t.Errorf("steps = %+v, want one per numbered paragraph, in order", got)
+	for i, n := range []string{"1. In the bowl", "2. To make", "3. Preheat", "4. Lightly dust", "5. Cover the dish", "6. Bake the rolls"} {
+		if !strings.HasPrefix(got[i].Text, n) {
+			t.Errorf("step %d = %q, want it to open %q", i+1, got[i].Text, n)
+		}
 	}
 }
 
 func TestBlocksNeverSplitWhenWordsDiffer(t *testing.T) {
-	page := strings.Replace(fixture(t, "real_wprm_numbered_block"), "a pinch of salt.", "a pinch of pepper.", 1)
+	page := strings.Replace(fixture(t, "real_wprm_numbered_block"), "Combine the butter and honey together in a small bowl.", "Combine the butter and sugar together in a small bowl.", 1)
 	res := mustExtract(t, page, fixtureURL)
 	if got := len(res.Recipe.Instructions); got != 1 {
 		t.Errorf("steps = %d, want the stated one kept when the card disagrees", got)

@@ -85,15 +85,15 @@ func TestIngestNumberedBlocksBecomeSteps(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := flatSteps(d)
-	if len(got) != 4 {
-		t.Fatalf("steps = %+v, want four", got)
+	if len(got) != 6 {
+		t.Fatalf("steps = %+v, want six", got)
 	}
 	for i, s := range got {
 		if s.Text == "" || s.Text[0] >= '0' && s.Text[0] <= '9' {
 			t.Errorf("step %d = %q, want the number stripped", i+1, s.Text)
 		}
 	}
-	if !strings.Contains(got[1].Text, "honey butter") || !strings.Contains(got[3].Text, "bake for 25 minutes") {
+	if !strings.Contains(got[1].Text, "honey butter") || !strings.Contains(got[5].Text, "flaky sea salt") {
 		t.Errorf("steps out of order: %+v", got)
 	}
 }

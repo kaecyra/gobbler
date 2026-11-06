@@ -3,30 +3,81 @@
   "source_url": "https://www.example.com/recipes/1",
   "recipe": {
     "name": "Salted Honey Butter Parker House Rolls",
+    "author": "Tieghan Gerard",
+    "description": "The perfect rolls for all of your upcoming holiday dinners...Thanksgiving included!",
     "yield": [
       "12",
       "12 rolls"
     ],
+    "prep_time": "PT15M",
+    "cook_time": "PT20M",
+    "total_time": "PT80M",
+    "prep_duration": 900000000000,
+    "cook_duration": 1200000000000,
+    "total_duration": 4800000000000,
     "ingredients": [
-      "1 cup warm milk",
-      "2 1/4 teaspoons active dry yeast",
-      "4 cups all-purpose flour",
-      "1/2 cup salted butter",
-      "1/4 cup honey",
-      "flaky sea salt"
+      "3 1/2 cups all-purpose flour (plus more if needed)",
+      "1 packet Fleischmann’s® Rapid Rise Yeast",
+      "1/2 teaspoon kosher salt",
+      "1 cup warm whole milk",
+      "3 tablespoons honey",
+      "4 tablespoons salted butter (at room temperature)",
+      "1 large egg (at room temperature )",
+      "flaky sea salt (for topping)",
+      "6 tablespoons salted butter (melted)",
+      "3 tablespoons honey"
+    ],
+    "ingredient_groups": [
+      {
+        "lines": [
+          "3 1/2 cups all-purpose flour (plus more if needed)",
+          "1 packet Fleischmann’s® Rapid Rise Yeast",
+          "1/2 teaspoon kosher salt",
+          "1 cup warm whole milk",
+          "3 tablespoons honey",
+          "4 tablespoons salted butter (at room temperature)",
+          "1 large egg (at room temperature )",
+          "flaky sea salt (for topping)"
+        ]
+      },
+      {
+        "name": "Honey Butter",
+        "lines": [
+          "6 tablespoons salted butter (melted)",
+          "3 tablespoons honey"
+        ]
+      }
     ],
     "instructions": [
       {
-        "text": "1. In the bowl of a stand mixer, combine the milk, yeast and flour. Knead until smooth, about 8 minutes, then let rise for 1 hour."
+        "text": "1. In the bowl of a stand mixer, combine the flour, yeast, and salt. Add the warm milk, honey, the egg, and butter. Using the dough hook, mix until the flour is completely incorporated, about 4-5 minutes. If the dough seems sticky, add the remaining 1/4 cup of flour. Cover the bowl with plastic wrap and let sit at room temperature for 15 minutes or up to a few hours at room temperature."
       },
       {
-        "text": "2. To make the honey butter, melt the butter with the honey and a pinch of salt."
+        "text": "2. To make the honey butter. Combine the butter and honey together in a small bowl."
       },
       {
-        "text": "3. Preheat the oven to 375 degrees F. Roll the dough out and cut into rounds. Fold each round and arrange in a buttered baking dish."
+        "text": "3. Preheat the oven to 350 degrees F. Grease a 9×13 inch baking dish."
       },
       {
-        "text": "4. Lightly dust the rolls with flour, brush with the honey butter and bake for 25 minutes."
+        "text": "4. Lightly dust your work surface with flour. Turn out the dough, punch it down, and divide the dough in half. Roll each half to a 12-inch square, about 1/4-inch thick. Brush each square with honey butter, saving any leftover butter for serving. Cut each square of dough into 6 strips. Roll each strip into a coil (see above photo) and arrange seam side down in the prepared baking dish."
+      },
+      {
+        "text": "5. Cover the dish and let the rolls rise for about 30 minutes, until they're puffy. Alternately, you can let the rolls sit in the fridge overnight."
+      },
+      {
+        "text": "6. Bake the rolls for 18-25 minutes, until they're golden brown. Remove them from the oven and brush with the remaining honey butter. Pull them apart to serve warm with flaky sea salt."
+      }
+    ],
+    "calories": "290 kcal",
+    "image_urls": [
+      "https://www.halfbakedharvest.com/wp-content/uploads/2019/11/Salted-Honey-Butter-Parker-House-Rolls-1.jpg",
+      "https://www.halfbakedharvest.com/wp-content/uploads/2019/11/Salted-Honey-Butter-Parker-House-Rolls-1-500x500.jpg",
+      "https://www.halfbakedharvest.com/wp-content/uploads/2019/11/Salted-Honey-Butter-Parker-House-Rolls-1-500x375.jpg",
+      "https://www.halfbakedharvest.com/wp-content/uploads/2019/11/Salted-Honey-Butter-Parker-House-Rolls-1-480x270.jpg"
+    ],
+    "notes": [
+      {
+        "text": "To Make Ahead: prepare the rolls through step 4. Do not let the rolls rise at room temp. Cover the rolls and place in the fridge (up to overnight). When ready to bake, remove the rolls from the fridge 30 minutes prior to baking, then bake as directed. To Prepare and Freeze: assemble the rolls through step 5, then cover the pan and freeze for up to 3 months. Thaw the rolls overnight in the fridge or on the counter for a few hours. Once thawed, bake as directed. To Bake and Freeze: bake the rolls as directed and let cool completely. Cover well and freeze for up to 3 months. Thaw and warm before serving. To Use Active Dry Yeast: Mix 1 packet (2 1/4 teaspoons) active dry yeast with the warm milk and honey. Let sit 5-10 minutes, until bubbly and foamy on top. Add the flour and follow the directions as listed for the remainder of the recipe."
       }
     ]
   }

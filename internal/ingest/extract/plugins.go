@@ -93,7 +93,7 @@ func splitByBlocks(steps, flat []InstructionStep) ([]InstructionStep, bool) {
 			out = append(out, flat[i])
 			continue
 		}
-		if wordKey(strings.Join(s.blocks, " ")) != wordKey(flat[i].Text) {
+		if textKey(strings.Join(s.blocks, " ")) != textKey(flat[i].Text) {
 			return nil, false
 		}
 		split = true
@@ -249,6 +249,24 @@ func splitTitle(title, text string) (string, string) {
 		return "", text
 	}
 	return title, rest
+}
+
+// textKey is s's letters and digits in order, lower-case, with character
+// references decoded and the multiplication sign read as an "x". JSON-LD and
+// the card print one text differently: "&#x27;" for an apostrophe, "9x13" for
+// "9×13". Unlike wordKey it keeps the order, so a split that reorders text
+// does not pass.
+func textKey(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(html.UnescapeString(s)) {
+		switch {
+		case r == '\u00d7':
+			b.WriteByte('x')
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // wordKey is the lower-case words of s, sorted, so punctuation and the order
