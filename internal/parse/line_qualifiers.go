@@ -75,7 +75,7 @@ var lineAdverbs = map[string]bool{
 var lineNotePrefixes = []string{
 	"for ", "plus ", "divided", "or more", "or less", "as needed", "to serve",
 	"cut into", "cut in", "about ", "approximately ", "see ", "such as ", "like ",
-	"preferably", "if ", "any ", "your ", "more ", "at ",
+	"preferably", "if ", "any ", "your ", "more ", "at ", "warmed to ",
 }
 
 // lineLeadingQualifier reads one qualifier from the front of words (an

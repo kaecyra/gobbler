@@ -280,7 +280,7 @@ func (p *lineParser) addNotes(notes []string) {
 		if n == "" {
 			continue
 		}
-		p.addQualifier(LineQualNote, strings.ToLower(n))
+		p.addQualifier(LineQualNote, n)
 	}
 }
 
@@ -298,7 +298,13 @@ func (p *lineParser) parseTail(tail string) {
 			p.leftover++
 			p.issue("unrecognised text %q", seg)
 		}
-		p.addQualifier(kind, strings.ToLower(strings.Trim(seg, ".")))
+		text := strings.Trim(seg, ".")
+		if kind != LineQualNote {
+			// Vocabulary words are stored lowercase; a note is the
+			// source's own words, so it keeps their case.
+			text = strings.ToLower(text)
+		}
+		p.addQualifier(kind, text)
 	}
 }
 

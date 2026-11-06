@@ -187,6 +187,34 @@ func TestIngredientLineQualifiers(t *testing.T) {
 	}
 }
 
+// A note keeps the source's case: "110°F (43°C)" is not "110°f (43°c)". A
+// known instruction like "warmed to" is a note, not unrecognised text.
+func TestIngredientLineNoteKeepsSourceCase(t *testing.T) {
+	got := IngredientLine("1 cup (240ml) whole milk, warmed to about 110°F (43°C)", lineTestCatalog(), lineTestUnits())
+	if got.Name != "milk" {
+		t.Errorf("name = %q, want milk", got.Name)
+	}
+	if q, u := got.Amount.Qty.String(), got.Amount.Unit.Name; q != "1" || u != "cup" {
+		t.Errorf("amount = %q %q, want 1 cup", q, u)
+	}
+	want := []LineQualifier{
+		{LineQualForm, "whole"},
+		{LineQualNote, "240ml"},
+		{LineQualNote, "warmed to about 110°F (43°C)"},
+	}
+	if len(got.Qualifiers) != len(want) {
+		t.Fatalf("qualifiers = %+v, want %+v", got.Qualifiers, want)
+	}
+	for i, w := range want {
+		if got.Qualifiers[i] != w {
+			t.Errorf("qualifier %d = %+v, want %+v", i, got.Qualifiers[i], w)
+		}
+	}
+	if len(got.Issues) != 0 {
+		t.Errorf("issues = %v, want none", got.Issues)
+	}
+}
+
 func TestIngredientLineOptional(t *testing.T) {
 	for _, in := range []string{
 		"1 cup sugar (optional)", "1 cup sugar, optional", "1 cup sugar [optional]",
