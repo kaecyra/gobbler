@@ -4142,11 +4142,12 @@
         "internal/web/editor/editor_templ.go",
         "internal/web/catalog/**",
         "e2e/catalog/**",
-        "e2e/editor/**"
+        "e2e/editor/**",
+        "internal/web/static/suggest.css"
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Moves #501's combobox out of editor.js into a shared static script both pages load. Shares editor.templ and e2e/editor with u-qualifier-chip, hence the edge."
+      "note": "Moves #501's combobox script and its .suggest CSS (now inline in editor.templ) into shared internal/web/static/suggest.js and suggest.css, loaded by both pages. editor.js targets .editor input[list] / [data-suggest]; the shared script needs an opt-in selector (e.g. data-suggest) so the catalog form, which is not under .editor, can use it. Shares editor.templ and e2e/editor with u-qualifier-chip, hence the edge."
     },
     {
       "id": "a-mcp-caller",
@@ -4163,7 +4164,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Follow-up from #494 review. Lands before a-api-rest is split so the per-resource nodes start from one helper."
+      "note": "Follow-up from #494 review. Every per-resource node split from a-api-rest that owns an internal/mcp file depends on this node, so they start from one helper."
     }
   ],
   "shared_files": [
