@@ -229,6 +229,14 @@ func TestIngredientLineQualifierCase(t *testing.T) {
 		{"1 cup butter, For Serving", []LineQualifier{{LineQualNote, "for Serving"}}},
 		{"1 cup butter, Brought To Room Temp", []LineQualifier{{LineQualNote, "Brought To Room Temp"}}},
 		{"1 cup butter, warmed to 110°F", []LineQualifier{{LineQualNote, "warmed to 110°F"}}},
+		// Only the matched words are lowercased; what follows keeps its case.
+		{"1 cup butter, softened to 70°F", []LineQualifier{{LineQualState, "softened to 70°F"}}},
+		{"1 cup butter, Finely Chopped Fresh Basil", []LineQualifier{{LineQualPreparation, "finely chopped Fresh Basil"}}},
+		{"1 cup butter, At Room Temperature For 1 Hour", []LineQualifier{{LineQualState, "at room temperature For 1 Hour"}}},
+		// Lowercasing changes the byte length of U+212A and U+0130; no text
+		// may be lost or doubled.
+		{"1 cup butter, li\u212Ae a squeeze", []LineQualifier{{LineQualNote, "like a squeeze"}}},
+		{"1 cup butter, \u0130f Ripe", []LineQualifier{{LineQualNote, "if Ripe"}}},
 		// The hedge is vocabulary.
 		{"About 2 cups butter", []LineQualifier{{LineQualNote, "about"}}},
 	}
