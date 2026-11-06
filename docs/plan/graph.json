@@ -3762,7 +3762,8 @@
         "internal/store/proposal_edit_test.go",
         "internal/apikey/**",
         "internal/mcp/**",
-        "internal/credential/**"
+        "internal/credential/**",
+        "internal/store/proposal_accept_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
