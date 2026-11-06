@@ -1,6 +1,10 @@
 package parse
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
 
 // LineQualifierKind says what a qualifier on an ingredient line describes.
 type LineQualifierKind string
@@ -75,7 +79,7 @@ var lineAdverbs = map[string]bool{
 var lineNotePrefixes = []string{
 	"for ", "plus ", "divided", "or more", "or less", "as needed", "to serve",
 	"cut into", "cut in", "about ", "approximately ", "see ", "such as ", "like ",
-	"preferably", "if ", "any ", "your ", "more ", "at ",
+	"preferably", "if ", "any ", "your ", "more ", "at ", "warmed to ",
 }
 
 // lineLeadingQualifier reads one qualifier from the front of words (an
@@ -120,6 +124,61 @@ func lineClassifySegment(seg string) (kind LineQualifierKind, recognized bool) {
 		}
 	}
 	return LineQualNote, false
+}
+
+// lineSegmentText is the text stored for a tail segment. Words the
+// vocabulary matched are stored lowercase, as the lead path does ("Divided"
+// becomes "divided"); free text the vocabulary did not explain keeps the
+// source's case, so "softened to 70°F" keeps its °F. A segment that starts
+// with a known note prefix is the prefix lowercased followed by the source's
+// own words. Offsets are always taken from seg itself, never from its
+// lowercased copy, because lowercasing can change the byte length.
+func lineSegmentText(seg string) string {
+	if _, _, n := lineLeadingQualifier(strings.Fields(strings.ToLower(seg))); n > 0 {
+		end := lineWordsEnd(seg, n)
+		return strings.ToLower(seg[:end]) + seg[end:]
+	}
+	for _, p := range lineNotePrefixes {
+		if end, ok := lineFoldPrefix(seg, p); ok {
+			return strings.ToLower(seg[:end]) + seg[end:]
+		}
+	}
+	return seg
+}
+
+// lineWordsEnd returns the offset in s just after its n-th whitespace
+// separated word, or len(s) when it has fewer.
+func lineWordsEnd(s string, n int) int {
+	inWord := false
+	for i, r := range s {
+		space := unicode.IsSpace(r)
+		if inWord && space {
+			if n--; n == 0 {
+				return i
+			}
+		}
+		inWord = !space
+	}
+	return len(s)
+}
+
+// lineFoldPrefix reports whether s starts with prefix (lowercase) once each
+// rune of s is lowercased, and the offset in s just after that prefix. It
+// agrees with strings.HasPrefix(strings.ToLower(s), prefix) but returns an
+// offset into s, not into the lowercased copy.
+func lineFoldPrefix(s, prefix string) (end int, ok bool) {
+	rest := prefix
+	for i, r := range s {
+		if rest == "" {
+			return i, true
+		}
+		pr, size := utf8.DecodeRuneInString(rest)
+		if unicode.ToLower(r) != pr {
+			return 0, false
+		}
+		rest = rest[size:]
+	}
+	return len(s), rest == ""
 }
 
 // lineSplitSegments splits a tail on commas and semicolons outside brackets,
