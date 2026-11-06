@@ -106,8 +106,8 @@ re-import tools. `Caller` and the membership check are written once in `api/call
 resources use. `internal/picture` stays a domain package that `api/recipes` calls (the package doc gives
 the reasoning). The `recipes-through-api` rule fails `make lint` when a non-test file under
 `internal/web/` or `internal/mcp/` imports `internal/store` or `internal/picture`; the files of
-resources that have not migrated (the journal and its generated templ file, sharing, the status table,
-the picture routes) are excepted by name until #471. The rules read generated files too: golangci-lint
+resources that have not migrated (the journal and its generated templ file, sharing, the status table)
+are excepted by name until #471. The rules read generated files too: golangci-lint
 skips them by default, and every `*_templ.go` is generated, so `.golangci.yml` turns that off and
 excludes the other linters from templ and sqlc output instead, leaving depguard alone to read them.
 The router builds the store, the pictures and the reaper with `apirecipes.NewStore`, `NewPictures` and
@@ -158,3 +158,5 @@ breaks each wave into nodes.
 | **W7 Operations and integrations** | Nightly backups to S3 with retention, settings page with backup status, operations doc with deploy and restore steps |
 | **W8 Households** | Household membership and admission, `household_id` scoping of recipe and shopping data, the catalog's central layer and per-household overlay, invitations and the operator's pages, recipe sharing by copy, cross-household route tests ([ADR-00018](adr/00018-households-as-tenants.md)) |
 | **Later** | Meal planning ([ADR-00011](adr/00011-v1-scope-and-deferrals.md)); Todoist push ([ADR-00018](adr/00018-households-as-tenants.md)) |
+
+The recipe picture routes (`internal/web/picture`) serve a recipe's picture and a draft's candidates through `api/recipes` (`PictureKey`, `Candidates`), which checks the caller's membership; they no longer import `internal/picture`.

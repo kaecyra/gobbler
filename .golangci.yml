@@ -69,8 +69,6 @@ linters:
             - "!**/internal/web/sharing/handler.go"
             # a-api-rest (#471): the status table names the store's sentinels.
             - "!**/internal/web/layout/httperr.go"
-            # a-api-rest (#471): the recipe picture routes call the picture service.
-            - "!**/internal/web/picture/picture.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/store
               desc: use internal/api/recipes; the web handlers and MCP tools do not import the recipe store (ADR-00043)
