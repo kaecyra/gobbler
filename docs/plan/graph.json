@@ -3843,7 +3843,7 @@
       "wave": 12,
       "track": null,
       "issue": 456,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/recipes/**",
@@ -5225,6 +5225,11 @@
       "id": "c-import-copy",
       "title": "remove two lines of import-page copy",
       "merged": "e31e0bf"
+    },
+    {
+      "id": "u-home-suggest-card",
+      "title": "the home suggestion is a library card",
+      "merged": "0fcc0fc"
     }
   ],
   "adr_sequence": {
