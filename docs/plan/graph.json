@@ -4360,7 +4360,7 @@
       "wave": 13,
       "track": null,
       "issue": 523,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "u-aisle-suggest"
       ],
@@ -4413,7 +4413,7 @@
       "wave": 13,
       "track": null,
       "issue": 526,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [],
       "owns": [
         "internal/recipe/display/**",
