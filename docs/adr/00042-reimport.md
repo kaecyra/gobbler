@@ -94,6 +94,16 @@ Options considered for agents:
   attached, and the previous version restores from history. The save carries
   the recipe version the re-import started from and is refused if the recipe
   has moved on, as a stale editor save is.
+- The save writes its revision with the change kind an accepted proposal uses
+  (ADR-00035, "History"), and its provenance reads "Re-imported from <source
+  host>", so History says what happened. It adds no change kind and no schema
+  change (dispatcher default, 2026-11-06).
+- A pending re-import draft shows ADR-00035's pending-proposal banner on the
+  recipe page, reading "A re-import is waiting for review". Its Review link
+  goes to the ingest review screen. There are no inline marks, since nothing is
+  paired. A stale draft is refused at save, and the banner then says the recipe
+  changed since the re-import and offers Discard (dispatcher default,
+  2026-11-06).
 - The review page for a re-import carries a page-level callout, "Saving
   replaces the current recipe. Your earlier edits are kept in History.", shown
   only for a re-import.
@@ -152,3 +162,12 @@ callout says.
    of both.
 10. An MCP tool test starts a re-import and shows the draft is held, the
     recipe and its picture are unchanged, and no MCP tool can save the draft.
+11. A test saves a re-import and shows the revision has the change kind an
+    accepted proposal uses, its provenance reads "Re-imported from <source
+    host>" and History shows it, and the migrations directory gains no file
+    for this node's change kind (dispatcher default, 2026-11-06).
+12. E2e tests show a pending re-import draft puts the banner "A re-import is
+    waiting for review" on the recipe page with a Review link to the ingest
+    review screen and no inline marks, and that after the recipe is edited the
+    banner says the recipe changed since the re-import and offers Discard
+    (dispatcher default, 2026-11-06).

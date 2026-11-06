@@ -39,6 +39,10 @@ is a pending proposal for the recipe, so it supersedes a pending agent edit prop
 (ADR-00035). It does not count towards the 20-draft bound. The review page carries a page-level callout,
 "Saving replaces the current recipe. Your earlier edits are kept in History."
 
+Dispatcher default, 2026-11-06 (the owner can overturn it on the PR): the save writes its revision with
+the change kind an accepted proposal uses, with provenance "Re-imported from <source host>", so History
+says what happened. No new change kind and no schema change.
+
 Owner: "use the ingest's whole flow, just change what happens on save."
 
 **Why.** It keeps the household's data, which this project treats as the expensive thing to lose, and it
@@ -72,6 +76,8 @@ Rejected:
    journal, made-it entries and shares unchanged, and the previous version restores from history.
 7. A test shows the save is refused if the recipe was edited after the re-import started.
 8. The review screen shows the callout for a re-import and not for an import, with e2e coverage of both.
+9. A test shows the save's revision has the change kind an accepted proposal uses, with provenance
+   "Re-imported from <source host>" shown in History, and no migration adds a change kind.
 
 ## D2 — No change summary and no pairing
 
@@ -122,10 +128,19 @@ fetch and lands on the review screen.
 
 **Why.** The recipe's other whole-recipe actions already live there, and the owner placed it there.
 
+Dispatcher default, 2026-11-06 (the owner can overturn it on the PR): a pending re-import draft shows
+ADR-00035's pending-proposal banner on the recipe page, reading "A re-import is waiting for review". Its
+Review link goes to the ingest review screen. There are no inline marks, since there is no pairing. A
+stale draft is refused at save, and the banner then says the recipe changed since the re-import and
+offers Discard.
+
 **Obligations:**
 
 1. The re-import node adds the button, hidden for a recipe with no source URL, with e2e coverage of
    both.
+2. E2e tests show a pending re-import draft puts the banner on the recipe page with a Review link to the
+   ingest review screen and no inline marks, and that after the recipe is edited the banner says the
+   recipe changed since the re-import and offers Discard.
 
 ## D5 — An MCP tool starts a re-import
 
