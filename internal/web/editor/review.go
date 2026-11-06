@@ -17,6 +17,11 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
+// FormID is the id of the editor form (editor.templ). A control outside the
+// form, such as the picture picker's radios, joins it through its form
+// attribute, so the id is named once here.
+const FormID = "editor"
+
 // CancelFormID is the id of the form the page hosting the review must provide
 // next to the editor form: the Cancel button belongs to it through its form
 // attribute. The editor form is an htmx form that posts to one URL and swaps

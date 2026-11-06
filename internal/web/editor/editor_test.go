@@ -478,7 +478,7 @@ func TestRejectedSaveWithHTMXIsAFragmentThatCanBeSwapped(t *testing.T) {
 	if strings.Contains(res.body(), "<html") {
 		t.Error("an htmx response must be the form fragment, not a page")
 	}
-	res.wantBody(t, `id="editor"`, "is not a quantity")
+	res.wantBody(t, `id="`+FormID+`"`, "is not a quantity")
 }
 
 func TestAcceptedSaveWithHTMXRedirectsTheBrowser(t *testing.T) {

@@ -100,7 +100,7 @@ func TestReviewOfAStaleProposalIsRefusedAndARacingSaveChangesNothing(t *testing.
 	}
 	// Opening it for review is refused outright.
 	res = e.review(token)
-	if res.Code != http.StatusConflict || !strings.Contains(res.body(), "out of date") || strings.Contains(res.body(), `id="editor"`) {
+	if res.Code != http.StatusConflict || !strings.Contains(res.body(), "out of date") || strings.Contains(res.body(), `id="`+FormID+`"`) {
 		t.Errorf("opening a stale proposal: status %d, want a 409 page with no form", res.Code)
 	}
 	// A save posted at the new version still names the stale proposal and is refused.
