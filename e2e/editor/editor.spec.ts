@@ -783,6 +783,16 @@ test.describe('qualifier chips', () => {
           expect(inner.y, `${where} top`).toBeGreaterThanOrEqual(box.y - 0.5);
           expect(inner.y + inner.height, `${where} bottom`).toBeLessThanOrEqual(box.y + box.height + 0.5);
         }
+        // The kind select shows its whole label: it is as wide as the label's
+        // text, with room for its padding and arrow, and no narrower than a tap target.
+        const sel = await chip.locator('select').evaluate((el: HTMLSelectElement) => {
+          const cs = getComputedStyle(el);
+          const ctx = document.createElement('canvas').getContext('2d')!;
+          ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          return { width: el.getBoundingClientRect().width, label: ctx.measureText(el.selectedOptions[0].text).width };
+        });
+        expect(sel.width, `chip ${i} kind select shows its label`).toBeGreaterThanOrEqual(sel.label + 24);
+        expect(sel.width, `chip ${i} kind select is a tap target wide`).toBeGreaterThanOrEqual(44);
         // The text is not cut off where the row has room for it. A phone is
         // narrower than the long note, and a one-line field scrolls it there.
         if (viewport.width < 820 && quals[i].text.length > 10) continue;
