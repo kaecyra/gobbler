@@ -445,9 +445,9 @@ func (b *builder) step(s *stepDraft) (recipe.Step, bool) {
 }
 
 // note reads an author note row. A row with no title and no text is an unused
-// one, dropped. The recipe's own rule (one paragraph, at most
-// recipe.MaxAuthorNoteChars characters) is the check, so the form refuses what
-// every other writer is refused (ADR-00041); the message says which part.
+// one, dropped. The recipe's own rule (one paragraph) is the
+// check, so the form refuses what every other writer is refused (ADR-00041).
+// Length is never refused (ADR-00044); the review screen flags a long note.
 func (b *builder) note(n *noteDraft) (recipe.AuthorNote, bool) {
 	n.Err = ""
 	if n.blank() {
@@ -459,8 +459,6 @@ func (b *builder) note(n *noteDraft) (recipe.AuthorNote, bool) {
 		switch chars := utf8.RuneCountInString(note.Text); {
 		case chars == 0:
 			n.Err = "A note needs text."
-		case chars > recipe.MaxAuthorNoteChars:
-			n.Err = fmt.Sprintf("This note is %d characters. A note is one paragraph of at most %d.", chars, recipe.MaxAuthorNoteChars)
 		case recipe.MoreThanOneParagraph(note.Text):
 			n.Err = "A note is one paragraph. Make each paragraph a note of its own."
 		default:

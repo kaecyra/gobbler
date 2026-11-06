@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -21,19 +23,24 @@ type fakeShares struct {
 	sent     []string
 	accepted int64
 	declined int64
-	offers   []store.ShareOffer
+	offers   []apisharing.ShareOffer
 }
 
-func (f *fakeShares) Send(_ context.Context, _ int64, email string) error {
+func (f *fakeShares) Send(_ context.Context, _ apisharing.Caller, _ int64, email string) error {
 	f.sent = append(f.sent, email)
 	return f.sendErr
 }
-func (f *fakeShares) Inbox(context.Context) ([]store.ShareOffer, error) { return f.offers, nil }
-func (f *fakeShares) Accept(_ context.Context, id int64) (int64, error) {
+func (f *fakeShares) Inbox(context.Context, apisharing.Caller) ([]apisharing.ShareOffer, error) {
+	return f.offers, nil
+}
+func (f *fakeShares) Accept(_ context.Context, _ apisharing.Caller, id int64) (int64, error) {
 	f.accepted = id
 	return 77, nil
 }
-func (f *fakeShares) Decline(_ context.Context, id int64) error { f.declined = id; return nil }
+func (f *fakeShares) Decline(_ context.Context, _ apisharing.Caller, id int64) error {
+	f.declined = id
+	return nil
+}
 
 type fakeRecipes struct {
 	err error
@@ -41,13 +48,20 @@ type fakeRecipes struct {
 	onlyID  int64
 	videoID string
 	saved   map[string][]byte
+	// thumbs is the image source the fake's KeepThumbnailAfter downloads from,
+	// as the recipe service does with its own.
+	thumbs video.ThumbnailSource
 }
 
-func (f fakeRecipes) Get(_ context.Context, id int64) (recipe.Recipe, error) {
+func (f fakeRecipes) Get(_ context.Context, _ apirecipes.Caller, id int64) (recipe.Recipe, error) {
 	if f.onlyID != 0 && id != f.onlyID {
 		return recipe.Recipe{}, store.ErrNotFound
 	}
 	return recipe.Recipe{Name: "<b>Pie</b>", VideoID: f.videoID}, f.err
+}
+
+func (f fakeRecipes) KeepThumbnailAfter(ctx context.Context, _ apirecipes.Caller, id int64, read func(context.Context) (string, error)) {
+	video.KeepThumbnailAfter(ctx, f, f.thumbs, id, read)
 }
 
 func (f fakeRecipes) HasThumbnail(_ context.Context, v string) (bool, error) {
@@ -75,18 +89,18 @@ func (s *stubThumbs) Fetch(_ context.Context, id string) (video.Thumbnail, error
 }
 
 func TestAcceptDownloadsTheThumbnailOfTheCopiesVideo(t *testing.T) {
-	recipes := fakeRecipes{onlyID: 77, videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
 	th := &stubThumbs{}
-	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
+	recipes := fakeRecipes{onlyID: 77, videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}, thumbs: th}
+	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes}), http.MethodPost, "/9/accept", nil)
 	if rec.Code != http.StatusSeeOther || string(recipes.saved["dQw4w9WgXcQ"]) != "jpeg:dQw4w9WgXcQ" {
 		t.Errorf("accept = %d, stored %q, want 303 and the downloaded image", rec.Code, recipes.saved["dQw4w9WgXcQ"])
 	}
 }
 
 func TestAFailedThumbnailDownloadDoesNotFailTheAccept(t *testing.T) {
-	recipes := fakeRecipes{onlyID: 77, videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
 	th := &stubThumbs{fail: errors.New("youtube is unreachable")}
-	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
+	recipes := fakeRecipes{onlyID: 77, videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}, thumbs: th}
+	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes}), http.MethodPost, "/9/accept", nil)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/77" || len(th.asked) != 1 {
 		t.Errorf("accept = %d to %q after %v, want 303 to the recipe after one failed download", rec.Code, rec.Header().Get("Location"), th.asked)
 	}
@@ -153,7 +167,7 @@ func TestAcceptGoesToTheNewRecipeAndDeclineBackToTheInbox(t *testing.T) {
 }
 
 func TestInboxListsOffersByRecipeAndSenderNameOnly(t *testing.T) {
-	f := &fakeShares{offers: []store.ShareOffer{{ID: 4, SenderName: "Alpha Kitchen", RecipeName: "Pie", SentAt: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), Ingredients: []string{"secret fruit"}}}}
+	f := &fakeShares{offers: []apisharing.ShareOffer{{ID: 4, SenderName: "Alpha Kitchen", RecipeName: "Pie", SentAt: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), Ingredients: []string{"secret fruit"}}}}
 	rec := do(Routes(Deps{Shares: f, Recipes: fakeRecipes{}}), http.MethodGet, "/", nil)
 	body := rec.Body.String()
 	for _, want := range []string{"Pie", "Alpha Kitchen", "2026-03-01", "/shares/4/accept", "/shares/4/decline"} {
@@ -174,8 +188,8 @@ func TestAcceptStillRedirectsWhenTheAcceptedRecipeCannotBeRead(t *testing.T) {
 	// The failing read still returns the recipe, video included: ignoring the
 	// error would download it.
 	th := &stubThumbs{}
-	recipes := fakeRecipes{err: errors.New("database is locked"), videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}}
-	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes, Thumbnails: th}), http.MethodPost, "/9/accept", nil)
+	recipes := fakeRecipes{err: errors.New("database is locked"), videoID: "dQw4w9WgXcQ", saved: map[string][]byte{}, thumbs: th}
+	rec := do(Routes(Deps{Shares: &fakeShares{}, Recipes: recipes}), http.MethodPost, "/9/accept", nil)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/77" || len(th.asked) != 0 {
 		t.Errorf("accept = %d to %q after %v, want 303 to the recipe and no download", rec.Code, rec.Header().Get("Location"), th.asked)
 	}

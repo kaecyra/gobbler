@@ -17,18 +17,19 @@ This file holds the volatile state the graph does not. The durable record is `do
 | (ADR-00044, nodes r-note-length #523, u-save-errors-visible #524, u-qualifier-style #526) | #525 | d859bb1 | none |
 | (ADR-00045, nodes u-notes-apart #527, u-card-total-time #528) | #529 | 918ee00 | none |
 
-**Open worker PRs.** Each is reviewed. The worker that wrote it was given the findings or the re-bump, but those workers die with this session. Merge order and state:
-1. **#531 a-api-sharing (#512)**, wt-512. Review approved, and its findings are fixed in 8b768f9 (PR comment). The worker was told to merge origin/main (conflicts with #530 on the design.md "not migrated yet" sentence, `.golangci.yml`'s recipes-through-api exceptions and routes.go: keep both sides' deletions) and set VERSION 0.123.8. Next: push, wait for CI, resolve the review's inline threads (check with `reviewThreads`), then merge.
-2. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed in 42aa5aa (pushed, PR comment). It still needs the same merge-main conflict resolution after #531, plus a re-bump. Then resolve threads and merge.
-3. **#533 r-note-length (#523)**, wt-523. Review requested changes (1 MUST, 2 SHOULD, 2 NIT). The out-of-lane SHOULD (an applied migration's header comment) was declined in a PR comment. The other four went to the worker, along with a merge of main and VERSION 0.123.8. If the report is lost, read the branch. If the fixes are missing, brief a fresh worker from pullrequestreview-5805763269. Needs a verification re-review, then merge. **This is the fix for the owner's blocked confirm. Prioritise it.**
-4. **#534 u-qualifier-style (#526)**, wt-526. Opened, and a review was launched. Read the posted review and triage. Re-bump at merge.
+**Also merged since:** #533 r-note-length (ec2509a, 0.123.8). This is the owner's confirm fix. The owner should redeploy 0.123.8 and retry the sallysbakingaddiction import.
 
-**Next to dispatch** once the queue drops below 5:
-- u-save-errors-visible (#524), after #533 merges.
-- u-card-total-time (#528): no dependencies, dispatchable now.
-- u-notes-apart (#527), after #534 and #528.
-- a-api-catalog (#514), after sharing, note-length, save-errors, qualifier-style and notes-apart.
-- Filed with no node: #522, a named constant for the suggest asset paths.
+**Open worker PRs, in merge order.** Each worker that wrote one was told what to do next, but those workers die with this session. If a report never arrived, read the branch:
+1. **#531 a-api-sharing (#512): MERGED** (5d8d4e9, 0.123.9).
+2. **#534 u-qualifier-style (#526)**, wt-526. Review requested changes; all fixed in 31bdd99 (PR comment) at VERSION 0.123.10. A verification re-review was launched; read it on GitHub. Next: resolve threads by ID, wait for green CI, then merge. 0.123.10 is one over main's 0.123.9. Screenshots: .cc-scratch/shots-526-after-{1280,390}.png.
+3. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed (42aa5aa, pushed). It still needs to merge origin/main: conflicts on design.md's "not migrated yet" sentence (after #531 and #530 it lists only "the status table") and the `.golangci.yml` journal exceptions. Re-bump to the next free patch, then merge.
+
+**Also open, worker PRs from late in the round** (reviews launched in background agents; read what is posted on GitHub):
+4. **#535 u-save-errors-visible (#524)**, wt-524, VERSION 0.123.9. It must merge main and re-bump to the next free patch. A review was launched; read it on GitHub and triage. Screenshots: .cc-scratch/shots-524-*.png.
+5. **#536 u-card-total-time (#528)**, wt-528. Review requested changes (pullrequestreview-5806116741). The MUST and three NITs went to the worker, along with a merge of main and VERSION **0.123.11** (after #534's 0.123.10). The out-of-lane SHOULD (ribbon.js fit tests lost) is filed as **#537**; fold it into u-notes-apart (#527), which owns e2e/recipeview. Next: verify the fix commit, resolve threads by ID, wait for CI, merge. Screenshots: .cc-scratch/shots-528-*.png. Out of lane and not yet filed: `internal/store/library.go:18`'s comment says card steps carry only what the ribbon reads, but `timeToTable` reads them too. Fix it in a node that owns store, or file an issue.
+- **Stash incident:** wt-524 and wt-528 both used `git stash`, and each pop took the other's changes. Both workers repaired their trees, and ownership holds on both branches. One labelled leftover stays on the shared stack: "restored: popped by mistake from wt-528". It is wt-524's already-committed WIP; drop it once #535 merges. Worker briefs now forbid `git stash`, via the scratchpad common-tail. Add the same rule to the worker contract and lessons.
+
+**Next to dispatch:** u-notes-apart (#527), after #534 and #528 merge; then a-api-catalog (#514) once sharing, save-errors, qualifier-style and notes-apart have all merged. #522, a named constant for the suggest asset paths, has no node.
 
 **Owner context:**
 - Deployed 0.123.3. "Confirm and save" on sallysbakingaddiction soft dinner rolls did nothing: the draft's 700- and 550-character notes were refused, and the refusal rendered below the fold. The owner ruled ADR-00044: length is never refused, and the existing low-confidence flag is enough.
