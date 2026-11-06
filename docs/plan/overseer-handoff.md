@@ -21,7 +21,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Open worker PRs, in merge order.** Each worker that wrote one was told what to do next, but those workers die with this session. If a report never arrived, read the branch:
 1. **#531 a-api-sharing (#512): MERGED** (5d8d4e9, 0.123.9).
-2. **#534 u-qualifier-style (#526)**, wt-526. The re-review (pullrequestreview-5806139063) verified every first-round fix. The worker was sent to merge origin/main again (resolve VERSION as 0.123.10) and add `.pnew .qual { color: inherit; }` in layout/recipe.css. **Three threads are deliberately open** until that push: the old VERSION MUST, the new VERSION SHOULD and the `.pnew` NIT. After the push, check the diff, resolve all three by ID, wait for green CI, merge.
+2. **#534 u-qualifier-style (#526): MERGED** (0.123.10).
 3. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed (42aa5aa, pushed). It still needs to merge origin/main: conflicts on design.md's "not migrated yet" sentence (after #531 and #530 it lists only "the status table") and the `.golangci.yml` journal exceptions. Re-bump to the next free patch, then merge.
 
 **Also open, worker PRs from late in the round** (reviews launched in background agents; read what is posted on GitHub):
