@@ -61,6 +61,15 @@ type InstructionStep struct {
 	Title string `json:"title,omitempty"`
 }
 
+// Note is one paragraph of the notes a recipe plugin's card carries: a tip, a
+// substitution, a storage hint. Title is the bold lead the paragraph opens
+// with ("Honey:"), taken off the front of Text; empty otherwise. Nothing is
+// judged here: the assembler flags what does not look like a short tip.
+type Note struct {
+	Title string `json:"title,omitempty"`
+	Text  string `json:"text"`
+}
+
 // Raw is a recipe as the page states it. Ingredient lines are the page's own
 // strings, to be parsed downstream. Time fields keep the page's own strings
 // (usually ISO 8601) and are also parsed into the matching Duration fields.
@@ -99,6 +108,10 @@ type Raw struct {
 	// the recipe's own "image", then the page's primary ImageObject where the
 	// JSON-LD names one. Never an author's or publisher's image (ADR-00039).
 	ImageURLs []string `json:"image_urls,omitempty"`
+	// Notes are the paragraphs of the notes block a recipe plugin's card prints
+	// after the method, in order (ADR-00041); nil when the page has none or no
+	// plugin on it is one we read.
+	Notes []Note `json:"notes,omitempty"`
 	// VideoID is the 11-character ID of a YouTube video the page names in its
 	// schema.org "video" property (ADR-00021 decision 5), else of the first
 	// YouTube embed in the page body (ADR-00023); empty when there is neither

@@ -95,6 +95,22 @@ const FIELDS_PAGE = `<html><head><script type="application/ld+json">
   {"@type":"HowToStep","text":"Bake for 30 minutes."}]}
 </script></head><body><h1>Fixture Sweet Loaf</h1></body></html>`;
 
+// A page whose WP Recipe Maker card prints a notes block: two tips, a
+// nutrition paragraph and a paragraph over the 400-character limit
+// (ADR-00041). The long one is a single run of words.
+const LONG_NOTE = 'Rest the batter. '.repeat(25).trim();
+const NOTES_PAGE = `<html><head><script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Recipe","name":"Fixture Notes Toast",
+ "recipeIngredient":["2 slices bread","1 tbsp butter"],
+ "recipeInstructions":[{"@type":"HowToStep","text":"Toast the bread."},{"@type":"HowToStep","text":"Butter it."}]}
+</script></head><body><div class="wprm-recipe-container"><div class="wprm-recipe-notes-container">
+<div class="wprm-recipe-header">Recipe Notes</div>
+<p><strong>Butter:</strong> Salted is fine, so skip the extra pinch.</p>
+<p>Keeps three days in a tin.</p>
+<p>Nutrition per serving. It assumes the butter is all absorbed.</p>
+<p>${LONG_NOTE}</p>
+</div></div></body></html>`;
+
 let fixture: Server;
 let fixtureURL: string;
 
@@ -103,6 +119,9 @@ test.beforeAll(async () => {
     if (req.url === '/toast') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(RECIPE_PAGE);
+    } else if (req.url === '/notes') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(NOTES_PAGE);
     } else if (req.url === '/sweet-loaf') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(FIELDS_PAGE);
@@ -686,4 +705,49 @@ test('on review a line and a step are dragged into an empty part and a part is n
   await expect(page.locator('[name="c.1.name"]')).toHaveValue('Cooking');
   await expect(page.locator('[name="c.1.l.0.ing"]')).toHaveValue(ing);
   await expect(page.locator('[name="c.1.s.0.text"]')).toHaveValue(text);
+});
+
+test('the author notes of a page arrive as rows, the junk flagged in words, and confirm saves what is left', async ({ page }) => {
+  await page.goto('/ingest');
+  await page.getByLabel('Recipe URL').fill(`${fixtureURL}/notes`);
+  await page.getByRole('button', { name: 'Read recipe' }).click();
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+
+  // Every paragraph of the block is a row; none is dropped.
+  await expect(page.getByRole('heading', { name: "Author's Notes" })).toBeVisible();
+  const rows = page.locator('#ed-notes li.note');
+  await expect(rows).toHaveCount(4);
+  await expect(page.locator('[name="n.0.title"]')).toHaveValue('Butter');
+  await expect(page.locator('[name="n.0.text"]')).toHaveValue('Salted is fine, so skip the extra pinch.');
+
+  // The nutrition paragraph and the over-long one are flagged as a low line is:
+  // with the word, the reason and the tint, not colour alone. The tips are not.
+  await expect(page.locator('#ed-notes li.note.low')).toHaveCount(2);
+  await expect(rows.nth(0)).not.toHaveClass(/low/);
+  await expect(rows.nth(1)).not.toHaveClass(/low/);
+  await expect(rows.nth(2)).toContainText('Check:');
+  await expect(rows.nth(2)).toContainText('it reads as nutrition facts');
+  await expect(rows.nth(3)).toContainText('it is longer than one short paragraph');
+
+  // The over-long one cannot be confirmed as it is: the form says so and stays.
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await expect(page.locator('#ed-notes li.note').nth(3).getByRole('alert')).toContainText('A note is one paragraph of at most 400');
+  await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
+
+  // Trim, remove and reorder, then confirm.
+  await page.getByRole('button', { name: 'Remove note 4' }).click();
+  await expect(rows).toHaveCount(3);
+  await page.getByRole('button', { name: 'Remove note 3' }).click();
+  await expect(rows).toHaveCount(2);
+  await page.locator('[name="n.1.text"]').fill('Keeps three days in a tin, or freeze it.');
+  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await expect(page).toHaveURL(/\/recipes\/\d+$/);
+
+  // They end the step chain on the recipe page, each credited to the author.
+  const notes = page.getByTestId('author-note');
+  await expect(notes).toHaveCount(2);
+  await expect(notes.nth(0)).toContainText('Butter: Salted is fine, so skip the extra pinch.');
+  await expect(notes.nth(1)).toContainText('Keeps three days in a tin, or freeze it.');
+  await expect(notes.nth(1).locator('small')).toHaveText('From the author');
+  await expect(page.locator('.method ol li').last()).toHaveAttribute('data-testid', 'author-note');
 });

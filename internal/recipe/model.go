@@ -162,12 +162,16 @@ type Recipe struct {
 	Times              Times
 	Components         []Component
 	Equipment          []EquipmentLink
+	// AuthorNotes are the recipe author's own notes, in the order shown after
+	// the last step (ADR-00041).
+	AuthorNotes []AuthorNote
 }
 
 // Validate checks the structural rules of the model: at least one component,
 // well-formed lines and qualifiers, non-negative durations, a valid step graph (see
 // ValidateSteps) and, when set, a well-formed video ID, a meal type and stage
-// kinds from their closed sets and a spice level of 0 to 3. It does not judge
+// kinds from their closed sets, a spice level of 0 to 3 and author notes of one
+// paragraph and at most MaxAuthorNoteChars characters. It does not judge
 // content such as an empty name.
 func (r Recipe) Validate() error {
 	if len(r.Components) == 0 {
@@ -187,6 +191,9 @@ func (r Recipe) Validate() error {
 		return err
 	}
 	if err := r.validateFields(); err != nil {
+		return err
+	}
+	if err := r.validateAuthorNotes(); err != nil {
 		return err
 	}
 	return r.ValidateSteps()

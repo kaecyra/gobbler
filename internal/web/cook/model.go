@@ -36,6 +36,17 @@ type page struct {
 	Meanwhile []meanwhileLink
 	// UpNext is the step after this one, empty on the last step.
 	UpNext upNext
+	// Notes are the recipe author's notes, the same on every step: cook mode
+	// shows one step at a time, so it reaches them through a button
+	// (ADR-00041).
+	Notes []noteView
+}
+
+// noteView is one author note: Lead is the bold title with its colon, empty
+// when the note has none.
+type noteView struct {
+	Lead string
+	Text string
 }
 
 // equipmentChip is one piece of equipment on a step: the line as written
@@ -91,6 +102,9 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	}
 	if n > p.Total {
 		return page{}, fmt.Errorf("%w: step %d of %d: %w", layout.ErrInvalid, n, p.Total, errStepOutOfRange)
+	}
+	for _, an := range r.AuthorNotes {
+		p.Notes = append(p.Notes, noteView{Lead: an.Lead(), Text: an.Text})
 	}
 	p.Current = n
 	ref := refs[n-1]

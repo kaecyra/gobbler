@@ -80,7 +80,7 @@ func TestUpdateReplacesDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	sameRecipe(t, next, got)
-	for _, table := range []string{"recipe_tags", "recipe_special_times", "recipe_equipment", "components", "ingredient_lines", "steps"} {
+	for _, table := range []string{"recipe_tags", "recipe_special_times", "recipe_author_notes", "recipe_equipment", "components", "ingredient_lines", "steps"} {
 		var want int
 		switch table {
 		case "recipe_tags", "components", "ingredient_lines", "steps":
@@ -358,7 +358,7 @@ func TestDelete(t *testing.T) {
 	if _, err := s.Get(ctx, id); !errors.Is(err, ErrNotFound) {
 		t.Errorf("Get after delete = %v, want ErrNotFound", err)
 	}
-	for _, table := range []string{"recipes", "recipe_tags", "recipe_special_times", "components", "ingredient_lines", "line_qualifiers",
+	for _, table := range []string{"recipes", "recipe_tags", "recipe_special_times", "recipe_author_notes", "components", "ingredient_lines", "line_qualifiers",
 		"steps", "step_dependencies", "recipe_equipment", "recipe_equipment_steps", "notes", "made_it", "revisions", "revision_ingredients", "source_snapshots"} {
 		if n := count(t, d, `SELECT COUNT(*) FROM `+table); n != 0 {
 			t.Errorf("%s has %d rows after delete", table, n)

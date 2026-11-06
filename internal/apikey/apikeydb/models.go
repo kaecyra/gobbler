@@ -290,6 +290,14 @@ type Recipe struct {
 	Cuisine            string
 }
 
+type RecipeAuthorNote struct {
+	HouseholdID int64
+	RecipeID    int64
+	Position    int64
+	Title       string
+	Text        string
+}
+
 type RecipeEquipment struct {
 	ID          int64
 	HouseholdID int64

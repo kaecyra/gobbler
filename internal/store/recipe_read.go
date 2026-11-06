@@ -48,6 +48,9 @@ func loadDocument(ctx context.Context, q *storedb.Queries, hid, id int64, units 
 	if r.Times.Special, err = loadSpecialTimes(ctx, q, hid, id); err != nil {
 		return recipe.Recipe{}, err
 	}
+	if r.AuthorNotes, err = loadAuthorNotes(ctx, q, hid, id); err != nil {
+		return recipe.Recipe{}, err
+	}
 	if r.Components, err = loadComponents(ctx, q, hid, id, units); err != nil {
 		return recipe.Recipe{}, err
 	}

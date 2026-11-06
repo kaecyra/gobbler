@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/parse"
@@ -28,11 +29,12 @@ type proposal struct {
 
 // kept says which rows of the form build turned into recipe rows: the form
 // index of each kept line and step, per component, and of each kept equipment
-// row. Rows build dropped as blank are absent, so the recipe's rows and the
+// or note row. Rows build dropped as blank are absent, so the recipe's rows and the
 // form's can be paired without a second copy of the rule.
 type kept struct {
 	lines, steps [][]int
 	equipment    []int
+	notes        []int
 }
 
 // build turns the draft into a recipe on top of base, which supplies what the
@@ -85,6 +87,13 @@ func (h *handler) build(ctx context.Context, d *draft, base recipe.Recipe) (rec 
 			}
 		}
 		rec.Components = append(rec.Components, comp)
+	}
+	rec.AuthorNotes = nil
+	for ni := range d.Notes {
+		if note, keep := b.note(&d.Notes[ni]); keep {
+			rows.notes = append(rows.notes, ni)
+			rec.AuthorNotes = append(rec.AuthorNotes, note)
+		}
 	}
 	rec.Equipment = nil
 	for ei := range d.Equipment {
@@ -433,6 +442,32 @@ func (b *builder) step(s *stepDraft) (recipe.Step, bool) {
 		s.Err = strings.Join(msgs, " ")
 	}
 	return step, true
+}
+
+// note reads an author note row. A row with no title and no text is an unused
+// one, dropped. The recipe's own rule (one paragraph, at most
+// recipe.MaxAuthorNoteChars characters) is the check, so the form refuses what
+// every other writer is refused (ADR-00041); the message says which part.
+func (b *builder) note(n *noteDraft) (recipe.AuthorNote, bool) {
+	n.Err = ""
+	if n.blank() {
+		return recipe.AuthorNote{}, false
+	}
+	note := recipe.AuthorNote{Title: strings.TrimSpace(n.Title), Text: strings.TrimSpace(n.Text)}
+	if err := note.Validate(); err != nil {
+		b.failed = true
+		switch chars := utf8.RuneCountInString(note.Text); {
+		case chars == 0:
+			n.Err = "A note needs text."
+		case chars > recipe.MaxAuthorNoteChars:
+			n.Err = fmt.Sprintf("This note is %d characters. A note is one paragraph of at most %d.", chars, recipe.MaxAuthorNoteChars)
+		case recipe.MoreThanOneParagraph(note.Text):
+			n.Err = "A note is one paragraph. Make each paragraph a note of its own."
+		default:
+			n.Err = err.Error() + "."
+		}
+	}
+	return note, true
 }
 
 // stepBlank is a step row with no text, duration or dependencies: an unused

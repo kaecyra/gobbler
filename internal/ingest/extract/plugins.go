@@ -28,13 +28,16 @@ type pluginReader struct {
 	name        string
 	ingredients func(doc *html.Node) []IngredientGroup
 	steps       func(doc *html.Node) []InstructionStep
+	// notes reads the card's notes block, one Note per paragraph or list item;
+	// nil for a plugin whose notes block we do not read.
+	notes func(doc *html.Node) []Note
 }
 
 // plugins are tried in order; the first that yields groups wins.
 var plugins = []pluginReader{
-	{"wprm", wprmIngredients, wprmSteps},
-	{"tasty", tastyIngredients, tastySteps},
-	{"create", createIngredients, createSteps},
+	{"wprm", wprmIngredients, wprmSteps, wprmNotes},
+	{"tasty", tastyIngredients, tastySteps, tastyNotes},
+	{"create", createIngredients, createSteps, nil},
 }
 
 // applyPlugins merges the groups a recipe plugin on the page carries into raw,
@@ -45,6 +48,11 @@ var plugins = []pluginReader{
 // mismatched card is a page we do not understand, not an error. Step sections
 // and titles are merged the same way (mergeSteps).
 func applyPlugins(doc *html.Node, raw *Raw) {
+	for _, p := range plugins {
+		if raw.Notes == nil && p.notes != nil {
+			raw.Notes = p.notes(doc)
+		}
+	}
 	for _, p := range plugins {
 		groups := p.ingredients(doc)
 		if named(groups) {
@@ -390,4 +398,97 @@ func headedSteps(container *html.Node) []InstructionStep {
 		out = append(out, InstructionStep{Section: name, Text: textOf(li), Title: boldLead(li)})
 	})
 	return out
+}
+
+// --- Notes. A card prints its notes as paragraphs (or list items) under a
+// heading of its own; each paragraph is a candidate note and none is dropped,
+// whatever it holds (ADR-00041): the assembler flags what is not a short tip.
+
+func wprmNotes(doc *html.Node) []Note {
+	return notesIn(firstWithClass(wprmCard(doc), "wprm-recipe-notes-container"))
+}
+
+func tastyNotes(doc *html.Node) []Note {
+	return notesIn(firstWithClass(doc, "tasty-recipes-notes"))
+}
+
+// notesIn reads a notes block into candidate notes, skipping its heading.
+// Each paragraph and list item is one candidate, and so is each run of loose
+// text between them: bare text, inline markup and a block with no paragraph of
+// its own (a div holding only text). Nothing in the block is dropped
+// (ADR-00041).
+func notesIn(block *html.Node) []Note {
+	if block == nil {
+		return nil
+	}
+	var out []Note
+	var loose strings.Builder
+	flush := func() {
+		if text := collapse(loose.String()); text != "" {
+			out = append(out, Note{Text: text})
+		}
+		loose.Reset()
+	}
+	var read func(parent *html.Node)
+	read = func(parent *html.Node) {
+		for c := parent.FirstChild; c != nil; c = c.NextSibling {
+			switch {
+			case c.Type == html.TextNode:
+				loose.WriteString(c.Data)
+			case c.Type != html.ElementNode:
+			case isNotesHeading(c):
+				flush()
+			case isElem(c, "p") || isElem(c, "li"):
+				flush()
+				if text := textOf(c); text != "" {
+					title, text := splitTitle(boldLead(c), text)
+					out = append(out, Note{Title: title, Text: text})
+				}
+			case inlineTags[c.Data]:
+				if holdsBlocks(c) {
+					read(c)
+				} else {
+					loose.WriteString(" " + textOf(c) + " ")
+				}
+			case holdsBlocks(c):
+				flush()
+				read(c)
+			default:
+				flush()
+				loose.WriteString(textOf(c))
+				flush()
+			}
+		}
+	}
+	read(block)
+	flush()
+	return out
+}
+
+// inlineTags are the elements whose text runs on with the text around them.
+var inlineTags = map[string]bool{
+	"span": true, "a": true, "em": true, "strong": true, "b": true, "i": true,
+	"u": true, "small": true, "sup": true, "sub": true, "br": true,
+}
+
+// holdsBlocks reports whether n has a paragraph or list item below it.
+func holdsBlocks(n *html.Node) bool {
+	found := false
+	walk(n, func(c *html.Node) bool {
+		if c != n && (isElem(c, "p") || isElem(c, "li")) {
+			found = true
+		}
+		return !found
+	})
+	return found
+}
+
+// isNotesHeading is the heading a notes block prints over its notes: a
+// heading element, or WP Recipe Maker's header div.
+func isNotesHeading(n *html.Node) bool {
+	if n.Type != html.ElementNode {
+		return false
+	}
+	h := len(n.Data) == 2 && n.Data[0] == 'h' && n.Data[1] >= '1' && n.Data[1] <= '6'
+	return h || hasClass(n, "wprm-recipe-header")
 }

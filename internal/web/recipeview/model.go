@@ -75,6 +75,9 @@ type view struct {
 
 	Components []componentView
 	Equipment  []equipmentView
+	// Notes are the recipe author's notes, which end the step chain
+	// (ADR-00041).
+	Notes []noteView
 
 	// Origin is the recipe and version this one was cloned from; nil when it
 	// is not a clone or the original is gone.
@@ -103,6 +106,26 @@ type componentView struct {
 	// FirstStep is the number of the component's first step, counted across
 	// components in reading order.
 	FirstStep int
+}
+
+// noteView is one author note as the step chain shows it. Lead is the bold
+// title with its colon, empty when the note has none.
+type noteView struct {
+	Lead string
+	Text string
+}
+
+// notesComponent is the part whose list of steps the author notes follow, so
+// the chain runs on from its last step: the last part that shows steps. It is
+// -1 when no part does, and the notes then make a list of their own.
+func (v view) notesComponent() int {
+	last := -1
+	for ci, c := range v.Components {
+		if len(c.Steps) > 0 || v.Proposal.comp(ci).hasStepAdds() {
+			last = ci
+		}
+	}
+	return last
 }
 
 type equipmentView struct {
@@ -174,6 +197,10 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 			cv.Steps = append(cv.Steps, sv)
 		}
 		v.Components = append(v.Components, cv)
+	}
+
+	for _, n := range r.AuthorNotes {
+		v.Notes = append(v.Notes, noteView{Lead: n.Lead(), Text: n.Text})
 	}
 
 	for _, link := range r.Equipment {

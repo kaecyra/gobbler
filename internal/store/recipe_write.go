@@ -29,7 +29,7 @@ func documentColumns(r recipe.Recipe) (storedb.UpdateRecipeDocumentParams, error
 	}, nil
 }
 
-// insertChildren writes everything below the recipes row: tags, special times,
+// insertChildren writes everything below the recipes row: tags, special times, author notes,
 // components with their lines and steps, step dependencies and equipment. The
 // row must exist and own no children.
 func insertChildren(ctx context.Context, q *storedb.Queries, hid, id int64, r recipe.Recipe, units *unitTable) error {
@@ -45,6 +45,10 @@ func insertChildren(ctx context.Context, q *storedb.Queries, hid, id int64, r re
 		if err != nil {
 			return wrapWrite(fmt.Sprintf("write special time %q", st.Label), err)
 		}
+	}
+
+	if err := insertAuthorNotes(ctx, q, hid, id, r.AuthorNotes); err != nil {
+		return err
 	}
 
 	stepRows := make(map[recipe.StepID]int64)
@@ -171,6 +175,9 @@ func clearChildren(ctx context.Context, q *storedb.Queries, hid, id int64) error
 		},
 		func() error {
 			return q.DeleteRecipeSpecialTimes(ctx, storedb.DeleteRecipeSpecialTimesParams{RecipeID: id, HouseholdID: hid})
+		},
+		func() error {
+			return q.DeleteAuthorNotes(ctx, storedb.DeleteAuthorNotesParams{RecipeID: id, HouseholdID: hid})
 		},
 		func() error {
 			return q.DeleteRecipeEquipment(ctx, storedb.DeleteRecipeEquipmentParams{RecipeID: id, HouseholdID: hid})

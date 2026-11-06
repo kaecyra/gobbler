@@ -31,6 +31,7 @@ let styledId = 0;
 let doomedId = 0;
 let doomedCloneId = 0;
 let listedId = 0;
+let notesId = 0;
 let thumbnails: Awaited<ReturnType<typeof startThumbnailHost>> | undefined;
 
 test.use({ baseURL: origin });
@@ -43,7 +44,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId, notes: notesId } = JSON.parse(out));
   thumbnails = await startThumbnailHost();
   server = spawn(bin, ['serve'], {
     env: {
@@ -597,4 +598,64 @@ test.describe('deleting a recipe', () => {
     await expect(page.getByText('this recipe is on a shopping list and must be removed from it before it can be deleted')).toBeVisible();
     expect((await page.request.get(`/recipes/${listedId}`)).status()).toBe(200);
   });
+});
+
+// The author's notes end the step chain (ADR-00041), drawn after variant A of
+// the recipe screen in docs/ui/mockup.html.
+test('author notes continue the step chain after the last step, each credited, with no heading', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  await page.goto(`/recipes/${notesId}`);
+  const notes = page.getByTestId('author-note');
+  await expect(notes).toHaveCount(3);
+  // They sit in the same list as the last step, after it, in order.
+  const last = page.locator('.method ol').last();
+  await expect(last.locator('> li').last()).toHaveAttribute('data-testid', 'author-note');
+  await expect(last.locator('> li.step:not(.anote)').last()).toContainText('Reduce the sauce');
+  await expect(notes.nth(0)).toContainText('Wine: Any dry red you would drink works.');
+  await expect(notes.nth(1).getByTestId('author-note-title')).toHaveText('Make ahead:');
+  await expect(notes.nth(2).getByTestId('author-note-title')).toHaveCount(0);
+  for (let i = 0; i < 3; i++) await expect(notes.nth(i).locator('small')).toHaveText('From the author');
+  await expect(page.getByRole('heading', { name: /author/i })).toHaveCount(0);
+  // Each note is credited, so a note read alone carries whose it is, and the
+  // page names them nowhere else.
+  await expect(page.locator('.method')).not.toContainText("Author's Notes");
+});
+
+test('an author note is a bulb in a soft circle on a dotted rail, its text smaller and lighter than a step, with no coloured edge', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  await page.goto(`/recipes/${notesId}`);
+  const note = page.getByTestId('author-note').first();
+  const step = page.locator('.method li.step:not(.anote)').first();
+
+  const circle = note.locator('.an > span');
+  await expect(circle.locator('svg')).toBeVisible();
+  const box = (await circle.boundingBox())!;
+  expect(Math.round(box.width)).toBe(30);
+  expect(Math.round(box.height)).toBe(30);
+  expect(await circle.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('50%');
+  expect(await circle.evaluate((el) => getComputedStyle(el).backgroundColor), 'a soft fill, not transparent').not.toBe('rgba(0, 0, 0, 0)');
+
+  // The rail runs on from the last step: dotted, 2px, and no thicker edge anywhere else.
+  const rail = await note.evaluate((el) => {
+    const s = getComputedStyle(el, '::before');
+    return { style: s.borderLeftStyle, width: s.borderLeftWidth };
+  });
+  expect(rail).toEqual({ style: 'dotted', width: '2px' });
+  expect(await note.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe('0px');
+
+  const size = async (loc: typeof note) => loc.locator('p').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(await size(note)).toBeLessThan(await size(step));
+  const credit = await note.locator('small').evaluate((el) => ({ size: parseFloat(getComputedStyle(el).fontSize), color: getComputedStyle(el).color }));
+  expect(credit.size).toBeLessThan(await size(note));
+  const bodyColor = await note.locator('p').evaluate((el) => getComputedStyle(el).color);
+  expect(credit.color, 'the credit is lighter than the note text').not.toBe(bodyColor);
+});
+
+test('a recipe without author notes shows none, and the notes survive scaling', async ({ page }) => {
+  await page.goto(`/recipes/${id}`);
+  await expect(page.getByTestId('author-note')).toHaveCount(0);
+  await page.goto(`/recipes/${notesId}`);
+  await page.getByRole('link', { name: '2×' }).first().click();
+  await expect(page.getByTestId('scaled-note')).toBeVisible();
+  await expect(page.getByTestId('author-note')).toHaveCount(3);
 });

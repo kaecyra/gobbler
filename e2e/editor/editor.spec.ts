@@ -531,3 +531,56 @@ test('a part is named from Steps as well as Ingredients, the two kept in step, a
   await expect(ingredients).toHaveValue('Sugar glaze');
   await expect(steps).toHaveValue('Sugar glaze');
 });
+
+// The author's notes (ADR-00041): rows with an optional title and a text of one
+// paragraph, added, dragged, removed and saved like the other lists.
+test('author notes are added, reordered by their handle, limited, removed and saved', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.getByRole('heading', { name: "Author's Notes" })).toBeVisible();
+  const rows = page.locator('ol[data-drag-list="move-note"] > li.note');
+  await expect(rows).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Add note' }).click();
+  await expect(page.locator('[name="n.0.text"]')).toBeFocused();
+  await page.locator('[name="n.0.title"]').fill('Flour');
+  await page.locator('[name="n.0.text"]').fill('Bread flour gives a chewier crust.');
+  await page.getByRole('button', { name: 'Add note' }).click();
+  await page.locator('[name="n.1.text"]').fill('Keeps three days.');
+  await expect(rows).toHaveCount(2);
+  // What was typed survives the structural button.
+  await expect(page.locator('[name="n.0.title"]')).toHaveValue('Flour');
+
+  // Dragging by the handle posts a move, and the server reorders.
+  await dragRow(page, rows.nth(0), rows.nth(1), 0.8);
+  await expect(page.locator('[name="n.0.text"]')).toHaveValue('Keeps three days.');
+  await expect(page.locator('[name="n.1.title"]')).toHaveValue('Flour');
+
+  // The limit is the recipe's: 401 characters is refused on its row, nothing saved.
+  await page.locator('[name="n.0.text"]').fill('x'.repeat(401));
+  await save(page);
+  await expect(rows.nth(0).getByRole('alert')).toContainText('This note is 401 characters');
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}/edit$`));
+  await page.locator('[name="n.0.text"]').fill('Keeps three days.\n\nA second paragraph.');
+  await save(page);
+  await expect(rows.nth(0).getByRole('alert')).toContainText('one paragraph');
+  await page.locator('[name="n.0.text"]').fill('x'.repeat(400));
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+
+  // Saved: the recipe page shows both after the last step, the 400-character one first.
+  const notes = page.getByTestId('author-note');
+  await expect(notes).toHaveCount(2);
+  await expect(notes.nth(1)).toContainText('Flour: Bread flour gives a chewier crust.');
+
+  // Remove one and save.
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(rows).toHaveCount(2);
+  await page.getByRole('button', { name: 'Remove note 1' }).click();
+  await expect(rows).toHaveCount(1);
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page.getByTestId('author-note')).toHaveCount(1);
+  await expect(page.getByTestId('author-note-title')).toHaveText('Flour:');
+
+});

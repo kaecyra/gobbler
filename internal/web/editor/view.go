@@ -8,6 +8,7 @@ import (
 
 	"github.com/a-h/templ"
 
+	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
@@ -98,6 +99,8 @@ func qField(ci, li, qi int, f string) string { return fmt.Sprintf("c.%d.l.%d.q.%
 func sField(ci, si int, f string) string { return fmt.Sprintf("c.%d.s.%d.%s", ci, si, f) }
 
 func eField(ei int, f string) string { return fmt.Sprintf("e.%d.%s", ei, f) }
+
+func nField(ni int, f string) string { return fmt.Sprintf("n.%d.%s", ni, f) }
 
 // Action values for the structural buttons.
 func act(verb string, pos ...int) string {
@@ -350,6 +353,7 @@ func tipID(kind string, pos ...int) string {
 func lineAnchor(ci, li int) string { return fmt.Sprintf("line-%d-%d", ci, li) }
 func stepAnchor(ci, si int) string { return fmt.Sprintf("step-%d-%d", ci, si) }
 func equipAnchor(ei int) string    { return fmt.Sprintf("equip-%d", ei) }
+func noteAnchor(ni int) string     { return fmt.Sprintf("note-%d", ni) }
 
 // metaOrder is the marked metadata fields in the order the form shows them,
 // with the input each one is read from.
@@ -383,6 +387,9 @@ func (v view) needsLook() (int, string) {
 		for si, s := range c.Steps {
 			flag(s.Mark.Low, stepAnchor(ci, si))
 		}
+	}
+	for ni, nt := range v.D.Notes {
+		flag(nt.Mark.Low, noteAnchor(ni))
 	}
 	for ei, e := range v.D.Equipment {
 		flag(e.Mark.Low, equipAnchor(ei))
@@ -511,4 +518,44 @@ func spiceOptions() []string {
 		out = append(out, strconv.Itoa(n))
 	}
 	return out
+}
+
+// noteIssueText words the issue codes ingest puts on a candidate note, for the
+// hint under it.
+func noteIssueText(codes []string) []string {
+	words := map[string]string{
+		ingestcore.IssueNoteTooLong:     "it is longer than one short paragraph",
+		ingestcore.IssueNoteNutrition:   "it reads as nutrition facts",
+		ingestcore.IssueNotePublication: "it reads as the page's publication history",
+		ingestcore.IssueNoteMealPlan:    "it reads as a meal plan",
+	}
+	var out []string
+	for _, c := range codes {
+		if w, ok := words[c]; ok {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
+// noteHint is the sentence under a flagged note.
+func noteHint(issues []string) string {
+	if w := noteIssueText(issues); len(w) > 0 {
+		return "this may not be a tip to keep: " + strings.Join(w, "; ") + ". Trim it or remove it."
+	}
+	return "the rules were not sure this is a short tip."
+}
+
+// noteRef names a note for a button: by its title, or its place when it has
+// none.
+func noteRef(n noteDraft, ni int) string {
+	if t := strings.TrimSpace(n.Title); t != "" {
+		return "note " + t
+	}
+	return "note " + n1(ni)
+}
+
+// blank reports whether a note row has no title and no text: an unused row.
+func (n noteDraft) blank() bool {
+	return strings.TrimSpace(n.Title) == "" && strings.TrimSpace(n.Text) == ""
 }
