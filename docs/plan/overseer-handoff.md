@@ -17,18 +17,19 @@ This file holds the volatile state the graph does not. The durable record is `do
 | (ADR-00044, nodes r-note-length #523, u-save-errors-visible #524, u-qualifier-style #526) | #525 | d859bb1 | none |
 | (ADR-00045, nodes u-notes-apart #527, u-card-total-time #528) | #529 | 918ee00 | none |
 
-**Open worker PRs.** Each is reviewed. The worker that wrote it was given the findings or the re-bump, but those workers die with this session. Merge order and state:
-1. **#531 a-api-sharing (#512)**, wt-512. Review approved, and its findings are fixed in 8b768f9 (PR comment). The worker was told to merge origin/main (conflicts with #530 on the design.md "not migrated yet" sentence, `.golangci.yml`'s recipes-through-api exceptions and routes.go: keep both sides' deletions) and set VERSION 0.123.8. Next: push, wait for CI, resolve the review's inline threads (check with `reviewThreads`), then merge.
-2. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed in 42aa5aa (pushed, PR comment). It still needs the same merge-main conflict resolution after #531, plus a re-bump. Then resolve threads and merge.
-3. **#533 r-note-length (#523)**, wt-523. Review requested changes (1 MUST, 2 SHOULD, 2 NIT). The out-of-lane SHOULD (an applied migration's header comment) was declined in a PR comment. The other four went to the worker, along with a merge of main and VERSION 0.123.8. If the report is lost, read the branch. If the fixes are missing, brief a fresh worker from pullrequestreview-5805763269. Needs a verification re-review, then merge. **This is the fix for the owner's blocked confirm. Prioritise it.**
-4. **#534 u-qualifier-style (#526)**, wt-526. Opened, and a review was launched. Read the posted review and triage. Re-bump at merge.
+**Also merged since:** #533 r-note-length (ec2509a, 0.123.8). This is the owner's confirm fix. The owner should redeploy 0.123.8 and retry the sallysbakingaddiction import.
 
-**Next to dispatch** once the queue drops below 5:
-- u-save-errors-visible (#524), after #533 merges.
-- u-card-total-time (#528): no dependencies, dispatchable now.
-- u-notes-apart (#527), after #534 and #528.
-- a-api-catalog (#514), after sharing, note-length, save-errors, qualifier-style and notes-apart.
-- Filed with no node: #522, a named constant for the suggest asset paths.
+**Open worker PRs, in merge order.** Each worker that wrote one was told what to do next, but those workers die with this session. If a report never arrived, read the branch:
+1. **#531 a-api-sharing (#512)**, wt-512. Review approved, and its findings are fixed (8b768f9). The worker was told to merge origin/main again and set VERSION to **0.123.9**. Then push, check that `reviewThreads` are all resolved (reply and resolve each by ID), wait for green CI, and merge.
+2. **#534 u-qualifier-style (#526)**, wt-526. Review requested changes; all fixed in 31bdd99 (PR comment) at VERSION 0.123.10. Next: verify the diff, resolve threads by ID, then merge after #531. If #531 has not merged first, re-bump. Screenshots: .cc-scratch/shots-526-after-{1280,390}.png.
+3. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed (42aa5aa, pushed). It still needs to merge origin/main: conflicts on design.md's "not migrated yet" sentence (after #531 and #530 it lists only "the status table") and the `.golangci.yml` journal exceptions. Re-bump to the next free patch, then merge.
+
+**In flight (dispatched at about 450k context; the reports die with this session):**
+- **u-save-errors-visible (#524)**: wt-524, branch fix/524-save-errors-visible.
+- **u-card-total-time (#528)**: wt-528, branch fix/528-card-total-time.
+- Both briefs say 0.123.9; re-bump at merge. Screenshots go to .cc-scratch/shots-{524,528}-*.png. If a report is lost: `git -C .claude/worktrees/wt-N log origin/main..`, run `make check` in the worktree, and if the work is complete, open the PR (Closes #N), then `/sdlc-review-pr`.
+
+**Next to dispatch:** u-notes-apart (#527), after #534 and #528 merge; then a-api-catalog (#514) once sharing, save-errors, qualifier-style and notes-apart have all merged. #522, a named constant for the suggest asset paths, has no node.
 
 **Owner context:**
 - Deployed 0.123.3. "Confirm and save" on sallysbakingaddiction soft dinner rolls did nothing: the draft's 700- and 550-character notes were refused, and the refusal rendered below the fold. The owner ruled ADR-00044: length is never refused, and the existing low-confidence flag is enough.
