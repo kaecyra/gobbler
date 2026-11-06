@@ -3953,7 +3953,8 @@
         "internal/mcp/mcp_test.go",
         "internal/mcp/mcp_edit_test.go",
         "internal/api/caller/**",
-        "internal/api/shopping/**"
+        "internal/api/shopping/**",
+        "internal/web/home.go"
       ],
       "needs_migration": null,
       "adrs": [],
