@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/apikey"
+	"github.com/kaecyra/gobbler/internal/credential"
 	"github.com/kaecyra/gobbler/internal/oauth"
 )
 
@@ -20,10 +21,10 @@ var ErrInvalidCredential = errors.New("invalid credential")
 
 const (
 	// KindAPIKey is the Kind of a credential that is an API key (ADR-00031).
-	KindAPIKey = "api_key"
+	KindAPIKey = credential.KindAPIKey
 	// KindOAuth is the Kind of a credential that is an OAuth access token
-	// (ADR-00034). Its ID is the grant the token belongs to, not the token.
-	KindOAuth = "oauth_grant"
+	// (ADR-00034).
+	KindOAuth = credential.KindOAuth
 )
 
 // Credential is who a verified bearer credential acts as. Exactly one of Email
