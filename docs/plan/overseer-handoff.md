@@ -18,12 +18,23 @@ This file holds the volatile state the graph does not. The durable record is `do
 | (graph: i-pasted-numbers) | #503 | 4d1228e | none |
 | i-line-qualifiers | #504 | 06625bc | 0.123.2 (ParserVersion 17) |
 
-**Open at handoff. Read the PR threads before acting; this list may have moved:**
-- **#505 u-qualifier-chip (#496)**, branch fix/496-qualifier-chip, wt-496, VERSION 0.123.3. Three review rounds are done and every thread is resolved. One SHOULD went past the cap and was escalated to the owner as inbox item ib-12a9cff30e05: at 360px a "preparation" chip's × pokes about 4px past its pill. The options are to shrink the text box on phones (recommended), stack the chip, or merge and file a follow-up. Act on the owner's answer: a fresh worker for the CSS rule, or merge and file the issue.
-- **#506 i-pasted-numbers (#502)**, branch fix/502-pasted-numbers, wt-502, VERSION 0.123.3 (ParserVersion 18). Round-1 review raised a MUST: parse held a second definition of an enumerator. The chosen fix leaves step numbers on the parse text, so ingest's `stripStepNumber` is the only owner. The worker's rework was uncommitted at handoff and changes three section goldens plus `meta_test.go:158`. Push it, re-review, and resolve the 3 round-1 threads.
-- **#507** (graph: i-pasted-numbers owns `internal/parse/meta_test.go`). The review MUST was declined in a PR comment, because it tested #506's old head. Merge only after #506's rework is pushed and that test is confirmed failing without the edit.
-- **#510** (graph: u-aisle-suggest #508, a-mcp-caller #509). Its review was running at handoff. #508 and #509 are `dor:blocked` until it merges, then move them to `dor:ready`.
+**Also merged late in the round:** #507 (76f010f, i-pasted-numbers lane gains `internal/parse/meta_test.go`) and #510 (4bd1719, nodes u-aisle-suggest #508 and a-mcp-caller #509, both now `dor:ready`).
+
+**Open at handoff. Read the PR threads and inbox before acting:**
+- **#505 u-qualifier-chip (#496)**, branch fix/496-qualifier-chip, wt-496, VERSION 0.123.3.
+  - Review is complete: three rounds, then the owner's ruling (ib-12a9cff30e05, "shrink the text box on phones", done in 1047770 and verified). Every thread is resolved.
+  - **CI `check` is red.** At 360px chip 3's × measures 300.78 against a limit of 300.5. CI fonts render wider than the container's, so the 5ch floor has no margin.
+  - The worker (in wt-496) was sent to give the `@media (max-width: 400px)` rule ~4px of headroom without loosening the test. If its report is lost, brief a fresh worker from that.
+  - Then push, wait for green, and merge.
+- **#506 i-pasted-numbers (#502)**, branch fix/502-pasted-numbers, wt-502, head d29c9a5, VERSION 0.123.3, ParserVersion 18.
+  - Three review rounds are done and the threads from all of them are resolved.
+  - One SHOULD survives the cap, and it is text loss. The new trailing-enumerator strip in `stripStepNumber` (`internal/ingest/assemble.go:368`) drops a lone trailing number after a sentence end: "1. Bake. 350." gives "Bake.". It is escalated to the owner as ib-6cb95393a777, with options:
+    - next-number (recommended): strip only the next number in the run;
+    - drop-strip: remove the trailing strip;
+    - merge-follow-up.
+  - Act on the answer with a fresh worker in wt-502, a verification review, then resolve the open thread.
 - #505 and #506 both hold 0.123.3. Whichever merges second re-bumps to 0.123.4 by merging origin/main.
+- **Process miss:** #507 was merged with its declined-MUST thread still open. The thread was resolved after the merge, with evidence. Before any merge, query `reviewThreads` for unresolved threads, even when the decline was posted as a PR comment.
 
 **Next to dispatch, in order:**
 1. **Split a-api-rest (#471)**, a dispatcher graph PR. It is a placeholder (owns only `internal/api/README.md`) and is unblocked now that a-api-recipes has merged. ADR-00043: one node per resource, each creating `internal/api/<resource>`, switching web and MCP, and adding a depguard rule. Proposed nodes, from the depguard exceptions in `.golangci.yml` and a grep of domain imports in `internal/web` and `internal/mcp` on 2026-11-06:
