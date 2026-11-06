@@ -3903,7 +3903,8 @@
         ".golangci.yml",
         "e2e/shopping/**",
         "internal/mcp/server.go",
-        "internal/mcp/tools.go"
+        "internal/mcp/tools.go",
+        "internal/mcp/mcp_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
@@ -3950,7 +3951,7 @@
       "wave": 12,
       "track": null,
       "issue": 468,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "u-recipe-delete",
         "u-home-suggest-card"
