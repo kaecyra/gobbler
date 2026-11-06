@@ -1,8 +1,85 @@
-# Overseer handoff: 2026-11-05, round 22 closed
+# Overseer handoff: 2026-11-06, round 23 paused mid-round
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
+
+Paused at the owner's request ("write a handoff, don't start net new work"). Two workers were still
+fixing review findings when the session ended; their commits are on disk, unpushed (#465's worker
+finished green; #460's had not reported).
+
+**Merged** (squash SHA; under the standing authority unless noted):
+
+| Node | PR | SHA | Schema | VERSION |
+|---|---|---|---|---|
+| (graph: #441/#447 nodes) | #450 | 2ca7ef0 | none | none |
+| u-picker-icons | #451 | 3421fea | none | 0.117.1 |
+| (graph: lanes, nodes) | #453, #457, #459, #463, #464, #467, #472 | | none | none |
+| (ADR-00041 author notes, mockup variant A) | #458 | 5a4f0dd | none | none |
+| r-credential-describe | #452 | 0f487cc | none | 0.117.2 |
+| c-import-copy | #461 | e31e0bf | none | 0.117.3 |
+
+**Open:**
+
+| Node | Issue | PR | State |
+|---|---|---|---|
+| u-recipe-delete | #454 | #460 | CHANGES_REQUESTED round 1. Worker fixing: shopping-list FK 500 -> named sentinel + 409 row in httperr.go, rebase, one `.btn.danger` in app.css, script to `static/recipe-delete.js`, shared id parser, double wrap. Last local commit `99c7b22` in `wt-454`, **unpushed, gates unconfirmed**. Next: check `make check` in wt-454, ownership, force-push, re-review. VERSION 0.118.0. |
+| u-home-suggest-card | #456 | #465 | CHANGES_REQUESTED round 1; **all four fixes done**, rebased on d8cf944, `make check` green (445 e2e), version-check 0.117.3 -> 0.118.0. Commits `bd236cc` `9d2be31` `a1caa8f` `4005c48` in `wt-456`, **unpushed**. Next: ownership check, force-push, round-2 review, merge. Whichever of #460/#465 merges second re-bumps to 0.119.0. Gotcha: a broken `home.templ` made `make generate` write a corrupt `ribbon_templ.go`; the committed output regenerates cleanly. |
+| l-discrete-api | #433 | #473 | ADR-00043 docs PR, CI pending. Owner decided it; merge on green, then `record-done l-discrete-api`. |
+| (ADR-00042 re-import) | #462 | #466 | Docs PR, CI pending. Merge on green, then `unblock i-reimport`. Two dispatcher defaults in it (revision kind/provenance, recipe-page banner) for the owner to overturn on the PR. |
+
+**Worktrees:** `wt-454` (#460), `wt-456` (#465), `wt-433` (#473), `wt-adr-reimport` (#466).
+`.claude/worktrees/mascot-check` is the owner's PNGs, not a worktree. `git worktree remove` reported
+"not a working tree" for wt-447/441/455 after `gh pr merge --delete-branch`; the directories were
+already gone.
+
+**Migration numbers:** schema last used 00030; none handed out this round. r-author-notes needs the next
+(00031) at dispatch. **ADR numbers:** 00041 r-author-notes (merged), 00042 i-reimport (#466), 00043
+l-discrete-api (#473).
+
+**Decisions this round (owner, via /overseer:decide; don't re-ask):**
+- **Author notes, ADR-00041** (`docs/proposals/author-notes.md` D1–D5): ordered list on the recipe,
+  recipe level only; one paragraph, at most 400 characters, enforced in validation, long or junk
+  candidates flagged low-confidence at ingest; they end the step chain, each credited "From the author"
+  (mockup variant A in `docs/ui/mockup.html`); "Author's Notes" for the cook-mode button and sections.
+- **Re-import, ADR-00042** (`docs/proposals/reimport.md` D1–D5): runs the whole ingest flow, only the
+  save differs (new revision of the existing recipe, refused if it moved on); no pairing or change
+  summary; picker defaults to "Keep current picture"; "Re-import from source" POST button with the
+  action links, URL recipes only; MCP tool may start one, draft held for review.
+- **Discrete API, ADR-00043** (`docs/proposals/discrete-api.md` D1–D5): in-process
+  `internal/api/<resource>` that web and MCP call; JSON API later as an adapter; auth at adapters,
+  membership in the service; one resource per node fenced by depguard; shopping pilot, then recipes.
+  Owner's "scaling" driver doesn't hold over one SQLite file; said so, owner accepted.
+- **Recipe delete:** danger button below History/Edit/Share at the bottom of the recipe page; type
+  `DELETE` to confirm; redirect to the library.
+- **Suggestion cards:** both the home and the library side-panel suggestions are library cards, home
+  at library-card width; voice line above, "Another idea" below.
+- **Copy:** removed the two "you review the result before anything is saved" lines (#461).
+
+**Next to dispatch, in order:**
+1. r-author-notes (#395): ready once #460 merges (lane overlap). Assign migration 00031. Brief with the
+   mockup variant A as the visual target and the ADR-00041 obligations.
+2. a-api-shopping (#469): ready once #473 merges (unblock via its issue label).
+3. u-card-width (#468): after #460 and #465.
+4. i-reimport (#462): after r-author-notes and #466.
+
+**Unmapped issues:** none; every open issue has a node.
+
+**For the owner:** o-demo-reseed (#432) still waits on a deploy; main is 0.117.3.
+
+**Lessons:**
+- **Graph PRs merge on `validate.ts` alone**, no review agent and no CI wait. The owner repeated this
+  (round 11 memory `feedback-mechanical-graph-prs`). Read `.memory/` at session start.
+- **The host has overseer 0.18.2, the container 0.20.1.** Run host-side scripts from
+  `~/.claude/plugins/cache/market/overseer/0.18.2/`.
+- **A long bridge command can outlive a branch switch.** A background `gh pr merge … && git pull` ran
+  while the primary checkout sat on a graph branch. Don't pull in background jobs; pull after.
+- **Ask which instance the owner means.** "The suggestion" existed in two places; the worker changed
+  one. Confirm the target before dispatching UI feedback.
+- **ADR workers found real gaps** (pairing keys, lost confidence marks, ADR-00035 snapshot rules). The
+  owner's answer reshaped re-import. Have the ADR worker report contradictions before the PR opens.
 
 ## Round 22 (2026-11-05): recipe pictures
 
