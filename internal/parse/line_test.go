@@ -187,6 +187,74 @@ func TestIngredientLineQualifiers(t *testing.T) {
 	}
 }
 
+// A note keeps the source's case: "110°F (43°C)" is not "110°f (43°c)". A
+// known instruction like "warmed to" is a note, not unrecognised text.
+func TestIngredientLineNoteKeepsSourceCase(t *testing.T) {
+	got := IngredientLine("1 cup (240ml) whole milk, warmed to about 110°F (43°C)", lineTestCatalog(), lineTestUnits())
+	if got.Name != "milk" {
+		t.Errorf("name = %q, want milk", got.Name)
+	}
+	if q, u := got.Amount.Qty.String(), got.Amount.Unit.Name; q != "1" || u != "cup" {
+		t.Errorf("amount = %q %q, want 1 cup", q, u)
+	}
+	want := []LineQualifier{
+		{LineQualForm, "whole"},
+		{LineQualNote, "240ml"},
+		{LineQualNote, "warmed to about 110°F (43°C)"},
+	}
+	if len(got.Qualifiers) != len(want) {
+		t.Fatalf("qualifiers = %+v, want %+v", got.Qualifiers, want)
+	}
+	for i, w := range want {
+		if got.Qualifiers[i] != w {
+			t.Errorf("qualifier %d = %+v, want %+v", i, got.Qualifiers[i], w)
+		}
+	}
+	if len(got.Issues) != 0 {
+		t.Errorf("issues = %v, want none", got.Issues)
+	}
+}
+
+// Text the vocabulary matched is stored lowercase; free text keeps the
+// source's case.
+func TestIngredientLineQualifierCase(t *testing.T) {
+	tests := []struct {
+		in   string
+		want []LineQualifier
+	}{
+		{"1 cup butter (Room Temp)", []LineQualifier{{LineQualNote, "Room Temp"}}},
+		{"1 cup butter (Cold)", []LineQualifier{{LineQualNote, "cold"}}},
+		{"2 tbsp butter, Melted", []LineQualifier{{LineQualState, "melted"}}},
+		{"1 tsp salt, Divided", []LineQualifier{{LineQualNote, "divided"}}},
+		{"1 cup butter, For Serving", []LineQualifier{{LineQualNote, "for Serving"}}},
+		{"1 cup butter, Brought To Room Temp", []LineQualifier{{LineQualNote, "Brought To Room Temp"}}},
+		{"1 cup butter, warmed to 110°F", []LineQualifier{{LineQualNote, "warmed to 110°F"}}},
+		// Only the matched words are lowercased; what follows keeps its case.
+		{"1 cup butter, softened to 70°F", []LineQualifier{{LineQualState, "softened to 70°F"}}},
+		{"1 cup butter, Finely Chopped Fresh Basil", []LineQualifier{{LineQualPreparation, "finely chopped Fresh Basil"}}},
+		{"1 cup butter, At Room Temperature For 1 Hour", []LineQualifier{{LineQualState, "at room temperature For 1 Hour"}}},
+		// Lowercasing changes the byte length of U+212A and U+0130; no text
+		// may be lost or doubled.
+		{"1 cup butter, li\u212Ae a squeeze", []LineQualifier{{LineQualNote, "like a squeeze"}}},
+		{"1 cup butter, \u0130f Ripe", []LineQualifier{{LineQualNote, "if Ripe"}}},
+		// The hedge is vocabulary.
+		{"About 2 cups butter", []LineQualifier{{LineQualNote, "about"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			got := IngredientLine(tt.in, lineTestCatalog(), lineTestUnits())
+			if len(got.Qualifiers) != len(tt.want) {
+				t.Fatalf("qualifiers = %+v, want %+v", got.Qualifiers, tt.want)
+			}
+			for i, w := range tt.want {
+				if got.Qualifiers[i] != w {
+					t.Errorf("qualifier %d = %+v, want %+v", i, got.Qualifiers[i], w)
+				}
+			}
+		})
+	}
+}
+
 func TestIngredientLineOptional(t *testing.T) {
 	for _, in := range []string{
 		"1 cup sugar (optional)", "1 cup sugar, optional", "1 cup sugar [optional]",

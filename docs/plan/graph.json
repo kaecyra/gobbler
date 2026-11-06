@@ -4073,7 +4073,7 @@
       "wave": 13,
       "track": null,
       "issue": 496,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "u-editor-suggest-list"
       ],
@@ -4091,7 +4091,7 @@
       "wave": 13,
       "track": null,
       "issue": 498,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "i-split-steps"
       ],
@@ -4103,6 +4103,27 @@
       "needs_migration": null,
       "adrs": [],
       "note": "internal/ingest/ingest.go only for the ParserVersion bump: main's value plus one at merge, redone after any rebase (lessons.md). i-split-steps bumps it too, hence the edge."
+    },
+    {
+      "id": "i-pasted-numbers",
+      "title": "split a pasted step line whose inline run starts at its list marker",
+      "wave": 13,
+      "track": null,
+      "issue": 502,
+      "status": "todo",
+      "depends_on": [
+        "i-line-qualifiers"
+      ],
+      "owns": [
+        "internal/parse/section*.go",
+        "internal/parse/testdata/sections/**",
+        "internal/ingest/ingest.go",
+        "internal/ingest/assemble*.go",
+        "internal/ingest/steps_split_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "sectionStepMarkerRe strips the leading '1.' as a list marker before the ingest split sees the run. Either fix reaches internal/ingest/assemble.go (keep the enumerator for stripStepNumber/splitNumberedSteps, or reuse enumeratorRE from there), so the lane includes it. internal/ingest/ingest.go only for the ParserVersion bump (main's value plus one at merge), which i-line-qualifiers also makes, hence the edge."
     }
   ],
   "shared_files": [
@@ -5435,6 +5456,12 @@
       "title": "suggestion fields open the full list, not only the current value",
       "merged": "d5064c5",
       "note": "Owner-reported (#488): the datalist arrow implies a dropdown but Chrome lists only matches for the current text. After a-api-recipes, which owns internal/web/editor/** now."
+    },
+    {
+      "id": "i-line-qualifiers",
+      "title": "keep every word and its case when a line's extras become qualifiers",
+      "merged": "06625bc",
+      "note": "internal/ingest/ingest.go only for the ParserVersion bump: main's value plus one at merge, redone after any rebase (lessons.md). i-split-steps bumps it too, hence the edge."
     }
   ],
   "adr_sequence": {
