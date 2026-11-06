@@ -3991,7 +3991,7 @@
       "wave": 13,
       "track": null,
       "issue": 483,
-      "status": "in_flight",
+      "status": "merged",
       "depends_on": [
         "i-reimport"
       ],
@@ -5303,6 +5303,12 @@
         "00042"
       ],
       "note": "ADR-00042 (corrected in #480: several snapshots per kind, newest wins; migration 00032). May edit the one existing line in internal/web/web.go that builds the ingest drafts store, to give it the picture reaper (an exception to web.go's append-only rule): a new re-import supersedes the pending one there. internal/web/reimport_wiring_test.go drives the real router to prove an MCP edit's supersede leaves no candidates."
+    },
+    {
+      "id": "m-picture-user-agent",
+      "title": "picture candidate downloads send the configured User-Agent",
+      "merged": "621c0b3",
+      "note": "Bug (#483): candidate downloads send Go's default agent and some sites answer 403. May edit the existing internal/web/web.go line that builds the picture service, to pass the configured user agent (an exception to web.go's append-only rule). After i-reimport, which edits the adjacent drafts-store line."
     }
   ],
   "adr_sequence": {
