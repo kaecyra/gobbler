@@ -2,7 +2,6 @@ package recipes
 
 import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
-	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
 
 // homePage is the landing page: the hero search, a suggestion and the recently
@@ -53,7 +52,7 @@ templ homePage(h homeView) {
 // recipe was last made above a library card (recipeCard, so it looks and opens
 // like any other), and "Another idea" below it, which replaces just this block.
 templ suggestion(s suggestView) {
-	<div class="suggest" id="suggest" aria-label="A suggestion from gobbler">
+	<section class="suggest" id="suggest" aria-label="A suggestion from gobbler">
 		<div class="sg-voice">
 			<img src={ layout.MascotTasting } alt="" width="44" height="44"/>
 			<div>
@@ -71,5 +70,5 @@ templ suggestion(s suggestView) {
 				hx-swap="outerHTML"
 			>Another idea</a>
 		}
-	</div>
+	</section>
 }

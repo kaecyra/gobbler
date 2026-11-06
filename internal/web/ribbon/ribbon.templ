@@ -22,15 +22,6 @@ templ Large(r Ribbon) {
 	}
 }
 
-// Inline is a ribbon standing inside a box's padding, with rounded, bordered
-// segments: the home and library suggestion. It renders nothing when no step
-// has a duration.
-templ Inline(r Ribbon) {
-	if !r.Empty() {
-		@ribbon(r, "rib")
-	}
-}
-
 // ribbon prints both levels. Level 0 is shown until the script finds it does
 // not fit and sets data-level.
 templ ribbon(r Ribbon, class string) {

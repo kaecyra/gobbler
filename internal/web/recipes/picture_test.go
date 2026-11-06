@@ -108,3 +108,36 @@ func TestLibrarySuggestionIsALibraryCardWithItsPicture(t *testing.T) {
 		}
 	}
 }
+
+// failsAfter finds pictures until it has been asked n times, then fails.
+type failsAfter struct{ n, asked int }
+
+func (f *failsAfter) Src(context.Context, int64) (string, error) {
+	f.asked++
+	if f.asked > f.n {
+		return "", errors.New("disk on fire")
+	}
+	return "", nil
+}
+
+func TestLibrarySuggestionPictureFailureIsAnErrorNotAMissingCard(t *testing.T) {
+	made := today.AddDate(0, 0, -2)
+	soup := card(1, "Soup", recipe.MealMain)
+	soup.LastMade = &made
+	lib := &fakeLibrary{cards: []store.Card{soup, card(4, "Never cake", recipe.MealDessert)}}
+	lib.idle = lib.cards
+	// The page looks up the two grid cards first, so only the third lookup,
+	// the side's, fails. The fragment has no grid, so its first one does.
+	for name, tc := range map[string]struct {
+		pics   *failsAfter
+		header map[string]string
+	}{
+		"page":     {&failsAfter{n: 2}, nil},
+		"fragment": {&failsAfter{n: 0}, map[string]string{"HX-Request": "true", "HX-Target": "suggest"}},
+	} {
+		h := Routes(Deps{Library: lib, Pictures: tc.pics, Now: func() time.Time { return today }})
+		if code, _, _ := do(t, h, "/", tc.header); code != http.StatusInternalServerError {
+			t.Errorf("%s: a picture lookup failure gave status %d, want 500", name, code)
+		}
+	}
+}

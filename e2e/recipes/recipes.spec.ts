@@ -114,6 +114,12 @@ test.describe('with recipes', () => {
     await expect(suggest.getByTestId('card-picture')).toHaveClass(/\brpic\b/);
     const panel = (await page.locator('aside.side').boundingBox())!;
     expect(Math.abs((await suggest.locator('.rcard').boundingBox())!.width - panel.width)).toBeLessThanOrEqual(2);
+    // The voice line is above the card and "Another idea" below it.
+    const voice = (await suggest.locator('.sg-voice').boundingBox())!;
+    const cardBox = (await suggest.locator('.rcard').boundingBox())!;
+    const nextBox = (await suggest.getByRole('link', { name: 'Another idea' }).boundingBox())!;
+    expect(voice.y + voice.height).toBeLessThanOrEqual(cardBox.y);
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(nextBox.y);
     // The suggestion draws on the whole library, not on the search.
     const next = suggest.getByRole('link', { name: 'Another idea' });
     await expect(next).toHaveAttribute('href', '/recipes?group=time&idea=1&q=a');

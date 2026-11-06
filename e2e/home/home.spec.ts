@@ -105,6 +105,15 @@ test.describe('with recipes', () => {
     expect(Math.abs(card.width - grid.width)).toBeLessThanOrEqual(4);
   });
 
+  test('the voice line is above the card and "Another idea" below it', async ({ page }) => {
+    await page.goto('/');
+    const voice = (await page.locator('#suggest .sg-voice').boundingBox())!;
+    const card = (await page.locator('#suggest .rcard').boundingBox())!;
+    const next = (await page.getByRole('link', { name: 'Another idea' }).boundingBox())!;
+    expect(voice.y + voice.height).toBeLessThanOrEqual(card.y);
+    expect(card.y + card.height).toBeLessThanOrEqual(next.y);
+  });
+
   test('clicking the suggested card opens the recipe', async ({ page }) => {
     await page.goto('/');
     const box = (await page.locator('#suggest .rcard').boundingBox())!;
