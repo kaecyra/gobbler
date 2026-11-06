@@ -1,8 +1,48 @@
-# Overseer handoff: 2026-11-06, round 25 closing
+# Overseer handoff: 2026-11-06, round 26 (owner away)
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
-**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a hando## Round 26 (2026-11-06): API split, note length, recipe page polish
+
+**Merged** under the standing authority. Read VERSION on main rather than trusting these numbers.
+
+| Node / PR | PR | SHA | VERSION |
+|---|---|---|---|
+| u-qualifier-chip | #505 | e738243 | 0.123.3 |
+| a-mcp-caller | #520 | 2073cc4 | 0.123.4 |
+| i-pasted-numbers (owner ruled next-number) | #506 | 6081c12 | 0.123.5 (ParserVersion 18) |
+| u-aisle-suggest | #519 | c242d26 | 0.123.6 |
+| (graph) a-api-rest split into 8 nodes, #511–#518; #471 closed | #521 | 6c12162 | none |
+| (ADR-00044 + nodes r-note-length #523, u-save-errors-visible #524, u-qualifier-style #526) | #525 | d859bb1 | none |
+
+**Open PRs at handoff.** Each was opened by the dispatcher, and its review was launched in a background agent that dies with this session. Check whether a review is posted on GitHub. If not, run `/sdlc-review-pr <n>`. Then triage, resolve threads, wait for CI, and merge. All four worker PRs carry VERSION 0.123.7, so every one after the first re-bumps: merge origin/main into the branch, then bump.
+- **#529** (dispatcher): ADR-00045, notes apart from steps (amends ADR-00041), plus nodes u-notes-apart (#527) and u-card-total-time (#528). Both are owner design calls.
+- **#530** a-api-pictures (#513), branch refactor/513-api-pictures, wt-513.
+- **#531** a-api-sharing (#512), branch refactor/512-api-sharing, wt-512.
+- **#532** a-api-journal (#511), branch refactor/511-api-journal, wt-511.
+- All three a-api PRs edit the same `docs/design.md` sentence: each drops its own entry from the "not migrated yet … until #471" list. All three edit `.golangci.yml`'s `recipes-through-api` exception block and `internal/web/routes.go`. Expect trivial conflicts on the second and third merge. Resolve them with a worker: merge origin/main, keep both sides' deletions.
+
+**In flight (workers; their reports die with this session):**
+- **r-note-length (#523)**: wt-523, branch fix/523-note-length. Implements ADR-00044: drop the 400-character refusal, keep ingest's low-confidence flag and the one-paragraph rule.
+- **u-qualifier-style (#526)**: wt-526, branch fix/526-qualifier-style. Recipe page ingredient list only: qualifiers muted italic, separated by spaces. `display.Line` gains a field; `Line.Text` is unchanged for cook, shopping and MCP.
+- If the reports are lost, read the branch (`git log origin/main..<branch>`) and run `make check` in the worktree. If the work looks finished, open the PR. Otherwise brief a fresh worker from the issue body and the branch state.
+
+**Next to dispatch** (once their dependencies merge):
+1. u-save-errors-visible (#524), after r-note-length. A refused save shows a page-level callout and scrolls to the first error. This is the real cause of the owner's "Confirm and save does nothing".
+2. u-card-total-time (#528), after #529 merges. It has no node dependencies.
+3. u-notes-apart (#527), after #529 and u-qualifier-style merge.
+4. a-api-catalog (#514), after a-api-sharing, r-note-length, u-save-errors-visible, u-qualifier-style and u-notes-apart. Then households → profile and ingest → status-table.
+- Filed, no node yet: #522, a named constant for the suggest.js/suggest.css paths (layout). It is small; add a node or fold it into a layout-owning node.
+
+**Owner context this round:**
+- Deployed 0.123.3. "Confirm and save" on sallysbakingaddiction soft dinner rolls did nothing: the draft had two notes of 700 and 550 characters, above the 400-character limit. The refusal rendered inline, below the fold. ADR-00044 and #523/#524 address it. Until #523 ships, the owner's workaround is to shorten each note to 400 characters or fewer.
+- Inbox: all items are answered and withdrawn.
+
+**Lessons this round:**
+- `node.ts` writes the graph in the primary checkout's current branch. Run bookkeeping verbs (`record-done`, `status`) only with the primary checkout on main; a write on a dispatcher branch has to be reverted and redone.
+- A shell `case` on review thread text matched the wrong thread (`catalog.templ:14*` caught 142 and 143), so a fixed SHOULD got a "declined" reply. Match thread IDs, not text patterns, when replying in bulk.
+
+ff.
 
 ## Round 25 (2026-11-06): recipes API, step splitting, editor fixes
 
