@@ -4010,6 +4010,25 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Bug (#483): candidate downloads send Go's default agent and some sites answer 403. May edit the existing internal/web/web.go line that builds the picture service, to pass the configured user agent (an exception to web.go's append-only rule). After i-reimport, which edits the adjacent drafts-store line."
+    },
+    {
+      "id": "u-editor-suggest-list",
+      "title": "suggestion fields open the full list, not only the current value",
+      "wave": 13,
+      "track": null,
+      "issue": 488,
+      "status": "todo",
+      "depends_on": [
+        "a-api-recipes"
+      ],
+      "owns": [
+        "internal/web/static/editor.js",
+        "internal/web/editor/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner-reported (#488): the datalist arrow implies a dropdown but Chrome lists only matches for the current text. After a-api-recipes, which owns internal/web/editor/** now."
     }
   ],
   "shared_files": [
