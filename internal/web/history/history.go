@@ -17,10 +17,10 @@ import (
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
-	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -38,17 +38,18 @@ const (
 	confirmValue = "yes"
 )
 
-// Recipes is what the history needs from the recipe store.
+// Recipes is what the history needs from the recipe service
+// (*apirecipes.Service satisfies it).
 type Recipes interface {
-	Get(ctx context.Context, id int64) (recipe.Recipe, error)
-	Info(ctx context.Context, id int64) (store.Info, error)
-	ListRevisions(ctx context.Context, id int64) ([]store.Revision, error)
-	GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error)
-	Restore(ctx context.Context, id, version int64) error
-	Clone(ctx context.Context, id int64) (int64, error)
-	// HasThumbnail and SaveThumbnail keep the preview image of a recipe's video
+	Get(ctx context.Context, c apirecipes.Caller, id int64) (recipe.Recipe, error)
+	Info(ctx context.Context, c apirecipes.Caller, id int64) (apirecipes.Info, error)
+	ListRevisions(ctx context.Context, c apirecipes.Caller, id int64) ([]apirecipes.Revision, error)
+	GetVersion(ctx context.Context, c apirecipes.Caller, id, version int64) (recipe.Recipe, error)
+	Restore(ctx context.Context, c apirecipes.Caller, id, version int64) error
+	Clone(ctx context.Context, c apirecipes.Caller, id int64) (int64, error)
+	// KeepThumbnailAfter keeps the preview image of a recipe's video
 	// (ADR-00021).
-	video.ThumbnailStore
+	KeepThumbnailAfter(ctx context.Context, c apirecipes.Caller, id int64, readVideoID func(context.Context) (string, error))
 }
 
 // Catalog is what a version's page reads from the ingredient and equipment
@@ -62,9 +63,6 @@ type Catalog interface {
 type Deps struct {
 	Recipes Recipes
 	Catalog Catalog
-	// Thumbnails downloads the preview image of a restored recipe's video;
-	// nil means YouTube's image host.
-	Thumbnails video.ThumbnailSource
 }
 
 // Routes returns the history routes, relative to Pattern.
@@ -129,24 +127,24 @@ func list(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, err)
 			return
 		}
-		info, err := d.Recipes.Info(r.Context(), id)
+		info, err := d.Recipes.Info(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
-		revs, err := d.Recipes.ListRevisions(r.Context(), id)
+		revs, err := d.Recipes.ListRevisions(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("list revisions of recipe %d: %w", id, err))
 			return
 		}
-		doc, err := d.Recipes.GetVersion(r.Context(), id, info.Version)
+		doc, err := d.Recipes.GetVersion(r.Context(), caller.FromContext(r.Context()), id, info.Version)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
 		// The revision of the version before the current one was written by the
 		// edit that produced the current one, so it names the proposal behind it.
-		var from *store.ProposalRef
+		var from *apirecipes.ProposalRef
 		for _, rev := range revs {
 			if rev.Version == info.Version-1 {
 				from = rev.Proposal
@@ -170,12 +168,12 @@ func show(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, err)
 			return
 		}
-		info, err := d.Recipes.Info(r.Context(), id)
+		info, err := d.Recipes.Info(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
 		}
-		doc, err := d.Recipes.GetVersion(r.Context(), id, version)
+		doc, err := d.Recipes.GetVersion(r.Context(), caller.FromContext(r.Context()), id, version)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load version %d of recipe %d: %w", version, id, err))
 			return
@@ -201,7 +199,7 @@ func restore(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, err)
 			return
 		}
-		info, err := d.Recipes.Info(r.Context(), id)
+		info, err := d.Recipes.Info(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return
@@ -220,14 +218,14 @@ func restore(d Deps) http.HandlerFunc {
 				fmt.Sprintf("version %d of recipe %d is the current version", version, id))
 			return
 		}
-		if err := d.Recipes.Restore(r.Context(), id, version); err != nil {
+		if err := d.Recipes.Restore(r.Context(), caller.FromContext(r.Context()), id, version); err != nil {
 			layout.WriteError(w, r, fmt.Errorf("restore version %d of recipe %d: %w", version, id, err))
 			return
 		}
 		// The restored revision can carry a video with no stored thumbnail
 		// (ADR-00021 decision 3); the restore is already done.
-		video.KeepThumbnailAfter(r.Context(), d.Recipes, d.Thumbnails, id, func(ctx context.Context) (string, error) {
-			restored, err := d.Recipes.GetVersion(ctx, id, version)
+		d.Recipes.KeepThumbnailAfter(r.Context(), caller.FromContext(r.Context()), id, func(ctx context.Context) (string, error) {
+			restored, err := d.Recipes.GetVersion(ctx, caller.FromContext(ctx), id, version)
 			return restored.VideoID, err
 		})
 		http.Redirect(w, r, historyPath(id), http.StatusSeeOther)
@@ -241,15 +239,15 @@ func clone(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, err)
 			return
 		}
-		newID, err := d.Recipes.Clone(r.Context(), id)
+		newID, err := d.Recipes.Clone(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("clone recipe %d: %w", id, err))
 			return
 		}
 		// The clone is a saved revision carrying the source's video (ADR-00021
 		// decision 3); the clone is already made.
-		video.KeepThumbnailAfter(r.Context(), d.Recipes, d.Thumbnails, newID, func(ctx context.Context) (string, error) {
-			cloned, err := d.Recipes.Get(ctx, newID)
+		d.Recipes.KeepThumbnailAfter(r.Context(), caller.FromContext(r.Context()), newID, func(ctx context.Context) (string, error) {
+			cloned, err := d.Recipes.Get(ctx, caller.FromContext(ctx), newID)
 			return cloned.VideoID, err
 		})
 		http.Redirect(w, r, recipePath(newID), http.StatusSeeOther)

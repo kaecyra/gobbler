@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -37,6 +38,7 @@ type env struct {
 	t      *testing.T
 	ctx    context.Context
 	store  *store.Store
+	svc    *apirecipes.Service
 	cat    *catalog.Store
 	router chi.Router
 	flour  int64
@@ -78,8 +80,12 @@ func newEnv(t *testing.T) *env {
 	}
 
 	thumbs := &stubThumbs{}
-	e := &env{t: t, ctx: authed, store: s, cat: cat, flour: flour.ID, pan: pan.ID, thumbs: thumbs}
-	e.router = e.routerFor(Deps{Recipes: s, Catalog: cat, Thumbnails: thumbs})
+	svc, err := apirecipes.New(apirecipes.Deps{Recipes: s, Catalog: cat, Members: household.New(d), Thumbnails: thumbs})
+	if err != nil {
+		t.Fatalf("recipes service: %v", err)
+	}
+	e := &env{t: t, ctx: authed, store: s, svc: svc, cat: cat, flour: flour.ID, pan: pan.ID, thumbs: thumbs}
+	e.router = e.routerFor(Deps{Recipes: svc, Catalog: cat})
 	return e
 }
 
@@ -533,18 +539,18 @@ func TestAFailedThumbnailDownloadDoesNotFailTheRestore(t *testing.T) {
 // unreadable is a store whose read-back of a saved recipe fails, as a database
 // error right after the write would. It still returns the recipe, video
 // included, so ignoring the error would download the thumbnail.
-type unreadable struct{ *store.Store }
+type unreadable struct{ *apirecipes.Service }
 
-func (u unreadable) Get(ctx context.Context, id int64) (recipe.Recipe, error) {
-	r, err := u.Store.Get(ctx, id)
+func (u unreadable) Get(ctx context.Context, c apirecipes.Caller, id int64) (recipe.Recipe, error) {
+	r, err := u.Service.Get(ctx, c, id)
 	if err != nil {
 		return r, err
 	}
 	return r, errors.New("database is locked")
 }
 
-func (u unreadable) GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error) {
-	r, err := u.Store.GetVersion(ctx, id, version)
+func (u unreadable) GetVersion(ctx context.Context, c apirecipes.Caller, id, version int64) (recipe.Recipe, error) {
+	r, err := u.Service.GetVersion(ctx, c, id, version)
 	if err != nil {
 		return r, err
 	}
@@ -568,7 +574,7 @@ func TestRestoreStillSucceedsWhenTheRestoredRecipeCannotBeReadBack(t *testing.T)
 	withVideo.VideoID = "dQw4w9WgXcQ"
 	id := e.create(withVideo)
 	e.update(id, e.doc("Loaf v2", "4"))
-	router := e.routerFor(Deps{Recipes: unreadable{e.store}, Catalog: catalog.New(nil), Thumbnails: e.thumbs})
+	router := e.routerFor(Deps{Recipes: unreadable{e.svc}, Catalog: catalog.New(nil)})
 
 	rec := e.post(router, "/recipes/"+itoa(id)+"/history/1/restore", url.Values{confirmField: {confirmValue}})
 	if rec.Code != http.StatusSeeOther || len(e.thumbs.asked) != 0 {
@@ -605,7 +611,7 @@ func TestCloneStillSucceedsWhenTheCloneCannotBeReadBack(t *testing.T) {
 	withVideo := e.doc("Loaf", "3")
 	withVideo.VideoID = "dQw4w9WgXcQ"
 	id := e.create(withVideo)
-	router := e.routerFor(Deps{Recipes: unreadable{e.store}, Catalog: catalog.New(nil), Thumbnails: e.thumbs})
+	router := e.routerFor(Deps{Recipes: unreadable{e.svc}, Catalog: catalog.New(nil)})
 
 	rec := e.post(router, "/recipes/"+itoa(id)+"/clone", nil)
 	if rec.Code != http.StatusSeeOther || len(e.thumbs.asked) != 0 {
