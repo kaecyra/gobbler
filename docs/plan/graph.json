@@ -3300,7 +3300,7 @@
       "wave": 12,
       "track": null,
       "issue": 395,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "r-stage-serve",
         "a-mcp-recipe-edit",
@@ -5263,6 +5263,15 @@
       "title": "shopping service layer pilot (internal/api/shopping)",
       "merged": "de00177",
       "note": "ADR-00043 pilot. May edit the existing shopping lines in internal/web/routes.go (an exception to its append-only rule) to build and mount through internal/api/shopping. internal/web/editor/build.go imports shopping for the Uncategorised aisle constant and belongs to r-author-notes, then a-api-recipes: give it a depguard file exception commented with a-api-recipes (#470), which removes it. i-reimport waits on this node because both own internal/mcp/server.go and tools.go."
+    },
+    {
+      "id": "r-author-notes",
+      "title": "parse, store and show the recipe author's notes",
+      "merged": "05f2588",
+      "adrs": [
+        "00041"
+      ],
+      "note": "ADR-00041 (docs/proposals/author-notes.md D1-D5). Visual target: variant A in docs/ui/mockup.html, checked side by side."
     }
   ],
   "adr_sequence": {
