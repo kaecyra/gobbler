@@ -86,7 +86,7 @@ func newEnv(t *testing.T) *env {
 	e := &env{st: st, hs: hs, m: m, d: d, own: ctxFor(t, h1, auth.DevEmail), foreign: ctxFor(t, h2, auth.DevOtherEmail), logs: &bytes.Buffer{}}
 	e.svc = domain.New(d, m, st, domain.NewFetcher(true), nil)
 	log := slog.New(slog.NewJSONHandler(e.logs, nil))
-	e.api = recipesService(t, d, e.svc)
+	e.api = recipesService(t, st, hs, d, e.svc)
 	deps := picture.Deps{Pictures: e.api, Media: m, Logger: log}
 	e.router = chi.NewRouter()
 	e.router.Mount(picture.Pattern, picture.Routes(deps))
@@ -321,9 +321,9 @@ type failingMedia struct{}
 
 func (failingMedia) Get(context.Context, string) ([]byte, error) { return nil, io.ErrUnexpectedEOF }
 
-func recipesService(t *testing.T, d *sql.DB, p *apirecipes.Pictures) *apirecipes.Service {
+func recipesService(t *testing.T, st *store.Store, hs *household.Store, d *sql.DB, p *apirecipes.Pictures) *apirecipes.Service {
 	t.Helper()
-	svc, err := apirecipes.New(apirecipes.Deps{Recipes: store.New(d), Catalog: catalog.New(d), Members: household.New(d), Pictures: p})
+	svc, err := apirecipes.New(apirecipes.Deps{Recipes: st, Catalog: catalog.New(d), Members: hs, Pictures: p})
 	if err != nil {
 		t.Fatal(err)
 	}
