@@ -55,6 +55,16 @@ This file holds the volatile state the graph does not. The durable record is `do
   a mix-up: that page parses into 10 steps fine.)
 - u-editor-suggest-list (#488), after a-api-recipes: datalist arrow lists only the current value.
 
+- **#496, no node yet:** the qualifier chip's × escapes its pill when two chips share a row (owner
+  screenshot in feedback/, untracked). Editor lane, so add a node after u-editor-suggest-list. The same
+  screenshot shows parser issues to triage into their own issue: "°F" lowercased, "(43°C)" and "whole"
+  dropped from "1 cup (240ml) whole milk, warmed to about 110°F (43°C)", and the unrecognised-text
+  warning firing although the text became qualifiers.
+- #494 fix 1b3bc52 (depguard reads generated files via linters.exclusions.generated: disable plus an
+  exclusion for every other linter on templ/sqlc output) was verified but not pushed at handoff; after
+  #495 merges it must merge origin/main, re-bump VERSION to 0.122.1 and rewrap the long docs/design.md
+  line, then push, resolve the MUST thread and merge.
+
 **Owner, deployed:** VM runs 0.121.1 (GOBBLER_VERSION in /opt/gobbler/.env; nano needs
 TERM=xterm-256color). Picture fix (#483) to be confirmed by re-importing the beer bread page.
 
