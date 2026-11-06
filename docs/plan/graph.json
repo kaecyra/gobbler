@@ -4418,7 +4418,8 @@
         "internal/web/recipeview/**",
         "internal/web/layout/recipe_parts.templ",
         "internal/web/layout/recipe_parts_templ.go",
-        "e2e/recipeview/**"
+        "e2e/recipeview/**",
+        "internal/web/layout/recipe.css"
       ],
       "needs_migration": null,
       "adrs": [],

@@ -67,6 +67,7 @@ Obligations:
 3. The editor and review screen no longer refuse a note on length, and the
    note card's help text no longer states a maximum.
 4. Ingest keeps flagging a note over 400 characters at low confidence; its
-   existing test still passes unchanged.
+   existing test still passes, changed at most by a rename of the guideline
+   constant.
 5. ADR-00041's status line and its row in `docs/adr/README.md` say it is
    amended by this ADR.
