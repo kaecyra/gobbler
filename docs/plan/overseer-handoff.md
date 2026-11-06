@@ -26,8 +26,22 @@ This file holds the volatile state the graph does not. The durable record is `do
 | m-picture-user-agent | #485 | 621c0b3 | none | 0.121.1 |
 | (graph: a-api-recipes lane) | #486 | ebd89ca | none | none |
 
-**In flight:** a-api-recipes (#470), worktree wt-470, branch refactor/470-api-recipes, no migration,
-target 0.121.2. Large; told to stop at a green coherent point if it cannot finish.
+**In flight:**
+- a-api-recipes (#470), worktree wt-470, branch refactor/470-api-recipes, no migration, target 0.121.2.
+  Lane widened by #486 (import, re-import, MCP wiring) and #487 (internal/api/caller extraction, shopping
+  moved onto it). Commits so far: Caller extraction, recipes service skeleton; it resumed after an API
+  connection loss. Large; told to stop at a green coherent point if it cannot finish.
+- i-step-numbers (#490), worktree wt-490, branch feat/490-step-numbers, ParserVersion 14 to 15, target
+  0.122.0 (re-bump at merge against whichever lands first).
+
+**Queued:** u-editor-suggest-list (#488, after a-api-recipes): datalist fields show an arrow but list
+only the current value.
+
+**Open owner investigations:**
+- Pictures (#483): the VM ran 0.121.0 (GOBBLER_VERSION in .env); now 0.121.1. Owner to re-import the
+  beer bread page and confirm.
+- Sally's soft dinner rolls came out as one untitled step on the VM, while main's pipeline gives 10
+  steps (6 titled), no LLM, from the same page fetched here. Asked for VM logs (ib-fb8cf55ce09c).
 
 **For the owner:** after the next deploy, re-import https://www.gimmesomeoven.com/honey-beer-bread/ and
 check the 1392x2088 og:image is offered (#483 acceptance; needs the live fetch).
