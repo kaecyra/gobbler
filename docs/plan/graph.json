@@ -4132,7 +4132,7 @@
       "wave": 13,
       "track": null,
       "issue": 508,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "u-qualifier-chip"
       ],
@@ -4156,7 +4156,7 @@
       "wave": 13,
       "track": null,
       "issue": 509,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/mcp/tools.go",
@@ -5510,6 +5510,12 @@
       "title": "keep each qualifier chip's controls inside its pill; chips wrap",
       "merged": "e738243",
       "note": "Same lane as u-editor-suggest-list (editor.templ holds the chip styles), so it runs after it."
+    },
+    {
+      "id": "a-mcp-caller",
+      "title": "one MCP caller helper for the recipe and shopping tools",
+      "merged": "2073cc4",
+      "note": "Follow-up from #494 review. Every per-resource node split from a-api-rest that owns an internal/mcp file depends on this node, so they start from one helper."
     }
   ],
   "adr_sequence": {
