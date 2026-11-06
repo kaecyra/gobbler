@@ -52,8 +52,8 @@ const libraryStyle = `
 .key { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.45; }
 .key em { font-style: normal; color: var(--ink); }
 .rfoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); padding-top: 4px; margin-top: auto; }
-.rtime { display: inline-flex; align-items: center; gap: 4px; }
-.rtime svg { width: 14px; height: 14px; flex: none; }
+.ctime { display: inline-flex; align-items: center; gap: 4px; }
+.ctime svg { width: 14px; height: 14px; flex: none; }
 
 /* A card's picture, or the placeholder band of the same height (ADR-00039; the
    .ph0 to .ph5 variants are in the shared stylesheet). It bleeds to the card's

@@ -114,7 +114,7 @@ templ recipeCard(c cardView) {
 				<span>New</span>
 			}
 			if c.Time != "" {
-				<span class="rtime" data-testid="card-time" title={ c.TimeLabel }>
+				<span class="ctime" data-testid="card-time" title={ c.TimeLabel }>
 					@layout.Icon(layout.IconClock)
 					{ c.Time }
 				</span>

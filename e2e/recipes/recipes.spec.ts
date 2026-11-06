@@ -290,6 +290,7 @@ test.describe('with recipes', () => {
       await page.goto('/recipes?group=time');
       const group = page.locator('section.group[aria-label="Up to 3 hours"]');
       await expect(group.locator('.rcard', { hasText: 'Lemon Cake' })).toHaveCount(1);
+      await expect(group.locator('.rcard', { hasText: 'Lemon Cake' }).getByTestId('card-time')).toHaveText('55m');
       await expect(group.locator('.rcard', { hasText: 'Cardamom Knots' })).toHaveCount(0);
     });
   });

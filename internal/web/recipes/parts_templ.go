@@ -528,7 +528,7 @@ func recipeCard(c cardView) templ.Component {
 			}
 		}
 		if c.Time != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"rtime\" data-testid=\"card-time\" title=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"ctime\" data-testid=\"card-time\" title=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

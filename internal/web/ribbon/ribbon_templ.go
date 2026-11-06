@@ -36,7 +36,7 @@ func Large(r Ribbon) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if !r.Empty() {
-			templ_7745c5c3_Err = ribbon(r, "rib rib-big").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ribbon(r).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -47,7 +47,7 @@ func Large(r Ribbon) templ.Component {
 
 // ribbon prints both levels. Level 0 is shown until the script finds it does
 // not fit and sets data-level.
-func ribbon(r Ribbon, class string) templ.Component {
+func ribbon(r Ribbon) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -68,7 +68,7 @@ func ribbon(r Ribbon, class string) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var3 = []any{class, templ.KV("rib-merges", r.Merges())}
+		var templ_7745c5c3_Var3 = []any{"rib rib-big", templ.KV("rib-merges", r.Merges())}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var3...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -93,7 +93,7 @@ func ribbon(r Ribbon, class string) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ribbon/ribbon.templ`, Line: 20, Col: 113}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/ribbon/ribbon.templ`, Line: 20, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {

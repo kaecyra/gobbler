@@ -10,14 +10,14 @@ import (
 // renders nothing when no step has a duration.
 templ Large(r Ribbon) {
 	if !r.Empty() {
-		@ribbon(r, "rib rib-big")
+		@ribbon(r)
 	}
 }
 
 // ribbon prints both levels. Level 0 is shown until the script finds it does
 // not fit and sets data-level.
-templ ribbon(r Ribbon, class string) {
-	<div class={ class, templ.KV("rib-merges", r.Merges()) } data-rib data-level="0" role="img" aria-label={ r.Label }>
+templ ribbon(r Ribbon) {
+	<div class={ "rib rib-big", templ.KV("rib-merges", r.Merges()) } data-rib data-level="0" role="img" aria-label={ r.Label }>
 		@level("rib-lv rib-full", r.Full)
 		if r.Merges() {
 			@level("rib-lv rib-merged", r.Merged)
