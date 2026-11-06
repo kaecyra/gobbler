@@ -94,6 +94,158 @@ test('loads the stored recipe into the form', async ({ page }) => {
   expect(await revisions(page)).toBe(0);
 });
 
+// The suggestion lists (issue #488). A native datalist offers only the entries
+// that match the text already in the box, so a unit set to "cup" listed "cup"
+// alone under a dropdown arrow. The editor draws its own list, which shows
+// every suggestion when it opens and narrows as the person types.
+test.describe('suggestion lists', () => {
+  const list = (page: Page) => page.getByRole('listbox');
+  const options = (page: Page) => list(page).getByRole('option');
+  const texts = async (page: Page) => (await options(page).allTextContents()).map((t) => t.trim());
+
+  test('opening a filled field lists every unit, not only the matches for its text', async ({ page }) => {
+    await page.goto(`/recipes/${id}/edit`);
+    const unit = page.locator('[name="c.0.l.0.unit"]');
+    await expect(unit).toHaveValue('cup');
+    await unit.click();
+    await expect(page.getByRole('listbox', { name: 'Unit' })).toBeVisible();
+    const all = await texts(page);
+    expect(all.length).toBeGreaterThan(1);
+    expect(all).toContain('cup');
+    expect(all.some((t) => !t.includes('cup'))).toBe(true);
+    const sizes = [await options(page).count()];
+
+    // Typing narrows, case-insensitively, and an empty box lists everything again.
+    await unit.fill('CUP');
+    const narrowed = await texts(page);
+    expect(narrowed.length).toBeLessThan(sizes[0]);
+    expect(narrowed.every((t) => t.toLowerCase().includes('cup'))).toBe(true);
+    await unit.fill('');
+    await expect(options(page)).toHaveCount(sizes[0]);
+
+    // Escape closes it without changing the value; choosing one fills the field.
+    await unit.fill('cu');
+    await page.keyboard.press('Escape');
+    await expect(list(page)).toBeHidden();
+    await expect(unit).toHaveValue('cu');
+    await unit.click();
+    await options(page).filter({ hasText: /^tbsp$/ }).click();
+    await expect(unit).toHaveValue('tbsp');
+    await expect(list(page)).toBeHidden();
+  });
+
+  test('the keyboard walks the list; Enter picks without saving the form', async ({ page }) => {
+    // The form posts through htmx, so the URL never changes: what proves Enter
+    // did not save is that no request was sent.
+    const posts: string[] = [];
+    page.on('request', (r) => { if (r.method() === 'POST') posts.push(r.url()); });
+    await page.goto(`/recipes/${id}/edit`);
+    const unit = page.locator('[name="c.0.l.0.unit"]');
+    await unit.focus();
+    await expect(list(page)).toBeVisible();
+    await expect(unit).toHaveAttribute('role', 'combobox');
+    await expect(unit).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('ArrowDown');
+    const first = (await texts(page))[0];
+    await expect(unit).toHaveAttribute('aria-activedescendant', (await options(page).first().getAttribute('id'))!);
+    await page.keyboard.press('ArrowDown');
+    await expect(unit).toHaveAttribute('aria-activedescendant', (await options(page).nth(1).getAttribute('id'))!);
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Enter');
+    await expect(unit).toHaveValue(first);
+    await expect(unit).toHaveAttribute('aria-expanded', 'false');
+    await page.waitForTimeout(500);
+    expect(posts, 'Enter on an option must not post the form').toEqual([]);
+  });
+
+  test('Enter on an equipment suggestion picks it and does not press Add equipment', async ({ page }) => {
+    const posts: string[] = [];
+    page.on('request', (r) => { if (r.method() === 'POST') posts.push(r.url()); });
+    await page.goto(`/recipes/${id}/edit`);
+    const rows = await page.locator('[name$=".name"][name^="e."]').count();
+    const equip = page.getByPlaceholder('Add equipment');
+    await equip.focus();
+    await expect(options(page).first()).toBeVisible();
+    await page.keyboard.press('ArrowDown');
+    const first = (await texts(page))[0];
+    await page.keyboard.press('Enter');
+    await expect(equip).toHaveValue(first);
+    await page.waitForTimeout(500);
+    expect(posts, 'Add equipment must not be pressed').toEqual([]);
+    expect(await page.locator('[name$=".name"][name^="e."]').count()).toBe(rows);
+  });
+
+  test('a line added after a morph has the full unit list too', async ({ page }) => {
+    await page.goto(`/recipes/${id}/edit`);
+    const part = page.locator('#ed-ingredients .component').first();
+    const units = part.locator('input[name^="c.0.l."][name$=".unit"]');
+    const before = await units.count();
+    await part.getByRole('button', { name: 'Add ingredient' }).click();
+    await expect(units).toHaveCount(before + 1);
+    const unit = units.last();
+    await unit.fill('cup');
+    await page.locator('[name="name"]').click();
+    await unit.click();
+    await expect(list(page)).toBeVisible();
+    const all = await texts(page);
+    expect(all.length).toBeGreaterThan(1);
+    expect(all.some((t) => !t.includes('cup'))).toBe(true);
+  });
+
+  test('ingredient and equipment fields list every suggestion too', async ({ page }) => {
+    await page.goto(`/recipes/${id}/edit`);
+    const ing = page.locator('[name="c.0.l.0.ing"]');
+    const was = await ing.inputValue();
+    expect(was).not.toBe('');
+    await ing.click();
+    const names = await texts(page);
+    expect(names).toContain(was);
+    expect(names.some((t) => !t.includes(was))).toBe(true);
+    await ing.fill(was.slice(0, 4));
+    const near = await texts(page);
+    expect(near.length).toBeLessThan(names.length);
+    expect(near.every((t) => t.toLowerCase().includes(was.slice(0, 4).toLowerCase()))).toBe(true);
+
+    const equip = page.getByPlaceholder('Add equipment');
+    await equip.click();
+    await expect(options(page).first()).toBeVisible();
+    const gear = await texts(page);
+    expect(gear.length).toBeGreaterThan(1);
+    await equip.fill(gear[0].slice(0, 3));
+    expect((await texts(page)).length).toBeLessThan(gear.length);
+  });
+
+  test('the package unit lists every unit', async ({ page }) => {
+    await page.goto(`/recipes/${id}/edit`);
+    const pkg = page.locator('[name="c.0.l.0.pkgunit"]');
+    await pkg.evaluate((el) => el.closest('details')?.setAttribute('open', ''));
+    await pkg.fill('cup');
+    await page.locator('[name="name"]').click();
+    await expect(list(page)).toBeHidden();
+    await pkg.click();
+    expect((await texts(page)).length).toBeGreaterThan(1);
+  });
+
+  test('a tap opens the list on a tablet, in reach of a finger', async ({ browser }) => {
+    const context = await browser.newContext({ baseURL: origin, hasTouch: true, viewport: { width: 820, height: 1180 } });
+    const page = await context.newPage();
+    await page.goto(`/recipes/${id}/edit`);
+    const unit = page.locator('[name="c.0.l.0.unit"]');
+    await unit.tap();
+    await expect(list(page)).toBeVisible();
+    const tall = await options(page).evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height < 44).length);
+    expect(tall, 'options shorter than --tap').toBe(0);
+    const box = (await list(page).boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(820);
+    expect(box.y + box.height).toBeLessThanOrEqual(1180);
+    await options(page).nth(1).tap();
+    await expect(list(page)).toBeHidden();
+    await expect(unit).not.toHaveValue('');
+    await context.close();
+  });
+});
+
 test('an invalid quantity is rejected inline, keeps the input and saves nothing', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('[name="name"]').fill('Never Saved');
@@ -583,4 +735,21 @@ test('author notes are added, reordered by their handle, limited, removed and sa
   await expect(page.getByTestId('author-note')).toHaveCount(1);
   await expect(page.getByTestId('author-note-title')).toHaveText('Flour:');
 
+});
+
+// Saves, so it runs last. Not part of the describe above: it edits the recipe.
+test('suggestion lists: a value that is not in the list still saves', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  const ing = page.locator('input[name$=".l.0.ing"]').first();
+  const name = await ing.getAttribute('name');
+  await ing.click();
+  await ing.fill('e2e saffron');
+  await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(0);
+  // The server asks before it adds an unknown ingredient to the catalog.
+  await save(page);
+  await page.getByRole('checkbox', { name: 'Add this ingredient to the catalog as new and unreviewed' }).check();
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator(`[name="${name}"]`)).toHaveValue('e2e saffron');
 });
