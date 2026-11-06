@@ -93,8 +93,12 @@ func TestIngestNumberedBlocksBecomeSteps(t *testing.T) {
 			t.Errorf("step %d = %q, want the number stripped", i+1, s.Text)
 		}
 	}
-	if !strings.Contains(got[1].Title+" "+got[1].Text, "honey butter") || !strings.Contains(got[5].Text, "flaky sea salt") {
-		t.Errorf("steps out of order: %+v", got)
+	// A lead sentence may have become the title, so each step is its title and
+	// text together.
+	for i, want := range []string{"In the bowl", "To make the honey butter", "Preheat the oven", "Lightly dust", "Cover the dish", "Bake the rolls"} {
+		if text := strings.TrimSpace(got[i].Title + " " + got[i].Text); !strings.HasPrefix(text, want) {
+			t.Errorf("step %d = %q, want it to open %q", i+1, text, want)
+		}
 	}
 }
 
