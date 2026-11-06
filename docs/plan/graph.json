@@ -3779,7 +3779,7 @@
       "wave": 12,
       "track": null,
       "issue": 447,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/layout/icon.go",
@@ -5074,6 +5074,12 @@
       "title": "pictures and placeholders on library cards and the recipe header",
       "merged": "9b51b4a",
       "note": "ADR-00039; decision record docs/proposals/recipe-images.md D9, D10. Match the approved mockup side by side."
+    },
+    {
+      "id": "u-picker-icons",
+      "title": "picker tick and no-picture icons in layout.Icon; editor.FormID one source",
+      "merged": "3421fea",
+      "note": "Follow-up from #446. Icons drawn as in docs/ui/mockup.html (data-ic=none). Closes difference 3 of #446's mockup comparison."
     }
   ],
   "adr_sequence": {
