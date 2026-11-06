@@ -931,7 +931,7 @@ templ noteSection(v view) {
 	<section class="ed-sec" aria-labelledby="ed-h-notes" id="ed-notes">
 		@sectionHead("ed-h-notes", "Author's Notes")
 		<div class="ed-card">
-			<p class="help note-help">The author's own tips, substitutions and storage hints. Each is one paragraph of at most { strconv.Itoa(recipe.MaxAuthorNoteChars) } characters, and shows after the last step.</p>
+			<p class="help note-help">The author's own tips, substitutions and storage hints. Each is one paragraph, and shows after the last step.</p>
 			<ol data-drag-list="move-note">
 				for ni, n := range v.D.Notes {
 					<li class={ "item note " + n.Mark.String() } data-low?={ n.Mark.Low }>
