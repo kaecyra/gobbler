@@ -4115,7 +4115,7 @@
       "wave": 13,
       "track": null,
       "issue": 508,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "u-qualifier-chip"
       ],
@@ -4139,7 +4139,7 @@
       "wave": 13,
       "track": null,
       "issue": 509,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [],
       "owns": [
         "internal/mcp/tools.go",
