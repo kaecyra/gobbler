@@ -172,3 +172,5 @@
 
 /* A qualifier on an ingredient line: muted italic, after the name (#526). */
 .ing .qual { font-style: italic; color: var(--ink-3); }
+/* Inside a pending-edit highlight the qualifier keeps the highlight colour. */
+.pnew .qual, .padd .qual { color: inherit; }
