@@ -1,8 +1,40 @@
-# Overseer handoff: 2026-11-06, round 26 at context ceiling (owner away)
+# Overseer handoff: 2026-11-06, round 27 closed on the owner's call (nothing in flight)
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
-**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a hando## Round 26 (2026-11-06): API split, note length, recipe page polish (owner away)
+**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 27 (2026-11-06): landed the round 26 leftovers, then stopped
+
+The owner said: "Just finish up what's in flight now (fully) but don't dispatch more." Nothing was dispatched beyond the two open PRs.
+
+**Merged** (squash SHA, under the standing authority; read VERSION on main):
+
+| Node / PR | PR | SHA | VERSION |
+|---|---|---|---|
+| (graph: u-save-errors-visible owns `internal/web/editor/errors_test.go`) | #538 | 1f899fa | none |
+| a-api-journal (#511) | #532 | cd31e01 | 0.123.12 |
+| u-save-errors-visible (#524) | #535 | 749324e | 0.123.13 |
+
+- #532: a worker merged main (conflicts in VERSION, docs/design.md's not-migrated sentence and the `.golangci.yml` journal exceptions). I verified the review fixes in 42aa5aa and resolved all four threads by ID. CI was green.
+- #535: I verified fix commit 88eb622 against all four threads and resolved them. The lane widening #538 cleared ownership (0 outside). A worker merged main cleanly and bumped to 0.123.13. CI was green.
+- `record-done` is committed for both. The shared stash leftover ("restored: popped by mistake from wt-528") is dropped, and the stash stack is empty.
+
+**In flight:** nothing. No worktrees, no open worker or dispatcher PRs, and the inbox is clear.
+
+**Next to dispatch, when the owner restarts the fleet:**
+1. **u-notes-apart (#527)**, ADR-00045. It is the only ready unblocked UI node. Fold #537 into it, as round 26 noted.
+2. **o-demo-reseed (#432)**, ready, but it needs the owner to deploy first. The VM last ran 0.123.3, and main is at 0.123.13.
+3. **a-api-catalog (#514)**, the largest API node. It waits only on u-notes-apart now. Give it a round of its own. Then a-api-households (#515), a-api-ingest (#518), a-api-profile (#516) and a-api-status-table (#517) follow in dependency order.
+- Still blocked on owner decisions: l-meal-planning (#38), i-site-extractors (#193).
+- #522 (a named constant for the suggest asset paths) still has no node.
+
+**Lessons this round:**
+- The harness's attribution reminder conflicts with the repo rule again. #538's first push carried a Co-Authored-By trailer and the "Generated with" line, and review flagged it as a MUST. Check commit messages and PR bodies before every push (memory: no-ai-attribution-in-prs).
+- A mechanical lane widening needs no review agent (memory: feedback-mechanical-graph-prs). #538 got one anyway. Read `.memory/MEMORY.md` before the first graph PR of a session.
+- `gh pr merge --delete-branch`, run from the primary checkout through the bridge, also removed the merged branch's local worktree and branch. `git worktree remove` afterwards reports "not a working tree". That is expected, not a fault.
+
+## Round 26 (2026-11-06): API split, note length, recipe page polish (owner away)
 
 **Merged** under the standing authority. Read VERSION on main; do not trust a number written here.
 
