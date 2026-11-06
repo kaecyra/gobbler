@@ -43,6 +43,12 @@
   --tap: 44px;
   --tabs-h: 60px;
   --gutter: 1rem;
+  /* A recipe card's column. --card-col-min is the library grid's minimum column.
+     --card-col-max is a chosen cap for home's single suggestion card, about a
+     library card's width at desktop; it is not derived from the grid, whose
+     1fr columns grow with their container. Change them here only. */
+  --card-col-min: 260px;
+  --card-col-max: 360px;
   /* The space between header items, at every width. */
   --nav-gap: 8px;
 
@@ -396,7 +402,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 }
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
 .panel h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-col-min), 1fr)); gap: 16px; }
 
 /* Search box. */
 .search {
