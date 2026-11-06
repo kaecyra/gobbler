@@ -257,6 +257,8 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
     'c.0.s.1.text': 'Serve it.',
     'c.0.s.1.to': '0',
     'c.0.s.1.dep': 'bake',
+    'n.0.title': 'Tenancy tip',
+    'n.0.text': 'Tenancy author note.',
     'e.0.name': 'oven',
     'e.0.qty': '1',
     'e.0.step': 'bake',
