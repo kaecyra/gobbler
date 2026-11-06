@@ -25,7 +25,7 @@ This file holds the volatile state the graph does not. The durable record is `do
   - Review is complete: three rounds, then the owner's ruling (ib-12a9cff30e05, "shrink the text box on phones", done in 1047770 and verified). Every thread is resolved.
   - **CI `check` is red.** At 360px chip 3's × measures 300.78 against a limit of 300.5. CI fonts render wider than the container's, so the 5ch floor has no margin.
   - The worker (in wt-496) was sent to give the `@media (max-width: 400px)` rule ~4px of headroom without loosening the test. If its report is lost, brief a fresh worker from that.
-  - Then push, wait for green, and merge.
+  - **Done in 4b8ddd1 (pushed):** the phone rule is now `min-width: 3ch; padding: 0 4px`; the test tolerance is unchanged; `make check` is green locally. Next: confirm CI is green, check `reviewThreads` (should be 0), then merge. No re-review is needed: it is a single-rule CSS change inside the ruling, and the test is unchanged.
 - **#506 i-pasted-numbers (#502)**, branch fix/502-pasted-numbers, wt-502, head d29c9a5, VERSION 0.123.3, ParserVersion 18.
   - Three review rounds are done and the threads from all of them are resolved.
   - One SHOULD survives the cap, and it is text loss. The new trailing-enumerator strip in `stripStepNumber` (`internal/ingest/assemble.go:368`) drops a lone trailing number after a sentence end: "1. Bake. 350." gives "Bake.". It is escalated to the owner as ib-6cb95393a777, with options:
