@@ -24,6 +24,7 @@ let dataDir = '';
 let server: ChildProcess | undefined;
 let pizza = 0;
 let empty = 0;
+let notes = 0;
 
 test.use({ baseURL: origin });
 test.describe.configure({ mode: 'serial' });
@@ -33,7 +34,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_COOK_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-cook-'));
   const out = execFileSync('go', ['run', './e2e/cook/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ pizza, empty } = JSON.parse(out));
+  ({ pizza, empty, notes } = JSON.parse(out));
   server = spawn(bin, ['serve'], {
     env: {
       PATH: process.env.PATH ?? '',
@@ -479,4 +480,42 @@ test('cook mode shows no recipe picture, though the recipe has one', async ({ pa
   await page.goto(`/recipes/${pizza}/cook`);
   await expect(page.getByTestId('cook-ingredients')).toBeVisible();
   await expect(page.locator('img[src*="/picture"], .rhero, .rpic')).toHaveCount(0);
+});
+
+// Cook mode shows one step at a time, so the author's notes (ADR-00041) are
+// behind an "Author's Notes" button that is on every step.
+test("an Author's Notes button on every step opens the notes and closes again", async ({ page }) => {
+  await page.goto(`/recipes/${notes}/cook`);
+  const open = page.getByRole('button', { name: "Author's Notes" });
+  await expect(open).toBeVisible();
+  const box = (await open.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  const panel = page.getByTestId('notes-panel');
+  await expect(panel).toBeHidden();
+
+  await open.click();
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole('heading', { name: "Author's Notes" })).toBeVisible();
+  const items = panel.getByTestId('author-note');
+  await expect(items).toHaveCount(2);
+  await expect(items.nth(0)).toContainText('Stock: Homemade stock is better, but a good carton works.');
+  await expect(items.nth(1)).toContainText('The soup keeps three days in the fridge.');
+  await expect(items.nth(1).locator('small')).toHaveText('From the author');
+  await panel.getByRole('button', { name: 'Close' }).click();
+  await expect(panel).toBeHidden();
+
+  // Still there after stepping on, which swaps the step panel in place.
+  await page.getByTestId('next').click();
+  await expect(page.getByTestId('progress')).toContainText('Step 2 of 3');
+  await expect(page.getByRole('button', { name: "Author's Notes" })).toBeVisible();
+  await page.getByRole('button', { name: "Author's Notes" }).click();
+  await expect(page.getByTestId('notes-panel')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('notes-panel')).toBeHidden();
+});
+
+test('a recipe without author notes has no Author\'s Notes button in cook mode', async ({ page }) => {
+  await page.goto(`/recipes/${pizza}/cook`);
+  await expect(page.getByTestId('cook-step')).toBeVisible();
+  await expect(page.getByRole('button', { name: "Author's Notes" })).toHaveCount(0);
 });

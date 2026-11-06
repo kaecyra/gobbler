@@ -80,11 +80,28 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
+	// A recipe with author notes (ADR-00041), which cook mode reaches through a
+	// button.
+	notesID, err := store.New(d).Create(ctx, recipe.Recipe{
+		Name: "E2E Soup",
+		Components: []recipe.Component{{Steps: []recipe.Step{
+			{ID: "chop", Text: "Chop the onions."},
+			{ID: "simmer", Text: "Simmer the stock.", Duration: 20 * time.Minute},
+			{ID: "serve", Text: "Ladle into bowls."},
+		}}},
+		AuthorNotes: []recipe.AuthorNote{
+			{Title: "Stock", Text: "Homemade stock is better, but a good carton works."},
+			{Text: "The soup keeps three days in the fridge."},
+		},
+	})
+	if err != nil {
+		return err
+	}
 	// The pizza has a picture, so the spec can show that cook mode draws none.
 	if err := picseed.Give(ctx, d, dir, pizzaID, color.RGBA{R: 220, G: 160, B: 60}); err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"pizza": pizzaID, "empty": emptyID})
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"pizza": pizzaID, "empty": emptyID, "notes": notesID})
 }
 
 func line(qty, unit string, ingredient int64) recipe.IngredientLine {

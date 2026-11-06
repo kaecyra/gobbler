@@ -179,7 +179,11 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID, "doomed": doomedID, "doomed_clone": doomedCloneID, "listed": listedID})
+	notesID, err := seedNotes(ctx, d)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"notes": notesID, "recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID, "doomed": doomedID, "doomed_clone": doomedCloneID, "listed": listedID})
 }
 
 // seedDoomed stores the recipe the delete specs remove: one with a picture, a
@@ -288,4 +292,26 @@ func mustRat(s string) quantity.Rat {
 		panic(err)
 	}
 	return r
+}
+
+// seedNotes stores the recipe whose page ends in the author's notes
+// (ADR-00041): two parts of steps, then three notes, the first two titled.
+func seedNotes(ctx context.Context, d *sql.DB) (int64, error) {
+	return store.New(d).Create(ctx, recipe.Recipe{
+		Name: "E2E Braised Ribs",
+		Components: []recipe.Component{
+			{Name: "Braise", Steps: []recipe.Step{
+				{ID: "sear", Text: "Sear the ribs on all sides.", Duration: 15 * time.Minute},
+				{ID: "braise", Text: "Braise in the oven.", Duration: 3 * time.Hour, Passive: true, DependsOn: []recipe.StepID{"sear"}},
+			}},
+			{Name: "Finish", Steps: []recipe.Step{
+				{ID: "serve", Text: "Reduce the sauce and serve over mash.", Duration: 15 * time.Minute, DependsOn: []recipe.StepID{"braise"}},
+			}},
+		},
+		AuthorNotes: []recipe.AuthorNote{
+			{Title: "Wine", Text: "Any dry red you would drink works. A cooking wine adds salt you then have to cook out."},
+			{Title: "Make ahead", Text: "The braise is better the next day. Cool the ribs in their liquid, lift off the set fat, and reheat gently."},
+			{Text: "Bone-in ribs give a richer sauce than boneless, but boneless cook about 30 minutes faster."},
+		},
+	})
 }
