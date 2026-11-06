@@ -108,7 +108,7 @@ test.describe('suggestion lists', () => {
     const unit = page.locator('[name="c.0.l.0.unit"]');
     await expect(unit).toHaveValue('cup');
     await unit.click();
-    await expect(list(page)).toBeVisible();
+    await expect(page.getByRole('listbox', { name: 'Unit' })).toBeVisible();
     const all = await texts(page);
     expect(all.length).toBeGreaterThan(1);
     expect(all).toContain('cup');
@@ -124,8 +124,10 @@ test.describe('suggestion lists', () => {
     await expect(options(page)).toHaveCount(sizes[0]);
 
     // Escape closes it without changing the value; choosing one fills the field.
+    await unit.fill('cu');
     await page.keyboard.press('Escape');
     await expect(list(page)).toBeHidden();
+    await expect(unit).toHaveValue('cu');
     await unit.click();
     await options(page).filter({ hasText: /^tbsp$/ }).click();
     await expect(unit).toHaveValue('tbsp');
@@ -133,6 +135,10 @@ test.describe('suggestion lists', () => {
   });
 
   test('the keyboard walks the list; Enter picks without saving the form', async ({ page }) => {
+    // The form posts through htmx, so the URL never changes: what proves Enter
+    // did not save is that no request was sent.
+    const posts: string[] = [];
+    page.on('request', (r) => { if (r.method() === 'POST') posts.push(r.url()); });
     await page.goto(`/recipes/${id}/edit`);
     const unit = page.locator('[name="c.0.l.0.unit"]');
     await unit.focus();
@@ -141,10 +147,49 @@ test.describe('suggestion lists', () => {
     await expect(unit).toHaveAttribute('aria-expanded', 'true');
     await page.keyboard.press('ArrowDown');
     const first = (await texts(page))[0];
+    await expect(unit).toHaveAttribute('aria-activedescendant', (await options(page).first().getAttribute('id'))!);
+    await page.keyboard.press('ArrowDown');
+    await expect(unit).toHaveAttribute('aria-activedescendant', (await options(page).nth(1).getAttribute('id'))!);
+    await page.keyboard.press('ArrowUp');
     await page.keyboard.press('Enter');
     await expect(unit).toHaveValue(first);
-    await expect(page).toHaveURL(new RegExp(`/recipes/${id}/edit$`));
     await expect(unit).toHaveAttribute('aria-expanded', 'false');
+    await page.waitForTimeout(500);
+    expect(posts, 'Enter on an option must not post the form').toEqual([]);
+  });
+
+  test('Enter on an equipment suggestion picks it and does not press Add equipment', async ({ page }) => {
+    const posts: string[] = [];
+    page.on('request', (r) => { if (r.method() === 'POST') posts.push(r.url()); });
+    await page.goto(`/recipes/${id}/edit`);
+    const rows = await page.locator('[name$=".name"][name^="e."]').count();
+    const equip = page.getByPlaceholder('Add equipment');
+    await equip.focus();
+    await expect(options(page).first()).toBeVisible();
+    await page.keyboard.press('ArrowDown');
+    const first = (await texts(page))[0];
+    await page.keyboard.press('Enter');
+    await expect(equip).toHaveValue(first);
+    await page.waitForTimeout(500);
+    expect(posts, 'Add equipment must not be pressed').toEqual([]);
+    expect(await page.locator('[name$=".name"][name^="e."]').count()).toBe(rows);
+  });
+
+  test('a line added after a morph has the full unit list too', async ({ page }) => {
+    await page.goto(`/recipes/${id}/edit`);
+    const part = page.locator('#ed-ingredients .component').first();
+    const units = part.locator('input[name^="c.0.l."][name$=".unit"]');
+    const before = await units.count();
+    await part.getByRole('button', { name: 'Add ingredient' }).click();
+    await expect(units).toHaveCount(before + 1);
+    const unit = units.last();
+    await unit.fill('cup');
+    await page.locator('[name="name"]').click();
+    await unit.click();
+    await expect(list(page)).toBeVisible();
+    const all = await texts(page);
+    expect(all.length).toBeGreaterThan(1);
+    expect(all.some((t) => !t.includes('cup'))).toBe(true);
   });
 
   test('ingredient and equipment fields list every suggestion too', async ({ page }) => {
