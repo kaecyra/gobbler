@@ -4103,6 +4103,27 @@
       "needs_migration": null,
       "adrs": [],
       "note": "internal/ingest/ingest.go only for the ParserVersion bump: main's value plus one at merge, redone after any rebase (lessons.md). i-split-steps bumps it too, hence the edge."
+    },
+    {
+      "id": "i-pasted-numbers",
+      "title": "split a pasted step line whose inline run starts at its list marker",
+      "wave": 13,
+      "track": null,
+      "issue": 502,
+      "status": "todo",
+      "depends_on": [
+        "i-line-qualifiers"
+      ],
+      "owns": [
+        "internal/parse/section*.go",
+        "internal/parse/testdata/sections/**",
+        "internal/ingest/ingest.go",
+        "internal/ingest/assemble*.go",
+        "internal/ingest/steps_split_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "sectionStepMarkerRe strips the leading '1.' as a list marker before the ingest split sees the run. Either fix reaches internal/ingest/assemble.go (keep the enumerator for stripStepNumber/splitNumberedSteps, or reuse enumeratorRE from there), so the lane includes it. internal/ingest/ingest.go only for the ParserVersion bump (main's value plus one at merge), which i-line-qualifiers also makes, hence the edge."
     }
   ],
   "shared_files": [
