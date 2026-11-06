@@ -158,8 +158,10 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 				byName[strings.ToLower(name)] = i
 			}
 		}
+		title := strings.TrimSpace(s.Title)
 		for _, piece := range splitNumberedSteps(text) {
-			comps[i].Steps = append(comps[i].Steps, sourceStep(strings.TrimSpace(s.Title), piece, 1))
+			comps[i].Steps = append(comps[i].Steps, sourceStep(title, piece, 1))
+			title = "" // the title names the first piece only
 		}
 	}
 	if len(comps) > 1 && len(comps[0].Lines) == 0 && len(comps[0].Steps) == 0 {

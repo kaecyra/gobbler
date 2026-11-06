@@ -97,3 +97,21 @@ func TestIngestNumberedBlocksBecomeSteps(t *testing.T) {
 		t.Errorf("steps out of order: %+v", got)
 	}
 }
+
+// A titled source step that holds several gives the title to the first piece
+// only; the others would repeat it (#492).
+func TestAssembleKeepsATitleOnTheFirstPieceOnly(t *testing.T) {
+	e := newEnv(t)
+	res := extract.Result{Method: extract.MethodJSONLD, Recipe: &extract.Raw{
+		Name: "Bread", Ingredients: []string{"3 cups flour"},
+		Instructions: []extract.InstructionStep{{Title: "Make the bread", Text: "1. Mix the dough. 2. Bake it."}},
+	}}
+	d, err := e.pipeline(t, nil).assemble(e.ctx, Source{}, res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := flatSteps(d)
+	if len(got) != 2 || got[0].Title != "Make the bread" || got[1].Title == "Make the bread" {
+		t.Errorf("steps = %+v, want the title on the first piece only", got)
+	}
+}
