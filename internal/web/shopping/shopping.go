@@ -19,11 +19,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/catalog"
-	"github.com/kaecyra/gobbler/internal/quantity"
-	"github.com/kaecyra/gobbler/internal/recipe"
-	domain "github.com/kaecyra/gobbler/internal/shopping"
-	"github.com/kaecyra/gobbler/internal/store"
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
+	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -44,47 +42,10 @@ var scriptJS []byte
 //go:embed assets/shopping.css
 var styleCSS []byte
 
-// Lists is what the routes use from the shopping store. *shopping.Store
-// satisfies it.
-type Lists interface {
-	CreateList(ctx context.Context, name string) (domain.ListInfo, error)
-	Lists(ctx context.Context) ([]domain.ListInfo, error)
-	GetList(ctx context.Context, id int64) (domain.ListInfo, error)
-	Load(ctx context.Context, id int64) (domain.View, error)
-	Regenerate(ctx context.Context, id int64) (domain.View, error)
-	AddEntry(ctx context.Context, listID, recipeID int64, multiplier quantity.Rat) (int64, error)
-	SetEntryMultiplier(ctx context.Context, id int64, multiplier quantity.Rat) error
-	RemoveEntry(ctx context.Context, id int64) error
-	SetIncludeOptional(ctx context.Context, id int64, include bool) error
-	AddManualItem(ctx context.Context, listID int64, m domain.ManualItem) (int64, error)
-	RemoveManualItem(ctx context.Context, id int64) error
-	SetChecked(ctx context.Context, listID int64, key domain.ItemKey, checked bool) error
-	AddToPantry(ctx context.Context, ingredient recipe.IngredientID) error
-	RemoveFromPantry(ctx context.Context, ingredient recipe.IngredientID) error
-	Pantry(ctx context.Context) ([]recipe.IngredientID, error)
-	OnChange(h func(domain.Change))
-}
-
-// Recipes is what the routes use from the recipe store. *store.Store satisfies
-// it.
-type Recipes interface {
-	Search(ctx context.Context, q store.SearchQuery) ([]store.Summary, error)
-	Info(ctx context.Context, id int64) (store.Info, error)
-}
-
-// Catalog is what the routes use from the catalog store. *catalog.Store
-// satisfies it.
-type Catalog interface {
-	ListIngredients(ctx context.Context) ([]catalog.Ingredient, error)
-	ListUnits(ctx context.Context) ([]catalog.Unit, error)
-}
-
 // Deps is what the routes need.
 type Deps struct {
-	Lists   Lists
-	Recipes Recipes
-	Catalog Catalog
-	Logger  *slog.Logger
+	Shop   *apishop.Service
+	Logger *slog.Logger
 }
 
 // Routes returns the routes of the pages, relative to Pattern. It registers the
@@ -92,13 +53,13 @@ type Deps struct {
 // the store is shared between goroutines (shopping.Store.OnChange).
 func Routes(d Deps) chi.Router {
 	h := newHandler(d)
-	d.Lists.OnChange(h.hub.notify)
+	d.Shop.OnChange(h.hub.notify)
 	return h.routes()
 }
 
 func (h *handler) routes() chi.Router {
 	r := chi.NewRouter()
-	r.Use(validGroup)
+	r.Use(withCaller, validGroup)
 	r.Get("/", h.index)
 	r.Post("/", h.create)
 	r.Get("/pantry", h.pantryShow)
@@ -149,25 +110,37 @@ func asset(contentType string, body []byte) http.HandlerFunc {
 	}
 }
 
-// fail answers err through the layout's error page. It is the one place a
-// shopping error becomes a web error kind, so the status table in layout stays
-// the one place a kind becomes a status.
+// fail answers err through the layout's error page. The service returns domain
+// errors untagged, and the status table in layout is the one place one becomes
+// a status.
 func fail(w http.ResponseWriter, r *http.Request, err error) {
-	layout.WriteError(w, r, webError(err))
+	layout.WriteError(w, r, err)
 }
 
-// webError tags a shopping store error with the layout kind that carries its
-// status. Errors it does not know stay as they are, an internal failure.
-func webError(err error) error {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		return errors.Join(layout.ErrNotFound, err)
-	case errors.Is(err, domain.ErrDuplicate):
-		return errors.Join(layout.ErrConflict, err)
-	case errors.Is(err, domain.ErrInvalid), errors.Is(err, domain.ErrUnknownReference):
-		return errors.Join(layout.ErrInvalid, err)
-	}
-	return err
+type callerKey struct{}
+
+// withCaller puts the request's Caller on its context: the verified email the
+// identity middleware stored and the household the membership middleware
+// stored. A request that lacks either is refused here, so no handler runs
+// without one.
+func withCaller(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		email, ok := auth.EmailFromContext(r.Context())
+		h, hok := household.FromContext(r.Context())
+		if !ok || !hok {
+			fail(w, r, fmt.Errorf("shopping request without a verified member: %w", apishop.ErrNotMember))
+			return
+		}
+		c := apishop.Caller{Person: email, Household: h}
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), callerKey{}, c)))
+	})
+}
+
+// callerOf returns the Caller withCaller stored. Outside withCaller it is the
+// zero Caller, which the service refuses with ErrNotMember.
+func callerOf(ctx context.Context) apishop.Caller {
+	c, _ := ctx.Value(callerKey{}).(apishop.Caller)
+	return c
 }
 
 // idParam parses a positive id from a URL segment or form field; anything else

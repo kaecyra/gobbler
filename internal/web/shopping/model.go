@@ -5,10 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kaecyra/gobbler/internal/catalog"
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	domain "github.com/kaecyra/gobbler/internal/shopping"
 )
 
 // itemView is one list item as a page shows it.
@@ -116,14 +115,14 @@ func roundedAmounts(as []quantity.Amount) (string, error) {
 
 // itemName is the item's display name. An unresolved recipe line already holds
 // its amount, so the factor the recipe was multiplied by is shown instead.
-func itemName(it domain.Item) string {
+func itemName(it apishop.Item) string {
 	if it.Unresolved && it.Scale.Sign() > 0 && !it.Scale.Equal(quantity.Int(1)) {
 		return it.Name + " (x" + it.Scale.String() + ")"
 	}
 	return it.Name
 }
 
-func sourcesText(it domain.Item) string {
+func sourcesText(it apishop.Item) string {
 	names := make([]string, 0, len(it.Sources)+1)
 	for _, s := range it.Sources {
 		names = append(names, s.Name)
@@ -134,7 +133,7 @@ func sourcesText(it domain.Item) string {
 	return strings.Join(names, ", ")
 }
 
-func newAisles(aisles []domain.ViewAisle) ([]aisleView, error) {
+func newAisles(aisles []apishop.ViewAisle) ([]aisleView, error) {
 	out := make([]aisleView, 0, len(aisles))
 	for ai, a := range aisles {
 		av := aisleView{Name: a.Name, Items: make([]itemView, 0, len(a.Items))}
@@ -151,7 +150,7 @@ func newAisles(aisles []domain.ViewAisle) ([]aisleView, error) {
 }
 
 // newListing builds the list in the requested grouping.
-func newListing(view domain.View, group string) (listing, error) {
+func newListing(view apishop.View, group string) (listing, error) {
 	aisles, err := newAisles(view.Aisles)
 	if err != nil {
 		return listing{}, err
@@ -178,7 +177,7 @@ func newListing(view domain.View, group string) (listing, error) {
 	return l, nil
 }
 
-func newItem(domID string, it domain.ViewItem, amounts, sources string) itemView {
+func newItem(domID string, it apishop.ViewItem, amounts, sources string) itemView {
 	next := "1"
 	if it.Checked {
 		next = "0"
@@ -189,7 +188,7 @@ func newItem(domID string, it domain.ViewItem, amounts, sources string) itemView
 	}
 }
 
-func newDropped(items []domain.Item) ([]droppedView, error) {
+func newDropped(items []apishop.Item) ([]droppedView, error) {
 	out := make([]droppedView, 0, len(items))
 	for _, it := range items {
 		amounts, err := roundedAmounts(it.Amounts)
@@ -204,7 +203,7 @@ func newDropped(items []domain.Item) ([]droppedView, error) {
 }
 
 // ingredientNames maps catalog ids to names.
-func ingredientNames(all []catalog.Ingredient) map[recipe.IngredientID]string {
+func ingredientNames(all []apishop.Ingredient) map[recipe.IngredientID]string {
 	m := make(map[recipe.IngredientID]string, len(all))
 	for _, in := range all {
 		m[recipe.IngredientID(in.ID)] = in.Name
@@ -212,7 +211,7 @@ func ingredientNames(all []catalog.Ingredient) map[recipe.IngredientID]string {
 	return m
 }
 
-func newEntries(es []domain.EntryView) []entryView {
+func newEntries(es []apishop.EntryView) []entryView {
 	out := make([]entryView, 0, len(es))
 	for _, e := range es {
 		out = append(out, entryView{ID: e.ID, RecipeID: e.RecipeID, Name: e.Name, Multiplier: e.Multiplier.String()})
@@ -220,7 +219,7 @@ func newEntries(es []domain.EntryView) []entryView {
 	return out
 }
 
-func newManual(ms []domain.ManualView, names map[recipe.IngredientID]string) ([]manualView, error) {
+func newManual(ms []apishop.ManualView, names map[recipe.IngredientID]string) ([]manualView, error) {
 	out := make([]manualView, 0, len(ms))
 	for _, m := range ms {
 		label := m.Text
@@ -236,7 +235,7 @@ func newManual(ms []domain.ManualView, names map[recipe.IngredientID]string) ([]
 	return out, nil
 }
 
-func ingredientOptions(all []catalog.Ingredient) []option {
+func ingredientOptions(all []apishop.Ingredient) []option {
 	out := make([]option, 0, len(all))
 	for _, in := range all {
 		out = append(out, option{Value: strconv.FormatInt(in.ID, 10), Label: in.Name})

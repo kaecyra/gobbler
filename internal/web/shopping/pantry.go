@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/kaecyra/gobbler/internal/catalog"
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -28,7 +28,7 @@ type pantryView struct {
 
 // matches reports whether the ingredient's name or an alias contains q,
 // ignoring case. An empty q matches everything.
-func matches(in catalog.Ingredient, q string) bool {
+func matches(in apishop.Ingredient, q string) bool {
 	if q == "" || strings.Contains(strings.ToLower(in.Name), q) {
 		return true
 	}
@@ -47,12 +47,12 @@ func (h *handler) pantryShow(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, fmt.Errorf("search text of %d characters: %w", utf8.RuneCountInString(q), layout.ErrInvalid))
 		return
 	}
-	ids, err := h.Lists.Pantry(ctx)
+	ids, err := h.Shop.Pantry(ctx, callerOf(ctx))
 	if err != nil {
 		fail(w, r, fmt.Errorf("read pantry: %w", err))
 		return
 	}
-	all, err := h.Catalog.ListIngredients(ctx)
+	all, err := h.Shop.Ingredients(ctx, callerOf(ctx))
 	if err != nil {
 		fail(w, r, fmt.Errorf("list ingredients: %w", err))
 		return
@@ -93,7 +93,7 @@ func (h *handler) pantryAdd(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	if err := h.Lists.AddToPantry(r.Context(), recipe.IngredientID(id)); err != nil {
+	if err := h.Shop.AddToPantry(r.Context(), callerOf(r.Context()), recipe.IngredientID(id)); err != nil {
 		fail(w, r, fmt.Errorf("add ingredient %d to the pantry: %w", id, err))
 		return
 	}
@@ -109,7 +109,7 @@ func (h *handler) pantryRemove(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	if err := h.Lists.RemoveFromPantry(r.Context(), recipe.IngredientID(id)); err != nil {
+	if err := h.Shop.RemoveFromPantry(r.Context(), callerOf(r.Context()), recipe.IngredientID(id)); err != nil {
 		fail(w, r, fmt.Errorf("remove ingredient %d from the pantry: %w", id, err))
 		return
 	}

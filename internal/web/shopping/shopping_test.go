@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -61,11 +62,15 @@ func newFixture(t *testing.T) *fixture {
 	cat, rec := catalog.New(d), store.New(d)
 	shop := domain.New(d, rec, cat)
 	f := &fixture{t: t, d: d, cat: cat, rec: rec, shop: shop, ctx: identityContext(t, d)}
-	deps := Deps{Lists: shop, Recipes: rec, Catalog: cat}
+	svc, err := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps := Deps{Shop: svc}
 	f.h = newHandler(deps)
 	shop.OnChange(f.h.hub.notify)
 	root := chi.NewRouter()
-	root.Use(asMember(devHousehold(t, d)))
+	root.Use(asMember(devHousehold(t, d), auth.DevEmail))
 	root.Mount(Pattern, f.h.routes())
 	f.srv = root
 
@@ -956,12 +961,20 @@ func devHousehold(t *testing.T, d *sql.DB) household.Household {
 	return h
 }
 
-// asMember puts h on every request, as the membership middleware does for a
-// member.
-func asMember(h household.Household) func(http.Handler) http.Handler {
+// asMember puts the verified identity email and h on every request, as the
+// identity and membership middleware do for a member of h.
+func asMember(h household.Household, email string) func(http.Handler) http.Handler {
+	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DevAuthBypass: true}})
+	if err != nil {
+		panic(err)
+	}
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		verified := a.Middleware(nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+		}))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Header.Set(auth.DevIdentityHeader, email)
+			verified.ServeHTTP(w, r)
 		})
 	}
 }

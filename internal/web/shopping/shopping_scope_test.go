@@ -25,7 +25,7 @@ func (f *fixture) asOtherHousehold() http.Handler {
 		f.t.Fatal(err)
 	}
 	root := chi.NewRouter()
-	root.Use(asMember(h))
+	root.Use(asMember(h, auth.DevOtherEmail))
 	root.Mount(Pattern, f.h.routes())
 	return root
 }

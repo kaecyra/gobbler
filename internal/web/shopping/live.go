@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	domain "github.com/kaecyra/gobbler/internal/shopping"
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -22,7 +22,7 @@ func (h *handler) live(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	view, err := h.Lists.Load(r.Context(), id)
+	view, err := h.Shop.Load(r.Context(), callerOf(r.Context()), id)
 	if err != nil {
 		fail(w, r, fmt.Errorf("load list %d: %w", id, err))
 		return
@@ -57,7 +57,7 @@ func (h *handler) check(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	checked := r.PostForm.Get("checked") == "1"
-	if err := h.Lists.SetChecked(r.Context(), id, domain.ItemKey(key), checked); err != nil {
+	if err := h.Shop.SetChecked(r.Context(), callerOf(r.Context()), id, apishop.ItemKey(key), checked); err != nil {
 		fail(w, r, fmt.Errorf("set check on list %d: %w", id, err))
 		return
 	}
@@ -85,14 +85,14 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// Only a list of the caller's household may be watched: check before
 	// subscribing, so another household's list is never registered (ADR-00018).
-	if _, err := h.Lists.GetList(ctx, id); err != nil {
+	if _, err := h.Shop.GetList(ctx, callerOf(ctx), id); err != nil {
 		fail(w, r, fmt.Errorf("get list %d: %w", id, err))
 		return
 	}
 	// Subscribe before the first load, so a change between the two is not lost.
 	sub, unsubscribe := h.hub.subscribe(id)
 	defer unsubscribe()
-	view, err := h.Lists.Load(ctx, id)
+	view, err := h.Shop.Load(ctx, callerOf(ctx), id)
 	if err != nil {
 		fail(w, r, fmt.Errorf("load list %d: %w", id, err))
 		return
@@ -164,8 +164,8 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		case <-sub.C:
-			view, err := h.Lists.Load(ctx, id)
-			if errors.Is(err, domain.ErrNotFound) {
+			view, err := h.Shop.Load(ctx, callerOf(ctx), id)
+			if errors.Is(err, apishop.ErrNotFound) {
 				send([]byte("event: gone\ndata: \n\n"))
 				return
 			}
@@ -182,7 +182,7 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 
 // sendList renders the list, grouped as the stream asked, as one "list" event.
 // It reports false when the stream should end.
-func (h *handler) sendList(ctx context.Context, id int64, group string, view domain.View, send func([]byte) bool) bool {
+func (h *handler) sendList(ctx context.Context, id int64, group string, view apishop.View, send func([]byte) bool) bool {
 	list, err := newListing(view, group)
 	if err != nil {
 		h.log.ErrorContext(ctx, "render list for event stream", "list_id", id, "error", err.Error())
