@@ -4102,7 +4102,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "internal/ingest/ingest.go only for the ParserVersion bump, which i-split-steps also makes, hence the edge."
+      "note": "internal/ingest/ingest.go only for the ParserVersion bump: main's value plus one at merge, redone after any rebase (lessons.md). i-split-steps bumps it too, hence the edge."
     }
   ],
   "shared_files": [
