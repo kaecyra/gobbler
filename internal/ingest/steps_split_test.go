@@ -234,3 +234,24 @@ func TestStripStepNumberSpaced(t *testing.T) {
 		}
 	}
 }
+
+// A trailing number is dropped only when it is the next one in the run (the
+// step's own number plus one); any other trailing number is recipe text.
+func TestStripStepNumberTrailingIsNextOnly(t *testing.T) {
+	for in, want := range map[string]string{
+		"1. Mix. 2.":             "Mix.",
+		"3. Mix. 4.":             "Mix.",
+		"1. Mix well. (2)":       "Mix well.",
+		"1. Rest 5 min. Step 2":  "Rest 5 min.",
+		"1. Bake. 350.":          "Bake. 350.",
+		"1. Mix well. (3)":       "Mix well. (3)",
+		"1. Rest 5 min. Step 5":  "Rest 5 min. Step 5",
+		"1. Add 2 eggs (3). 4)":  "Add 2 eggs (3). 4)",
+		"3. Mix. 2.":             "Mix. 2.",
+		"1. Whisk the glaze. 1.": "Whisk the glaze. 1.",
+	} {
+		if got := stripStepNumber(in); got != want {
+			t.Errorf("stripStepNumber(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
