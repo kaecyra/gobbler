@@ -260,6 +260,7 @@ func asMember(h household.Household) func(http.Handler) http.Handler {
 
 type fixture struct {
 	h       *handler
+	rs      *testRecipes
 	srv     http.Handler
 	drafter *fakeDrafter
 	store   *fakeStore
@@ -290,7 +291,7 @@ func (f *fixture) pendingDrafts(t *testing.T) int {
 // confirm does.
 func (f *fixture) holdDraft(t *testing.T, token string, d ingestcore.Draft) {
 	t.Helper()
-	if err := f.h.drafts.Replace(f.ctx(t), token, d); err != nil {
+	if err := f.rs.drafts.Replace(f.ctx(t), token, d); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -315,15 +316,18 @@ func newFixture(t *testing.T) *fixture {
 	st := newFakeStore()
 	st.drafts = rec
 	d := &fakeDrafter{draft: sampleDraft()}
+	rs := &testRecipes{
+		saver:  ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
+		drafts: ingestcore.NewDrafts(rec),
+	}
 	h := &handler{
 		drafter:    d,
-		saver:      ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
+		recipes:    rs,
 		unsaved:    editor.NewUnsaved(st),
-		drafts:     ingestcore.NewDrafts(rec),
 		photoCache: ingestcore.NewPhotos(time.Now),
 		log:        slog.New(slog.NewJSONHandler(io.Discard, nil)),
 	}
-	return &fixture{h: h, srv: asMember(householdA)(h.routes()), drafter: d, store: st, db: conn}
+	return &fixture{h: h, rs: rs, srv: asMember(householdA)(h.routes()), drafter: d, store: st, db: conn}
 }
 
 func newFormRequest(target string, form url.Values) *http.Request {
@@ -586,7 +590,7 @@ func (failingSaver) SaveProposed(context.Context, string, ingestcore.Confirmed) 
 
 func TestConfirmSaveFailureKeepsDraftAndHidesDetail(t *testing.T) {
 	f := newFixture(t)
-	f.h.saver = failingSaver{}
+	f.rs.saver = failingSaver{}
 	token := f.ingestText(t)
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", reviewForm())
 	if rec.Code != http.StatusInternalServerError || strings.Contains(rec.Body.String(), "disk on fire") {
@@ -695,7 +699,7 @@ func (unknownUnitSaver) SaveProposed(context.Context, string, ingestcore.Confirm
 // pipeline: the review screen comes back with the problem and the draft stays.
 func TestConfirmUnknownUnitReturnsToReviewWithProblem(t *testing.T) {
 	f := newFixture(t)
-	f.h.saver = unknownUnitSaver{}
+	f.rs.saver = unknownUnitSaver{}
 	token := f.ingestText(t)
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", reviewForm())
 	if rec.Code != http.StatusUnprocessableEntity {

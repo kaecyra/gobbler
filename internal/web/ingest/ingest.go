@@ -27,6 +27,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -35,9 +37,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
 	"github.com/kaecyra/gobbler/internal/parse"
-	"github.com/kaecyra/gobbler/internal/picture"
-	"github.com/kaecyra/gobbler/internal/store"
-	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -55,20 +54,31 @@ type Drafter interface {
 	FromText(ctx context.Context, text string) (ingestcore.Draft, error)
 }
 
-// Reimporter starts a re-import of a saved recipe (ADR-00042);
-// *ingestcore.Reimporter satisfies it.
-type Reimporter interface {
-	Start(ctx context.Context, id int64, by store.Provenance) (string, error)
-}
-
-// Saver stores a confirmed draft that is held under token;
-// *ingestcore.Saver satisfies it.
-type Saver interface {
-	SaveProposed(ctx context.Context, token string, c ingestcore.Confirmed) (ingestcore.Saved, error)
+// Recipes is what the ingest screens need from the recipe service
+// (*apirecipes.Service satisfies it): the drafts that wait for review, the save
+// of a confirmed one, the start of a re-import and the picture candidates the
+// picker shows. Fetching and reading a page into a draft stays here, in the
+// pipeline.
+type Recipes interface {
+	DraftsFull(ctx context.Context, c apirecipes.Caller) (bool, error)
+	AddDraft(ctx context.Context, c apirecipes.Caller, d ingestcore.Draft, by apirecipes.Provenance) (string, error)
+	GetDraft(ctx context.Context, c apirecipes.Caller, token string) (ingestcore.Draft, error)
+	ReplaceDraft(ctx context.Context, c apirecipes.Caller, token string, d ingestcore.Draft) error
+	DiscardDraft(ctx context.Context, c apirecipes.Caller, token string) error
+	ChoosePicture(ctx context.Context, c apirecipes.Caller, token string, choice ingestcore.PictureChoice) error
+	SaveProposed(ctx context.Context, c apirecipes.Caller, token string, conf ingestcore.Confirmed) (ingestcore.Saved, error)
+	// StartReimport drafts the recipe again from its source with drafter
+	// (ADR-00042).
+	StartReimport(ctx context.Context, c apirecipes.Caller, id int64, drafter ingestcore.URLDrafter, by apirecipes.Provenance) (string, error)
+	// PictureKey finds the picture a re-import's "Keep current picture" keeps;
+	// Candidates are the draft's picture candidates.
+	PictureKey(ctx context.Context, c apirecipes.Caller, recipeID int64) (string, bool, error)
+	Candidates(ctx context.Context, c apirecipes.Caller, proposalID int64) ([]apirecipes.Candidate, error)
 }
 
 // Deps is what the ingest routes need to build the pipeline.
 type Deps struct {
+	// DB is the catalog's database; the recipes are reached through Recipes.
 	DB        *sql.DB
 	Ingestion config.Ingestion
 	// LLM selects the fallback provider and models (ADR-00007). Empty means
@@ -80,38 +90,18 @@ type Deps struct {
 	Provider ingestcore.Provider
 	// Logger receives this package's logs; the default is slog.Default().
 	Logger *slog.Logger
-	// Thumbnails downloads the preview image of a saved recipe's video; nil
-	// means YouTube's image host. Tests substitute a fake here (ADR-00021).
-	Thumbnails video.ThumbnailSource
-	// Pending holds the drafts that wait for review. Sharing one table with
-	// the MCP endpoint is what lets an agent's draft open here (ADR-00034); nil
-	// means the proposals table in DB.
-	Pending *ingestcore.Drafts
-	// Pictures reads a draft's picture candidates for the picker and keeps the
-	// chosen one when a draft is saved (ADR-00039). Nil leaves a saved recipe
-	// without a picture, and a draft that has candidates cannot be reviewed.
-	Pictures PictureService
-}
-
-// PictureService is what the review screen needs of the picture service:
-// *picture.Service satisfies it.
-type PictureService interface {
-	Candidates(ctx context.Context, proposalID int64) ([]picture.Candidate, error)
-	// Key finds the picture a re-import's "Keep current picture" keeps.
-	Key(ctx context.Context, recipeID int64) (string, bool, error)
-	ingestcore.PictureKeeper
+	// Recipes holds the drafts that wait for review and saves a confirmed one.
+	// Sharing one service with the MCP endpoint is what lets an agent's draft
+	// open here (ADR-00034). It is required: without it every route answers
+	// 500 (see requireReady).
+	Recipes Recipes
 }
 
 type handler struct {
 	drafter Drafter
-	saver   Saver
 	// unsaved is the recipe editor over the unsaved draft.
 	unsaved editor.Unsaved
-	drafts  *ingestcore.Drafts
-	// reimporter starts a re-import from the recipe page.
-	reimporter Reimporter
-	// pictures lists the candidates the picker shows.
-	pictures PictureService
+	recipes Recipes
 	// photoCache holds the photos behind OCR drafts, in memory only.
 	photoCache *ingestcore.Photos
 	retrier    Retrier
@@ -133,11 +123,7 @@ type handler struct {
 // d.Provider or is selected from d.LLM; a provider that cannot be built does
 // not take the rule-based path down (see handler.llmInitErr).
 func Routes(d Deps) http.Handler {
-	h := &handler{drafts: d.Pending, photoCache: ingestcore.NewPhotos(time.Now), log: d.Logger, pictures: d.Pictures}
-	rec := store.New(d.DB)
-	if h.drafts == nil {
-		h.drafts = ingestcore.NewDrafts(rec)
-	}
+	h := &handler{recipes: d.Recipes, photoCache: ingestcore.NewPhotos(time.Now), log: d.Logger}
 	if h.log == nil {
 		h.log = slog.Default()
 	}
@@ -152,20 +138,17 @@ func Routes(d Deps) http.Handler {
 		}
 	}
 	pipeline, err := ingestcore.New(d.Ingestion, ingestcore.Deps{Catalog: cat, Provider: provider, Logger: h.log})
+	if err == nil && d.Recipes == nil {
+		err = errors.New("the recipe service is required")
+	}
 	if err != nil {
 		h.initErr = fmt.Errorf("build ingest pipeline: %w", err)
 		h.log.Error("ingest routes unavailable", "error", err.Error())
 	} else {
 		h.drafter = pipeline
-		h.reimporter = ingestcore.NewReimporter(rec, pipeline, h.drafts)
 		h.photos = pipeline
 		h.ocr = ocr.Runner{}
 		h.retrier = pipeline.Fallback()
-		saver := ingestcore.NewSaver(rec, cat).WithThumbnails(d.Thumbnails)
-		if d.Pictures != nil {
-			saver = saver.WithPictures(d.Pictures)
-		}
-		h.saver = saver
 		h.unsaved = editor.NewUnsaved(cat)
 	}
 	return h.routes()
@@ -205,7 +188,7 @@ func (h *handler) requireReady(next http.Handler) http.Handler {
 func requireHousehold(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := household.FromContext(r.Context()); !ok {
-			layout.WriteError(w, r, fmt.Errorf("ingest: %w", store.ErrNoHousehold))
+			layout.WriteError(w, r, fmt.Errorf("ingest: %w", apirecipes.ErrNoHousehold))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -311,13 +294,13 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 // with the message to show. It reports whether the request has been answered.
 // hold's check, made where the draft is written, stays the authority.
 func (h *handler) full(w http.ResponseWriter, r *http.Request, refuse func(msg string)) bool {
-	full, err := h.drafts.Full(r.Context())
+	full, err := h.recipes.DraftsFull(r.Context(), caller.FromContext(r.Context()))
 	switch {
 	case err != nil:
 		layout.WriteError(w, r, err)
 		return true
 	case full:
-		refuse(sentence(store.ErrDraftLimit.Error()))
+		refuse(sentence(apirecipes.ErrDraftLimit.Error()))
 		return true
 	}
 	return false
@@ -330,13 +313,13 @@ func (h *handler) full(w http.ResponseWriter, r *http.Request, refuse func(msg s
 func (h *handler) hold(w http.ResponseWriter, r *http.Request, draft ingestcore.Draft, refuse func(msg string)) (token string, ok bool) {
 	email, found := auth.EmailFromContext(r.Context())
 	if !found {
-		layout.WriteError(w, r, fmt.Errorf("hold draft: %w", store.ErrNoIdentity))
+		layout.WriteError(w, r, fmt.Errorf("hold draft: %w", apirecipes.ErrNoIdentity))
 		return "", false
 	}
-	token, err := h.drafts.Add(r.Context(), draft, store.Provenance{Person: email})
+	token, err := h.recipes.AddDraft(r.Context(), caller.FromContext(r.Context()), draft, apirecipes.Provenance{Person: email})
 	switch {
-	case errors.Is(err, store.ErrDraftLimit):
-		refuse(sentence(store.ErrDraftLimit.Error()))
+	case errors.Is(err, apirecipes.ErrDraftLimit):
+		refuse(sentence(apirecipes.ErrDraftLimit.Error()))
 		return "", false
 	case err != nil:
 		layout.WriteError(w, r, err)
@@ -384,7 +367,7 @@ func (h *handler) review(w http.ResponseWriter, r *http.Request) {
 // memory. A token that names no pending draft of the household is the same
 // not-found as an unknown one. ok is false when a response has been written.
 func (h *handler) draft(w http.ResponseWriter, r *http.Request, token string) (ingestcore.Draft, bool) {
-	d, err := h.drafts.Get(r.Context(), token)
+	d, err := h.recipes.GetDraft(r.Context(), caller.FromContext(r.Context()), token)
 	switch {
 	case errors.Is(err, ingestcore.ErrDraftGone):
 		layout.WriteError(w, r, errGone)
@@ -441,7 +424,7 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 		CanRetry: h.retrier != nil && h.retrier.Configured(),
 		// A draft read from a photo whose photo is no longer in memory:
 		// asking the LLM again reads the recognised text alone.
-		PhotoGone: d.Source.Kind == store.SnapshotOCR && len(d.Source.Image) == 0,
+		PhotoGone: d.Source.Kind == apirecipes.SnapshotOCR && len(d.Source.Image) == 0,
 	}))
 }
 
@@ -489,7 +472,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	// keep stores the user's edits, so the draft is as they left it when it
 	// cannot be saved. A draft that is gone is the same not-found as above.
 	keep := func() bool {
-		err := h.drafts.Replace(r.Context(), token, d)
+		err := h.recipes.ReplaceDraft(r.Context(), caller.FromContext(r.Context()), token, d)
 		switch {
 		case errors.Is(err, ingestcore.ErrDraftGone):
 			layout.WriteError(w, r, errGone)
@@ -522,8 +505,8 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		fail(err)
 		return
 	}
-	saved, err := h.saver.SaveProposed(r.Context(), token, confirmed)
-	if errors.Is(err, store.ErrStaleVersion) && d.Reimport != nil {
+	saved, err := h.recipes.SaveProposed(r.Context(), caller.FromContext(r.Context()), token, confirmed)
+	if errors.Is(err, apirecipes.ErrStaleVersion) && d.Reimport != nil {
 		// The recipe was edited after the re-import started. Nothing was
 		// saved; the person's edits to the draft are kept while they decide.
 		retry([]string{staleReimport})
@@ -538,7 +521,7 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	if errors.Is(err, store.ErrNotPending) {
+	if errors.Is(err, apirecipes.ErrNotPending) {
 		// Confirmed or discarded by another request since this one began.
 		layout.WriteError(w, r, errGone)
 		return
@@ -573,10 +556,10 @@ func (h *handler) reimport(w http.ResponseWriter, r *http.Request) {
 	}
 	email, found := auth.EmailFromContext(r.Context())
 	if !found {
-		layout.WriteError(w, r, fmt.Errorf("re-import: %w", store.ErrNoIdentity))
+		layout.WriteError(w, r, fmt.Errorf("re-import: %w", apirecipes.ErrNoIdentity))
 		return
 	}
-	token, err := h.reimporter.Start(r.Context(), id, store.Provenance{Person: email})
+	token, err := h.recipes.StartReimport(r.Context(), caller.FromContext(r.Context()), id, h.drafter, apirecipes.Provenance{Person: email})
 	if err != nil {
 		if msg, ok := inputFailure(err); ok && layout.StatusFor(err) != http.StatusInternalServerError {
 			status := layout.StatusFor(err)
@@ -625,10 +608,10 @@ func (h *handler) cancel(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
 	// A discarded re-import goes back to its recipe, not to the add form.
 	back := "/ingest"
-	if d, err := h.drafts.Get(r.Context(), token); err == nil && d.Reimport != nil {
+	if d, err := h.recipes.GetDraft(r.Context(), caller.FromContext(r.Context()), token); err == nil && d.Reimport != nil {
 		back = recipePath(d.Reimport.RecipeID)
 	}
-	if err := h.drafts.Discard(r.Context(), token); err != nil && !errors.Is(err, ingestcore.ErrDraftGone) {
+	if err := h.recipes.DiscardDraft(r.Context(), caller.FromContext(r.Context()), token); err != nil && !errors.Is(err, ingestcore.ErrDraftGone) {
 		layout.WriteError(w, r, err)
 		return
 	}

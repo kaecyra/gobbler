@@ -323,7 +323,7 @@ func TestDraftPutBackAfterAFailedSaveKeepsEditsAndFlags(t *testing.T) {
 	for name, saver := range map[string]Saver{"unknown unit": unknownUnitSaver{}, "save failure": failingSaver{}} {
 		t.Run(name, func(t *testing.T) {
 			f := newFixture(t)
-			f.h.saver = saver
+			f.rs.saver = saver
 			token := f.ingestText(t)
 			form := reviewForm()
 			form.Set("author", "Grace")
@@ -361,7 +361,7 @@ func TestDraftPutBackAfterAFailedSaveKeepsEditsAndFlags(t *testing.T) {
 // after a blank middle row keeps its flag in the draft put back.
 func TestFlagsFollowTheirRowsPastBlankRows(t *testing.T) {
 	f := newFixture(t)
-	f.h.saver = failingSaver{}
+	f.rs.saver = failingSaver{}
 	token := f.ingestText(t)
 	form := reviewForm()
 	// Blank middle rows, then flagged rows behind them.

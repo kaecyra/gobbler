@@ -40,15 +40,15 @@ func (twoCandidates) Promote(context.Context, int64, int, int64) (string, error)
 func pickerFixture(t *testing.T) (*fixture, string, context.Context) {
 	t.Helper()
 	f := newFixture(t)
-	f.h.drafts = ingestcore.NewDrafts(store.New(f.db)).WithPictures(twoCandidates{})
-	f.h.pictures = twoCandidates{}
+	f.rs.drafts = ingestcore.NewDrafts(store.New(f.db)).WithPictures(twoCandidates{})
+	f.rs.pictures = twoCandidates{}
 	token := f.ingestText(t)
 	return f, token, household.WithContext(context.Background(), householdA)
 }
 
 func (f *fixture) chosen(ctx context.Context, t *testing.T, token string) ingestcore.PictureChoice {
 	t.Helper()
-	d, err := f.h.drafts.Get(ctx, token)
+	d, err := f.rs.drafts.Get(ctx, token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestPickerShowsCandidatesAndChoice(t *testing.T) {
 	if v, _ := f.h.picker(ctx, ingestcore.Draft{}); len(v.Options) != 0 || !v.NoneChecked {
 		t.Errorf("a draft with no candidates = %+v, want only No picture, chosen", v)
 	}
-	f.h.pictures = nil
+	f.rs.pictures = nil
 	if _, err := f.h.picker(ctx, ingestcore.Draft{Candidates: 2}); err == nil {
 		t.Error("candidates with no picture service gave no error")
 	}

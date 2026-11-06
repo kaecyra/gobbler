@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
 	"github.com/kaecyra/gobbler/internal/config"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/llm/claude"
@@ -82,7 +83,7 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusBadGateway, "The LLM could not read this recipe: "+err.Error())
 		return
 	}
-	if err := h.drafts.Replace(r.Context(), token, out); err != nil {
+	if err := h.recipes.ReplaceDraft(r.Context(), caller.FromContext(r.Context()), token, out); err != nil {
 		if errors.Is(err, ingestcore.ErrDraftGone) {
 			layout.WriteError(w, r, errGone)
 			return
