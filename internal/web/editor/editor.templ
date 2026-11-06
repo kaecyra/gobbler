@@ -46,6 +46,15 @@ templ editorForm(v view) {
 				font: inherit; font-size: 16px; font-weight: 400;
 			}
 			.editor textarea { resize: vertical; }
+			.suggest {
+				position: fixed; z-index: 30; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;
+				background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r);
+				box-shadow: var(--shadow); font-size: 16px;
+			}
+			.suggest[hidden] { display: none; }
+			.suggest [role=option] { display: flex; align-items: center; min-height: var(--tap); padding: 6px 12px; cursor: pointer; overflow-wrap: anywhere; }
+			.suggest [role=option]:hover, .suggest [role=option].active { background: var(--sunk); }
+			.suggest [role=option][aria-selected=true] { font-weight: 700; }
 			.editor input:focus-visible, .editor select:focus-visible, .editor textarea:focus-visible { border-color: var(--wattle); }
 			.editor input.quiet, .editor textarea.quiet { background: transparent; border-color: transparent; }
 			.editor input.quiet:hover, .editor textarea.quiet:hover { border-color: var(--line); }
