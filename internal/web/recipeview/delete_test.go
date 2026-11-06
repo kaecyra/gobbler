@@ -152,5 +152,5 @@ func TestDeleteOfARecipeOnAShoppingListSaysSoWithA409(t *testing.T) {
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want 409", rec.Code)
 	}
-	mustContain(t, rec.Body.String(), "on a shopping list", "Remove it from the list first")
+	mustContain(t, rec.Body.String(), "on a shopping list", "must be removed from it before it can be deleted")
 }

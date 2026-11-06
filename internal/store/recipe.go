@@ -320,8 +320,9 @@ type PictureReaper interface {
 // ErrOnShoppingList is a recipe's deletion refused because a shopping list
 // holds an entry for it. Migration 00005 blocks that delete on purpose, so a
 // list is never silently emptied; the recipe is taken off its lists first.
-// The text is shown to the person, so it says what to do.
-var ErrOnShoppingList = errors.New("This recipe is on a shopping list. Remove it from the list first, then delete it.")
+// The text is shown to the person, so it says what to do; it is lowercase
+// and unpunctuated because it is an error string.
+var ErrOnShoppingList = errors.New("this recipe is on a shopping list and must be removed from it before it can be deleted")
 
 // Delete removes recipe id (of the request's household) with its revisions, proposals, notes, made-it entries and
 // source snapshots, or returns ErrNotFound. A clone of it survives, losing

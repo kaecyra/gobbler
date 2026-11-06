@@ -594,7 +594,7 @@ test.describe('deleting a recipe', () => {
       page.getByTestId('delete-submit').click(),
     ]);
     expect(res.status()).toBe(409);
-    await expect(page.getByText('This recipe is on a shopping list. Remove it from the list first, then delete it.')).toBeVisible();
+    await expect(page.getByText('this recipe is on a shopping list and must be removed from it before it can be deleted')).toBeVisible();
     expect((await page.request.get(`/recipes/${listedId}`)).status()).toBe(200);
   });
 });
