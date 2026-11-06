@@ -4401,7 +4401,8 @@
         "internal/web/editor/editor.templ",
         "internal/web/editor/editor_templ.go",
         "e2e/ingest/**",
-        "e2e/editor/**"
+        "e2e/editor/**",
+        "internal/web/editor/errors_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
