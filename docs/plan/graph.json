@@ -3951,7 +3951,9 @@
         "internal/mcp/server.go",
         "internal/mcp/tools.go",
         "internal/mcp/mcp_test.go",
-        "internal/mcp/mcp_edit_test.go"
+        "internal/mcp/mcp_edit_test.go",
+        "internal/api/caller/**",
+        "internal/api/shopping/**"
       ],
       "needs_migration": null,
       "adrs": [],
