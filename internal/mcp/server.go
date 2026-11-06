@@ -44,8 +44,6 @@ type Recipes interface {
 	// (ADR-00035); GetProposal reads one back in whatever state it is in.
 	ProposeEdit(ctx context.Context, id, baseVersion int64, r recipe.Recipe, by store.Provenance) (string, error)
 	GetProposal(ctx context.Context, token string) (store.Proposal, error)
-	// PendingReimport finds the re-import a new one supersedes (ADR-00042).
-	PendingReimport(ctx context.Context, id int64) (store.Proposal, bool, error)
 }
 
 // Catalog is what the recipe tools read from the ingredient catalog: ingredient
@@ -75,9 +73,6 @@ type Drafts interface {
 	// Full says the household already holds the most drafts it may, so a tool
 	// can refuse before it fetches or reads anything. Add stays the authority.
 	Full(ctx context.Context) (bool, error)
-	// DropCandidates deletes the picture candidates of a draft a re-import
-	// superseded.
-	DropCandidates(ctx context.Context, proposalID int64)
 }
 
 // Deps is everything the endpoint needs.

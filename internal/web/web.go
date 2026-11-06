@@ -137,7 +137,9 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		d.Pictures = picture.New(d.DB, d.Media, store.New(d.DB), picture.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger)
 	}
 	if d.Drafts == nil {
-		d.Drafts = ingest.NewDrafts(store.New(d.DB)).WithPictures(d.Pictures)
+		// A new re-import supersedes the recipe's pending one (ADR-00042); the store
+		// deletes the superseded draft's picture candidates.
+		d.Drafts = ingest.NewDrafts(store.New(d.DB).WithObjects(picture.NewReaper(d.Media, d.Logger))).WithPictures(d.Pictures)
 	}
 
 	var members memberLookup = household.New(d.DB)

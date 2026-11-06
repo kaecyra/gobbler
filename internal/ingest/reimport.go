@@ -31,8 +31,6 @@ var ErrNoSourceURL = errors.New("this recipe has no source address to import aga
 type ReimportRecipes interface {
 	Get(ctx context.Context, id int64) (recipe.Recipe, error)
 	Info(ctx context.Context, id int64) (store.Info, error)
-	// PendingReimport finds the re-import this one will supersede.
-	PendingReimport(ctx context.Context, id int64) (store.Proposal, bool, error)
 }
 
 // URLDrafter drafts the recipe on a page; *Pipeline satisfies it. It is the
@@ -45,8 +43,6 @@ type URLDrafter interface {
 // ReimportDrafts holds a re-import's draft; *Drafts satisfies it.
 type ReimportDrafts interface {
 	Add(ctx context.Context, d Draft, by store.Provenance) (string, error)
-	// DropCandidates deletes the picture candidates of the superseded draft.
-	DropCandidates(ctx context.Context, proposalID int64)
 }
 
 // Reimporter starts re-imports.
@@ -101,18 +97,12 @@ func (r *Reimporter) Start(ctx context.Context, id int64, by store.Provenance) (
 		d.SpiceLevel = rec.SpiceLevel
 	}
 	by.Reason = "Re-imported from " + SourceHost(rec.SourceURL)
-	old, found, err := r.recipes.PendingReimport(ctx, id)
-	if err != nil {
-		return "", fmt.Errorf("read the pending re-import of recipe %d: %w", id, err)
-	}
+	// Adding the draft supersedes the recipe's pending edit or re-import in the
+	// same transaction; the store deletes a superseded re-import's picture
+	// candidates when it was given a remover (store.WithObjects).
 	token, err := r.drafts.Add(ctx, d, by)
 	if err != nil {
 		return "", fmt.Errorf("hold re-import of recipe %d: %w", id, err)
-	}
-	if found {
-		// Adding the new draft superseded the old one; its candidates are
-		// deleted now rather than when the proposal is pruned (ADR-00042).
-		r.drafts.DropCandidates(ctx, old.ID)
 	}
 	return token, nil
 }

@@ -37,7 +37,9 @@ func newPictureEnv(t *testing.T) *pictureEnv {
 	svc := picture.New(e.db, media.NewLocal(dir), e.store, picture.NewFetcher(true), nil)
 	return &pictureEnv{
 		env: e, dir: dir, svc: svc,
-		drafts: NewDrafts(e.store).WithPictures(svc),
+		// The drafts' store deletes the candidates of a draft a re-import
+		// supersedes, as in production (web.go).
+		drafts: NewDrafts(e.store.WithObjects(picture.NewReaper(media.NewLocal(dir), nil))).WithPictures(svc),
 		keeper: e.saver().WithPictures(svc),
 	}
 }

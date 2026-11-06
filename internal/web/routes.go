@@ -78,9 +78,6 @@ func mountFeatures(r chi.Router, d Deps) {
 // counters the confirmation cannot state how many rows it re-points.
 func mountCatalog(r chi.Router, d Deps) {
 	cat, rec := catalog.New(d.DB), store.New(d.DB)
-	// An agent's edit proposal supersedes a pending re-import (ADR-00042); its
-	// picture candidates go with it.
-	rec = rec.WithObjects(domain.NewReaper(d.Media, d.Logger))
 	usage := catalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
@@ -174,6 +171,9 @@ func mountProfile(r chi.Router, d Deps) {
 // share the merging catalog's hooks like the shopping pages do.
 func mountMCP(r chi.Router, d Deps) {
 	cat, rec := catalog.New(d.DB), store.New(d.DB)
+	// propose_recipe_edit supersedes a pending re-import (ADR-00042); this is the
+	// store that does it, so it deletes the re-import's picture candidates.
+	rec = rec.WithObjects(domain.NewReaper(d.Media, d.Logger))
 	usage := catalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
