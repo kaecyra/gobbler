@@ -241,6 +241,12 @@ func seedStyled(ctx context.Context, d *sql.DB) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	milk, err := catalog.New(d).CreateIngredient(ctx, catalog.Ingredient{Name: "e2e whole milk", Aisle: "dairy"})
+	if err != nil {
+		return 0, err
+	}
+	milkLine := line("1", "cup", milk.ID, quantity.RuleLinear)
+	milkLine.Qualifiers = []recipe.Qualifier{{Kind: recipe.QualState, Text: "warmed"}, {Kind: recipe.QualPreparation, Text: "divided"}}
 	spice, rating := 2, 4
 	r := recipe.Recipe{
 		Name:        "E2E Short Ribs",
@@ -253,7 +259,7 @@ func seedStyled(ctx context.Context, d *sql.DB) (int64, error) {
 		Servings:    quantity.Exact(mustRat("4")),
 		Components: []recipe.Component{{
 			Name:  "Ribs",
-			Lines: []recipe.IngredientLine{line("2", "lb", ribs.ID, quantity.RuleLinear)},
+			Lines: []recipe.IngredientLine{line("2", "lb", ribs.ID, quantity.RuleLinear), milkLine},
 			Steps: []recipe.Step{
 				{ID: "brown", Title: "Brown the ribs", Text: "Brown the ribs in two batches.", Duration: 20 * time.Minute, Kind: recipe.StagePrep},
 				{ID: "braise", Title: "Braise", Text: "Cover and braise until tender.", Duration: 3 * time.Hour, Passive: true, Kind: recipe.StageBraise, DependsOn: []recipe.StepID{"brown"}},

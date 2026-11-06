@@ -61,17 +61,23 @@ linters:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-rest (#471): recipe sharing.
-            - "!**/internal/web/sharing/handler.go"
             # a-api-rest (#471): the status table names the store's sentinels.
             - "!**/internal/web/layout/httperr.go"
-            # a-api-rest (#471): the recipe picture routes call the picture service.
-            - "!**/internal/web/picture/picture.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/store
               desc: use internal/api/recipes; the web handlers and MCP tools do not import the recipe store (ADR-00043)
             - pkg: github.com/kaecyra/gobbler/internal/picture
               desc: use internal/api/recipes; the web handlers and MCP tools reach the picture service through the recipe service (ADR-00043)
+        # ADR-00043: recipe sharing is reached through internal/api/sharing.
+        # Tests are exempt: they build fixtures straight on the domain.
+        sharing-through-api:
+          files:
+            - "**/internal/web/**"
+            - "**/internal/mcp/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/kaecyra/gobbler/internal/sharing
+              desc: use internal/api/sharing; the web handlers and MCP tools do not import the sharing domain (ADR-00043)
 
 formatters:
   enable:

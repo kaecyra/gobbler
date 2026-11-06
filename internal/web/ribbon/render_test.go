@@ -20,8 +20,8 @@ func render(t *testing.T, c templ.Component) string {
 	return b.String()
 }
 
-func TestCardRendersNothingWithoutTimedSteps(t *testing.T) {
-	if got := render(t, Card(Build(nil))); got != "" {
+func TestLargeRendersNothingWithoutTimedSteps(t *testing.T) {
+	if got := render(t, Large(Build(nil))); got != "" {
 		t.Fatalf("empty ribbon rendered %q", got)
 	}
 	if got := render(t, Large(Build([]recipe.Step{{}}))); got != "" {
@@ -35,7 +35,7 @@ func TestRibbonMarkup(t *testing.T) {
 		step(30, false, ""),
 		step(180, true, recipe.StageBraise),
 	})
-	got := render(t, Card(r))
+	got := render(t, Large(r))
 	for _, want := range []string{
 		`role="img"`,
 		`aria-label="20 minutes prep, then 30 minutes hands-on, then 3 hours braise"`,
@@ -55,7 +55,7 @@ func TestRibbonMarkup(t *testing.T) {
 }
 
 func TestRibbonOmitsMergedLevelWhenNothingMerges(t *testing.T) {
-	got := render(t, Card(Build([]recipe.Step{step(10, false, ""), step(20, true, recipe.StageRise)})))
+	got := render(t, Large(Build([]recipe.Step{step(10, false, ""), step(20, true, recipe.StageRise)})))
 	if strings.Contains(got, "rib-merged") || strings.Contains(got, "rib-merges") {
 		t.Errorf("duplicate merged level printed:\n%s", got)
 	}

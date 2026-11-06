@@ -11,6 +11,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/catalog"
@@ -19,8 +20,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
-	"github.com/kaecyra/gobbler/internal/sharing"
-	"github.com/kaecyra/gobbler/internal/video"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
 	"github.com/kaecyra/gobbler/internal/web/cook"
 	"github.com/kaecyra/gobbler/internal/web/editor"
@@ -47,9 +46,6 @@ import (
 //
 // The router has already applied authentication by the time r is passed here.
 func mountFeatures(r chi.Router, d Deps) {
-	// One fetcher, built from configuration, serves every save path that
-	// downloads a video thumbnail, so the image host is set in one place.
-	thumbs := video.NewFetcherAt(d.Config.Video.ThumbnailHost)
 	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Recipes: d.Recipes, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
 	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB), Pictures: recipePictures(d)}))
 	r.Mount(recipeview.DeletePattern, recipeview.DeleteRoutes(recipeview.DeleteDeps{Recipes: d.Recipes}))
@@ -65,7 +61,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountCatalog(r, d)
 	mountHouseholds(r, d)
 	mountPromotion(r, d)
-	mountSharing(r, d, thumbs)
+	mountSharing(r, d)
 	mountEquipment(r, d)
 	mountProfile(r, d)
 	mountMCP(r, d)
@@ -163,10 +159,22 @@ func mountPromotion(r chi.Router, d Deps) {
 
 // mountSharing mounts the pages that send a recipe copy to another household
 // and accept or decline one sent to this household (ADR-00018, Sharing).
-func mountSharing(r chi.Router, d Deps, thumbs video.ThumbnailSource) {
-	rec := apirecipes.NewStore(d.DB)
-	svc := sharing.New(rec, household.New(d.DB), catalog.New(d.DB))
-	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: rec, Thumbnails: thumbs}))
+func mountSharing(r chi.Router, d Deps) {
+	hs := household.New(d.DB)
+	svc, err := apisharing.New(apisharing.Deps{Recipes: apirecipes.NewStore(d.DB), Households: hs, Catalog: catalog.New(d.DB), Members: hs})
+	if err != nil {
+		// Unreachable while the deps above are non-nil; fail loud if that changes.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("sharing pages unavailable", "error", err.Error())
+		r.Mount(websharing.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the sharing pages are not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
+	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: d.Recipes}))
 }
 
 // mountEquipment mounts the operator's review of catalog equipment, where the
@@ -253,7 +261,7 @@ func mountOAuth(r chi.Router, d Deps) {
 // mountPictures mounts the routes that serve a recipe's picture and a draft's
 // candidates from the media store, after admission (ADR-00039).
 func mountPictures(r chi.Router, d Deps) {
-	deps := pictures.Deps{Pictures: d.Pictures, Media: d.Media, Logger: d.Logger}
+	deps := pictures.Deps{Pictures: d.Recipes, Media: d.Media, Logger: d.Logger}
 	r.Mount(pictures.Pattern, pictures.Routes(deps))
 	r.Mount(pictures.DraftsPattern, pictures.DraftRoutes(deps))
 }

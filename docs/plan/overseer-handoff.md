@@ -1,8 +1,45 @@
-# Overseer handoff: 2026-11-06, round 25 closing
+# Overseer handoff: 2026-11-06, round 26 at context ceiling (owner away)
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
-**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a hando## Round 26 (2026-11-06): API split, note length, recipe page polish (owner away)
+
+**Merged** under the standing authority. Read VERSION on main; do not trust a number written here.
+
+| Node / PR | PR | SHA | VERSION |
+|---|---|---|---|
+| u-qualifier-chip | #505 | e738243 | 0.123.3 |
+| a-mcp-caller | #520 | 2073cc4 | 0.123.4 |
+| i-pasted-numbers (owner ruled next-number) | #506 | 6081c12 | 0.123.5 (ParserVersion 18) |
+| u-aisle-suggest | #519 | c242d26 | 0.123.6 |
+| a-api-pictures | #530 | 12f4c0f | 0.123.7 |
+| (graph) a-api-rest split into 8 nodes, #511–#518; #471 closed | #521 | 6c12162 | none |
+| (ADR-00044, nodes r-note-length #523, u-save-errors-visible #524, u-qualifier-style #526) | #525 | d859bb1 | none |
+| (ADR-00045, nodes u-notes-apart #527, u-card-total-time #528) | #529 | 918ee00 | none |
+
+**Also merged since:** #533 r-note-length (ec2509a, 0.123.8). This is the owner's confirm fix. The owner should redeploy 0.123.8 and retry the sallysbakingaddiction import.
+
+**Open worker PRs, in merge order.** Each worker that wrote one was told what to do next, but those workers die with this session. If a report never arrived, read the branch:
+1. **#531 a-api-sharing (#512): MERGED** (5d8d4e9, 0.123.9).
+2. **#534 u-qualifier-style (#526): MERGED** (0.123.10).
+3. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed (42aa5aa, pushed). It still needs to merge origin/main: conflicts on design.md's "not migrated yet" sentence (after #531 and #530 it lists only "the status table") and the `.golangci.yml` journal exceptions. Re-bump to the next free patch, then merge.
+
+**Also open, worker PRs from late in the round** (reviews launched in background agents; read what is posted on GitHub):
+4. **#535 u-save-errors-visible (#524)**, wt-524. Review findings are fixed and pushed (88eb622; merge 2dec5f7; VERSION 0.123.12 at ef6fc8f). Screenshots are in .cc-scratch/shots-524-after2-*.png. **Blocked on ownership:** the worker added `internal/web/editor/errors_test.go`, which is outside the lane. First open a dispatcher graph PR: `node.ts owns u-save-errors-visible --add internal/web/editor/errors_test.go` (a-api-catalog, later, also owns editor/**, and the overlap is ordered). Review it and merge it, re-run check_ownership, then verify the fix diff, resolve the review threads by ID, wait for CI, merge.
+5. **#536 u-card-total-time (#528): MERGED** (0.123.11). u-notes-apart (#527) is now dispatchable; fold #537 into it.
+- **Stash incident:** wt-524 and wt-528 both used `git stash`, and each pop took the other's changes. Both workers repaired their trees, and ownership holds on both branches. One labelled leftover stays on the shared stack: "restored: popped by mistake from wt-528". It is wt-524's already-committed WIP; drop it once #535 merges. Worker briefs now forbid `git stash`, via the scratchpad common-tail. Add the same rule to the worker contract and lessons.
+
+**Next to dispatch:** u-notes-apart (#527), after #534 and #528 merge; then a-api-catalog (#514) once sharing, save-errors, qualifier-style and notes-apart have all merged. #522, a named constant for the suggest asset paths, has no node.
+
+**Owner context:**
+- Deployed 0.123.3. "Confirm and save" on sallysbakingaddiction soft dinner rolls did nothing: the draft's 700- and 550-character notes were refused, and the refusal rendered below the fold. The owner ruled ADR-00044: length is never refused, and the existing low-confidence flag is enough.
+- The owner's design calls, all recorded as nodes: qualifiers muted italic with no commas (#526); notes apart from the steps with no connector lines (ADR-00045, #527); cards show total time only, not the ribbon (#528). The card shows the figure `timeToTable` groups by, which can differ from the recipe page's "Ready in about…"; say so if the owner asks.
+- The inbox is clear.
+
+**Lessons this round:**
+- `node.ts` writes the graph on the primary checkout's current branch. Run `record-done` and `status` only with main checked out.
+- Bulk thread replies matched on text patterns hit the wrong thread. Match on thread IDs.
+- Several a-api PRs edit the same design.md sentence and the same `.golangci.yml` block. Each merge forces a conflict-resolving re-bump on the next. Next time, sequence them, or keep the shared sentence out of the node lanes.
 
 ## Round 25 (2026-11-06): recipes API, step splitting, editor fixes
 

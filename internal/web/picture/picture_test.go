@@ -17,7 +17,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/household"
@@ -34,6 +36,7 @@ type env struct {
 	hs      *household.Store
 	m       media.Store
 	svc     *domain.Service
+	api     *apirecipes.Service
 	d       *sql.DB
 	own     context.Context
 	foreign context.Context
@@ -41,7 +44,7 @@ type env struct {
 	router  chi.Router
 }
 
-func ctxFor(t *testing.T, h household.Household) context.Context {
+func ctxFor(t *testing.T, h household.Household, email string) context.Context {
 	t.Helper()
 	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:8080", DevAuthBypass: true}})
 	if err != nil {
@@ -49,8 +52,13 @@ func ctxFor(t *testing.T, h household.Household) context.Context {
 	}
 	var got context.Context
 	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
-		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+		ServeHTTP(httptest.NewRecorder(), withIdentity(httptest.NewRequest(http.MethodGet, "/", nil), email))
 	return household.WithContext(got, h)
+}
+
+func withIdentity(r *http.Request, email string) *http.Request {
+	r.Header.Set(auth.DevIdentityHeader, email)
+	return r
 }
 
 func newEnv(t *testing.T) *env {
@@ -75,10 +83,11 @@ func newEnv(t *testing.T) *env {
 	}
 	st := store.New(d)
 	m := media.NewLocal(t.TempDir())
-	e := &env{st: st, hs: hs, m: m, d: d, own: ctxFor(t, h1), foreign: ctxFor(t, h2), logs: &bytes.Buffer{}}
+	e := &env{st: st, hs: hs, m: m, d: d, own: ctxFor(t, h1, auth.DevEmail), foreign: ctxFor(t, h2, auth.DevOtherEmail), logs: &bytes.Buffer{}}
 	e.svc = domain.New(d, m, st, domain.NewFetcher(true), nil)
 	log := slog.New(slog.NewJSONHandler(e.logs, nil))
-	deps := picture.Deps{Pictures: e.svc, Media: m, Logger: log}
+	e.api = recipesService(t, st, hs, d, e.svc)
+	deps := picture.Deps{Pictures: e.api, Media: m, Logger: log}
 	e.router = chi.NewRouter()
 	e.router.Mount(picture.Pattern, picture.Routes(deps))
 	e.router.Mount(picture.DraftsPattern, picture.DraftRoutes(deps))
@@ -294,7 +303,7 @@ func TestMissingCandidateObjectIsNotFoundAndLogged(t *testing.T) {
 func TestStoreFailureIsNotMistakenForAMissingPicture(t *testing.T) {
 	e := newEnv(t)
 	id, key := e.recipeWithPicture(t)
-	h := picture.Routes(picture.Deps{Pictures: e.svc, Media: failingMedia{}, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
+	h := picture.Routes(picture.Deps{Pictures: e.api, Media: failingMedia{}, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
 	r := chi.NewRouter()
 	r.Mount(picture.Pattern, h)
 	req := httptest.NewRequest(http.MethodGet, picture.Src(id, key), nil).WithContext(e.own)
@@ -311,3 +320,12 @@ func TestStoreFailureIsNotMistakenForAMissingPicture(t *testing.T) {
 type failingMedia struct{}
 
 func (failingMedia) Get(context.Context, string) ([]byte, error) { return nil, io.ErrUnexpectedEOF }
+
+func recipesService(t *testing.T, st *store.Store, hs *household.Store, d *sql.DB, p *apirecipes.Pictures) *apirecipes.Service {
+	t.Helper()
+	svc, err := apirecipes.New(apirecipes.Deps{Recipes: st, Catalog: catalog.New(d), Members: hs, Pictures: p})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return svc
+}

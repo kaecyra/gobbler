@@ -686,7 +686,7 @@ test('a part is named from Steps as well as Ingredients, the two kept in step, a
 
 // The author's notes (ADR-00041): rows with an optional title and a text of one
 // paragraph, added, dragged, removed and saved like the other lists.
-test('author notes are added, reordered by their handle, limited, removed and saved', async ({ page }) => {
+test('author notes are added, reordered by their handle, paragraph-limited, removed and saved', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.getByRole('heading', { name: "Author's Notes" })).toBeVisible();
@@ -708,19 +708,15 @@ test('author notes are added, reordered by their handle, limited, removed and sa
   await expect(page.locator('[name="n.0.text"]')).toHaveValue('Keeps three days.');
   await expect(page.locator('[name="n.1.title"]')).toHaveValue('Flour');
 
-  // The limit is the recipe's: 401 characters is refused on its row, nothing saved.
-  await page.locator('[name="n.0.text"]').fill('x'.repeat(401));
-  await save(page);
-  await expect(rows.nth(0).getByRole('alert')).toContainText('This note is 401 characters');
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}/edit$`));
+  // Only the paragraph rule refuses a note, on its row, nothing saved.
   await page.locator('[name="n.0.text"]').fill('Keeps three days.\n\nA second paragraph.');
   await save(page);
   await expect(rows.nth(0).getByRole('alert')).toContainText('one paragraph');
-  await page.locator('[name="n.0.text"]').fill('x'.repeat(400));
+  await page.locator('[name="n.0.text"]').fill('x'.repeat(1000));
   await save(page);
   await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
 
-  // Saved: the recipe page shows both after the last step, the 400-character one first.
+  // Saved: the recipe page shows both after the last step, the 1000-character one first.
   const notes = page.getByTestId('author-note');
   await expect(notes).toHaveCount(2);
   await expect(notes.nth(1)).toContainText('Flour: Bread flour gives a chewier crust.');

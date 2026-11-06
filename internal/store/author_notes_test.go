@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -79,7 +78,7 @@ func TestInvalidAuthorNoteWritesNothing(t *testing.T) {
 	s, d := newTestStore(t)
 	a := authedCtx(t)
 	bad := simpleRecipe("Katsu")
-	bad.AuthorNotes = []recipe.AuthorNote{{Text: strings.Repeat("x", recipe.MaxAuthorNoteChars+1)}}
+	bad.AuthorNotes = []recipe.AuthorNote{{Text: "One.\n\nTwo."}}
 	if _, err := s.Create(a, bad); !errors.Is(err, recipe.ErrInvalidAuthorNote) {
 		t.Errorf("Create = %v, want ErrInvalidAuthorNote", err)
 	}

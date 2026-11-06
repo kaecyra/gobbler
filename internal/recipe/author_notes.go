@@ -4,16 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 )
 
-// ErrInvalidAuthorNote is returned for an author note with no text, more than
-// MaxAuthorNoteChars characters, or more than one paragraph (ADR-00041).
+// ErrInvalidAuthorNote is returned for an author note with no text or more than
+// one paragraph (ADR-00041). Length never makes a note invalid (ADR-00044).
 var ErrInvalidAuthorNote = errors.New("invalid author note")
 
-// MaxAuthorNoteChars is the longest text an author note may hold, counted in
-// characters (ADR-00041).
-const MaxAuthorNoteChars = 400
+// AuthorNoteGuidelineChars is the length a note is meant to stay within,
+// counted in characters. It is a guideline, not a limit: Validate accepts a
+// longer note, and ingest flags one over it at low confidence so the review
+// screen shows it (ADR-00044).
+const AuthorNoteGuidelineChars = 400
 
 // AuthorNote is one of the recipe author's own notes: a tip, a substitution, a
 // storage hint. It belongs to the recipe as a whole, not to a step, and is kept
@@ -38,16 +39,14 @@ func (n AuthorNote) Lead() string {
 	return title + ":"
 }
 
-// Validate checks that the note has text, that the text is one paragraph (it
-// holds no blank line) and that it is at most MaxAuthorNoteChars characters.
-// The rule holds for every writer: ingest, the editor and MCP.
+// Validate checks that the note has text and that the text is one paragraph
+// (it holds no blank line). Length is not checked (ADR-00044). The rule holds
+// for every writer: ingest, the editor and MCP.
 func (n AuthorNote) Validate() error {
 	text := strings.TrimSpace(n.Text)
 	switch {
 	case text == "":
 		return fmt.Errorf("%w: the note has no text", ErrInvalidAuthorNote)
-	case utf8.RuneCountInString(text) > MaxAuthorNoteChars:
-		return fmt.Errorf("%w: %d characters, the most is %d", ErrInvalidAuthorNote, utf8.RuneCountInString(text), MaxAuthorNoteChars)
 	case MoreThanOneParagraph(text):
 		return fmt.Errorf("%w: the text holds more than one paragraph", ErrInvalidAuthorNote)
 	}

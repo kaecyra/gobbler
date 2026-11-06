@@ -127,6 +127,13 @@ func minutes(d time.Duration) int {
 	return max(1, int(math.Round(d.Minutes())))
 }
 
+// Compact is a total time for a place with room for little: "45m", "1h",
+// "3h 20m". It rounds as the ribbon's segments do.
+func Compact(d time.Duration) string { return short(minutes(d)) }
+
+// Spoken is a total time for a screen reader: "3 hours 20 minutes".
+func Spoken(d time.Duration) string { return long(minutes(d)) }
+
 func merge(segs []Segment) []Segment {
 	var out []Segment
 	for _, s := range segs {

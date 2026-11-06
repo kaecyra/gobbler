@@ -1,6 +1,6 @@
 # ADR-00041: A recipe keeps its author's notes as a short list that ends the step chain
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00044](00044-author-note-length-flagged.md), [ADR-00045](00045-author-notes-apart-from-steps.md)
 
 **Date:** 2026-11-06
 

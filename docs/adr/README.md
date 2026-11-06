@@ -55,9 +55,11 @@ index below in the same commit.
 | [00038](00038-editor-morphs-the-server-rendered-form.md) | The recipe editor morphs the server-rendered form in place | Accepted |
 | [00039](00039-recipe-pictures.md) | A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header | Amended by [00040](00040-loopback-fetches-under-the-dev-bypass.md), [00042](00042-reimport.md) |
 | [00040](00040-loopback-fetches-under-the-dev-bypass.md) | The fetch guard admits loopback only while the dev auth bypass is on | Accepted |
-| [00041](00041-author-notes.md) | A recipe keeps its author's notes as a short list that ends the step chain | Accepted |
+| [00041](00041-author-notes.md) | A recipe keeps its author's notes as a short list that ends the step chain | Amended by [00044](00044-author-note-length-flagged.md), [00045](00045-author-notes-apart-from-steps.md) |
 | [00042](00042-reimport.md) | A saved recipe with a source URL is re-imported through ingestion's review screen, and saving writes a new revision | Accepted |
 | [00043](00043-discrete-api.md) | Operations live in an in-process service layer under internal/api, called by the web handlers and the MCP tools | Accepted |
+| [00044](00044-author-note-length-flagged.md) | An author note's length is flagged on review, never refused | Accepted |
+| [00045](00045-author-notes-apart-from-steps.md) | Author notes sit apart from the step chain, with no connector lines | Accepted |
 
 ## What needs one
 

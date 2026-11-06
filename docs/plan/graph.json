@@ -4156,7 +4156,7 @@
       "wave": 13,
       "track": null,
       "issue": 511,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "a-api-recipes"
       ],
@@ -4175,7 +4175,7 @@
       "wave": 13,
       "track": null,
       "issue": 512,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "a-api-recipes"
       ],
@@ -4195,7 +4195,7 @@
       "wave": 13,
       "track": null,
       "issue": 513,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "a-api-recipes"
       ],
@@ -4218,7 +4218,11 @@
         "a-api-recipes",
         "u-aisle-suggest",
         "a-mcp-caller",
-        "a-api-sharing"
+        "a-api-sharing",
+        "r-note-length",
+        "u-save-errors-visible",
+        "u-qualifier-style",
+        "u-notes-apart"
       ],
       "owns": [
         "internal/api/catalog/**",
@@ -4327,7 +4331,9 @@
       "issue": 518,
       "status": "todo",
       "depends_on": [
-        "a-api-households"
+        "a-api-households",
+        "u-qualifier-style",
+        "u-notes-apart"
       ],
       "owns": [
         "internal/api/ingest/**",
@@ -4347,6 +4353,123 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
+    },
+    {
+      "id": "r-note-length",
+      "title": "a long author note is flagged on review, never refused",
+      "wave": 13,
+      "track": null,
+      "issue": 523,
+      "status": "merged",
+      "depends_on": [
+        "u-aisle-suggest"
+      ],
+      "owns": [
+        "internal/recipe/author_notes*.go",
+        "internal/recipe/model.go",
+        "internal/web/editor/build.go",
+        "internal/web/editor/build_test.go",
+        "internal/web/editor/editor.templ",
+        "internal/web/editor/editor_templ.go",
+        "e2e/ingest/**",
+        "e2e/editor/**",
+        "internal/web/editor/notes_test.go",
+        "internal/ingest/notes.go",
+        "internal/ingest/notes_test.go",
+        "internal/store/author_notes.go",
+        "internal/store/author_notes_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00044"
+      ],
+      "note": "Implements the ADR attached to this node, which amends ADR-00041. Found on 0.123.3: a sallysbakingaddiction import with two notes of 700 and 550 characters could not be confirmed."
+    },
+    {
+      "id": "u-save-errors-visible",
+      "title": "a refused save says so at the top of the page and scrolls to the first error",
+      "wave": 13,
+      "track": null,
+      "issue": 524,
+      "status": "in_review",
+      "depends_on": [
+        "r-note-length"
+      ],
+      "owns": [
+        "internal/web/static/editor.js",
+        "internal/web/editor/view.go",
+        "internal/web/editor/editor.templ",
+        "internal/web/editor/editor_templ.go",
+        "e2e/ingest/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "frontend.md: a message about the page is a page-level callout. Confirm on the review screen answered a refused draft with 200 and inline errors far below the fold; the save bar's count ignores errors."
+    },
+    {
+      "id": "u-qualifier-style",
+      "title": "qualifiers in the recipe page's ingredient list are muted italic, separated by space, not comma",
+      "wave": 13,
+      "track": null,
+      "issue": 526,
+      "status": "merged",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/display/**",
+        "internal/web/recipeview/**",
+        "internal/web/layout/recipe_parts.templ",
+        "internal/web/layout/recipe_parts_templ.go",
+        "e2e/recipeview/**",
+        "internal/web/layout/recipe.css"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner's design call, 2026-11-06: on the recipe page's ingredient list, show each qualifier in a muted italic style, separated from the name and from each other by a space, not a comma. Colours from the tokens. Change only the recipe page's ingredient list (frontend.md); cook mode, shopping and the editor keep their current text."
+    },
+    {
+      "id": "u-notes-apart",
+      "title": "author notes sit apart from the steps, with no connector lines",
+      "wave": 13,
+      "track": null,
+      "issue": 527,
+      "status": "todo",
+      "depends_on": [
+        "u-qualifier-style",
+        "u-card-total-time"
+      ],
+      "owns": [
+        "internal/web/recipeview/**",
+        "internal/web/layout/recipe.css",
+        "e2e/recipeview/**",
+        "docs/ui/design.md"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00045"
+      ],
+      "note": "Implements the ADR attached to this node (amends ADR-00041): on the recipe page, remove every connector line from the last step to the notes and between notes; separate the notes from the steps by extra space; keep their alignment in the step-number column. Change only those elements (frontend.md). Cook mode is unchanged. Also update docs/ui/design.md's Author notes paragraph (ADR-00045 obligation 3); u-card-total-time edits the same file first."
+    },
+    {
+      "id": "u-card-total-time",
+      "title": "library cards show the total time only, not the time ribbon",
+      "wave": 13,
+      "track": null,
+      "issue": 528,
+      "status": "merged",
+      "depends_on": [],
+      "owns": [
+        "internal/web/recipes/**",
+        "internal/web/ribbon/**",
+        "internal/web/static/ribbon.css",
+        "internal/web/static/ribbon.js",
+        "docs/ui/design.md",
+        "e2e/recipes/**",
+        "e2e/home/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner's design call, 2026-11-06: library cards (the library and the home suggestion card) drop the time ribbon pinned to the card's bottom edge and show only the recipe's total time, as a small clock icon and the time in the card's meta text, not edge to edge. The recipe page's large 'Ready in about' ribbon is unchanged. Update docs/ui/design.md's Time ribbon component and the home suggestion card text to match, in the same PR. Delete card-only ribbon code that nothing calls afterwards. The total is the figure the library's time grouping (timeToTable in internal/web/recipes) already uses for that card, so a card never contradicts the time group it sits under. It may differ from the recipe page's 'Ready in about' figure, which needs step data the card does not carry."
     }
   ],
   "shared_files": [
@@ -5714,10 +5837,43 @@
       "title": "the catalog aisle field shows every aisle, reusing the editor's combobox",
       "merged": "c242d26",
       "note": "Moves #501's combobox script and its .suggest CSS (now inline in editor.templ) into shared internal/web/static/suggest.js and suggest.css, loaded by both pages. editor.js targets .editor input[list] / [data-suggest]; the shared script needs an opt-in selector (e.g. data-suggest) so the catalog form, which is not under .editor, can use it. Shares editor.templ and e2e/editor with u-qualifier-chip, hence the edge."
+    },
+    {
+      "id": "a-api-pictures",
+      "title": "the recipe picture routes go through internal/api/recipes",
+      "merged": "12f4c0f",
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
+    },
+    {
+      "id": "r-note-length",
+      "title": "a long author note is flagged on review, never refused",
+      "merged": "ec2509a",
+      "adrs": [
+        "00044"
+      ],
+      "note": "Implements the ADR attached to this node, which amends ADR-00041. Found on 0.123.3: a sallysbakingaddiction import with two notes of 700 and 550 characters could not be confirmed."
+    },
+    {
+      "id": "a-api-sharing",
+      "title": "recipe sharing goes through internal/api/sharing",
+      "merged": "5d8d4e9",
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
+    },
+    {
+      "id": "u-qualifier-style",
+      "title": "qualifiers in the recipe page's ingredient list are muted italic, separated by space, not comma",
+      "merged": "0a4ffc8",
+      "note": "Owner's design call, 2026-11-06: on the recipe page's ingredient list, show each qualifier in a muted italic style, separated from the name and from each other by a space, not a comma. Colours from the tokens. Change only the recipe page's ingredient list (frontend.md); cook mode, shopping and the editor keep their current text."
+    },
+    {
+      "id": "u-card-total-time",
+      "title": "library cards show the total time only, not the time ribbon",
+      "merged": "53a23f4",
+      "note": "Owner's design call, 2026-11-06: library cards (the library and the home suggestion card) drop the time ribbon pinned to the card's bottom edge and show only the recipe's total time, as a small clock icon and the time in the card's meta text, not edge to edge. The recipe page's large 'Ready in about' ribbon is unchanged. Update docs/ui/design.md's Time ribbon component and the home suggestion card text to match, in the same PR. Delete card-only ribbon code that nothing calls afterwards. The total is the figure the library's time grouping (timeToTable in internal/web/recipes) already uses for that card, so a card never contradicts the time group it sits under. It may differ from the recipe page's 'Ready in about' figure, which needs step data the card does not carry."
     }
   ],
   "adr_sequence": {
-    "last_used": "00043",
+    "last_used": "00045",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
