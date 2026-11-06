@@ -6,14 +6,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-// Card is the compact ribbon pinned to the bottom of a recipe card. It renders
-// nothing when no step has a duration.
-templ Card(r Ribbon) {
-	if !r.Empty() {
-		@ribbon(r, "rib rib-card")
-	}
-}
-
 // Large is the ribbon on the recipe page, under "Ready in about...". It
 // renders nothing when no step has a duration.
 templ Large(r Ribbon) {

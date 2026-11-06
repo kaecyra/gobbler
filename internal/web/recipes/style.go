@@ -40,7 +40,7 @@ const libraryStyle = `
 .grp-h small { font-family: var(--f-body); font-size: 13px; font-weight: 500; color: var(--ink-3); margin-left: 2px; }
 .grp-h::after { content: ""; flex: 1; height: 1px; background: var(--line); margin-left: 6px; }
 
-.rcard { position: relative; overflow: hidden; height: 100%; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: var(--r); padding: 16px 16px 0; display: flex; flex-direction: column; gap: 10px; transition: transform .15s, border-color .15s; text-align: left; }
+.rcard { position: relative; overflow: hidden; height: 100%; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: transform .15s, border-color .15s; text-align: left; }
 .rcard:hover, .rcard:focus-within { transform: translateY(-2px); border-color: var(--ink-3); }
 .ctop { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 20px; }
 .rcard h3 { font-size: 20px; font-weight: 650; padding-top: 4px; }
@@ -52,7 +52,8 @@ const libraryStyle = `
 .key { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.45; }
 .key em { font-style: normal; color: var(--ink); }
 .rfoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); padding-top: 4px; margin-top: auto; }
-.rcard .rib { margin: 4px -16px 0; }
+.rtime { display: inline-flex; align-items: center; gap: 4px; }
+.rtime svg { width: 14px; height: 14px; flex: none; }
 
 /* A card's picture, or the placeholder band of the same height (ADR-00039; the
    .ph0 to .ph5 variants are in the shared stylesheet). It bleeds to the card's

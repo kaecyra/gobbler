@@ -3,7 +3,6 @@ package recipes
 import (
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/web/layout"
-	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
 
 // mealType is the icon and label of a meal type, centred on each other.
@@ -64,12 +63,6 @@ templ focusKey() {
 	</script>
 }
 
-// ribbonAssets links the ribbon's stylesheet and fit script.
-templ ribbonAssets() {
-	<link rel="stylesheet" href={ ribbon.StylesheetPath }/>
-	<script src={ ribbon.ScriptPath } defer></script>
-}
-
 // cardPicture is the top of a card: the recipe's picture full-bleed and fading
 // into the card, or the placeholder band of the same height (layout.PictureBand,
 // ADR-00039).
@@ -78,8 +71,7 @@ templ cardPicture(c cardView) {
 }
 
 // recipeCard is one library card: meal type and chilis, title and source,
-// components, key ingredients, rating and made-it line, and the time ribbon
-// pinned to the bottom. The title link is stretched over the whole card.
+// components, key ingredients, rating, total time and made-it line. The title link is stretched over the whole card.
 templ recipeCard(c cardView) {
 	<article class="rcard">
 		@cardPicture(c)
@@ -121,9 +113,14 @@ templ recipeCard(c cardView) {
 			} else {
 				<span>New</span>
 			}
+			if c.Time != "" {
+				<span class="rtime" data-testid="card-time" title={ c.TimeLabel }>
+					@layout.Icon(layout.IconClock)
+					{ c.Time }
+				</span>
+			}
 			<span>{ c.Made }</span>
 		</div>
-		@ribbon.Card(c.Ribbon)
 	</article>
 }
 

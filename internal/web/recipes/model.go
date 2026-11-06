@@ -36,7 +36,10 @@ type cardView struct {
 	Rating      int // spoons, 0 when unrated
 	RatingLabel string
 	Made        string
-	Ribbon      ribbon.Ribbon
+	// Time is the recipe's total time as a short figure, and TimeLabel the same
+	// for a screen reader; both are empty when the recipe has no time.
+	Time      string
+	TimeLabel string
 	// Picture is the address of the recipe's picture; empty for a recipe with
 	// none, which shows the placeholder band instead (ADR-00039).
 	Picture string
@@ -98,8 +101,10 @@ func cardFor(c apirecipes.Card, now time.Time) cardView {
 	v := cardView{
 		ID: c.ID, Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: mealLabels[c.MealType], Cuisine: c.Cuisine.Label(),
 		Components: c.Components, Key: c.KeyIngredients,
-		Made:   madeLine(c.MadeCount, c.LastMade, now),
-		Ribbon: ribbon.Build(c.Steps),
+		Made: madeLine(c.MadeCount, c.LastMade, now),
+	}
+	if t := timeToTable(c); t > 0 {
+		v.Time, v.TimeLabel = ribbon.Compact(t), ribbon.Spoken(t)
 	}
 	if c.SpiceLevel != nil && *c.SpiceLevel >= 1 && *c.SpiceLevel < len(heatLabels) {
 		v.Spice, v.SpiceLabel = *c.SpiceLevel, heatLabels[*c.SpiceLevel]

@@ -9,7 +9,8 @@
 // nothing is clipped.
 //
 // A page that shows a ribbon links StylesheetPath, and ScriptPath if it wants
-// the fit.
+// the fit. Only the recipe page draws a ribbon; a library card shows the total
+// time as text (Compact, Spoken), not the ribbon.
 package ribbon
 
 // Paths of the ribbon's own assets, embedded in the binary (ADR-00002).

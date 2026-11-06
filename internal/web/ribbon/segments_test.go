@@ -175,3 +175,22 @@ func TestLabelAndTitle(t *testing.T) {
 		t.Errorf("Full[2].Title = %q", got)
 	}
 }
+
+func TestCompactAndSpokenFormatATotal(t *testing.T) {
+	for _, c := range []struct {
+		d             time.Duration
+		compact, said string
+	}{
+		{20 * time.Second, "1m", "1 minute"},
+		{45 * time.Minute, "45m", "45 minutes"},
+		{time.Hour, "1h", "1 hour"},
+		{200 * time.Minute, "3h 20m", "3 hours 20 minutes"},
+	} {
+		if got := Compact(c.d); got != c.compact {
+			t.Errorf("Compact(%v) = %q, want %q", c.d, got, c.compact)
+		}
+		if got := Spoken(c.d); got != c.said {
+			t.Errorf("Spoken(%v) = %q, want %q", c.d, got, c.said)
+		}
+	}
+}
