@@ -253,6 +253,7 @@
     input.setAttribute('aria-expanded', 'false');
     input.setAttribute('aria-haspopup', 'listbox');
     input.setAttribute('aria-controls', 'gb-suggest');
+    popup();
   }
 
   function enhanceAll() {
@@ -323,9 +324,17 @@
     if (selected) selected.scrollIntoView({ block: 'nearest' });
   }
 
+  // nameOf is what the listbox is called while open: the field's label, else
+  // its placeholder.
+  function nameOf(input) {
+    var l = input.id && document.querySelector('label[for="' + input.id.replace(/"/g, '\\"') + '"]');
+    return (l && l.textContent.trim()) || input.getAttribute('placeholder') || 'Suggestions';
+  }
+
   function open(input) {
     if (!input.hasAttribute('data-suggest')) return;
     popup();
+    pop.setAttribute('aria-label', nameOf(input));
     current = input;
     render(false);
   }
@@ -360,7 +369,11 @@
 
   enhanceAll();
   document.addEventListener('DOMContentLoaded', enhanceAll);
-  document.addEventListener('htmx:afterSettle', enhanceAll);
+  document.addEventListener('htmx:afterSettle', function () {
+    enhanceAll();
+    // A morph can remove the field the list is open for.
+    if (current && !current.isConnected) close();
+  });
 
   // A morph copies the server's list attribute back onto a field and drops the
   // attributes added here; leave them as they are.
