@@ -4125,6 +4125,47 @@
       "needs_migration": null,
       "adrs": [],
       "note": "sectionStepMarkerRe strips the leading '1.' as a list marker before the ingest split sees the run. Either fix reaches internal/ingest/assemble.go (keep the enumerator for stripStepNumber/splitNumberedSteps, or reuse enumeratorRE from there), so the lane includes it. internal/ingest/ingest.go only for the ParserVersion bump (main's value plus one at merge), which i-line-qualifiers also makes, hence the edge."
+    },
+    {
+      "id": "u-aisle-suggest",
+      "title": "the catalog aisle field shows every aisle, reusing the editor's combobox",
+      "wave": 13,
+      "track": null,
+      "issue": 508,
+      "status": "todo",
+      "depends_on": [
+        "u-qualifier-chip"
+      ],
+      "owns": [
+        "internal/web/static/editor.js",
+        "internal/web/static/suggest.js",
+        "internal/web/editor/editor.templ",
+        "internal/web/editor/editor_templ.go",
+        "internal/web/catalog/**",
+        "e2e/catalog/**",
+        "e2e/editor/**",
+        "internal/web/static/suggest.css"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Moves #501's combobox script and its .suggest CSS (now inline in editor.templ) into shared internal/web/static/suggest.js and suggest.css, loaded by both pages. editor.js targets .editor input[list] / [data-suggest]; the shared script needs an opt-in selector (e.g. data-suggest) so the catalog form, which is not under .editor, can use it. Shares editor.templ and e2e/editor with u-qualifier-chip, hence the edge."
+    },
+    {
+      "id": "a-mcp-caller",
+      "title": "one MCP caller helper for the recipe and shopping tools",
+      "wave": 13,
+      "track": null,
+      "issue": 509,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/mcp/tools.go",
+        "internal/mcp/tools_shopping.go",
+        "internal/web/reimport_wiring_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Follow-up from #494 review. Every per-resource node split from a-api-rest that owns an internal/mcp file depends on this node, so they start from one helper."
     }
   ],
   "shared_files": [
