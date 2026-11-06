@@ -3727,7 +3727,7 @@
       "wave": 12,
       "track": null,
       "issue": 433,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "docs/proposals/discrete-api.md",
@@ -3738,7 +3738,6 @@
       "adrs": [
         "00043"
       ],
-      "blocked": "needs its own /overseer:decide session and ADR (docs/proposals/discrete-api.md)",
       "note": "Owner request 2026-11-05 (recipe-images D7). Lane is the proposal until the ADR shapes the build nodes."
     },
     {
@@ -3884,8 +3883,7 @@
       "needs_migration": null,
       "adrs": [
         "00042"
-      ],
-      "blocked": "needs the re-import ADR merged (docs/proposals/reimport.md D1-D4)"
+      ]
     },
     {
       "id": "a-api-shopping",
@@ -5236,6 +5234,15 @@
       "title": "delete a recipe from its page, confirmed by typing DELETE",
       "merged": "0f33604",
       "note": "Owner 2026-11-06: danger button below History/Edit/Share; type DELETE to confirm; DeleteWithPicture; redirect to the library."
+    },
+    {
+      "id": "l-discrete-api",
+      "title": "a discrete API behind the web handlers",
+      "merged": "5270f0c",
+      "adrs": [
+        "00043"
+      ],
+      "note": "Owner request 2026-11-05 (recipe-images D7). Lane is the proposal until the ADR shapes the build nodes."
     }
   ],
   "adr_sequence": {
