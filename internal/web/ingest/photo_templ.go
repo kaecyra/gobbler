@@ -49,7 +49,7 @@ func photoPage(v photoView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"screen-h\"><div><h1>Add a recipe from a photo</h1><p>Upload a photo of a recipe page. The text is read on this server, then you review the result before anything is saved. The photo itself is never saved.</p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"screen-h\"><div><h1>Add a recipe from a photo</h1><p>Upload a photo of a recipe page.</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

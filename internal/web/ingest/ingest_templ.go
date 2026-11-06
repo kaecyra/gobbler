@@ -118,7 +118,7 @@ func formPage(v formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"screen-h\"><div><h1>Add a recipe</h1><p>Give a web address or paste the recipe text. You review the result before anything is saved.</p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"screen-h\"><div><h1>Add a recipe</h1><p>Give a web address or paste the recipe text.</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
