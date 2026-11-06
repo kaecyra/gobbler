@@ -4119,7 +4119,8 @@
         "internal/parse/testdata/sections/**",
         "internal/ingest/ingest.go",
         "internal/ingest/assemble*.go",
-        "internal/ingest/steps_split_test.go"
+        "internal/ingest/steps_split_test.go",
+        "internal/parse/meta_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
