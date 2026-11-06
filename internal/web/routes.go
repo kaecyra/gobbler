@@ -241,7 +241,7 @@ func mountOAuth(r chi.Router, d Deps) {
 // mountPictures mounts the routes that serve a recipe's picture and a draft's
 // candidates from the media store, after admission (ADR-00039).
 func mountPictures(r chi.Router, d Deps) {
-	deps := pictures.Deps{Pictures: d.Pictures, Media: d.Media, Logger: d.Logger}
+	deps := pictures.Deps{Pictures: d.Recipes, Media: d.Media, Logger: d.Logger}
 	r.Mount(pictures.Pattern, pictures.Routes(deps))
 	r.Mount(pictures.DraftsPattern, pictures.DraftRoutes(deps))
 }

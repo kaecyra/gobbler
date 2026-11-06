@@ -23,9 +23,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/media"
-	domain "github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -45,11 +46,12 @@ const (
 	revalidate = "private, no-cache"
 )
 
-// Pictures is what the handlers use from the picture service.
-// *picture.Service satisfies it.
+// Pictures is what the handlers use from the recipe service
+// (ADR-00043), which checks the caller's membership.
+// *apirecipes.Service satisfies it.
 type Pictures interface {
-	Key(ctx context.Context, recipeID int64) (string, bool, error)
-	Candidates(ctx context.Context, proposalID int64) ([]domain.Candidate, error)
+	PictureKey(ctx context.Context, c apirecipes.Caller, recipeID int64) (string, bool, error)
+	Candidates(ctx context.Context, c apirecipes.Caller, proposalID int64) ([]apirecipes.Candidate, error)
 }
 
 // Deps is what the routes need.
@@ -126,7 +128,7 @@ func (h *handler) serveRecipe(w http.ResponseWriter, r *http.Request) {
 		notFound(w, r, err)
 		return
 	}
-	key, ok, err := h.Pictures.Key(r.Context(), id)
+	key, ok, err := h.Pictures.PictureKey(r.Context(), caller.FromContext(r.Context()), id)
 	if err != nil {
 		notFound(w, r, fmt.Errorf("picture of recipe %d: %w", id, err))
 		return
@@ -162,7 +164,7 @@ func (h *handler) serveCandidate(w http.ResponseWriter, r *http.Request) {
 		notFound(w, r, err)
 		return
 	}
-	cs, err := h.Pictures.Candidates(r.Context(), proposal)
+	cs, err := h.Pictures.Candidates(r.Context(), caller.FromContext(r.Context()), proposal)
 	if err != nil {
 		notFound(w, r, fmt.Errorf("candidates of proposal %d: %w", proposal, err))
 		return
