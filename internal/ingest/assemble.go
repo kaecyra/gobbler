@@ -327,9 +327,12 @@ func step(title, text string, confidence float64) Step {
 
 // enumeratorPattern matches the number a source writes into a step: an
 // optional "Step", the number, and its punctuation ("1.", "1)", "(1)", "1:",
-// "1 -", "Step 1:"). It is the one definition of an enumerator: stepNumberRE
-// reads it at the start of a step, enumeratorRE finds it inside one.
-const enumeratorPattern = `(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+[.):]|\d+\s+[-\x{2013}\x{2014}]`
+// "1 -", "Step 1:"; a space may come before the punctuation, "1 . Mix"). It is
+// the one definition of an enumerator: stepNumberRE reads it at the start of a
+// step, enumeratorRE finds it inside one. The section parser (internal/parse)
+// keeps the number on a pasted step's text, so this is the only place a source
+// number is recognised and removed.
+const enumeratorPattern = `(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+\s*[.):]|\d+\s+[-\x{2013}\x{2014}]`
 
 // stepNumberRE is an enumerator opening a step, with the whitespace after it.
 // The whitespace is required, so a leading quantity ("1.5 cups", "350°F",
@@ -341,7 +344,18 @@ var stepNumberRE = regexp.MustCompile(`^(?:` + enumeratorPattern + `)\s+`)
 // never after a bare word ("divide into 2. Shape"). Group 1 is the enumerator.
 var enumeratorRE = regexp.MustCompile(`(?:^|[.!?)]\s*)((?:` + enumeratorPattern + `))\s+`)
 
+// trailingEnumeratorRE finds an enumerator left at the end of a step with
+// nothing after it ("Mix. 2."), after the end of a sentence.
+// Group 1 is the enumerator.
+var trailingEnumeratorRE = regexp.MustCompile(`[.!?)]\s*(` + enumeratorPattern + `)\s*$`)
+
 var enumeratorNumberRE = regexp.MustCompile(`\d+`)
+
+// enumeratorValue reads the number out of an enumerator ("Step 3:" gives 3).
+func enumeratorValue(enum string) (int, bool) {
+	n, err := strconv.Atoi(enumeratorNumberRE.FindString(enum))
+	return n, err == nil
+}
 
 // stripStepNumber removes the source's own step number from the start of a
 // step. gobbler numbers steps itself, in an order that can differ from the
@@ -358,6 +372,15 @@ func stripStepNumber(text string) string {
 	}
 	if leadsIntoRange(text[:loc[1]], rest) {
 		return text
+	}
+	// A run cut off after its last number ("1. Mix. 2.") loses that number,
+	// but only when it is the next one in the run: "1. Bake. 350." keeps 350.
+	if t := trailingEnumeratorRE.FindStringSubmatchIndex(rest); t != nil {
+		own, ok := enumeratorValue(text[:loc[1]])
+		trail, tok := enumeratorValue(rest[t[2]:t[3]])
+		if ok && tok && trail == own+1 {
+			rest = strings.TrimSpace(rest[:t[0]+1])
+		}
 	}
 	return rest
 }
@@ -385,7 +408,7 @@ func splitNumberedSteps(text string) []string {
 		if len(starts) == 0 && m[2] != 0 {
 			return []string{text}
 		}
-		if n, err := strconv.Atoi(enumeratorNumberRE.FindString(enum)); err != nil || n != next {
+		if n, ok := enumeratorValue(enum); !ok || n != next {
 			break
 		}
 		starts = append(starts, m[2])

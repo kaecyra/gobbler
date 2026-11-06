@@ -154,7 +154,7 @@ func TestSplitSectionsMetaFooterAfterSteps(t *testing.T) {
 	if got.Meta == nil || got.Meta.Calories != 280 || got.Meta.Prep != 10*time.Minute {
 		t.Errorf("Meta = %+v, want calories 280 and prep 10m", got.Meta)
 	}
-	if want := []string{"Dice the onion.", "Simmer."}; !reflect.DeepEqual(got.Components[0].Steps, want) {
+	if want := []string{"1. Dice the onion.", "2. Simmer."}; !reflect.DeepEqual(got.Components[0].Steps, want) {
 		t.Errorf("steps = %q, want %q", got.Components[0].Steps, want)
 	}
 
