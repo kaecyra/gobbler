@@ -737,23 +737,6 @@ test('author notes are added, reordered by their handle, limited, removed and sa
 
 });
 
-// Saves, so it runs last. Not part of the describe above: it edits the recipe.
-test('suggestion lists: a value that is not in the list still saves', async ({ page }) => {
-  await page.goto(`/recipes/${id}/edit`);
-  const ing = page.locator('input[name$=".l.0.ing"]').first();
-  const name = await ing.getAttribute('name');
-  await ing.click();
-  await ing.fill('e2e saffron');
-  await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(0);
-  // The server asks before it adds an unknown ingredient to the catalog.
-  await save(page);
-  await page.getByRole('checkbox', { name: 'Add this ingredient to the catalog as new and unreviewed' }).check();
-  await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
-  await page.goto(`/recipes/${id}/edit`);
-  await expect(page.locator(`[name="${name}"]`)).toHaveValue('e2e saffron');
-});
-
 // Issue #496. A qualifier chip is one pill: grip, kind, text and remove stay
 // inside it, and the chips wrap onto the next row instead of running past the
 // panel. The three qualifiers are what the parser makes of "1 cup (240ml) whole
@@ -765,8 +748,8 @@ test.describe('qualifier chips', () => {
     { kind: 'note', text: 'warmed to about 110°F (43°C)' },
   ];
 
-  for (const viewport of [{ width: 1280, height: 900 }, { width: 820, height: 1180 }, { width: 390, height: 844 }]) {
-    test(`keep every control inside their pill and inside the panel at ${viewport.width}px`, async ({ page }) => {
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 820, height: 1180 }, { width: 390, height: 844 }, { width: 360, height: 780 }]) {
+    test(`keep every control inside its pill and inside the panel at ${viewport.width}px`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.goto(`/recipes/${id}/edit`);
       const line = page.locator('li.line').first();
@@ -790,8 +773,11 @@ test.describe('qualifier chips', () => {
         expect(box.x, `chip ${i} starts inside the panel`).toBeGreaterThanOrEqual(panel.x - 0.5);
         expect(box.x + box.width, `chip ${i} ends inside the panel`).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
         for (const part of ['.grip', 'select', 'input[type=text]', '.ibtn']) {
-          const inner = (await chip.locator(part).boundingBox())!;
           const where = `chip ${i} ${part}`;
+          const el = chip.locator(part);
+          // The drag grip shows only once the editor script has run.
+          await expect(el, `${where} is visible`).toBeVisible();
+          const inner = (await el.boundingBox())!;
           expect(inner.x, `${where} left`).toBeGreaterThanOrEqual(box.x - 0.5);
           expect(inner.x + inner.width, `${where} right`).toBeLessThanOrEqual(box.x + box.width + 0.5);
           expect(inner.y, `${where} top`).toBeGreaterThanOrEqual(box.y - 0.5);
@@ -799,10 +785,27 @@ test.describe('qualifier chips', () => {
         }
         // The text is not cut off where the row has room for it. A phone is
         // narrower than the long note, and a one-line field scrolls it there.
-        if (viewport.width < 820) continue;
+        if (viewport.width < 820 && quals[i].text.length > 10) continue;
         const clipped = await chip.locator('input[type=text]').evaluate((el: HTMLInputElement) => el.scrollWidth > el.clientWidth);
         expect(clipped, `chip ${i} text is cut off`).toBe(false);
       }
     });
   }
+});
+
+// Saves, so it runs last. Not part of the describe above: it edits the recipe.
+test('suggestion lists: a value that is not in the list still saves', async ({ page }) => {
+  await page.goto(`/recipes/${id}/edit`);
+  const ing = page.locator('input[name$=".l.0.ing"]').first();
+  const name = await ing.getAttribute('name');
+  await ing.click();
+  await ing.fill('e2e saffron');
+  await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(0);
+  // The server asks before it adds an unknown ingredient to the catalog.
+  await save(page);
+  await page.getByRole('checkbox', { name: 'Add this ingredient to the catalog as new and unreviewed' }).check();
+  await save(page);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await page.goto(`/recipes/${id}/edit`);
+  await expect(page.locator(`[name="${name}"]`)).toHaveValue('e2e saffron');
 });
