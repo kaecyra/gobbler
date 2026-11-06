@@ -1,0 +1,54 @@
+package recipeview
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// deleteView is the confirmation page of a recipe's deletion.
+type deleteView struct {
+	ID   int64
+	Name string
+}
+
+// deleteHref is the confirmation page of recipe id's deletion.
+func deleteHref(id int64) string { return recipePath(id) + "/delete" }
+
+// deletePage names the recipe and what goes with it, and enables the final
+// button only once the word is typed. The server checks the word as well:
+// the script is a convenience, not the guard.
+templ deletePage(v deleteView) {
+	@layout.Page("Delete " + v.Name) {
+		<style>
+			.delete-confirm { max-width: 560px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 14px; }
+			.delete-confirm h1 { margin: 0; }
+			.delete-confirm ul { margin: 0; padding-left: 20px; }
+			.delete-confirm form { display: flex; flex-direction: column; gap: 12px; }
+			.delete-confirm label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+			.delete-confirm .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+			.delete-confirm .btn.danger { color: var(--wattle-ink); border-color: var(--wattle-ink); }
+		</style>
+		<div class="delete-confirm" data-testid="delete-confirm">
+			<h1>Delete { v.Name }?</h1>
+			<p>This deletes the recipe for good. These go with it:</p>
+			<ul>
+				<li>its history of earlier versions</li>
+				<li>its notes</li>
+				<li>its made-it entries</li>
+				<li>its picture</li>
+			</ul>
+			<p>A copy of it made with Clone is a recipe of its own and stays.</p>
+			<form method="post" action={ templ.SafeURL(deleteHref(v.ID)) }>
+				<label><span>Type <strong>DELETE</strong> to confirm</span> <input type="text" name="confirm" required autocomplete="off" data-testid="delete-input"/></label>
+				<div class="actions">
+					<button type="submit" class="btn danger" disabled data-testid="delete-submit">Delete</button>
+					<a href={ templ.SafeURL(recipePath(v.ID)) } class="btn" data-testid="delete-cancel">Cancel</a>
+				</div>
+			</form>
+			<script>
+				(function () {
+					var f = document.querySelector('.delete-confirm form');
+					var i = f.elements.confirm, b = f.querySelector('button');
+					i.addEventListener('input', function () { b.disabled = i.value.trim() !== 'DELETE'; });
+				})();
+			</script>
+		</div>
+	}
+}

@@ -170,7 +170,35 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID})
+	doomedID, doomedCloneID, err := seedDoomed(ctx, d, dir)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID, "doomed": doomedID, "doomed_clone": doomedCloneID})
+}
+
+// seedDoomed stores the recipe the delete specs remove: one with a picture, a
+// note and a made-it entry, and a clone of it that must survive the delete.
+func seedDoomed(ctx context.Context, d *sql.DB, dir string) (id, cloneID int64, err error) {
+	rs := store.New(d)
+	id, err = rs.Create(ctx, recipe.Recipe{
+		Name:       "E2E Doomed Stew",
+		Components: []recipe.Component{{Steps: []recipe.Step{{ID: "stew", Text: "Stew it."}}}},
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	if _, err := rs.AddNote(ctx, id, "Doomed note.", false); err != nil {
+		return 0, 0, err
+	}
+	if _, err := rs.AddMadeIt(ctx, id, store.MadeIt{Comment: "Made the doomed stew."}); err != nil {
+		return 0, 0, err
+	}
+	if err := picseed.Give(ctx, d, dir, id, color.RGBA{R: 140, G: 60, B: 60}); err != nil {
+		return 0, 0, err
+	}
+	cloneID, err = rs.Clone(ctx, id)
+	return id, cloneID, err
 }
 
 // seedStyled stores a recipe that uses every field the mockup design shows: a
