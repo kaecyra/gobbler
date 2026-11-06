@@ -215,6 +215,38 @@ func TestIngredientLineNoteKeepsSourceCase(t *testing.T) {
 	}
 }
 
+// Text the vocabulary matched is stored lowercase; free text keeps the
+// source's case.
+func TestIngredientLineQualifierCase(t *testing.T) {
+	tests := []struct {
+		in   string
+		want []LineQualifier
+	}{
+		{"1 cup butter (Room Temp)", []LineQualifier{{LineQualNote, "Room Temp"}}},
+		{"1 cup butter (Cold)", []LineQualifier{{LineQualNote, "cold"}}},
+		{"2 tbsp butter, Melted", []LineQualifier{{LineQualState, "melted"}}},
+		{"1 tsp salt, Divided", []LineQualifier{{LineQualNote, "divided"}}},
+		{"1 cup butter, For Serving", []LineQualifier{{LineQualNote, "for Serving"}}},
+		{"1 cup butter, Brought To Room Temp", []LineQualifier{{LineQualNote, "Brought To Room Temp"}}},
+		{"1 cup butter, warmed to 110°F", []LineQualifier{{LineQualNote, "warmed to 110°F"}}},
+		// The hedge is vocabulary.
+		{"About 2 cups butter", []LineQualifier{{LineQualNote, "about"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			got := IngredientLine(tt.in, lineTestCatalog(), lineTestUnits())
+			if len(got.Qualifiers) != len(tt.want) {
+				t.Fatalf("qualifiers = %+v, want %+v", got.Qualifiers, tt.want)
+			}
+			for i, w := range tt.want {
+				if got.Qualifiers[i] != w {
+					t.Errorf("qualifier %d = %+v, want %+v", i, got.Qualifiers[i], w)
+				}
+			}
+		})
+	}
+}
+
 func TestIngredientLineOptional(t *testing.T) {
 	for _, in := range []string{
 		"1 cup sugar (optional)", "1 cup sugar, optional", "1 cup sugar [optional]",

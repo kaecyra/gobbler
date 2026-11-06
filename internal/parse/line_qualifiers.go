@@ -122,6 +122,25 @@ func lineClassifySegment(seg string) (kind LineQualifierKind, recognized bool) {
 	return LineQualNote, false
 }
 
+// lineSegmentText is the text stored for a tail segment. Words the
+// vocabulary matched are stored lowercase, as the lead path does ("Divided"
+// becomes "divided"); free text the vocabulary did not explain keeps the
+// source's case, so "warmed to about 110°F (43°C)" keeps its °F and °C. A
+// segment that starts with a known note prefix is the prefix lowercased
+// followed by the source's own words.
+func lineSegmentText(seg string) string {
+	low := strings.ToLower(seg)
+	if _, _, n := lineLeadingQualifier(strings.Fields(low)); n > 0 {
+		return low
+	}
+	for _, p := range lineNotePrefixes {
+		if strings.HasPrefix(low, p) && len(seg) >= len(p) {
+			return low[:len(p)] + seg[len(p):]
+		}
+	}
+	return seg
+}
+
 // lineSplitSegments splits a tail on commas and semicolons outside brackets,
 // then splits each piece on " and " when every part is a recognised
 // qualifier ("peeled and diced").

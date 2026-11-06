@@ -156,7 +156,8 @@ func (p *lineParser) addQualifier(k LineQualifierKind, text string) {
 
 func (p *lineParser) parseHead(head string) {
 	toks := lineTokens(head)
-	// "about 2 cups": the hedge is a note, not part of the amount.
+	// "about 2 cups": the hedge is a note, not part of the amount. It is
+	// vocabulary (lineIsHedge), so it is stored lowercase: "About" -> "about".
 	for len(toks) > 0 && lineIsHedge(toks[0]) {
 		p.addQualifier(LineQualNote, strings.ToLower(strings.TrimPrefix(toks[0], "~")))
 		toks = toks[1:]
@@ -280,7 +281,7 @@ func (p *lineParser) addNotes(notes []string) {
 		if n == "" {
 			continue
 		}
-		p.addQualifier(LineQualNote, n)
+		p.addQualifier(LineQualNote, lineSegmentText(n))
 	}
 }
 
@@ -298,12 +299,7 @@ func (p *lineParser) parseTail(tail string) {
 			p.leftover++
 			p.issue("unrecognised text %q", seg)
 		}
-		text := strings.Trim(seg, ".")
-		if kind != LineQualNote {
-			// Vocabulary words are stored lowercase; a note is the
-			// source's own words, so it keeps their case.
-			text = strings.ToLower(text)
-		}
+		text := lineSegmentText(strings.Trim(seg, "."))
 		p.addQualifier(kind, text)
 	}
 }
