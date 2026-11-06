@@ -4175,7 +4175,7 @@
       "wave": 13,
       "track": null,
       "issue": 512,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "a-api-recipes"
       ],
@@ -4391,7 +4391,7 @@
       "wave": 13,
       "track": null,
       "issue": 524,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "r-note-length"
       ],
@@ -4456,7 +4456,7 @@
       "wave": 13,
       "track": null,
       "issue": 528,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [],
       "owns": [
         "internal/web/recipes/**",
@@ -5852,6 +5852,12 @@
         "00044"
       ],
       "note": "Implements the ADR attached to this node, which amends ADR-00041. Found on 0.123.3: a sallysbakingaddiction import with two notes of 700 and 550 characters could not be confirmed."
+    },
+    {
+      "id": "a-api-sharing",
+      "title": "recipe sharing goes through internal/api/sharing",
+      "merged": "5d8d4e9",
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     }
   ],
   "adr_sequence": {
