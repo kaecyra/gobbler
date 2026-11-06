@@ -96,9 +96,10 @@ const FIELDS_PAGE = `<html><head><script type="application/ld+json">
 </script></head><body><h1>Fixture Sweet Loaf</h1></body></html>`;
 
 // A page whose WP Recipe Maker card prints a notes block: two tips, a
-// nutrition paragraph and a paragraph over the 400-character limit
-// (ADR-00041). The long one is a single run of words.
-const LONG_NOTE = 'Rest the batter. '.repeat(25).trim();
+// nutrition paragraph and a paragraph of over 700 characters, past the
+// 400-character guideline that ingest flags (ADR-00044). The long one is a
+// single run of words.
+const LONG_NOTE = 'Rest the batter. '.repeat(42).trim();
 const NOTES_PAGE = `<html><head><script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Recipe","name":"Fixture Notes Toast",
  "recipeIngredient":["2 slices bread","1 tbsp butter"],
@@ -730,9 +731,10 @@ test('the author notes of a page arrive as rows, the junk flagged in words, and 
   await expect(rows.nth(3)).toContainText('it is longer than one short paragraph');
 
   // The over-long one is flagged, never refused: no limit text, and the draft saves.
+  await expect(page.locator('.help.note-help')).toHaveCount(1);
   await expect(page.locator('.help.note-help')).not.toContainText('at most');
   const longText = await page.locator('[name="n.3.text"]').inputValue();
-  expect(longText.length).toBeGreaterThan(400);
+  expect(longText.length).toBeGreaterThanOrEqual(700);
   await page.getByRole('button', { name: 'Remove note 3' }).click();
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(2)).toContainText('it is longer than one short paragraph');

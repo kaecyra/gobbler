@@ -39,8 +39,9 @@ func (n AuthorNote) Lead() string {
 	return title + ":"
 }
 
-// Validate checks that the note has text, that the text is one paragraph (it
-// holds no blank line). Length is not checked (ADR-00044). The rule holds for every writer: ingest, the editor and MCP.
+// Validate checks that the note has text and that the text is one paragraph
+// (it holds no blank line). Length is not checked (ADR-00044). The rule holds
+// for every writer: ingest, the editor and MCP.
 func (n AuthorNote) Validate() error {
 	text := strings.TrimSpace(n.Text)
 	switch {
