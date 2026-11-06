@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/household"
 )
 
@@ -63,4 +64,15 @@ func Enter(ctx context.Context, m Members, c Caller) (context.Context, error) {
 		return nil, fmt.Errorf("%s is not a member of household %d: %w", c.Person, c.Household.ID, ErrNotMember)
 	}
 	return household.WithContext(ctx, h), nil
+}
+
+// FromContext is the Caller of a web request: the verified email the identity
+// middleware stored and the household the membership middleware stored. It is
+// for the web adapters, which have only the request context. A request that
+// lacks either yields a Caller the service refuses with ErrNotMember, so a
+// handler mounted outside the middleware fails closed.
+func FromContext(ctx context.Context) Caller {
+	email, _ := auth.EmailFromContext(ctx)
+	h, _ := household.FromContext(ctx)
+	return Caller{Person: email, Household: h}
 }
