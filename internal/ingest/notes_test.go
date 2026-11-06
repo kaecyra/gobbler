@@ -125,7 +125,6 @@ func TestConfirmRefusesAnAuthorNoteTheRecipeWouldRefuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, text := range map[string]string{
-		"too long":      strings.Repeat("a", recipe.MaxAuthorNoteChars+1),
 		"two paragraph": "One.\n\nTwo.",
 		"empty":         " ",
 	} {

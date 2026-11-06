@@ -171,7 +171,7 @@ type Recipe struct {
 // well-formed lines and qualifiers, non-negative durations, a valid step graph (see
 // ValidateSteps) and, when set, a well-formed video ID, a meal type and stage
 // kinds from their closed sets, a spice level of 0 to 3 and author notes of one
-// paragraph and at most MaxAuthorNoteChars characters. It does not judge
+// paragraph, of any length. It does not judge
 // content such as an empty name.
 func (r Recipe) Validate() error {
 	if len(r.Components) == 0 {

@@ -13,8 +13,9 @@ import (
 // they are data about a less certain candidate, shown on the review screen,
 // where the person trims or deletes it. Ingest drops nothing on its own.
 const (
-	// IssueNoteTooLong: the note is over recipe.MaxAuthorNoteChars characters
-	// or holds more than one paragraph, so the recipe would refuse it as is.
+	// IssueNoteTooLong: the note is over recipe.AuthorNoteGuidelineChars characters
+	// or holds more than one paragraph. Only the paragraph rule makes the recipe
+	// refuse it; a long note is flagged and saves (ADR-00044).
 	IssueNoteTooLong = "note_too_long"
 	// IssueNoteNutrition: the note reads as nutrition facts.
 	IssueNoteNutrition = "note_nutrition"
@@ -65,7 +66,7 @@ func authorNotes(raw []extract.Note) []AuthorNote {
 			continue
 		}
 		note := AuthorNote{Title: strings.TrimSpace(n.Title), Text: text, Confidence: 1}
-		if utf8.RuneCountInString(text) > recipe.MaxAuthorNoteChars || recipe.MoreThanOneParagraph(text) {
+		if utf8.RuneCountInString(text) > recipe.AuthorNoteGuidelineChars || recipe.MoreThanOneParagraph(text) {
 			note.Issues = append(note.Issues, IssueNoteTooLong)
 		}
 		if nutritionHeadingRE.MatchString(text) || len(nutrientRE.FindAllString(text, -1)) >= minNutrientMatches {
