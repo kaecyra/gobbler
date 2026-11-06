@@ -3755,7 +3755,7 @@
       "wave": 12,
       "track": null,
       "issue": 441,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [],
       "owns": [
         "internal/store/proposal_edit.go",
@@ -3774,7 +3774,7 @@
       "wave": 12,
       "track": null,
       "issue": 447,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [],
       "owns": [
         "internal/web/layout/icon.go",
