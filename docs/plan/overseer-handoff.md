@@ -35,6 +35,15 @@ This file holds the volatile state the graph does not. The durable record is `do
   package. Worker's out-of-lane home.go line sanctioned (#493). Follow-up for a-api-rest:
   tools_shopping.go shopCaller duplicates callerOf.
 - **#495 i-step-numbers (#490)**, branch feat/490-step-numbers, ParserVersion 15, VERSION 0.122.0.
+- **Review state at handoff:**
+  - #495: APPROVED with one SHOULD (fallback.go:297 strip untested); sent back to the worker for a test,
+    worktree wt-490.
+  - #494: CHANGES_REQUESTED, one MUST: golangci-lint v2 skips generated files, so depguard never sees
+    *_templ.go; journal_templ.go imports store unexcepted and docs/design.md:107 overclaims. Sent back,
+    worktree wt-470. NIT, out of lane: internal/web/reimport_wiring_test.go:27's comment still names
+    mountMCP's store (now the router-built recipe service); fix it in a-api-rest or a small node.
+  - If either worker's report did not arrive before this session ended, read the branch, re-brief a
+    fresh worker from the review threads, and resolve each thread after verifying the fix.
 - Both bump from 0.121.1: whichever merges second re-bumps against main (merge origin/main, no rebase).
 - Triage: send findings to a fresh worker (the old ones are gone with this session); recreate the worktree
   from the pushed branch and `cd e2e && npm ci`.
