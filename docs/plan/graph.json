@@ -3333,7 +3333,9 @@
         "internal/ingest/extract/testdata/**"
       ],
       "needs_migration": "schema",
-      "adrs": [],
+      "adrs": [
+        "00041"
+      ],
       "blocked": "needs an ADR: author-notes model, on-screen name and placement (#395 open decision)",
       "note": "Owner request 2026-11-05. Amends ADR-00004's data model. WPRM .wprm-recipe-notes and Tasty .tasty-recipes-notes; nothing in JSON-LD."
     },
@@ -5075,7 +5077,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00040",
+    "last_used": "00041",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
