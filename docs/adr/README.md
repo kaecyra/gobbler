@@ -49,13 +49,14 @@ index below in the same commit.
 | [00032](00032-profiles.md) | Everyone has a profile, and one visibility rule decides what a viewer sees | Accepted |
 | [00033](00033-media-object-storage.md) | Uploaded media is processed to WebP and kept in S3-compatible object storage | Accepted |
 | [00034](00034-mcp-server.md) | gobbler serves MCP, authenticated by API keys or OAuth, with recipe writes held for review | Amended by [00036](00036-rate-limits-on-public-oauth-endpoints.md) |
-| [00035](00035-reviewing-agent-recipe-edits.md) | Recipes awaiting review are stored as proposals, and an edit is reviewed in the recipe editor | Accepted |
+| [00035](00035-reviewing-agent-recipe-edits.md) | Recipes awaiting review are stored as proposals, and an edit is reviewed in the recipe editor | Amended by [00042](00042-reimport.md) |
 | [00036](00036-rate-limits-on-public-oauth-endpoints.md) | The public OAuth endpoints are rate-limited per client address, and unused client registrations have a ceiling | Accepted |
 | [00037](00037-notes-are-editable.md) | A note is a household scratchpad: its body is edited in place and it can be deleted | Accepted |
 | [00038](00038-editor-morphs-the-server-rendered-form.md) | The recipe editor morphs the server-rendered form in place | Accepted |
-| [00039](00039-recipe-pictures.md) | A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header | Amended by [00040](00040-loopback-fetches-under-the-dev-bypass.md) |
+| [00039](00039-recipe-pictures.md) | A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header | Amended by [00040](00040-loopback-fetches-under-the-dev-bypass.md), [00042](00042-reimport.md) |
 | [00040](00040-loopback-fetches-under-the-dev-bypass.md) | The fetch guard admits loopback only while the dev auth bypass is on | Accepted |
 | [00041](00041-author-notes.md) | A recipe keeps its author's notes as a short list that ends the step chain | Accepted |
+| [00042](00042-reimport.md) | A saved recipe with a source URL is re-imported through ingestion's review screen, and saving writes a new revision | Accepted |
 
 ## What needs one
 
