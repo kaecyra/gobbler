@@ -18,6 +18,9 @@ import (
 // proposal's provenance without its document.
 type ProposalRef struct {
 	Token string
+	// Reimport says the version was written by saving a re-import of the
+	// recipe's source (ADR-00042); Reason then reads "Re-imported from <host>".
+	Reimport bool
 	Provenance
 	CreatedAt time.Time
 }

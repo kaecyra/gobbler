@@ -1,10 +1,11 @@
 // Command seed fills a fresh data directory for the history e2e spec and prints
 // the ids as JSON: a recipe that has been edited once (so it has one revision)
-// and one that never has. It is test tooling (ADR-00013): it goes through the
+// one that never has, and one whose latest version was a re-import. It is test tooling (ADR-00013): it goes through the
 // real store and catalog packages. Usage: seed <data-dir>.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -57,7 +58,34 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"edited": edited, "plain": plain})
+	reimported, err := reimport(ctx, s, loaf("E2E Imported Loaf", "2", flour.ID, pan.ID))
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"edited": edited, "plain": plain, "reimported": reimported})
+}
+
+// reimport stores r as imported from a page, then saves a re-import of it, so
+// its history has a revision written by one (ADR-00042).
+func reimport(ctx context.Context, s *store.Store, r recipe.Recipe) (int64, error) {
+	r.SourceURL = "https://recipes.example.test/loaf"
+	id, err := s.CreateWithSnapshots(ctx, r, store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>first</html>")})
+	if err != nil {
+		return 0, err
+	}
+	token, err := s.ProposeDraft(ctx, store.DraftInput{
+		Document:   []byte(fmt.Sprintf(`{"reimport":{"recipe":%d,"base_version":1},"components":[]}`, id)),
+		Source:     store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>again</html>")},
+		Provenance: store.Provenance{Person: "dev@localhost", Reason: "Re-imported from recipes.example.test"},
+	})
+	if err != nil {
+		return 0, err
+	}
+	r.Name = "E2E Imported Loaf, read again"
+	if _, err := s.AcceptReimport(ctx, token, r); err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 func loaf(name, flourCups string, flour, pan int64) recipe.Recipe {

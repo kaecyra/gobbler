@@ -75,7 +75,9 @@ templ listPage(v listView) {
 // proposalLine says where a version came from when a person saved a proposal
 // an agent made: who and through which credential, and the reason it gave.
 templ proposalLine(p *proposalNote, testID string) {
-	if p != nil {
+	if p != nil && p.Reimport {
+		<span class="muted" data-testid={ testID }>{ p.Reason }.</span>
+	} else if p != nil {
 		<span class="muted" data-testid={ testID }>
 			Proposed by { p.By }.
 			if p.Reason != "" {

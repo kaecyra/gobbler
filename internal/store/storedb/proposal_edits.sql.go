@@ -12,7 +12,8 @@ import (
 const listRevisionProposals = `-- name: ListRevisionProposals :many
 
 SELECT r.version, p.token, p.reason, p.tool, p.proposed_by, p.credential_kind, p.credential_id, p.credential_ref,
-    p.credential_owner, p.credential_created_at, p.created_at
+    p.credential_owner, p.credential_created_at, p.created_at,
+    json_extract(p.document, '$.reimport') IS NOT NULL AS reimport
 FROM revisions r JOIN proposals p ON p.household_id = r.household_id AND p.id = r.proposal_id
 WHERE r.recipe_id = ?1 AND r.household_id = ?2 AND r.change_kind = 'proposal'
 `
@@ -34,6 +35,7 @@ type ListRevisionProposalsRow struct {
 	CredentialOwner     string
 	CredentialCreatedAt string
 	CreatedAt           string
+	Reimport            bool
 }
 
 // The proposals that accepted edits came from, for history (ADR-00035): the
@@ -59,6 +61,7 @@ func (q *Queries) ListRevisionProposals(ctx context.Context, arg ListRevisionPro
 			&i.CredentialOwner,
 			&i.CredentialCreatedAt,
 			&i.CreatedAt,
+			&i.Reimport,
 		); err != nil {
 			return nil, err
 		}
