@@ -4469,7 +4469,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Owner's design call, 2026-11-06: library cards (the library and the home suggestion card) drop the time ribbon pinned to the card's bottom edge and show only the recipe's total time, as a small clock icon and the time in the card's meta text, not edge to edge. The recipe page's large 'Ready in about' ribbon is unchanged. Update docs/ui/design.md's Time ribbon component and the home suggestion card text to match, in the same PR. Delete card-only ribbon code that nothing calls afterwards. The total is the same figure the recipe page's 'Ready in about' heading shows, from the same code path, so the card and the page never disagree."
+      "note": "Owner's design call, 2026-11-06: library cards (the library and the home suggestion card) drop the time ribbon pinned to the card's bottom edge and show only the recipe's total time, as a small clock icon and the time in the card's meta text, not edge to edge. The recipe page's large 'Ready in about' ribbon is unchanged. Update docs/ui/design.md's Time ribbon component and the home suggestion card text to match, in the same PR. Delete card-only ribbon code that nothing calls afterwards. The total is the figure the library's time grouping (timeToTable in internal/web/recipes) already uses for that card, so a card never contradicts the time group it sits under. It may differ from the recipe page's 'Ready in about' figure, which needs step data the card does not carry."
     }
   ],
   "shared_files": [
