@@ -10,14 +10,13 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
-	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
@@ -54,18 +53,10 @@ type Catalog interface {
 	display.Ingredients
 	MatchIngredient(ctx context.Context, term string) (catalog.Ingredient, bool, error)
 	MatchUnit(ctx context.Context, term string) (catalog.Unit, bool, error)
-}
-
-// Lists is what the shopping tools call on the shopping store;
-// *shopping.Store satisfies it.
-type Lists interface {
-	Lists(ctx context.Context) ([]shopping.ListInfo, error)
-	CreateList(ctx context.Context, name string) (shopping.ListInfo, error)
-	Load(ctx context.Context, id int64) (shopping.View, error)
-	AddEntry(ctx context.Context, listID, recipeID int64, multiplier quantity.Rat) (int64, error)
-	AddManualItem(ctx context.Context, listID int64, m shopping.ManualItem) (int64, error)
-	SetChecked(ctx context.Context, listID int64, key shopping.ItemKey, checked bool) error
-	Pantry(ctx context.Context) ([]recipe.IngredientID, error)
+	// ListIngredients and ListUnits are what the shopping service reads
+	// (apishop.Catalog).
+	ListIngredients(ctx context.Context) ([]catalog.Ingredient, error)
+	ListUnits(ctx context.Context) ([]catalog.Unit, error)
 }
 
 // Drafter makes a draft from a URL or pasted text through the rule-first
@@ -87,7 +78,8 @@ type Drafts interface {
 // Deps is everything the endpoint needs.
 type Deps struct {
 	Recipes Recipes
-	Lists   Lists
+	// Lists is the shopping store the shopping service is built over.
+	Lists   *apishop.Store
 	Catalog Catalog
 	Drafter Drafter
 	Drafts  Drafts
@@ -105,7 +97,7 @@ type Deps struct {
 // already shares. The pipeline has no LLM provider: an agent's import takes the
 // rule-based path and a draft below the confidence threshold is flagged for the
 // reviewer, never sent to a model (ADR-00006).
-func NewDeps(rec *store.Store, lists *shopping.Store, cat *catalog.Store, drafts Drafts, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+func NewDeps(rec *store.Store, lists *apishop.Store, cat *catalog.Store, drafts Drafts, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
 	pipeline, err := ingest.New(cfg.Ingestion, ingest.Deps{Catalog: cat, Logger: log})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import pipeline: %w", err)
@@ -136,7 +128,7 @@ func Routes(d Deps) (http.Handler, error) {
 	if version == "" {
 		version = "dev"
 	}
-	t := &tools{Deps: d, log: log}
+	t := &tools{Deps: d, log: log, shop: apishop.New(apishop.Deps{Lists: d.Lists, Recipes: d.Recipes, Catalog: d.Catalog})}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "gobbler", Version: version}, &mcp.ServerOptions{
 		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once.",
 	})

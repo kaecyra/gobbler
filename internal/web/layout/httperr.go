@@ -10,6 +10,7 @@ import (
 
 	"github.com/a-h/templ"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
@@ -67,6 +68,11 @@ var statusTable = []struct {
 	{apikey.ErrNotFound, http.StatusNotFound},
 	{apikey.ErrInvalid, http.StatusBadRequest},
 	{oauth.ErrNotFound, http.StatusNotFound},
+	{apishop.ErrNotFound, http.StatusNotFound},
+	{apishop.ErrInvalid, http.StatusBadRequest},
+	{apishop.ErrUnknownReference, http.StatusBadRequest},
+	{apishop.ErrDuplicate, http.StatusConflict},
+	{apishop.ErrNotMember, http.StatusForbidden},
 }
 
 // classify returns the table row err matches. ok is false for an unmapped

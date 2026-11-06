@@ -7,8 +7,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/quantity"
-	"github.com/kaecyra/gobbler/internal/shopping"
 )
 
 type listSummary struct {
@@ -74,6 +75,12 @@ type pantryOut struct {
 	Ingredients []string `json:"ingredients"`
 }
 
+// shopCaller is the shopping service's Caller for a tool call: the credential's
+// owner and the household the membership check admitted it to.
+func shopCaller(c Credential, h household.Household) apishop.Caller {
+	return apishop.Caller{Person: c.Email, Household: h}
+}
+
 func (t *tools) registerShopping(s *mcp.Server) {
 	mcp.AddTool(s, &mcp.Tool{Name: "list_shopping_lists", Description: "List the household's shopping lists. Returns one page and a cursor for the next.", Annotations: readOnly}, t.listLists)
 	mcp.AddTool(s, &mcp.Tool{Name: "get_shopping_list", Description: "Get one shopping list: its recipes and its merged items grouped by aisle, with what is ticked off.", Annotations: readOnly}, t.getList)
@@ -85,10 +92,12 @@ func (t *tools) registerShopping(s *mcp.Server) {
 }
 
 func (t *tools) listLists(ctx context.Context, _ *mcp.CallToolRequest, in listIn) (*mcp.CallToolResult, Page[listSummary], error) {
-	if _, _, err := scoped(ctx); err != nil {
+	c, h, err := scoped(ctx)
+	if err != nil {
 		return nil, Page[listSummary]{}, t.toolError(ctx, "list_shopping_lists", err)
 	}
-	lists, err := t.Lists.Lists(ctx)
+	caller := shopCaller(c, h)
+	lists, err := t.shop.Lists(ctx, caller)
 	if err != nil {
 		return nil, Page[listSummary]{}, t.toolError(ctx, "list_shopping_lists", err)
 	}
@@ -104,10 +113,12 @@ func (t *tools) listLists(ctx context.Context, _ *mcp.CallToolRequest, in listIn
 }
 
 func (t *tools) getList(ctx context.Context, _ *mcp.CallToolRequest, in getListIn) (*mcp.CallToolResult, listOut, error) {
-	if _, _, err := scoped(ctx); err != nil {
+	c, h, err := scoped(ctx)
+	if err != nil {
 		return nil, listOut{}, t.toolError(ctx, "get_shopping_list", err)
 	}
-	v, err := t.Lists.Load(ctx, in.ID)
+	caller := shopCaller(c, h)
+	v, err := t.shop.Load(ctx, caller, in.ID)
 	if err != nil {
 		return nil, listOut{}, t.toolError(ctx, "get_shopping_list", err)
 	}
@@ -137,7 +148,8 @@ func (t *tools) createList(ctx context.Context, _ *mcp.CallToolRequest, in creat
 	if err != nil {
 		return nil, listSummary{}, t.toolError(ctx, tool, err)
 	}
-	l, err := t.Lists.CreateList(ctx, in.Name)
+	caller := shopCaller(c, h)
+	l, err := t.shop.CreateList(ctx, caller, in.Name)
 	if err != nil {
 		return nil, listSummary{}, t.toolError(ctx, tool, err)
 	}
@@ -153,13 +165,14 @@ func (t *tools) addRecipe(ctx context.Context, _ *mcp.CallToolRequest, in addRec
 	if err != nil {
 		return nil, changeOut{}, t.toolError(ctx, tool, err)
 	}
+	caller := shopCaller(c, h)
 	scale := quantity.Int(1)
 	if s := strings.TrimSpace(in.Scale); s != "" {
 		if scale, err = quantity.ParseRat(s); err != nil || scale.Sign() <= 0 {
 			return nil, changeOut{}, refuse("scale must be a positive number such as 2, 1/2 or 1.5")
 		}
 	}
-	if _, err := t.Lists.AddEntry(ctx, in.ListID, in.RecipeID, scale); err != nil {
+	if _, err := t.shop.AddEntry(ctx, caller, in.ListID, in.RecipeID, scale); err != nil {
 		return nil, changeOut{}, t.toolError(ctx, tool, err)
 	}
 	if err := t.recordWrite(ctx, c, h.ID, tool, fmt.Sprintf("list %d recipe %d", in.ListID, in.RecipeID)); err != nil {
@@ -174,7 +187,8 @@ func (t *tools) addManual(ctx context.Context, _ *mcp.CallToolRequest, in addMan
 	if err != nil {
 		return nil, changeOut{}, t.toolError(ctx, tool, err)
 	}
-	id, err := t.Lists.AddManualItem(ctx, in.ListID, shopping.ManualItem{Text: in.Text})
+	caller := shopCaller(c, h)
+	id, err := t.shop.AddManualItem(ctx, caller, in.ListID, apishop.ManualItem{Text: in.Text})
 	if err != nil {
 		return nil, changeOut{}, t.toolError(ctx, tool, err)
 	}
@@ -190,7 +204,8 @@ func (t *tools) checkItem(ctx context.Context, _ *mcp.CallToolRequest, in checkI
 	if err != nil {
 		return nil, changeOut{}, t.toolError(ctx, tool, err)
 	}
-	if err := t.Lists.SetChecked(ctx, in.ListID, shopping.ItemKey(in.Key), in.Checked); err != nil {
+	caller := shopCaller(c, h)
+	if err := t.shop.SetChecked(ctx, caller, in.ListID, apishop.ItemKey(in.Key), in.Checked); err != nil {
 		return nil, changeOut{}, t.toolError(ctx, tool, err)
 	}
 	if err := t.recordWrite(ctx, c, h.ID, tool, fmt.Sprintf("list %d item %s", in.ListID, in.Key)); err != nil {
@@ -200,16 +215,18 @@ func (t *tools) checkItem(ctx context.Context, _ *mcp.CallToolRequest, in checkI
 }
 
 func (t *tools) getPantry(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, pantryOut, error) {
-	if _, _, err := scoped(ctx); err != nil {
+	c, h, err := scoped(ctx)
+	if err != nil {
 		return nil, pantryOut{}, t.toolError(ctx, "get_pantry", err)
 	}
-	ids, err := t.Lists.Pantry(ctx)
+	caller := shopCaller(c, h)
+	ids, err := t.shop.Pantry(ctx, caller)
 	if err != nil {
 		return nil, pantryOut{}, t.toolError(ctx, "get_pantry", err)
 	}
 	out := pantryOut{Ingredients: []string{}}
 	for _, id := range ids {
-		ing, err := t.Catalog.GetIngredient(ctx, int64(id))
+		ing, err := t.shop.Ingredient(ctx, caller, int64(id))
 		if err != nil {
 			return nil, pantryOut{}, t.toolError(ctx, "get_pantry", fmt.Errorf("pantry ingredient %d: %w", id, err))
 		}

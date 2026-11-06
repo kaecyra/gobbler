@@ -8,9 +8,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/parse"
-	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
@@ -18,6 +18,9 @@ import (
 type tools struct {
 	Deps
 	log *slog.Logger
+	// shop is the shopping service (ADR-00043), the only way the shopping tools
+	// reach the shopping domain.
+	shop *apishop.Service
 }
 
 func (t *tools) register(s *mcp.Server) {
@@ -53,12 +56,14 @@ func (t *tools) toolError(ctx context.Context, tool string, err error) error {
 	switch {
 	case errors.As(err, &ue):
 		return ue
-	case errors.Is(err, store.ErrNotFound), errors.Is(err, shopping.ErrNotFound):
+	case errors.Is(err, store.ErrNotFound), errors.Is(err, apishop.ErrNotFound):
 		return refuse("not found")
-	case errors.Is(err, shopping.ErrInvalid), errors.Is(err, store.ErrInvalid):
+	case errors.Is(err, apishop.ErrInvalid), errors.Is(err, store.ErrInvalid):
 		return refuse("invalid input: %s", err)
-	case errors.Is(err, shopping.ErrUnknownReference), errors.Is(err, store.ErrUnknownReference):
+	case errors.Is(err, apishop.ErrUnknownReference), errors.Is(err, store.ErrUnknownReference):
 		return refuse("that refers to a recipe, ingredient or unit gobbler does not have")
+	case errors.Is(err, apishop.ErrNotMember):
+		return refuse("the credential is not a member of a household")
 	case errors.Is(err, parse.ErrEmptyText):
 		return refuse("there is no text to read")
 	case errors.Is(err, ingest.ErrFetch):

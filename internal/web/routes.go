@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
@@ -16,7 +17,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/sharing"
-	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/video"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
@@ -86,10 +86,11 @@ func mountCatalog(r chi.Router, d Deps) {
 	// The shopping pages share the merging catalog store: the shopping store's
 	// hooks re-point its manual items, pantry and checks on a merge, and its
 	// counter adds those rows to the merge confirmation.
-	shop := shopping.New(d.DB, rec, cat)
+	shop := apishop.NewStore(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
-	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Lists: shop, Recipes: rec, Catalog: cat, Logger: d.Logger}))
+	svc := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat})
+	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Shop: svc, Logger: d.Logger}))
 }
 
 // mountHouseholds mounts the members page, invitation acceptance (reachable by
@@ -122,7 +123,7 @@ func mountHouseholds(r chi.Router, d Deps) {
 func mountPromotion(r chi.Router, d Deps) {
 	cat := catalog.New(d.DB)
 	store.New(d.DB).RegisterMergeHooks(cat)
-	shopping.New(d.DB, store.New(d.DB), cat).RegisterMergeHooks(cat)
+	apishop.NewStore(d.DB, store.New(d.DB), cat).RegisterMergeHooks(cat)
 	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: cat}))
 }
 
@@ -160,7 +161,7 @@ func mountMCP(r chi.Router, d Deps) {
 	usage := catalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
-	shop := shopping.New(d.DB, rec, cat)
+	shop := apishop.NewStore(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
 	log := d.Logger

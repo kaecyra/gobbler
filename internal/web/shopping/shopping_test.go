@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -61,7 +62,7 @@ func newFixture(t *testing.T) *fixture {
 	cat, rec := catalog.New(d), store.New(d)
 	shop := domain.New(d, rec, cat)
 	f := &fixture{t: t, d: d, cat: cat, rec: rec, shop: shop, ctx: identityContext(t, d)}
-	deps := Deps{Lists: shop, Recipes: rec, Catalog: cat}
+	deps := Deps{Shop: apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat})}
 	f.h = newHandler(deps)
 	shop.OnChange(f.h.hub.notify)
 	root := chi.NewRouter()
@@ -956,12 +957,18 @@ func devHousehold(t *testing.T, d *sql.DB) household.Household {
 	return h
 }
 
-// asMember puts h on every request, as the membership middleware does for a
-// member.
+// asMember puts a verified identity and h on every request, as the identity and
+// membership middleware do for a member. The identity is the dev one for every
+// household: the service takes the household from the Caller, and the tests
+// that need two households check that, not who the person is.
 func asMember(h household.Household) func(http.Handler) http.Handler {
+	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DevAuthBypass: true}})
+	if err != nil {
+		panic(err)
+	}
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		return a.Middleware(nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
-		})
+		}))
 	}
 }
