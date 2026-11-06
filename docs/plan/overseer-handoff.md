@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 24, i-reimport in flight
+# Overseer handoff: 2026-11-06, round 24, m-picture-user-agent in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -18,8 +18,15 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 | r-author-notes | #479 | 05f2588 | 00031 | 0.120.0 |
 
-**In flight:** i-reimport (#462), worktree wt-462, branch feat/462-reimport, schema migration 00032 (owner ruling ib-89c94bbedfa8, #480), target
-VERSION 0.121.0. Dispatched after #479 merged.
+| (ADR-00042 correction, owner ruling ib-89c94bbedfa8) | #480 | d031bc0 | none | none |
+| (graph: i-reimport wiring test, web.go exception) | #482 | 60c51c9 | none | none |
+| (graph: m-picture-user-agent node) | #484 | ae45bab | none | none |
+| i-reimport | #481 | 1f37b72 | 00032 | 0.121.0 |
+
+**In flight:** m-picture-user-agent (#483), worktree wt-483, branch fix/483-picture-user-agent, no
+migration, target 0.121.1. Owner-reported bug: picture downloads sent Go's default user agent and
+gimmesomeoven.com answers 403; the page fetch already sends the configured agent. After merge, re-run
+https://www.gimmesomeoven.com/honey-beer-bread/ by hand and check the 1392x2088 og:image is offered.
 
 - **a-api-shopping pattern** (for a-api-recipes): `Service.Op(ctx, Caller, ...)`; `Caller{Person,
   Household, HouseholdKey}`; `enter()` checks membership with `household.ForEmail` unless the caller is
@@ -33,8 +40,9 @@ VERSION 0.121.0. Dispatched after #479 merged.
   picturedb. Generate it from `shared_files` instead.
 - Labels: #469, #462 moved dor:blocked to dor:ready; #395 gained dor:ready.
 
-**Next after i-reimport:** a-api-recipes (#470), which also removes the editor/build.go depguard
-exception. o-demo-reseed (#432) still waits on a deploy.
+**Next:** a-api-recipes (#470) after m-picture-user-agent; it also removes the editor/build.go
+depguard exception. o-demo-reseed (#432) still waits on a deploy. Migration numbers: schema last used
+00032.
 
 ## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
 
