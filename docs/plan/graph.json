@@ -3313,7 +3313,9 @@
         "u-picture-picker",
         "u-picture-cards",
         "r-credential-describe",
-        "u-picker-icons"
+        "u-picker-icons",
+        "u-recipe-delete",
+        "c-import-copy"
       ],
       "owns": [
         "internal/recipe/**",
@@ -3788,6 +3790,57 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Follow-up from #446. Icons drawn as in docs/ui/mockup.html (data-ic=none). Closes difference 3 of #446's mockup comparison."
+    },
+    {
+      "id": "u-recipe-delete",
+      "title": "delete a recipe from its page, confirmed by typing DELETE",
+      "wave": 12,
+      "track": null,
+      "issue": 454,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/recipeview/**",
+        "e2e/recipeview/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner 2026-11-06: danger button below History/Edit/Share; type DELETE to confirm; DeleteWithPicture; redirect to the library."
+    },
+    {
+      "id": "c-import-copy",
+      "title": "remove two lines of import-page copy",
+      "wave": 12,
+      "track": null,
+      "issue": 455,
+      "status": "todo",
+      "depends_on": [
+        "u-picker-icons"
+      ],
+      "owns": [
+        "internal/web/ingest/ingest.templ",
+        "internal/web/ingest/photo.templ",
+        "internal/web/ingest/ingest_test.go",
+        "internal/web/ingest/photo_test.go",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "u-home-suggest-card",
+      "title": "the home suggestion is a library card",
+      "wave": 12,
+      "track": null,
+      "issue": 456,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/recipes/**",
+        "e2e/home/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
     }
   ],
   "shared_files": [
