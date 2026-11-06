@@ -10,7 +10,8 @@
 //   - Signature. A Service method takes the context first, then the Caller,
 //     then the operation's own arguments: s.AddEntry(ctx, caller, listID, ...).
 //     It returns domain values and domain errors, never a page or a status.
-//   - Caller. A Caller is the verified person and the household they belong to.
+//   - Caller. The Caller type and the membership check are internal/api/caller,
+//     shared by every resource; shopping re-exports them. A Caller is the verified person and the household they belong to.
 //     An adapter builds it from what it has already verified: the session's
 //     email and the membership middleware's household for the web, the
 //     credential's email and household for MCP. Every method refuses a Caller

@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -30,7 +31,7 @@ import (
 
 type fakeRecipes map[int64]recipe.Recipe
 
-func (f fakeRecipes) Get(_ context.Context, id int64) (recipe.Recipe, error) {
+func (f fakeRecipes) Get(_ context.Context, _ apirecipes.Caller, id int64) (recipe.Recipe, error) {
 	r, ok := f[id]
 	if !ok {
 		return recipe.Recipe{}, fmt.Errorf("recipe %d: %w", id, store.ErrNotFound)
@@ -39,7 +40,7 @@ func (f fakeRecipes) Get(_ context.Context, id int64) (recipe.Recipe, error) {
 }
 
 // Info is the bookkeeping of a recipe that was never cloned.
-func (f fakeRecipes) Info(_ context.Context, id int64) (store.Info, error) {
+func (f fakeRecipes) Info(_ context.Context, _ apirecipes.Caller, id int64) (store.Info, error) {
 	if _, ok := f[id]; !ok {
 		return store.Info{}, fmt.Errorf("recipe %d: %w", id, store.ErrNotFound)
 	}
@@ -48,33 +49,39 @@ func (f fakeRecipes) Info(_ context.Context, id int64) (store.Info, error) {
 
 // HasThumbnail and Thumbnail: the fake stores no thumbnails; the real store
 // serves them in video_test.go.
-func (f fakeRecipes) HasThumbnail(context.Context, string) (bool, error) { return false, nil }
+func (f fakeRecipes) HasThumbnail(_ context.Context, _ apirecipes.Caller, _ string) (bool, error) {
+	return false, nil
+}
 
-func (f fakeRecipes) Thumbnail(_ context.Context, id int64) (store.Thumbnail, error) {
+func (f fakeRecipes) Thumbnail(_ context.Context, _ apirecipes.Caller, id int64) (store.Thumbnail, error) {
 	return store.Thumbnail{}, fmt.Errorf("recipe %d: %w", id, store.ErrNoThumbnail)
 }
 
 // ListNotes and ListMadeIt: the plain fake has an empty journal; journaled in
 // page_test.go has one.
-func (f fakeRecipes) ListNotes(context.Context, int64) ([]store.Note, error) { return nil, nil }
+func (f fakeRecipes) ListNotes(_ context.Context, _ apirecipes.Caller, _ int64) ([]store.Note, error) {
+	return nil, nil
+}
 
-func (f fakeRecipes) ListMadeIt(context.Context, int64) ([]store.MadeIt, error) { return nil, nil }
+func (f fakeRecipes) ListMadeIt(_ context.Context, _ apirecipes.Caller, _ int64) ([]store.MadeIt, error) {
+	return nil, nil
+}
 
 // The plain fake has no proposals; the page's marks are covered end to end
 // (e2e/recipeview/proposal.spec.ts).
-func (f fakeRecipes) PendingEdit(context.Context, int64) (store.Proposal, bool, error) {
-	return store.Proposal{}, false, nil
+func (f fakeRecipes) PendingEdit(_ context.Context, _ apirecipes.Caller, _ int64) (apirecipes.Proposal, bool, error) {
+	return apirecipes.Proposal{}, false, nil
 }
 
-func (f fakeRecipes) PendingReimport(context.Context, int64) (store.Proposal, bool, error) {
-	return store.Proposal{}, false, nil
+func (f fakeRecipes) PendingReimport(_ context.Context, _ apirecipes.Caller, _ int64) (apirecipes.Proposal, bool, error) {
+	return apirecipes.Proposal{}, false, nil
 }
 
-func (f fakeRecipes) GetProposal(_ context.Context, token string) (store.Proposal, error) {
-	return store.Proposal{}, fmt.Errorf("proposal %s: %w", token, store.ErrNotFound)
+func (f fakeRecipes) GetProposal(_ context.Context, _ apirecipes.Caller, token string) (apirecipes.Proposal, error) {
+	return apirecipes.Proposal{}, fmt.Errorf("proposal %s: %w", token, store.ErrNotFound)
 }
 
-func (f fakeRecipes) RejectProposal(_ context.Context, token string) error {
+func (f fakeRecipes) RejectProposal(_ context.Context, _ apirecipes.Caller, token string) error {
 	return fmt.Errorf("proposal %s: %w", token, store.ErrNotFound)
 }
 
@@ -465,43 +472,43 @@ func TestStoreFailureIsAServerError(t *testing.T) {
 
 type failingRecipes struct{}
 
-func (failingRecipes) Get(context.Context, int64) (recipe.Recipe, error) {
+func (failingRecipes) Get(_ context.Context, _ apirecipes.Caller, _ int64) (recipe.Recipe, error) {
 	return recipe.Recipe{}, errors.New("disk on fire")
 }
 
-func (failingRecipes) ListNotes(context.Context, int64) ([]store.Note, error) {
+func (failingRecipes) ListNotes(_ context.Context, _ apirecipes.Caller, _ int64) ([]store.Note, error) {
 	return nil, errors.New("disk on fire")
 }
 
-func (failingRecipes) ListMadeIt(context.Context, int64) ([]store.MadeIt, error) {
+func (failingRecipes) ListMadeIt(_ context.Context, _ apirecipes.Caller, _ int64) ([]store.MadeIt, error) {
 	return nil, errors.New("disk on fire")
 }
 
-func (failingRecipes) Info(context.Context, int64) (store.Info, error) {
+func (failingRecipes) Info(_ context.Context, _ apirecipes.Caller, _ int64) (store.Info, error) {
 	return store.Info{}, errors.New("disk on fire")
 }
 
-func (failingRecipes) HasThumbnail(context.Context, string) (bool, error) {
+func (failingRecipes) HasThumbnail(_ context.Context, _ apirecipes.Caller, _ string) (bool, error) {
 	return false, errors.New("disk on fire")
 }
 
-func (failingRecipes) Thumbnail(context.Context, int64) (store.Thumbnail, error) {
+func (failingRecipes) Thumbnail(_ context.Context, _ apirecipes.Caller, _ int64) (store.Thumbnail, error) {
 	return store.Thumbnail{}, errors.New("disk on fire")
 }
 
-func (failingRecipes) PendingEdit(context.Context, int64) (store.Proposal, bool, error) {
-	return store.Proposal{}, false, errors.New("disk on fire")
+func (failingRecipes) PendingEdit(_ context.Context, _ apirecipes.Caller, _ int64) (apirecipes.Proposal, bool, error) {
+	return apirecipes.Proposal{}, false, errors.New("disk on fire")
 }
 
-func (failingRecipes) PendingReimport(context.Context, int64) (store.Proposal, bool, error) {
-	return store.Proposal{}, false, errors.New("disk on fire")
+func (failingRecipes) PendingReimport(_ context.Context, _ apirecipes.Caller, _ int64) (apirecipes.Proposal, bool, error) {
+	return apirecipes.Proposal{}, false, errors.New("disk on fire")
 }
 
-func (failingRecipes) GetProposal(context.Context, string) (store.Proposal, error) {
-	return store.Proposal{}, errors.New("disk on fire")
+func (failingRecipes) GetProposal(_ context.Context, _ apirecipes.Caller, _ string) (apirecipes.Proposal, error) {
+	return apirecipes.Proposal{}, errors.New("disk on fire")
 }
 
-func (failingRecipes) RejectProposal(context.Context, string) error {
+func (failingRecipes) RejectProposal(_ context.Context, _ apirecipes.Caller, _ string) error {
 	return errors.New("disk on fire")
 }
 
@@ -566,7 +573,7 @@ func TestScalingAndUnitModesDoNotChangeTheStoredRecipe(t *testing.T) {
 
 	path := fmt.Sprintf("/recipes/%d", id)
 	for _, q := range []string{"?scale=3", "?servings=2&units=metric", "?units=weight", "?scale=1/2&units=metric"} {
-		rec := serveRequest(t, rs, cs, httptest.NewRequest(http.MethodGet, path+q, nil).WithContext(ctx))
+		rec := serveRequest(t, serviceFor(ctx, t, rs, nil), cs, httptest.NewRequest(http.MethodGet, path+q, nil).WithContext(ctx))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("%s: status = %d\n%s", q, rec.Code, rec.Body)
 		}

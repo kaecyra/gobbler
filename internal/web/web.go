@@ -17,18 +17,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
+	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
-	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
-	"github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
-	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
@@ -77,16 +77,16 @@ type Deps struct {
 	// MCPVerifier checks the bearer credential of the MCP endpoint (ADR-00034).
 	// Nil means API keys (ADR-00031) and OAuth access tokens (ADR-00034).
 	MCPVerifier mcp.Verifier
-	// Drafts holds the drafts that wait on the review screen. Nil means the
-	// proposals table in DB (ADR-00035).
-	Drafts *ingest.Drafts
 	// Media is the store recipe pictures and draft candidates are read from
 	// and deleted with a household (ADR-00039). Nil means the store the
 	// configuration asks for (media.New), which is the one avatars use.
 	Media media.Store
 	// Pictures is the picture service the draft store, the review screen and
 	// the picture routes share. Nil means one over DB and Media.
-	Pictures *picture.Service
+	Pictures *apirecipes.Pictures
+	// Recipes is the recipe service the recipe screens share (ADR-00043). Nil
+	// means one over DB, Media and Pictures.
+	Recipes *apirecipes.Service
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -134,12 +134,18 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		d.Media = m
 	}
 	if d.Pictures == nil {
-		d.Pictures = picture.New(d.DB, d.Media, store.New(d.DB), picture.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger).WithUserAgent(d.Config.Ingestion.UserAgent)
+		d.Pictures = apirecipes.NewPictures(d.DB, d.Media, apirecipes.NewStore(d.DB), d.Config.Server.DevAuthBypass, d.Config.Ingestion.UserAgent, d.Logger)
 	}
-	if d.Drafts == nil {
-		// A new re-import supersedes the recipe's pending one (ADR-00042); the store
-		// deletes the superseded draft's picture candidates.
-		d.Drafts = ingest.NewDrafts(store.New(d.DB).WithObjects(picture.NewReaper(d.Media, d.Logger))).WithPictures(d.Pictures)
+	if d.Recipes == nil {
+		svc, err := apirecipes.New(apirecipes.Deps{
+			Recipes: apirecipes.NewStore(d.DB), Catalog: catalog.New(d.DB), Members: household.New(d.DB),
+			Pictures: d.Pictures, Reaper: apirecipes.NewReaper(d.Media, d.Logger),
+			Thumbnails: video.NewFetcherAt(d.Config.Video.ThumbnailHost),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("web: build the recipe service: %w", err)
+		}
+		d.Recipes = svc
 	}
 
 	var members memberLookup = household.New(d.DB)

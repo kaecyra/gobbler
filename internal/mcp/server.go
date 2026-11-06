@@ -10,14 +10,13 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
-	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // Pattern is where the endpoint is mounted.
@@ -32,18 +31,6 @@ const ReviewPath = "/ingest/"
 // recipes; an edit is reviewed in the editor (ADR-00035).
 func EditPath(recipeID int64, token string) string {
 	return fmt.Sprintf("/recipes/%d/edit?proposal=%s", recipeID, token)
-}
-
-// Recipes is what the recipe tools call on the recipe store; *store.Store
-// satisfies it.
-type Recipes interface {
-	Search(ctx context.Context, q store.SearchQuery) ([]store.Summary, error)
-	Get(ctx context.Context, id int64) (recipe.Recipe, error)
-	Info(ctx context.Context, id int64) (store.Info, error)
-	// ProposeEdit holds a proposed new version of a recipe for review
-	// (ADR-00035); GetProposal reads one back in whatever state it is in.
-	ProposeEdit(ctx context.Context, id, baseVersion int64, r recipe.Recipe, by store.Provenance) (string, error)
-	GetProposal(ctx context.Context, token string) (store.Proposal, error)
 }
 
 // Catalog is what the recipe tools read from the ingredient catalog: ingredient
@@ -66,25 +53,21 @@ type Drafter interface {
 	FromText(ctx context.Context, text string) (ingest.Draft, error)
 }
 
-// Drafts holds a draft for the review screen, durably (ADR-00035);
-// *ingest.Drafts satisfies it. The household is the one on ctx.
-type Drafts interface {
-	Add(ctx context.Context, d ingest.Draft, by store.Provenance) (string, error)
-	// Full says the household already holds the most drafts it may, so a tool
-	// can refuse before it fetches or reads anything. Add stays the authority.
-	Full(ctx context.Context) (bool, error)
-}
-
 // Deps is everything the endpoint needs.
 type Deps struct {
-	Recipes Recipes
+	// Recipes is the recipe service (ADR-00043): the recipe, edit, import and
+	// re-import tools reach the recipe domain only through it.
+	Recipes *apirecipes.Service
+	// RecipeReads is what the shopping service reads of the recipes it lists
+	// (apishop.Recipes); *apirecipes.Store satisfies it. It carries no Caller:
+	// the shopping service has already admitted its own.
+	RecipeReads apishop.Recipes
 	// Lists is the shopping store the shopping service is built over.
 	Lists *apishop.Store
 	// Households is the membership lookup the shopping service enforces.
 	Households apishop.Members
 	Catalog    Catalog
 	Drafter    Drafter
-	Drafts     Drafts
 	Audit      Audit
 	// Limits is the rate and burst each credential is held to.
 	Limits config.MCP
@@ -99,12 +82,12 @@ type Deps struct {
 // already shares. The pipeline has no LLM provider: an agent's import takes the
 // rule-based path and a draft below the confidence threshold is flagged for the
 // reviewer, never sent to a model (ADR-00006).
-func NewDeps(rec *store.Store, lists *apishop.Store, households apishop.Members, cat *catalog.Store, drafts Drafts, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+func NewDeps(rec *apirecipes.Service, reads apishop.Recipes, lists *apishop.Store, households apishop.Members, cat *catalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
 	pipeline, err := ingest.New(cfg.Ingestion, ingest.Deps{Catalog: cat, Logger: log})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import pipeline: %w", err)
 	}
-	return Deps{Recipes: rec, Lists: lists, Households: households, Catalog: cat, Drafter: pipeline, Drafts: drafts, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: cat, Drafter: pipeline, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
 }
 
 // Routes returns the endpoint, to be mounted at Pattern behind Bearer and the
@@ -112,8 +95,8 @@ func NewDeps(rec *store.Store, lists *apishop.Store, households apishop.Members,
 // MCP over Streamable HTTP. It is stateless: every request stands alone, so a
 // restart or a second request on another connection loses nothing.
 func Routes(d Deps) (http.Handler, error) {
-	if d.Recipes == nil || d.Lists == nil || d.Households == nil || d.Catalog == nil || d.Drafter == nil || d.Drafts == nil || d.Audit == nil {
-		return nil, errors.New("mcp: recipes, lists, households, catalog, drafter, drafts and audit are required")
+	if d.Recipes == nil || d.RecipeReads == nil || d.Lists == nil || d.Households == nil || d.Catalog == nil || d.Drafter == nil || d.Audit == nil {
+		return nil, errors.New("mcp: recipes, recipe reads, lists, households, catalog, drafter and audit are required")
 	}
 	if d.Limits.Rate <= 0 || d.Limits.Burst < 1 {
 		return nil, fmt.Errorf("mcp: the rate limit needs a positive rate and burst, got %v and %d", d.Limits.Rate, d.Limits.Burst)
@@ -130,11 +113,11 @@ func Routes(d Deps) (http.Handler, error) {
 	if version == "" {
 		version = "dev"
 	}
-	shop, err := apishop.New(apishop.Deps{Lists: d.Lists, Recipes: d.Recipes, Catalog: d.Catalog, Members: d.Households})
+	shop, err := apishop.New(apishop.Deps{Lists: d.Lists, Recipes: d.RecipeReads, Catalog: d.Catalog, Members: d.Households})
 	if err != nil {
 		return nil, fmt.Errorf("mcp: %w", err)
 	}
-	t := &tools{Deps: d, log: log, shop: shop, reimporter: ingest.NewReimporter(d.Recipes, d.Drafter, d.Drafts)}
+	t := &tools{Deps: d, log: log, shop: shop}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "gobbler", Version: version}, &mcp.ServerOptions{
 		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once.",
 	})

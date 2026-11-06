@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
 	"github.com/kaecyra/gobbler/internal/ingest"
 )
 
@@ -41,7 +42,7 @@ func reimportDiscardHref(token string) string { return reimportReviewHref(token)
 // reimportFor returns what the page shows of the recipe's pending re-import,
 // nil when it has none.
 func reimportFor(ctx context.Context, d Deps, id int64, sourceURL string, version int64) (*reimportView, error) {
-	p, found, err := d.Recipes.PendingReimport(ctx, id)
+	p, found, err := d.Recipes.PendingReimport(ctx, caller.FromContext(ctx), id)
 	if err != nil {
 		return nil, fmt.Errorf("load pending re-import of recipe %d: %w", id, err)
 	}

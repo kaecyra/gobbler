@@ -21,7 +21,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/store"
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -42,11 +43,12 @@ const maxQueryRunes = 200
 // maxIdea bounds the suggestion index, a number from the URL.
 const maxIdea = 1_000_000
 
-// Library is what the pages read from the recipe store.
+// Library is what the pages read from the recipe service
+// (*apirecipes.Service satisfies it).
 type Library interface {
-	Cards(ctx context.Context, q store.SearchQuery) ([]store.Card, error)
-	RecentlyMade(ctx context.Context, limit int) ([]store.MadeEntry, error)
-	Idle(ctx context.Context) ([]store.Card, error)
+	Cards(ctx context.Context, c apirecipes.Caller, q apirecipes.SearchQuery) ([]apirecipes.Card, error)
+	RecentlyMade(ctx context.Context, c apirecipes.Caller, limit int) ([]apirecipes.MadeEntry, error)
+	Idle(ctx context.Context, c apirecipes.Caller) ([]apirecipes.Card, error)
 }
 
 // Pictures finds the picture of a recipe (ADR-00039). The picture package's
@@ -98,12 +100,12 @@ func library(d Deps) http.HandlerFunc {
 		// it, just that part.
 		varyOnHTMX(w)
 		if targets(r, "suggest") {
-			all, err := d.Library.Cards(r.Context(), store.SearchQuery{})
+			all, err := d.Library.Cards(r.Context(), caller.FromContext(r.Context()), apirecipes.SearchQuery{})
 			if err != nil {
 				layout.WriteError(w, r, fmt.Errorf("list library cards: %w", err))
 				return
 			}
-			idle, now := store.IdleOrder(all), d.now()
+			idle, now := apirecipes.IdleOrder(all), d.now()
 			// No idea left (a recipe was made since the page loaded) is an
 			// answer, not an error: an empty 200 removes the card.
 			sg := suggestFor(ideasFrom(idle, now, forgotPick(idle, now)), idea, now, ideaHref(q, group))
@@ -116,7 +118,7 @@ func library(d Deps) http.HandlerFunc {
 			}
 			return
 		}
-		found, err := d.Library.Cards(r.Context(), store.SearchQuery{Text: q})
+		found, err := d.Library.Cards(r.Context(), caller.FromContext(r.Context()), apirecipes.SearchQuery{Text: q})
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("list library cards: %w", err))
 			return
@@ -134,17 +136,17 @@ func library(d Deps) http.HandlerFunc {
 		// when nothing narrowed them, else one more read.
 		all := found
 		if q != "" {
-			if all, err = d.Library.Cards(r.Context(), store.SearchQuery{}); err != nil {
+			if all, err = d.Library.Cards(r.Context(), caller.FromContext(r.Context()), apirecipes.SearchQuery{}); err != nil {
 				layout.WriteError(w, r, fmt.Errorf("list library cards: %w", err))
 				return
 			}
 		}
-		recent, err := d.Library.RecentlyMade(r.Context(), recentLimit)
+		recent, err := d.Library.RecentlyMade(r.Context(), caller.FromContext(r.Context()), recentLimit)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("list recently made: %w", err))
 			return
 		}
-		idle, now := store.IdleOrder(slices.Clone(all)), d.now()
+		idle, now := apirecipes.IdleOrder(slices.Clone(all)), d.now()
 		forgot := forgotPick(idle, now)
 		side := sideView{
 			Recent:  recentViews(recent),
@@ -180,7 +182,7 @@ func (d Deps) addPicture(ctx context.Context, c *cardView) error {
 		return nil
 	}
 	src, err := d.Pictures.Src(ctx, c.ID)
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, apirecipes.ErrNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -220,7 +222,7 @@ func Home(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, err)
 			return
 		}
-		idle, err := d.Library.Idle(r.Context())
+		idle, err := d.Library.Idle(r.Context(), caller.FromContext(r.Context()))
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("list idle recipes: %w", err))
 			return
@@ -240,7 +242,7 @@ func Home(d Deps) http.HandlerFunc {
 			}
 			return
 		}
-		recent, err := d.Library.RecentlyMade(r.Context(), recentLimit)
+		recent, err := d.Library.RecentlyMade(r.Context(), caller.FromContext(r.Context()), recentLimit)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("list recently made: %w", err))
 			return

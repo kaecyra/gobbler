@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	webpicture "github.com/kaecyra/gobbler/internal/web/picture"
@@ -56,24 +57,19 @@ func (h *handler) picker(ctx context.Context, d ingestcore.Draft) (pickerView, e
 		// Keeping the picture is the default, so no choice is ever missing.
 		v.Keep = true
 		v.KeepChecked = d.Picture == ingestcore.PictureKeep || d.Picture == ingestcore.PictureUnchosen
-		if h.pictures != nil {
-			key, ok, err := h.pictures.Key(ctx, d.Reimport.RecipeID)
-			if err != nil {
-				return pickerView{}, fmt.Errorf("read the recipe's picture: %w", err)
-			}
-			if ok {
-				v.KeepSrc = webpicture.Src(d.Reimport.RecipeID, key)
-			}
+		key, ok, err := h.recipes.PictureKey(ctx, caller.FromContext(ctx), d.Reimport.RecipeID)
+		if err != nil {
+			return pickerView{}, fmt.Errorf("read the recipe's picture: %w", err)
+		}
+		if ok {
+			v.KeepSrc = webpicture.Src(d.Reimport.RecipeID, key)
 		}
 	}
 	v.Chosen = v.NoneChecked || v.KeepChecked
 	if d.Candidates == 0 {
 		return v, nil
 	}
-	if h.pictures == nil {
-		return pickerView{}, fmt.Errorf("draft has %d picture candidates and no picture service", d.Candidates)
-	}
-	cs, err := h.pictures.Candidates(ctx, d.ProposalID)
+	cs, err := h.recipes.Candidates(ctx, caller.FromContext(ctx), d.ProposalID)
 	if err != nil {
 		return pickerView{}, fmt.Errorf("read picture candidates: %w", err)
 	}
@@ -108,7 +104,7 @@ func (h *handler) choosePicture(ctx context.Context, token, value string, base *
 	if choice == base.Picture || (choice == ingestcore.PictureKeep && base.Picture == ingestcore.PictureUnchosen && base.Reimport != nil) {
 		return nil
 	}
-	err := h.drafts.ChoosePicture(ctx, token, choice)
+	err := h.recipes.ChoosePicture(ctx, caller.FromContext(ctx), token, choice)
 	if errors.Is(err, ingestcore.ErrBadPictureChoice) {
 		return fmt.Errorf("%w: %w", layout.ErrInvalid, err)
 	}

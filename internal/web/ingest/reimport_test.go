@@ -51,7 +51,7 @@ func (f *fixture) holdReimport(t *testing.T, id int64) string {
 	d.Proposed = nil
 	d.Reimport = &ingestcore.Reimport{RecipeID: id, BaseVersion: 1}
 	d.Picture = ingestcore.PictureKeep
-	token, err := f.h.drafts.Add(f.ctx(t), d, store.Provenance{Person: "dev@localhost", Reason: "Re-imported from example.test"})
+	token, err := f.rs.drafts.Add(f.ctx(t), d, store.Provenance{Person: "dev@localhost", Reason: "Re-imported from example.test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func reimportForm() url.Values {
 func TestReimportRouteStartsTheReimportAndLandsOnReview(t *testing.T) {
 	f := newFixture(t)
 	fr := &fakeReimporter{token: "abc123"}
-	f.h.reimporter = fr
+	f.rs.reimporter = fr
 	rec := f.do(http.MethodPost, "/reimport/42", url.Values{})
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/ingest/abc123" {
 		t.Fatalf("POST /reimport/42 = %d to %q, want 303 to /ingest/abc123", rec.Code, rec.Header().Get("Location"))
@@ -90,7 +90,7 @@ func TestReimportRouteStartsTheReimportAndLandsOnReview(t *testing.T) {
 
 func TestReimportFailureShowsItsMessageAndHoldsNoDraft(t *testing.T) {
 	f := newFixture(t)
-	f.h.reimporter = &fakeReimporter{err: fmt.Errorf("%w: get https://example.test/pie: connection refused", ingestcore.ErrFetch)}
+	f.rs.reimporter = &fakeReimporter{err: fmt.Errorf("%w: get https://example.test/pie: connection refused", ingestcore.ErrFetch)}
 	rec := f.do(http.MethodPost, "/reimport/7", url.Values{})
 	if rec.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want 502", rec.Code)
@@ -102,11 +102,11 @@ func TestReimportFailureShowsItsMessageAndHoldsNoDraft(t *testing.T) {
 	if f.pendingDrafts(t) != 0 {
 		t.Error("a failed re-import held a draft")
 	}
-	f.h.reimporter = &fakeReimporter{err: fmt.Errorf("re-import: %w", ingestcore.ErrNoSourceURL)}
+	f.rs.reimporter = &fakeReimporter{err: fmt.Errorf("re-import: %w", ingestcore.ErrNoSourceURL)}
 	if rec := f.do(http.MethodPost, "/reimport/7", url.Values{}); rec.Code != http.StatusConflict {
 		t.Errorf("no source URL = %d, want 409", rec.Code)
 	}
-	f.h.reimporter = &fakeReimporter{err: errors.New("disk on fire")}
+	f.rs.reimporter = &fakeReimporter{err: errors.New("disk on fire")}
 	if rec := f.do(http.MethodPost, "/reimport/7", url.Values{}); rec.Code != http.StatusInternalServerError {
 		t.Errorf("a pipeline failure = %d, want 500", rec.Code)
 	}
@@ -115,8 +115,8 @@ func TestReimportFailureShowsItsMessageAndHoldsNoDraft(t *testing.T) {
 // ADR-00042 obligations 7 and 8.
 func TestReviewOfAReimportHasTheCalloutAndKeepsThePictureByDefault(t *testing.T) {
 	f := newFixture(t)
-	f.h.pictures = twoCandidates{}
-	f.h.drafts = f.h.drafts.WithPictures(twoCandidates{})
+	f.rs.pictures = twoCandidates{}
+	f.rs.drafts = f.rs.drafts.WithPictures(twoCandidates{})
 	token := f.holdReimport(t, f.savedRecipe(t))
 	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
 	if !strings.Contains(body, "Saving replaces the current recipe. Your earlier edits are kept in History.") {
@@ -137,22 +137,22 @@ func TestReviewOfAReimportHasTheCalloutAndKeepsThePictureByDefault(t *testing.T)
 
 func TestChoosingKeepOnAReimportIsAcceptedAndOnAnImportRefused(t *testing.T) {
 	f := newFixture(t)
-	f.h.pictures = twoCandidates{}
-	f.h.drafts = f.h.drafts.WithPictures(twoCandidates{})
+	f.rs.pictures = twoCandidates{}
+	f.rs.drafts = f.rs.drafts.WithPictures(twoCandidates{})
 	re := f.holdReimport(t, f.savedRecipe(t))
-	if err := f.h.drafts.ChoosePicture(f.ctx(t), re, 2); err != nil {
+	if err := f.rs.drafts.ChoosePicture(f.ctx(t), re, 2); err != nil {
 		t.Fatal(err)
 	}
-	d, _ := f.h.drafts.Get(f.ctx(t), re)
+	d, _ := f.rs.drafts.Get(f.ctx(t), re)
 	if err := f.h.choosePicture(f.ctx(t), re, pictureKeep, &d); err != nil || d.Picture != ingestcore.PictureKeep {
 		t.Fatalf("choosing keep = %v, picture %d; want Keep current", err, d.Picture)
 	}
-	held, _ := f.h.drafts.Get(f.ctx(t), re)
+	held, _ := f.rs.drafts.Get(f.ctx(t), re)
 	if held.Picture != ingestcore.PictureKeep {
 		t.Errorf("held choice = %d, want Keep current kept", held.Picture)
 	}
 	imp := f.ingestText(t)
-	d2, _ := f.h.drafts.Get(f.ctx(t), imp)
+	d2, _ := f.rs.drafts.Get(f.ctx(t), imp)
 	if err := f.h.choosePicture(f.ctx(t), imp, pictureKeep, &d2); err == nil {
 		t.Error("an import accepted Keep current picture")
 	}

@@ -14,9 +14,9 @@ import (
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
 )
 
 var errDisk = errors.New("database is locked")
@@ -25,36 +25,36 @@ var errDisk = errors.New("database is locked")
 // boundary these handlers talk to. A failure must be a server error page, never
 // an empty history or a half-built version.
 type flaky struct {
-	*store.Store
+	*apirecipes.Service
 	revisions, version, clone, restore bool
 }
 
-func (f flaky) ListRevisions(ctx context.Context, id int64) ([]store.Revision, error) {
+func (f flaky) ListRevisions(ctx context.Context, c apirecipes.Caller, id int64) ([]apirecipes.Revision, error) {
 	if f.revisions {
 		return nil, errDisk
 	}
-	return f.Store.ListRevisions(ctx, id)
+	return f.Service.ListRevisions(ctx, c, id)
 }
 
-func (f flaky) GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error) {
+func (f flaky) GetVersion(ctx context.Context, c apirecipes.Caller, id, version int64) (recipe.Recipe, error) {
 	if f.version {
 		return recipe.Recipe{}, errDisk
 	}
-	return f.Store.GetVersion(ctx, id, version)
+	return f.Service.GetVersion(ctx, c, id, version)
 }
 
-func (f flaky) Clone(ctx context.Context, id int64) (int64, error) {
+func (f flaky) Clone(ctx context.Context, c apirecipes.Caller, id int64) (int64, error) {
 	if f.clone {
 		return 0, errDisk
 	}
-	return f.Store.Clone(ctx, id)
+	return f.Service.Clone(ctx, c, id)
 }
 
-func (f flaky) Restore(ctx context.Context, id, version int64) error {
+func (f flaky) Restore(ctx context.Context, c apirecipes.Caller, id, version int64) error {
 	if f.restore {
 		return errDisk
 	}
-	return f.Store.Restore(ctx, id, version)
+	return f.Service.Restore(ctx, c, id, version)
 }
 
 // brokenCatalog fails every lookup, as a catalog database that went away would.
@@ -81,13 +81,13 @@ func TestStoreFailuresAreServerErrorsNotEmptyPages(t *testing.T) {
 		method string
 		path   string
 	}{
-		{"list revisions", flaky{Store: e.store, revisions: true}, "GET", base + "/history"},
-		{"list current version", flaky{Store: e.store, version: true}, "GET", base + "/history"},
-		{"show version", flaky{Store: e.store, version: true}, "GET", base + "/history/1"},
-		{"restore", flaky{Store: e.store, restore: true}, "POST", base + "/history/1/restore"},
-		{"clone", flaky{Store: e.store, clone: true}, "POST", base + "/clone"},
+		{"list revisions", flaky{Service: e.svc, revisions: true}, "GET", base + "/history"},
+		{"list current version", flaky{Service: e.svc, version: true}, "GET", base + "/history"},
+		{"show version", flaky{Service: e.svc, version: true}, "GET", base + "/history/1"},
+		{"restore", flaky{Service: e.svc, restore: true}, "POST", base + "/history/1/restore"},
+		{"clone", flaky{Service: e.svc, clone: true}, "POST", base + "/clone"},
 	} {
-		router := e.routerFor(Deps{Recipes: tc.store, Catalog: catalog.New(nil), Thumbnails: e.thumbs})
+		router := e.routerFor(Deps{Recipes: tc.store, Catalog: catalog.New(nil)})
 		var rec = e.post(router, tc.path, confirm)
 		if tc.method == "GET" {
 			rec = e.doOn(router, tc.path)
@@ -109,7 +109,7 @@ func TestVersionPageNeedsTheCatalogItReads(t *testing.T) {
 	e := newEnv(t)
 	id := e.create(e.doc("Loaf v1", "3"))
 	e.update(id, e.doc("Loaf v2", "4"))
-	router := e.routerFor(Deps{Recipes: e.store, Catalog: brokenCatalog{}, Thumbnails: e.thumbs})
+	router := e.routerFor(Deps{Recipes: e.svc, Catalog: brokenCatalog{}})
 	if rec := e.doOn(router, "/recipes/"+itoa(id)+"/history/1"); rec.Code != http.StatusInternalServerError {
 		t.Errorf("status = %d, want 500 for a version whose ingredients cannot be resolved", rec.Code)
 	}

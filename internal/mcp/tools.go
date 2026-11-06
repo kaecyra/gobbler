@@ -8,10 +8,11 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/parse"
-	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // tools holds the collaborators every tool handler shares.
@@ -21,8 +22,23 @@ type tools struct {
 	// shop is the shopping service (ADR-00043), the only way the shopping tools
 	// reach the shopping domain.
 	shop *apishop.Service
-	// reimporter starts a re-import of a saved recipe (ADR-00042).
-	reimporter *ingest.Reimporter
+}
+
+// callerOf is the recipe service's Caller for a tool call: the
+// credential's owner and the household the membership check admitted it to. A
+// household key has no owner, only the household (ADR-00031).
+func callerOf(c Credential, h household.Household) apirecipes.Caller {
+	return apirecipes.Caller{Person: c.Email, Household: h, HouseholdKey: c.Email == "" && c.HouseholdID != 0}
+}
+
+// recipeCaller is callerOf for the credential and household of the request a
+// tool runs for.
+func recipeCaller(ctx context.Context) (apirecipes.Caller, error) {
+	c, h, err := scoped(ctx)
+	if err != nil {
+		return apirecipes.Caller{}, err
+	}
+	return callerOf(c, h), nil
 }
 
 func (t *tools) register(s *mcp.Server) {
@@ -59,11 +75,11 @@ func (t *tools) toolError(ctx context.Context, tool string, err error) error {
 	switch {
 	case errors.As(err, &ue):
 		return ue
-	case errors.Is(err, store.ErrNotFound), errors.Is(err, apishop.ErrNotFound):
+	case errors.Is(err, apirecipes.ErrNotFound), errors.Is(err, apishop.ErrNotFound):
 		return refuse("not found")
-	case errors.Is(err, apishop.ErrInvalid), errors.Is(err, store.ErrInvalid):
+	case errors.Is(err, apishop.ErrInvalid), errors.Is(err, apirecipes.ErrInvalid):
 		return refuse("invalid input: %s", err)
-	case errors.Is(err, apishop.ErrUnknownReference), errors.Is(err, store.ErrUnknownReference):
+	case errors.Is(err, apishop.ErrUnknownReference), errors.Is(err, apirecipes.ErrUnknownReference):
 		return refuse("that refers to a recipe, ingredient or unit gobbler does not have")
 	case errors.Is(err, apishop.ErrNotMember):
 		return refuse("the credential is not a member of a household")

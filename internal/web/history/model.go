@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -41,7 +41,7 @@ type proposalNote struct {
 	Reimport bool
 }
 
-func noteOf(p *store.ProposalRef) *proposalNote {
+func noteOf(p *apirecipes.ProposalRef) *proposalNote {
 	if p == nil {
 		return nil
 	}
@@ -67,7 +67,7 @@ type originView struct {
 	Version  int64
 }
 
-func buildList(id int64, name string, info store.Info, revs []store.Revision, from *store.ProposalRef) listView {
+func buildList(id int64, name string, info apirecipes.Info, revs []apirecipes.Revision, from *apirecipes.ProposalRef) listView {
 	v := listView{
 		ID: id, Name: name,
 		Current: currentRow{Version: info.Version, When: info.UpdatedAt.UTC().Format(timeLayout), Who: info.UpdatedBy, Proposal: noteOf(from)},

@@ -10,9 +10,10 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -132,7 +133,7 @@ func changeLabel(n int) string {
 
 // buildProposal marks the live recipe with the pending proposal p. A stale
 // proposal gets its banner and no marks.
-func buildProposal(ctx context.Context, cat Catalog, live recipe.Recipe, p store.Proposal, version int64) (*proposalView, error) {
+func buildProposal(ctx context.Context, cat Catalog, live recipe.Recipe, p apirecipes.Proposal, version int64) (*proposalView, error) {
 	pv := &proposalView{Token: p.Token, By: p.Describe(), Reason: p.Reason, Stale: p.StaleAt(version)}
 	if pv.Stale {
 		return pv, nil
@@ -285,7 +286,7 @@ func equipmentText(ctx context.Context, cat Catalog, link recipe.EquipmentLink) 
 // proposalFor returns what the page shows of the recipe's pending proposal, nil
 // when it has none.
 func proposalFor(ctx context.Context, d Deps, id int64, live recipe.Recipe, version int64) (*proposalView, error) {
-	p, found, err := d.Recipes.PendingEdit(ctx, id)
+	p, found, err := d.Recipes.PendingEdit(ctx, caller.FromContext(ctx), id)
 	if err != nil {
 		return nil, fmt.Errorf("load pending proposal of recipe %d: %w", id, err)
 	}
@@ -312,16 +313,16 @@ func reject(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("%w: no proposal named", layout.ErrInvalid))
 			return
 		}
-		p, err := d.Recipes.GetProposal(r.Context(), token)
+		p, err := d.Recipes.GetProposal(r.Context(), caller.FromContext(r.Context()), token)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load proposal: %w", err))
 			return
 		}
-		if p.Kind != store.ProposalEdit || p.RecipeID != id {
+		if p.Kind != apirecipes.ProposalEdit || p.RecipeID != id {
 			layout.WriteError(w, r, fmt.Errorf("proposal is not one for recipe %d: %w", id, layout.ErrNotFound))
 			return
 		}
-		if err := d.Recipes.RejectProposal(r.Context(), token); err != nil {
+		if err := d.Recipes.RejectProposal(r.Context(), caller.FromContext(r.Context()), token); err != nil {
 			layout.WriteError(w, r, fmt.Errorf("reject proposal: %w", err))
 			return
 		}

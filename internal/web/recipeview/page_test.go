@@ -11,6 +11,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -22,9 +23,13 @@ type journaled struct {
 	made  []store.MadeIt
 }
 
-func (j journaled) ListNotes(context.Context, int64) ([]store.Note, error) { return j.notes, nil }
+func (j journaled) ListNotes(_ context.Context, _ apirecipes.Caller, _ int64) ([]store.Note, error) {
+	return j.notes, nil
+}
 
-func (j journaled) ListMadeIt(context.Context, int64) ([]store.MadeIt, error) { return j.made, nil }
+func (j journaled) ListMadeIt(_ context.Context, _ apirecipes.Caller, _ int64) ([]store.MadeIt, error) {
+	return j.made, nil
+}
 
 func page(t *testing.T, r Recipes, path string) string {
 	t.Helper()
@@ -176,25 +181,25 @@ type brokenJournal struct {
 	notes, made, thumb bool
 }
 
-func (b brokenJournal) ListNotes(ctx context.Context, id int64) ([]store.Note, error) {
+func (b brokenJournal) ListNotes(ctx context.Context, c apirecipes.Caller, id int64) ([]store.Note, error) {
 	if b.notes {
 		return nil, errors.New("disk on fire")
 	}
-	return b.fakeRecipes.ListNotes(ctx, id)
+	return b.fakeRecipes.ListNotes(ctx, c, id)
 }
 
-func (b brokenJournal) ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error) {
+func (b brokenJournal) ListMadeIt(ctx context.Context, c apirecipes.Caller, id int64) ([]store.MadeIt, error) {
 	if b.made {
 		return nil, errors.New("disk on fire")
 	}
-	return b.fakeRecipes.ListMadeIt(ctx, id)
+	return b.fakeRecipes.ListMadeIt(ctx, c, id)
 }
 
-func (b brokenJournal) HasThumbnail(ctx context.Context, videoID string) (bool, error) {
+func (b brokenJournal) HasThumbnail(ctx context.Context, c apirecipes.Caller, videoID string) (bool, error) {
 	if b.thumb {
 		return false, errors.New("disk on fire")
 	}
-	return b.fakeRecipes.HasThumbnail(ctx, videoID)
+	return b.fakeRecipes.HasThumbnail(ctx, c, videoID)
 }
 
 func TestFailedReadsAreServerErrorsAndLeakNoCause(t *testing.T) {

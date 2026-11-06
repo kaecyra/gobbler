@@ -96,10 +96,23 @@ person, so its Caller sets `HouseholdKey` and is admitted by its household alone
 It re-exports the domain types and errors as aliases so adapters import nothing
 from `shopping`.
 The `shopping-through-api` rule in `.golangci.yml` fails `make lint` when a non-test file under
-`internal/web/` or `internal/mcp/` imports `internal/shopping` (and so `shoppingdb`). It does not fence
-`store`, because shopping has no queries there; the recipes node fences it. One file is excepted
-(`web/editor/build.go`, until #470). The router and the MCP endpoint build the store with
-`apishop.NewStore`, so neither names the domain package.
+`internal/web/` or `internal/mcp/` imports `internal/shopping` (and so `shoppingdb`). The router and the
+MCP endpoint build the store with `apishop.NewStore`, so neither names the domain package.
+
+`api/recipes` is the second resource: it holds the recipe operations (view, save with the stale-version
+check, history, restore, clone, delete with the recipe's picture objects, proposals, drafts and their
+save, and starting a re-import) for the recipe web packages and the MCP recipe, edit, import and
+re-import tools. `Caller` and the membership check are written once in `api/caller`, which both
+resources use. `internal/picture` stays a domain package that `api/recipes` calls (the package doc gives
+the reasoning). The `recipes-through-api` rule fails `make lint` when a non-test file under
+`internal/web/` or `internal/mcp/` imports `internal/store` or `internal/picture`; the files of
+resources that have not migrated (the journal and its generated templ file, sharing, the status table,
+the picture routes) are excepted by name until #471. The rules read generated files too: golangci-lint
+skips them by default, and every `*_templ.go` is generated, so `.golangci.yml` turns that off and
+excludes the other linters from templ and sqlc output instead, leaving depguard alone to read them.
+The router builds the store, the pictures and the reaper with `apirecipes.NewStore`, `NewPictures` and
+`NewReaper`. Fetching and reading a page into a draft stays in `ingest`, a library the adapters call;
+the service holds its result.
 
 ## Configuration
 

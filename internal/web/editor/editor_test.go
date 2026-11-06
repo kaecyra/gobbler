@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -37,6 +38,7 @@ type env struct {
 	id    int64
 	// thumbs stands in for YouTube's image host; no test reaches the network.
 	thumbs *stubThumbs
+	svc    *apirecipes.Service
 }
 
 func newEnv(t *testing.T) *env {
@@ -64,13 +66,18 @@ func newEnv(t *testing.T) *env {
 	authed = household.WithContext(authed, hh)
 	s, c := store.New(d), catalog.New(d)
 	e := &env{t: t, ctx: authed, store: s, cat: c, thumbs: &stubThumbs{}}
+	svc, err := apirecipes.New(apirecipes.Deps{Recipes: s, Catalog: c, Members: household.New(d), Thumbnails: e.thumbs})
+	if err != nil {
+		t.Fatalf("recipes service: %v", err)
+	}
+	e.svc = svc
 	e.id, err = s.CreateWithSnapshots(authed, e.fixture(), store.SnapshotInput{Kind: store.SnapshotText, Content: []byte("the original source")})
 	if err != nil {
 		t.Fatalf("create recipe: %v", err)
 	}
 	r := chi.NewRouter()
 	r.Use(a.Middleware(nil), asMember(hh))
-	r.Mount(Pattern, Routes(Deps{Recipes: s, Catalog: c, Thumbnails: e.thumbs}))
+	r.Mount(Pattern, Routes(Deps{Recipes: svc, Catalog: c}))
 	e.h = r
 	return e
 }
@@ -150,7 +157,7 @@ func (e *env) fixture() recipe.Recipe {
 // names reads the catalog names the way the handler does, to build forms.
 func (e *env) names() lookups {
 	e.t.Helper()
-	h := &handler{Deps: Deps{Recipes: e.store, Catalog: e.cat}}
+	h := &handler{Deps: Deps{Recipes: e.svc, Catalog: e.cat}}
 	n, err := h.names(e.ctx)
 	if err != nil {
 		e.t.Fatalf("names: %v", err)

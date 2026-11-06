@@ -18,7 +18,7 @@ import (
 // restart is the same handler as after a restart of the process: the proposals
 // table is the database's, and nothing held in memory survives.
 func (f *fixture) restart() {
-	f.h.drafts = ingestcore.NewDrafts(store.New(f.db))
+	f.rs.drafts = ingestcore.NewDrafts(store.New(f.db))
 	f.h.photoCache = ingestcore.NewPhotos(time.Now)
 }
 

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
@@ -239,7 +239,7 @@ func duringSteps(r recipe.Recipe, number map[recipe.StepID]int, guidance map[rec
 
 // withJournal adds what the journal contributes to the page: the pinned notes
 // as tips, and how many times the recipe was made.
-func (v *view) withJournal(notes []store.Note, made []store.MadeIt) {
+func (v *view) withJournal(notes []apirecipes.Note, made []apirecipes.MadeIt) {
 	for _, n := range notes {
 		if n.Pinned {
 			v.Tips = append(v.Tips, n.Body)

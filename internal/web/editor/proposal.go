@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -35,16 +36,16 @@ type proposalView struct {
 // version. A proposal that is not one of this recipe's, is no longer pending or
 // is stale is refused with a message to show, and a non-nil error is a failure
 // to read it.
-func (h *handler) openProposal(ctx context.Context, id, version int64, token string) (p store.Proposal, refusal string, err error) {
-	p, err = h.Recipes.GetProposal(ctx, token)
+func (h *handler) openProposal(ctx context.Context, id, version int64, token string) (p apirecipes.Proposal, refusal string, err error) {
+	p, err = h.Recipes.GetProposal(ctx, caller.FromContext(ctx), token)
 	if err != nil {
-		return store.Proposal{}, "", fmt.Errorf("load proposal: %w", err)
+		return apirecipes.Proposal{}, "", fmt.Errorf("load proposal: %w", err)
 	}
-	if p.Kind != store.ProposalEdit || p.RecipeID != id {
-		return store.Proposal{}, "", fmt.Errorf("proposal %s is not a proposal for recipe %d: %w", token, id, layout.ErrNotFound)
+	if p.Kind != apirecipes.ProposalEdit || p.RecipeID != id {
+		return apirecipes.Proposal{}, "", fmt.Errorf("proposal %s is not a proposal for recipe %d: %w", token, id, layout.ErrNotFound)
 	}
 	switch {
-	case p.State != store.ProposalPending:
+	case p.State != apirecipes.ProposalPending:
 		return p, finishedMessage(p.State), nil
 	case p.StaleAt(version):
 		return p, proposalStaleMessage, nil
@@ -52,13 +53,13 @@ func (h *handler) openProposal(ctx context.Context, id, version int64, token str
 	return p, "", nil
 }
 
-func finishedMessage(s store.ProposalState) string {
+func finishedMessage(s apirecipes.ProposalState) string {
 	switch s {
-	case store.ProposalAccepted:
+	case apirecipes.ProposalAccepted:
 		return "This proposal was already saved."
-	case store.ProposalRejected:
+	case apirecipes.ProposalRejected:
 		return "This proposal was rejected."
-	case store.ProposalSuperseded:
+	case apirecipes.ProposalSuperseded:
 		return "A newer proposal replaced this one."
 	}
 	return "This proposal is no longer open for review."
@@ -72,22 +73,22 @@ func (h *handler) refuse(w http.ResponseWriter, r *http.Request, message string)
 
 // summaryOf builds the summary of p against the live recipe it would
 // change, from what the caller already loaded.
-func summaryOf(live recipe.Recipe, p store.Proposal, names lookups) *proposalView {
+func summaryOf(live recipe.Recipe, p apirecipes.Proposal, names lookups) *proposalView {
 	return &proposalView{Token: p.Token, By: p.Describe(), Reason: p.Reason, Changes: summarize(live, *p.Edit, names)}
 }
 
 // openForReview refuses, with the message to show, when the form's proposal can
 // no longer be saved, and returns the proposal otherwise. ok is false when it has
 // already answered.
-func (h *handler) openForReview(w http.ResponseWriter, r *http.Request, id, version int64, token string) (store.Proposal, bool) {
+func (h *handler) openForReview(w http.ResponseWriter, r *http.Request, id, version int64, token string) (apirecipes.Proposal, bool) {
 	p, refusal, err := h.openProposal(r.Context(), id, version, token)
 	switch {
 	case err != nil:
 		layout.WriteError(w, r, err)
-		return store.Proposal{}, false
+		return apirecipes.Proposal{}, false
 	case refusal != "":
 		h.refuse(w, r, refusal)
-		return store.Proposal{}, false
+		return apirecipes.Proposal{}, false
 	}
 	return p, true
 }
@@ -96,9 +97,9 @@ func (h *handler) openForReview(w http.ResponseWriter, r *http.Request, id, vers
 // can explain: ok is false for any other error.
 func acceptFailure(err error) (message string, ok bool) {
 	switch {
-	case errors.Is(err, store.ErrStaleProposal):
+	case errors.Is(err, apirecipes.ErrStaleProposal):
 		return proposalStaleMessage, true
-	case errors.Is(err, store.ErrNotPending):
+	case errors.Is(err, apirecipes.ErrNotPending):
 		return "This proposal is no longer open for review, so nothing was saved.", true
 	}
 	return "", false

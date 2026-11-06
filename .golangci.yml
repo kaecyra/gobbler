@@ -1,6 +1,26 @@
 version: "2"
 
 linters:
+  # golangci-lint v2 hides every issue in a file with a "Code generated ... DO
+  # NOT EDIT." header (exclusions.generated: lax, the default). Every
+  # *_templ.go carries one, so the depguard fences below never saw a templ file.
+  # The setting is global, not per linter, so it is turned off and the other
+  # linters are excluded from the two kinds of generated code this repository
+  # has (templ and sqlc output) by the rules here. depguard alone still reads
+  # them, which is what makes the fences cover templ files.
+  exclusions:
+    generated: disable
+    rules:
+      - path: '(_templ\.go|/[a-z]+db/[^/]+\.go)$'
+        linters:
+          - errcheck
+          - errorlint
+          - govet
+          - ineffassign
+          - nolintlint
+          - revive
+          - staticcheck
+          - unused
   default: standard # errcheck, govet, ineffassign, staticcheck, unused
   enable:
     - depguard
@@ -23,12 +43,39 @@ linters:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-recipes (#470) removes editor/build.go's use of the
-            # Uncategorised aisle constant and this exception with it.
-            - "!**/internal/web/editor/build.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/shopping
               desc: use internal/api/shopping; the web handlers and MCP tools do not import the shopping domain (ADR-00043)
+        # ADR-00043: the recipe domain is reached through internal/api/recipes.
+        # internal/store holds the recipes, their history, proposals, drafts,
+        # journal and sharing in one package, so the rule fences the package;
+        # internal/picture stays a domain package the recipe service calls
+        # (see the package doc of internal/api/recipes). Tests are exempt:
+        # they build fixtures straight on the domain.
+        #
+        # The files excepted below belong to resources that have not migrated
+        # yet: a-api-rest (#471) moves them onto internal/api and deletes each
+        # exception with the file's import.
+        recipes-through-api:
+          files:
+            - "**/internal/web/**"
+            - "**/internal/mcp/**"
+            - "!$test"
+            # a-api-rest (#471): the journal.
+            - "!**/internal/web/journal/handler.go"
+            - "!**/internal/web/journal/view.go"
+            - "!**/internal/web/journal/journal_templ.go"
+            # a-api-rest (#471): recipe sharing.
+            - "!**/internal/web/sharing/handler.go"
+            # a-api-rest (#471): the status table names the store's sentinels.
+            - "!**/internal/web/layout/httperr.go"
+            # a-api-rest (#471): the recipe picture routes call the picture service.
+            - "!**/internal/web/picture/picture.go"
+          deny:
+            - pkg: github.com/kaecyra/gobbler/internal/store
+              desc: use internal/api/recipes; the web handlers and MCP tools do not import the recipe store (ADR-00043)
+            - pkg: github.com/kaecyra/gobbler/internal/picture
+              desc: use internal/api/recipes; the web handlers and MCP tools reach the picture service through the recipe service (ADR-00043)
 
 formatters:
   enable:

@@ -15,6 +15,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
@@ -28,9 +30,10 @@ const Pattern = "/recipes/{id}/cook"
 // shown. It counts steps in the reading order of the recipe view.
 const paramStep = "step"
 
-// Recipes is what cook mode reads from the recipe store.
+// Recipes is what cook mode reads from the recipe service
+// (*apirecipes.Service satisfies it).
 type Recipes interface {
-	Get(ctx context.Context, id int64) (recipe.Recipe, error)
+	Get(ctx context.Context, c apirecipes.Caller, id int64) (recipe.Recipe, error)
 }
 
 // Catalog is what cook mode reads from the ingredient and equipment catalog.
@@ -60,7 +63,7 @@ func handle(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("recipe id %q: %w", rawID, layout.ErrNotFound))
 			return
 		}
-		rec, err := d.Recipes.Get(r.Context(), id)
+		rec, err := d.Recipes.Get(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
 			return

@@ -11,12 +11,13 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // maxReason bounds the reason an agent gives, which the banner on the recipe
@@ -114,6 +115,7 @@ func (t *tools) proposeEdit(ctx context.Context, _ *mcp.CallToolRequest, in prop
 	if err != nil {
 		return nil, proposalOut{}, t.toolError(ctx, tool, err)
 	}
+	rc := callerOf(c, h)
 	reason := oneLine(in.Reason)
 	switch {
 	case in.ID <= 0 || in.Version <= 0:
@@ -127,14 +129,14 @@ func (t *tools) proposeEdit(ctx context.Context, _ *mcp.CallToolRequest, in prop
 	}
 	// Info first, for the reason get_recipe reads it first: a recipe saved
 	// between the reads makes the proposal stale, never wrong.
-	info, err := t.Recipes.Info(ctx, in.ID)
+	info, err := t.Recipes.Info(ctx, rc, in.ID)
 	if err != nil {
 		return nil, proposalOut{}, t.toolError(ctx, tool, err)
 	}
 	if info.Version != in.Version {
 		return nil, proposalOut{}, staleRefusal(in.ID, in.Version, info.Version)
 	}
-	base, err := t.Recipes.Get(ctx, in.ID)
+	base, err := t.Recipes.Get(ctx, rc, in.ID)
 	if err != nil {
 		return nil, proposalOut{}, t.toolError(ctx, tool, err)
 	}
@@ -150,10 +152,10 @@ func (t *tools) proposeEdit(ctx context.Context, _ *mcp.CallToolRequest, in prop
 	}
 	by := provenance(c, h.ID, tool)
 	by.Reason = reason
-	token, err := t.Recipes.ProposeEdit(ctx, in.ID, in.Version, next, by)
+	token, err := t.Recipes.ProposeEdit(ctx, rc, in.ID, in.Version, next, by)
 	switch {
-	case errors.Is(err, store.ErrStaleVersion):
-		return nil, proposalOut{}, staleRefusal(in.ID, in.Version, t.currentVersion(ctx, in.ID, in.Version))
+	case errors.Is(err, apirecipes.ErrStaleVersion):
+		return nil, proposalOut{}, staleRefusal(in.ID, in.Version, t.currentVersion(ctx, rc, in.ID, in.Version))
 	case err != nil:
 		return nil, proposalOut{}, t.toolError(ctx, tool, err)
 	}
@@ -170,8 +172,8 @@ func staleRefusal(id, asked, current int64) error {
 // currentVersion is the version to name in a stale refusal; when it cannot be
 // read the refusal names the version the agent asked for, which is still true
 // of what the agent was told.
-func (t *tools) currentVersion(ctx context.Context, id, fallback int64) int64 {
-	info, err := t.Recipes.Info(ctx, id)
+func (t *tools) currentVersion(ctx context.Context, rc apirecipes.Caller, id, fallback int64) int64 {
+	info, err := t.Recipes.Info(ctx, rc, id)
 	if err != nil {
 		return fallback
 	}
@@ -180,24 +182,25 @@ func (t *tools) currentVersion(ctx context.Context, id, fallback int64) int64 {
 
 func (t *tools) getProposal(ctx context.Context, _ *mcp.CallToolRequest, in getProposalIn) (*mcp.CallToolResult, proposalStateOut, error) {
 	const tool = "get_recipe_proposal"
-	if _, _, err := scoped(ctx); err != nil {
+	rc, err := recipeCaller(ctx)
+	if err != nil {
 		return nil, proposalStateOut{}, t.toolError(ctx, tool, err)
 	}
-	p, err := t.Recipes.GetProposal(ctx, strings.TrimSpace(in.Token))
+	p, err := t.Recipes.GetProposal(ctx, rc, strings.TrimSpace(in.Token))
 	if err != nil {
 		return nil, proposalStateOut{}, t.toolError(ctx, tool, err)
 	}
 	out := proposalStateOut{Token: p.Token, Kind: string(p.Kind), State: string(p.State), Reason: p.Reason, Note: stateNote(p.State)}
-	if p.Kind != store.ProposalEdit {
+	if p.Kind != apirecipes.ProposalEdit {
 		return nil, out, nil
 	}
 	out.RecipeID, out.BaseVersion = p.RecipeID, p.BaseVersion
-	info, err := t.Recipes.Info(ctx, p.RecipeID)
+	info, err := t.Recipes.Info(ctx, rc, p.RecipeID)
 	if err != nil {
 		return nil, proposalStateOut{}, t.toolError(ctx, tool, err)
 	}
 	out.CurrentVersion = info.Version
-	if p.State == store.ProposalPending {
+	if p.State == apirecipes.ProposalPending {
 		if out.Stale = p.StaleAt(info.Version); out.Stale {
 			out.Note = fmt.Sprintf("The recipe was changed after this proposal was made, so it cannot be accepted. Read the recipe again and propose against version %d; the new proposal replaces this one.", info.Version)
 		} else {
@@ -207,17 +210,17 @@ func (t *tools) getProposal(ctx context.Context, _ *mcp.CallToolRequest, in getP
 	return nil, out, nil
 }
 
-func stateNote(s store.ProposalState) string {
+func stateNote(s apirecipes.ProposalState) string {
 	switch s {
-	case store.ProposalPending:
+	case apirecipes.ProposalPending:
 		return editNote
-	case store.ProposalAccepted:
+	case apirecipes.ProposalAccepted:
 		return "A person saved this proposal."
-	case store.ProposalRejected:
+	case apirecipes.ProposalRejected:
 		return "A person turned this proposal down."
-	case store.ProposalSuperseded:
+	case apirecipes.ProposalSuperseded:
 		return "A newer proposal for the same recipe replaced this one."
-	case store.ProposalExpired:
+	case apirecipes.ProposalExpired:
 		return "Nobody reviewed this proposal in time, so it expired."
 	}
 	return ""

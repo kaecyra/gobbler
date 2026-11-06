@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/kaecyra/gobbler/internal/store"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 )
 
 // recentLimit is how many made-it entries the "recently made" panel lists.
@@ -63,7 +63,7 @@ type suggestView struct {
 	NextHref string
 }
 
-func recentViews(entries []store.MadeEntry) []recentView {
+func recentViews(entries []apirecipes.MadeEntry) []recentView {
 	out := make([]recentView, 0, len(entries))
 	for _, e := range entries {
 		note := "Made it"
@@ -81,14 +81,14 @@ func recentViews(entries []store.MadeEntry) []recentView {
 // idleFor reports a recipe last made more than idleAfterDays calendar days
 // before now. The made-it date is a plain date, so the days are counted as
 // ago() counts them: the hour and now's zone never move the boundary.
-func idleFor(c store.Card, now time.Time) bool {
+func idleFor(c apirecipes.Card, now time.Time) bool {
 	return c.LastMade != nil && calendarDays(*c.LastMade, now) > idleAfterDays
 }
 
 // forgotPick is the recipe the forgot panel names: from the idle list (see
 // store.IdleOrder), the one made longest ago, if that was a while ago. It is
 // nil when no recipe was.
-func forgotPick(idle []store.Card, now time.Time) *store.Card {
+func forgotPick(idle []apirecipes.Card, now time.Time) *apirecipes.Card {
 	if len(idle) == 0 || !idleFor(idle[0], now) {
 		return nil
 	}
@@ -96,7 +96,7 @@ func forgotPick(idle []store.Card, now time.Time) *store.Card {
 }
 
 // forgotFor builds the panel from its pick; nil draws no panel.
-func forgotFor(c *store.Card, now time.Time) *forgotView {
+func forgotFor(c *apirecipes.Card, now time.Time) *forgotView {
 	if c == nil {
 		return nil
 	}
@@ -112,8 +112,8 @@ func forgotFor(c *store.Card, now time.Time) *forgotView {
 // store.IdleOrder. A recipe made in the last idleAfterDays is left out, and so is
 // skip, the recipe the forgot panel already names on the same page (nil when
 // the page has none).
-func ideasFrom(idle []store.Card, now time.Time, skip *store.Card) []store.Card {
-	var never, made []store.Card
+func ideasFrom(idle []apirecipes.Card, now time.Time, skip *apirecipes.Card) []apirecipes.Card {
+	var never, made []apirecipes.Card
 	for _, c := range idle {
 		switch {
 		case skip != nil && c.ID == skip.ID:
@@ -129,7 +129,7 @@ func ideasFrom(idle []store.Card, now time.Time, skip *store.Card) []store.Card 
 // suggestFor picks idea number n from ideas, wrapping round; nil when there
 // are none. The idea is in the URL, so "Another idea" needs no state on the
 // server.
-func suggestFor(ideas []store.Card, n int, now time.Time, href func(idea int) string) *suggestView {
+func suggestFor(ideas []apirecipes.Card, n int, now time.Time, href func(idea int) string) *suggestView {
 	if len(ideas) == 0 {
 		return nil
 	}

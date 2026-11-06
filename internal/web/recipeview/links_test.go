@@ -8,14 +8,15 @@ import (
 	"strings"
 	"testing"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // cloned is a recipe store whose recipe 7 was cloned from recipe 3 at version 2.
 type cloned struct{ fakeRecipes }
 
-func (c cloned) Info(ctx context.Context, id int64) (store.Info, error) {
-	info, err := c.fakeRecipes.Info(ctx, id)
+func (c cloned) Info(ctx context.Context, caller apirecipes.Caller, id int64) (store.Info, error) {
+	info, err := c.fakeRecipes.Info(ctx, caller, id)
 	info.ClonedFrom = &store.Origin{RecipeID: 3, Version: 2}
 	return info, err
 }
@@ -23,7 +24,7 @@ func (c cloned) Info(ctx context.Context, id int64) (store.Info, error) {
 // brokenInfo loads the document but fails on its bookkeeping.
 type brokenInfo struct{ fakeRecipes }
 
-func (brokenInfo) Info(context.Context, int64) (store.Info, error) {
+func (brokenInfo) Info(_ context.Context, _ apirecipes.Caller, _ int64) (store.Info, error) {
 	return store.Info{}, errors.New("disk on fire")
 }
 
