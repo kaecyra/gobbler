@@ -4391,7 +4391,7 @@
       "wave": 13,
       "track": null,
       "issue": 524,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [
         "r-note-length"
       ],
@@ -4456,7 +4456,7 @@
       "wave": 13,
       "track": null,
       "issue": 528,
-      "status": "todo",
+      "status": "in_review",
       "depends_on": [],
       "owns": [
         "internal/web/recipes/**",
