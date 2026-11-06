@@ -34,7 +34,7 @@ func (f *fakeReaper) Remove(_ context.Context, keys []string) {
 	}
 }
 
-func deleteRequest(t *testing.T, ctx context.Context, rs *store.Store, reaper store.PictureReaper, method, path string, form url.Values) *httptest.ResponseRecorder {
+func deleteRequest(ctx context.Context, t *testing.T, rs *store.Store, reaper store.PictureReaper, method, path string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
 	var req *http.Request
 	if form != nil {
@@ -56,7 +56,7 @@ func TestDeletePageNamesTheRecipeAndWhatGoesWithIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec := deleteRequest(t, ctx, rs, nil, http.MethodGet, fmt.Sprintf("/recipes/%d/delete", id), nil)
+	rec := deleteRequest(ctx, t, rs, nil, http.MethodGet, fmt.Sprintf("/recipes/%d/delete", id), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
 	}
@@ -72,7 +72,7 @@ func TestDeleteRefusedWithoutTheTypedWord(t *testing.T) {
 	}
 	reaper := &fakeReaper{}
 	for _, typed := range []string{"", "delete", "DELET", "yes"} {
-		rec := deleteRequest(t, ctx, rs, reaper, http.MethodPost, fmt.Sprintf("/recipes/%d/delete", id), url.Values{"confirm": {typed}})
+		rec := deleteRequest(ctx, t, rs, reaper, http.MethodPost, fmt.Sprintf("/recipes/%d/delete", id), url.Values{"confirm": {typed}})
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("confirm %q: status = %d, want 400", typed, rec.Code)
 		}
@@ -96,7 +96,7 @@ func TestDeleteRemovesTheRecipeAndItsPictureAndKeepsAClone(t *testing.T) {
 		t.Fatal(err)
 	}
 	reaper := &fakeReaper{}
-	rec := deleteRequest(t, ctx, rs, reaper, http.MethodPost, fmt.Sprintf("/recipes/%d/delete", id), url.Values{"confirm": {"DELETE"}})
+	rec := deleteRequest(ctx, t, rs, reaper, http.MethodPost, fmt.Sprintf("/recipes/%d/delete", id), url.Values{"confirm": {"DELETE"}})
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes" {
 		t.Fatalf("status = %d, Location = %q, want 303 to /recipes", rec.Code, rec.Header().Get("Location"))
 	}
@@ -114,7 +114,7 @@ func TestDeleteRemovesTheRecipeAndItsPictureAndKeepsAClone(t *testing.T) {
 func TestDeleteOfAMissingRecipeIsNotFound(t *testing.T) {
 	ctx, rs, _ := storeEnv(t)
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
-		rec := deleteRequest(t, ctx, rs, nil, method, "/recipes/999/delete", url.Values{"confirm": {"DELETE"}})
+		rec := deleteRequest(ctx, t, rs, nil, method, "/recipes/999/delete", url.Values{"confirm": {"DELETE"}})
 		if rec.Code != http.StatusNotFound {
 			t.Errorf("%s: status = %d, want 404", method, rec.Code)
 		}
