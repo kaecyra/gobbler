@@ -9,10 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	domain "github.com/kaecyra/gobbler/internal/shopping"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -29,7 +28,7 @@ const (
 
 // indexView is the page of all lists.
 type indexView struct {
-	Lists   []domain.ListInfo
+	Lists   []apishop.ListInfo
 	Problem string
 }
 
@@ -38,7 +37,7 @@ func (h *handler) index(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) renderIndex(w http.ResponseWriter, r *http.Request, status int, problem string) {
-	lists, err := h.Lists.Lists(r.Context())
+	lists, err := h.Shop.Lists(r.Context(), callerOf(r.Context()))
 	if err != nil {
 		fail(w, r, fmt.Errorf("list shopping lists: %w", err))
 		return
@@ -50,8 +49,8 @@ func (h *handler) create(w http.ResponseWriter, r *http.Request) {
 	if !parseForm(w, r) {
 		return
 	}
-	info, err := h.Lists.CreateList(r.Context(), r.PostForm.Get("name"))
-	if errors.Is(err, domain.ErrInvalid) {
+	info, err := h.Shop.CreateList(r.Context(), callerOf(r.Context()), r.PostForm.Get("name"))
+	if errors.Is(err, apishop.ErrInvalid) {
 		h.renderIndex(w, r, http.StatusBadRequest, msgName)
 		return
 	}
@@ -75,22 +74,22 @@ func (h *handler) build(w http.ResponseWriter, r *http.Request) {
 // next to the forms.
 func (h *handler) renderBuild(w http.ResponseWriter, r *http.Request, id int64, status int, problem string) {
 	ctx := r.Context()
-	view, err := h.Lists.Load(ctx, id)
+	view, err := h.Shop.Load(ctx, callerOf(ctx), id)
 	if err != nil {
 		fail(w, r, fmt.Errorf("load list %d: %w", id, err))
 		return
 	}
-	ingredients, err := h.Catalog.ListIngredients(ctx)
+	ingredients, err := h.Shop.Ingredients(ctx, callerOf(ctx))
 	if err != nil {
 		fail(w, r, fmt.Errorf("list ingredients: %w", err))
 		return
 	}
-	units, err := h.Catalog.ListUnits(ctx)
+	units, err := h.Shop.Units(ctx, callerOf(ctx))
 	if err != nil {
 		fail(w, r, fmt.Errorf("list units: %w", err))
 		return
 	}
-	recipes, err := h.Recipes.Search(ctx, store.SearchQuery{})
+	recipes, err := h.Shop.Recipes(ctx, callerOf(ctx))
 	if err != nil {
 		fail(w, r, fmt.Errorf("list recipes: %w", err))
 		return
@@ -151,13 +150,13 @@ func parseMultiplier(s string) (quantity.Rat, bool) {
 // and the status and message to show. Anything else is an error page.
 func inline(err error) (status int, msg string, ok bool) {
 	switch {
-	case errors.Is(err, domain.ErrInvalidMultiplier):
+	case errors.Is(err, apishop.ErrInvalidMultiplier):
 		return http.StatusBadRequest, msgMultiplier, true
-	case errors.Is(err, domain.ErrInvalidManualItem):
+	case errors.Is(err, apishop.ErrInvalidManualItem):
 		return http.StatusBadRequest, msgManual, true
-	case errors.Is(err, domain.ErrDuplicate):
+	case errors.Is(err, apishop.ErrDuplicate):
 		return http.StatusConflict, msgDuplicate, true
-	case errors.Is(err, domain.ErrUnknownReference):
+	case errors.Is(err, apishop.ErrUnknownReference):
 		return http.StatusBadRequest, msgReference, true
 	}
 	return 0, "", false
@@ -167,7 +166,7 @@ func inline(err error) (status int, msg string, ok bool) {
 // drops the check state of items the edit removed and keeps the rest, then goes
 // back to the build page.
 func (h *handler) edited(w http.ResponseWriter, r *http.Request, id int64) {
-	if _, err := h.Lists.Regenerate(r.Context(), id); err != nil {
+	if _, err := h.Shop.Regenerate(r.Context(), callerOf(r.Context()), id); err != nil {
 		fail(w, r, fmt.Errorf("regenerate list %d: %w", id, err))
 		return
 	}
@@ -203,7 +202,7 @@ func (h *handler) addRecipe(w http.ResponseWriter, r *http.Request) {
 		h.renderBuild(w, r, id, http.StatusBadRequest, msgMultiplier)
 		return
 	}
-	if _, err := h.Lists.AddEntry(r.Context(), id, recipeID, mult); err != nil {
+	if _, err := h.Shop.AddEntry(r.Context(), callerOf(r.Context()), id, recipeID, mult); err != nil {
 		h.failedEdit(w, r, id, fmt.Errorf("add recipe %d to list %d: %w", recipeID, id, err))
 		return
 	}
@@ -218,7 +217,7 @@ func (h *handler) entryOf(w http.ResponseWriter, r *http.Request, id int64) (int
 		fail(w, r, err)
 		return 0, false
 	}
-	view, err := h.Lists.Load(r.Context(), id)
+	view, err := h.Shop.Load(r.Context(), callerOf(r.Context()), id)
 	if err != nil {
 		fail(w, r, fmt.Errorf("load list %d: %w", id, err))
 		return 0, false
@@ -250,7 +249,7 @@ func (h *handler) setMultiplier(w http.ResponseWriter, r *http.Request) {
 		h.renderBuild(w, r, id, http.StatusBadRequest, msgMultiplier)
 		return
 	}
-	if err := h.Lists.SetEntryMultiplier(r.Context(), entry, mult); err != nil {
+	if err := h.Shop.SetEntryMultiplier(r.Context(), callerOf(r.Context()), entry, mult); err != nil {
 		h.failedEdit(w, r, id, fmt.Errorf("set multiplier of entry %d: %w", entry, err))
 		return
 	}
@@ -267,7 +266,7 @@ func (h *handler) removeRecipe(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.Lists.RemoveEntry(r.Context(), entry); err != nil {
+	if err := h.Shop.RemoveEntry(r.Context(), callerOf(r.Context()), entry); err != nil {
 		fail(w, r, fmt.Errorf("remove entry %d: %w", entry, err))
 		return
 	}
@@ -275,8 +274,8 @@ func (h *handler) removeRecipe(w http.ResponseWriter, r *http.Request) {
 }
 
 // manualItem reads the manual item form. A problem is a message for the user.
-func (h *handler) manualItem(r *http.Request) (domain.ManualItem, string, error) {
-	var m domain.ManualItem
+func (h *handler) manualItem(r *http.Request) (apishop.ManualItem, string, error) {
+	var m apishop.ManualItem
 	m.Text = strings.TrimSpace(r.PostForm.Get("text"))
 	if raw := strings.TrimSpace(r.PostForm.Get("ingredient")); raw != "" {
 		ing, err := idParam("ingredient id", raw)
@@ -298,7 +297,7 @@ func (h *handler) manualItem(r *http.Request) (domain.ManualItem, string, error)
 	}
 	m.Amount.Qty = qty
 	if name := strings.TrimSpace(r.PostForm.Get("unit")); name != "" {
-		units, err := h.Catalog.ListUnits(r.Context())
+		units, err := h.Shop.Units(r.Context(), callerOf(r.Context()))
 		if err != nil {
 			return m, "", fmt.Errorf("list units: %w", err)
 		}
@@ -334,7 +333,7 @@ func (h *handler) addManual(w http.ResponseWriter, r *http.Request) {
 		h.renderBuild(w, r, id, http.StatusBadRequest, problem)
 		return
 	}
-	if _, err := h.Lists.AddManualItem(r.Context(), id, m); err != nil {
+	if _, err := h.Shop.AddManualItem(r.Context(), callerOf(r.Context()), id, m); err != nil {
 		h.failedEdit(w, r, id, fmt.Errorf("add manual item to list %d: %w", id, err))
 		return
 	}
@@ -352,7 +351,7 @@ func (h *handler) removeManual(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	view, err := h.Lists.Load(r.Context(), id)
+	view, err := h.Shop.Load(r.Context(), callerOf(r.Context()), id)
 	if err != nil {
 		fail(w, r, fmt.Errorf("load list %d: %w", id, err))
 		return
@@ -365,7 +364,7 @@ func (h *handler) removeManual(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, fmt.Errorf("manual item %d is not on list %d: %w", item, id, layout.ErrNotFound))
 		return
 	}
-	if err := h.Lists.RemoveManualItem(r.Context(), item); err != nil {
+	if err := h.Shop.RemoveManualItem(r.Context(), callerOf(r.Context()), item); err != nil {
 		fail(w, r, fmt.Errorf("remove manual item %d: %w", item, err))
 		return
 	}
@@ -390,7 +389,7 @@ func (h *handler) addBack(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	if _, err := h.Lists.AddManualItem(r.Context(), id, domain.ManualItem{Ingredient: recipe.IngredientID(ing)}); err != nil {
+	if _, err := h.Shop.AddManualItem(r.Context(), callerOf(r.Context()), id, apishop.ManualItem{Ingredient: recipe.IngredientID(ing)}); err != nil {
 		h.failedEdit(w, r, id, fmt.Errorf("add back ingredient %d to list %d: %w", ing, id, err))
 		return
 	}
@@ -410,7 +409,7 @@ func (h *handler) setOptional(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	include := r.PostForm.Get("optional") == "1"
-	if err := h.Lists.SetIncludeOptional(r.Context(), id, include); err != nil {
+	if err := h.Shop.SetIncludeOptional(r.Context(), callerOf(r.Context()), id, include); err != nil {
 		fail(w, r, fmt.Errorf("set include optional on list %d: %w", id, err))
 		return
 	}
@@ -432,7 +431,7 @@ func (h *handler) export(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	view, err := h.Lists.Load(r.Context(), id)
+	view, err := h.Shop.Load(r.Context(), callerOf(r.Context()), id)
 	if err != nil {
 		fail(w, r, fmt.Errorf("load list %d: %w", id, err))
 		return

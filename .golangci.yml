@@ -3,9 +3,32 @@ version: "2"
 linters:
   default: standard # errcheck, govet, ineffassign, staticcheck, unused
   enable:
+    - depguard
     - errorlint
     - nolintlint
     - revive
+
+  settings:
+    depguard:
+      rules:
+        # ADR-00043: the shopping domain is reached through internal/api/shopping.
+        # The rule names the packages, so it covers the shopping store and its
+        # generated shoppingdb. The store package is not fenced here: shopping has
+        # no queries in it (the lists, entries, manual items, checks and pantry
+        # are in internal/shopping/queries), and its recipe reads are the recipes
+        # node's to fence (#470). Tests are exempt: they build fixtures straight
+        # on the domain.
+        shopping-through-api:
+          files:
+            - "**/internal/web/**"
+            - "**/internal/mcp/**"
+            - "!$test"
+            # a-api-recipes (#470) removes editor/build.go's use of the
+            # Uncategorised aisle constant and this exception with it.
+            - "!**/internal/web/editor/build.go"
+          deny:
+            - pkg: github.com/kaecyra/gobbler/internal/shopping
+              desc: use internal/api/shopping; the web handlers and MCP tools do not import the shopping domain (ADR-00043)
 
 formatters:
   enable:

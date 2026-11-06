@@ -79,11 +79,27 @@ dependencies.
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
 | `web` | Server, chi router, middleware (including the bearer path that keeps `/mcp` off the session), health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; `web/signin` OpenID Connect sign-in, its callback and sign-out ([ADR-00030](adr/00030-google-sign-in.md)), with `web/signin/signintest` the fake issuer its tests sign in against; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
 
-`api/<resource>` packages (not yet built; [ADR-00043](adr/00043-discrete-api.md)) hold each resource's
+`api/<resource>` packages ([ADR-00043](adr/00043-discrete-api.md); `api/shopping` is the first) hold each resource's
 operations once, in process. The web handlers and the MCP tools call them, take no other route to
 `store` and the domain packages, and hand them a verified caller; the service enforces household
 membership. Authentication stays in `auth`, `web` and `mcp`. Resources migrate one at a time, each
 fenced by a `depguard` rule.
+
+`api/shopping` is the pilot and sets the pattern; its package doc is the
+specification. A `Service` method takes `ctx`, then a `Caller` (verified email
+and household), then its arguments. On every call it looks the person up in the
+household store (`Members.ForEmail`) and refuses with `ErrNotMember` (403 on the
+web) unless they belong to the Caller's household. A household API key has no
+person, so its Caller sets `HouseholdKey` and is admitted by its household alone
+(ADR-00031). The method runs in that household and returns domain errors, which
+`web/layout`'s `statusTable` maps for the web and `mcp/tools.go` maps for MCP.
+It re-exports the domain types and errors as aliases so adapters import nothing
+from `shopping`.
+The `shopping-through-api` rule in `.golangci.yml` fails `make lint` when a non-test file under
+`internal/web/` or `internal/mcp/` imports `internal/shopping` (and so `shoppingdb`). It does not fence
+`store`, because shopping has no queries there; the recipes node fences it. One file is excepted
+(`web/editor/build.go`, until #470). The router and the MCP endpoint build the store with
+`apishop.NewStore`, so neither names the domain package.
 
 ## Configuration
 

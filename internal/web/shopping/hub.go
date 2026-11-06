@@ -3,7 +3,7 @@ package shopping
 import (
 	"sync"
 
-	domain "github.com/kaecyra/gobbler/internal/shopping"
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 )
 
 // hub fans a store change out to the event streams watching that list. A
@@ -44,7 +44,7 @@ func (h *hub) subscribe(id int64) (*subscription, func()) {
 
 // notify wakes every stream watching the changed list. It never blocks: the
 // store calls it on the writer's goroutine.
-func (h *hub) notify(c domain.Change) {
+func (h *hub) notify(c apishop.Change) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for s := range h.subs[c.ListID] {

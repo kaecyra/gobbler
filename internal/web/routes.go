@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
@@ -16,7 +17,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/sharing"
-	"github.com/kaecyra/gobbler/internal/shopping"
 	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/video"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
@@ -86,10 +86,24 @@ func mountCatalog(r chi.Router, d Deps) {
 	// The shopping pages share the merging catalog store: the shopping store's
 	// hooks re-point its manual items, pantry and checks on a merge, and its
 	// counter adds those rows to the merge confirmation.
-	shop := shopping.New(d.DB, rec, cat)
+	shop := apishop.NewStore(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
-	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Lists: shop, Recipes: rec, Catalog: cat, Logger: d.Logger}))
+	svc, err := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d.DB)})
+	if err != nil {
+		// Every route still exists and answers 500 with the cause, as the MCP
+		// endpoint does, so a bad build is a loud failure and not a missing page.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("shopping pages unavailable", "error", err.Error())
+		r.Mount(webshopping.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the shopping pages are not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
+	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Shop: svc, Logger: d.Logger}))
 }
 
 // mountHouseholds mounts the members page, invitation acceptance (reachable by
@@ -122,7 +136,7 @@ func mountHouseholds(r chi.Router, d Deps) {
 func mountPromotion(r chi.Router, d Deps) {
 	cat := catalog.New(d.DB)
 	store.New(d.DB).RegisterMergeHooks(cat)
-	shopping.New(d.DB, store.New(d.DB), cat).RegisterMergeHooks(cat)
+	apishop.NewStore(d.DB, store.New(d.DB), cat).RegisterMergeHooks(cat)
 	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: cat}))
 }
 
@@ -160,14 +174,14 @@ func mountMCP(r chi.Router, d Deps) {
 	usage := catalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
-	shop := shopping.New(d.DB, rec, cat)
+	shop := apishop.NewStore(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
 	log := d.Logger
 	if log == nil {
 		log = slog.Default()
 	}
-	deps, err := mcp.NewDeps(rec, shop, cat, d.Drafts, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
+	deps, err := mcp.NewDeps(rec, shop, household.New(d.DB), cat, d.Drafts, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
 	if err == nil {
 		var h http.Handler
 		if h, err = mcp.Routes(deps); err == nil {
