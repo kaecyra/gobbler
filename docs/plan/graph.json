@@ -4066,6 +4066,24 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner-reported (#492): halfbakedharvest publishes its whole method as one step (one HowToStep, one WPRM instruction of display-block spans). Split by structure first, then by an ascending inline enumerator run; reuse #490's enumerator pattern. After i-step-numbers (same lane)."
+    },
+    {
+      "id": "u-qualifier-chip",
+      "title": "keep each qualifier chip's controls inside its pill; chips wrap",
+      "wave": 13,
+      "track": null,
+      "issue": 496,
+      "status": "todo",
+      "depends_on": [
+        "u-editor-suggest-list"
+      ],
+      "owns": [
+        "internal/web/editor/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Same lane as u-editor-suggest-list (editor.templ holds the chip styles), so it runs after it."
     }
   ],
   "shared_files": [
