@@ -1,8 +1,51 @@
-# Overseer handoff: 2026-11-06, round 24 closed, #494 in review
+# Overseer handoff: 2026-11-06, round 25 closing
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 25 (2026-11-06): recipes API, step splitting, editor fixes
+
+**Merged** (squash SHA; under the standing authority):
+
+| Node | PR | SHA | VERSION |
+|---|---|---|---|
+| a-api-recipes | #494 | cdadce1 | 0.122.1 |
+| (graph: u-qualifier-chip) | #497 | 90e90da | none |
+| (graph: i-line-qualifiers) | #499 | 65290d4 | none |
+| i-split-steps | #500 | c5ec13c | 0.123.0 (ParserVersion 16) |
+| u-editor-suggest-list | #501 | d5064c5 | 0.123.1 |
+| (graph: i-pasted-numbers) | #503 | 4d1228e | none |
+| i-line-qualifiers | #504 | 06625bc | 0.123.2 (ParserVersion 17) |
+
+**Open at handoff. Read the PR threads before acting; this list may have moved:**
+- **#505 u-qualifier-chip (#496)**, branch fix/496-qualifier-chip, wt-496, VERSION 0.123.3. Three review rounds are done and every thread is resolved. One SHOULD went past the cap and was escalated to the owner as inbox item ib-12a9cff30e05: at 360px a "preparation" chip's × pokes about 4px past its pill. The options are to shrink the text box on phones (recommended), stack the chip, or merge and file a follow-up. Act on the owner's answer: a fresh worker for the CSS rule, or merge and file the issue.
+- **#506 i-pasted-numbers (#502)**, branch fix/502-pasted-numbers, wt-502, VERSION 0.123.3 (ParserVersion 18). Round-1 review raised a MUST: parse held a second definition of an enumerator. The chosen fix leaves step numbers on the parse text, so ingest's `stripStepNumber` is the only owner. The worker's rework was uncommitted at handoff and changes three section goldens plus `meta_test.go:158`. Push it, re-review, and resolve the 3 round-1 threads.
+- **#507** (graph: i-pasted-numbers owns `internal/parse/meta_test.go`). The review MUST was declined in a PR comment, because it tested #506's old head. Merge only after #506's rework is pushed and that test is confirmed failing without the edit.
+- **#510** (graph: u-aisle-suggest #508, a-mcp-caller #509). Its review was running at handoff. #508 and #509 are `dor:blocked` until it merges, then move them to `dor:ready`.
+- #505 and #506 both hold 0.123.3. Whichever merges second re-bumps to 0.123.4 by merging origin/main.
+
+**Next to dispatch, in order:**
+1. **Split a-api-rest (#471)**, a dispatcher graph PR. It is a placeholder (owns only `internal/api/README.md`) and is unblocked now that a-api-recipes has merged. ADR-00043: one node per resource, each creating `internal/api/<resource>`, switching web and MCP, and adding a depguard rule. Proposed nodes, from the depguard exceptions in `.golangci.yml` and a grep of domain imports in `internal/web` and `internal/mcp` on 2026-11-06:
+   - **a-api-journal**: `internal/web/journal/{handler,view}.go` and `journal_templ.go` read `store` directly. Creates `internal/api/journal` and removes those three exceptions.
+   - **a-api-sharing**: `internal/web/sharing/handler.go` reads `store` and `internal/sharing`. Probably extends `internal/api/recipes`, or adds `internal/api/sharing`; decide in the node.
+   - **a-api-pictures**: `internal/web/picture/picture.go` calls the picture service directly. Route it through `apirecipes` (`NewPictures` exists) and remove its exception.
+   - **a-api-catalog**: `internal/catalog` is imported by web/catalog, editor, cook, history, recipeview, ingest, operator and mcp. The largest one; make it its own round.
+   - **a-api-households**: `internal/household` and `apikey` are imported across web/household, profile, the middleware, layout and mcp. The middleware's membership check stays at the adapter (ADR-00043 "Authentication stays at the adapters"), so scope this carefully.
+   - **a-api-profile**: profile, session and oauth grants under web/profile.
+   - **Last, a-api-status-table**: `internal/web/layout/httperr.go` names domain sentinels. Once every resource re-exports its errors, switch it to the `api` aliases and drop the exception. It depends on all the above.
+   Before writing nodes, check each against the code. Give each a lane, a dependency on a-mcp-caller (#509) for any that touch `internal/mcp`, and the ADR-00043 acceptance (depguard rule plus web and MCP switch). Then close #471 or remap it to the first node. Ingest is already a library the adapters call (ADR-00043 note in docs/design.md); confirm with the owner that it needs no node.
+2. **a-mcp-caller (#509)** and **u-aisle-suggest (#508)** once #510 merges (u-aisle-suggest waits on #505).
+3. **o-demo-reseed (#432)** after the owner deploys.
+
+**Owner, deployed:** the VM ran 0.121.1 at the start of this round, and main is at 0.123.2+. A deploy unblocks o-demo-reseed and lets the owner check step splitting and qualifier case on real imports.
+
+**Lessons this round:**
+- **Test against the real page.** The owner's browser-saved halfbakedharvest page caught a `9×13`/`9x13` mismatch that the hand-built fixture hid. When a site blocks scripted fetches, ask the owner for a browser save before accepting a synthetic fixture.
+- **A worker reporting "waiting on monitor" in a loop spams the dispatcher.** Tell workers to run `make check` in the foreground with no monitors or poll loops; TaskStop a worker that keeps waking.
+- **Review agents share `.cc-scratch/`.** One overwrote the dispatcher's PR-body file. Give dispatcher files a distinct prefix (`prbody-<n>.md`).
+- **The host plugin mirror** is `/Users/timothygunter/.odette/home/default/gobbler-58ff2639/.claude/plugins/cache/market/overseer/0.20.1`. `bun` and `gh` exist only on the host.
+- **Review a re-review against the pushed head, and say which head.** #507's MUST came from reviewing a head that predated the rework it described.
 
 ## Round 24 (2026-11-06): author notes, shopping API pilot, card width
 
