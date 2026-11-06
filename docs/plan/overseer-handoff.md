@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 24 closing, #494 and #495 in review
+# Overseer handoff: 2026-11-06, round 24 closed, #494 in review
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -34,7 +34,7 @@ This file holds the volatile state the graph does not. The durable record is `do
   depguard `recipes-through-api` with five file exceptions for a-api-rest (#471). Picture stays a domain
   package. Worker's out-of-lane home.go line sanctioned (#493). Follow-up for a-api-rest:
   tools_shopping.go shopCaller duplicates callerOf.
-- **#495 i-step-numbers (#490)**, branch feat/490-step-numbers, ParserVersion 15, VERSION 0.122.0.
+- **#495 i-step-numbers (#490): MERGED** eff2976, VERSION 0.122.0, ParserVersion 15. i-split-steps (#492) is now dispatchable.
 - **Review state at handoff:**
   - #495: APPROVED with one SHOULD (fallback.go:297 strip untested); sent back to the worker for a test,
     worktree wt-490.
@@ -61,8 +61,7 @@ This file holds the volatile state the graph does not. The durable record is `do
   dropped from "1 cup (240ml) whole milk, warmed to about 110°F (43°C)", and the unrecognised-text
   warning firing although the text became qualifiers.
 - #494 fix 1b3bc52 (depguard reads generated files via linters.exclusions.generated: disable plus an
-  exclusion for every other linter on templ/sqlc output) was verified but not pushed at handoff; after
-  #495 merges it must merge origin/main, re-bump VERSION to 0.122.1 and rewrap the long docs/design.md
+  exclusion for every other linter on templ/sqlc output) is pushed; #495 has merged, so #494 must merge origin/main, re-bump VERSION to 0.122.1 and rewrap the long docs/design.md
   line, then push, resolve the MUST thread and merge.
 
 **Owner, deployed:** VM runs 0.121.1 (GOBBLER_VERSION in /opt/gobbler/.env; nano needs
