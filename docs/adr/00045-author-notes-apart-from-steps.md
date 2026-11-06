@@ -31,7 +31,8 @@ Options considered:
 - The notes are separated from the steps by extra vertical space.
 - Everything else in ADR-00041's description stands: each note's bulb still
   sits in the step-number column, with the same title, text and "From the
-  author" treatment, after the last step.
+  author" treatment, after the last step. Where the mockup ADR-00041 adopted
+  draws dotted connectors to or between notes, this decision overrides it.
 - Cook mode is unchanged.
 
 ## Consequences
@@ -47,5 +48,7 @@ Obligations:
    two notes.
 2. The gap between the last step and the first note is larger than the gap
    between two steps, and the e2e test asserts it.
-3. ADR-00041's status line and its row in `docs/adr/README.md` name this ADR
+3. `docs/ui/design.md`'s description of author notes on the recipe page no
+   longer says they continue the step chain or are joined by a dotted line.
+4. ADR-00041's status line and its row in `docs/adr/README.md` name this ADR
    among its amendments.
