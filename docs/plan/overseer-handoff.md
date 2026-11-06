@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 24 in flight
+# Overseer handoff: 2026-11-06, round 24, #479 open
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -6,22 +6,34 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Round 24 (2026-11-06): author notes, shopping API pilot, card width
 
-**In flight** (dispatched 2026-11-06, Sonnet workers, worktrees under `.claude/worktrees/`):
+**Merged** (squash SHA; under the standing authority):
 
-| Node | Issue | Worktree | Branch | Migration |
+| Node | PR | SHA | Schema | VERSION |
 |---|---|---|---|---|
-| r-author-notes | #395 | wt-395 | feat/395-author-notes | schema 00031 |
-| a-api-shopping | #469 | wt-469 | refactor/469-api-shopping | none |
-| u-card-width | #468 | wt-468 | fix/468-card-width | none |
+| (graph: a-api-shopping lane, i-reimport wave 13) | #474 | e5b7fc3 | none | none |
+| (graph: a-api-shopping owns mcp_test.go) | #476 | 84671aa | none | none |
+| (graph: picturedb shared generated) | #478 | 620d367 | none | none |
+| u-card-width | #475 | f671446 | none | 0.119.1 |
+| a-api-shopping | #477 | de00177 | none | 0.119.2 |
 
-- **#474** (graph, merged e5b7fc3): a-api-shopping gained `internal/mcp/server.go` and `tools.go`;
-  i-reimport moved to wave 13 and waits on it. Node note grants the routes.go edit exception and a
-  depguard file exception for `internal/web/editor/build.go` (owned by r-author-notes), removed by
-  a-api-recipes (#470).
+**Open:** r-author-notes, PR #479 (worktree wt-395, branch feat/395-author-notes, migration 00031).
+The review's MUST (ParserVersion 14) and SHOULD (loose notes text dropped) are fixed and their threads
+resolved. The worker is merging main after #477; then CI, then merge as 0.120.0.
+
+- **a-api-shopping pattern** (for a-api-recipes): `Service.Op(ctx, Caller, ...)`; `Caller{Person,
+  Household, HouseholdKey}`; `enter()` checks membership with `household.ForEmail` unless the caller is
+  a household key (ADR-00031); `New` returns an error on a missing collaborator; errors map through
+  `layout.statusTable` and MCP `toolError`. depguard `shopping-through-api` has a file exception for
+  `internal/web/editor/build.go`, which a-api-recipes (#470) removes.
+- The review caught a regression the dispatcher's own send-back caused: requiring a person refused
+  household API keys. **Lesson:** when tightening an auth check, list every credential kind that
+  reaches it (ADR-00031: personal key, household key, OAuth grant, session) before sending the brief.
+- **Lesson:** the contract's shared-file list was hand-copied and missed `tenancy-support.ts` and
+  picturedb. Generate it from `shared_files` instead.
 - Labels: #469, #462 moved dor:blocked to dor:ready; #395 gained dor:ready.
 
-**Next after these:** i-reimport (#462) once r-author-notes and a-api-shopping merge; a-api-recipes
-after i-reimport.
+**Next after #479:** i-reimport (#462) is dispatchable once r-author-notes merges (a-api-shopping is
+done); then a-api-recipes (#470) after i-reimport. o-demo-reseed (#432) still waits on a deploy.
 
 ## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
 
