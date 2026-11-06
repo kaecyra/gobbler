@@ -133,7 +133,7 @@ templ editPage(f formView) {
 			</p>
 			<p>
 				<label for="aisle">Aisle</label>
-				<input type="text" id="aisle" name="aisle" value={ f.Aisle } list="aisles" required/>
+				<input type="text" id="aisle" name="aisle" value={ f.Aisle } list="aisles" autocomplete="off" required/>
 				<datalist id="aisles">
 					for _, a := range f.Aisles {
 						<option value={ a }></option>

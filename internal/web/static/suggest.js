@@ -7,8 +7,9 @@
 // left alone and works as before.
 //
 // A page opts in by loading this script and styling the list with
-// suggest.css. Load it after editor.js: both wrap Idiomorph's attribute
-// callback, and the wrap here must be the outer one.
+// suggest.css. Load it after editor.js: editor.js replaces Idiomorph's
+// attribute callback outright, while the wrap here keeps whatever callback is
+// installed, so loading it first would lose the wrap.
 //
 // Guarded so a re-run installs nothing twice.
 (function () {
@@ -190,8 +191,8 @@
   window.addEventListener('resize', place);
   window.addEventListener('scroll', place, true);
 
-  // Capture, so a key that picks an option never reaches the Enter handler
-  // below, which would press Add equipment, or the browser's submit.
+  // Capture, so a key that picks an option never reaches editor.js's data-enter
+  // handler, which would press Add equipment, or the browser's submit.
   document.addEventListener('keydown', function (e) {
     var t = e.target;
     if (!t.matches || !t.matches('input[data-suggest]') || e.isComposing) return;

@@ -510,7 +510,7 @@ func editPage(f formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" list=\"aisles\" required> <datalist id=\"aisles\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" list=\"aisles\" autocomplete=\"off\" required> <datalist id=\"aisles\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

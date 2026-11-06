@@ -297,10 +297,17 @@ test('the aisle field lists every aisle, narrows as typed, and still saves a new
   await expect(list).toBeHidden();
   await expect(aisle).toHaveValue('PROD');
   await aisle.fill('');
+  const posts: string[] = [];
+  page.on('request', (r) => { if (r.method() === 'POST') posts.push(r.url()); });
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(new RegExp(`/catalog/${ids.edit}$`));
   await expect(aisle).toHaveValue(all[0]);
+  // A submit would post the form and navigate away; give it the time to start.
+  await page.waitForLoadState('load');
+  await page.waitForTimeout(300);
+  expect(posts).toEqual([]);
+  await expect(page).toHaveURL(new RegExp(`/catalog/${ids.edit}$`));
+  await expect(list).toBeHidden();
 
   // The field stays free text: an aisle that is not in the list saves.
   await aisle.fill('e2e new aisle');
