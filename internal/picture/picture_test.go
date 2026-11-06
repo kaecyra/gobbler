@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -621,4 +622,30 @@ func pixelsDiffer(a, b image.Image) bool {
 		}
 	}
 	return false
+}
+
+// agentFetcher records the User-Agent of each request and answers with a
+// picture, so no network is touched.
+type agentFetcher struct {
+	body   []byte
+	agents []string
+}
+
+func (f *agentFetcher) Do(r *http.Request) (*http.Response, error) {
+	f.agents = append(f.agents, r.Header.Get("User-Agent"))
+	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(f.body))}, nil
+}
+
+func TestCandidateDownloadsSendTheConfiguredUserAgent(t *testing.T) {
+	e := newEnv(t)
+	f := &agentFetcher{body: pic(t, 1200, 400, 3)}
+	const ua = "gobbler-test (recipes)"
+	svc := picture.New(e.db, e.media, e.store, f, nil).WithUserAgent(ua)
+	got, err := svc.FetchCandidates(e.ctx, e.draft(t), []string{"https://example.com/a.png"})
+	if err != nil || len(got) != 1 {
+		t.Fatalf("FetchCandidates = %v, %v", got, err)
+	}
+	if len(f.agents) != 1 || f.agents[0] != ua {
+		t.Fatalf("User-Agent sent = %q, want [%q]", f.agents, ua)
+	}
 }

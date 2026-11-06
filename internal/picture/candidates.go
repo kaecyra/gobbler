@@ -140,6 +140,9 @@ func (s *Service) download(ctx context.Context, rawURL string) ([]byte, error) {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Accept", "image/*")
+	if s.userAgent != "" {
+		req.Header.Set("User-Agent", s.userAgent)
+	}
 	resp, err := s.fetch.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get: %w", err)
