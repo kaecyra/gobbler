@@ -114,6 +114,9 @@ templ recipePage(v view) {
 		if v.Proposal != nil {
 			@proposalBanner(v)
 		}
+		if v.Reimport != nil {
+			@reimportBanner(v)
+		}
 		@recipeBody(v)
 		@aside(v)
 		<script src={ ribbon.ScriptPath } defer></script>
@@ -373,6 +376,9 @@ templ aside(v view) {
 					<li><a href={ templ.SafeURL(historyHref(v.ID)) } data-testid="history-link">History</a></li>
 					<li><a href={ templ.SafeURL(editHref(v.ID)) } data-testid="edit-link">Edit</a></li>
 					<li><a href={ templ.SafeURL(shareHref(v.ID)) } data-testid="share-link">Share</a></li>
+					if v.CanReimport {
+						@reimportButton(v)
+					}
 				</ul>
 				<form method="post" action={ templ.SafeURL(cloneHref(v.ID)) }>
 					<button type="submit" class="btn" data-testid="clone-button">Clone this recipe</button>
@@ -507,6 +513,54 @@ templ proposalBanner(v view) {
 			</div>
 		}
 	</section>
+}
+
+// reimportBanner announces a pending re-import. It has no marks: the draft is
+// reviewed whole on the ingest screen (ADR-00042). Out of date, it offers
+// Discard only.
+templ reimportBanner(v view) {
+	@proposalStyles()
+	<section class={ "pbanner", templ.KV("stale", v.Reimport.Stale) } aria-label="Re-import" data-testid="reimport-banner">
+		if v.Reimport.Stale {
+			<div class="phead">
+				<strong>Out of date</strong>
+				<span class="pwho">A re-import from { v.Reimport.Host }.</span>
+			</div>
+			<p class="pdetail" data-testid="reimport-stale">{ staleReimportBanner }</p>
+		} else {
+			<div class="phead">
+				<strong>A re-import is waiting for review</strong>
+				<span class="pwho">from { v.Reimport.Host }</span>
+			</div>
+		}
+		<div class="pactions">
+			if !v.Reimport.Stale {
+				<a class="btn accent" href={ templ.SafeURL(reimportReviewHref(v.Reimport.Token)) } data-testid="reimport-review">Review</a>
+			}
+			<form method="post" action={ templ.SafeURL(reimportDiscardHref(v.Reimport.Token)) }>
+				<button type="submit" class="btn" data-testid="reimport-discard">Discard</button>
+			</form>
+		</div>
+	</section>
+}
+
+// reimportButton starts a re-import. It is a POST button because starting one
+// fetches the source and writes a snapshot and a draft, styled like the links
+// above it.
+templ reimportButton(v view) {
+	<style>
+		.tool-links li form { margin: 0; }
+		.tool-links .linkbtn {
+			display: flex; align-items: center; width: 100%; min-height: var(--tap); padding: 0;
+			background: none; border: 0; font: inherit; color: var(--wattle-ink); text-align: left; cursor: pointer;
+			text-decoration: underline;
+		}
+	</style>
+	<li>
+		<form method="post" action={ templ.SafeURL(reimportStartHref(v.ID)) }>
+			<button type="submit" class="linkbtn" data-testid="reimport-button">Re-import from source</button>
+		</form>
+	</li>
 }
 
 templ rejectForm(v view) {

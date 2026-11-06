@@ -141,9 +141,10 @@ func (d *Drafts) Discard(ctx context.Context, token string) error {
 	return nil
 }
 
-// dropCandidates deletes the picture candidates of a draft that has ended.
+// DropCandidates deletes the picture candidates of a draft that has ended,
+// such as one a re-import superseded (ADR-00042).
 // A failure is logged: what is left goes when the proposal is pruned.
-func (d *Drafts) dropCandidates(ctx context.Context, proposalID int64) {
+func (d *Drafts) DropCandidates(ctx context.Context, proposalID int64) {
 	if d.pictures == nil {
 		return
 	}

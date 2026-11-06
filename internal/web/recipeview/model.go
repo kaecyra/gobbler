@@ -86,6 +86,12 @@ type view struct {
 	// Proposal is the recipe's pending proposed edit, marked on the page; nil
 	// when it has none (ADR-00035).
 	Proposal *proposalView
+
+	// CanReimport says the recipe has a source URL to fetch again, which shows
+	// the "Re-import from source" button; Reimport is its pending re-import,
+	// announced in a banner (ADR-00042).
+	CanReimport bool
+	Reimport    *reimportView
 }
 
 type originView struct {

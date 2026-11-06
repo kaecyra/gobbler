@@ -42,16 +42,23 @@ type URLDrafter interface {
 	FromURL(ctx context.Context, rawURL string) (Draft, error)
 }
 
+// ReimportDrafts holds a re-import's draft; *Drafts satisfies it.
+type ReimportDrafts interface {
+	Add(ctx context.Context, d Draft, by store.Provenance) (string, error)
+	// DropCandidates deletes the picture candidates of the superseded draft.
+	DropCandidates(ctx context.Context, proposalID int64)
+}
+
 // Reimporter starts re-imports.
 type Reimporter struct {
 	recipes ReimportRecipes
 	drafter URLDrafter
-	drafts  *Drafts
+	drafts  ReimportDrafts
 }
 
 // NewReimporter returns a Reimporter that drafts with drafter and holds the
 // draft in drafts.
-func NewReimporter(r ReimportRecipes, d URLDrafter, drafts *Drafts) *Reimporter {
+func NewReimporter(r ReimportRecipes, d URLDrafter, drafts ReimportDrafts) *Reimporter {
 	return &Reimporter{recipes: r, drafter: d, drafts: drafts}
 }
 
@@ -105,7 +112,7 @@ func (r *Reimporter) Start(ctx context.Context, id int64, by store.Provenance) (
 	if found {
 		// Adding the new draft superseded the old one; its candidates are
 		// deleted now rather than when the proposal is pruned (ADR-00042).
-		r.drafts.dropCandidates(ctx, old.ID)
+		r.drafts.DropCandidates(ctx, old.ID)
 	}
 	return token, nil
 }

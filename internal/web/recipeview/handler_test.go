@@ -66,6 +66,10 @@ func (f fakeRecipes) PendingEdit(context.Context, int64) (store.Proposal, bool, 
 	return store.Proposal{}, false, nil
 }
 
+func (f fakeRecipes) PendingReimport(context.Context, int64) (store.Proposal, bool, error) {
+	return store.Proposal{}, false, nil
+}
+
 func (f fakeRecipes) GetProposal(_ context.Context, token string) (store.Proposal, error) {
 	return store.Proposal{}, fmt.Errorf("proposal %s: %w", token, store.ErrNotFound)
 }
@@ -486,6 +490,10 @@ func (failingRecipes) Thumbnail(context.Context, int64) (store.Thumbnail, error)
 }
 
 func (failingRecipes) PendingEdit(context.Context, int64) (store.Proposal, bool, error) {
+	return store.Proposal{}, false, errors.New("disk on fire")
+}
+
+func (failingRecipes) PendingReimport(context.Context, int64) (store.Proposal, bool, error) {
 	return store.Proposal{}, false, errors.New("disk on fire")
 }
 

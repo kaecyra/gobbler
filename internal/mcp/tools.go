@@ -21,12 +21,15 @@ type tools struct {
 	// shop is the shopping service (ADR-00043), the only way the shopping tools
 	// reach the shopping domain.
 	shop *apishop.Service
+	// reimporter starts a re-import of a saved recipe (ADR-00042).
+	reimporter *ingest.Reimporter
 }
 
 func (t *tools) register(s *mcp.Server) {
 	t.registerRecipes(s)
 	t.registerImport(s)
 	t.registerEdit(s)
+	t.registerReimport(s)
 	t.registerShopping(s)
 }
 
@@ -66,6 +69,8 @@ func (t *tools) toolError(ctx context.Context, tool string, err error) error {
 		return refuse("the credential is not a member of a household")
 	case errors.Is(err, parse.ErrEmptyText):
 		return refuse("there is no text to read")
+	case errors.Is(err, ingest.ErrNoSourceURL):
+		return refuse("this recipe has no source address to import again")
 	case errors.Is(err, ingest.ErrFetch):
 		return refuse("the page could not be fetched: %s", err)
 	}
