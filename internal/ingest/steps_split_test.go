@@ -120,11 +120,23 @@ func TestAssembleKeepsATitleOnTheFirstPieceOnly(t *testing.T) {
 	}
 }
 
-// Pasted text goes through the same split (#492). The section parser strips a
-// leading "1." itself, so only a form it leaves alone, "(1)", reaches the split.
+// Pasted text goes through the same split (#492, #502). The section parser
+// keeps a "1." marker whose line holds the rest of the run, so the split sees
+// the run from 1 in every form.
 func TestAssembleSplitsNumberedStepsInPastedText(t *testing.T) {
+	for _, line := range []string{
+		"(1) Mix the flour and salt. (2) Bake for 30 minutes. (3) Serve warm.",
+		"1. Mix the flour and salt. 2. Bake for 30 minutes. 3. Serve warm.",
+		"1) Mix the flour and salt. 2) Bake for 30 minutes. 3) Serve warm.",
+	} {
+		t.Run(line[:3], func(t *testing.T) { assertPastedSplit(t, line) })
+	}
+}
+
+func assertPastedSplit(t *testing.T, line string) {
+	t.Helper()
 	e := newEnv(t)
-	res := extract.Result{Method: extract.MethodText, Text: "Bread\n\nIngredients\n3 cups flour\n1 tsp salt\n\nInstructions\n(1) Mix the flour and salt. (2) Bake for 30 minutes. (3) Serve warm.\n"}
+	res := extract.Result{Method: extract.MethodText, Text: "Bread\n\nIngredients\n3 cups flour\n1 tsp salt\n\nInstructions\n" + line + "\n"}
 	d, err := e.pipeline(t, nil).assemble(e.ctx, Source{}, res)
 	if err != nil {
 		t.Fatal(err)
@@ -137,5 +149,19 @@ func TestAssembleSplitsNumberedStepsInPastedText(t *testing.T) {
 		if strings.ContainsAny(s.Text[:1], "123456789") {
 			t.Errorf("step %d = %q, want the number stripped", i+1, s.Text)
 		}
+	}
+}
+
+// A numbered list on separate lines still gives one step per line.
+func TestAssemblePastedNumberedLinesStaySeparate(t *testing.T) {
+	e := newEnv(t)
+	res := extract.Result{Method: extract.MethodText, Text: "Bread\n\nIngredients\n3 cups flour\n\nInstructions\n1. Mix.\n2. Bake.\n"}
+	d, err := e.pipeline(t, nil).assemble(e.ctx, Source{}, res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := flatSteps(d)
+	if len(got) != 2 || got[0].Text != "Mix." || got[1].Text != "Bake." {
+		t.Errorf("steps = %+v, want Mix. and Bake.", got)
 	}
 }

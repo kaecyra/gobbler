@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -82,6 +83,8 @@ var (
 	sectionForHeadingRe        = regexp.MustCompile(`^for (?:the )?([^.,;:!?]+?):?$`)
 	sectionBulletRe            = regexp.MustCompile(`^(?:[-*+•▪·–—☐□]|\[[ xX]?\])\s+`)
 	sectionStepMarkerRe        = regexp.MustCompile(`(?i)^(?:step\s+)?\d+(?:\s*[.):](?:\s+|$)|\s*$)`)
+	sectionSentenceEndRe       = regexp.MustCompile(`[.!?)]\s*`)
+	sectionMarkerDigitsRe      = regexp.MustCompile(`\d+`)
 	sectionQuantityStartRe     = regexp.MustCompile(`^(?:\d+(?:[./,]\d+)?|\d+-\d+/\d+|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+[½⅓⅔¼¾⅛⅜⅝⅞])(?:\s|$)`)
 )
 
@@ -462,7 +465,11 @@ func sectionJoinSteps(lines []rawStepLine) []string {
 		text := l.text
 		isMarker := false
 		if loc := sectionStepMarkerRe.FindStringIndex(text); loc != nil {
-			text, isMarker = strings.TrimSpace(text[loc[1]:]), true
+			rest := strings.TrimSpace(text[loc[1]:])
+			if !holdsNumberedRun(text[:loc[1]], rest) {
+				text = rest
+			}
+			isMarker = true
 		} else if loc := sectionBulletRe.FindStringIndex(text); loc != nil {
 			text, isMarker = strings.TrimSpace(text[loc[1]:]), true
 		}
@@ -493,4 +500,33 @@ func sectionJoinSteps(lines []rawStepLine) []string {
 		}
 	}
 	return out
+}
+
+// holdsNumberedRun reports whether a "1." marker line also holds the next
+// numbered step inline ("1. Mix. 2. Bake."). The marker is then kept, so the
+// assembler's splitNumberedSteps sees the run from 1 and splits it, and
+// stripStepNumber removes the numbers (#502). The enumerator itself is defined
+// once, in ingest; here only the line's own marker regex finds a "2" after a
+// sentence end.
+func holdsNumberedRun(marker, rest string) bool {
+	if n, ok := markerNumber(marker); !ok || n != 1 {
+		return false
+	}
+	for _, m := range sectionSentenceEndRe.FindAllStringIndex(rest, -1) {
+		tail := rest[m[1]:]
+		loc := sectionStepMarkerRe.FindStringIndex(tail)
+		if loc == nil || strings.TrimSpace(tail[loc[1]:]) == "" {
+			continue
+		}
+		if n, ok := markerNumber(tail[:loc[1]]); ok && n == 2 {
+			return true
+		}
+	}
+	return false
+}
+
+// markerNumber reads the digits of a step marker.
+func markerNumber(marker string) (int, bool) {
+	n, err := strconv.Atoi(sectionMarkerDigitsRe.FindString(marker))
+	return n, err == nil
 }
