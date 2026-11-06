@@ -29,6 +29,10 @@ func TestSplitNumberedSteps(t *testing.T) {
 		{"descending", "1. Mix. 3. Bake. 2. Serve.", []string{"1. Mix. 3. Bake. 2. Serve."}},
 		{"run stops at a gap", "1. Mix. 2. Bake. 4. Serve.", []string{"1. Mix.", "2. Bake. 4. Serve."}},
 		{"range of minutes", "1 - 2 minutes in the oven. 2 - 3 minutes to rest.", []string{"1 - 2 minutes in the oven. 2 - 3 minutes to rest."}},
+		{"bare word before a number", "1. Divide the dough into 2. Shape each half. 3. Bake.",
+			[]string{"1. Divide the dough into 2. Shape each half. 3. Bake."}},
+		{"sentence ends before each number", "1. Divide the dough into 2 halves! 2. Shape each? 3. Bake (see note) 4. Cool.",
+			[]string{"1. Divide the dough into 2 halves!", "2. Shape each?", "3. Bake (see note)", "4. Cool."}},
 		{"plain", "Stir well.", []string{"Stir well."}},
 	}
 	for _, tc := range cases {

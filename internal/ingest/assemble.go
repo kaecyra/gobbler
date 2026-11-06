@@ -334,10 +334,10 @@ const enumeratorPattern = `(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d
 // "1/2 the dough") and a bare time ("10 minutes") never match.
 var stepNumberRE = regexp.MustCompile(`^(?:` + enumeratorPattern + `)\s+`)
 
-// enumeratorRE finds an enumerator anywhere in a step: at its start or after
-// whitespace or sentence punctuation (the source's "baking dish.4. Lightly"
-// has no space). Group 1 is the enumerator.
-var enumeratorRE = regexp.MustCompile(`(?:^|[\s.!?;)])((?:` + enumeratorPattern + `))\s+`)
+// enumeratorRE finds an enumerator inside a step: at its start or right after
+// the end of a sentence, with or without a space ("baking dish.4. Lightly"),
+// never after a bare word ("divide into 2. Shape"). Group 1 is the enumerator.
+var enumeratorRE = regexp.MustCompile(`(?:^|[.!?)]\s*)((?:` + enumeratorPattern + `))\s+`)
 
 var enumeratorNumberRE = regexp.MustCompile(`\d+`)
 
