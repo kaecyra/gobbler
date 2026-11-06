@@ -88,7 +88,7 @@ func TestHomeSuggestionIsALibraryCardWithItsPicture(t *testing.T) {
 }
 
 func TestLibrarySuggestionIsALibraryCardWithItsPicture(t *testing.T) {
-	lib := &fakeLibrary{cards: []store.Card{card(4, "Never cake", recipe.MealDessert)}, idle: nil}
+	lib := &fakeLibrary{cards: []store.Card{card(4, "Never cake", recipe.MealDessert)}}
 	lib.idle = lib.cards
 	h := Routes(Deps{Library: lib, Pictures: fakePictures{src: "/recipes/4/picture?v=abc"}, Now: func() time.Time { return today }})
 	for name, header := range map[string]map[string]string{
