@@ -4073,7 +4073,7 @@
       "wave": 13,
       "track": null,
       "issue": 496,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "u-editor-suggest-list"
       ],
@@ -5504,6 +5504,12 @@
       "title": "keep every word and its case when a line's extras become qualifiers",
       "merged": "06625bc",
       "note": "internal/ingest/ingest.go only for the ParserVersion bump: main's value plus one at merge, redone after any rebase (lessons.md). i-split-steps bumps it too, hence the edge."
+    },
+    {
+      "id": "u-qualifier-chip",
+      "title": "keep each qualifier chip's controls inside its pill; chips wrap",
+      "merged": "e738243",
+      "note": "Same lane as u-editor-suggest-list (editor.templ holds the chip styles), so it runs after it."
     }
   ],
   "adr_sequence": {
