@@ -3844,6 +3844,33 @@
       ],
       "needs_migration": null,
       "adrs": []
+    },
+    {
+      "id": "i-reimport",
+      "title": "re-import a recipe from its source as an edit proposal",
+      "wave": 12,
+      "track": null,
+      "issue": 462,
+      "status": "todo",
+      "depends_on": [
+        "r-author-notes",
+        "u-recipe-delete"
+      ],
+      "owns": [
+        "internal/ingest/*.go",
+        "internal/store/**",
+        "internal/web/recipeview/**",
+        "internal/web/editor/**",
+        "internal/web/ingest/**",
+        "e2e/recipeview/**",
+        "e2e/editor/**",
+        "e2e/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00042"
+      ],
+      "blocked": "needs the re-import ADR merged (docs/proposals/reimport.md D1-D4)"
     }
   ],
   "shared_files": [
@@ -5084,7 +5111,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00041",
+    "last_used": "00042",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
