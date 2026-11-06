@@ -75,8 +75,8 @@ const libraryStyle = `
 .sg-voice p { margin: 0; font-family: var(--f-display); font-size: 15.5px; font-style: italic; color: var(--ink-2); }
 .suggest { display: flex; flex-direction: column; gap: 12px; }
 .suggest .sg-next { align-self: flex-start; }
-/* On home the card is a library card's width, left-aligned; in the library's side it fills the panel. */
-.lib.home .suggest .rcard { max-width: 360px; }
+/* On home the card is capped at --card-col-max, about a library card's width at desktop, left-aligned; in the library's side it fills the panel. */
+.lib.home .suggest .rcard { max-width: var(--card-col-max); }
 .sg-voice > div { display: flex; flex-direction: column; gap: 2px; }
 .sg-voice .sg-when { font-family: var(--f-body); font-size: 13px; font-style: normal; color: var(--ink-3); }
 .sg-next { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 15px; font-weight: 600; color: var(--wattle-ink); text-underline-offset: 3px; }
