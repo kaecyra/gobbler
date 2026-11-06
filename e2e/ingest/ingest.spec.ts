@@ -96,9 +96,10 @@ const FIELDS_PAGE = `<html><head><script type="application/ld+json">
 </script></head><body><h1>Fixture Sweet Loaf</h1></body></html>`;
 
 // A page whose WP Recipe Maker card prints a notes block: two tips, a
-// nutrition paragraph and a paragraph over the 400-character limit
-// (ADR-00041). The long one is a single run of words.
-const LONG_NOTE = 'Rest the batter. '.repeat(25).trim();
+// nutrition paragraph and a paragraph of over 700 characters, past the
+// 400-character guideline that ingest flags (ADR-00044). The long one is a
+// single run of words.
+const LONG_NOTE = 'Rest the batter. '.repeat(42).trim();
 const NOTES_PAGE = `<html><head><script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Recipe","name":"Fixture Notes Toast",
  "recipeIngredient":["2 slices bread","1 tbsp butter"],
@@ -729,25 +730,24 @@ test('the author notes of a page arrive as rows, the junk flagged in words, and 
   await expect(rows.nth(2)).toContainText('it reads as nutrition facts');
   await expect(rows.nth(3)).toContainText('it is longer than one short paragraph');
 
-  // The over-long one cannot be confirmed as it is: the form says so and stays.
-  await page.getByRole('button', { name: 'Confirm and save' }).first().click();
-  await expect(page.locator('#ed-notes li.note').nth(3).getByRole('alert')).toContainText('A note is one paragraph of at most 400');
-  await expect(page).toHaveURL(/\/ingest\/[0-9a-f]+$/);
-
-  // Trim, remove and reorder, then confirm.
-  await page.getByRole('button', { name: 'Remove note 4' }).click();
-  await expect(rows).toHaveCount(3);
+  // The over-long one is flagged, never refused: no limit text, and the draft saves.
+  await expect(page.locator('.help.note-help')).toHaveCount(1);
+  await expect(page.locator('.help.note-help')).not.toContainText('at most');
+  const longText = await page.locator('[name="n.3.text"]').inputValue();
+  expect(longText.length).toBeGreaterThanOrEqual(700);
   await page.getByRole('button', { name: 'Remove note 3' }).click();
-  await expect(rows).toHaveCount(2);
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(2)).toContainText('it is longer than one short paragraph');
   await page.locator('[name="n.1.text"]').fill('Keeps three days in a tin, or freeze it.');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+$/);
 
   // They end the step chain on the recipe page, each credited to the author.
   const notes = page.getByTestId('author-note');
-  await expect(notes).toHaveCount(2);
+  await expect(notes).toHaveCount(3);
   await expect(notes.nth(0)).toContainText('Butter: Salted is fine, so skip the extra pinch.');
   await expect(notes.nth(1)).toContainText('Keeps three days in a tin, or freeze it.');
+  await expect(notes.nth(2)).toContainText(longText.slice(0, 40));
   await expect(notes.nth(1).locator('small')).toHaveText('From the author');
   await expect(page.locator('.method ol li').last()).toHaveAttribute('data-testid', 'author-note');
 });

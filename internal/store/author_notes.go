@@ -9,8 +9,8 @@ import (
 )
 
 // The recipe author's notes (ADR-00041) have statements of their own
-// (queries/author_notes.sql). The model has already checked the one-paragraph,
-// 400-character rule; the column refuses an empty text that got past it.
+// (queries/author_notes.sql). The model has already checked the one-paragraph
+// rule; the column refuses an empty text that got past it.
 
 func insertAuthorNotes(ctx context.Context, q *storedb.Queries, hid, id int64, notes []recipe.AuthorNote) error {
 	for i, n := range notes {

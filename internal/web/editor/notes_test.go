@@ -91,16 +91,16 @@ func TestAuthorNoteBadActionIs400(t *testing.T) {
 	}
 }
 
-// The recipe's rule holds in the form: a note over 400 characters, or of two
-// paragraphs, or a title with no text, is refused with a message on its row
-// and nothing saved. 400 characters is accepted.
+// The recipe's rule holds in the form: a note of two paragraphs, or a title
+// with no text, is refused with a message on its row and nothing saved. Length
+// is never refused (ADR-00044).
 func TestAuthorNoteLimitsAreEnforcedOnTheForm(t *testing.T) {
 	cases := []struct {
 		name, title, text, msg string
 		ok                     bool
 	}{
 		{"400", "", strings.Repeat("a", 400), "", true},
-		{"401", "", strings.Repeat("a", 401), "This note is 401 characters. A note is one paragraph of at most 400.", false},
+		{"1000", "", strings.Repeat("a", 1000), "", true},
 		{"two paragraphs", "", "One.\n\nTwo.", "A note is one paragraph.", false},
 		{"title only", "Honey", "", "A note needs text.", false},
 	}
@@ -196,9 +196,9 @@ func TestReviewAuthorNotesRoundTripThroughSubmit(t *testing.T) {
 		t.Error("after the move the flag should sit on the first row, with its note")
 	}
 	v.Del(fieldAction)
-	v.Set("n.0.text", strings.Repeat("a", recipe.MaxAuthorNoteChars+1))
+	v.Set("n.0.text", strings.Repeat("a", 1000))
 	out, err = u.Submit(e.ctx, v, notesBase(), ReviewOptions{Action: "/x"})
-	if err != nil || out.Ready || !out.Rejected {
-		t.Fatalf("a 401-character note: ready=%v rejected=%v err=%v, want it rejected", out.Ready, out.Rejected, err)
+	if err != nil || !out.Ready || out.Rejected {
+		t.Fatalf("a 1000-character note: ready=%v rejected=%v err=%v, want it accepted", out.Ready, out.Rejected, err)
 	}
 }
