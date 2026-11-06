@@ -141,6 +141,17 @@ func (d *Drafts) Discard(ctx context.Context, token string) error {
 	return nil
 }
 
+// dropCandidates deletes the picture candidates of a draft that has ended.
+// A failure is logged: what is left goes when the proposal is pruned.
+func (d *Drafts) dropCandidates(ctx context.Context, proposalID int64) {
+	if d.pictures == nil {
+		return
+	}
+	if err := d.pictures.DeleteCandidates(ctx, proposalID); err != nil {
+		slog.WarnContext(ctx, "delete superseded draft's picture candidates", "proposal_id", proposalID, "error", err.Error())
+	}
+}
+
 // draftGone reports a draft that is not there to change as ErrDraftGone.
 func draftGone(err error, what string) error {
 	switch {

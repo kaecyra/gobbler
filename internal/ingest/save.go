@@ -96,6 +96,9 @@ type RecipeStore interface {
 	// CreateFromDraft stores the recipe and attaches the held draft's source
 	// snapshot to it, and marks the draft accepted, in one transaction.
 	CreateFromDraft(ctx context.Context, token string, r recipe.Recipe) (int64, error)
+	// AcceptReimport saves the recipe over the one a re-import draft replaces
+	// and marks the draft accepted, in one transaction (ADR-00042).
+	AcceptReimport(ctx context.Context, token string, r recipe.Recipe) (int64, error)
 }
 
 // CatalogWriter is what Save calls on the catalog: the reads of CatalogReader
@@ -159,7 +162,10 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 	})
 }
 
-// SaveProposed is Save for a draft held for review under token (Drafts.Add):
+// SaveProposed is Save for a draft held for review under token (Drafts.Add).
+// A re-import draft (ADR-00042) saves over the recipe it was made from, and
+// returns store.ErrStaleProposal when that recipe has changed since; its
+// picture choice is applied to that recipe. For any other draft:
 // the recipe is stored, the draft's source snapshot, written when the draft was
 // made, is attached to it, and the draft is marked accepted, all in one
 // transaction. A draft that is no longer pending, such as one confirmed by a
@@ -167,6 +173,9 @@ func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 // store.ErrNotPending. The catalog entries Save creates are separate and stay.
 func (s *Saver) SaveProposed(ctx context.Context, token string, c Confirmed) (Saved, error) {
 	saved, err := s.save(ctx, c, func(r recipe.Recipe) (int64, error) {
+		if c.draft.Reimport != nil {
+			return s.recipes.AcceptReimport(ctx, token, r)
+		}
 		return s.recipes.CreateFromDraft(ctx, token, r)
 	})
 	if err != nil {

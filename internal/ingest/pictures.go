@@ -20,6 +20,10 @@ const (
 	PictureUnchosen PictureChoice = 0
 	// PictureNone is "No picture", always offered.
 	PictureNone PictureChoice = -1
+	// PictureKeep is "Keep current picture", offered on a re-import only
+	// (ADR-00042): the recipe's picture is left as it is. It is the default
+	// of a re-import, and the zero value reads the same there.
+	PictureKeep PictureChoice = -2
 )
 
 // ErrBadPictureChoice is returned (wrapped) by Drafts.ChoosePicture for a
@@ -39,12 +43,17 @@ type Pictures interface {
 type PictureKeeper interface {
 	Promote(ctx context.Context, proposalID int64, position int, id int64) (string, error)
 	DeleteCandidates(ctx context.Context, proposalID int64) error
+	// Remove clears a recipe's picture, for a re-import saved with No picture.
+	Remove(ctx context.Context, id int64) error
 }
 
 // checkPicture reports a draft that cannot be confirmed for want of a valid
 // picture choice. A draft with no candidates needs none: its only option is
 // "No picture", which is what it gets.
 func (d Draft) checkPicture() error {
+	if d.Reimport != nil && (d.Picture == PictureKeep || d.Picture == PictureUnchosen) {
+		return nil
+	}
 	switch {
 	case d.Picture == PictureNone:
 		return nil
@@ -52,7 +61,7 @@ func (d Draft) checkPicture() error {
 		return errors.New("choose a picture, or No picture")
 	case d.Picture > 0 && int(d.Picture) > d.Candidates:
 		return fmt.Errorf("picture %d is not one of the draft's %d candidates", d.Picture, d.Candidates)
-	case d.Picture < PictureNone:
+	case d.Picture < PictureNone, d.Picture == PictureKeep:
 		return fmt.Errorf("picture choice %d is not valid", d.Picture)
 	}
 	return nil
@@ -93,7 +102,8 @@ func (d *Drafts) ChoosePicture(ctx context.Context, token string, c PictureChoic
 	if err != nil {
 		return err
 	}
-	if c == PictureUnchosen || c < PictureNone || int(c) > dr.Candidates {
+	keep := c == PictureKeep && dr.Reimport != nil
+	if !keep && (c == PictureUnchosen || c < PictureNone || int(c) > dr.Candidates) {
 		return fmt.Errorf("%w: %d of %d", ErrBadPictureChoice, c, dr.Candidates)
 	}
 	dr.Picture = c
@@ -105,6 +115,9 @@ func (d *Drafts) ChoosePicture(ctx context.Context, token string, c PictureChoic
 // recipe is already stored, so a failure is returned for the caller to report,
 // not rolled back; what is left is deleted when the proposal is pruned.
 func (s *Saver) keepPicture(ctx context.Context, d Draft, id int64) error {
+	if d.Reimport != nil {
+		return s.reimportPicture(ctx, d, id)
+	}
 	if s.pictures == nil || d.ProposalID == 0 || d.Candidates == 0 {
 		return nil
 	}
@@ -118,6 +131,35 @@ func (s *Saver) keepPicture(ctx context.Context, d Draft, id int64) error {
 	if err := s.pictures.DeleteCandidates(ctx, d.ProposalID); err != nil {
 		slog.ErrorContext(ctx, "delete unchosen picture candidates", "recipe_id", id, "proposal_id", d.ProposalID, "error", err.Error())
 		return fmt.Errorf("delete the draft's picture candidates: %w", err)
+	}
+	return nil
+}
+
+// reimportPicture applies a re-import's picture choice to the recipe it
+// replaced (ADR-00042). Keeping the current picture, the default, deletes the
+// candidates and leaves the picture; a candidate replaces it and the previous
+// object is deleted by Promote; No picture removes it. The recipe is already
+// saved, so a failure is returned for the caller to report.
+func (s *Saver) reimportPicture(ctx context.Context, d Draft, id int64) error {
+	if s.pictures == nil || d.ProposalID == 0 {
+		return nil
+	}
+	switch {
+	case d.Picture > 0 && d.Candidates > 0:
+		if _, err := s.pictures.Promote(ctx, d.ProposalID, int(d.Picture), id); err != nil {
+			slog.ErrorContext(ctx, "keep chosen picture of re-import", "recipe_id", id, "proposal_id", d.ProposalID, "error", err.Error())
+			return fmt.Errorf("keep the chosen picture: %w", err)
+		}
+		return nil
+	case d.Picture == PictureNone:
+		if err := s.pictures.Remove(ctx, id); err != nil {
+			slog.ErrorContext(ctx, "remove picture on re-import", "recipe_id", id, "error", err.Error())
+			return fmt.Errorf("remove the recipe's picture: %w", err)
+		}
+	}
+	if err := s.pictures.DeleteCandidates(ctx, d.ProposalID); err != nil {
+		slog.ErrorContext(ctx, "delete picture candidates of re-import", "recipe_id", id, "proposal_id", d.ProposalID, "error", err.Error())
+		return fmt.Errorf("delete the re-import's picture candidates: %w", err)
 	}
 	return nil
 }
