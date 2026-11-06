@@ -4166,7 +4166,8 @@
         "e2e/journal/**"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     },
     {
       "id": "a-api-sharing",
@@ -4185,7 +4186,8 @@
         "e2e/sharing/**"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     },
     {
       "id": "a-api-pictures",
@@ -4202,7 +4204,8 @@
         "internal/api/recipes/**"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     },
     {
       "id": "a-api-catalog",
@@ -4226,10 +4229,14 @@
         "internal/web/recipeview/**",
         "internal/web/operator/promotion.go",
         "internal/mcp/server.go",
-        "internal/mcp/tools_edit.go"
+        "internal/mcp/tools_edit*.go",
+        "internal/mcp/mcp_test.go",
+        "internal/mcp/mcp_edit_test.go",
+        "e2e/mcp/**"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     },
     {
       "id": "a-api-households",
@@ -4239,7 +4246,8 @@
       "issue": 515,
       "status": "todo",
       "depends_on": [
-        "a-api-catalog"
+        "a-api-catalog",
+        "a-api-pictures"
       ],
       "owns": [
         "internal/api/households/**",
@@ -4256,10 +4264,15 @@
         "e2e/operator/**",
         "e2e/nonmember/**",
         "internal/web/layout/layout_operator.go",
-        "internal/mcp/server.go"
+        "internal/mcp/server.go",
+        "internal/web/picture/**",
+        "internal/mcp/mcp_test.go",
+        "internal/mcp/mcp_edit_test.go",
+        "e2e/mcp/**"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     },
     {
       "id": "a-api-profile",
@@ -4277,10 +4290,12 @@
         "internal/web/avatar.go",
         "internal/web/layout/avatar.go",
         "internal/web/layout/avatar.templ",
-        "e2e/profile/**"
+        "e2e/profile/**",
+        "internal/web/layout/avatar_templ.go"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     },
     {
       "id": "a-api-status-table",
@@ -4300,7 +4315,8 @@
         "internal/web/layout/httperr.go"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Switches internal/web/layout/httperr.go from domain sentinels to the internal/api re-exports added by every earlier a-api node, and deletes the httperr.go exception in .golangci.yml. Status codes are unchanged."
     },
     {
       "id": "a-api-ingest",
@@ -4322,10 +4338,14 @@
         "internal/mcp/server.go",
         "internal/mcp/tools.go",
         "internal/web/editor/review.go",
-        "internal/web/editor/view.go"
+        "internal/web/editor/view.go",
+        "internal/mcp/mcp_test.go",
+        "internal/mcp/mcp_edit_test.go",
+        "e2e/mcp/**"
       ],
       "needs_migration": null,
-      "adrs": []
+      "adrs": [],
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     }
   ],
   "shared_files": [
@@ -4498,7 +4518,7 @@
     {
       "path": ".golangci.yml",
       "mode": "open",
-      "note": "ADR-00043 fences: each a-api-* node adds its own depguard rule and deletes only the exception lines naming its own files; never edits another node's rule. Rebase on conflict."
+      "note": "ADR-00043 fences: each a-api-* node edits only its own depguard rule (if it adds one) and the exception lines naming files in its own lane; never another node's rule or exceptions. Rebase on conflict."
     }
   ],
   "done": [
