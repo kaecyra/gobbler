@@ -25,7 +25,7 @@ test('an empty library shows an empty state, not an error', async ({ page }) => 
 
 test.describe('with recipes', () => {
   let ids: Record<string, number> = {};
-  const cards = (page: import('@playwright/test').Page) => page.locator('.rcard');
+  const cards = (page: import('@playwright/test').Page) => page.locator('.cards .rcard');
   const card = (page: import('@playwright/test').Page, name: string) => cards(page).filter({ has: page.getByRole('heading', { name, level: 3 }) });
 
   test.beforeAll(() => {
@@ -108,17 +108,28 @@ test.describe('with recipes', () => {
     const suggest = page.locator('#suggest');
     // Never made first. Lemon Cake is the forgot panel's, so it is not also
     // suggested here.
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Beef Stew');
+    await expect(suggest.locator('.rcard h3')).toHaveText('Beef Stew');
+    // A library card, the same element and classes as one in the grid, at the panel's width.
+    await expect(suggest.locator('article.rcard')).toHaveCount(1);
+    await expect(suggest.getByTestId('card-picture')).toHaveClass(/\brpic\b/);
+    const panel = (await page.locator('aside.side').boundingBox())!;
+    expect(Math.abs((await suggest.locator('.rcard').boundingBox())!.width - panel.width)).toBeLessThanOrEqual(2);
+    // The voice line is above the card and "Another idea" below it.
+    const voice = (await suggest.locator('.sg-voice').boundingBox())!;
+    const cardBox = (await suggest.locator('.rcard').boundingBox())!;
+    const nextBox = (await suggest.getByRole('link', { name: 'Another idea' }).boundingBox())!;
+    expect(voice.y + voice.height).toBeLessThanOrEqual(cardBox.y);
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(nextBox.y);
     // The suggestion draws on the whole library, not on the search.
     const next = suggest.getByRole('link', { name: 'Another idea' });
     await expect(next).toHaveAttribute('href', '/recipes?group=time&idea=1&q=a');
     await next.click();
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
+    await expect(suggest.locator('.rcard h3')).toHaveText('Cardamom Knots');
     await expect(page).toHaveURL(/\/recipes\?q=a&group=time$/);
     await expect(page.locator('.group h2').first()).toBeVisible();
     await page.goto('/recipes?idea=1');
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
-    await expectTappable(suggest.locator('.btn'));
+    await expect(suggest.locator('.rcard h3')).toHaveText('Cardamom Knots');
+    await expectTappable(suggest.locator('.rcard h3 a'));
     await expectTappable(suggest.locator('.sg-next'));
   });
 
@@ -224,11 +235,12 @@ test.describe('with recipes', () => {
     await expect(cards(page).locator('.rpic img')).toHaveCount(1);
   });
 
-  test('the home page and the side panels show no picture', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.rpic, .rhero')).toHaveCount(0);
-    await page.goto('/recipes');
-    await expect(page.locator('aside.side .rpic, aside.side img[src*="/picture"]')).toHaveCount(0);
+  test('the suggestion in the side shows the recipe picture, and the other panels show none', async ({ page }) => {
+    await page.goto('/recipes?idea=2');
+    const side = page.locator('aside.side');
+    // Slow Ribs is the third idea and has a picture.
+    await expect(side.locator('#suggest').getByTestId('card-picture').locator('img')).toHaveAttribute('src', new RegExp(`^/recipes/${ids['Slow Ribs']}/picture\\?v=`));
+    await expect(side.locator('.panel .rpic, .panel img[src*="/picture"]')).toHaveCount(0);
   });
 
   test('a recipe whose picture object is missing shows its placeholder band, not a broken image', async ({ page }) => {

@@ -2,7 +2,6 @@ package recipes
 
 import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
-	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
 
 // homePage is the landing page: the hero search, a suggestion and the recently
@@ -12,6 +11,7 @@ templ homePage(h homeView) {
 	@layout.Page("Home") {
 		@templ.Raw("<style>" + libraryStyle + "</style>")
 		@ribbonAssets()
+		@layout.PictureFallback()
 		@focusKey()
 		<section id="library">
 			<form
@@ -48,36 +48,27 @@ templ homePage(h homeView) {
 }
 
 // suggestion is the pick on home and in the library's side: a recipe never
-// made, or not made for a while. The mascot is the speaker of the voice line.
-// "Another idea" asks for the next one and replaces just this block.
+// made, or not made for a while. It is the mascot's voice line and when the
+// recipe was last made above a library card (recipeCard, so it looks and opens
+// like any other), and "Another idea" below it, which replaces just this block.
 templ suggestion(s suggestView) {
-	<article class="suggest" id="suggest" aria-label="A suggestion from gobbler">
+	<section class="suggest" id="suggest" aria-label="A suggestion from gobbler">
 		<div class="sg-voice">
 			<img src={ layout.MascotTasting } alt="" width="44" height="44"/>
-			<p>{ s.Voice }</p>
+			<div>
+				<p>{ s.Voice }</p>
+				<p class="sg-when">{ s.When }</p>
+			</div>
 		</div>
-		<h2 class="sg-name">{ s.Card.Name }</h2>
-		<div class="sg-meta">
-			if s.Card.Meal != "" {
-				@mealType(s.Card.Meal, s.Card.MealLabel)
-			}
-			<span>{ s.When }</span>
-			if s.Card.Rating > 0 {
-				@spoons(s.Card.Rating, s.Card.RatingLabel)
-			}
-		</div>
-		@ribbon.Inline(s.Card.Ribbon)
-		<div class="sg-act">
-			<a class="btn accent" href={ templ.SafeURL(s.Card.Href) }>Open recipe</a>
-			if s.NextHref != "" {
-				<a
-					class="sg-next"
-					href={ templ.SafeURL(s.NextHref) }
-					hx-get={ s.NextHref }
-					hx-target="#suggest"
-					hx-swap="outerHTML"
-				>Another idea</a>
-			}
-		</div>
-	</article>
+		@recipeCard(s.Card)
+		if s.NextHref != "" {
+			<a
+				class="sg-next"
+				href={ templ.SafeURL(s.NextHref) }
+				hx-get={ s.NextHref }
+				hx-target="#suggest"
+				hx-swap="outerHTML"
+			>Another idea</a>
+		}
+	</section>
 }
