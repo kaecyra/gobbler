@@ -40,6 +40,7 @@ type Service struct {
 	media     media.Store
 	snapshots Snapshots
 	fetch     Fetcher
+	userAgent string
 	log       *slog.Logger
 	now       func() time.Time
 	rand      io.Reader
@@ -57,6 +58,14 @@ func New(d *sql.DB, m media.Store, snapshots Snapshots, f Fetcher, log *slog.Log
 		log = slog.Default()
 	}
 	return &Service{db: d, q: picturedb.New(d), media: m, snapshots: snapshots, fetch: f, log: log, now: time.Now, rand: rand.Reader}
+}
+
+// WithUserAgent sets the User-Agent candidate downloads send, the same
+// configured value page fetches use (config.Ingestion.UserAgent): some sites
+// refuse Go's default agent. It returns s for chaining.
+func (s *Service) WithUserAgent(ua string) *Service {
+	s.userAgent = ua
+	return s
 }
 
 func scope(ctx context.Context) (int64, error) {

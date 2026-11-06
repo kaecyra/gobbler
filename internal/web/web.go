@@ -134,7 +134,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		d.Media = m
 	}
 	if d.Pictures == nil {
-		d.Pictures = picture.New(d.DB, d.Media, store.New(d.DB), picture.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger)
+		d.Pictures = picture.New(d.DB, d.Media, store.New(d.DB), picture.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger).WithUserAgent(d.Config.Ingestion.UserAgent)
 	}
 	if d.Drafts == nil {
 		// A new re-import supersedes the recipe's pending one (ADR-00042); the store
