@@ -2,7 +2,9 @@ package recipes
 
 import (
 	"database/sql"
+	"log/slog"
 
+	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/store"
 )
@@ -23,23 +25,36 @@ type Pictures = picture.Service
 // Candidate is a picture candidate of a draft (picture.Candidate).
 type Candidate = picture.Candidate
 
-// Card, MadeEntry, MadeIt, Note, Info, Summary, Revision, Thumbnail,
-// SearchQuery, Proposal, ProposalRef and Provenance are the store's values.
+// The store values the callers of the service work with.
 type (
-	Card        = store.Card
-	MadeEntry   = store.MadeEntry
-	MadeIt      = store.MadeIt
-	Note        = store.Note
-	Info        = store.Info
-	Summary     = store.Summary
-	Revision    = store.Revision
-	Thumbnail   = store.Thumbnail
+	// Card is a recipe as the library lists it (store.Card).
+	Card = store.Card
+	// MadeEntry is one made-it entry of the recently made list (store.MadeEntry).
+	MadeEntry = store.MadeEntry
+	// MadeIt is a made-it entry of a recipe (store.MadeIt).
+	MadeIt = store.MadeIt
+	// Note is a note on a recipe (store.Note).
+	Note = store.Note
+	// Info is a recipe's version and bookkeeping (store.Info).
+	Info = store.Info
+	// Summary is a recipe as listed in a search (store.Summary).
+	Summary = store.Summary
+	// Revision is one saved version of a recipe (store.Revision).
+	Revision = store.Revision
+	// Thumbnail is the stored preview image of a recipe's video (store.Thumbnail).
+	Thumbnail = store.Thumbnail
+	// SearchQuery selects recipes (store.SearchQuery).
 	SearchQuery = store.SearchQuery
-	Proposal    = store.Proposal
+	// Proposal is a held edit, draft or re-import (store.Proposal).
+	Proposal = store.Proposal
+	// ProposalRef names the proposal behind a revision (store.ProposalRef).
 	ProposalRef = store.ProposalRef
-	Provenance  = store.Provenance
-	Credential  = store.Credential
-	DraftInput  = store.DraftInput
+	// Provenance says who proposed a document and how (store.Provenance).
+	Provenance = store.Provenance
+	// Credential is the credential behind a proposal (store.Credential).
+	Credential = store.Credential
+	// DraftInput is a draft to hold (store.DraftInput).
+	DraftInput = store.DraftInput
 	// ProposalState is where a proposal is in its life (store.ProposalState).
 	ProposalState = store.ProposalState
 	// ProposalKind says what a proposal is for (store.ProposalKind).
@@ -89,3 +104,19 @@ func NewStore(d *sql.DB) *Store { return store.New(d) }
 // IdleOrder orders cards by how long ago they were last made, never-made
 // first (store.IdleOrder).
 func IdleOrder(cards []Card) []Card { return store.IdleOrder(cards) }
+
+// MediaReaper is the picture package's reaper (picture.Reaper): it finds and
+// deletes the media objects of a recipe and, for the household delete, of a
+// household.
+type MediaReaper = picture.Reaper
+
+// NewReaper returns a reaper over the media store. log may be nil.
+func NewReaper(m media.Store, log *slog.Logger) *MediaReaper { return picture.NewReaper(m, log) }
+
+// NewPictures returns the picture service over d and the media store m, which
+// reads recipe sources from rec. allowLoopback lets candidate downloads reach
+// a loopback address, for the dev bypass only; userAgent is what they send
+// (picture.New, picture.NewFetcher).
+func NewPictures(d *sql.DB, m media.Store, rec *Store, allowLoopback bool, userAgent string, log *slog.Logger) *Pictures {
+	return picture.New(d, m, rec, picture.NewFetcher(allowLoopback), log).WithUserAgent(userAgent)
+}

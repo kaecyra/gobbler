@@ -25,11 +25,9 @@ import (
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
-	"github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/canada"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -85,7 +83,7 @@ type Deps struct {
 	Media media.Store
 	// Pictures is the picture service the draft store, the review screen and
 	// the picture routes share. Nil means one over DB and Media.
-	Pictures *picture.Service
+	Pictures *apirecipes.Pictures
 	// Recipes is the recipe service the recipe screens share (ADR-00043). Nil
 	// means one over DB, Media and Pictures.
 	Recipes *apirecipes.Service
@@ -136,12 +134,12 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		d.Media = m
 	}
 	if d.Pictures == nil {
-		d.Pictures = picture.New(d.DB, d.Media, store.New(d.DB), picture.NewFetcher(d.Config.Server.DevAuthBypass), d.Logger).WithUserAgent(d.Config.Ingestion.UserAgent)
+		d.Pictures = apirecipes.NewPictures(d.DB, d.Media, apirecipes.NewStore(d.DB), d.Config.Server.DevAuthBypass, d.Config.Ingestion.UserAgent, d.Logger)
 	}
 	if d.Recipes == nil {
 		svc, err := apirecipes.New(apirecipes.Deps{
-			Recipes: store.New(d.DB), Catalog: catalog.New(d.DB), Members: household.New(d.DB),
-			Pictures: d.Pictures, Reaper: picture.NewReaper(d.Media, d.Logger),
+			Recipes: apirecipes.NewStore(d.DB), Catalog: catalog.New(d.DB), Members: household.New(d.DB),
+			Pictures: d.Pictures, Reaper: apirecipes.NewReaper(d.Media, d.Logger),
 			Thumbnails: video.NewFetcherAt(d.Config.Video.ThumbnailHost),
 		})
 		if err != nil {

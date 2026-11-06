@@ -16,11 +16,9 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
-	domain "github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/sharing"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/video"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
 	"github.com/kaecyra/gobbler/internal/web/cook"
@@ -54,7 +52,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Recipes: d.Recipes, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
 	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB), Pictures: recipePictures(d)}))
 	r.Mount(recipeview.DeletePattern, recipeview.DeleteRoutes(recipeview.DeleteDeps{Recipes: d.Recipes}))
-	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: store.New(d.DB)}))
+	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: apirecipes.NewStore(d.DB)}))
 	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
@@ -80,7 +78,7 @@ func mountFeatures(r chi.Router, d Deps) {
 // of an ingredient that recipes use fails on the foreign key, and without the
 // counters the confirmation cannot state how many rows it re-points.
 func mountCatalog(r chi.Router, d Deps) {
-	cat, rec := catalog.New(d.DB), store.New(d.DB)
+	cat, rec := catalog.New(d.DB), apirecipes.NewStore(d.DB)
 	usage := catalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
@@ -127,7 +125,7 @@ func mountHouseholds(r chi.Router, d Deps) {
 	hs.OnMemberLeave(keys.RevokeForMember)
 	// And their OAuth grants (ADR-00034), in that same transaction.
 	hs.OnMemberLeave(oauth.New(d.DB).RevokeForMember)
-	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: pictures.Households{Store: hs, Reaper: domain.NewReaper(d.Media, d.Logger)}, Keys: keys}))
+	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: pictures.Households{Store: hs, Reaper: apirecipes.NewReaper(d.Media, d.Logger)}, Keys: keys}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
 	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
 }
@@ -138,15 +136,15 @@ func mountHouseholds(r chi.Router, d Deps) {
 // households' duplicates into the promoted entry and re-points their rows.
 func mountPromotion(r chi.Router, d Deps) {
 	cat := catalog.New(d.DB)
-	store.New(d.DB).RegisterMergeHooks(cat)
-	apishop.NewStore(d.DB, store.New(d.DB), cat).RegisterMergeHooks(cat)
+	apirecipes.NewStore(d.DB).RegisterMergeHooks(cat)
+	apishop.NewStore(d.DB, apirecipes.NewStore(d.DB), cat).RegisterMergeHooks(cat)
 	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: cat}))
 }
 
 // mountSharing mounts the pages that send a recipe copy to another household
 // and accept or decline one sent to this household (ADR-00018, Sharing).
 func mountSharing(r chi.Router, d Deps, thumbs video.ThumbnailSource) {
-	rec := store.New(d.DB)
+	rec := apirecipes.NewStore(d.DB)
 	svc := sharing.New(rec, household.New(d.DB), catalog.New(d.DB))
 	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: rec, Thumbnails: thumbs}))
 }
