@@ -268,3 +268,82 @@ func TestPluginNotesFromARealCard(t *testing.T) {
 		}
 	}
 }
+
+// A WPRM card that holds the whole method in one li, a display-block span per
+// numbered paragraph, is read as one step per block even though JSON-LD
+// states a single step (#492).
+func TestWPRMBlocksSplitASingleStatedStep(t *testing.T) {
+	res := mustExtract(t, fixture(t, "real_wprm_numbered_block"), fixtureURL)
+	got := res.Recipe.Instructions
+	if len(got) != 6 {
+		t.Fatalf("steps = %+v, want six", got)
+	}
+	for i, n := range []string{"1. In the bowl", "2. To make", "3. Preheat", "4. Lightly dust", "5. Cover the dish", "6. Bake the rolls"} {
+		if !strings.HasPrefix(got[i].Text, n) {
+			t.Errorf("step %d = %q, want it to open %q", i+1, got[i].Text, n)
+		}
+	}
+}
+
+func TestBlocksNeverSplitWhenWordsDiffer(t *testing.T) {
+	page := strings.Replace(fixture(t, "real_wprm_numbered_block"), "Combine the butter and honey together in a small bowl.", "Combine the butter and sugar together in a small bowl.", 1)
+	res := mustExtract(t, page, fixtureURL)
+	if got := len(res.Recipe.Instructions); got != 1 {
+		t.Errorf("steps = %d, want the stated one kept when the card disagrees", got)
+	}
+}
+
+func TestParagraphChildrenSplitAStep(t *testing.T) {
+	page := `<html><head><script type="application/ld+json">{"@type":"Recipe","name":"Rolls",
+"recipeIngredient":["1 cup flour"],
+"recipeInstructions":[{"@type":"HowToStep","text":"Mix the dough. Bake it."}]}</script></head>
+<body><div class="tasty-recipes-instructions"><ol><li><p>Mix the dough.</p><p>Bake it.</p></li></ol></div></body></html>`
+	res := mustExtract(t, page, fixtureURL)
+	got := res.Recipe.Instructions
+	if len(got) != 2 || got[0].Text != "Mix the dough." || got[1].Text != "Bake it." {
+		t.Errorf("steps = %+v, want one per paragraph", got)
+	}
+}
+
+// The structured step's own title survives a block split, on the first piece
+// only (#492).
+func TestBlockSplitKeepsTheStatedTitleOnTheFirstPiece(t *testing.T) {
+	page := `<html><head><script type="application/ld+json">{"@type":"Recipe","name":"Rolls",
+"recipeIngredient":["1 cup flour"],
+"recipeInstructions":[{"@type":"HowToStep","name":"Make the rolls","text":"1. Mix the dough. 2. Bake it."}]}</script></head>
+<body><div class="wprm-recipe-container"><div class="wprm-recipe-instruction-group"><ul><li class="wprm-recipe-instruction"><div class="wprm-recipe-instruction-text"><span style="display: block;">1. Mix the dough.</span><div class="wprm-spacer"></div><span style="display: block;">2. Bake it.</span></div></li></ul></div></div></body></html>`
+	got := mustExtract(t, page, fixtureURL).Recipe.Instructions
+	if len(got) != 2 || got[0].Title != "Make the rolls" || got[1].Title != "" {
+		t.Errorf("steps = %+v, want the title on the first piece only", got)
+	}
+}
+
+// textKey is what a block split compares: it forgives how JSON-LD and a card
+// print the same text, and nothing that changes it (#492).
+func TestTextKey(t *testing.T) {
+	same := [][2]string{
+		{"9×13 inch", "9x13 inch"},
+		{"they&#x27;re puffy", "they're puffy"},
+		{"Bake  the\tRolls.", "bake the rolls"},
+		{"1/4 cup", "1/4   cup"},
+		{"4-5 minutes", "4–5 minutes"},
+		{"1,000 g", "1,000 g"},
+	}
+	for _, c := range same {
+		if textKey(c[0]) != textKey(c[1]) {
+			t.Errorf("textKey(%q) = %q, textKey(%q) = %q, want equal", c[0], textKey(c[0]), c[1], textKey(c[1]))
+		}
+	}
+	differ := [][2]string{
+		{"1/4 cup", "14 cup"},
+		{"4-5 minutes", "45 minutes"},
+		{"1.5 cups", "15 cups"},
+		{"1,000 g", "1000 g"},
+		{"mix then bake", "bake then mix"},
+	}
+	for _, c := range differ {
+		if textKey(c[0]) == textKey(c[1]) {
+			t.Errorf("textKey(%q) = textKey(%q) = %q, want different", c[0], c[1], textKey(c[0]))
+		}
+	}
+}
