@@ -32,12 +32,12 @@
 // by the household on the context, and are also reached by the household
 // delete (through an interface) and by the media-store sweep at start-up,
 // neither of which has a Caller. Moving it would put a Caller on calls those
-// two cannot make, or leave two copies. The picture routes (internal/web/picture,
-// not part of this service's migration) keep calling it directly until the
-// remaining-resources node (#471) decides whether they go through here. Rejected:
-// a full move under internal/api/recipes, for the reason above; and a separate
-// internal/api/pictures resource, because the picture service is neither a
-// household-facing resource of its own nor called by MCP.
+// two cannot make, or leave two copies. The picture routes
+// (internal/web/picture) go through this service (PictureKey, Candidates),
+// which admits the Caller. Rejected: a full move under internal/api/recipes,
+// for the reason above; and a separate internal/api/pictures resource, because
+// the picture service is neither a household-facing resource of its own nor
+// called by MCP.
 //
 // The package re-exports the domain types and errors its callers need as
 // aliases, so internal/web and internal/mcp import this package and neither
