@@ -106,8 +106,8 @@ re-import tools. `Caller` and the membership check are written once in `api/call
 resources use. `internal/picture` stays a domain package that `api/recipes` calls (the package doc gives
 the reasoning). The `recipes-through-api` rule fails `make lint` when a non-test file under
 `internal/web/` or `internal/mcp/` imports `internal/store` or `internal/picture`; the files of
-resources that have not migrated (the journal and its generated templ file, sharing, the status table,
-the picture routes) are excepted by name until #471. The rules read generated files too: golangci-lint
+resources that have not migrated (the journal and its generated templ file, sharing, the status table)
+are excepted by name until #471. The rules read generated files too: golangci-lint
 skips them by default, and every `*_templ.go` is generated, so `.golangci.yml` turns that off and
 excludes the other linters from templ and sqlc output instead, leaving depguard alone to read them.
 The router builds the store, the pictures and the reaper with `apirecipes.NewStore`, `NewPictures` and
