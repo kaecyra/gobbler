@@ -49,7 +49,8 @@ test.describe('with recipes', () => {
     // Unrated says New; three entries in the log, the newest two days ago.
     await expect(soup.locator('.rfoot')).toContainText('New');
     await expect(soup.locator('.rfoot')).toContainText(/Made 3× · /);
-    await expect(soup.locator('[data-rib]')).toHaveAttribute('role', 'img');
+    await expect(soup.getByTestId('card-time')).toHaveText('35m');
+    await expect(soup.locator('[data-rib]')).toHaveCount(0);
 
     const cake = card(page, 'Lemon Cake');
     await expect(cake.getByRole('img', { name: 'Make it again' })).toBeVisible();
@@ -262,45 +263,35 @@ test.describe('with recipes', () => {
     expect((await ribs(page).boundingBox())!.height).toBe(150);
   });
 
-  test.describe('time ribbon', () => {
-    const knotsRibbon = (page: import('@playwright/test').Page) => card(page, 'Cardamom Knots').locator('[data-rib]');
-    // Sets the width of a card, so the ribbon refits as it would in a narrower grid cell.
-    const widen = (page: import('@playwright/test').Page, px: number) =>
-      card(page, 'Cardamom Knots').evaluate((el, w) => ((el as HTMLElement).style.width = `${w}px`), px);
+  test.describe('total time', () => {
+    const time = (page: import('@playwright/test').Page, name: string) => card(page, name).getByTestId('card-time');
 
-    test('a short ribbon shows level 0 with a tooltip and a label', async ({ page }) => {
+    test('a card shows its total time with a clock, and no ribbon', async ({ page }) => {
       await page.goto('/recipes');
-      const rib = card(page, 'Lemon Cake').locator('[data-rib]');
-      await expect(rib).toHaveAttribute('data-level', '0');
-      await expect(rib).toHaveAttribute('aria-label', '15 minutes prep, then 40 minutes bake');
-      await expect(rib.locator('.rib-full .rib-seg').first()).toHaveAttribute('title', '15m prep');
-      await expect(rib.locator('.rib-full .rib-seg').nth(1)).toHaveAttribute('title', '40m bake');
+      await expect(page.locator('[data-rib]')).toHaveCount(0);
+      // Lemon Cake: 15m of prep and 40m of baking.
+      await expect(time(page, 'Lemon Cake')).toHaveText('55m');
+      await expect(time(page, 'Lemon Cake')).toHaveAttribute('title', '55 minutes');
+      await expect(time(page, 'Lemon Cake').locator('svg')).toHaveCount(1);
+      // Cardamom Knots: 20 + 90 + 40 + 30 + 20 minutes.
+      await expect(time(page, 'Cardamom Knots')).toHaveText('3h 20m');
     });
 
-    test('a long ribbon moves to a merged level as the card narrows, and back', async ({ page }) => {
-      await page.setViewportSize({ width: 1400, height: 900 });
+    test('the time sits in the card footer, small, not edge to edge', async ({ page }) => {
       await page.goto('/recipes');
-      await widen(page, 900);
-      await expect(knotsRibbon(page)).toHaveAttribute('data-level', '0');
-      await widen(page, 230);
-      await expect.poll(() => knotsRibbon(page).getAttribute('data-level')).toMatch(/^[12]$/);
-      await widen(page, 900);
-      await expect(knotsRibbon(page)).toHaveAttribute('data-level', '0');
+      const box = (await time(page, 'Lemon Cake').boundingBox())!;
+      const cardBox = (await card(page, 'Lemon Cake').boundingBox())!;
+      expect(box.width).toBeLessThan(cardBox.width / 3);
+      expect(box.y + box.height).toBeLessThan(cardBox.y + cardBox.height - 8);
+      expect(await time(page, 'Lemon Cake').locator('xpath=..').getAttribute('class')).toBe('rfoot');
     });
 
-    test('without the script a narrow ribbon wraps and nothing is clipped', async ({ page }) => {
-      await page.route('**/static/ribbon.js', (route) => route.abort());
-      await page.goto('/recipes');
-      await widen(page, 230);
-      const rib = knotsRibbon(page);
-      await expect(rib).toHaveAttribute('data-level', '0');
-      await expect(rib).not.toHaveAttribute('data-fit', '');
-      const box = (await rib.boundingBox())!;
-      // More than one line of segments, every one inside the ribbon.
-      expect(box.height).toBeGreaterThan(34);
-      const edges = await rib.locator('.rib-full .rib-seg').evaluateAll((segs) => segs.map((s) => s.getBoundingClientRect().right));
-      for (const right of edges) expect(right).toBeLessThanOrEqual(box.x + box.width + 1);
-      expect(await rib.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    test('a card sits under the time group its total belongs to', async ({ page }) => {
+      await page.goto('/recipes?group=time');
+      const group = page.locator('section.group[aria-label="Up to 3 hours"]');
+      await expect(group.locator('.rcard', { hasText: 'Lemon Cake' })).toHaveCount(1);
+      await expect(group.locator('.rcard', { hasText: 'Lemon Cake' }).getByTestId('card-time')).toHaveText('55m');
+      await expect(group.locator('.rcard', { hasText: 'Cardamom Knots' })).toHaveCount(0);
     });
   });
 });

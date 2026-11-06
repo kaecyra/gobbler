@@ -104,7 +104,8 @@ type fixture struct {
 // fixtures are the recipes the specs read: each field the search index covers is
 // reachable by a word only one recipe holds, the meal types, spice levels and
 // made-it logs give the cards and panels something to show, and Cardamom Knots
-// has enough alternating steps for its ribbon to need merging when narrow.
+// has five alternating timed steps, so its card total (3h 20m) is a sum over
+// many steps and lands in the "Plan ahead" time group.
 //
 // A line is written "raw text :: ingredient name"; run splits it.
 func fixtures() []fixture {

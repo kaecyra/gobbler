@@ -10,7 +10,6 @@ import (
 templ homePage(h homeView) {
 	@layout.Page("Home") {
 		@templ.Raw("<style>" + libraryStyle + "</style>")
-		@ribbonAssets()
 		@layout.PictureFallback()
 		@focusKey()
 		<section id="library">

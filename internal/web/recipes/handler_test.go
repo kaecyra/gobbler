@@ -99,6 +99,27 @@ func TestCardShowsTheCuisineLabelOnlyWhenSet(t *testing.T) {
 	}
 }
 
+func TestCardShowsTheTotalTimeAndNoRibbon(t *testing.T) {
+	timed := card(1, "Timed", recipe.MealMain)
+	timed.Steps = []recipe.Step{{Duration: 20 * time.Minute}, {Duration: 3 * time.Hour}}
+	stated := card(2, "Stated", recipe.MealMain)
+	stated.Total = 30 * time.Minute
+	none := card(3, "Untimed", recipe.MealMain)
+	_, body, _ := get(t, &fakeLibrary{cards: []store.Card{timed, stated, none}}, "/?group=time", nil)
+	body, _, _ = strings.Cut(body, "<aside")
+	if strings.Contains(body, "data-rib") || strings.Contains(body, "/static/ribbon") {
+		t.Errorf("a card carries the ribbon:\n%s", body)
+	}
+	for _, want := range []string{`title="3 hours 20 minutes"`, "3h 20m", `title="30 minutes"`, "30m"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("cards lack %q:\n%s", want, body)
+		}
+	}
+	if n := strings.Count(body, `data-testid="card-time"`); n != 2 {
+		t.Errorf("time lines = %d, want 2 (the untimed card shows none)", n)
+	}
+}
+
 func TestEmptyStates(t *testing.T) {
 	_, body, _ := get(t, &fakeLibrary{}, "/", nil)
 	if !strings.Contains(body, `data-testid="empty-library"`) {

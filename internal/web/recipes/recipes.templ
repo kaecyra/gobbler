@@ -9,7 +9,6 @@ import "github.com/kaecyra/gobbler/internal/web/layout"
 templ libraryPage(res results, side sideView) {
 	@layout.Page("Recipes") {
 		@templ.Raw("<style>" + libraryStyle + "</style>")
-		@ribbonAssets()
 		@focusKey()
 		<section id="library">
 			<form

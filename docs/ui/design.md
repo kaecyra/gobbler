@@ -86,16 +86,18 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 
 ## Components
 
-- **Time ribbon.** Pinned to the bottom of a recipe card as card chrome, and
-  shown large on the recipe page as "Ready in about…".
+- **Time ribbon.** Shown large on the recipe page as "Ready in about…". A
+  recipe card carries no ribbon: it shows only the recipe's total time, a small
+  clock icon and the time in the card's meta line, the figure the library's
+  time grouping uses, so a card never contradicts the group it sits under.
   - Each segment shows only an icon and its time: a hand for active, a clock
     for waiting. There is no legend and no words. The stage kinds go in the
     tooltip and the screen-reader label.
   - Segments are soft and semi-transparent, with a 1px border in the same hue.
     They are never flat opaque blocks.
   - The server computes the segments. An embedded script only fits them to
-    the card width: segment width grows with the square root of the duration,
-    and neighbours of the same kind merge until the ribbon fits.
+    the ribbon's width: segment width grows with the square root of the
+    duration, and neighbours of the same kind merge until the ribbon fits.
   - Hands-on is always coral. Each stage kind maps to a colour family:
 
     | Stage kind | Family |
@@ -164,8 +166,8 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   - The suggestion offers recipes never made first, by name, then those not
     made in a while, made longest ago first. On the library it skips the
     recipe the haven't-made-in-a-while panel names, so the two never repeat.
-  - The suggestion is a library card with the card's own ribbon: a small
-    mascot head speaks the voice line above it.
+  - The suggestion is a library card, total time included: a small mascot
+    head speaks the voice line above it.
   - Haven't made in a while shows the rating as spoons.
   - A panel with nothing to show is not drawn. With none to draw, the library
     drops its side and the results take the width, and an empty library shows
