@@ -113,6 +113,13 @@ func (s *fakeStore) CreateFromDraft(ctx context.Context, token string, r recipe.
 	return int64(len(s.recipes)), nil
 }
 
+// AcceptReimport is the real store's: a re-import's save and its refusal of a
+// recipe that moved on are the store's own tests' to show; here it lets the
+// handler's reading of them be seen.
+func (s *fakeStore) AcceptReimport(ctx context.Context, token string, r recipe.Recipe) (int64, error) {
+	return s.drafts.AcceptReimport(ctx, token, r)
+}
+
 func (s *fakeStore) CreateWithSnapshots(_ context.Context, r recipe.Recipe, snaps ...store.SnapshotInput) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

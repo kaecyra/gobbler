@@ -55,6 +55,12 @@ type Drafter interface {
 	FromText(ctx context.Context, text string) (ingestcore.Draft, error)
 }
 
+// Reimporter starts a re-import of a saved recipe (ADR-00042);
+// *ingestcore.Reimporter satisfies it.
+type Reimporter interface {
+	Start(ctx context.Context, id int64, by store.Provenance) (string, error)
+}
+
 // Saver stores a confirmed draft that is held under token;
 // *ingestcore.Saver satisfies it.
 type Saver interface {
@@ -91,6 +97,8 @@ type Deps struct {
 // *picture.Service satisfies it.
 type PictureService interface {
 	Candidates(ctx context.Context, proposalID int64) ([]picture.Candidate, error)
+	// Key finds the picture a re-import's "Keep current picture" keeps.
+	Key(ctx context.Context, recipeID int64) (string, bool, error)
 	ingestcore.PictureKeeper
 }
 
@@ -100,6 +108,8 @@ type handler struct {
 	// unsaved is the recipe editor over the unsaved draft.
 	unsaved editor.Unsaved
 	drafts  *ingestcore.Drafts
+	// reimporter starts a re-import from the recipe page.
+	reimporter Reimporter
 	// pictures lists the candidates the picker shows.
 	pictures PictureService
 	// photoCache holds the photos behind OCR drafts, in memory only.
@@ -147,6 +157,7 @@ func Routes(d Deps) http.Handler {
 		h.log.Error("ingest routes unavailable", "error", err.Error())
 	} else {
 		h.drafter = pipeline
+		h.reimporter = ingestcore.NewReimporter(rec, pipeline, h.drafts)
 		h.photos = pipeline
 		h.ocr = ocr.Runner{}
 		h.retrier = pipeline.Fallback()
@@ -165,6 +176,7 @@ func (h *handler) routes() http.Handler {
 	r.Use(h.requireReady, requireHousehold)
 	r.Get("/", h.form)
 	r.Post("/", h.submit)
+	r.Post("/reimport/{id}", h.reimport)
 	r.Get("/photo", h.photoForm)
 	r.Post("/photo", h.photoSubmit)
 	r.Get("/{token}", h.review)
@@ -223,6 +235,9 @@ type reviewView struct {
 	PhotoGone bool
 	// Picker is the picture picker above the editor.
 	Picker pickerView
+	// Reimport is set when the draft replaces a saved recipe: the review page
+	// then carries the callout saying so.
+	Reimport *ingestcore.Reimport
 }
 
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
@@ -422,7 +437,7 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 		return
 	}
 	layout.Render(w, r, status, reviewPage(reviewView{
-		Token: token, Draft: d, Form: *form, Picker: picker,
+		Token: token, Draft: d, Form: *form, Picker: picker, Reimport: d.Reimport,
 		CanRetry: h.retrier != nil && h.retrier.Configured(),
 		// A draft read from a photo whose photo is no longer in memory:
 		// asking the LLM again reads the recognised text alone.
@@ -508,6 +523,12 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	saved, err := h.saver.SaveProposed(r.Context(), token, confirmed)
+	if errors.Is(err, store.ErrStaleVersion) && d.Reimport != nil {
+		// The recipe was edited after the re-import started. Nothing was
+		// saved; the person's edits to the draft are kept while they decide.
+		retry([]string{staleReimport})
+		return
+	}
 	var unitErr *ingestcore.UnknownUnitError
 	if errors.As(err, &unitErr) {
 		// The catalog changed since drafting: a problem with the draft, not a
@@ -535,6 +556,38 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, recipePath(saved.RecipeID), http.StatusSeeOther)
+}
+
+// staleReimport is shown on the review screen when the recipe changed after the
+// re-import started.
+const staleReimport = "The recipe changed since this re-import was made, so it cannot be saved. Discard it and re-import again."
+
+// reimport fetches a saved recipe's source again, drafts it with the whole
+// ingest pipeline and lands on the review screen. A fetch or pipeline failure
+// is shown and no draft is held (ADR-00042). Nothing is saved.
+func (h *handler) reimport(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id < 1 {
+		layout.WriteError(w, r, fmt.Errorf("recipe %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
+		return
+	}
+	email, found := auth.EmailFromContext(r.Context())
+	if !found {
+		layout.WriteError(w, r, fmt.Errorf("re-import: %w", store.ErrNoIdentity))
+		return
+	}
+	token, err := h.reimporter.Start(r.Context(), id, store.Provenance{Person: email})
+	if err != nil {
+		if msg, ok := inputFailure(err); ok && layout.StatusFor(err) != http.StatusInternalServerError {
+			status := layout.StatusFor(err)
+			h.log.WarnContext(r.Context(), "re-import failed", "recipe_id", id, "error", err.Error(), "status", status)
+			layout.Render(w, r, status, layout.ErrorPage(status, msg+" The recipe is unchanged."))
+			return
+		}
+		layout.WriteError(w, r, fmt.Errorf("re-import recipe %d: %w", id, err))
+		return
+	}
+	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
 }
 
 // incompleteProblems turns Confirm's joined error into one message per
@@ -570,10 +623,15 @@ func leaves(err error) []error {
 // answer is the same for every caller.
 func (h *handler) cancel(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
+	// A discarded re-import goes back to its recipe, not to the add form.
+	back := "/ingest"
+	if d, err := h.drafts.Get(r.Context(), token); err == nil && d.Reimport != nil {
+		back = recipePath(d.Reimport.RecipeID)
+	}
 	if err := h.drafts.Discard(r.Context(), token); err != nil && !errors.Is(err, ingestcore.ErrDraftGone) {
 		layout.WriteError(w, r, err)
 		return
 	}
 	h.photoCache.Drop(token)
-	http.Redirect(w, r, "/ingest", http.StatusSeeOther)
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
