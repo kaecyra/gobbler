@@ -24,10 +24,10 @@ This file holds the volatile state the graph does not. The durable record is `do
 2. **#534 u-qualifier-style (#526)**, wt-526. Review requested changes; all fixed in 31bdd99 (PR comment) at VERSION 0.123.10. Next: verify the diff, resolve threads by ID, then merge after #531. If #531 has not merged first, re-bump. Screenshots: .cc-scratch/shots-526-after-{1280,390}.png.
 3. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed (42aa5aa, pushed). It still needs to merge origin/main: conflicts on design.md's "not migrated yet" sentence (after #531 and #530 it lists only "the status table") and the `.golangci.yml` journal exceptions. Re-bump to the next free patch, then merge.
 
-**In flight (dispatched at about 450k context; the reports die with this session):**
-- **u-save-errors-visible (#524)**: wt-524, branch fix/524-save-errors-visible.
-- **u-card-total-time (#528)**: wt-528, branch fix/528-card-total-time.
-- Both briefs say 0.123.9; re-bump at merge. Screenshots go to .cc-scratch/shots-{524,528}-*.png. If a report is lost: `git -C .claude/worktrees/wt-N log origin/main..`, run `make check` in the worktree, and if the work is complete, open the PR (Closes #N), then `/sdlc-review-pr`.
+**Also open, worker PRs from late in the round** (reviews launched in background agents; read what is posted on GitHub):
+4. **#535 u-save-errors-visible (#524)**, wt-524, VERSION 0.123.9 (re-bump at merge). Screenshots: .cc-scratch/shots-524-*.png.
+5. **#536 u-card-total-time (#528)**, wt-528, VERSION 0.123.9 (re-bump at merge). Screenshots: .cc-scratch/shots-528-*.png. Out of lane and not yet filed: `internal/store/library.go:18`'s comment says card steps carry only what the ribbon reads, but `timeToTable` reads them too. Fix it in a node that owns store, or file an issue.
+- **Stash incident:** wt-524 and wt-528 both used `git stash`, and each pop took the other's changes. Both workers repaired their trees, and ownership holds on both branches. One labelled leftover stays on the shared stack: "restored: popped by mistake from wt-528". It is wt-524's already-committed WIP; drop it once #535 merges. Worker briefs now forbid `git stash`, via the scratchpad common-tail. Add the same rule to the worker contract and lessons.
 
 **Next to dispatch:** u-notes-apart (#527), after #534 and #528 merge; then a-api-catalog (#514) once sharing, save-errors, qualifier-style and notes-apart have all merged. #522, a named constant for the suggest asset paths, has no node.
 
