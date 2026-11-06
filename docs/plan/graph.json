@@ -3881,12 +3881,14 @@
         "internal/mcp/tools.go",
         "internal/mcp/server.go",
         "internal/web/history/**",
-        "e2e/history/**"
+        "e2e/history/**",
+        "internal/web/reimport_wiring_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [
         "00042"
-      ]
+      ],
+      "note": "ADR-00042 (corrected in #480: several snapshots per kind, newest wins; migration 00032). May edit the one existing line in internal/web/web.go that builds the ingest drafts store, to give it the picture reaper (an exception to web.go's append-only rule): a new re-import supersedes the pending one there. internal/web/reimport_wiring_test.go drives the real router to prove an MCP edit's supersede leaves no candidates."
     },
     {
       "id": "a-api-shopping",
