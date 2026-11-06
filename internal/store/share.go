@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -156,19 +158,17 @@ func portableDocument(ctx context.Context, q *storedb.Queries, hid int64, r reci
 // shareSnapshots returns the source snapshots of recipe id in the column form,
 // or NULL when it has none.
 func shareSnapshots(ctx context.Context, q *storedb.Queries, hid, id int64) (sql.NullString, error) {
-	kinds, err := q.ListSnapshotKinds(ctx, storedb.ListSnapshotKindsParams{RecipeID: nullID(id), HouseholdID: hid})
+	rows, err := q.ListSnapshots(ctx, storedb.ListSnapshotsParams{RecipeID: nullID(id), HouseholdID: hid})
 	if err != nil {
-		return sql.NullString{}, readErr("snapshot kinds", err)
+		return sql.NullString{}, readErr(fmt.Sprintf("snapshots of recipe %d", id), err)
 	}
-	if len(kinds) == 0 {
+	if len(rows) == 0 {
 		return sql.NullString{}, nil
 	}
-	snaps := make([]shareSnapshot, 0, len(kinds))
-	for _, k := range kinds {
-		row, err := q.GetSnapshot(ctx, storedb.GetSnapshotParams{RecipeID: nullID(id), Kind: k, HouseholdID: hid})
-		if err != nil {
-			return sql.NullString{}, readErr(fmt.Sprintf("%s snapshot of recipe %d", k, id), err)
-		}
+	// Every snapshot, the original first: a re-imported recipe has more than
+	// one of a kind (ADR-00042).
+	snaps := make([]shareSnapshot, 0, len(rows))
+	for _, row := range rows {
 		snaps = append(snaps, shareSnapshot{Kind: row.Kind, Content: row.Content})
 	}
 	body, err := json.Marshal(snaps)
@@ -351,8 +351,19 @@ func (s *Store) insertSharedSnapshots(ctx context.Context, q *storedb.Queries, h
 		return fmt.Errorf("%w: share snapshots: %w", ErrCorrupt, err)
 	}
 	for _, sn := range snaps {
-		if err := s.insertSnapshot(ctx, q, hid, recipeID, SnapshotKind(sn.Kind), sn.Content, who); err != nil {
-			return err
+		// A share carries every snapshot of the recipe it copies, so a kind
+		// may repeat (ADR-00042) and AddSnapshot's one-per-kind check is not
+		// applied.
+		if !SnapshotKind(sn.Kind).Valid() {
+			return fmt.Errorf("%w: share snapshot kind %q", ErrCorrupt, sn.Kind)
+		}
+		sum := sha256.Sum256(sn.Content)
+		err := q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
+			HouseholdID: hid, RecipeID: nullID(recipeID), Kind: sn.Kind, Content: sn.Content, Sha256: hex.EncodeToString(sum[:]),
+			CreatedAt: s.stamp(), CreatedBy: who,
+		})
+		if err != nil {
+			return fmt.Errorf("write %s snapshot of shared recipe %d: %w", sn.Kind, recipeID, err)
 		}
 	}
 	return nil

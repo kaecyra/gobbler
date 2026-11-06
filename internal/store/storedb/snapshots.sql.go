@@ -31,6 +31,7 @@ func (q *Queries) CountSnapshots(ctx context.Context, arg CountSnapshotsParams) 
 const getSnapshot = `-- name: GetSnapshot :one
 SELECT kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
 WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3
+ORDER BY id DESC LIMIT 1
 `
 
 type GetSnapshotParams struct {
@@ -48,6 +49,9 @@ type GetSnapshotRow struct {
 	ParserVersion string
 }
 
+// A recipe may hold several snapshots of a kind once it has been re-imported
+// (ADR-00042). The one a caller wants is the newest; the first stays as the
+// original and is read by ListSnapshots.
 func (q *Queries) GetSnapshot(ctx context.Context, arg GetSnapshotParams) (GetSnapshotRow, error) {
 	row := q.db.QueryRowContext(ctx, getSnapshot, arg.RecipeID, arg.Kind, arg.HouseholdID)
 	var i GetSnapshotRow
@@ -93,7 +97,8 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 
 const listSnapshotKinds = `-- name: ListSnapshotKinds :many
 SELECT kind FROM source_snapshots
-WHERE recipe_id = ?1 AND household_id = ?2 ORDER BY id
+WHERE recipe_id = ?1 AND household_id = ?2
+GROUP BY kind ORDER BY MIN(id)
 `
 
 type ListSnapshotKindsParams struct {
@@ -114,6 +119,56 @@ func (q *Queries) ListSnapshotKinds(ctx context.Context, arg ListSnapshotKindsPa
 			return nil, err
 		}
 		items = append(items, kind)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnapshots = `-- name: ListSnapshots :many
+SELECT kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
+WHERE recipe_id = ?1 AND household_id = ?2 ORDER BY id
+`
+
+type ListSnapshotsParams struct {
+	RecipeID    sql.NullInt64
+	HouseholdID int64
+}
+
+type ListSnapshotsRow struct {
+	Kind          string
+	Content       []byte
+	Sha256        string
+	CreatedAt     string
+	CreatedBy     string
+	ParserVersion string
+}
+
+// Every snapshot of the recipe, the original first.
+func (q *Queries) ListSnapshots(ctx context.Context, arg ListSnapshotsParams) ([]ListSnapshotsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSnapshots, arg.RecipeID, arg.HouseholdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSnapshotsRow
+	for rows.Next() {
+		var i ListSnapshotsRow
+		if err := rows.Scan(
+			&i.Kind,
+			&i.Content,
+			&i.Sha256,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.ParserVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

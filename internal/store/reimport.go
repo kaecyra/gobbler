@@ -201,10 +201,9 @@ func (s *Store) AcceptReimport(ctx context.Context, token string, r recipe.Recip
 		if err := s.replace(ctx, q, hid, id, r, who, changeProposal, nil, row.ID); err != nil {
 			return err
 		}
-		// The new snapshot stays on the accepted draft (proposals.snapshot_id).
-		// Attaching it to the recipe beside the first waits on the ruling on
-		// source_snapshots' UNIQUE (recipe_id, kind) (ADR-00042 obligation 2).
-		return nil
+		// Beside the recipe's first snapshot, which stays the original; readers
+		// that want one of a kind take the newest (migration 00032).
+		return attachSnapshot(ctx, q, hid, row.SnapshotID.Int64, id)
 	})
 	if err != nil {
 		return 0, err

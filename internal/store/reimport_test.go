@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -121,6 +122,15 @@ func TestAcceptReimportReplacesTheRecipeInPlace(t *testing.T) {
 	if made, _ := s.ListMadeIt(ctx, id); len(made) != 1 {
 		t.Errorf("%d made-it entries, want them kept", len(made))
 	}
+	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = ?`, id); n != 2 {
+		t.Errorf("%d snapshots attached, want the first and the new one", n)
+	}
+	if snap, err := s.GetSnapshot(ctx, id, SnapshotHTML); err != nil || string(snap.Content) != "<html>fetched again</html>" {
+		t.Errorf("single-snapshot read = %q (%v), want the newest of the kind", snap.Content, err)
+	}
+	if kinds, err := s.ListSnapshotKinds(ctx, id); err != nil || len(kinds) != 1 {
+		t.Errorf("kinds = %v (%v), want html once", kinds, err)
+	}
 	var stillFirst string
 	if err := d.QueryRow(`SELECT sha256 FROM source_snapshots WHERE recipe_id = ? ORDER BY id LIMIT 1`, id).Scan(&stillFirst); err != nil || stillFirst != firstSnap {
 		t.Errorf("first snapshot hash = %q (%v), want it unchanged: %q", stillFirst, err, firstSnap)
@@ -181,6 +191,9 @@ func TestAcceptReimportRefusesARecipeThatMovedOn(t *testing.T) {
 	}
 	if cur, _ := s.Get(ctx, id); cur.Name != "Edited meanwhile" {
 		t.Errorf("name = %q, want the edit untouched", cur.Name)
+	}
+	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE recipe_id = ?`, id); n != 1 {
+		t.Errorf("%d snapshots attached, want only the first", n)
 	}
 	p, _ := s.GetProposal(ctx, token)
 	if p.State != ProposalPending || !p.StaleAt(2) {
@@ -360,4 +373,32 @@ func (r *removingReaper) CollectRecipe(context.Context, *sql.Tx, int64, int64) (
 	return nil, nil
 }
 
-func (r *removingReaper) Remove(_ context.Context, keys []string) { r.removed = append(r.removed, keys...) }
+func (r *removingReaper) Remove(_ context.Context, keys []string) {
+	r.removed = append(r.removed, keys...)
+}
+
+// A share copies every snapshot of a recipe, the original first (ADR-00042).
+func TestShareCopiesEverySnapshotOfAReimportedRecipe(t *testing.T) {
+	s, d := newTestStore(t)
+	_, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	id := recipeWithSource(ctx, t, s, ids.salt)
+	token, err := s.ProposeDraft(ctx, reimportInput(ids.salt, id, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AcceptReimport(ctx, token, editOf(ctx, t, s, id, func(r *recipe.Recipe) { r.Name = "Fresh" })); err != nil {
+		t.Fatal(err)
+	}
+	snaps, err := shareSnapshots(ctx, s.q, testHouseholdID, id)
+	if err != nil || !snaps.Valid {
+		t.Fatalf("shareSnapshots = %v, %v", snaps, err)
+	}
+	var got []shareSnapshot
+	if err := json.Unmarshal([]byte(snaps.String), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || string(got[0].Content) != "<html>first import</html>" || string(got[1].Content) != "<html>fetched again</html>" {
+		t.Errorf("shared snapshots = %+v, want the original then the re-import", got)
+	}
+}
