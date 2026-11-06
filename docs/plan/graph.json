@@ -3839,7 +3839,9 @@
       "depends_on": [],
       "owns": [
         "internal/web/recipes/**",
-        "e2e/home/**"
+        "e2e/home/**",
+        "internal/web/home.go",
+        "e2e/recipes/recipes.spec.ts"
       ],
       "needs_migration": null,
       "adrs": []
