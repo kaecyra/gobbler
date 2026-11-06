@@ -24,6 +24,20 @@ type AuthorNote struct {
 	Text  string
 }
 
+// Lead is the title as the bold opening of the note's text: the title and a
+// colon, unless the title already ends in punctuation; empty for a note with no
+// title. The recipe page and cook mode show it the same way.
+func (n AuthorNote) Lead() string {
+	title := strings.TrimSpace(n.Title)
+	if title == "" {
+		return ""
+	}
+	if strings.ContainsRune(".:!?", rune(title[len(title)-1])) {
+		return title
+	}
+	return title + ":"
+}
+
 // Validate checks that the note has text, that the text is one paragraph (it
 // holds no blank line) and that it is at most MaxAuthorNoteChars characters.
 // The rule holds for every writer: ingest, the editor and MCP.

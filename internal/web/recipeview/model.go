@@ -115,19 +115,6 @@ type noteView struct {
 	Text string
 }
 
-// leadOf is a note title as the bold lead of its text: the title and a colon,
-// unless the title already ends in punctuation.
-func leadOf(title string) string {
-	title = strings.TrimSpace(title)
-	if title == "" {
-		return ""
-	}
-	if strings.ContainsRune(".:!?", rune(title[len(title)-1])) {
-		return title
-	}
-	return title + ":"
-}
-
 // notesComponent is the part whose list of steps the author notes follow, so
 // the chain runs on from its last step: the last part that shows steps. It is
 // -1 when no part does, and the notes then make a list of their own.
@@ -213,7 +200,7 @@ func buildView(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	}
 
 	for _, n := range r.AuthorNotes {
-		v.Notes = append(v.Notes, noteView{Lead: leadOf(n.Title), Text: n.Text})
+		v.Notes = append(v.Notes, noteView{Lead: n.Lead(), Text: n.Text})
 	}
 
 	for _, link := range r.Equipment {

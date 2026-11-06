@@ -44,3 +44,11 @@ func TestAuthorNoteValidateNamesTheNote(t *testing.T) {
 		t.Errorf("Validate() = %v, want it to name author note 2", err)
 	}
 }
+
+func TestAuthorNoteLeadKeepsItsOwnPunctuation(t *testing.T) {
+	for title, want := range map[string]string{"Wine": "Wine:", " Wine ": "Wine:", "Why?": "Why?", "Note.": "Note.", "Tip:": "Tip:", "": ""} {
+		if got := (AuthorNote{Title: title}).Lead(); got != want {
+			t.Errorf("Lead() of title %q = %q, want %q", title, got, want)
+		}
+	}
+}

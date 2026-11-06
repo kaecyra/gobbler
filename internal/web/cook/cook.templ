@@ -132,6 +132,7 @@ templ stepPanel(p page) {
 				>{ p.UpNext.Label }</a>
 			</aside>
 		}
+		@authorNotes(p.Notes)
 		<nav class="cook-nav" aria-label="Steps">
 			if p.PrevHref != "" {
 				<a class="cook-btn" href={ templ.SafeURL(p.PrevHref) } hx-get={ p.PrevHref } hx-target="#cook-step" hx-select="#cook-step" hx-swap="outerHTML" hx-push-url="true" rel="prev" data-testid="prev">Back</a>
@@ -197,6 +198,43 @@ templ meanwhile(p page) {
 					</li>
 				}
 			</ul>
+		</div>
+	}
+}
+
+// authorNotes is the "Author's Notes" button and the notes it opens
+// (ADR-00041). The panel is a popover, so the button works without a script
+// and the panel closes on Escape or a tap outside it. It renders nothing when
+// the recipe has no author notes.
+templ authorNotes(notes []noteView) {
+	if len(notes) > 0 {
+		<style>
+			.cook-notes-row { margin: 0 0 14px; }
+			.cook-notes-panel { max-width: min(34rem, calc(100vw - 32px)); max-height: 80vh; overflow: auto; margin: auto; padding: 20px 22px 18px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+			.cook-notes-panel::backdrop { background: color-mix(in srgb, var(--ink) 35%, transparent); }
+			.cook-notes-panel h2 { margin: 0 0 12px; }
+			.cook-notes-panel ul { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+			.cook-notes-panel li { font-size: 17px; line-height: 1.55; color: var(--ink-2); }
+			.cook-notes-panel li b { color: var(--ink); font-weight: 650; }
+			.cook-notes-panel small { color: var(--ink-3); font-size: 13.5px; white-space: nowrap; margin-left: 4px; }
+		</style>
+		<p class="cook-notes-row">
+			<button type="button" class="cook-btn" popovertarget="cook-notes" data-testid="notes-open">Author's Notes</button>
+		</p>
+		<div id="cook-notes" class="cook-notes-panel" popover aria-labelledby="cook-notes-h" data-testid="notes-panel">
+			<h2 id="cook-notes-h" class="eyebrow">Author's Notes</h2>
+			<ul data-testid="notes-list">
+				for _, n := range notes {
+					<li data-testid="author-note">
+						if n.Lead != "" {
+							<b>{ n.Lead }</b>
+						}
+						{ " " + n.Text }
+						<small>From the author</small>
+					</li>
+				}
+			</ul>
+			<button type="button" class="cook-btn" popovertarget="cook-notes" popovertargetaction="hide" data-testid="notes-close">Close</button>
 		</div>
 	}
 }

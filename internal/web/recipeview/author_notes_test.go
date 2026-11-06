@@ -43,14 +43,6 @@ func TestAuthorNotesEndTheStepChain(t *testing.T) {
 	mustNotContain(t, body, `>Author's Notes<`, `>Author&#39;s Notes<`)
 }
 
-func TestAuthorNoteTitleKeepsItsOwnPunctuation(t *testing.T) {
-	for title, want := range map[string]string{"Wine": "Wine:", " Wine ": "Wine:", "Why?": "Why?", "Note.": "Note.", "Tip:": "Tip:", "": ""} {
-		if got := leadOf(title); got != want {
-			t.Errorf("leadOf(%q) = %q, want %q", title, got, want)
-		}
-	}
-}
-
 func TestRecipeWithoutAuthorNotesShowsNone(t *testing.T) {
 	body := page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
 	mustNotContain(t, body, `data-testid="author-note"`, "From the author")
