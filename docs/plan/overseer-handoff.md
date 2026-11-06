@@ -18,7 +18,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 | r-author-notes | #479 | 05f2588 | 00031 | 0.120.0 |
 
-**In flight:** i-reimport (#462), worktree wt-462, branch feat/462-reimport, no migration, target
+**In flight:** i-reimport (#462), worktree wt-462, branch feat/462-reimport, schema migration 00032 (owner ruling ib-89c94bbedfa8, #480), target
 VERSION 0.121.0. Dispatched after #479 merged.
 
 - **a-api-shopping pattern** (for a-api-recipes): `Service.Op(ctx, Caller, ...)`; `Caller{Person,
