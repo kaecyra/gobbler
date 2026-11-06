@@ -746,6 +746,8 @@ test.describe('qualifier chips', () => {
     { kind: 'form', text: 'whole' },
     { kind: 'note', text: '240ml' },
     { kind: 'note', text: 'warmed to about 110°F (43°C)' },
+    // The widest kind label, so the narrowest phone still has to fit it.
+    { kind: 'preparation', text: 'diced' },
   ];
 
   for (const viewport of [{ width: 1280, height: 900 }, { width: 820, height: 1180 }, { width: 390, height: 844 }, { width: 360, height: 780 }]) {
@@ -795,7 +797,9 @@ test.describe('qualifier chips', () => {
         expect(sel.width, `chip ${i} kind select is a tap target wide`).toBeGreaterThanOrEqual(44);
         // The text is not cut off where the row has room for it. A phone is
         // narrower than the long note, and a one-line field scrolls it there.
-        if (viewport.width < 820 && quals[i].text.length > 10) continue;
+        // On the narrowest phones the widest kind label leaves the text box a
+        // few characters, and it scrolls there too.
+        if (viewport.width < 820 && (quals[i].text.length > 10 || (viewport.width <= 400 && quals[i].kind === 'preparation'))) continue;
         const clipped = await chip.locator('input[type=text]').evaluate((el: HTMLInputElement) => el.scrollWidth > el.clientWidth);
         expect(clipped, `chip ${i} text is cut off`).toBe(false);
       }
