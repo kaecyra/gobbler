@@ -2,9 +2,7 @@ package store
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -354,16 +352,8 @@ func (s *Store) insertSharedSnapshots(ctx context.Context, q *storedb.Queries, h
 		// A share carries every snapshot of the recipe it copies, so a kind
 		// may repeat (ADR-00042) and AddSnapshot's one-per-kind check is not
 		// applied.
-		if !SnapshotKind(sn.Kind).Valid() {
-			return fmt.Errorf("%w: share snapshot kind %q", ErrCorrupt, sn.Kind)
-		}
-		sum := sha256.Sum256(sn.Content)
-		err := q.InsertSnapshot(ctx, storedb.InsertSnapshotParams{
-			HouseholdID: hid, RecipeID: nullID(recipeID), Kind: sn.Kind, Content: sn.Content, Sha256: hex.EncodeToString(sum[:]),
-			CreatedAt: s.stamp(), CreatedBy: who,
-		})
-		if err != nil {
-			return fmt.Errorf("write %s snapshot of shared recipe %d: %w", sn.Kind, recipeID, err)
+		if err := s.writeSnapshot(ctx, q, hid, recipeID, SnapshotInput{Kind: SnapshotKind(sn.Kind), Content: sn.Content}, who); err != nil {
+			return fmt.Errorf("copy shared snapshot: %w", err)
 		}
 	}
 	return nil

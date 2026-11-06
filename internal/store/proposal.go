@@ -26,9 +26,11 @@ type ProposalKind string
 
 // Proposal kinds.
 const (
-	// ProposalDraft is the draft of a new recipe from ingestion. Its document
-	// is ingestion's own and opaque here, except for the ingredient ids it
-	// names (see proposal_doc.go). It carries a source snapshot.
+	// ProposalDraft is an ingestion draft: of a new recipe, or, when its
+	// document carries a "reimport" marker, a re-import that replaces a saved
+	// recipe (ADR-00042; see reimport.go). Its document is ingestion's own and
+	// opaque here, except for the ingredient ids it names and that marker (see
+	// proposal_doc.go). It carries a source snapshot.
 	ProposalDraft ProposalKind = "draft"
 	// ProposalEdit is a proposed new version of an existing recipe, made
 	// against one version of it. Its document is the revision document format.
@@ -115,8 +117,9 @@ type Proposal struct {
 	RecipeID, BaseVersion int64
 	// ResultRecipeID is the recipe a confirmed draft created; zero otherwise.
 	ResultRecipeID int64
-	// Document is the stored document: a draft's, opaque to the store, or an
-	// edit's revision document.
+	// Document is the stored document: a draft's, opaque to the store apart from
+	// the ingredient ids and the re-import marker it names, or an edit's revision
+	// document.
 	Document []byte
 	// Edit is the recipe an edit proposes; nil for a draft.
 	Edit *recipe.Recipe
