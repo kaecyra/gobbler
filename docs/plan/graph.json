@@ -4155,7 +4155,7 @@
       "title": "the journal goes through internal/api/journal",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 511,
       "status": "todo",
       "depends_on": [
         "a-api-recipes"
@@ -4173,7 +4173,7 @@
       "title": "recipe sharing goes through internal/api/sharing",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 512,
       "status": "todo",
       "depends_on": [
         "a-api-recipes"
@@ -4192,7 +4192,7 @@
       "title": "the recipe picture routes go through internal/api/recipes",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 513,
       "status": "todo",
       "depends_on": [
         "a-api-recipes"
@@ -4209,7 +4209,7 @@
       "title": "the catalog goes through internal/api/catalog",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 514,
       "status": "todo",
       "depends_on": [
         "a-api-recipes",
@@ -4236,7 +4236,7 @@
       "title": "households go through internal/api/households",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 515,
       "status": "todo",
       "depends_on": [
         "a-api-catalog"
@@ -4254,7 +4254,9 @@
         "internal/mcp/tools_import.go",
         "e2e/household/**",
         "e2e/operator/**",
-        "e2e/nonmember/**"
+        "e2e/nonmember/**",
+        "internal/web/layout/layout_operator.go",
+        "internal/mcp/server.go"
       ],
       "needs_migration": null,
       "adrs": []
@@ -4264,7 +4266,7 @@
       "title": "profile, sessions and grants go through internal/api/profile",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 516,
       "status": "todo",
       "depends_on": [
         "a-api-households"
@@ -4285,7 +4287,7 @@
       "title": "the status table maps internal/api errors, not domain sentinels",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 517,
       "status": "todo",
       "depends_on": [
         "a-api-journal",
@@ -4305,7 +4307,7 @@
       "title": "ingestion goes through internal/api/ingest",
       "wave": 13,
       "track": null,
-      "issue": null,
+      "issue": 518,
       "status": "todo",
       "depends_on": [
         "a-api-households"
@@ -4316,7 +4318,11 @@
         "e2e/ingest/**",
         "internal/mcp/tools_import*.go",
         "internal/mcp/tools_reimport*.go",
-        "internal/web/recipeview/reimport.go"
+        "internal/web/recipeview/reimport.go",
+        "internal/mcp/server.go",
+        "internal/mcp/tools.go",
+        "internal/web/editor/review.go",
+        "internal/web/editor/view.go"
       ],
       "needs_migration": null,
       "adrs": []
