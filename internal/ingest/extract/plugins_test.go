@@ -304,3 +304,16 @@ func TestParagraphChildrenSplitAStep(t *testing.T) {
 		t.Errorf("steps = %+v, want one per paragraph", got)
 	}
 }
+
+// The structured step's own title survives a block split, on the first piece
+// only (#492).
+func TestBlockSplitKeepsTheStatedTitleOnTheFirstPiece(t *testing.T) {
+	page := `<html><head><script type="application/ld+json">{"@type":"Recipe","name":"Rolls",
+"recipeIngredient":["1 cup flour"],
+"recipeInstructions":[{"@type":"HowToStep","name":"Make the rolls","text":"1. Mix the dough. 2. Bake it."}]}</script></head>
+<body><div class="wprm-recipe-container"><div class="wprm-recipe-instruction-group"><ul><li class="wprm-recipe-instruction"><div class="wprm-recipe-instruction-text"><span style="display: block;">1. Mix the dough.</span><div class="wprm-spacer"></div><span style="display: block;">2. Bake it.</span></div></li></ul></div></div></body></html>`
+	got := mustExtract(t, page, fixtureURL).Recipe.Instructions
+	if len(got) != 2 || got[0].Title != "Make the rolls" || got[1].Title != "" {
+		t.Errorf("steps = %+v, want the title on the first piece only", got)
+	}
+}

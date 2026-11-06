@@ -97,8 +97,12 @@ func splitByBlocks(steps, flat []InstructionStep) ([]InstructionStep, bool) {
 			return nil, false
 		}
 		split = true
-		for _, b := range s.blocks {
-			out = append(out, InstructionStep{Section: flat[i].Section, Text: b})
+		for j, b := range s.blocks {
+			piece := InstructionStep{Section: flat[i].Section, Text: b}
+			if j == 0 {
+				piece.Title = flat[i].Title
+			}
+			out = append(out, piece)
 		}
 	}
 	return out, split
