@@ -74,6 +74,10 @@ const libraryStyle = `
 .sg-voice { display: flex; align-items: center; gap: 10px; }
 .sg-voice img { width: 44px; height: 44px; object-fit: contain; object-position: bottom; transform: scaleX(-1); flex: none; display: block; }
 .sg-voice p { margin: 0; font-family: var(--f-display); font-size: 15.5px; font-style: italic; color: var(--ink-2); }
+.sg-home { display: flex; flex-direction: column; gap: 12px; }
+.sg-voice > div { display: flex; flex-direction: column; gap: 2px; }
+.sg-voice .sg-when { font-family: var(--f-body); font-size: 13px; font-style: normal; color: var(--ink-3); }
+.sg-home .sg-next { align-self: flex-start; }
 .sg-name { font-size: clamp(22px, 2.4vw, 28px); font-weight: 700; line-height: 1.15; }
 .sg-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; color: var(--ink-3); }
 .suggest .rib { margin-top: 6px; }

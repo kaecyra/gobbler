@@ -154,22 +154,30 @@ func library(d Deps) http.HandlerFunc {
 // the cards were read has no picture to show, which is an answer, not a
 // failure; any other error is.
 func (d Deps) addPictures(ctx context.Context, groups []groupView) error {
+	for gi := range groups {
+		for ci := range groups[gi].Cards {
+			if err := d.addPicture(ctx, &groups[gi].Cards[ci]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// addPicture sets the address of one card's picture, on the same terms as
+// addPictures.
+func (d Deps) addPicture(ctx context.Context, c *cardView) error {
 	if d.Pictures == nil {
 		return nil
 	}
-	for gi := range groups {
-		for ci := range groups[gi].Cards {
-			c := &groups[gi].Cards[ci]
-			src, err := d.Pictures.Src(ctx, c.ID)
-			if errors.Is(err, store.ErrNotFound) {
-				continue
-			}
-			if err != nil {
-				return fmt.Errorf("find picture of recipe %d: %w", c.ID, err)
-			}
-			c.Picture = src
-		}
+	src, err := d.Pictures.Src(ctx, c.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil
 	}
+	if err != nil {
+		return fmt.Errorf("find picture of recipe %d: %w", c.ID, err)
+	}
+	c.Picture = src
 	return nil
 }
 
@@ -202,11 +210,17 @@ func Home(d Deps) http.HandlerFunc {
 		// Home has no forgot panel, so its suggestion skips nothing.
 		now := d.now()
 		v := homeView{Empty: len(idle) == 0, Suggest: suggestFor(ideasFrom(idle, now, nil), idea, now, homeHref)}
+		if v.Suggest != nil {
+			if err := d.addPicture(r.Context(), &v.Suggest.Card); err != nil {
+				layout.WriteError(w, r, err)
+				return
+			}
+		}
 		varyOnHTMX(w)
 		if targets(r, "suggest") {
 			// As on the library: no idea left answers with an empty 200.
 			if v.Suggest != nil {
-				layout.Render(w, r, http.StatusOK, suggestion(*v.Suggest))
+				layout.Render(w, r, http.StatusOK, homeSuggestion(*v.Suggest))
 			}
 			return
 		}

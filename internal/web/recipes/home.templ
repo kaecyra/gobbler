@@ -12,6 +12,7 @@ templ homePage(h homeView) {
 	@layout.Page("Home") {
 		@templ.Raw("<style>" + libraryStyle + "</style>")
 		@ribbonAssets()
+		@layout.PictureFallback()
 		@focusKey()
 		<section id="library">
 			<form
@@ -37,7 +38,7 @@ templ homePage(h homeView) {
 				<div class="lib home">
 					<div class="side">
 						if h.Suggest != nil {
-							@suggestion(*h.Suggest)
+							@homeSuggestion(*h.Suggest)
 						}
 						@recentPanel(h.Recent)
 					</div>
@@ -80,4 +81,29 @@ templ suggestion(s suggestView) {
 			}
 		</div>
 	</article>
+}
+
+// homeSuggestion is the home page's pick: the mascot's voice line and when the
+// recipe was last made above a library card (recipeCard, so it looks and opens
+// like any other), and "Another idea" below it, which replaces just this block.
+templ homeSuggestion(s suggestView) {
+	<div class="sg-home" id="suggest" aria-label="A suggestion from gobbler">
+		<div class="sg-voice">
+			<img src={ layout.MascotTasting } alt="" width="44" height="44"/>
+			<div>
+				<p>{ s.Voice }</p>
+				<p class="sg-when">{ s.When }</p>
+			</div>
+		</div>
+		@recipeCard(s.Card)
+		if s.NextHref != "" {
+			<a
+				class="sg-next"
+				href={ templ.SafeURL(s.NextHref) }
+				hx-get={ s.NextHref }
+				hx-target="#suggest"
+				hx-swap="outerHTML"
+			>Another idea</a>
+		}
+	</div>
 }

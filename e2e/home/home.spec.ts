@@ -70,20 +70,41 @@ test.describe('with recipes', () => {
     await expect(page.locator('.rcard')).toContainText('Beef Stew');
   });
 
-  test('the suggestion offers never-made recipes first, and "Another idea" cycles', async ({ page }) => {
+  test('the suggestion is a library card, and "Another idea" cycles', async ({ page }) => {
     await page.goto('/');
     const suggest = page.locator('#suggest');
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Beef Stew');
     await expect(suggest).toContainText('Haven’t tried this one yet');
     await expect(suggest).toContainText('Not made yet');
-    await expect(suggest.locator('[data-rib]')).toHaveAttribute('role', 'img');
-    await expect(suggest.getByRole('link', { name: 'Open recipe' })).toHaveAttribute('href', `/recipes/${ids['Beef Stew']}`);
+    // The same element and classes as a card on the library page, with its picture band.
+    const card = suggest.locator('article.rcard');
+    await expect(card).toHaveCount(1);
+    await expect(card.getByRole('heading', { level: 3 })).toHaveText('Beef Stew');
+    await expect(card.getByTestId('card-picture')).toHaveClass(/\brpic\b/);
+    await expect(card.locator('[data-rib]')).toHaveAttribute('role', 'img');
+    // The card opens the recipe from anywhere on it; no separate button does.
+    await expect(suggest.getByRole('link', { name: 'Open recipe' })).toHaveCount(0);
+    await expect(card.getByRole('link', { name: 'Beef Stew' })).toHaveAttribute('href', `/recipes/${ids['Beef Stew']}`);
 
     await suggest.getByRole('link', { name: 'Another idea' }).click();
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
+    await expect(suggest.locator('.rcard h3')).toHaveText('Cardamom Knots');
     // A swap, not a navigation: the address is still home, the hero still there.
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { name: 'What are we making?' })).toBeVisible();
+  });
+
+  test('clicking the suggested card opens the recipe', async ({ page }) => {
+    await page.goto('/');
+    const box = (await page.locator('#suggest .rcard').boundingBox())!;
+    // The picture band, well away from the title link.
+    await page.mouse.click(box.x + box.width / 2, box.y + 20);
+    await expect(page).toHaveURL(new RegExp(`/recipes/${ids['Beef Stew']}$`));
+  });
+
+  test('the suggested card shows the recipe picture when it has one', async ({ page }) => {
+    // Slow Ribs is the third idea and has a picture.
+    await page.goto('/?idea=2');
+    const band = page.locator('#suggest').getByTestId('card-picture');
+    await expect(band.locator('img')).toHaveAttribute('src', new RegExp(`^/recipes/${ids['Slow Ribs']}/picture\\?v=`));
   });
 
   test('after the never-made ones come recipes not made in a while, and never one made this month', async ({ page }) => {
@@ -91,17 +112,17 @@ test.describe('with recipes', () => {
     // made two days ago, so the list wraps without it.
     await page.goto('/?idea=3');
     const suggest = page.locator('#suggest');
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Lemon Cake');
+    await expect(suggest.locator('.rcard h3')).toHaveText('Lemon Cake');
     await expect(suggest).toContainText('Haven’t made this in a while');
     await expect(suggest).toContainText(/Last made \d+ months ago/);
     await expect(suggest.getByRole('img', { name: 'Make it again' })).toBeVisible();
     await suggest.getByRole('link', { name: 'Another idea' }).click();
-    await expect(suggest.getByRole('heading', { level: 2 })).toHaveText('Beef Stew');
+    await expect(suggest.locator('.rcard h3')).toHaveText('Beef Stew');
   });
 
   test('the idea is in the URL, so it can be reloaded', async ({ page }) => {
     await page.goto('/?idea=1');
-    await expect(page.locator('#suggest').getByRole('heading', { level: 2 })).toHaveText('Cardamom Knots');
+    await expect(page.locator('#suggest .rcard h3')).toHaveText('Cardamom Knots');
     expect((await page.goto('/?idea=-1'))?.status()).toBe(400);
     expect((await page.goto('/?idea=x'))?.status()).toBe(400);
   });
@@ -121,7 +142,7 @@ test.describe('with recipes', () => {
       await page.setViewportSize(size);
       await page.goto('/');
       await expectTappable(searchbox(page));
-      await expectTappable(page.locator('#suggest .btn'));
+      await expectTappable(page.locator('#suggest .rcard h3 a'));
       await expectTappable(page.locator('#suggest .sg-next'));
       await expectTappable(page.locator('.made a'));
     }
