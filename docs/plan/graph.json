@@ -4046,6 +4046,30 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner request (#490). Enumerators only, never a leading quantity or time; one place for every step path; ParserVersion bump."
+    },
+    {
+      "id": "i-review-megastep",
+      "title": "review screen keeps the draft's separate steps",
+      "wave": 13,
+      "track": null,
+      "issue": 492,
+      "status": "todo",
+      "depends_on": [
+        "a-api-recipes",
+        "i-step-numbers"
+      ],
+      "owns": [
+        "internal/ingest/*.go",
+        "internal/ingest/extract/*.go",
+        "internal/ingest/extract/testdata/**",
+        "internal/web/ingest/**",
+        "internal/web/editor/**",
+        "e2e/ingest/**",
+        "e2e/editor/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner-reported (#492): Sally's soft dinner rolls show as one untitled step on the review screen; main's pipeline gives 10. Reproduce first. After a-api-recipes and i-step-numbers, which own these paths now."
     }
   ],
   "shared_files": [
