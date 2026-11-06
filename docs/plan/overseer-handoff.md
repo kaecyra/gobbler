@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 26 (owner away)
+# Overseer handoff: 2026-11-06, round 26 at context ceiling (owner away)
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -21,7 +21,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Open worker PRs, in merge order.** Each worker that wrote one was told what to do next, but those workers die with this session. If a report never arrived, read the branch:
 1. **#531 a-api-sharing (#512): MERGED** (5d8d4e9, 0.123.9).
-2. **#534 u-qualifier-style (#526)**, wt-526. Review requested changes; all fixed in 31bdd99 (PR comment) at VERSION 0.123.10. A verification re-review was launched; read it on GitHub. Next: resolve threads by ID, wait for green CI, then merge. 0.123.10 is one over main's 0.123.9. Screenshots: .cc-scratch/shots-526-after-{1280,390}.png.
+2. **#534 u-qualifier-style (#526)**, wt-526. The re-review (pullrequestreview-5806139063) verified every first-round fix. The worker was sent to merge origin/main again (resolve VERSION as 0.123.10) and add `.pnew .qual { color: inherit; }` in layout/recipe.css. **Three threads are deliberately open** until that push: the old VERSION MUST, the new VERSION SHOULD and the `.pnew` NIT. After the push, check the diff, resolve all three by ID, wait for green CI, merge.
 3. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed (42aa5aa, pushed). It still needs to merge origin/main: conflicts on design.md's "not migrated yet" sentence (after #531 and #530 it lists only "the status table") and the `.golangci.yml` journal exceptions. Re-bump to the next free patch, then merge.
 
 **Also open, worker PRs from late in the round** (reviews launched in background agents; read what is posted on GitHub):
