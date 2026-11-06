@@ -222,7 +222,7 @@ func EncodeDraft(d Draft) ([]byte, error) {
 		out.Equipment = append(out.Equipment, docEquipment{Name: e.Name, Equipment: int64(e.Equipment), FromLLM: e.FromLLM})
 	}
 	for _, n := range d.AuthorNotes {
-		out.AuthorNotes = append(out.AuthorNotes, docAuthorNote{Title: n.Title, Text: n.Text, Confidence: n.Confidence, Issues: n.Issues})
+		out.AuthorNotes = append(out.AuthorNotes, docAuthorNote(n))
 	}
 	b, err := json.Marshal(out)
 	if err != nil {
@@ -306,7 +306,7 @@ func DecodeDraft(doc []byte, snap store.Snapshot) (Draft, error) {
 		d.Equipment = append(d.Equipment, Equipment{Name: de.Name, Equipment: recipe.EquipmentID(de.Equipment), FromLLM: de.FromLLM})
 	}
 	for _, dn := range in.AuthorNotes {
-		d.AuthorNotes = append(d.AuthorNotes, AuthorNote{Title: dn.Title, Text: dn.Text, Confidence: dn.Confidence, Issues: dn.Issues})
+		d.AuthorNotes = append(d.AuthorNotes, AuthorNote(dn))
 	}
 	return d, nil
 }

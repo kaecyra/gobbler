@@ -194,7 +194,8 @@ templ editorForm(v view) {
 			.editor li.step, .editor li.note { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }
 			.editor li.step + li.step, .editor li.note + li.note { border-top: 1px solid var(--line); }
 			.editor li.step .grip, .editor li.note .grip { top: 14px; left: 4px; }
-			.editor li.step .ibtn.rm, .editor li.note .ibtn.rm { top: 14px; right: 8px; }
+			.editor li.step .ibtn.rm { top: 14px; right: 50px; }
+			.editor li.note .ibtn.rm { top: 14px; right: 8px; }
 			.editor li.step details.more > summary { top: 14px; right: 8px; }
 			.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }
 			.editor li.step.low, .editor li.note.low { background: var(--grain-soft); }

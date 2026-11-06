@@ -438,9 +438,10 @@ func notesIn(block *html.Node) []Note {
 			if c.Type == html.ElementNode && isNotesHeading(c) {
 				continue
 			}
-			if c.Type == html.TextNode {
+			switch c.Type {
+			case html.TextNode:
 				parts = append(parts, c.Data)
-			} else if c.Type == html.ElementNode {
+			case html.ElementNode:
 				parts = append(parts, textOf(c))
 			}
 		}
