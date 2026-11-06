@@ -3858,13 +3858,14 @@
     {
       "id": "i-reimport",
       "title": "re-import a recipe from its source as an edit proposal",
-      "wave": 12,
+      "wave": 13,
       "track": null,
       "issue": 462,
       "status": "todo",
       "depends_on": [
         "r-author-notes",
-        "u-recipe-delete"
+        "u-recipe-delete",
+        "a-api-shopping"
       ],
       "owns": [
         "internal/ingest/*.go",
@@ -3900,11 +3901,13 @@
         "internal/web/shopping/**",
         "internal/mcp/tools_shopping*.go",
         ".golangci.yml",
-        "e2e/shopping/**"
+        "e2e/shopping/**",
+        "internal/mcp/server.go",
+        "internal/mcp/tools.go"
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00043 D5 pilot: sets the service signature, caller type, error mapping and depguard pattern"
+      "note": "ADR-00043 pilot. May edit the existing shopping lines in internal/web/routes.go (an exception to its append-only rule) to build and mount through internal/api/shopping. internal/web/editor/build.go imports shopping for the Uncategorised aisle constant and belongs to r-author-notes, then a-api-recipes: give it a depguard file exception commented with a-api-recipes (#470), which removes it. i-reimport waits on this node because both own internal/mcp/server.go and tools.go."
     },
     {
       "id": "a-api-recipes",
