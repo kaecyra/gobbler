@@ -3861,7 +3861,7 @@
       "wave": 13,
       "track": null,
       "issue": 462,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "r-author-notes",
         "u-recipe-delete",
@@ -5294,6 +5294,15 @@
         "00041"
       ],
       "note": "ADR-00041 (docs/proposals/author-notes.md D1-D5). Visual target: variant A in docs/ui/mockup.html, checked side by side."
+    },
+    {
+      "id": "i-reimport",
+      "title": "re-import a recipe from its source as an edit proposal",
+      "merged": "1f37b72",
+      "adrs": [
+        "00042"
+      ],
+      "note": "ADR-00042 (corrected in #480: several snapshots per kind, newest wins; migration 00032). May edit the one existing line in internal/web/web.go that builds the ingest drafts store, to give it the picture reaper (an exception to web.go's append-only rule): a new re-import supersedes the pending one there. internal/web/reimport_wiring_test.go drives the real router to prove an MCP edit's supersede leaves no candidates."
     }
   ],
   "adr_sequence": {
