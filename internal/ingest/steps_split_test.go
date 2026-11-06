@@ -115,3 +115,23 @@ func TestAssembleKeepsATitleOnTheFirstPieceOnly(t *testing.T) {
 		t.Errorf("steps = %+v, want the title on the first piece only", got)
 	}
 }
+
+// Pasted text goes through the same split (#492). The section parser strips a
+// leading "1." itself, so only a form it leaves alone, "(1)", reaches the split.
+func TestAssembleSplitsNumberedStepsInPastedText(t *testing.T) {
+	e := newEnv(t)
+	res := extract.Result{Method: extract.MethodText, Text: "Bread\n\nIngredients\n3 cups flour\n1 tsp salt\n\nInstructions\n(1) Mix the flour and salt. (2) Bake for 30 minutes. (3) Serve warm.\n"}
+	d, err := e.pipeline(t, nil).assemble(e.ctx, Source{}, res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := flatSteps(d)
+	if len(got) != 3 {
+		t.Fatalf("steps = %+v, want three", got)
+	}
+	for i, s := range got {
+		if strings.ContainsAny(s.Text[:1], "123456789") {
+			t.Errorf("step %d = %q, want the number stripped", i+1, s.Text)
+		}
+	}
+}
