@@ -178,8 +178,16 @@ func TestAssemblePastedNumberedEdgeCases(t *testing.T) {
 			[]string{"Preheat oven to 350. 2 eggs go in later"}},
 		{"bare word before a number", "1. Bake for 2. Then cool",
 			[]string{"Bake for 2. Then cool"}},
-		// One step: splitLead makes "Mix" its title and leaves "2." as text.
-		{"empty tail", "1. Mix. 2.", []string{"2."}},
+		{"empty tail", "1. Mix. 2.", []string{"Mix."}},
+		{"bare marker line then the run", "1.\nMix. 2. Bake. 3. Serve.",
+			[]string{"Mix.", "Bake.", "Serve."}},
+		{"bare marker line then a line", "1.\nMix.\n2.\nBake.", []string{"Mix.", "Bake."}},
+		{"space before the point", "1 . Mix the flour well.\n2 . Bake it.",
+			[]string{"Mix the flour well.", "Bake it."}},
+		{"space before the paren", "1 ) Mix the flour well.\n2 ) Bake it.",
+			[]string{"Mix the flour well.", "Bake it."}},
+		{"space then decimal quantity", "1 .5 cups of flour go in first",
+			[]string{"1 .5 cups of flour go in first"}},
 		// Line 1 holds a run of two and line 2 starts a new line at 3: the
 		// first line splits, the second is its own step.
 		{"run then a numbered line", "1. Mix. 2. Rest.\n3. Serve.",
@@ -203,5 +211,26 @@ func TestAssemblePastedNumberedEdgeCases(t *testing.T) {
 				t.Errorf("steps = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// A spaced enumerator ("1 . Mix") is stripped like an unspaced one, and a
+// quantity or time is left alone (#502).
+func TestStripStepNumberSpaced(t *testing.T) {
+	for in, want := range map[string]string{
+		"1 . Mix":          "Mix",
+		"1 ) Mix":          "Mix",
+		"1 : Mix":          "Mix",
+		"1 .5 cups":        "1 .5 cups",
+		"1.5 cups":         "1.5 cups",
+		"350\u00b0F oven":  "350\u00b0F oven",
+		"1 - 2 minutes":    "1 - 2 minutes",
+		"1. Mix. 2.":       "Mix.",
+		"1. Bake at 350.":  "Bake at 350.",
+		"1. Add salt. 2 .": "Add salt.",
+	} {
+		if got := stripStepNumber(in); got != want {
+			t.Errorf("stripStepNumber(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

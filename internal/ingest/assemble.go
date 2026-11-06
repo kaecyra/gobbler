@@ -327,11 +327,10 @@ func step(title, text string, confidence float64) Step {
 
 // enumeratorPattern matches the number a source writes into a step: an
 // optional "Step", the number, and its punctuation ("1.", "1)", "(1)", "1:",
-// "1 -", "Step 1:"). It is the one definition of an enumerator: stepNumberRE
-// reads it at the start of a step, enumeratorRE finds it inside one. The
-// section parser (internal/parse) keeps the number on a pasted step's text, so
-// this is the only place a source number is recognised and removed.
-const enumeratorPattern = `(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+[.):]|\d+\s+[-\x{2013}\x{2014}]`
+// "1 -", "Step 1:"; a space may come before the punctuation, "1 . Mix"). It is
+// the one definition of an enumerator: stepNumberRE reads it at the start of a
+// step, enumeratorRE finds it inside one. The section parser (internal/parse) keeps the number on a pasted step's text, so this is the only place a source number is recognised and removed.
+const enumeratorPattern = `(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+\s*[.):]|\d+\s+[-\x{2013}\x{2014}]`
 
 // stepNumberRE is an enumerator opening a step, with the whitespace after it.
 // The whitespace is required, so a leading quantity ("1.5 cups", "350°F",
@@ -342,6 +341,10 @@ var stepNumberRE = regexp.MustCompile(`^(?:` + enumeratorPattern + `)\s+`)
 // the end of a sentence, with or without a space ("baking dish.4. Lightly"),
 // never after a bare word ("divide into 2. Shape"). Group 1 is the enumerator.
 var enumeratorRE = regexp.MustCompile(`(?:^|[.!?)]\s*)((?:` + enumeratorPattern + `))\s+`)
+
+// trailingEnumeratorRE finds an enumerator left at the end of a step with
+// nothing after it ("Mix. 2."), after the end of a sentence.
+var trailingEnumeratorRE = regexp.MustCompile(`[.!?)]\s*(?:` + enumeratorPattern + `)\s*$`)
 
 var enumeratorNumberRE = regexp.MustCompile(`\d+`)
 
@@ -360,6 +363,10 @@ func stripStepNumber(text string) string {
 	}
 	if leadsIntoRange(text[:loc[1]], rest) {
 		return text
+	}
+	// A run cut off after its last number ("1. Mix. 2.") loses that number.
+	if t := trailingEnumeratorRE.FindStringIndex(rest); t != nil {
+		rest = strings.TrimSpace(rest[:t[0]+1])
 	}
 	return rest
 }
