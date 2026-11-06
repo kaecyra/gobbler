@@ -3336,8 +3336,7 @@
       "adrs": [
         "00041"
       ],
-      "blocked": "needs an ADR: author-notes model, on-screen name and placement (#395 open decision)",
-      "note": "Owner request 2026-11-05. Amends ADR-00004's data model. WPRM .wprm-recipe-notes and Tasty .tasty-recipes-notes; nothing in JSON-LD."
+      "note": "ADR-00041 (docs/proposals/author-notes.md D1-D5). Visual target: variant A in docs/ui/mockup.html, checked side by side."
     },
     {
       "id": "u-equipment-popover",
