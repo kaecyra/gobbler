@@ -79,6 +79,12 @@ dependencies.
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
 | `web` | Server, chi router, middleware (including the bearer path that keeps `/mcp` off the session), health check, static assets; `web/layout` shared templ layout; `web/sharing` the share inbox and send form; `web/signin` OpenID Connect sign-in, its callback and sign-out ([ADR-00030](adr/00030-google-sign-in.md)), with `web/signin/signintest` the fake issuer its tests sign in against; one `web/<area>` package per feature with its handlers and templ components ([ADR-00012](adr/00012-web-subpackage-per-feature.md)) | all domain packages |
 
+`api/<resource>` packages (not yet built; [ADR-00043](adr/00043-discrete-api.md)) hold each resource's
+operations once, in process. The web handlers and the MCP tools call them, take no other route to
+`store` and the domain packages, and hand them a verified caller; the service enforces household
+membership. Authentication stays in `auth`, `web` and `mcp`. Resources migrate one at a time, each
+fenced by a `depguard` rule.
+
 ## Configuration
 
 All configuration comes from the environment, read once by `config`.
