@@ -169,3 +169,8 @@
 
 /* A document with no controls row (a past version) still clears its head. */
 .rhead + .recipe-grid { margin-top: 26px; }
+
+/* A qualifier on an ingredient line: muted italic, after the name (#526). */
+.ing .qual { font-style: italic; color: var(--ink-3); }
+/* Inside a pending-edit highlight the qualifier keeps the highlight colour. */
+.pnew .qual, .padd .qual { color: inherit; }

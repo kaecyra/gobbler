@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 26 (owner away)
+# Overseer handoff: 2026-11-06, round 26 at context ceiling (owner away)
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -21,12 +21,12 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Open worker PRs, in merge order.** Each worker that wrote one was told what to do next, but those workers die with this session. If a report never arrived, read the branch:
 1. **#531 a-api-sharing (#512): MERGED** (5d8d4e9, 0.123.9).
-2. **#534 u-qualifier-style (#526)**, wt-526. Review requested changes; all fixed in 31bdd99 (PR comment) at VERSION 0.123.10. A verification re-review was launched; read it on GitHub. Next: resolve threads by ID, wait for green CI, then merge. 0.123.10 is one over main's 0.123.9. Screenshots: .cc-scratch/shots-526-after-{1280,390}.png.
+2. **#534 u-qualifier-style (#526): MERGED** (0.123.10).
 3. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed (42aa5aa, pushed). It still needs to merge origin/main: conflicts on design.md's "not migrated yet" sentence (after #531 and #530 it lists only "the status table") and the `.golangci.yml` journal exceptions. Re-bump to the next free patch, then merge.
 
 **Also open, worker PRs from late in the round** (reviews launched in background agents; read what is posted on GitHub):
-4. **#535 u-save-errors-visible (#524)**, wt-524, VERSION 0.123.9. It must merge main and re-bump to the next free patch. A review was launched; read it on GitHub and triage. Screenshots: .cc-scratch/shots-524-*.png.
-5. **#536 u-card-total-time (#528)**, wt-528. Review requested changes (pullrequestreview-5806116741). The MUST and three NITs went to the worker, along with a merge of main and VERSION **0.123.11** (after #534's 0.123.10). The out-of-lane SHOULD (ribbon.js fit tests lost) is filed as **#537**; fold it into u-notes-apart (#527), which owns e2e/recipeview. Next: verify the fix commit, resolve threads by ID, wait for CI, merge. Screenshots: .cc-scratch/shots-528-*.png. Out of lane and not yet filed: `internal/store/library.go:18`'s comment says card steps carry only what the ribbon reads, but `timeToTable` reads them too. Fix it in a node that owns store, or file an issue.
+4. **#535 u-save-errors-visible (#524)**, wt-524. Review findings are fixed and pushed (88eb622; merge 2dec5f7; VERSION 0.123.12 at ef6fc8f). Screenshots are in .cc-scratch/shots-524-after2-*.png. **Blocked on ownership:** the worker added `internal/web/editor/errors_test.go`, which is outside the lane. First open a dispatcher graph PR: `node.ts owns u-save-errors-visible --add internal/web/editor/errors_test.go` (a-api-catalog, later, also owns editor/**, and the overlap is ordered). Review it and merge it, re-run check_ownership, then verify the fix diff, resolve the review threads by ID, wait for CI, merge.
+5. **#536 u-card-total-time (#528): NOT merged; CONFLICTING with main** after #534. Every review thread is resolved and CI was green at a4bc38c. The worker was sent to wt-528 (re-created from origin) to merge main and keep VERSION 0.123.11. Then push, wait for green CI, merge, and run record-done. After it merges, u-notes-apart (#527) is dispatchable; fold #537 into it.
 - **Stash incident:** wt-524 and wt-528 both used `git stash`, and each pop took the other's changes. Both workers repaired their trees, and ownership holds on both branches. One labelled leftover stays on the shared stack: "restored: popped by mistake from wt-528". It is wt-524's already-committed WIP; drop it once #535 merges. Worker briefs now forbid `git stash`, via the scratchpad common-tail. Add the same rule to the worker contract and lessons.
 
 **Next to dispatch:** u-notes-apart (#527), after #534 and #528 merge; then a-api-catalog (#514) once sharing, save-errors, qualifier-style and notes-apart have all merged. #522, a named constant for the suggest asset paths, has no node.

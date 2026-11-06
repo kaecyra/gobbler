@@ -4413,7 +4413,7 @@
       "wave": 13,
       "track": null,
       "issue": 526,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/recipe/display/**",
@@ -5858,6 +5858,12 @@
       "title": "recipe sharing goes through internal/api/sharing",
       "merged": "5d8d4e9",
       "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
+    },
+    {
+      "id": "u-qualifier-style",
+      "title": "qualifiers in the recipe page's ingredient list are muted italic, separated by space, not comma",
+      "merged": "0a4ffc8",
+      "note": "Owner's design call, 2026-11-06: on the recipe page's ingredient list, show each qualifier in a muted italic style, separated from the name and from each other by a space, not a comma. Colours from the tokens. Change only the recipe page's ingredient list (frontend.md); cook mode, shopping and the editor keep their current text."
     }
   ],
   "adr_sequence": {

@@ -94,6 +94,8 @@ func run(dir string) error {
 		c.Lines = []recipe.IngredientLine{func() recipe.IngredientLine {
 			l := c.Lines[0]
 			l.Amount.Qty = quantity.Exact(quantity.Int(3))
+			l.Qualifiers = []recipe.Qualifier{{Kind: recipe.QualPreparation, Text: "sifted"}, {Kind: recipe.QualState, Text: "warmed"}}
+			l.Optional = true
 			return l
 		}()}
 		first := c.Steps[0]
