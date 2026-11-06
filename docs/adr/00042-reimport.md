@@ -66,6 +66,18 @@ Options considered for the picture:
   picture" would be one careless click from deleting the one they have.
 - **The picker plus "Keep current picture", which is the default.** Chosen.
 
+Options considered for the second snapshot, which `source_snapshots`' one
+snapshot per recipe per kind does not allow:
+
+- **Keep the new snapshot with the re-import record only.** No schema change,
+  and the recipe keeps its first snapshot as its only one. Rejected: the
+  recipe would stay tied to a page it no longer matches, and a reader such as
+  picture refind would keep reading the old page.
+- **File the new page under another snapshot kind.** Rejected: the kind would
+  misstate what the snapshot holds.
+- **Several snapshots of a kind, readers taking the newest.** Chosen by the
+  owner. It costs one migration that drops the uniqueness.
+
 Options considered for agents:
 
 - **No MCP tool.** Rejected by the owner.
@@ -83,8 +95,7 @@ Options considered for agents:
 - A recipe may hold more than one source snapshot of a kind. The one-per-kind
   uniqueness on `source_snapshots` is dropped; a reader that wants one
   snapshot of a kind takes the newest, and the first stays as the original
-  (owner, 2026-11-06, after the one-per-kind rule was found to block the
-  second snapshot).
+  (owner, 2026-11-06).
 - The result is an ingestion draft that also records the recipe and the
   version it started from. It is reviewed on ingestion's review screen, with
   its confidence flags, author-note rows and picture picker. It is a pending
