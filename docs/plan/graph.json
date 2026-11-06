@@ -3802,7 +3802,7 @@
       "wave": 12,
       "track": null,
       "issue": 454,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/recipeview/**",
@@ -5230,6 +5230,12 @@
       "id": "u-home-suggest-card",
       "title": "the home suggestion is a library card",
       "merged": "0fcc0fc"
+    },
+    {
+      "id": "u-recipe-delete",
+      "title": "delete a recipe from its page, confirmed by typing DELETE",
+      "merged": "0f33604",
+      "note": "Owner 2026-11-06: danger button below History/Edit/Share; type DELETE to confirm; DeleteWithPicture; redirect to the library."
     }
   ],
   "adr_sequence": {
