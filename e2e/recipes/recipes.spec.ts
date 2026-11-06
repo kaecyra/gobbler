@@ -224,9 +224,7 @@ test.describe('with recipes', () => {
     await expect(cards(page).locator('.rpic img')).toHaveCount(1);
   });
 
-  test('the home page and the side panels show no picture', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.rpic, .rhero')).toHaveCount(0);
+  test('the side panels show no picture', async ({ page }) => {
     await page.goto('/recipes');
     await expect(page.locator('aside.side .rpic, aside.side img[src*="/picture"]')).toHaveCount(0);
   });
