@@ -272,6 +272,10 @@ func encode(d draft) url.Values {
 		setFlag(f, eField(ei, "propose"), q.Propose)
 		f[eField(ei, "step")] = append([]string(nil), q.Steps...)
 	}
+	for ni, n := range d.Notes {
+		f.Set(nField(ni, "title"), n.Title)
+		f.Set(nField(ni, "text"), n.Text)
+	}
 	return f
 }
 

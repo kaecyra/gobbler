@@ -191,13 +191,16 @@ templ editorForm(v view) {
 			.editor .legend { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }
 			.editor .swatch { width: 16px; height: 16px; border-radius: 3px; background: var(--wattle-soft); }
 			.editor .swatch.passive { background: var(--sunk); }
-			.editor li.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }
-			.editor li.step + li.step { border-top: 1px solid var(--line); }
-			.editor li.step .grip { top: 14px; left: 4px; }
-			.editor li.step .ibtn.rm { top: 14px; right: 50px; }
+			.editor li.step, .editor li.note { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 18px 100px 16px 40px; border-radius: 0; }
+			.editor li.step + li.step, .editor li.note + li.note { border-top: 1px solid var(--line); }
+			.editor li.step .grip, .editor li.note .grip { top: 14px; left: 4px; }
+			.editor li.step .ibtn.rm, .editor li.note .ibtn.rm { top: 14px; right: 8px; }
 			.editor li.step details.more > summary { top: 14px; right: 8px; }
 			.editor li.step:has(> .sbody > details.more[open]) { background: var(--paper); }
-			.editor li.step.low { background: var(--grain-soft); }
+			.editor li.step.low, .editor li.note.low { background: var(--grain-soft); }
+			.editor .snum svg { width: 18px; height: 18px; }
+			.editor li.note { padding-right: 56px; }
+			.editor .note-help { padding: 14px 18px 0; }
 			.editor .snum {
 				width: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: none;
 				background: var(--wattle-soft); color: var(--wattle-ink); font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums;
@@ -282,6 +285,7 @@ templ editorForm(v view) {
 				.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }
 				.editor .c-mark:empty { display: none; }
 				.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }
+				.editor li.note { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 56px; }
 				.editor .snum { width: 28px; height: 28px; font-size: 14px; }
 				.editor .chips { padding: 12px; }
 			}
@@ -310,6 +314,7 @@ templ editorForm(v view) {
 		}
 		@ingredientFields(v)
 		@stepSection(v)
+		@noteSection(v)
 		@equipmentFields(v)
 		@saveBar(v)
 		<datalist id="ingredient-names">
@@ -911,6 +916,52 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 		</div>
 		@iconButton(act("rm-step", ci, si), "Remove step "+strconv.Itoa(v.stepNum(ci, si)), layout.IconClose, false, "rm danger")
 	</li>
+}
+
+// noteSection is the recipe author's notes (ADR-00041): each an editable row
+// with an optional title and a text of one paragraph, which can be removed or
+// dragged to reorder. A row the review screen flagged takes the tint and the
+// hint of a flagged step. The recipe page shows them after the last step.
+templ noteSection(v view) {
+	<section class="ed-sec" aria-labelledby="ed-h-notes" id="ed-notes">
+		@sectionHead("ed-h-notes", "Author's Notes")
+		<div class="ed-card">
+			<p class="help note-help">The author's own tips, substitutions and storage hints. Each is one paragraph of at most { strconv.Itoa(recipe.MaxAuthorNoteChars) } characters, and shows after the last step.</p>
+			<ol data-drag-list="move-note">
+				for ni, n := range v.D.Notes {
+					<li class={ "item note " + n.Mark.String() } data-low?={ n.Mark.Low }>
+						@grip()
+						<span class="snum" aria-hidden="true">
+							@layout.Icon(layout.IconBulb)
+						</span>
+						<div class="sbody" id={ noteAnchor(ni) }>
+							if !n.Mark.zero() {
+								<input type="hidden" name={ nField(ni, "mark") } value={ n.Mark.String() }/>
+							}
+							for _, issue := range n.Issues {
+								<input type="hidden" name={ nField(ni, "issue") } value={ issue }/>
+							}
+							<label class="sr" for={ nField(ni, "title") }>Author's note { n1(ni) } title (optional)</label>
+							<input id={ nField(ni, "title") } class="quiet stitle" type="text" name={ nField(ni, "title") } value={ n.Title } placeholder="Add a title"/>
+							<label class="sr" for={ nField(ni, "text") }>Author's note { n1(ni) } text</label>
+							<textarea id={ nField(ni, "text") } class="quiet" name={ nField(ni, "text") } rows="1" autofocus?={ v.D.Focus == nField(ni, "text") }>{ n.Text }</textarea>
+							@checkHint(n.Mark.Low, nil, noteHint(n.Issues))
+							if n.Err != "" {
+								<p class="alert" role="alert">{ n.Err }</p>
+							}
+						</div>
+						@iconButton(act("rm-note", ni), "Remove "+noteRef(n, ni), layout.IconClose, false, "rm danger")
+					</li>
+				}
+			</ol>
+			<p class="tools add-row">
+				<button type="submit" class="btn ghost" name="action" value="add-note">
+					@layout.Icon(layout.IconPlus)
+					Add note
+				</button>
+			</p>
+		</div>
+	</section>
 }
 
 // stepChooser offers every step of the recipe as a checkbox named name,

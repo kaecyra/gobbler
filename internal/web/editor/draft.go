@@ -16,7 +16,7 @@ import (
 // can post in fieldAction. A group field is named by its position, so the
 // field a user edited is always one the draft has: components "c.<c>.", lines
 // "c.<c>.l.<l>.", qualifiers "c.<c>.l.<l>.q.<q>.", steps "c.<c>.s.<s>." and
-// equipment "e.<e>.".
+// equipment "e.<e>." and author notes "n.<n>.".
 const (
 	fieldVersion = "version"
 	fieldAction  = "action"
@@ -51,6 +51,8 @@ type draft struct {
 
 	Components []compDraft
 	Equipment  []equipDraft
+	// Notes are the recipe author's notes (ADR-00041).
+	Notes []noteDraft
 
 	// Marks flags metadata fields the review screen asks the user to check,
 	// keyed by form name. The editor of a stored recipe has none.
@@ -119,6 +121,18 @@ type equipDraft struct {
 	Mark          mark
 }
 
+// noteDraft is one of the author's notes as typed: an optional title and a
+// text of one paragraph.
+type noteDraft struct {
+	Title, Text string
+	Err         string
+	// Mark and Issues come from review, as a line's do: how sure the rules were
+	// that the paragraph is a short tip, and why not fully. They ride in hidden
+	// fields so they follow the note when it moves.
+	Mark   mark
+	Issues []string
+}
+
 // lookups are the catalog names the form suggests and the ids it labels.
 type lookups struct {
 	Ingredients, Equipment, Units []string
@@ -168,6 +182,9 @@ func fromRecipe(r recipe.Recipe, names lookups) draft {
 		d.Equipment = append(d.Equipment, equipDraft{
 			Name: names.equipment[int64(e.Equipment)], Qty: qtyText(e.Qty), Steps: stepIDs(e.Steps),
 		})
+	}
+	for _, n := range r.AuthorNotes {
+		d.Notes = append(d.Notes, noteDraft{Title: n.Title, Text: n.Text})
 	}
 	return d
 }
@@ -239,6 +256,13 @@ func parseForm(f url.Values) draft {
 		d.Equipment = append(d.Equipment, equipDraft{
 			Name: f.Get(ep + "name"), Qty: f.Get(ep + "qty"), Steps: nonEmpty(f[ep+"step"]),
 			Propose: f.Get(ep+"propose") != "", Mark: parseMark(f.Get(ep + "mark")),
+		})
+	}
+	for _, ni := range indices(f, "n.") {
+		np := fmt.Sprintf("n.%d.", ni)
+		d.Notes = append(d.Notes, noteDraft{
+			Title: f.Get(np + "title"), Text: f.Get(np + "text"),
+			Mark: parseMark(f.Get(np + "mark")), Issues: nonEmpty(f[np+"issue"]),
 		})
 	}
 	return d
@@ -452,6 +476,21 @@ func (d *draft) apply(action string) error {
 			return bad
 		}
 		d.Equipment = slices.Delete(d.Equipment, pos[0], pos[0]+1)
+	case "add-note":
+		// The note is blank until the person types in it; build drops a note
+		// that is still blank.
+		d.Notes = append(d.Notes, noteDraft{})
+		d.Focus = nField(len(d.Notes)-1, "text")
+	case "move-note":
+		if len(pos) != 2 || !inRange(len(d.Notes), pos[0]) || !inRange(len(d.Notes), pos[1]) {
+			return bad
+		}
+		d.Notes = moveTo(d.Notes, pos[0], pos[1])
+	case "rm-note":
+		if len(pos) != 1 || !inRange(len(d.Notes), pos[0]) {
+			return bad
+		}
+		d.Notes = slices.Delete(d.Notes, pos[0], pos[0]+1)
 	default:
 		return fmt.Errorf("unknown action %q", action)
 	}

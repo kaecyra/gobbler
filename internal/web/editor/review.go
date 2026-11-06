@@ -219,6 +219,9 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 		}
 		ed.Components = append(ed.Components, cd)
 	}
+	for _, n := range d.AuthorNotes {
+		ed.Notes = append(ed.Notes, noteDraft{Title: n.Title, Text: n.Text, Issues: n.Issues, Mark: mark{Low: low(n.Confidence)}})
+	}
 	for _, e := range d.Equipment {
 		name := e.Name
 		if e.Equipment != 0 {
@@ -315,6 +318,13 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 			eq.Name = strings.TrimSpace(name)
 		}
 		out.Equipment = append(out.Equipment, eq)
+	}
+	out.AuthorNotes = nil
+	for ni, n := range rec.AuthorNotes {
+		form := ed.Notes[rows.notes[ni]]
+		out.AuthorNotes = append(out.AuthorNotes, ingestcore.AuthorNote{
+			Title: n.Title, Text: n.Text, Confidence: confidence(form.Mark, base.Threshold), Issues: form.Issues,
+		})
 	}
 	out.Proposed = ingestcore.ProposedFor(out.Components, base.Proposed)
 	return out
