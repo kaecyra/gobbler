@@ -66,6 +66,18 @@ Options considered for the picture:
   picture" would be one careless click from deleting the one they have.
 - **The picker plus "Keep current picture", which is the default.** Chosen.
 
+Options considered for the second snapshot, which `source_snapshots`' one
+snapshot per recipe per kind does not allow:
+
+- **Keep the new snapshot with the re-import record only.** No schema change,
+  and the recipe keeps its first snapshot as its only one. Rejected: the
+  recipe would stay tied to a page it no longer matches, and a reader such as
+  picture refind would keep reading the old page.
+- **File the new page under another snapshot kind.** Rejected: the kind would
+  misstate what the snapshot holds.
+- **Several snapshots of a kind, readers taking the newest.** Chosen by the
+  owner. It costs one migration that drops the uniqueness.
+
 Options considered for agents:
 
 - **No MCP tool.** Rejected by the owner.
@@ -80,6 +92,10 @@ Options considered for agents:
   as a new source snapshot beside the old one, and runs the full ingestion
   pipeline: rules first, the LLM fallback only after (ADR-00006). The old
   snapshot is not touched.
+- A recipe may hold more than one source snapshot of a kind. The one-per-kind
+  uniqueness on `source_snapshots` is dropped; a reader that wants one
+  snapshot of a kind takes the newest, and the first stays as the original
+  (owner, 2026-11-06).
 - The result is an ingestion draft that also records the recipe and the
   version it started from. It is reviewed on ingestion's review screen, with
   its confidence flags, author-note rows and picture picker. It is a pending
@@ -96,8 +112,8 @@ Options considered for agents:
   has moved on, as a stale editor save is.
 - The save writes its revision with the change kind an accepted proposal uses
   (ADR-00035, "History"), and its provenance reads "Re-imported from <source
-  host>", so History says what happened. It adds no change kind and no schema
-  change (dispatcher default, 2026-11-06).
+  host>", so History says what happened. It adds no change kind (dispatcher
+  default, 2026-11-06).
 - A pending re-import draft shows ADR-00035's pending-proposal banner on the
   recipe page, reading "A re-import is waiting for review". Its Review link
   goes to the ingest review screen. There are no inline marks, since nothing is
@@ -136,7 +152,9 @@ callout says.
    re-import action and its draft.
 2. i-reimport stores a second source snapshot for the recipe and a test shows
    the first snapshot's content is unchanged and, after the save, both are
-   attached to the recipe.
+   attached to the recipe. Its migration drops the one-per-kind uniqueness on
+   `source_snapshots`, and a test shows a single-snapshot read returns the
+   newest of a kind.
 3. i-reimport runs the rule-based path before any LLM call, with a test that
    the LLM is not called when the rules reach the confidence threshold.
 4. Tests show a re-import supersedes a pending agent proposal for the same

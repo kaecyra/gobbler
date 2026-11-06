@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00031",
+      "last_used": "00032",
       "contiguous": true
     }
   },
@@ -3879,9 +3879,11 @@
         "internal/mcp/tools_import*.go",
         "internal/mcp/tools_reimport*.go",
         "internal/mcp/tools.go",
-        "internal/mcp/server.go"
+        "internal/mcp/server.go",
+        "internal/web/history/**",
+        "e2e/history/**"
       ],
-      "needs_migration": null,
+      "needs_migration": "schema",
       "adrs": [
         "00042"
       ]

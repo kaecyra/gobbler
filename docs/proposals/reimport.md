@@ -41,7 +41,9 @@ is a pending proposal for the recipe, so it supersedes a pending agent edit prop
 
 Dispatcher default, 2026-11-06 (the owner can overturn it on the PR): the save writes its revision with
 the change kind an accepted proposal uses, with provenance "Re-imported from <source host>", so History
-says what happened. No new change kind and no schema change.
+says what happened. No new change kind. (A schema change is needed after all: `source_snapshots` allowed
+one snapshot per recipe per kind, so the owner ruled on 2026-11-06 to drop that uniqueness, with readers
+taking the newest; ADR-00042 records it.)
 
 Owner: "use the ingest's whole flow, just change what happens on save."
 
