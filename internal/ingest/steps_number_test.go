@@ -74,3 +74,27 @@ func TestAssembleStripsStepNumbers(t *testing.T) {
 		}
 	}
 }
+
+// Steps the LLM fallback answers with are read the same way: a number the
+// model copied from the source is stripped (#490).
+func TestLLMFallbackStripsStepNumbers(t *testing.T) {
+	e := newEnv(t)
+	ans := llmAnswer()
+	ans.Components[0].Steps = []string{"1. Preheat the oven.", "Step 2: Mix the batter.", "2 eggs go in last."}
+	p := e.pipelineWith(t, testConfig(), &fakeProvider{resp: ans})
+
+	d, err := p.FromText(e.ctx, messyText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := flatSteps(d)
+	want := []string{"Preheat the oven.", "Mix the batter.", "2 eggs go in last."}
+	if len(got) != len(want) {
+		t.Fatalf("steps = %+v, want %d", got, len(want))
+	}
+	for i, w := range want {
+		if !got[i].FromLLM || got[i].Text != w {
+			t.Errorf("step %d = %q (from LLM %v), want %q", i+1, got[i].Text, got[i].FromLLM, w)
+		}
+	}
+}
