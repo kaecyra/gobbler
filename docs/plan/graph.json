@@ -4084,6 +4084,25 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Same lane as u-editor-suggest-list (editor.templ holds the chip styles), so it runs after it."
+    },
+    {
+      "id": "i-line-qualifiers",
+      "title": "keep every word and its case when a line's extras become qualifiers",
+      "wave": 13,
+      "track": null,
+      "issue": 498,
+      "status": "todo",
+      "depends_on": [
+        "i-split-steps"
+      ],
+      "owns": [
+        "internal/parse/line*.go",
+        "internal/parse/testdata/lines/**",
+        "internal/ingest/ingest.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "internal/ingest/ingest.go only for the ParserVersion bump, which i-split-steps also makes, hence the edge."
     }
   ],
   "shared_files": [
