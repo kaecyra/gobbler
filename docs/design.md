@@ -158,3 +158,5 @@ breaks each wave into nodes.
 | **W7 Operations and integrations** | Nightly backups to S3 with retention, settings page with backup status, operations doc with deploy and restore steps |
 | **W8 Households** | Household membership and admission, `household_id` scoping of recipe and shopping data, the catalog's central layer and per-household overlay, invitations and the operator's pages, recipe sharing by copy, cross-household route tests ([ADR-00018](adr/00018-households-as-tenants.md)) |
 | **Later** | Meal planning ([ADR-00011](adr/00011-v1-scope-and-deferrals.md)); Todoist push ([ADR-00018](adr/00018-households-as-tenants.md)) |
+
+The recipe picture routes (`internal/web/picture`) serve a recipe's picture and a draft's candidates through `api/recipes` (`PictureKey`, `Candidates`), which checks the caller's membership; they no longer import `internal/picture`.
