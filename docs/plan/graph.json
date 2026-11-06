@@ -3920,7 +3920,7 @@
       "wave": 13,
       "track": null,
       "issue": 470,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [
         "a-api-shopping",
         "i-reimport",
@@ -4037,7 +4037,7 @@
       "wave": 13,
       "track": null,
       "issue": 490,
-      "status": "in_flight",
+      "status": "in_review",
       "depends_on": [],
       "owns": [
         "internal/ingest/*.go",

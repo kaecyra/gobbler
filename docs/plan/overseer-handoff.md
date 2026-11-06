@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 24, a-api-recipes in flight
+# Overseer handoff: 2026-11-06, round 24 closing, #494 and #495 in review
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -26,25 +26,39 @@ This file holds the volatile state the graph does not. The durable record is `do
 | m-picture-user-agent | #485 | 621c0b3 | none | 0.121.1 |
 | (graph: a-api-recipes lane) | #486 | ebd89ca | none | none |
 
-**In flight:**
-- a-api-recipes (#470), worktree wt-470, branch refactor/470-api-recipes, no migration, target 0.121.2.
-  Lane widened by #486 (import, re-import, MCP wiring) and #487 (internal/api/caller extraction, shopping
-  moved onto it). Commits so far: Caller extraction, recipes service skeleton; it resumed after an API
-  connection loss. Large; told to stop at a green coherent point if it cannot finish.
-- i-step-numbers (#490), worktree wt-490, branch feat/490-step-numbers, ParserVersion 14 to 15, target
-  0.122.0 (re-bump at merge against whichever lands first).
+| (graph: m-picture-user-agent, a-api-recipes lane, caller, u-editor-suggest-list, i-step-numbers, i-split-steps) | #484 #486 #487 #489 #491 #493 | | none | none |
 
-**Queued:** u-editor-suggest-list (#488, after a-api-recipes): datalist fields show an arrow but list
-only the current value.
+**Open PRs (review agents were running at handoff; read their posted reviews on GitHub):**
+- **#494 a-api-recipes (#470)**, branch refactor/470-api-recipes, VERSION 0.121.2. Large: internal/api/caller
+  extracted (shopping moved onto it), internal/api/recipes, all recipe web packages + MCP switched,
+  depguard `recipes-through-api` with five file exceptions for a-api-rest (#471). Picture stays a domain
+  package. Worker's out-of-lane home.go line sanctioned (#493). Follow-up for a-api-rest:
+  tools_shopping.go shopCaller duplicates callerOf.
+- **#495 i-step-numbers (#490)**, branch feat/490-step-numbers, ParserVersion 15, VERSION 0.122.0.
+- Both bump from 0.121.1: whichever merges second re-bumps against main (merge origin/main, no rebase).
+- Triage: send findings to a fresh worker (the old ones are gone with this session); recreate the worktree
+  from the pushed branch and `cd e2e && npm ci`.
 
-**Open owner investigations:**
-- Pictures (#483): the VM ran 0.121.0 (GOBBLER_VERSION in .env); now 0.121.1. Owner to re-import the
-  beer bread page and confirm.
-- Sally's soft dinner rolls came out as one untitled step on the VM, while main's pipeline gives 10
-  steps (6 titled), no LLM, from the same page fetched here. Asked for VM logs (ib-fb8cf55ce09c).
+**Queued (dispatch after the above):**
+- i-split-steps (#492), after i-step-numbers: halfbakedharvest publishes its method as one HowToStep /
+  one WPRM instruction of display-block spans with inline "1. … 2. …". Split by structure, then by an
+  ascending enumerator run; reuse #490's pattern. Issue body has the evidence. (Sally's dinner rolls were
+  a mix-up: that page parses into 10 steps fine.)
+- u-editor-suggest-list (#488), after a-api-recipes: datalist arrow lists only the current value.
 
-**For the owner:** after the next deploy, re-import https://www.gimmesomeoven.com/honey-beer-bread/ and
-check the 1392x2088 og:image is offered (#483 acceptance; needs the live fetch).
+**Owner, deployed:** VM runs 0.121.1 (GOBBLER_VERSION in /opt/gobbler/.env; nano needs
+TERM=xterm-256color). Picture fix (#483) to be confirmed by re-importing the beer bread page.
+
+**Lessons this round:**
+- Tightening an auth check: list every credential kind first (ADR-00031). The dispatcher's own send-back
+  broke household keys on #477; review caught it.
+- The contract's shared-file list is now generated from graph.json into the scratchpad; hand-copying
+  missed tenancy-support.ts and picturedb.
+- Workers must not file owner inbox items; lane questions come to the dispatcher (a-api-recipes did).
+- Check what the VM runs before debugging a deployed fix: `docker compose images` (#483 was 0.121.0).
+- Confirm which URL the owner means before investigating; two imports close together got crossed.
+- Probe the real pipeline offline with a throwaway _test.go in a detached worktree (newEnv/serve helpers
+  in internal/ingest/helpers_test.go); container DNS blocks live fetches, so run live probes on the host.
 
 - **a-api-shopping pattern** (for a-api-recipes): `Service.Op(ctx, Caller, ...)`; `Caller{Person,
   Household, HouseholdKey}`; `enter()` checks membership with `household.ForEmail` unless the caller is
