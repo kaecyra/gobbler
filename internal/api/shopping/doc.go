@@ -14,8 +14,9 @@
 //     An adapter builds it from what it has already verified: the session's
 //     email and the membership middleware's household for the web, the
 //     credential's email and household for MCP. Every method refuses a Caller
-//     that names no person or no household with ErrNotMember, and runs in the
-//     Caller's household, not whatever household the context happens to carry
+//     with ErrNotMember unless the person is a member of the household,
+//     checked against the household store (Members), and runs in that
+//     household, not whatever household the context happens to carry
 //     (ADR-00018). The stores below still scope every row by that household, so
 //     another household's list stays ErrNotFound.
 //   - Types. The package re-exports the domain types and errors its callers

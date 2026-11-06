@@ -89,7 +89,7 @@ func mountCatalog(r chi.Router, d Deps) {
 	shop := apishop.NewStore(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
-	svc := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat})
+	svc := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d.DB)})
 	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Shop: svc, Logger: d.Logger}))
 }
 
@@ -168,7 +168,7 @@ func mountMCP(r chi.Router, d Deps) {
 	if log == nil {
 		log = slog.Default()
 	}
-	deps, err := mcp.NewDeps(rec, shop, cat, d.Drafts, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
+	deps, err := mcp.NewDeps(rec, shop, household.New(d.DB), cat, d.Drafts, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
 	if err == nil {
 		var h http.Handler
 		if h, err = mcp.Routes(deps); err == nil {

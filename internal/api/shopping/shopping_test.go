@@ -56,7 +56,7 @@ func newFixture(t *testing.T) *fixture {
 		t: t, d: d, cat: cat, rec: rec,
 		ann: apishop.Caller{Person: "ann@example.com", Household: smiths},
 		jo:  apishop.Caller{Person: "jo@example.com", Household: joneses},
-		svc: apishop.New(apishop.Deps{Lists: apishop.NewStore(d, rec, cat), Recipes: rec, Catalog: cat}),
+		svc: apishop.New(apishop.Deps{Lists: apishop.NewStore(d, rec, cat), Recipes: rec, Catalog: cat, Members: hs}),
 	}
 	as := household.WithContext(verified(t, "ann@example.com"), smiths)
 	ing, err := cat.CreateIngredient(as, catalog.Ingredient{Name: "zz api flour", Aisle: "baking"})
@@ -290,4 +290,31 @@ func verified(t *testing.T, email string) context.Context {
 		t.Fatal("auth middleware did not pass the request on")
 	}
 	return got
+}
+
+// A real person who belongs to household A cannot act as household B, however
+// B's Caller was assembled (ADR-00018).
+func TestAMemberOfAnotherHouseholdIsRefused(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	list, err := f.svc.CreateList(ctx, f.ann, "Smiths week")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Jo is a real member of the Joneses, naming the Smiths.
+	intruder := apishop.Caller{Person: f.jo.Person, Household: f.ann.Household}
+	if _, err := f.svc.Load(ctx, intruder, list.ID); !errors.Is(err, apishop.ErrNotMember) {
+		t.Errorf("Load as Jo naming the Smiths = %v, want ErrNotMember", err)
+	}
+	if _, err := f.svc.CreateList(ctx, intruder, "planted"); !errors.Is(err, apishop.ErrNotMember) {
+		t.Errorf("CreateList as Jo naming the Smiths = %v, want ErrNotMember", err)
+	}
+	// A person who is in no household at all.
+	stranger := apishop.Caller{Person: "nobody@example.com", Household: f.ann.Household}
+	if _, err := f.svc.Lists(ctx, stranger); !errors.Is(err, apishop.ErrNotMember) {
+		t.Errorf("Lists as a stranger = %v, want ErrNotMember", err)
+	}
+	if lists, err := f.svc.Lists(ctx, f.ann); err != nil || len(lists) != 1 {
+		t.Errorf("the Smiths' lists = %v, %v, want just the one", lists, err)
+	}
 }

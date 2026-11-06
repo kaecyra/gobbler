@@ -101,7 +101,7 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 	shop := shopping.New(d, s.rec, cat)
 	draft := ingest.Draft{Name: ingest.Field[string]{Value: "Drafted pie", Confidence: 1}, Source: ingest.Source{Kind: store.SnapshotText, Content: []byte("a page")}}
 	deps := mcp.Deps{
-		Recipes: s.rec, Lists: shop, Catalog: cat, Drafter: fakeDrafter{draft}, Drafts: s.drafts,
+		Recipes: s.rec, Lists: shop, Households: hs, Catalog: cat, Drafter: fakeDrafter{draft}, Drafts: s.drafts,
 		Audit: mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}, Limits: limits, Logger: slog.New(slog.DiscardHandler), Now: func() time.Time { return s.now },
 	}
 	if drafter != nil {

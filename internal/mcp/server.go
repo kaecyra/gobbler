@@ -79,11 +79,13 @@ type Drafts interface {
 type Deps struct {
 	Recipes Recipes
 	// Lists is the shopping store the shopping service is built over.
-	Lists   *apishop.Store
-	Catalog Catalog
-	Drafter Drafter
-	Drafts  Drafts
-	Audit   Audit
+	Lists *apishop.Store
+	// Households is the membership lookup the shopping service enforces.
+	Households apishop.Members
+	Catalog    Catalog
+	Drafter    Drafter
+	Drafts     Drafts
+	Audit      Audit
 	// Limits is the rate and burst each credential is held to.
 	Limits config.MCP
 	// Version is reported to clients as the server's version.
@@ -97,12 +99,12 @@ type Deps struct {
 // already shares. The pipeline has no LLM provider: an agent's import takes the
 // rule-based path and a draft below the confidence threshold is flagged for the
 // reviewer, never sent to a model (ADR-00006).
-func NewDeps(rec *store.Store, lists *apishop.Store, cat *catalog.Store, drafts Drafts, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+func NewDeps(rec *store.Store, lists *apishop.Store, households apishop.Members, cat *catalog.Store, drafts Drafts, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
 	pipeline, err := ingest.New(cfg.Ingestion, ingest.Deps{Catalog: cat, Logger: log})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import pipeline: %w", err)
 	}
-	return Deps{Recipes: rec, Lists: lists, Catalog: cat, Drafter: pipeline, Drafts: drafts, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	return Deps{Recipes: rec, Lists: lists, Households: households, Catalog: cat, Drafter: pipeline, Drafts: drafts, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
 }
 
 // Routes returns the endpoint, to be mounted at Pattern behind Bearer and the
@@ -110,8 +112,8 @@ func NewDeps(rec *store.Store, lists *apishop.Store, cat *catalog.Store, drafts 
 // MCP over Streamable HTTP. It is stateless: every request stands alone, so a
 // restart or a second request on another connection loses nothing.
 func Routes(d Deps) (http.Handler, error) {
-	if d.Recipes == nil || d.Lists == nil || d.Catalog == nil || d.Drafter == nil || d.Drafts == nil || d.Audit == nil {
-		return nil, errors.New("mcp: recipes, lists, catalog, drafter, drafts and audit are required")
+	if d.Recipes == nil || d.Lists == nil || d.Households == nil || d.Catalog == nil || d.Drafter == nil || d.Drafts == nil || d.Audit == nil {
+		return nil, errors.New("mcp: recipes, lists, households, catalog, drafter, drafts and audit are required")
 	}
 	if d.Limits.Rate <= 0 || d.Limits.Burst < 1 {
 		return nil, fmt.Errorf("mcp: the rate limit needs a positive rate and burst, got %v and %d", d.Limits.Rate, d.Limits.Burst)
@@ -128,7 +130,7 @@ func Routes(d Deps) (http.Handler, error) {
 	if version == "" {
 		version = "dev"
 	}
-	t := &tools{Deps: d, log: log, shop: apishop.New(apishop.Deps{Lists: d.Lists, Recipes: d.Recipes, Catalog: d.Catalog})}
+	t := &tools{Deps: d, log: log, shop: apishop.New(apishop.Deps{Lists: d.Lists, Recipes: d.Recipes, Catalog: d.Catalog, Members: d.Households})}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "gobbler", Version: version}, &mcp.ServerOptions{
 		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once.",
 	})

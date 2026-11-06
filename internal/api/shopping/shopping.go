@@ -89,8 +89,9 @@ func NewStore(d *sql.DB, rec RecipeSource, cat CatalogSource) *Store {
 }
 
 // Caller is who an operation is for: a verified person and the household they
-// are a member of (ADR-00018). Adapters build it only from an identity they
-// have verified; the service does not verify one.
+// claim to act in (ADR-00018). Adapters build it only from an identity they
+// have verified, which the service does not do; the service checks that the
+// person is a member of the household (Members) on every operation.
 type Caller struct {
 	// Person is the verified email of the person.
 	Person string
@@ -113,11 +114,19 @@ type Catalog interface {
 	GetIngredient(ctx context.Context, id int64) (catalog.Ingredient, error)
 }
 
+// Members is the membership lookup the service enforces (ADR-00018): the
+// household an email belongs to. *household.Store satisfies it, and it is the
+// same lookup the membership middleware uses.
+type Members interface {
+	ForEmail(ctx context.Context, email string) (household.Household, error)
+}
+
 // Deps is what the service is built from.
 type Deps struct {
 	Lists   *Store
 	Recipes Recipes
 	Catalog Catalog
+	Members Members
 }
 
 // Service is the shopping operations. It is safe for concurrent use.
@@ -125,20 +134,32 @@ type Service struct {
 	lists   *Store
 	recipes Recipes
 	catalog Catalog
+	members Members
 }
 
 // New returns a Service. All three collaborators are required.
 func New(d Deps) *Service {
-	return &Service{lists: d.Lists, recipes: d.Recipes, catalog: d.Catalog}
+	return &Service{lists: d.Lists, recipes: d.Recipes, catalog: d.Catalog, members: d.Members}
 }
 
-// enter checks the Caller and returns a context that runs in the Caller's
-// household. It is the first line of every method.
-func enter(ctx context.Context, c Caller) (context.Context, error) {
+// enter checks that the Caller's person is a member of the Caller's household
+// and returns a context that runs in that household. The household comes from
+// the membership lookup, not from the Caller or the context. It is the first
+// line of every method.
+func (s *Service) enter(ctx context.Context, c Caller) (context.Context, error) {
 	if c.Person == "" || c.Household.ID == 0 {
 		return nil, ErrNotMember
 	}
-	return household.WithContext(ctx, c.Household), nil
+	h, err := s.members.ForEmail(ctx, c.Person)
+	switch {
+	case errors.Is(err, household.ErrNotFound), errors.Is(err, household.ErrInvalid):
+		return nil, fmt.Errorf("%s is in no household: %w", c.Person, ErrNotMember)
+	case err != nil:
+		return nil, fmt.Errorf("look up the household of %s: %w", c.Person, err)
+	case h.ID != c.Household.ID:
+		return nil, fmt.Errorf("%s is not a member of household %d: %w", c.Person, c.Household.ID, ErrNotMember)
+	}
+	return household.WithContext(ctx, h), nil
 }
 
 // OnChange registers a handler for list changes (shopping.Store.OnChange).
@@ -149,7 +170,7 @@ func (s *Service) OnChange(h func(Change)) { s.lists.OnChange(h) }
 
 // Lists returns the household's lists, oldest first.
 func (s *Service) Lists(ctx context.Context, c Caller) ([]ListInfo, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +179,7 @@ func (s *Service) Lists(ctx context.Context, c Caller) ([]ListInfo, error) {
 
 // CreateList makes an empty list.
 func (s *Service) CreateList(ctx context.Context, c Caller, name string) (ListInfo, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return ListInfo{}, err
 	}
@@ -167,7 +188,7 @@ func (s *Service) CreateList(ctx context.Context, c Caller, name string) (ListIn
 
 // GetList returns one list's header, or ErrNotFound.
 func (s *Service) GetList(ctx context.Context, c Caller, id int64) (ListInfo, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return ListInfo{}, err
 	}
@@ -176,7 +197,7 @@ func (s *Service) GetList(ctx context.Context, c Caller, id int64) (ListInfo, er
 
 // Load returns a list with its entries, manual items and merged items.
 func (s *Service) Load(ctx context.Context, c Caller, id int64) (View, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return View{}, err
 	}
@@ -186,7 +207,7 @@ func (s *Service) Load(ctx context.Context, c Caller, id int64) (View, error) {
 // Regenerate rebuilds a list from its entries, dropping the check state of
 // items that are gone.
 func (s *Service) Regenerate(ctx context.Context, c Caller, id int64) (View, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return View{}, err
 	}
@@ -195,7 +216,7 @@ func (s *Service) Regenerate(ctx context.Context, c Caller, id int64) (View, err
 
 // AddEntry puts a recipe, scaled by multiplier, on a list.
 func (s *Service) AddEntry(ctx context.Context, c Caller, listID, recipeID int64, multiplier quantity.Rat) (int64, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return 0, err
 	}
@@ -204,7 +225,7 @@ func (s *Service) AddEntry(ctx context.Context, c Caller, listID, recipeID int64
 
 // SetEntryMultiplier rescales a recipe entry.
 func (s *Service) SetEntryMultiplier(ctx context.Context, c Caller, entryID int64, multiplier quantity.Rat) error {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -213,7 +234,7 @@ func (s *Service) SetEntryMultiplier(ctx context.Context, c Caller, entryID int6
 
 // RemoveEntry takes a recipe entry off its list.
 func (s *Service) RemoveEntry(ctx context.Context, c Caller, entryID int64) error {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -222,7 +243,7 @@ func (s *Service) RemoveEntry(ctx context.Context, c Caller, entryID int64) erro
 
 // SetIncludeOptional sets whether a list keeps optional recipe lines.
 func (s *Service) SetIncludeOptional(ctx context.Context, c Caller, listID int64, include bool) error {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -231,7 +252,7 @@ func (s *Service) SetIncludeOptional(ctx context.Context, c Caller, listID int64
 
 // AddManualItem adds a hand-written item to a list.
 func (s *Service) AddManualItem(ctx context.Context, c Caller, listID int64, m ManualItem) (int64, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return 0, err
 	}
@@ -240,7 +261,7 @@ func (s *Service) AddManualItem(ctx context.Context, c Caller, listID int64, m M
 
 // RemoveManualItem takes a manual item off its list.
 func (s *Service) RemoveManualItem(ctx context.Context, c Caller, itemID int64) error {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -249,7 +270,7 @@ func (s *Service) RemoveManualItem(ctx context.Context, c Caller, itemID int64) 
 
 // SetChecked ticks an item of a list off, or unticks it.
 func (s *Service) SetChecked(ctx context.Context, c Caller, listID int64, key ItemKey, checked bool) error {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -258,7 +279,7 @@ func (s *Service) SetChecked(ctx context.Context, c Caller, listID int64, key It
 
 // Pantry returns the ingredients the household always has.
 func (s *Service) Pantry(ctx context.Context, c Caller) ([]recipe.IngredientID, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +288,7 @@ func (s *Service) Pantry(ctx context.Context, c Caller) ([]recipe.IngredientID, 
 
 // AddToPantry puts an ingredient in the pantry.
 func (s *Service) AddToPantry(ctx context.Context, c Caller, ingredient recipe.IngredientID) error {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -276,7 +297,7 @@ func (s *Service) AddToPantry(ctx context.Context, c Caller, ingredient recipe.I
 
 // RemoveFromPantry takes an ingredient out of the pantry.
 func (s *Service) RemoveFromPantry(ctx context.Context, c Caller, ingredient recipe.IngredientID) error {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -285,7 +306,7 @@ func (s *Service) RemoveFromPantry(ctx context.Context, c Caller, ingredient rec
 
 // Ingredients returns the catalog ingredients the household can name.
 func (s *Service) Ingredients(ctx context.Context, c Caller) ([]Ingredient, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +315,7 @@ func (s *Service) Ingredients(ctx context.Context, c Caller) ([]Ingredient, erro
 
 // Ingredient returns one catalog ingredient, such as to name a pantry entry.
 func (s *Service) Ingredient(ctx context.Context, c Caller, id int64) (Ingredient, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return Ingredient{}, err
 	}
@@ -303,7 +324,7 @@ func (s *Service) Ingredient(ctx context.Context, c Caller, id int64) (Ingredien
 
 // Units returns the catalog units a manual item's amount may use.
 func (s *Service) Units(ctx context.Context, c Caller) ([]Unit, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +333,7 @@ func (s *Service) Units(ctx context.Context, c Caller) ([]Unit, error) {
 
 // Recipes returns the household's recipes, for choosing one to add to a list.
 func (s *Service) Recipes(ctx context.Context, c Caller) ([]RecipeBrief, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +351,7 @@ var ErrNoList = errors.New("the household has no shopping list")
 // recipe is checked first, so one of another household is ErrNotFound whether
 // or not this household has a list.
 func (s *Service) AddToActiveList(ctx context.Context, c Caller, recipeID int64, multiplier quantity.Rat) (int64, error) {
-	ctx, err := enter(ctx, c)
+	ctx, err := s.enter(ctx, c)
 	if err != nil {
 		return 0, err
 	}
