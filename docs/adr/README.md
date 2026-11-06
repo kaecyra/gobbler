@@ -57,6 +57,7 @@ index below in the same commit.
 | [00040](00040-loopback-fetches-under-the-dev-bypass.md) | The fetch guard admits loopback only while the dev auth bypass is on | Accepted |
 | [00041](00041-author-notes.md) | A recipe keeps its author's notes as a short list that ends the step chain | Accepted |
 | [00042](00042-reimport.md) | A saved recipe with a source URL is re-imported through ingestion's review screen, and saving writes a new revision | Accepted |
+| [00043](00043-discrete-api.md) | Operations live in an in-process service layer under internal/api, called by the web handlers and the MCP tools | Accepted |
 
 ## What needs one
 
