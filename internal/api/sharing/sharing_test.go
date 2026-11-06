@@ -152,11 +152,27 @@ func TestDeclineLeavesTheLibraryAlone(t *testing.T) {
 	if err := f.svc.Send(ctx, f.ann, f.annRecipeID, joEmail); err != nil {
 		t.Fatal(err)
 	}
-	offers, _ := f.svc.Inbox(ctx, f.jo)
+	offers, err := f.svc.Inbox(ctx, f.jo)
+	if err != nil || len(offers) != 1 {
+		t.Fatalf("Inbox = %v (%v), want one offer", offers, err)
+	}
+	jones := household.WithContext(ctx, f.jo.Household)
+	before, err := f.rec.Search(jones, store.SearchQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := f.svc.Decline(ctx, f.jo, offers[0].ID); err != nil {
 		t.Fatalf("Decline: %v", err)
 	}
-	if left, _ := f.svc.Inbox(ctx, f.jo); len(left) != 0 {
-		t.Errorf("Inbox after decline = %v, want empty", left)
+	left, err := f.svc.Inbox(ctx, f.jo)
+	if err != nil || len(left) != 0 {
+		t.Errorf("Inbox after decline = %v (%v), want empty", left, err)
+	}
+	after, err := f.rec.Search(jones, store.SearchQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Errorf("recipes after decline = %d, want the %d from before", len(after), len(before))
 	}
 }

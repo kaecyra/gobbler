@@ -118,14 +118,14 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	recipeID, err := h.Shares.Accept(r.Context(), caller.FromContext(r.Context()), id)
+	c := caller.FromContext(r.Context())
+	recipeID, err := h.Shares.Accept(r.Context(), c, id)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
 	// The copy can carry a video with no stored thumbnail yet
 	// (ADR-00021 decision 3); the accept is already done.
-	c := caller.FromContext(r.Context())
 	h.Recipes.KeepThumbnailAfter(r.Context(), c, recipeID, func(ctx context.Context) (string, error) {
 		rec, err := h.Recipes.Get(ctx, c, recipeID)
 		return rec.VideoID, err
