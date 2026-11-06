@@ -8,6 +8,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/household"
@@ -24,11 +25,12 @@ type tools struct {
 	shop *apishop.Service
 }
 
-// callerOf is the recipe service's Caller for a tool call: the
-// credential's owner and the household the membership check admitted it to. A
-// household key has no owner, only the household (ADR-00031).
-func callerOf(c Credential, h household.Household) apirecipes.Caller {
-	return apirecipes.Caller{Person: c.Email, Household: h, HouseholdKey: c.Email == "" && c.HouseholdID != 0}
+// callerOf is the Caller for a tool call, shared by the recipe and shopping
+// services (their Caller types alias caller.Caller): the credential's owner and
+// the household the membership check admitted it to. A household key has no
+// owner, only the household (ADR-00031).
+func callerOf(c Credential, h household.Household) caller.Caller {
+	return caller.Caller{Person: c.Email, Household: h, HouseholdKey: c.Email == "" && c.HouseholdID != 0}
 }
 
 // recipeCaller is callerOf for the credential and household of the request a

@@ -23,8 +23,9 @@ import (
 
 // ADR-00042 obligation 7, through the real wiring: an agent's propose_recipe_edit
 // over MCP supersedes a pending re-import, and the re-import's picture candidates
-// (rows and objects) go with it. The store behind the MCP endpoint is the one
-// mountMCP builds, so this fails if that store is not given the remover.
+// (rows and objects) go with it. The MCP tools reach recipes through the recipe
+// service the router builds, so this fails if the store behind that service is
+// not given the remover.
 func TestAnMCPEditProposalSupersedingAReimportLeavesNoCandidates(t *testing.T) {
 	cfg := devConfig()
 	cfg.Ingestion = config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "test"}
