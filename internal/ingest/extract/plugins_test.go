@@ -317,3 +317,33 @@ func TestBlockSplitKeepsTheStatedTitleOnTheFirstPiece(t *testing.T) {
 		t.Errorf("steps = %+v, want the title on the first piece only", got)
 	}
 }
+
+// textKey is what a block split compares: it forgives how JSON-LD and a card
+// print the same text, and nothing that changes it (#492).
+func TestTextKey(t *testing.T) {
+	same := [][2]string{
+		{"9×13 inch", "9x13 inch"},
+		{"they&#x27;re puffy", "they're puffy"},
+		{"Bake  the\tRolls.", "bake the rolls"},
+		{"1/4 cup", "1/4   cup"},
+		{"4-5 minutes", "4–5 minutes"},
+		{"1,000 g", "1,000 g"},
+	}
+	for _, c := range same {
+		if textKey(c[0]) != textKey(c[1]) {
+			t.Errorf("textKey(%q) = %q, textKey(%q) = %q, want equal", c[0], textKey(c[0]), c[1], textKey(c[1]))
+		}
+	}
+	differ := [][2]string{
+		{"1/4 cup", "14 cup"},
+		{"4-5 minutes", "45 minutes"},
+		{"1.5 cups", "15 cups"},
+		{"1,000 g", "1000 g"},
+		{"mix then bake", "bake then mix"},
+	}
+	for _, c := range differ {
+		if textKey(c[0]) == textKey(c[1]) {
+			t.Errorf("textKey(%q) = textKey(%q) = %q, want different", c[0], c[1], textKey(c[0]))
+		}
+	}
+}

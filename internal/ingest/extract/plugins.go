@@ -79,9 +79,11 @@ func applyPlugins(doc *html.Node, raw *Raw) {
 
 // splitByBlocks splits the structured field's steps where the plugin's card
 // holds several blocks for one of them (#492). It applies only when the card
-// has a step for each of the structured field's, and every step the card
-// splits has, word for word, the text of the structured step it matches: a
-// card that disagrees is a page we do not understand and splits nothing.
+// has a step for each of the structured field's, and the blocks of every step
+// it splits, joined, have the same textKey as the structured step they
+// replace: the same letters and digits in the same order, however each prints
+// punctuation. A card that disagrees is a page we do not understand and
+// splits nothing.
 func splitByBlocks(steps, flat []InstructionStep) ([]InstructionStep, bool) {
 	if len(steps) != len(flat) {
 		return nil, false
@@ -256,18 +258,28 @@ func splitTitle(title, text string) (string, string) {
 }
 
 // textKey is s's letters and digits in order, lower-case, with character
-// references decoded and the multiplication sign read as an "x". JSON-LD and
+// references decoded and the multiplication sign read as an "x". A "/", ".",
+// "-" or "," between two digits is kept ("1/4", "1.5", "4-5", "1,000"; an en
+// or em dash reads as "-"), so "1/4 cup" never keys as "14 cup". JSON-LD and
 // the card print one text differently: "&#x27;" for an apostrophe, "9x13" for
 // "9×13". Unlike wordKey it keeps the order, so a split that reorders text
 // does not pass.
 func textKey(s string) string {
+	rs := []rune(strings.ToLower(html.UnescapeString(s)))
 	var b strings.Builder
-	for _, r := range strings.ToLower(html.UnescapeString(s)) {
+	for i, r := range rs {
 		switch {
 		case r == '\u00d7':
 			b.WriteByte('x')
 		case unicode.IsLetter(r) || unicode.IsDigit(r):
 			b.WriteRune(r)
+		case strings.ContainsRune("/.-,\u2013\u2014", r):
+			if i > 0 && i+1 < len(rs) && unicode.IsDigit(rs[i-1]) && unicode.IsDigit(rs[i+1]) {
+				if r == '\u2013' || r == '\u2014' {
+					r = '-'
+				}
+				b.WriteRune(r)
+			}
 		}
 	}
 	return b.String()
