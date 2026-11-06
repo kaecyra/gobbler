@@ -64,26 +64,27 @@ type docSpecial struct {
 }
 
 type docRecipe struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	SourceURL   string         `json:"source_url,omitempty"`
-	Author      string         `json:"author,omitempty"`
-	VideoID     string         `json:"video_id,omitempty"`
-	MealType    string         `json:"meal_type,omitempty"`
-	Cuisine     string         `json:"cuisine,omitempty"`
-	SpiceLevel  *int           `json:"spice_level,omitempty"`
-	YieldQty    *string        `json:"yield_qty,omitempty"`
-	YieldUnit   string         `json:"yield_unit,omitempty"`
-	Servings    *string        `json:"servings,omitempty"`
-	Calories    *int           `json:"calories_per_serving,omitempty"`
-	Tags        []string       `json:"tags,omitempty"`
-	Rating      *int           `json:"rating,omitempty"`
-	PrepNS      int64          `json:"prep_ns,omitempty"`
-	CookNS      int64          `json:"cook_ns,omitempty"`
-	TotalNS     int64          `json:"total_ns,omitempty"`
-	Special     []docSpecial   `json:"special_times,omitempty"`
-	Components  []docComponent `json:"components"`
-	Equipment   []docEquipment `json:"equipment,omitempty"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	SourceURL   string          `json:"source_url,omitempty"`
+	Author      string          `json:"author,omitempty"`
+	VideoID     string          `json:"video_id,omitempty"`
+	MealType    string          `json:"meal_type,omitempty"`
+	Cuisine     string          `json:"cuisine,omitempty"`
+	SpiceLevel  *int            `json:"spice_level,omitempty"`
+	YieldQty    *string         `json:"yield_qty,omitempty"`
+	YieldUnit   string          `json:"yield_unit,omitempty"`
+	Servings    *string         `json:"servings,omitempty"`
+	Calories    *int            `json:"calories_per_serving,omitempty"`
+	Tags        []string        `json:"tags,omitempty"`
+	Rating      *int            `json:"rating,omitempty"`
+	PrepNS      int64           `json:"prep_ns,omitempty"`
+	CookNS      int64           `json:"cook_ns,omitempty"`
+	TotalNS     int64           `json:"total_ns,omitempty"`
+	Special     []docSpecial    `json:"special_times,omitempty"`
+	Components  []docComponent  `json:"components"`
+	Equipment   []docEquipment  `json:"equipment,omitempty"`
+	AuthorNotes []docAuthorNote `json:"author_notes,omitempty"`
 }
 
 // encodeDocument renders r as revision document JSON.
@@ -93,6 +94,7 @@ func encodeDocument(r recipe.Recipe, units *unitTable) ([]byte, error) {
 		MealType: string(r.MealType), Cuisine: string(r.Cuisine), SpiceLevel: r.SpiceLevel, YieldUnit: r.Yield.Unit, Calories: r.CaloriesPerServing, Tags: r.Tags, Rating: r.Rating,
 		PrepNS: int64(r.Times.Prep), CookNS: int64(r.Times.Cook), TotalNS: int64(r.Times.Total),
 	}
+	d.AuthorNotes = encodeAuthorNotes(r.AuthorNotes)
 	var err error
 	if d.YieldQty, err = encodeQty(r.Yield.Qty); err != nil {
 		return nil, fmt.Errorf("yield: %w", err)
@@ -213,6 +215,7 @@ func (d docRecipe) toRecipe(units *unitTable) (recipe.Recipe, error) {
 		CaloriesPerServing: d.Calories, Tags: d.Tags, Rating: d.Rating,
 		Times: recipe.Times{Prep: time.Duration(d.PrepNS), Cook: time.Duration(d.CookNS), Total: time.Duration(d.TotalNS)},
 	}
+	r.AuthorNotes = decodeAuthorNotes(d.AuthorNotes)
 	var err error
 	if r.Yield.Qty, err = decodeQty(d.YieldQty); err != nil {
 		return recipe.Recipe{}, err

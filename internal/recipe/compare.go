@@ -43,6 +43,7 @@ const (
 	FieldCook        = "cook"
 	FieldTotal       = "total"
 	FieldSpecial     = "special_times"
+	FieldAuthorNotes = "author_notes"
 )
 
 // ComponentChange is a part that was added, removed or renamed. Indexes are
@@ -453,7 +454,19 @@ func compareFields(old, next Recipe) []FieldChange {
 	add(FieldCook, "Cook time", minutesText(old.Times.Cook), minutesText(next.Times.Cook))
 	add(FieldTotal, "Total time", minutesText(old.Times.Total), minutesText(next.Times.Total))
 	add(FieldSpecial, "Waiting times", specialText(old.Times.Special), specialText(next.Times.Special))
+	add(FieldAuthorNotes, "Author's Notes", authorNotesText(old.AuthorNotes), authorNotesText(next.AuthorNotes))
 	return out
+}
+
+func authorNotesText(notes []AuthorNote) string {
+	parts := make([]string, len(notes))
+	for i, n := range notes {
+		parts[i] = n.Text
+		if n.Title != "" {
+			parts[i] = n.Title + ": " + n.Text
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 func yieldText(y Yield) string { return strings.TrimSpace(y.Qty.String() + " " + y.Unit) }

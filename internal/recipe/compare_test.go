@@ -152,3 +152,16 @@ func TestCompareSpecialTimesAndCountAndKey(t *testing.T) {
 		t.Errorf("Key() of an added line = %q, want none", k)
 	}
 }
+
+func TestCompareAuthorNotes(t *testing.T) {
+	a := one([]IngredientLine{ln(k1, 1, 1)}, []Step{stp(s1, "Mix.")})
+	b := a
+	b.AuthorNotes = []AuthorNote{{Title: "Honey", Text: "Not for infants."}}
+	c := Compare(a, b)
+	if len(c.Fields) != 1 || c.Fields[0].Field != FieldAuthorNotes || c.Fields[0].New == "" {
+		t.Fatalf("Compare fields = %+v, want one author_notes change", c.Fields)
+	}
+	if got := Compare(b, b); !got.Empty() {
+		t.Errorf("same notes compare as changed: %+v", got)
+	}
+}
