@@ -4056,7 +4056,8 @@
       "status": "todo",
       "depends_on": [
         "a-api-recipes",
-        "i-step-numbers"
+        "i-step-numbers",
+        "u-editor-suggest-list"
       ],
       "owns": [
         "internal/ingest/*.go",
