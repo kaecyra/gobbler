@@ -270,6 +270,13 @@ templ editorForm(v view) {
 			.editor .savebar { align-items: center; justify-content: flex-end; background: color-mix(in srgb, var(--paper) 96%, transparent); }
 			.editor .look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 auto 0 0; color: var(--grain-ink); font-weight: 600; }
 			.editor .look a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 400; font-size: 15px; }
+			/* Sticks flush under the site header: editor.js sets --ed-top to its real height (72px is the wide-screen fallback). */
+			.editor .alert.refused { position: sticky; top: var(--ed-top, 72px); z-index: 4; box-shadow: var(--shadow); background: var(--wattle-soft); color: var(--wattle-ink); }
+			.editor .alert.refused a { color: inherit; font-weight: 600; }
+			/* The "Show the first one" links work without JavaScript: land clear of the header and the callout. */
+			.editor [id^="err-"], .editor [id^="line-"], .editor [id^="step-"], .editor [id^="note-"], .editor [id^="equip-"] { scroll-margin-top: calc(var(--ed-top, 72px) + 110px); }
+			.editor .look.err { color: var(--wattle-ink); margin-right: 12px; }
+			.editor .look.err .dot { background: var(--wattle-ink); }
 			.editor .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
 			@media (max-width: 760px) {
 				.editor .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -299,6 +306,11 @@ templ editorForm(v view) {
 		if v.Proposal != nil {
 			<input type="hidden" name="proposal" value={ v.Proposal.Token }/>
 			@proposalSummary(v.Proposal)
+		}
+		if n, first := v.errors(); n > 0 {
+			<div class="alert refused" role="status" data-testid="not-saved">
+				<p><strong>Not saved.</strong> { notSavedText(n) }. <a href={ templ.SafeURL("#" + first) }>Show the first one</a></p>
+			</div>
 		}
 		if len(v.D.Problems) > 0 {
 			<div class="alert" role="alert">
@@ -366,11 +378,14 @@ templ proposalSummary(p *proposalView) {
 // saveBar is the primary action, stuck to the bottom of the viewport while the
 // form scrolls (above the tab bar on a phone): Save for a stored recipe, which
 // Cancel leaves for the recipe; Confirm and save for a draft under review, which
-// Cancel discards. It is last in the form, so it never covers a field. While
-// items of a draft are marked low confidence, it counts them and links the
-// first.
+// Cancel discards. It is last in the form, so it never covers a field. After a
+// refused save it counts the fields at fault and links the first; while items
+// of a draft are marked low confidence, it counts them and links the first.
 templ saveBar(v view) {
 	<div class="savebar">
+		if n, first := v.errors(); n > 0 {
+			<p class="look err" data-testid="bar-errors"><span class="dot" aria-hidden="true"></span>{ cantSaveText(n) } <a href={ templ.SafeURL("#" + first) }>Show the first one</a></p>
+		}
 		if n, first := v.needsLook(); n > 0 {
 			<p class="look"><span class="dot" aria-hidden="true"></span>{ needsLookText(n) } <a href={ templ.SafeURL("#" + first) }>Show the first one</a></p>
 		}
@@ -445,7 +460,7 @@ templ markInput(v view, field string) {
 
 templ fieldError(v view, field string) {
 	if msg := v.D.Errs[field]; msg != "" {
-		<p class="field-error" role="alert">{ msg }</p>
+		<p class="field-error" id={ errAnchor(field) } role="alert">{ msg }</p>
 	}
 }
 

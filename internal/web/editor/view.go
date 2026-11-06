@@ -397,6 +397,74 @@ func (v view) needsLook() (int, string) {
 	return n, first
 }
 
+// errFieldOrder is the metadata fields that can carry an error message, in the
+// order the form shows them.
+var errFieldOrder = []string{
+	"name", "yield_qty", "servings", "calories", "prep", "cook", "total",
+	"meal_type", "cuisine", "spice", "video",
+}
+
+// errAnchor is the id of the message under a metadata field.
+func errAnchor(field string) string { return "err-" + field }
+
+// errors counts the fields a refused save found fault with, and gives the
+// anchor of the first in the order the form shows them, for the callout above
+// the form and the save bar. A message about the recipe as a whole (Problems)
+// is not counted: it is shown in its own alert and has no field.
+func (v view) errors() (int, string) {
+	n, first := 0, ""
+	found := func(anchor string) {
+		if n == 0 {
+			first = anchor
+		}
+		n++
+	}
+	for _, f := range errFieldOrder {
+		if v.D.Errs[f] != "" {
+			found(errAnchor(f))
+		}
+	}
+	for ci, c := range v.D.Components {
+		for li, l := range c.Lines {
+			if l.Err != "" {
+				found(lineAnchor(ci, li))
+			}
+		}
+	}
+	for ci, c := range v.D.Components {
+		for si, s := range c.Steps {
+			if s.Err != "" {
+				found(stepAnchor(ci, si))
+			}
+		}
+	}
+	for ni, nt := range v.D.Notes {
+		if nt.Err != "" {
+			found(noteAnchor(ni))
+		}
+	}
+	for ei, e := range v.D.Equipment {
+		if e.Err != "" {
+			found(equipAnchor(ei))
+		}
+	}
+	return n, first
+}
+
+func notSavedText(n int) string {
+	if n == 1 {
+		return "1 field needs fixing"
+	}
+	return strconv.Itoa(n) + " fields need fixing"
+}
+
+func cantSaveText(n int) string {
+	if n == 1 {
+		return "1 field stops this being saved"
+	}
+	return strconv.Itoa(n) + " fields stop this being saved"
+}
+
 func needsLookText(n int) string {
 	if n == 1 {
 		return "1 item still needs a look"
