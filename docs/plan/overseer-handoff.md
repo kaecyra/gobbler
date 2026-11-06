@@ -2,9 +2,9 @@
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
-**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a hando## Round 26 (2026-11-06): API split, note length, recipe page polish
+**Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a hando## Round 26 (2026-11-06): API split, note length, recipe page polish (owner away)
 
-**Merged** under the standing authority. Read VERSION on main rather than trusting these numbers.
+**Merged** under the standing authority. Read VERSION on main; do not trust a number written here.
 
 | Node / PR | PR | SHA | VERSION |
 |---|---|---|---|
@@ -12,37 +12,33 @@ This file holds the volatile state the graph does not. The durable record is `do
 | a-mcp-caller | #520 | 2073cc4 | 0.123.4 |
 | i-pasted-numbers (owner ruled next-number) | #506 | 6081c12 | 0.123.5 (ParserVersion 18) |
 | u-aisle-suggest | #519 | c242d26 | 0.123.6 |
+| a-api-pictures | #530 | 12f4c0f | 0.123.7 |
 | (graph) a-api-rest split into 8 nodes, #511–#518; #471 closed | #521 | 6c12162 | none |
-| (ADR-00044 + nodes r-note-length #523, u-save-errors-visible #524, u-qualifier-style #526) | #525 | d859bb1 | none |
+| (ADR-00044, nodes r-note-length #523, u-save-errors-visible #524, u-qualifier-style #526) | #525 | d859bb1 | none |
+| (ADR-00045, nodes u-notes-apart #527, u-card-total-time #528) | #529 | 918ee00 | none |
 
-**Open PRs at handoff.** Each was opened by the dispatcher, and its review was launched in a background agent that dies with this session. Check whether a review is posted on GitHub. If not, run `/sdlc-review-pr <n>`. Then triage, resolve threads, wait for CI, and merge. All four worker PRs carry VERSION 0.123.7, so every one after the first re-bumps: merge origin/main into the branch, then bump.
-- **#529** (dispatcher): ADR-00045, notes apart from steps (amends ADR-00041), plus nodes u-notes-apart (#527) and u-card-total-time (#528). Both are owner design calls.
-- **#530** a-api-pictures (#513), branch refactor/513-api-pictures, wt-513.
-- **#531** a-api-sharing (#512), branch refactor/512-api-sharing, wt-512.
-- **#532** a-api-journal (#511), branch refactor/511-api-journal, wt-511.
-- All three a-api PRs edit the same `docs/design.md` sentence: each drops its own entry from the "not migrated yet … until #471" list. All three edit `.golangci.yml`'s `recipes-through-api` exception block and `internal/web/routes.go`. Expect trivial conflicts on the second and third merge. Resolve them with a worker: merge origin/main, keep both sides' deletions.
+**Open worker PRs.** Each is reviewed. The worker that wrote it was given the findings or the re-bump, but those workers die with this session. Merge order and state:
+1. **#531 a-api-sharing (#512)**, wt-512. Review approved, and its findings are fixed in 8b768f9 (PR comment). The worker was told to merge origin/main (conflicts with #530 on the design.md "not migrated yet" sentence, `.golangci.yml`'s recipes-through-api exceptions and routes.go: keep both sides' deletions) and set VERSION 0.123.8. Next: push, wait for CI, resolve the review's inline threads (check with `reviewThreads`), then merge.
+2. **#532 a-api-journal (#511)**, wt-511. Review approved, and its findings are fixed in 42aa5aa (pushed, PR comment). It still needs the same merge-main conflict resolution after #531, plus a re-bump. Then resolve threads and merge.
+3. **#533 r-note-length (#523)**, wt-523. Review requested changes (1 MUST, 2 SHOULD, 2 NIT). The out-of-lane SHOULD (an applied migration's header comment) was declined in a PR comment. The other four went to the worker, along with a merge of main and VERSION 0.123.8. If the report is lost, read the branch. If the fixes are missing, brief a fresh worker from pullrequestreview-5805763269. Needs a verification re-review, then merge. **This is the fix for the owner's blocked confirm. Prioritise it.**
+4. **#534 u-qualifier-style (#526)**, wt-526. Opened, and a review was launched. Read the posted review and triage. Re-bump at merge.
 
-**In flight (workers; their reports die with this session):**
-- **r-note-length (#523)**: wt-523, branch fix/523-note-length. Implements ADR-00044: drop the 400-character refusal, keep ingest's low-confidence flag and the one-paragraph rule.
-- **u-qualifier-style (#526)**: wt-526, branch fix/526-qualifier-style. Recipe page ingredient list only: qualifiers muted italic, separated by spaces. `display.Line` gains a field; `Line.Text` is unchanged for cook, shopping and MCP.
-- If the reports are lost, read the branch (`git log origin/main..<branch>`) and run `make check` in the worktree. If the work looks finished, open the PR. Otherwise brief a fresh worker from the issue body and the branch state.
+**Next to dispatch** once the queue drops below 5:
+- u-save-errors-visible (#524), after #533 merges.
+- u-card-total-time (#528): no dependencies, dispatchable now.
+- u-notes-apart (#527), after #534 and #528.
+- a-api-catalog (#514), after sharing, note-length, save-errors, qualifier-style and notes-apart.
+- Filed with no node: #522, a named constant for the suggest asset paths.
 
-**Next to dispatch** (once their dependencies merge):
-1. u-save-errors-visible (#524), after r-note-length. A refused save shows a page-level callout and scrolls to the first error. This is the real cause of the owner's "Confirm and save does nothing".
-2. u-card-total-time (#528), after #529 merges. It has no node dependencies.
-3. u-notes-apart (#527), after #529 and u-qualifier-style merge.
-4. a-api-catalog (#514), after a-api-sharing, r-note-length, u-save-errors-visible, u-qualifier-style and u-notes-apart. Then households → profile and ingest → status-table.
-- Filed, no node yet: #522, a named constant for the suggest.js/suggest.css paths (layout). It is small; add a node or fold it into a layout-owning node.
-
-**Owner context this round:**
-- Deployed 0.123.3. "Confirm and save" on sallysbakingaddiction soft dinner rolls did nothing: the draft had two notes of 700 and 550 characters, above the 400-character limit. The refusal rendered inline, below the fold. ADR-00044 and #523/#524 address it. Until #523 ships, the owner's workaround is to shorten each note to 400 characters or fewer.
-- Inbox: all items are answered and withdrawn.
+**Owner context:**
+- Deployed 0.123.3. "Confirm and save" on sallysbakingaddiction soft dinner rolls did nothing: the draft's 700- and 550-character notes were refused, and the refusal rendered below the fold. The owner ruled ADR-00044: length is never refused, and the existing low-confidence flag is enough.
+- The owner's design calls, all recorded as nodes: qualifiers muted italic with no commas (#526); notes apart from the steps with no connector lines (ADR-00045, #527); cards show total time only, not the ribbon (#528). The card shows the figure `timeToTable` groups by, which can differ from the recipe page's "Ready in about…"; say so if the owner asks.
+- The inbox is clear.
 
 **Lessons this round:**
-- `node.ts` writes the graph in the primary checkout's current branch. Run bookkeeping verbs (`record-done`, `status`) only with the primary checkout on main; a write on a dispatcher branch has to be reverted and redone.
-- A shell `case` on review thread text matched the wrong thread (`catalog.templ:14*` caught 142 and 143), so a fixed SHOULD got a "declined" reply. Match thread IDs, not text patterns, when replying in bulk.
-
-ff.
+- `node.ts` writes the graph on the primary checkout's current branch. Run `record-done` and `status` only with main checked out.
+- Bulk thread replies matched on text patterns hit the wrong thread. Match on thread IDs.
+- Several a-api PRs edit the same design.md sentence and the same `.golangci.yml` block. Each merge forces a conflict-resolving re-bump on the next. Next time, sequence them, or keep the shared sentence out of the node lanes.
 
 ## Round 25 (2026-11-06): recipes API, step splitting, editor fixes
 
