@@ -3758,7 +3758,7 @@
       "wave": 12,
       "track": null,
       "issue": 441,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/store/proposal_edit.go",
@@ -5108,6 +5108,12 @@
       "title": "picker tick and no-picture icons in layout.Icon; editor.FormID one source",
       "merged": "3421fea",
       "note": "Follow-up from #446. Icons drawn as in docs/ui/mockup.html (data-ic=none). Closes difference 3 of #446's mockup comparison."
+    },
+    {
+      "id": "r-credential-describe",
+      "title": "Describe reads credential kinds and owner prefix from their owners",
+      "merged": "0f487cc",
+      "note": "Follow-up from #440 NIT 7. Kind constants move to a package mcp and store can both import; apikey exports its owner-prefix builder or parser."
     }
   ],
   "adr_sequence": {
