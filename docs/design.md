@@ -85,12 +85,16 @@ operations once, in process. The web handlers and the MCP tools call them, take 
 membership. Authentication stays in `auth`, `web` and `mcp`. Resources migrate one at a time, each
 fenced by a `depguard` rule.
 
-`api/shopping` is the pilot and sets the pattern; its package doc is the specification. A `Service`
-method takes `ctx`, then a `Caller` (verified email and household), then its arguments. On every call it looks the person up in the household store (`Members.ForEmail`) and refuses
-with `ErrNotMember` (403 on the web) unless they belong to the Caller's household; a household API
-key has no person, so its Caller sets `HouseholdKey` and is admitted by its household alone
-(ADR-00031). It runs in that household and returns domain errors that `web/layout`'s `statusTable` maps for the web and `mcp/tools.go` maps for
-MCP. It re-exports the domain types and errors as aliases so adapters import nothing from `shopping`.
+`api/shopping` is the pilot and sets the pattern; its package doc is the
+specification. A `Service` method takes `ctx`, then a `Caller` (verified email
+and household), then its arguments. On every call it looks the person up in the
+household store (`Members.ForEmail`) and refuses with `ErrNotMember` (403 on the
+web) unless they belong to the Caller's household. A household API key has no
+person, so its Caller sets `HouseholdKey` and is admitted by its household alone
+(ADR-00031). The method runs in that household and returns domain errors, which
+`web/layout`'s `statusTable` maps for the web and `mcp/tools.go` maps for MCP.
+It re-exports the domain types and errors as aliases so adapters import nothing
+from `shopping`.
 The `shopping-through-api` rule in `.golangci.yml` fails `make lint` when a non-test file under
 `internal/web/` or `internal/mcp/` imports `internal/shopping` (and so `shoppingdb`). It does not fence
 `store`, because shopping has no queries there; the recipes node fences it. One file is excepted

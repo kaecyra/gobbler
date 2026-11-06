@@ -93,7 +93,11 @@ func mountCatalog(r chi.Router, d Deps) {
 	if err != nil {
 		// Every route still exists and answers 500 with the cause, as the MCP
 		// endpoint does, so a bad build is a loud failure and not a missing page.
-		slog.Error("shopping pages unavailable", "error", err.Error())
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("shopping pages unavailable", "error", err.Error())
 		r.Mount(webshopping.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "the shopping pages are not available: "+err.Error(), http.StatusInternalServerError)
 		}))
