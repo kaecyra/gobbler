@@ -158,3 +158,5 @@ breaks each wave into nodes.
 | **W7 Operations and integrations** | Nightly backups to S3 with retention, settings page with backup status, operations doc with deploy and restore steps |
 | **W8 Households** | Household membership and admission, `household_id` scoping of recipe and shopping data, the catalog's central layer and per-household overlay, invitations and the operator's pages, recipe sharing by copy, cross-household route tests ([ADR-00018](adr/00018-households-as-tenants.md)) |
 | **Later** | Meal planning ([ADR-00011](adr/00011-v1-scope-and-deferrals.md)); Todoist push ([ADR-00018](adr/00018-households-as-tenants.md)) |
+
+`api/sharing` is the sharing resource: send a recipe copy to another household, list the inbox, accept or decline, for `web/sharing`. It wraps `internal/sharing`, which keeps the rules of a share, and the `sharing-through-api` rule fails `make lint` when a non-test file under `internal/web/` or `internal/mcp/` imports `internal/sharing`.

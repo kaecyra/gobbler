@@ -12,38 +12,36 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
-	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // Pattern is where the router mounts Routes.
 const Pattern = "/shares"
 
-// Service is what the pages use from internal/sharing; *sharing.Service
-// satisfies it.
+// Service is what the pages use from internal/api/sharing;
+// *apisharing.Service satisfies it.
 type Service interface {
-	Send(ctx context.Context, id int64, recipientEmail string) error
-	Inbox(ctx context.Context) ([]store.ShareOffer, error)
-	Accept(ctx context.Context, id int64) (int64, error)
-	Decline(ctx context.Context, id int64) error
+	Send(ctx context.Context, c apisharing.Caller, id int64, recipientEmail string) error
+	Inbox(ctx context.Context, c apisharing.Caller) ([]apisharing.ShareOffer, error)
+	Accept(ctx context.Context, c apisharing.Caller, id int64) (int64, error)
+	Decline(ctx context.Context, c apisharing.Caller, id int64) error
 }
 
 // Recipes reads the recipe a send form is about and keeps the thumbnail of an
-// accepted copy's video (ADR-00021); *store.Store satisfies it.
+// accepted copy's video (ADR-00021); *apirecipes.Service satisfies it.
 type Recipes interface {
-	Get(ctx context.Context, id int64) (recipe.Recipe, error)
-	video.ThumbnailStore
+	Get(ctx context.Context, c apirecipes.Caller, id int64) (recipe.Recipe, error)
+	KeepThumbnailAfter(ctx context.Context, c apirecipes.Caller, id int64, readVideoID func(context.Context) (string, error))
 }
 
 // Deps is what the routes need.
 type Deps struct {
 	Shares  Service
 	Recipes Recipes
-	// Thumbnails downloads the preview image of an accepted recipe's video;
-	// nil means YouTube's image host.
-	Thumbnails video.ThumbnailSource
 }
 
 type handler struct{ Deps }
@@ -72,7 +70,7 @@ func idParam(r *http.Request, name string) (int64, error) {
 }
 
 func (h *handler) inbox(w http.ResponseWriter, r *http.Request) {
-	offers, err := h.Shares.Inbox(r.Context())
+	offers, err := h.Shares.Inbox(r.Context(), caller.FromContext(r.Context()))
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
@@ -86,7 +84,7 @@ func (h *handler) form(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	rec, err := h.Recipes.Get(r.Context(), id)
+	rec, err := h.Recipes.Get(r.Context(), caller.FromContext(r.Context()), id)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
@@ -103,7 +101,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	if err := h.Shares.Send(r.Context(), id, r.PostFormValue("email")); err != nil {
+	if err := h.Shares.Send(r.Context(), caller.FromContext(r.Context()), id, r.PostFormValue("email")); err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
@@ -120,15 +118,16 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	recipeID, err := h.Shares.Accept(r.Context(), id)
+	recipeID, err := h.Shares.Accept(r.Context(), caller.FromContext(r.Context()), id)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
 	// The copy can carry a video with no stored thumbnail yet
 	// (ADR-00021 decision 3); the accept is already done.
-	video.KeepThumbnailAfter(r.Context(), h.Recipes, h.Thumbnails, recipeID, func(ctx context.Context) (string, error) {
-		rec, err := h.Recipes.Get(ctx, recipeID)
+	c := caller.FromContext(r.Context())
+	h.Recipes.KeepThumbnailAfter(r.Context(), c, recipeID, func(ctx context.Context) (string, error) {
+		rec, err := h.Recipes.Get(ctx, c, recipeID)
 		return rec.VideoID, err
 	})
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(recipeID, 10), http.StatusSeeOther)
@@ -140,7 +139,7 @@ func (h *handler) decline(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	if err := h.Shares.Decline(r.Context(), id); err != nil {
+	if err := h.Shares.Decline(r.Context(), caller.FromContext(r.Context()), id); err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
@@ -162,7 +161,7 @@ type offerView struct {
 
 type inboxView struct{ Offers []offerView }
 
-func newInboxView(offers []store.ShareOffer) inboxView {
+func newInboxView(offers []apisharing.ShareOffer) inboxView {
 	v := inboxView{Offers: make([]offerView, 0, len(offers))}
 	for _, o := range offers {
 		base := Pattern + "/" + strconv.FormatInt(o.ID, 10)
