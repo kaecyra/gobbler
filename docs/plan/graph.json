@@ -3300,7 +3300,7 @@
       "wave": 12,
       "track": null,
       "issue": 395,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "r-stage-serve",
         "a-mcp-recipe-edit",
@@ -3892,7 +3892,7 @@
       "wave": 13,
       "track": null,
       "issue": 469,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "l-discrete-api"
       ],
@@ -3950,7 +3950,7 @@
       "wave": 12,
       "track": null,
       "issue": 468,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [
         "u-recipe-delete",
         "u-home-suggest-card"
