@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/a-h/templ"
-	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
@@ -303,9 +302,9 @@ func proposalFor(ctx context.Context, d Deps, id int64, live recipe.Recipe, vers
 // reject turns the proposal the form names down. The recipe is not touched.
 func reject(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil || id <= 0 {
-			layout.WriteError(w, r, fmt.Errorf("recipe id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
+		id, err := recipeID(r)
+		if err != nil {
+			layout.WriteError(w, r, err)
 			return
 		}
 		token := r.PostFormValue(fieldProposal)

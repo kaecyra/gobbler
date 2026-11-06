@@ -18,6 +18,10 @@ type deleteView struct {
 	Name string
 }
 
+// deleteScriptPath enables the final button once the word is typed. The form
+// still works without it, and the server checks the word either way.
+const deleteScriptPath = "/static/recipe-delete.js"
+
 // deleteHref is the confirmation page of recipe id's deletion.
 func deleteHref(id int64) string { return recipePath(id) + "/delete" }
 
@@ -57,14 +61,14 @@ func deletePage(v deleteView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<style>\n\t\t\t.delete-confirm { max-width: 560px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 14px; }\n\t\t\t.delete-confirm h1 { margin: 0; }\n\t\t\t.delete-confirm ul { margin: 0; padding-left: 20px; }\n\t\t\t.delete-confirm form { display: flex; flex-direction: column; gap: 12px; }\n\t\t\t.delete-confirm .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }\n\t\t\t.delete-confirm .btn.danger { color: var(--wattle-ink); border-color: var(--wattle-ink); }\n\t\t</style> <div class=\"pg delete-confirm\" data-testid=\"delete-confirm\"><h1>Delete ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<style>\n\t\t\t.delete-confirm { max-width: 560px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 14px; }\n\t\t\t.delete-confirm h1 { margin: 0; }\n\t\t\t.delete-confirm ul { margin: 0; padding-left: 20px; }\n\t\t\t.delete-confirm form { display: flex; flex-direction: column; gap: 12px; }\n\t\t\t.delete-confirm .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }\n\t\t</style> <div class=\"pg delete-confirm\" data-testid=\"delete-confirm\"><h1>Delete ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 28, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 31, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -77,7 +81,7 @@ func deletePage(v deleteView) templ.Component {
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(deleteHref(v.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 37, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 40, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -90,13 +94,26 @@ func deletePage(v deleteView) templ.Component {
 			var templ_7745c5c3_Var5 templ.SafeURL
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(recipePath(v.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 41, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 44, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"btn\" data-testid=\"delete-cancel\">Cancel</a></div></form><script>\n\t\t\t\t(function () {\n\t\t\t\t\tvar f = document.querySelector('.delete-confirm form');\n\t\t\t\t\tvar i = f.elements.confirm, b = f.querySelector('button');\n\t\t\t\t\ti.addEventListener('input', function () { b.disabled = i.value.trim() !== 'DELETE'; });\n\t\t\t\t})();\n\t\t\t</script></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"btn\" data-testid=\"delete-cancel\">Cancel</a></div></form><script src=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(deleteScriptPath)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 47, Col: 33}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" defer></script></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

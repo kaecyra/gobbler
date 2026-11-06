@@ -359,6 +359,10 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
 .btn.ghost:hover { border-color: var(--line); }
 .btn:disabled { opacity: 0.4; cursor: default; }
+/* A destructive action: the label in the warning ink, an outline to match. A
+   link of the same class (a "Delete" beside a note) takes the ink alone. */
+.btn.danger, a.danger { color: var(--wattle-ink); }
+.btn.danger:not(.ghost) { border-color: var(--wattle-ink); }
 
 /* Segmented control: buttons or links, one marked aria-pressed or aria-current. */
 .seg { display: inline-flex; background: var(--sunk); border-radius: var(--r); padding: 3px; }

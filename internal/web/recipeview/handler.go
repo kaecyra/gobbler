@@ -89,9 +89,9 @@ const thumbnailMaxAge = "private, max-age=86400"
 // stored image all answer 404 (ADR-00021 decision 4).
 func thumbnail(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil || id <= 0 {
-			layout.WriteError(w, r, fmt.Errorf("recipe id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
+		id, err := recipeID(r)
+		if err != nil {
+			layout.WriteError(w, r, err)
 			return
 		}
 		t, err := d.Recipes.Thumbnail(r.Context(), id)
@@ -109,11 +109,21 @@ func thumbnail(d Deps) http.HandlerFunc {
 	}
 }
 
+// recipeID is the recipe the request's path names, or an ErrNotFound for an
+// id that cannot name one.
+func recipeID(r *http.Request) (int64, error) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id <= 0 {
+		return 0, fmt.Errorf("recipe id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound)
+	}
+	return id, nil
+}
+
 func handle(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil || id <= 0 {
-			layout.WriteError(w, r, fmt.Errorf("recipe id %q: %w", chi.URLParam(r, "id"), layout.ErrNotFound))
+		id, err := recipeID(r)
+		if err != nil {
+			layout.WriteError(w, r, err)
 			return
 		}
 		rec, err := d.Recipes.Get(r.Context(), id)

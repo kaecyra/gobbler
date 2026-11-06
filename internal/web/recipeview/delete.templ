@@ -8,6 +8,10 @@ type deleteView struct {
 	Name string
 }
 
+// deleteScriptPath enables the final button once the word is typed. The form
+// still works without it, and the server checks the word either way.
+const deleteScriptPath = "/static/recipe-delete.js"
+
 // deleteHref is the confirmation page of recipe id's deletion.
 func deleteHref(id int64) string { return recipePath(id) + "/delete" }
 
@@ -22,7 +26,6 @@ templ deletePage(v deleteView) {
 			.delete-confirm ul { margin: 0; padding-left: 20px; }
 			.delete-confirm form { display: flex; flex-direction: column; gap: 12px; }
 			.delete-confirm .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-			.delete-confirm .btn.danger { color: var(--wattle-ink); border-color: var(--wattle-ink); }
 		</style>
 		<div class="pg delete-confirm" data-testid="delete-confirm">
 			<h1>Delete { v.Name }?</h1>
@@ -41,13 +44,7 @@ templ deletePage(v deleteView) {
 					<a href={ templ.SafeURL(recipePath(v.ID)) } class="btn" data-testid="delete-cancel">Cancel</a>
 				</div>
 			</form>
-			<script>
-				(function () {
-					var f = document.querySelector('.delete-confirm form');
-					var i = f.elements.confirm, b = f.querySelector('button');
-					i.addEventListener('input', function () { b.disabled = i.value.trim() !== 'DELETE'; });
-				})();
-			</script>
+			<script src={ deleteScriptPath } defer></script>
 		</div>
 	}
 }
