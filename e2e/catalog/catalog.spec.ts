@@ -268,3 +268,44 @@ test('the equipment catalog keeps every control at least 44px tall', async ({ br
   expect(await expectTapTargets(page)).toBeGreaterThan(0);
   await ctx.close();
 });
+
+// The aisle field's suggestions (issue #508). A native datalist offers only the
+// entries matching the text already in the box, so an item in "produce" offered
+// "produce" alone under a dropdown arrow. The page draws the editor's list
+// instead (suggest.js): every aisle on open, narrowing as the person types.
+test('the aisle field lists every aisle, narrows as typed, and still saves a new one', async ({ page }) => {
+  await page.goto(`/catalog/${ids.edit}`);
+  const aisle = page.locator('#aisle');
+  await expect(aisle).toHaveValue('produce');
+  await aisle.click();
+  const list = page.getByRole('listbox', { name: 'Aisle' });
+  await expect(list).toBeVisible();
+  const options = list.getByRole('option');
+  const all = (await options.allTextContents()).map((t) => t.trim());
+  expect(all.length).toBeGreaterThan(1);
+  expect(all).toContain('produce');
+  expect(all.some((t) => !t.includes('produce'))).toBe(true);
+
+  await aisle.fill('PROD');
+  const narrowed = (await options.allTextContents()).map((t) => t.trim());
+  expect(narrowed.length).toBeLessThan(all.length);
+  expect(narrowed.every((t) => t.toLowerCase().includes('prod'))).toBe(true);
+
+  // Escape closes the list and keeps what was typed; Enter on a highlighted
+  // option picks it instead of submitting the form.
+  await page.keyboard.press('Escape');
+  await expect(list).toBeHidden();
+  await expect(aisle).toHaveValue('PROD');
+  await aisle.fill('');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/catalog/${ids.edit}$`));
+  await expect(aisle).toHaveValue(all[0]);
+
+  // The field stays free text: an aisle that is not in the list saves.
+  await aisle.fill('e2e new aisle');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page).toHaveURL(/\/catalog$/);
+  await page.goto(`/catalog/${ids.edit}`);
+  await expect(page.locator('#aisle')).toHaveValue('e2e new aisle');
+});
