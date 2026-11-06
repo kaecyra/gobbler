@@ -317,8 +317,16 @@ type PictureReaper interface {
 	Remove(ctx context.Context, keys []string)
 }
 
+// ErrOnShoppingList is a recipe's deletion refused because a shopping list
+// holds an entry for it. Migration 00005 blocks that delete on purpose, so a
+// list is never silently emptied; the recipe is taken off its lists first.
+// The text is shown to the person, so it says what to do; it is lowercase
+// and unpunctuated because it is an error string.
+var ErrOnShoppingList = errors.New("this recipe is on a shopping list and must be removed from it before it can be deleted")
+
 // Delete removes recipe id (of the request's household) with its revisions, proposals, notes, made-it entries and
-// source snapshots, or returns ErrNotFound. A clone of it survives, losing
+// source snapshots. It returns ErrNotFound for a missing recipe, and ErrOnShoppingList while a
+// shopping list still holds it (migration 00005). A clone of it survives, losing
 // only the pointer to its origin. It leaves the recipe's picture objects
 // behind; DeleteWithPicture is the delete that removes them.
 func (s *Store) Delete(ctx context.Context, id int64) error {
@@ -349,7 +357,8 @@ func (s *Store) DeleteWithPicture(ctx context.Context, id int64, r PictureReaper
 		}
 		n, err := q.DeleteRecipe(ctx, storedb.DeleteRecipeParams{ID: id, HouseholdID: hid})
 		if err != nil {
-			return fmt.Errorf("delete recipe %d: %w", id, err)
+			// A foreign key violation here is a shopping-list entry (00005).
+			return db.WrapWrite(fmt.Sprintf("delete recipe %d", id), err, ErrOnShoppingList, db.ConstraintForeignKey)
 		}
 		if n == 0 {
 			return fmt.Errorf("%w: recipe %d", ErrNotFound, id)

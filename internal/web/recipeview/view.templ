@@ -324,6 +324,7 @@ templ aside(v view) {
 				<form method="post" action={ templ.SafeURL(cloneHref(v.ID)) }>
 					<button type="submit" class="btn" data-testid="clone-button">Clone this recipe</button>
 				</form>
+				<p><a href={ templ.SafeURL(deleteHref(v.ID)) } class="btn danger" data-testid="delete-link">Delete recipe</a></p>
 				<div class="snap"><i></i>Original source snapshot kept, unchanged</div>
 			</div>
 		</div>

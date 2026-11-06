@@ -28,6 +28,9 @@ let cloneId = 0;
 let bareVideoId = 0;
 let laterId = 0;
 let styledId = 0;
+let doomedId = 0;
+let doomedCloneId = 0;
+let listedId = 0;
 let thumbnails: Awaited<ReturnType<typeof startThumbnailHost>> | undefined;
 
 test.use({ baseURL: origin });
@@ -40,7 +43,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId } = JSON.parse(out));
   thumbnails = await startThumbnailHost();
   server = spawn(bin, ['serve'], {
     env: {
@@ -538,4 +541,60 @@ test('a recipe whose picture object is missing shows the placeholder band, not a
   await expect(hero.locator('img')).toHaveCount(0);
   await expect(hero).toHaveClass(new RegExp(`\\bph${meanwhileId % 6}\\b`));
   expect((await hero.boundingBox())!.height).toBe(210);
+});
+
+test.describe('deleting a recipe', () => {
+  test('the Delete recipe button opens a confirmation that names the recipe and what goes with it', async ({ page }) => {
+    await page.goto(`/recipes/${doomedId}`);
+    await page.getByTestId('delete-link').scrollIntoViewIfNeeded();
+    await page.getByTestId('delete-link').click();
+    await expect(page).toHaveURL(new RegExp(`/recipes/${doomedId}/delete$`));
+    const box = page.getByTestId('delete-confirm');
+    await expect(box).toContainText('E2E Doomed Stew');
+    for (const word of ['history', 'notes', 'made-it', 'picture']) await expect(box).toContainText(word);
+    await expect(page.getByTestId('delete-submit')).toBeDisabled();
+  });
+
+  test('the final button stays disabled until DELETE is typed', async ({ page }) => {
+    await page.goto(`/recipes/${doomedId}/delete`);
+    const input = page.getByTestId('delete-input');
+    await input.fill('delete');
+    await expect(page.getByTestId('delete-submit')).toBeDisabled();
+    await input.fill('DELETE');
+    await expect(page.getByTestId('delete-submit')).toBeEnabled();
+  });
+
+  test('a POST without DELETE is refused and deletes nothing', async ({ page }) => {
+    const res = await page.request.post(`/recipes/${doomedId}/delete`, { form: { confirm: 'delete' } });
+    expect(res.status()).toBe(400);
+    const none = await page.request.post(`/recipes/${doomedId}/delete`);
+    expect(none.status()).toBe(400);
+    expect((await page.goto(`/recipes/${doomedId}`))?.status()).toBe(200);
+  });
+
+  test('typing DELETE removes the recipe, its picture and its history, and a clone survives', async ({ page }) => {
+    await page.goto(`/recipes/${doomedId}/delete`);
+    await page.getByTestId('delete-input').fill('DELETE');
+    await page.getByTestId('delete-submit').click();
+    await expect(page).toHaveURL(/\/recipes$/);
+    for (const path of ['', '/picture', '/history', '/journal']) {
+      const res = await page.request.get(`/recipes/${doomedId}${path}`);
+      expect(res.status(), path).toBe(404);
+    }
+    expect((await page.goto(`/recipes/${doomedCloneId}`))?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: 'E2E Doomed Stew', level: 1 })).toBeVisible();
+    await expect(page.getByTestId('origin')).toHaveCount(0);
+  });
+
+  test('a recipe on a shopping list says so and stays until it is taken off', async ({ page }) => {
+    await page.goto(`/recipes/${listedId}/delete`);
+    await page.getByTestId('delete-input').fill('DELETE');
+    const [res] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith(`/recipes/${listedId}/delete`) && r.request().method() === 'POST'),
+      page.getByTestId('delete-submit').click(),
+    ]);
+    expect(res.status()).toBe(409);
+    await expect(page.getByText('this recipe is on a shopping list and must be removed from it before it can be deleted')).toBeVisible();
+    expect((await page.request.get(`/recipes/${listedId}`)).status()).toBe(200);
+  });
 });
