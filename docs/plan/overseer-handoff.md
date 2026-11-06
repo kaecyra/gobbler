@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 24, #479 open
+# Overseer handoff: 2026-11-06, round 24, i-reimport in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -16,9 +16,10 @@ This file holds the volatile state the graph does not. The durable record is `do
 | u-card-width | #475 | f671446 | none | 0.119.1 |
 | a-api-shopping | #477 | de00177 | none | 0.119.2 |
 
-**Open:** r-author-notes, PR #479 (worktree wt-395, branch feat/395-author-notes, migration 00031).
-The review's MUST (ParserVersion 14) and SHOULD (loose notes text dropped) are fixed and their threads
-resolved. The worker is merging main after #477; then CI, then merge as 0.120.0.
+| r-author-notes | #479 | 05f2588 | 00031 | 0.120.0 |
+
+**In flight:** i-reimport (#462), worktree wt-462, branch feat/462-reimport, no migration, target
+VERSION 0.121.0. Dispatched after #479 merged.
 
 - **a-api-shopping pattern** (for a-api-recipes): `Service.Op(ctx, Caller, ...)`; `Caller{Person,
   Household, HouseholdKey}`; `enter()` checks membership with `household.ForEmail` unless the caller is
@@ -32,8 +33,8 @@ resolved. The worker is merging main after #477; then CI, then merge as 0.120.0.
   picturedb. Generate it from `shared_files` instead.
 - Labels: #469, #462 moved dor:blocked to dor:ready; #395 gained dor:ready.
 
-**Next after #479:** i-reimport (#462) is dispatchable once r-author-notes merges (a-api-shopping is
-done); then a-api-recipes (#470) after i-reimport. o-demo-reseed (#432) still waits on a deploy.
+**Next after i-reimport:** a-api-recipes (#470), which also removes the editor/build.go depguard
+exception. o-demo-reseed (#432) still waits on a deploy.
 
 ## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
 
