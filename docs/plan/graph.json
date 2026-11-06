@@ -3951,7 +3951,7 @@
       "wave": 12,
       "track": null,
       "issue": 468,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "u-recipe-delete",
         "u-home-suggest-card"
@@ -5252,6 +5252,11 @@
         "00043"
       ],
       "note": "Owner request 2026-11-05 (recipe-images D7). Lane is the proposal until the ADR shapes the build nodes."
+    },
+    {
+      "id": "u-card-width",
+      "title": "one source for the library card width",
+      "merged": "f671446"
     }
   ],
   "adr_sequence": {
