@@ -3730,7 +3730,9 @@
       "status": "todo",
       "depends_on": [],
       "owns": [
-        "docs/proposals/discrete-api.md"
+        "docs/proposals/discrete-api.md",
+        "docs/adr/00043-discrete-api.md",
+        "docs/adr/README.md"
       ],
       "needs_migration": null,
       "adrs": [
@@ -3821,7 +3823,7 @@
       "wave": 12,
       "track": null,
       "issue": 455,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "u-picker-icons"
       ],
@@ -3873,13 +3875,108 @@
         "internal/web/ingest/**",
         "e2e/recipeview/**",
         "e2e/editor/**",
-        "e2e/ingest/**"
+        "e2e/ingest/**",
+        "internal/mcp/tools_import*.go",
+        "internal/mcp/tools_reimport*.go",
+        "internal/mcp/tools.go",
+        "internal/mcp/server.go"
       ],
       "needs_migration": null,
       "adrs": [
         "00042"
       ],
       "blocked": "needs the re-import ADR merged (docs/proposals/reimport.md D1-D4)"
+    },
+    {
+      "id": "a-api-shopping",
+      "title": "shopping service layer pilot (internal/api/shopping)",
+      "wave": 13,
+      "track": null,
+      "issue": 469,
+      "status": "todo",
+      "depends_on": [
+        "l-discrete-api"
+      ],
+      "owns": [
+        "internal/api/shopping/**",
+        "internal/web/shopping/**",
+        "internal/mcp/tools_shopping*.go",
+        ".golangci.yml",
+        "e2e/shopping/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00043 D5 pilot: sets the service signature, caller type, error mapping and depguard pattern"
+    },
+    {
+      "id": "a-api-recipes",
+      "title": "recipes onto internal/api/recipes",
+      "wave": 13,
+      "track": null,
+      "issue": 470,
+      "status": "todo",
+      "depends_on": [
+        "a-api-shopping",
+        "i-reimport",
+        "u-home-suggest-card",
+        "u-card-width"
+      ],
+      "owns": [
+        "internal/api/recipes/**",
+        "internal/web/recipes/**",
+        "internal/web/recipeview/**",
+        "internal/web/editor/**",
+        "internal/web/history/**",
+        "internal/web/cook/**",
+        "internal/mcp/tools_recipes*.go",
+        "internal/mcp/tools_edit*.go",
+        "internal/mcp/tools_import*.go",
+        "internal/picture/**",
+        ".golangci.yml",
+        "e2e/recipes/**",
+        "e2e/recipeview/**",
+        "e2e/editor/**",
+        "e2e/history/**",
+        "e2e/cook/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00043 D5, after the pilot; moves re-import in if built outside"
+    },
+    {
+      "id": "u-card-width",
+      "title": "one source for the library card width",
+      "wave": 12,
+      "track": null,
+      "issue": 468,
+      "status": "todo",
+      "depends_on": [
+        "u-recipe-delete",
+        "u-home-suggest-card"
+      ],
+      "owns": [
+        "internal/web/static/app.css",
+        "internal/web/recipes/style.go"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "a-api-rest",
+      "title": "remaining resources onto internal/api (split per resource after the pilot)",
+      "wave": 13,
+      "track": null,
+      "issue": 471,
+      "status": "todo",
+      "depends_on": [
+        "a-api-recipes"
+      ],
+      "owns": [
+        "internal/api/README.md"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "blocked": "placeholder: split into one node per resource once a-api-shopping and a-api-recipes set the pattern"
     }
   ],
   "shared_files": [
@@ -5123,6 +5220,11 @@
       "title": "Describe reads credential kinds and owner prefix from their owners",
       "merged": "0f487cc",
       "note": "Follow-up from #440 NIT 7. Kind constants move to a package mcp and store can both import; apikey exports its owner-prefix builder or parser."
+    },
+    {
+      "id": "c-import-copy",
+      "title": "remove two lines of import-page copy",
+      "merged": "e31e0bf"
     }
   ],
   "adr_sequence": {
