@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-06, round 23 paused mid-round
+# Overseer handoff: 2026-11-06, round 23 closed
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -6,38 +6,34 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Round 23 (2026-11-06): follow-ups, delete, suggestion cards, three decisions
 
-Paused at the owner's request ("write a handoff, don't start net new work"). Two workers were still
-fixing review findings when the session ended; their commits are on disk, unpushed (#465's worker
-finished green; #460's had not reported).
+Closed at the owner's request ("write a handoff, don't start net new work"); the in-flight PRs were
+finished and merged, nothing new was dispatched.
 
-**Merged** (squash SHA; under the standing authority unless noted):
+**Merged** (squash SHA; under the standing authority):
 
 | Node | PR | SHA | Schema | VERSION |
 |---|---|---|---|---|
 | (graph: #441/#447 nodes) | #450 | 2ca7ef0 | none | none |
 | u-picker-icons | #451 | 3421fea | none | 0.117.1 |
-| (graph: lanes, nodes) | #453, #457, #459, #463, #464, #467, #472 | | none | none |
 | (ADR-00041 author notes, mockup variant A) | #458 | 5a4f0dd | none | none |
 | r-credential-describe | #452 | 0f487cc | none | 0.117.2 |
 | c-import-copy | #461 | e31e0bf | none | 0.117.3 |
+| u-home-suggest-card | #465 | 0fcc0fc | none | 0.118.0 |
+| u-recipe-delete | #460 | 0f33604 | none | 0.119.0 |
+| (ADR-00042 re-import) | #466 | d9c5001 | none | none |
+| l-discrete-api (ADR-00043) | #473 | 5270f0c | none | none |
+| (graph: lanes, nodes) | #453, #457, #459, #463, #464, #467, #472 | | none | none |
 
-**Open:**
+- **#460** returns 409 "this recipe is on a shopping list and must be removed from it before it can be
+  deleted" (`store.ErrOnShoppingList`, one row in httperr.go); one `.btn.danger` rule now lives in
+  app.css (journal and recipeview copies removed); the confirmation script is `static/recipe-delete.js`.
+- **#465** changed both suggestions (home and library side panel); `ribbon.Inline` deleted; the 360px
+  home cap is deferred to u-card-width (#468).
 
-| Node | Issue | PR | State |
-|---|---|---|---|
-| u-recipe-delete | #454 | #460 | CHANGES_REQUESTED round 1. Worker fixing: shopping-list FK 500 -> named sentinel + 409 row in httperr.go, rebase, one `.btn.danger` in app.css, script to `static/recipe-delete.js`, shared id parser, double wrap. Last local commit `99c7b22` in `wt-454`, **unpushed, gates unconfirmed**. Next: check `make check` in wt-454, ownership, force-push, re-review. VERSION 0.118.0. |
-| u-home-suggest-card | #456 | #465 | CHANGES_REQUESTED round 1; **all four fixes done**, rebased on d8cf944, `make check` green (445 e2e), version-check 0.117.3 -> 0.118.0. Commits `bd236cc` `9d2be31` `a1caa8f` `4005c48` in `wt-456`, **unpushed**. Next: ownership check, force-push, round-2 review, merge. Whichever of #460/#465 merges second re-bumps to 0.119.0. Gotcha: a broken `home.templ` made `make generate` write a corrupt `ribbon_templ.go`; the committed output regenerates cleanly. |
-| l-discrete-api | #433 | #473 | ADR-00043 docs PR, CI pending. Owner decided it; merge on green, then `record-done l-discrete-api`. |
-| (ADR-00042 re-import) | #462 | #466 | Docs PR, CI pending. Merge on green, then `unblock i-reimport`. Two dispatcher defaults in it (revision kind/provenance, recipe-page banner) for the owner to overturn on the PR. |
+**Open:** no PRs, no worktrees, no workers. `.claude/worktrees/mascot-check` is the owner's PNGs.
 
-**Worktrees:** `wt-454` (#460), `wt-456` (#465), `wt-433` (#473), `wt-adr-reimport` (#466).
-`.claude/worktrees/mascot-check` is the owner's PNGs, not a worktree. `git worktree remove` reported
-"not a working tree" for wt-447/441/455 after `gh pr merge --delete-branch`; the directories were
-already gone.
-
-**Migration numbers:** schema last used 00030; none handed out this round. r-author-notes needs the next
-(00031) at dispatch. **ADR numbers:** 00041 r-author-notes (merged), 00042 i-reimport (#466), 00043
-l-discrete-api (#473).
+**Migration numbers:** schema last used 00030; none handed out. r-author-notes needs 00031 at dispatch.
+**ADR numbers:** 00041, 00042, 00043 all merged.
 
 **Decisions this round (owner, via /overseer:decide; don't re-ask):**
 - **Author notes, ADR-00041** (`docs/proposals/author-notes.md` D1–D5): ordered list on the recipe,
@@ -58,16 +54,16 @@ l-discrete-api (#473).
   at library-card width; voice line above, "Another idea" below.
 - **Copy:** removed the two "you review the result before anything is saved" lines (#461).
 
-**Next to dispatch, in order:**
-1. r-author-notes (#395): ready once #460 merges (lane overlap). Assign migration 00031. Brief with the
-   mockup variant A as the visual target and the ADR-00041 obligations.
-2. a-api-shopping (#469): ready once #473 merges (unblock via its issue label).
-3. u-card-width (#468): after #460 and #465.
-4. i-reimport (#462): after r-author-notes and #466.
+**Next to dispatch** (all ready; lanes checked against each other by validate.ts):
+1. r-author-notes (#395): assign migration 00031. Brief with ADR-00041's obligations and mockup variant
+   A as the visual target, checked side by side.
+2. a-api-shopping (#469): the ADR-00043 pilot; independent of r-author-notes' lane.
+3. u-card-width (#468): small; app.css plus `internal/web/recipes/style.go`.
+4. i-reimport (#462): unblocked by ADR-00042, but waits on r-author-notes.
 
 **Unmapped issues:** none; every open issue has a node.
 
-**For the owner:** o-demo-reseed (#432) still waits on a deploy; main is 0.117.3.
+**For the owner:** o-demo-reseed (#432) still waits on a deploy; main is 0.119.0.
 
 **Lessons:**
 - **Graph PRs merge on `validate.ts` alone**, no review agent and no CI wait. The owner repeated this
@@ -76,6 +72,9 @@ l-discrete-api (#473).
   `~/.claude/plugins/cache/market/overseer/0.18.2/`.
 - **A long bridge command can outlive a branch switch.** A background `gh pr merge … && git pull` ran
   while the primary checkout sat on a graph branch. Don't pull in background jobs; pull after.
+- **Workers stop silently mid-gate.** #460's worker went quiet after a red lint for 30 minutes; only
+  its `.cc-scratch` log showed it. Have workers write gate output to `.cc-scratch/` and watch for `exit=`.
+- **Two docs PRs that each add an ADR index row conflict.** Merge one, rebase the other.
 - **Ask which instance the owner means.** "The suggestion" existed in two places; the worker changed
   one. Confirm the target before dispatching UI feedback.
 - **ADR workers found real gaps** (pairing keys, lost confidence marks, ADR-00035 snapshot rules). The
