@@ -3845,7 +3845,9 @@
         "internal/web/recipes/**",
         "e2e/home/**",
         "internal/web/home.go",
-        "e2e/recipes/recipes.spec.ts"
+        "e2e/recipes/recipes.spec.ts",
+        "internal/web/ribbon/**",
+        "docs/ui/design.md"
       ],
       "needs_migration": null,
       "adrs": []
