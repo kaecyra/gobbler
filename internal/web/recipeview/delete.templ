@@ -21,11 +21,10 @@ templ deletePage(v deleteView) {
 			.delete-confirm h1 { margin: 0; }
 			.delete-confirm ul { margin: 0; padding-left: 20px; }
 			.delete-confirm form { display: flex; flex-direction: column; gap: 12px; }
-			.delete-confirm label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
 			.delete-confirm .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 			.delete-confirm .btn.danger { color: var(--wattle-ink); border-color: var(--wattle-ink); }
 		</style>
-		<div class="delete-confirm" data-testid="delete-confirm">
+		<div class="pg delete-confirm" data-testid="delete-confirm">
 			<h1>Delete { v.Name }?</h1>
 			<p>This deletes the recipe for good. These go with it:</p>
 			<ul>

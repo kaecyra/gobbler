@@ -57,14 +57,14 @@ func deletePage(v deleteView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<style>\n\t\t\t.delete-confirm { max-width: 560px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 14px; }\n\t\t\t.delete-confirm h1 { margin: 0; }\n\t\t\t.delete-confirm ul { margin: 0; padding-left: 20px; }\n\t\t\t.delete-confirm form { display: flex; flex-direction: column; gap: 12px; }\n\t\t\t.delete-confirm label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }\n\t\t\t.delete-confirm .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }\n\t\t\t.delete-confirm .btn.danger { color: var(--wattle-ink); border-color: var(--wattle-ink); }\n\t\t</style> <div class=\"delete-confirm\" data-testid=\"delete-confirm\"><h1>Delete ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<style>\n\t\t\t.delete-confirm { max-width: 560px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 14px; }\n\t\t\t.delete-confirm h1 { margin: 0; }\n\t\t\t.delete-confirm ul { margin: 0; padding-left: 20px; }\n\t\t\t.delete-confirm form { display: flex; flex-direction: column; gap: 12px; }\n\t\t\t.delete-confirm .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }\n\t\t\t.delete-confirm .btn.danger { color: var(--wattle-ink); border-color: var(--wattle-ink); }\n\t\t</style> <div class=\"pg delete-confirm\" data-testid=\"delete-confirm\"><h1>Delete ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 29, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 28, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -77,7 +77,7 @@ func deletePage(v deleteView) templ.Component {
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(deleteHref(v.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 38, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 37, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -90,7 +90,7 @@ func deletePage(v deleteView) templ.Component {
 			var templ_7745c5c3_Var5 templ.SafeURL
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(recipePath(v.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 42, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/recipeview/delete.templ`, Line: 41, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
