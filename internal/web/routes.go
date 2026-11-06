@@ -89,7 +89,16 @@ func mountCatalog(r chi.Router, d Deps) {
 	shop := apishop.NewStore(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
-	svc := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d.DB)})
+	svc, err := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d.DB)})
+	if err != nil {
+		// Every route still exists and answers 500 with the cause, as the MCP
+		// endpoint does, so a bad build is a loud failure and not a missing page.
+		slog.Error("shopping pages unavailable", "error", err.Error())
+		r.Mount(webshopping.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the shopping pages are not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
 	r.Mount(webshopping.Pattern, webshopping.Routes(webshopping.Deps{Shop: svc, Logger: d.Logger}))
 }
 

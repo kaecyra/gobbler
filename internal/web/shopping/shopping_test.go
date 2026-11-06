@@ -62,7 +62,11 @@ func newFixture(t *testing.T) *fixture {
 	cat, rec := catalog.New(d), store.New(d)
 	shop := domain.New(d, rec, cat)
 	f := &fixture{t: t, d: d, cat: cat, rec: rec, shop: shop, ctx: identityContext(t, d)}
-	deps := Deps{Shop: apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d)})}
+	svc, err := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps := Deps{Shop: svc}
 	f.h = newHandler(deps)
 	shop.OnChange(f.h.hub.notify)
 	root := chi.NewRouter()

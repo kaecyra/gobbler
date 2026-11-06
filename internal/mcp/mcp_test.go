@@ -925,3 +925,44 @@ func TestADraftRecordsItsProvenance(t *testing.T) {
 		t.Errorf("credential = %+v, want the key %d (%s) as it was when verified", c, key.KeyID, key.Prefix)
 	}
 }
+
+// A household key has no person, only its household (ADR-00031). It reads and
+// writes that household's shopping lists, and the write is recorded against it.
+func TestAHouseholdKeyUsesItsHouseholdsShoppingLists(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	secret, err := s.keys.CreateHousehold(context.Background(), s.joneses.ID, "jo@example.com", "kitchen", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cs := s.connect(secret)
+	var list struct {
+		ID int64 `json:"id"`
+	}
+	if msg := call(t, cs, "create_shopping_list", map[string]any{"name": "Joneses week"}, &list); msg != "" {
+		t.Fatalf("create_shopping_list with a household key: %q", msg)
+	}
+	if msg := call(t, cs, "add_manual_shopping_item", map[string]any{"list_id": list.ID, "text": "paper towels"}, nil); msg != "" {
+		t.Fatalf("add_manual_shopping_item with a household key: %q", msg)
+	}
+	var got struct {
+		Name  string     `json:"name"`
+		Items []struct{} `json:"items"`
+	}
+	if msg := call(t, cs, "get_shopping_list", map[string]any{"id": list.ID}, &got); msg != "" || got.Name != "Joneses week" || len(got.Items) != 1 {
+		t.Errorf("get_shopping_list = %+v %q", got, msg)
+	}
+	var pantry struct {
+		Ingredients []string `json:"ingredients"`
+	}
+	if msg := call(t, cs, "get_pantry", nil, &pantry); msg != "" {
+		t.Errorf("get_pantry with a household key: %q", msg)
+	}
+	// The Smiths cannot see it.
+	secretA, _ := s.personalKey("ann@example.com")
+	var lists pageOf[struct {
+		ID int64 `json:"id"`
+	}]
+	if msg := call(t, s.connect(secretA), "list_shopping_lists", nil, &lists); msg != "" || len(lists.Items) != 0 {
+		t.Errorf("the Smiths see %+v %q", lists, msg)
+	}
+}

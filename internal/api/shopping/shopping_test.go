@@ -52,11 +52,14 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	cat, rec := catalog.New(d), store.New(d)
+	svc, err := apishop.New(apishop.Deps{Lists: apishop.NewStore(d, rec, cat), Recipes: rec, Catalog: cat, Members: hs})
+	if err != nil {
+		t.Fatal(err)
+	}
 	f := &fixture{
-		t: t, d: d, cat: cat, rec: rec,
+		t: t, d: d, cat: cat, rec: rec, svc: svc,
 		ann: apishop.Caller{Person: "ann@example.com", Household: smiths},
 		jo:  apishop.Caller{Person: "jo@example.com", Household: joneses},
-		svc: apishop.New(apishop.Deps{Lists: apishop.NewStore(d, rec, cat), Recipes: rec, Catalog: cat, Members: hs}),
 	}
 	as := household.WithContext(verified(t, "ann@example.com"), smiths)
 	ing, err := cat.CreateIngredient(as, catalog.Ingredient{Name: "zz api flour", Aisle: "baking"})
@@ -316,5 +319,39 @@ func TestAMemberOfAnotherHouseholdIsRefused(t *testing.T) {
 	}
 	if lists, err := f.svc.Lists(ctx, f.ann); err != nil || len(lists) != 1 {
 		t.Errorf("the Smiths' lists = %v, %v, want just the one", lists, err)
+	}
+}
+
+// A household credential has no person: it is admitted by its household alone,
+// and works only in that household (ADR-00031).
+func TestAHouseholdCredentialActsForItsHouseholdOnly(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	key := apishop.Caller{Household: f.ann.Household, HouseholdKey: true}
+	list, err := f.svc.CreateList(ctx, key, "By key")
+	if err != nil {
+		t.Fatalf("CreateList as a household credential: %v", err)
+	}
+	if lists, err := f.svc.Lists(ctx, f.ann); err != nil || len(lists) != 1 || lists[0].ID != list.ID {
+		t.Errorf("a member sees %v, %v, want the key's list", lists, err)
+	}
+	if lists, err := f.svc.Lists(ctx, f.jo); err != nil || len(lists) != 0 {
+		t.Errorf("the other household sees %v, %v, want none", lists, err)
+	}
+	// It still needs a household.
+	if _, err := f.svc.Lists(ctx, apishop.Caller{HouseholdKey: true}); !errors.Is(err, apishop.ErrNotMember) {
+		t.Errorf("a household credential with no household = %v, want ErrNotMember", err)
+	}
+	// The flag is not a way past the person check: without it a person-less
+	// Caller is refused.
+	if _, err := f.svc.Lists(ctx, apishop.Caller{Household: f.ann.Household}); !errors.Is(err, apishop.ErrNotMember) {
+		t.Errorf("no person and no flag = %v, want ErrNotMember", err)
+	}
+}
+
+func TestNewRefusesAMissingCollaborator(t *testing.T) {
+	f := newFixture(t)
+	if _, err := apishop.New(apishop.Deps{Lists: apishop.NewStore(f.d, f.rec, f.cat), Recipes: f.rec, Catalog: f.cat}); err == nil {
+		t.Error("New without Members = nil error, want one")
 	}
 }

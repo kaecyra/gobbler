@@ -97,6 +97,10 @@ type Caller struct {
 	Person string
 	// Household is the household the person is a member of.
 	Household household.Household
+	// HouseholdKey says the Caller is a household credential, an API key that
+	// belongs to the household and not to a person (ADR-00031). Person is then
+	// empty, and the adapter has verified the credential's household instead.
+	HouseholdKey bool
 }
 
 // Recipes is what the service reads from the recipe store. *store.Store
@@ -137,17 +141,29 @@ type Service struct {
 	members Members
 }
 
-// New returns a Service. All three collaborators are required.
-func New(d Deps) *Service {
-	return &Service{lists: d.Lists, recipes: d.Recipes, catalog: d.Catalog, members: d.Members}
+// New returns a Service. Lists, Recipes, Catalog and Members are all required;
+// a missing one is an error here, not a nil dereference on the first request.
+func New(d Deps) (*Service, error) {
+	if d.Lists == nil || d.Recipes == nil || d.Catalog == nil || d.Members == nil {
+		return nil, errors.New("shopping service: lists, recipes, catalog and members are required")
+	}
+	return &Service{lists: d.Lists, recipes: d.Recipes, catalog: d.Catalog, members: d.Members}, nil
 }
 
-// enter checks that the Caller's person is a member of the Caller's household
-// and returns a context that runs in that household. The household comes from
-// the membership lookup, not from the Caller or the context. It is the first
-// line of every method.
+// enter checks the Caller and returns a context that runs in the Caller's
+// household. A person must be a member of the household, checked against the
+// household store; the household comes from that lookup, not from the Caller or
+// the context. A household credential has no person to look up: the adapter
+// verified the credential, and it names the household. It is the first line of
+// every method.
 func (s *Service) enter(ctx context.Context, c Caller) (context.Context, error) {
-	if c.Person == "" || c.Household.ID == 0 {
+	if c.Household.ID == 0 {
+		return nil, ErrNotMember
+	}
+	if c.HouseholdKey {
+		return household.WithContext(ctx, c.Household), nil
+	}
+	if c.Person == "" {
 		return nil, ErrNotMember
 	}
 	h, err := s.members.ForEmail(ctx, c.Person)

@@ -76,9 +76,10 @@ type pantryOut struct {
 }
 
 // shopCaller is the shopping service's Caller for a tool call: the credential's
-// owner and the household the membership check admitted it to.
+// owner and the household the membership check admitted it to. A household
+// key has no owner, only the household (ADR-00031).
 func shopCaller(c Credential, h household.Household) apishop.Caller {
-	return apishop.Caller{Person: c.Email, Household: h}
+	return apishop.Caller{Person: c.Email, Household: h, HouseholdKey: c.Email == "" && c.HouseholdID != 0}
 }
 
 func (t *tools) registerShopping(s *mcp.Server) {

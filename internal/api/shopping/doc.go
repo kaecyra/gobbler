@@ -17,7 +17,8 @@
 //     with ErrNotMember unless the person is a member of the household,
 //     checked against the household store (Members), and runs in that
 //     household, not whatever household the context happens to carry
-//     (ADR-00018). The stores below still scope every row by that household, so
+//     (ADR-00018). A household API key has no person; its Caller sets
+//     HouseholdKey and is admitted by its household alone (ADR-00031). The stores below still scope every row by that household, so
 //     another household's list stays ErrNotFound.
 //   - Types. The package re-exports the domain types and errors its callers
 //     need (View, ListInfo, ErrNotFound, ...) as aliases, so an adapter imports
