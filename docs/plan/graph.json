@@ -4220,7 +4220,8 @@
         "a-mcp-caller",
         "a-api-sharing",
         "r-note-length",
-        "u-save-errors-visible"
+        "u-save-errors-visible",
+        "u-qualifier-style"
       ],
       "owns": [
         "internal/api/catalog/**",
@@ -4329,7 +4330,8 @@
       "issue": 518,
       "status": "todo",
       "depends_on": [
-        "a-api-households"
+        "a-api-households",
+        "u-qualifier-style"
       ],
       "owns": [
         "internal/api/ingest/**",
@@ -4368,7 +4370,12 @@
         "internal/web/editor/editor.templ",
         "internal/web/editor/editor_templ.go",
         "e2e/ingest/**",
-        "e2e/editor/**"
+        "e2e/editor/**",
+        "internal/web/editor/notes_test.go",
+        "internal/ingest/notes.go",
+        "internal/ingest/notes_test.go",
+        "internal/store/author_notes.go",
+        "internal/store/author_notes_test.go"
       ],
       "needs_migration": null,
       "adrs": [
@@ -4397,6 +4404,25 @@
       "needs_migration": null,
       "adrs": [],
       "note": "frontend.md: a message about the page is a page-level callout. Confirm on the review screen answered a refused draft with 200 and inline errors far below the fold; the save bar's count ignores errors."
+    },
+    {
+      "id": "u-qualifier-style",
+      "title": "qualifiers in the recipe page's ingredient list are muted italic, separated by space, not comma",
+      "wave": 13,
+      "track": null,
+      "issue": 526,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/display/**",
+        "internal/web/recipeview/**",
+        "internal/web/layout/recipe_parts.templ",
+        "internal/web/layout/recipe_parts_templ.go",
+        "e2e/recipeview/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner's design call, 2026-11-06: on the recipe page's ingredient list, show each qualifier in a muted italic style, separated from the name and from each other by a space, not a comma. Colours from the tokens. Change only the recipe page's ingredient list (frontend.md); cook mode, shopping and the editor keep their current text."
     }
   ],
   "shared_files": [

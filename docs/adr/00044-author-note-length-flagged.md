@@ -21,10 +21,12 @@ author's tip.
 ADR-00041 rejected "guidance only" because the LLM fallback and agent edits
 over MCP could write anything and the rule would decay. Both of those writers
 already land on the review screen before anything changes a recipe
-(ADR-00006, ADR-00034), so a person sees the note and its flag there. The
-length rule's job was to keep notes short enough to read beside the steps;
-the low-confidence flag ingest already puts on a long note does that without
-refusing the save.
+(ADR-00006, ADR-00034), so a person reads every note before it is saved. An
+ingested note over the guideline also carries the low-confidence flag; a long
+note an agent proposes does not, and the person judges it on the review screen
+like the rest of the proposal. The length rule's job was to keep notes short
+enough to read beside the steps; the review and the existing flag do that
+without refusing the save.
 
 Options considered:
 
@@ -62,7 +64,9 @@ Obligations:
    note of 1,000 characters on one paragraph validates.
 2. An e2e test confirms a draft carrying a 700-character note saves from the
    review screen, with the note still flagged before the save.
-3. Ingest keeps flagging a note over 400 characters at low confidence; its
+3. The editor and review screen no longer refuse a note on length, and the
+   note card's help text no longer states a maximum.
+4. Ingest keeps flagging a note over 400 characters at low confidence; its
    existing test still passes unchanged.
-4. ADR-00041's status line and its row in `docs/adr/README.md` say it is
+5. ADR-00041's status line and its row in `docs/adr/README.md` say it is
    amended by this ADR.
