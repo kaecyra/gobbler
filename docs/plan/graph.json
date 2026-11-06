@@ -4029,6 +4029,23 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner-reported (#488): the datalist arrow implies a dropdown but Chrome lists only matches for the current text. After a-api-recipes, which owns internal/web/editor/** now."
+    },
+    {
+      "id": "i-step-numbers",
+      "title": "strip the source's step numbering from step text",
+      "wave": 13,
+      "track": null,
+      "issue": 490,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/ingest/*.go",
+        "internal/ingest/extract/*.go",
+        "internal/ingest/extract/testdata/**"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner request (#490). Enumerators only, never a leading quantity or time; one place for every step path; ParserVersion bump."
     }
   ],
   "shared_files": [
