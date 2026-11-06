@@ -440,10 +440,11 @@ func sectionTitleLike(s string, explicit, first bool) bool {
 	return !sectionQuantityStartRe.MatchString(s)
 }
 
-// sectionJoinSteps turns raw step lines into step texts with markers removed.
-// With numbered or bulleted markers, an unmarked line continues the previous
-// step. Without markers, blank-separated paragraphs are steps, or each line is
-// one step when there are no paragraph breaks.
+// sectionJoinSteps turns raw step lines into step texts. A numbered marker
+// finds where a step starts and is left on the text, for ingest to strip
+// (#502). With numbered or bulleted markers, an unmarked line continues the
+// previous step. Without markers, blank-separated paragraphs are steps, or each
+// line is one step when there are no paragraph breaks.
 func sectionJoinSteps(lines []rawStepLine) []string {
 	steps := []string{}
 	if len(lines) == 0 {
@@ -462,7 +463,16 @@ func sectionJoinSteps(lines []rawStepLine) []string {
 		text := l.text
 		isMarker := false
 		if loc := sectionStepMarkerRe.FindStringIndex(text); loc != nil {
-			text, isMarker = strings.TrimSpace(text[loc[1]:]), true
+			// The marker stays on the text: ingest removes the number
+			// (stripStepNumber) after splitting a line that holds several
+			// (splitNumberedSteps). A bare "1." stays too, and the next line
+			// joins it; a bare "1" with no punctuation leaves an empty step
+			// the next line fills.
+			bare := strings.TrimSpace(text[loc[1]:]) == ""
+			text, isMarker = strings.TrimSpace(text), true
+			if bare && !strings.ContainsAny(text, ".):") {
+				text = ""
+			}
 		} else if loc := sectionBulletRe.FindStringIndex(text); loc != nil {
 			text, isMarker = strings.TrimSpace(text[loc[1]:]), true
 		}
@@ -488,7 +498,8 @@ func sectionJoinSteps(lines []rawStepLine) []string {
 	}
 	out := steps[:0]
 	for _, s := range steps {
-		if s != "" {
+		// A marker with nothing after it is not a step ("3." at the end).
+		if loc := sectionStepMarkerRe.FindStringIndex(s); s != "" && (loc == nil || strings.TrimSpace(s[loc[1]:]) != "") {
 			out = append(out, s)
 		}
 	}
