@@ -3802,7 +3802,12 @@
       "depends_on": [],
       "owns": [
         "internal/web/recipeview/**",
-        "e2e/recipeview/**"
+        "e2e/recipeview/**",
+        "internal/store/recipe.go",
+        "internal/store/recipe_delete_test.go",
+        "internal/web/static/app.css",
+        "internal/web/static/recipe-delete.js",
+        "internal/web/journal/journal.templ"
       ],
       "needs_migration": null,
       "adrs": [],
