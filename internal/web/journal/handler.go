@@ -2,8 +2,8 @@
 // and the made-it log. It supplies routes that render the journal as an HTMX
 // fragment (or, without HTMX, as a page of its own), so the recipe page can
 // include it by URL without this package importing the recipe view or the
-// reverse (ADR-00012). Persistence is the recipe store (ADR-00004); the author
-// of a note or entry is the verified identity on the request context, never a
+// reverse (ADR-00012). Persistence is the recipe store (ADR-00004), reached
+// through internal/api/journal (ADR-00043); the author of a note or entry is the verified identity on the request context, never a
 // form field (ADR-00030). It is mounted from internal/web.
 package journal
 
@@ -19,8 +19,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	"github.com/kaecyra/gobbler/internal/recipe"
-	"github.com/kaecyra/gobbler/internal/store"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -40,21 +41,22 @@ const minRating = 1
 var ratingMessage = fmt.Sprintf("Rating must be a whole number from %d to %d.", minRating, layout.MaxSpoons)
 
 // dateLayout is the form of the made-it date, as in the date input and the
-// store.
+// service.
 const dateLayout = "2006-01-02"
 
-// Journal is what the routes use from the recipe store. The rating lives on
-// the recipe, so setting it is a Get then an Update, which writes a revision.
+// Journal is what the routes use from the journal service
+// (apijournal.Service). The service checks the Caller's membership; the
+// handlers only say who the Caller is (ADR-00043).
 type Journal interface {
-	Get(ctx context.Context, id int64) (recipe.Recipe, error)
-	Update(ctx context.Context, id int64, r recipe.Recipe) error
-	AddNote(ctx context.Context, id int64, body string, pinned bool) (store.Note, error)
-	ListNotes(ctx context.Context, id int64) ([]store.Note, error)
-	SetNotePinned(ctx context.Context, id, noteID int64, pinned bool) error
-	UpdateNoteBody(ctx context.Context, id, noteID int64, body string) error
-	DeleteNote(ctx context.Context, id, noteID int64) error
-	AddMadeIt(ctx context.Context, id int64, e store.MadeIt) (store.MadeIt, error)
-	ListMadeIt(ctx context.Context, id int64) ([]store.MadeIt, error)
+	Recipe(ctx context.Context, c apijournal.Caller, id int64) (recipe.Recipe, error)
+	SetRating(ctx context.Context, c apijournal.Caller, id int64, rating *int) error
+	AddNote(ctx context.Context, c apijournal.Caller, id int64, body string, pinned bool) (apijournal.Note, error)
+	ListNotes(ctx context.Context, c apijournal.Caller, id int64) ([]apijournal.Note, error)
+	SetNotePinned(ctx context.Context, c apijournal.Caller, id, noteID int64, pinned bool) error
+	UpdateNoteBody(ctx context.Context, c apijournal.Caller, id, noteID int64, body string) error
+	DeleteNote(ctx context.Context, c apijournal.Caller, id, noteID int64) error
+	AddMadeIt(ctx context.Context, c apijournal.Caller, id int64, e apijournal.MadeIt) (apijournal.MadeIt, error)
+	ListMadeIt(ctx context.Context, c apijournal.Caller, id int64) ([]apijournal.MadeIt, error)
 }
 
 // Deps is what the routes need. Now is optional and defaults to time.Now.
@@ -124,11 +126,11 @@ func (h *handler) addNote(w http.ResponseWriter, r *http.Request) {
 	var problem formProblem
 	if strings.TrimSpace(body) == "" {
 		problem = formProblem{note: emptyNoteMessage}
-	} else if _, err := h.Journal.AddNote(r.Context(), id, body, pinned); err != nil {
+	} else if _, err := h.Journal.AddNote(r.Context(), caller.FromContext(r.Context()), id, body, pinned); err != nil {
 		// The store rejects a note only for an empty body, which is handled
 		// above; any other ErrInvalid is a mismatch between us and the store, so
 		// it is reported as a bad request rather than as the empty-note message.
-		if errors.Is(err, store.ErrInvalid) {
+		if errors.Is(err, apijournal.ErrInvalid) {
 			err = fmt.Errorf("%w: %w", layout.ErrInvalid, err)
 		}
 		layout.WriteError(w, r, fmt.Errorf("add note to recipe %d: %w", id, err))
@@ -157,7 +159,7 @@ func (h *handler) pinNote(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("%w: pinned must be 1 or 0, got %q", layout.ErrInvalid, choice))
 		return
 	}
-	if err := h.Journal.SetNotePinned(r.Context(), id, noteID, pinned); err != nil {
+	if err := h.Journal.SetNotePinned(r.Context(), caller.FromContext(r.Context()), id, noteID, pinned); err != nil {
 		layout.WriteError(w, r, fmt.Errorf("pin note %d of recipe %d: %w", noteID, id, err))
 		return
 	}
@@ -167,18 +169,18 @@ func (h *handler) pinNote(w http.ResponseWriter, r *http.Request) {
 // editNote shows the journal with note noteID as an edit form in its place
 // (ADR-00037). It is a GET so the Edit link works without scripts.
 func (h *handler) editNote(w http.ResponseWriter, r *http.Request) {
-	h.showNote(w, r, func(v *view, n store.Note) { v.EditingID, v.EditBody = n.ID, n.Body })
+	h.showNote(w, r, func(v *view, n apijournal.Note) { v.EditingID, v.EditBody = n.ID, n.Body })
 }
 
 // confirmDelete shows the journal with a confirmation in the place of note
 // noteID. Nothing is deleted until the confirmation is posted.
 func (h *handler) confirmDelete(w http.ResponseWriter, r *http.Request) {
-	h.showNote(w, r, func(v *view, n store.Note) { v.DeletingID = n.ID })
+	h.showNote(w, r, func(v *view, n apijournal.Note) { v.DeletingID = n.ID })
 }
 
 // showNote renders the journal with mark applied to note noteID; a note that
 // is not one of this recipe's is a 404.
-func (h *handler) showNote(w http.ResponseWriter, r *http.Request, mark func(*view, store.Note)) {
+func (h *handler) showNote(w http.ResponseWriter, r *http.Request, mark func(*view, apijournal.Note)) {
 	id, ok := recipeID(w, r)
 	if !ok {
 		return
@@ -222,10 +224,10 @@ func (h *handler) saveNote(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		problem = formProblem{edit: emptyNoteMessage}
-	} else if err := h.Journal.UpdateNoteBody(r.Context(), id, noteID, body); err != nil {
+	} else if err := h.Journal.UpdateNoteBody(r.Context(), caller.FromContext(r.Context()), id, noteID, body); err != nil {
 		// As in addNote: the empty body is handled above, so any other
 		// ErrInvalid is a mismatch with the store and a bad request.
-		if errors.Is(err, store.ErrInvalid) {
+		if errors.Is(err, apijournal.ErrInvalid) {
 			err = fmt.Errorf("%w: %w", layout.ErrInvalid, err)
 		}
 		layout.WriteError(w, r, fmt.Errorf("edit note %d of recipe %d: %w", noteID, id, err))
@@ -237,7 +239,7 @@ func (h *handler) saveNote(w http.ResponseWriter, r *http.Request) {
 // requireNote is ErrNotFound unless noteID is one of recipe id's notes (a
 // missing recipe is ErrNotFound too).
 func (h *handler) requireNote(ctx context.Context, id, noteID int64) error {
-	notes, err := h.Journal.ListNotes(ctx, id)
+	notes, err := h.Journal.ListNotes(ctx, caller.FromContext(ctx), id)
 	if err != nil {
 		return fmt.Errorf("list notes of recipe %d: %w", id, err)
 	}
@@ -259,7 +261,7 @@ func (h *handler) deleteNote(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.Journal.DeleteNote(r.Context(), id, noteID); err != nil {
+	if err := h.Journal.DeleteNote(r.Context(), caller.FromContext(r.Context()), id, noteID); err != nil {
 		layout.WriteError(w, r, fmt.Errorf("delete note %d of recipe %d: %w", noteID, id, err))
 		return
 	}
@@ -282,18 +284,10 @@ func (h *handler) setRating(w http.ResponseWriter, r *http.Request) {
 	h.finish(w, r, id, problem, nil)
 }
 
-// saveRating sets or clears the rating of recipe id. Update is the store's
-// one way to change the recipe, and it writes a revision.
+// saveRating sets or clears the rating of recipe id. The service writes it as
+// a revision of the recipe.
 func (h *handler) saveRating(ctx context.Context, id int64, rating *int) error {
-	rec, err := h.Journal.Get(ctx, id)
-	if err != nil {
-		return fmt.Errorf("load recipe %d: %w", id, err)
-	}
-	rec.Rating = rating
-	if err := h.Journal.Update(ctx, id, rec); err != nil {
-		return fmt.Errorf("rate recipe %d: %w", id, err)
-	}
-	return nil
+	return h.Journal.SetRating(ctx, caller.FromContext(ctx), id, rating)
 }
 
 func (h *handler) addMadeIt(w http.ResponseWriter, r *http.Request) {
@@ -303,7 +297,7 @@ func (h *handler) addMadeIt(w http.ResponseWriter, r *http.Request) {
 	}
 	on, rawRating, text := strings.TrimSpace(form.Get("on")), form.Get("rating"), form.Get("comment")
 	var problem formProblem
-	entry := store.MadeIt{Comment: text}
+	entry := apijournal.MadeIt{Comment: text}
 	if on != "" {
 		t, err := time.Parse(dateLayout, on)
 		if err != nil {
@@ -317,7 +311,7 @@ func (h *handler) addMadeIt(w http.ResponseWriter, r *http.Request) {
 	}
 	entry.Rating = rating
 	if problem == (formProblem{}) {
-		if _, err := h.Journal.AddMadeIt(r.Context(), id, entry); err != nil {
+		if _, err := h.Journal.AddMadeIt(r.Context(), caller.FromContext(r.Context()), id, entry); err != nil {
 			layout.WriteError(w, r, fmt.Errorf("log made-it on recipe %d: %w", id, err))
 			return
 		}
@@ -385,15 +379,15 @@ func (h *handler) render(w http.ResponseWriter, r *http.Request, status int, v v
 // load reads everything the journal shows. The recipe is read first so a
 // missing one is a 404 before anything else is asked.
 func (h *handler) load(ctx context.Context, id int64) (view, error) {
-	rec, err := h.Journal.Get(ctx, id)
+	rec, err := h.Journal.Recipe(ctx, caller.FromContext(ctx), id)
 	if err != nil {
 		return view{}, fmt.Errorf("load recipe %d: %w", id, err)
 	}
-	notes, err := h.Journal.ListNotes(ctx, id)
+	notes, err := h.Journal.ListNotes(ctx, caller.FromContext(ctx), id)
 	if err != nil {
 		return view{}, fmt.Errorf("list notes of recipe %d: %w", id, err)
 	}
-	made, err := h.Journal.ListMadeIt(ctx, id)
+	made, err := h.Journal.ListMadeIt(ctx, caller.FromContext(ctx), id)
 	if err != nil {
 		return view{}, fmt.Errorf("list made-it log of recipe %d: %w", id, err)
 	}
