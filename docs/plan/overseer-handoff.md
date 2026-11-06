@@ -1,8 +1,62 @@
-# Overseer handoff: 2026-11-06, round 24 closed, #494 in review
+# Overseer handoff: 2026-11-06, round 25 closing
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 25 (2026-11-06): recipes API, step splitting, editor fixes
+
+**Merged** (squash SHA; under the standing authority):
+
+| Node | PR | SHA | VERSION |
+|---|---|---|---|
+| a-api-recipes | #494 | cdadce1 | 0.122.1 |
+| (graph: u-qualifier-chip) | #497 | 90e90da | none |
+| (graph: i-line-qualifiers) | #499 | 65290d4 | none |
+| i-split-steps | #500 | c5ec13c | 0.123.0 (ParserVersion 16) |
+| u-editor-suggest-list | #501 | d5064c5 | 0.123.1 |
+| (graph: i-pasted-numbers) | #503 | 4d1228e | none |
+| i-line-qualifiers | #504 | 06625bc | 0.123.2 (ParserVersion 17) |
+
+**Also merged late in the round:** #507 (76f010f, i-pasted-numbers lane gains `internal/parse/meta_test.go`) and #510 (4bd1719, nodes u-aisle-suggest #508 and a-mcp-caller #509, both now `dor:ready`).
+
+**Open at handoff. Read the PR threads and inbox before acting:**
+- **#505 u-qualifier-chip (#496)**, branch fix/496-qualifier-chip, wt-496, VERSION 0.123.3.
+  - Review is complete: three rounds, then the owner's ruling (ib-12a9cff30e05, "shrink the text box on phones", done in 1047770 and verified). Every thread is resolved.
+  - **CI `check` is red.** At 360px chip 3's × measures 300.78 against a limit of 300.5. CI fonts render wider than the container's, so the 5ch floor has no margin.
+  - The worker (in wt-496) was sent to give the `@media (max-width: 400px)` rule ~4px of headroom without loosening the test. If its report is lost, brief a fresh worker from that.
+  - **Done in 4b8ddd1 (pushed):** the phone rule is now `min-width: 3ch; padding: 0 4px`; the test tolerance is unchanged; `make check` is green locally. Next: confirm CI is green, check `reviewThreads` (should be 0), then merge. No re-review is needed: it is a single-rule CSS change inside the ruling, and the test is unchanged.
+- **#506 i-pasted-numbers (#502)**, branch fix/502-pasted-numbers, wt-502, head d29c9a5, VERSION 0.123.3, ParserVersion 18.
+  - Three review rounds are done and the threads from all of them are resolved.
+  - One SHOULD survives the cap, and it is text loss. The new trailing-enumerator strip in `stripStepNumber` (`internal/ingest/assemble.go:368`) drops a lone trailing number after a sentence end: "1. Bake. 350." gives "Bake.". It is escalated to the owner as ib-6cb95393a777, with options:
+    - next-number (recommended): strip only the next number in the run;
+    - drop-strip: remove the trailing strip;
+    - merge-follow-up.
+  - Act on the answer with a fresh worker in wt-502, a verification review, then resolve the open thread.
+- #505 and #506 both hold 0.123.3. Whichever merges second re-bumps to 0.123.4 by merging origin/main.
+- **Process miss:** #507 was merged with its declined-MUST thread still open. The thread was resolved after the merge, with evidence. Before any merge, query `reviewThreads` for unresolved threads, even when the decline was posted as a PR comment.
+
+**Next to dispatch, in order:**
+1. **Split a-api-rest (#471)**, a dispatcher graph PR. It is a placeholder (owns only `internal/api/README.md`) and is unblocked now that a-api-recipes has merged. ADR-00043: one node per resource, each creating `internal/api/<resource>`, switching web and MCP, and adding a depguard rule. Proposed nodes, from the depguard exceptions in `.golangci.yml` and a grep of domain imports in `internal/web` and `internal/mcp` on 2026-11-06:
+   - **a-api-journal**: `internal/web/journal/{handler,view}.go` and `journal_templ.go` read `store` directly. Creates `internal/api/journal` and removes those three exceptions.
+   - **a-api-sharing**: `internal/web/sharing/handler.go` reads `store` and `internal/sharing`. Probably extends `internal/api/recipes`, or adds `internal/api/sharing`; decide in the node.
+   - **a-api-pictures**: `internal/web/picture/picture.go` calls the picture service directly. Route it through `apirecipes` (`NewPictures` exists) and remove its exception.
+   - **a-api-catalog**: `internal/catalog` is imported by web/catalog, editor, cook, history, recipeview, ingest, operator and mcp. The largest one; make it its own round.
+   - **a-api-households**: `internal/household` and `apikey` are imported across web/household, profile, the middleware, layout and mcp. The middleware's membership check stays at the adapter (ADR-00043 "Authentication stays at the adapters"), so scope this carefully.
+   - **a-api-profile**: profile, session and oauth grants under web/profile.
+   - **Last, a-api-status-table**: `internal/web/layout/httperr.go` names domain sentinels. Once every resource re-exports its errors, switch it to the `api` aliases and drop the exception. It depends on all the above.
+   Before writing nodes, check each against the code. Give each a lane, a dependency on a-mcp-caller (#509) for any that touch `internal/mcp`, and the ADR-00043 acceptance (depguard rule plus web and MCP switch). Then close #471 or remap it to the first node. Ingest is already a library the adapters call (ADR-00043 note in docs/design.md); confirm with the owner that it needs no node.
+2. **a-mcp-caller (#509)** and **u-aisle-suggest (#508)** once #510 merges (u-aisle-suggest waits on #505).
+3. **o-demo-reseed (#432)** after the owner deploys.
+
+**Owner, deployed:** the VM ran 0.121.1 at the start of this round, and main is at 0.123.2+. A deploy unblocks o-demo-reseed and lets the owner check step splitting and qualifier case on real imports.
+
+**Lessons this round:**
+- **Test against the real page.** The owner's browser-saved halfbakedharvest page caught a `9×13`/`9x13` mismatch that the hand-built fixture hid. When a site blocks scripted fetches, ask the owner for a browser save before accepting a synthetic fixture.
+- **A worker reporting "waiting on monitor" in a loop spams the dispatcher.** Tell workers to run `make check` in the foreground with no monitors or poll loops; TaskStop a worker that keeps waking.
+- **Review agents share `.cc-scratch/`.** One overwrote the dispatcher's PR-body file. Give dispatcher files a distinct prefix (`prbody-<n>.md`).
+- **The host plugin mirror** is `/Users/timothygunter/.odette/home/default/gobbler-58ff2639/.claude/plugins/cache/market/overseer/0.20.1`. `bun` and `gh` exist only on the host.
+- **Review a re-review against the pushed head, and say which head.** #507's MUST came from reviewing a head that predated the rework it described.
 
 ## Round 24 (2026-11-06): author notes, shopping API pilot, card width
 
