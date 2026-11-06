@@ -18,7 +18,7 @@ index below in the same commit.
 | [00001](00001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [00002](00002-single-binary-go-stack.md) | Single Go binary: chi, templ, HTMX, SQLite | Amended by [00017](00017-cloudflared-on-the-guest.md), [00021](00021-youtube-video-on-a-recipe.md) |
 | [00003](00003-cloudflare-access-identity.md) | Identity from verified Cloudflare Access JWT; single user | Superseded by [00030](00030-google-sign-in.md) |
-| [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md), [00025](00025-one-cuisine-per-recipe.md), [00035](00035-reviewing-agent-recipe-edits.md) |
+| [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md), [00025](00025-one-cuisine-per-recipe.md), [00035](00035-reviewing-agent-recipe-edits.md), [00041](00041-author-notes.md) |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
 | [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Amended by [00020](00020-ingest-step-graph-gap-fill-review.md), [00034](00034-mcp-server.md) |
 | [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Accepted |
@@ -55,6 +55,7 @@ index below in the same commit.
 | [00038](00038-editor-morphs-the-server-rendered-form.md) | The recipe editor morphs the server-rendered form in place | Accepted |
 | [00039](00039-recipe-pictures.md) | A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header | Amended by [00040](00040-loopback-fetches-under-the-dev-bypass.md) |
 | [00040](00040-loopback-fetches-under-the-dev-bypass.md) | The fetch guard admits loopback only while the dev auth bypass is on | Accepted |
+| [00041](00041-author-notes.md) | A recipe keeps its author's notes as a short list that ends the step chain | Accepted |
 
 ## What needs one
 
