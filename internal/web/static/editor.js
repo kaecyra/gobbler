@@ -5,7 +5,8 @@
 //
 // Structural actions morph the returned form into the page (ADR-00038), so
 // scroll, focus and caret survive. This keeps opened rows open and focuses the
-// control the server marked autofocus.
+// control the server marked autofocus. A refused save has none: this scrolls to
+// the first error message and focuses it.
 //
 // Drag to reorder. Each draggable row has a .grip handle inside a
 // [data-drag-list] container whose value is the action's verb and position,
@@ -48,6 +49,15 @@
   document.addEventListener('htmx:afterSettle', function () {
     var f = form();
     var focus = f && f.querySelector('[autofocus]');
+    if (!focus && f && f.querySelector('[role=alert]')) {
+      // A refused save comes back as a 200 with the messages inline, often far
+      // below the fold: bring the first one into view and focus it.
+      var first = f.querySelector('[role=alert]');
+      first.setAttribute('tabindex', '-1');
+      first.focus({ preventScroll: true });
+      first.scrollIntoView({ block: 'center' });
+      return;
+    }
     if (!focus || focus === document.activeElement) return;
     focus.focus({ preventScroll: true });
     var r = focus.getBoundingClientRect();

@@ -819,3 +819,24 @@ test('suggestion lists: a value that is not in the list still saves', async ({ p
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator(`[name="${name}"]`)).toHaveValue('e2e saffron');
 });
+
+// A refused save comes back as a 200 with the messages inline, which once left
+// "Save" looking dead: the error sat far below the fold. The page says so at
+// the top, brings the first error into view and counts errors on the save bar.
+test('a refused save shows the not-saved callout and the first error in view, and the bar counts it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`/recipes/${id}/edit`);
+  await page.getByRole('button', { name: 'Add note' }).last().click();
+  const text = page.locator('[name^="n."][name$=".text"]').last();
+  await text.fill('One paragraph.\n\nAnother paragraph.');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await save(page);
+  const callout = page.getByTestId('not-saved');
+  await expect(callout).toContainText('Not saved. 1 field needs fixing.');
+  await expect(callout).toBeInViewport();
+  const error = page.getByRole('alert').filter({ hasText: 'one paragraph' });
+  await expect(error).toBeInViewport();
+  await expect(error).toBeFocused();
+  await expect(page.getByTestId('bar-errors')).toContainText('1 field stops this being saved');
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}/edit$`));
+});

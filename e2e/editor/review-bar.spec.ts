@@ -43,3 +43,23 @@ test('without JavaScript, the review bar confirms a draft', async ({ browser, ba
   await expect(page.getByRole('heading', { name: 'Bar Pancakes' })).toBeVisible();
   await ctx.close();
 });
+
+// A refused confirm is a 200 with the message on the failing row. The page says
+// so at the top, scrolls to the first error, and the bar counts the error apart
+// from the items that only need a look.
+test('a refused confirm shows the not-saved callout and the first error in view, and the bar counts it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await toReview(page);
+  await page.getByRole('button', { name: 'Add note' }).click();
+  await page.locator('[name^="n."][name$=".text"]').last().fill('One paragraph.\n\nAnother paragraph.');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.locator('.savebar').getByRole('button', { name: 'Confirm and save' }).click();
+  const callout = page.getByTestId('not-saved');
+  await expect(callout).toContainText('Not saved. 1 field needs fixing.');
+  await expect(callout).toBeInViewport();
+  const error = page.getByRole('alert').filter({ hasText: 'one paragraph' });
+  await expect(error).toBeInViewport();
+  await expect(error).toBeFocused();
+  await expect(page.getByTestId('bar-errors')).toContainText('1 field stops this being saved');
+  await expect(page.getByRole('heading', { name: 'Review recipe' })).toBeVisible();
+});
