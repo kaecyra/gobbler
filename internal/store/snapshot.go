@@ -13,7 +13,9 @@ import (
 )
 
 // ErrSnapshotExists is returned when a recipe already has a source snapshot of
-// that kind. A snapshot is stored once and there is no way to replace it.
+// that kind and a caller asked to add another. Nothing replaces a snapshot; the
+// only way a recipe gains a second of a kind is a saved re-import
+// (AcceptReimport, ADR-00042).
 var ErrSnapshotExists = errors.New("source snapshot already stored")
 
 // SnapshotKind says what the ingested input was (ADR-00004).
@@ -57,8 +59,8 @@ type Snapshot struct {
 // and deletes one no recipe holds. None of that changes content, and none is
 // exported as a snapshot operation.
 
-// AddSnapshot stores the ingested input of recipe id. Each kind is stored once
-// per recipe; a second AddSnapshot of the same kind is ErrSnapshotExists and
+// AddSnapshot stores the ingested input of recipe id. It adds a kind once; a
+// second AddSnapshot of the same kind is ErrSnapshotExists and
 // leaves the first untouched. A missing recipe is ErrNotFound.
 func (s *Store) AddSnapshot(ctx context.Context, id int64, kind SnapshotKind, content []byte) error {
 	who, err := identity(ctx)
