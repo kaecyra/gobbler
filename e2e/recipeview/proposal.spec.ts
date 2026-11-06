@@ -102,6 +102,11 @@ test('a pending proposal is marked in place with its old and new values', async 
   // A changed line keeps the live text and shows the proposed one; a removed
   // line says so.
   await expect(page.getByTestId('proposal-line-new')).toContainText(/3 .*flour/);
+  // The proposed line shows its qualifiers in the same style as a live line.
+  const proposed = page.getByTestId('proposal-line-new');
+  await expect(proposed.getByTestId('qualifier')).toHaveText(['sifted', 'warmed']);
+  await expect(proposed.getByTestId('qualifier').first()).toHaveCSS('font-style', 'italic');
+  expect((await proposed.innerText()).trim()).toMatch(/flour sifted warmed \(optional\)$/);
   await expect(page.getByTestId('proposal-line-removed')).toHaveCount(1);
   // A changed step shows both texts; a removed one and an added one are noted.
   const changed = page.getByTestId('proposal-step-changed');

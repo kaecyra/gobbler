@@ -170,5 +170,5 @@
 /* A document with no controls row (a past version) still clears its head. */
 .rhead + .recipe-grid { margin-top: 26px; }
 
-/* a qualifier on an ingredient line: muted italic, after the name (ADR-00004) */
+/* A qualifier on an ingredient line: muted italic, after the name (#526). */
 .ing .qual { font-style: italic; color: var(--ink-3); }

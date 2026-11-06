@@ -610,15 +610,15 @@ templ lineMarkNote(m lineMark) {
 			<span class="pmark pnew" data-testid="proposal-line-removed">removed</span>
 		case recipe.Changed:
 			if m.Edited {
-				<ins class="pmark pnew" data-testid="proposal-line-new">{ m.New }</ins>
+				<ins class="pmark pnew" data-testid="proposal-line-new">@lineText(m.New)</ins>
 			} else {
 				<span class="pmark pnew" data-testid="proposal-line-moved">moved</span>
 			}
 	}
 }
 
-templ addedLine(text string) {
-	<li class="pmark padd" data-testid="proposal-line-added"><ins>{ text }</ins> <span class="muted">added</span></li>
+templ addedLine(l display.Line) {
+	<li class="pmark padd" data-testid="proposal-line-added"><ins>@lineText(l)</ins> <span class="muted">added</span></li>
 }
 
 // stepMarkNote follows a live step with what the proposal does to it: the old

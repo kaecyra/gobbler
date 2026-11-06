@@ -25,7 +25,7 @@ type Equipment interface {
 // Line is one formatted ingredient line.
 type Line struct {
 	// Text is the whole line as plain text, qualifiers joined to the name with
-	// commas. Cook mode, shopping and MCP read it.
+	// commas. Cook mode, history and the MCP tools read it.
 	Text string
 	// Head is the amount and name, Qualifiers the line's qualifier texts in
 	// order, and Tail the "to taste" and "(optional)" marks. They are Text in

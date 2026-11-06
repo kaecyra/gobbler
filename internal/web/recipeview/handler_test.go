@@ -243,6 +243,19 @@ func TestViewShowsRecipeAsWritten(t *testing.T) {
 	mustNotContain(t, body, "time may change", "Scaled by")
 }
 
+// A line with qualifiers and a tail reads as one phrase once the markup is
+// gone: spaces between the name, each qualifier and the tail, and no commas.
+func TestQualifiersAndTailAreSeparatedBySpaces(t *testing.T) {
+	r := testRecipe(t)
+	r.Components[0].Lines[4].Qualifiers = []recipe.Qualifier{
+		{Kind: recipe.QualState, Text: "flaky"}, {Kind: recipe.QualPreparation, Text: "crushed"},
+	}
+	_, body := serve(t, fakeRecipes{7: r}, "/recipes/7")
+	text := strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, " ")), " ")
+	mustContain(t, text, "salt flaky crushed to taste (optional)")
+	mustNotContain(t, text, "salt, flaky", "flaky, crushed")
+}
+
 func TestScaleMultipliesLinearLinesOnly(t *testing.T) {
 	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=3")
 	mustContain(t, body,
