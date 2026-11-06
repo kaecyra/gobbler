@@ -225,6 +225,23 @@ func TestPluginNotesWithoutParagraphsIsOneNote(t *testing.T) {
 	}
 }
 
+// Text outside a paragraph is a candidate too, whether bare, in a span or in a
+// div of its own: ingest drops nothing (ADR-00041).
+func TestPluginNotesKeepLooseTextBesideParagraphs(t *testing.T) {
+	got := notesOf(t, `<div class="wprm-recipe-notes-container"><div class="wprm-recipe-header">Notes</div>
+Bare text first.<p>A paragraph.</p><span>Span text</span> and <em>more</em><div>Div text.</div><p>Last one.</p></div>`)
+	want := []Note{
+		{Text: "Bare text first."},
+		{Text: "A paragraph."},
+		{Text: "Span text and more"},
+		{Text: "Div text."},
+		{Text: "Last one."},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("notes = %+v, want %+v", got, want)
+	}
+}
+
 func TestNoNotesBlockGivesNoNotes(t *testing.T) {
 	if got := notesOf(t, `<p>Hello</p>`); got != nil {
 		t.Errorf("notes = %+v, want none", got)

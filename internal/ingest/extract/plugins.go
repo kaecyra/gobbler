@@ -412,44 +412,75 @@ func tastyNotes(doc *html.Node) []Note {
 	return notesIn(firstWithClass(doc, "tasty-recipes-notes"))
 }
 
-// notesIn reads the paragraphs and list items of a notes block, skipping its
-// heading. A block with neither gives the text beside its heading as one note.
+// notesIn reads a notes block into candidate notes, skipping its heading.
+// Each paragraph and list item is one candidate, and so is each run of loose
+// text between them: bare text, inline markup and a block with no paragraph of
+// its own (a div holding only text). Nothing in the block is dropped
+// (ADR-00041).
 func notesIn(block *html.Node) []Note {
 	if block == nil {
 		return nil
 	}
 	var out []Note
-	walk(block, func(n *html.Node) bool {
-		switch {
-		case isNotesHeading(n):
-			return false
-		case isElem(n, "p") || isElem(n, "li"):
-			if text := textOf(n); text != "" {
-				title, text := splitTitle(boldLead(n), text)
-				out = append(out, Note{Title: title, Text: text})
-			}
-			return false
-		}
-		return true
-	})
-	if len(out) == 0 {
-		var parts []string
-		for c := block.FirstChild; c != nil; c = c.NextSibling {
-			if c.Type == html.ElementNode && isNotesHeading(c) {
-				continue
-			}
-			switch c.Type {
-			case html.TextNode:
-				parts = append(parts, c.Data)
-			case html.ElementNode:
-				parts = append(parts, textOf(c))
-			}
-		}
-		if text := collapse(strings.Join(parts, " ")); text != "" {
+	var loose strings.Builder
+	flush := func() {
+		if text := collapse(loose.String()); text != "" {
 			out = append(out, Note{Text: text})
 		}
+		loose.Reset()
 	}
+	var read func(parent *html.Node)
+	read = func(parent *html.Node) {
+		for c := parent.FirstChild; c != nil; c = c.NextSibling {
+			switch {
+			case c.Type == html.TextNode:
+				loose.WriteString(c.Data)
+			case c.Type != html.ElementNode:
+			case isNotesHeading(c):
+				flush()
+			case isElem(c, "p") || isElem(c, "li"):
+				flush()
+				if text := textOf(c); text != "" {
+					title, text := splitTitle(boldLead(c), text)
+					out = append(out, Note{Title: title, Text: text})
+				}
+			case inlineTags[c.Data]:
+				if holdsBlocks(c) {
+					read(c)
+				} else {
+					loose.WriteString(" " + textOf(c) + " ")
+				}
+			case holdsBlocks(c):
+				flush()
+				read(c)
+			default:
+				flush()
+				loose.WriteString(textOf(c))
+				flush()
+			}
+		}
+	}
+	read(block)
+	flush()
 	return out
+}
+
+// inlineTags are the elements whose text runs on with the text around them.
+var inlineTags = map[string]bool{
+	"span": true, "a": true, "em": true, "strong": true, "b": true, "i": true,
+	"u": true, "small": true, "sup": true, "sub": true, "br": true,
+}
+
+// holdsBlocks reports whether n has a paragraph or list item below it.
+func holdsBlocks(n *html.Node) bool {
+	found := false
+	walk(n, func(c *html.Node) bool {
+		if c != n && (isElem(c, "p") || isElem(c, "li")) {
+			found = true
+		}
+		return !found
+	})
+	return found
 }
 
 // isNotesHeading is the heading a notes block prints over its notes: a
