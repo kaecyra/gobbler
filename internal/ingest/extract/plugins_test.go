@@ -268,3 +268,37 @@ func TestPluginNotesFromARealCard(t *testing.T) {
 		}
 	}
 }
+
+// A WPRM card that holds the whole method in one li, a display-block span per
+// numbered paragraph, is read as one step per block even though JSON-LD
+// states a single step (#492).
+func TestWPRMBlocksSplitASingleStatedStep(t *testing.T) {
+	res := mustExtract(t, fixture(t, "real_wprm_numbered_block"), fixtureURL)
+	got := res.Recipe.Instructions
+	if len(got) != 4 {
+		t.Fatalf("steps = %+v, want four", got)
+	}
+	if !strings.HasPrefix(got[0].Text, "1. In the bowl") || !strings.HasPrefix(got[3].Text, "4. Lightly dust") {
+		t.Errorf("steps = %+v, want one per numbered paragraph, in order", got)
+	}
+}
+
+func TestBlocksNeverSplitWhenWordsDiffer(t *testing.T) {
+	page := strings.Replace(fixture(t, "real_wprm_numbered_block"), "a pinch of salt.", "a pinch of pepper.", 1)
+	res := mustExtract(t, page, fixtureURL)
+	if got := len(res.Recipe.Instructions); got != 1 {
+		t.Errorf("steps = %d, want the stated one kept when the card disagrees", got)
+	}
+}
+
+func TestParagraphChildrenSplitAStep(t *testing.T) {
+	page := `<html><head><script type="application/ld+json">{"@type":"Recipe","name":"Rolls",
+"recipeIngredient":["1 cup flour"],
+"recipeInstructions":[{"@type":"HowToStep","text":"Mix the dough. Bake it."}]}</script></head>
+<body><div class="tasty-recipes-instructions"><ol><li><p>Mix the dough.</p><p>Bake it.</p></li></ol></div></body></html>`
+	res := mustExtract(t, page, fixtureURL)
+	got := res.Recipe.Instructions
+	if len(got) != 2 || got[0].Text != "Mix the dough." || got[1].Text != "Bake it." {
+		t.Errorf("steps = %+v, want one per paragraph", got)
+	}
+}

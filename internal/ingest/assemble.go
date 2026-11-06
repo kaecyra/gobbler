@@ -158,8 +158,9 @@ func (a *assembler) fromRaw(raw extract.Raw) {
 				byName[strings.ToLower(name)] = i
 			}
 		}
-		st := sourceStep(strings.TrimSpace(s.Title), text, 1)
-		comps[i].Steps = append(comps[i].Steps, st)
+		for _, piece := range splitNumberedSteps(text) {
+			comps[i].Steps = append(comps[i].Steps, sourceStep(strings.TrimSpace(s.Title), piece, 1))
+		}
 	}
 	if len(comps) > 1 && len(comps[0].Lines) == 0 && len(comps[0].Steps) == 0 {
 		comps = comps[1:]
@@ -194,7 +195,9 @@ func (a *assembler) fromSections(sec parse.Sections) {
 		for _, s := range sc.Steps {
 			if text := strings.TrimSpace(s); text != "" {
 				// A heading-less split guesses which text is a step.
-				c.Steps = append(c.Steps, sourceStep("", text, sec.Confidence))
+				for _, piece := range splitNumberedSteps(text) {
+					c.Steps = append(c.Steps, sourceStep("", piece, sec.Confidence))
+				}
 			}
 		}
 		d.Components = append(d.Components, c)
@@ -320,12 +323,23 @@ func step(title, text string, confidence float64) Step {
 	return Step{Text: text, Duration: total, Confidence: confidence, Kind: stageKindOf(title, text), Title: title}
 }
 
-// stepNumberRE matches the number a source writes into a step: an optional
-// "Step", the number, its punctuation ("1.", "1)", "(1)", "1:", "1 -", "Step
-// 1:") and the whitespace after it. The whitespace is required, so a leading
-// quantity ("1.5 cups", "350°F", "1/2 the dough") and a bare time ("10
-// minutes") never match.
-var stepNumberRE = regexp.MustCompile(`^(?:(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+[.):]|\d+\s+[-\x{2013}\x{2014}])\s+`)
+// enumeratorPattern matches the number a source writes into a step: an
+// optional "Step", the number, and its punctuation ("1.", "1)", "(1)", "1:",
+// "1 -", "Step 1:"). It is the one definition of an enumerator: stepNumberRE
+// reads it at the start of a step, enumeratorRE finds it inside one.
+const enumeratorPattern = `(?i:step)\s*\d+\s*[.:)\-\x{2013}\x{2014}]?|\(\d+\)|\d+[.):]|\d+\s+[-\x{2013}\x{2014}]`
+
+// stepNumberRE is an enumerator opening a step, with the whitespace after it.
+// The whitespace is required, so a leading quantity ("1.5 cups", "350°F",
+// "1/2 the dough") and a bare time ("10 minutes") never match.
+var stepNumberRE = regexp.MustCompile(`^(?:` + enumeratorPattern + `)\s+`)
+
+// enumeratorRE finds an enumerator anywhere in a step: at its start or after
+// whitespace or sentence punctuation (the source's "baking dish.4. Lightly"
+// has no space). Group 1 is the enumerator.
+var enumeratorRE = regexp.MustCompile(`(?:^|[\s.!?;)])((?:` + enumeratorPattern + `))\s+`)
+
+var enumeratorNumberRE = regexp.MustCompile(`\d+`)
 
 // stripStepNumber removes the source's own step number from the start of a
 // step. gobbler numbers steps itself, in an order that can differ from the
@@ -340,10 +354,53 @@ func stripStepNumber(text string) string {
 	if rest == "" {
 		return text
 	}
-	if m := text[:loc[1]]; strings.ContainsAny(m, "-\u2013\u2014") && rest[0] >= '0' && rest[0] <= '9' {
+	if leadsIntoRange(text[:loc[1]], rest) {
 		return text
 	}
 	return rest
+}
+
+// leadsIntoRange reports whether a matched enumerator is really a dash
+// between two numbers ("1 - 2 minutes").
+func leadsIntoRange(match, rest string) bool {
+	return strings.ContainsAny(match, "-\u2013\u2014") && rest[0] >= '0' && rest[0] <= '9'
+}
+
+// splitNumberedSteps splits a source step that holds several numbered steps
+// ("1. Mix. 2. Bake.") at each enumerator (#492). Only a run counting up by
+// one from 1 at the start of the text counts, with at least two in it, so a
+// mid-sentence "bake 2. Then", a lone "1.", a quantity ("1.5 cups") and a
+// descending or gapped run never split. Anything else returns text whole.
+// The numbers stay; stripStepNumber removes them from each piece.
+func splitNumberedSteps(text string) []string {
+	var starts []int
+	next := 1
+	for _, m := range enumeratorRE.FindAllStringSubmatchIndex(text, -1) {
+		enum, rest := text[m[2]:m[3]], strings.TrimSpace(text[m[1]:])
+		if rest == "" || leadsIntoRange(text[m[2]:m[1]], rest) {
+			continue
+		}
+		if len(starts) == 0 && m[2] != 0 {
+			return []string{text}
+		}
+		if n, err := strconv.Atoi(enumeratorNumberRE.FindString(enum)); err != nil || n != next {
+			break
+		}
+		starts = append(starts, m[2])
+		next++
+	}
+	if len(starts) < 2 {
+		return []string{text}
+	}
+	out := make([]string, 0, len(starts))
+	for i, s := range starts {
+		end := len(text)
+		if i+1 < len(starts) {
+			end = starts[i+1]
+		}
+		out = append(out, strings.TrimSpace(text[s:end]))
+	}
+	return out
 }
 
 // sourceStep builds a step the source stated. When the source gave no title

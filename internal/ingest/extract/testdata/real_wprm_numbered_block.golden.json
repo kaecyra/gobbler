@@ -1,0 +1,33 @@
+{
+  "method": "jsonld",
+  "source_url": "https://www.example.com/recipes/1",
+  "recipe": {
+    "name": "Salted Honey Butter Parker House Rolls",
+    "yield": [
+      "12",
+      "12 rolls"
+    ],
+    "ingredients": [
+      "1 cup warm milk",
+      "2 1/4 teaspoons active dry yeast",
+      "4 cups all-purpose flour",
+      "1/2 cup salted butter",
+      "1/4 cup honey",
+      "flaky sea salt"
+    ],
+    "instructions": [
+      {
+        "text": "1. In the bowl of a stand mixer, combine the milk, yeast and flour. Knead until smooth, about 8 minutes, then let rise for 1 hour."
+      },
+      {
+        "text": "2. To make the honey butter, melt the butter with the honey and a pinch of salt."
+      },
+      {
+        "text": "3. Preheat the oven to 375 degrees F. Roll the dough out and cut into rounds. Fold each round and arrange in a buttered baking dish."
+      },
+      {
+        "text": "4. Lightly dust the rolls with flour, brush with the honey butter and bake for 25 minutes."
+      }
+    ]
+  }
+}

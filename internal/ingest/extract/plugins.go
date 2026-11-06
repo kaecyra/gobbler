@@ -61,7 +61,11 @@ func applyPlugins(doc *html.Node, raw *Raw) {
 			}
 		}
 		if len(raw.Instructions) > 0 {
-			if steps := p.steps(doc); sectioned(steps) || titled(steps) {
+			steps := p.steps(doc)
+			if split, ok := splitByBlocks(steps, raw.Instructions); ok {
+				steps, raw.Instructions = expandBlocks(steps), split
+			}
+			if sectioned(steps) || titled(steps) {
 				if merged, ok := mergeSteps(steps, raw.Instructions); ok {
 					raw.Instructions = merged
 				}
@@ -71,6 +75,81 @@ func applyPlugins(doc *html.Node, raw *Raw) {
 			return
 		}
 	}
+}
+
+// splitByBlocks splits the structured field's steps where the plugin's card
+// holds several blocks for one of them (#492). It applies only when the card
+// has a step for each of the structured field's, and every step the card
+// splits has, word for word, the text of the structured step it matches: a
+// card that disagrees is a page we do not understand and splits nothing.
+func splitByBlocks(steps, flat []InstructionStep) ([]InstructionStep, bool) {
+	if len(steps) != len(flat) {
+		return nil, false
+	}
+	var split bool
+	out := make([]InstructionStep, 0, len(flat))
+	for i, s := range steps {
+		if len(s.blocks) < 2 {
+			out = append(out, flat[i])
+			continue
+		}
+		if wordKey(strings.Join(s.blocks, " ")) != wordKey(flat[i].Text) {
+			return nil, false
+		}
+		split = true
+		for _, b := range s.blocks {
+			out = append(out, InstructionStep{Section: flat[i].Section, Text: b})
+		}
+	}
+	return out, split
+}
+
+// expandBlocks gives the card's steps the same split as splitByBlocks, so the
+// two lists still line up for mergeSteps. A bold title stays with the first
+// block.
+func expandBlocks(steps []InstructionStep) []InstructionStep {
+	out := make([]InstructionStep, 0, len(steps))
+	for _, s := range steps {
+		if len(s.blocks) < 2 {
+			out = append(out, s)
+			continue
+		}
+		for i, b := range s.blocks {
+			e := InstructionStep{Section: s.Section, Text: b}
+			if i == 0 {
+				e.Title = s.Title
+			}
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// stepBlocks is the text of each block n holds as direct children: `<p>`
+// elements and display-block spans, with WPRM's spacer divs and blank text
+// between them ignored. It gives nil unless there are at least two.
+func stepBlocks(n *html.Node) []string {
+	if n == nil {
+		return nil
+	}
+	var out []string
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type != html.ElementNode {
+			continue
+		}
+		block := isElem(c, "p") ||
+			isElem(c, "span") && strings.Contains(strings.ReplaceAll(attr(c, "style"), " ", ""), "display:block")
+		if !block {
+			continue
+		}
+		if t := textOf(c); t != "" {
+			out = append(out, t)
+		}
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	return out
 }
 
 func named(groups []IngredientGroup) bool {
@@ -313,7 +392,8 @@ func wprmSteps(doc *html.Node) []InstructionStep {
 		for _, li := range itemNodes(g, "wprm-recipe-instruction") {
 			out = append(out, InstructionStep{
 				Section: name, Text: textOf(li),
-				Title: boldLead(firstWithClass(li, "wprm-recipe-instruction-text")),
+				Title:  boldLead(firstWithClass(li, "wprm-recipe-instruction-text")),
+				blocks: stepBlocks(firstWithClass(li, "wprm-recipe-instruction-text")),
 			})
 		}
 	}
@@ -395,7 +475,7 @@ func headedGroups(container *html.Node) []IngredientGroup {
 func headedSteps(container *html.Node) []InstructionStep {
 	var out []InstructionStep
 	headedItems(container, func(name string, li *html.Node) {
-		out = append(out, InstructionStep{Section: name, Text: textOf(li), Title: boldLead(li)})
+		out = append(out, InstructionStep{Section: name, Text: textOf(li), Title: boldLead(li), blocks: stepBlocks(li)})
 	})
 	return out
 }

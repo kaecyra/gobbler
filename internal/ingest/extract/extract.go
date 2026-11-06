@@ -59,6 +59,10 @@ type InstructionStep struct {
 	// something to Text, or else the bold lead a recipe plugin's card opens
 	// the step with, taken off the front of Text; empty otherwise.
 	Title string `json:"title,omitempty"`
+	// blocks is the text of each block (WPRM's display-block spans, `<p>`
+	// children) the plugin's li holds, when it holds two or more. Read by
+	// applyPlugins to split a source step that states several; never output.
+	blocks []string
 }
 
 // Note is one paragraph of the notes a recipe plugin's card carries: a tip, a
