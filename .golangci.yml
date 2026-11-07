@@ -90,9 +90,6 @@ linters:
             # a-api-status-table (#517): the status table names the catalog's
             # sentinels.
             - "!**/internal/web/layout/httperr.go"
-            # a-api-ingest (#518): the ingest screen builds the catalog store
-            # and hands it to the ingestion pipeline and the editor's review.
-            - "!**/internal/web/ingest/ingest.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/catalog
               desc: use internal/api/catalog; the web handlers and MCP tools do not import the catalog domain (ADR-00043)
@@ -114,12 +111,28 @@ linters:
             # a-api-profile: the profile page looks the person's household up.
             - "!**/internal/web/profile/handler.go"
             - "!**/internal/web/profile/routes.go"
-            # a-api-ingest (#518): the ingest screen reads the household off the
-            # context.
-            - "!**/internal/web/ingest/ingest.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/household
               desc: use internal/api/households; the web handlers and MCP tools do not import the household domain (ADR-00043)
+        # ADR-00043: drafting a recipe from a URL, text or a photo, and the LLM
+        # retry, are reached through internal/api/ingest, which checks the
+        # caller's membership before the pipeline runs. The rule names the packages,
+        # so it covers internal/ingest/extract and internal/ingest/ocr too.
+        # internal/parse is pure logic and stays unfenced. Tests are exempt: they
+        # build fixtures straight on the domain.
+        #
+        # The files excepted below do not go through the service yet.
+        ingest-through-api:
+          files:
+            - "**/internal/web/**"
+            - "**/internal/mcp/**"
+            - "!$test"
+            # a-api-status-table (#517): the status table names the ingestion
+            # sentinels.
+            - "!**/internal/web/layout/httperr.go"
+          deny:
+            - pkg: github.com/kaecyra/gobbler/internal/ingest
+              desc: use internal/api/ingest; the web handlers and MCP tools do not import the ingestion domain (ADR-00043)
 
 formatters:
   enable:

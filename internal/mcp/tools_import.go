@@ -12,7 +12,7 @@ import (
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
-	"github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 )
 
 // maxDraftText bounds the text of one import or draft, the way the web form
@@ -62,7 +62,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	rawURL, text := strings.TrimSpace(in.URL), strings.TrimSpace(in.Text)
-	var d ingest.Draft
+	var d apiingest.Draft
 	switch {
 	case (rawURL == "") == (text == ""):
 		return nil, draftOut{}, refuse("give either url or text, not both and not neither")
@@ -121,7 +121,7 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
-	d.Name = ingest.Field[string]{Value: name, Confidence: 1}
+	d.Name = apiingest.Field[string]{Value: name, Confidence: 1}
 	return t.hold(ctx, tool, c, h, d)
 }
 
@@ -141,7 +141,7 @@ func (t *tools) checkRoom(ctx context.Context, rc apirecipes.Caller, tool string
 }
 
 // hold puts the draft where the review screen finds it and records the write.
-func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseholds.Household, d ingest.Draft) (*mcp.CallToolResult, draftOut, error) {
+func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseholds.Household, d apiingest.Draft) (*mcp.CallToolResult, draftOut, error) {
 	token, err := t.Recipes.AddDraft(ctx, callerOf(c, h), d, provenance(c, h.ID, tool))
 	if errors.Is(err, apirecipes.ErrDraftLimit) {
 		// Say so as it is: the agent can tell its user to review the drafts.

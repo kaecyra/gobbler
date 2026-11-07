@@ -10,9 +10,9 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
-	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/parse"
 )
 
@@ -87,9 +87,9 @@ func (t *tools) toolError(ctx context.Context, tool string, err error) error {
 		return refuse("the credential is not a member of a household")
 	case errors.Is(err, parse.ErrEmptyText):
 		return refuse("there is no text to read")
-	case errors.Is(err, ingest.ErrNoSourceURL):
+	case errors.Is(err, apiingest.ErrNoSourceURL):
 		return refuse("this recipe has no source address to import again")
-	case errors.Is(err, ingest.ErrFetch):
+	case errors.Is(err, apiingest.ErrFetch):
 		return refuse("the page could not be fetched: %s", err)
 	}
 	t.log.ErrorContext(ctx, "mcp tool failed", "tool", tool, "error", err.Error())

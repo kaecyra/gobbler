@@ -11,7 +11,7 @@ import (
 
 	"github.com/a-h/templ"
 
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -49,10 +49,13 @@ type ReviewOptions struct {
 // place of save. It renders the editor's own components, reads the posted form
 // with the editor's own parser and checks it with the editor's own build, so a
 // draft is held to the rules of a stored recipe. It stores nothing; the caller
-// confirms and saves the returned draft through ingest.Confirm.
+// confirms and saves the returned draft through apiingest.Confirm.
 type Unsaved struct{ h handler }
 
-// NewUnsaved returns an Unsaved that reads names from c.
+// NewUnsaved returns an Unsaved that reads names from c. The ingest screen
+// passes the catalog service bound to the request's Caller
+// (*apicatalog.Bound), so every read checks the household's membership
+// (ADR-00043).
 func NewUnsaved(c Catalog) Unsaved { return Unsaved{h: handler{Deps: Deps{Catalog: c}}} }
 
 // Form is the editor form for a draft under review.
@@ -94,7 +97,7 @@ func (f Form) WithProblems(msgs ...string) Form {
 }
 
 // Open returns the form for d as the rules read it, each flagged item marked.
-func (u Unsaved) Open(ctx context.Context, d ingestcore.Draft, o ReviewOptions) (Form, error) {
+func (u Unsaved) Open(ctx context.Context, d apiingest.Draft, o ReviewOptions) (Form, error) {
 	names, err := u.h.names(ctx)
 	if err != nil {
 		return Form{}, err
@@ -114,13 +117,13 @@ type Outcome struct {
 	// Rejected is true when the form was refused, with its messages in Form;
 	// false for a structural button, which only changes what is shown.
 	Rejected bool
-	Draft    ingestcore.Draft
+	Draft    apiingest.Draft
 }
 
 // Submit reads a posted review form over base, the draft under review. What
 // the form shows comes from the form; everything else (the source, parser
 // version, method, scoring and LLM state) is kept from base.
-func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Draft, o ReviewOptions) (Outcome, error) {
+func (u Unsaved) Submit(ctx context.Context, form url.Values, base apiingest.Draft, o ReviewOptions) (Outcome, error) {
 	names, err := u.h.names(ctx)
 	if err != nil {
 		return Outcome{}, err
@@ -150,7 +153,7 @@ func (u Unsaved) Submit(ctx context.Context, form url.Values, base ingestcore.Dr
 // fromIngest turns a draft into the editor's starting form. A line the catalog
 // did not match is offered as a new ingredient, ticked, exactly as the draft
 // proposed it; the user can instead type an existing ingredient's name.
-func fromIngest(d ingestcore.Draft, names lookups) draft {
+func fromIngest(d apiingest.Draft, names lookups) draft {
 	low := func(conf float64) bool { return conf < d.Threshold }
 	ed := draft{
 		Video: d.VideoID, MealType: string(d.MealType), Cuisine: string(d.Cuisine),
@@ -249,7 +252,7 @@ func fromIngest(d ingestcore.Draft, names lookups) draft {
 // step whose graph the user left as it was read; a step whose flag or
 // dependencies were changed, or that the user added, has the user's reading:
 // only GraphByUser is set, so a retry with the LLM leaves it alone.
-func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows kept, names lookups, ed draft) ingestcore.Draft {
+func toIngest(base apiingest.Draft, rec recipe.Recipe, props []proposal, rows kept, names lookups, ed draft) apiingest.Draft {
 	out := base
 	out.Name.Value, out.Author.Value, out.Description.Value = rec.Name, rec.Author, rec.Description
 	out.Yield.Value, out.Servings.Value = rec.Yield, rec.Servings
@@ -283,9 +286,9 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 	out.Components = nil
 	for ci, c := range rec.Components {
 		form := ed.Components[ci]
-		dc := ingestcore.Component{Name: c.Name}
+		dc := apiingest.Component{Name: c.Name}
 		for li, l := range c.Lines {
-			line := ingestcore.Line{
+			line := apiingest.Line{
 				Raw: l.Raw, Ingredient: l.Ingredient, Amount: l.Amount, Optional: l.Optional,
 				ToTaste: l.Rule == quantity.RuleToTaste, Qualifiers: l.Qualifiers,
 				Confidence: confidence(form.Lines[rows.lines[ci][li]].Mark, base.Threshold), FromLLM: form.Lines[rows.lines[ci][li]].Mark.LLM, Issues: form.Lines[rows.lines[ci][li]].Issues,
@@ -302,7 +305,7 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 			// The graph provenance stays only while the user left this step's
 			// passive flag and dependencies as they were read.
 			g := fs.Graph.current(s.Passive, stepIDs(s.DependsOn))
-			dc.Steps = append(dc.Steps, ingestcore.Step{
+			dc.Steps = append(dc.Steps, apiingest.Step{
 				Text: s.Text, Duration: s.Duration,
 				Confidence: confidence(fs.Mark, base.Threshold), FromLLM: fs.Mark.LLM,
 				Kind: s.Kind, Title: s.Title,
@@ -313,7 +316,7 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 	}
 	out.Equipment = nil
 	for ei, e := range rec.Equipment {
-		eq := ingestcore.Equipment{Equipment: e.Equipment, Name: names.equipment[int64(e.Equipment)], FromLLM: ed.Equipment[rows.equipment[ei]].Mark.LLM}
+		eq := apiingest.Equipment{Equipment: e.Equipment, Name: names.equipment[int64(e.Equipment)], FromLLM: ed.Equipment[rows.equipment[ei]].Mark.LLM}
 		if name, ok := newEquip[ei]; ok {
 			eq.Name = strings.TrimSpace(name)
 		}
@@ -322,11 +325,11 @@ func toIngest(base ingestcore.Draft, rec recipe.Recipe, props []proposal, rows k
 	out.AuthorNotes = nil
 	for ni, n := range rec.AuthorNotes {
 		form := ed.Notes[rows.notes[ni]]
-		out.AuthorNotes = append(out.AuthorNotes, ingestcore.AuthorNote{
+		out.AuthorNotes = append(out.AuthorNotes, apiingest.AuthorNote{
 			Title: n.Title, Text: n.Text, Confidence: confidence(form.Mark, base.Threshold), Issues: form.Issues,
 		})
 	}
-	out.Proposed = ingestcore.ProposedFor(out.Components, base.Proposed)
+	out.Proposed = apiingest.ProposedFor(out.Components, base.Proposed)
 	return out
 }
 
@@ -369,6 +372,6 @@ func confidence(m mark, threshold float64) float64 {
 }
 
 // carryMark puts a field's mark back: its confidence and where it came from.
-func carryMark[T any](f *ingestcore.Field[T], m mark, threshold float64) {
+func carryMark[T any](f *apiingest.Field[T], m mark, threshold float64) {
 	f.Confidence, f.FromLLM = confidence(m, threshold), m.LLM
 }
