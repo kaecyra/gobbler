@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	domain "github.com/kaecyra/gobbler/internal/catalog"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -17,12 +17,13 @@ import (
 // /operator, which layout.OperatorPaths lists, so only an operator reaches it.
 const EquipmentPattern = "/operator/equipment"
 
-// Equipment is what the equipment review uses from the catalog store.
-// *catalog.Store satisfies it.
+// Equipment is what the equipment review uses from the catalog: the operator
+// operations of the catalog service, bound to the request's Caller
+// (apicatalog.Bound). The service checks the person is an operator (ADR-00043).
 type Equipment interface {
-	ListEquipment(ctx context.Context) ([]domain.Equipment, error)
-	GetEquipment(ctx context.Context, id int64) (domain.Equipment, error)
-	UpdateEquipment(ctx context.Context, in domain.Equipment) error
+	OperatorListEquipment(ctx context.Context) ([]apicatalog.Equipment, error)
+	OperatorGetEquipment(ctx context.Context, id int64) (apicatalog.Equipment, error)
+	OperatorUpdateEquipment(ctx context.Context, in apicatalog.Equipment) error
 }
 
 // EquipmentDeps is what the equipment routes need.
@@ -59,7 +60,7 @@ func (h *equipmentHandler) list(w http.ResponseWriter, r *http.Request) {
 	if !operatorOnly(w, r) {
 		return
 	}
-	all, err := h.Catalog.ListEquipment(r.Context())
+	all, err := h.Catalog.OperatorListEquipment(r.Context())
 	if err != nil {
 		layout.WriteError(w, r, fmt.Errorf("list equipment: %w", err))
 		return
@@ -91,13 +92,13 @@ func (h *equipmentHandler) setSized(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("sized %q must be 1 or 0: %w", v, layout.ErrInvalid))
 		return
 	}
-	eq, err := h.Catalog.GetEquipment(r.Context(), id)
+	eq, err := h.Catalog.OperatorGetEquipment(r.Context(), id)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
 	}
 	eq.Sized = sized
-	if err := h.Catalog.UpdateEquipment(r.Context(), eq); err != nil {
+	if err := h.Catalog.OperatorUpdateEquipment(r.Context(), eq); err != nil {
 		layout.WriteError(w, r, fmt.Errorf("set equipment %d sized: %w", id, err))
 		return
 	}
@@ -115,7 +116,7 @@ type equipmentView struct {
 	Rows []equipmentRow
 }
 
-func newEquipmentView(all []domain.Equipment) equipmentView {
+func newEquipmentView(all []apicatalog.Equipment) equipmentView {
 	var v equipmentView
 	for _, e := range all {
 		v.Rows = append(v.Rows, equipmentRow{ID: e.ID, Name: e.Name, Aliases: strings.Join(e.Aliases, ", "), Sized: e.Sized})

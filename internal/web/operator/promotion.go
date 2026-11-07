@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/catalog"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -17,12 +17,13 @@ import (
 // Pattern, which layout.OperatorPaths lists, so only an operator reaches it.
 const PromotionPattern = Pattern + "/promotions"
 
-// Promoter is what the promotion pages use from the catalog store.
-// *catalog.Store satisfies it.
+// Promoter is what the promotion pages use from the catalog: the operator
+// operations of the catalog service, bound to the request's Caller
+// (apicatalog.Bound). The service checks the person is an operator (ADR-00043).
 type Promoter interface {
-	ListSuggestedIngredients(ctx context.Context) ([]catalog.Ingredient, error)
-	PreviewPromotion(ctx context.Context, id int64) (catalog.Promotion, error)
-	PromoteIngredient(ctx context.Context, id int64) (catalog.Promotion, error)
+	OperatorListSuggestedIngredients(ctx context.Context) ([]apicatalog.Ingredient, error)
+	OperatorPreviewPromotion(ctx context.Context, id int64) (apicatalog.Promotion, error)
+	OperatorPromoteIngredient(ctx context.Context, id int64) (apicatalog.Promotion, error)
 }
 
 // PromotionDeps is what the promotion routes need.
@@ -49,7 +50,7 @@ func (h *promotionHandler) list(w http.ResponseWriter, r *http.Request) {
 	if _, ok := operatorEmail(w, r); !ok {
 		return
 	}
-	suggested, err := h.Catalog.ListSuggestedIngredients(r.Context())
+	suggested, err := h.Catalog.OperatorListSuggestedIngredients(r.Context())
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
@@ -65,7 +66,7 @@ func (h *promotionHandler) review(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	p, err := h.Catalog.PreviewPromotion(r.Context(), id)
+	p, err := h.Catalog.OperatorPreviewPromotion(r.Context(), id)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
@@ -81,7 +82,7 @@ func (h *promotionHandler) promote(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if _, err := h.Catalog.PromoteIngredient(r.Context(), id); err != nil {
+	if _, err := h.Catalog.OperatorPromoteIngredient(r.Context(), id); err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
@@ -110,7 +111,7 @@ type suggestedView struct {
 	Path    string
 }
 
-func newPromotionsView(in []catalog.Ingredient) promotionsView {
+func newPromotionsView(in []apicatalog.Ingredient) promotionsView {
 	v := promotionsView{Entries: make([]suggestedView, 0, len(in))}
 	for _, i := range in {
 		v.Entries = append(v.Entries, suggestedView{
@@ -126,9 +127,9 @@ type reviewView struct {
 	Duplicates int
 }
 
-func newReviewView(p catalog.Promotion) reviewView {
+func newReviewView(p apicatalog.Promotion) reviewView {
 	return reviewView{
-		suggestedView: newPromotionsView([]catalog.Ingredient{p.Ingredient}).Entries[0],
+		suggestedView: newPromotionsView([]apicatalog.Ingredient{p.Ingredient}).Entries[0],
 		Duplicates:    p.Duplicates,
 	}
 }

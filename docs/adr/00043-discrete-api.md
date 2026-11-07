@@ -77,6 +77,8 @@ their resource, as the rule asks.
 - A service operation takes a verified caller (the person and household, and
   for MCP the credential), enforces household membership (ADR-00018) and
   returns domain errors. A handler parses the request and renders the result.
+  An operator operation (ADR-00018), which reaches across households, checks
+  the caller's person against the configured operators instead of membership.
 - Authentication stays at the adapters. The web layer verifies the session
   cookie (ADR-00030) and MCP verifies its bearer credential (ADR-00031,
   ADR-00034). The service layer never reads cookies or headers. A later JSON
