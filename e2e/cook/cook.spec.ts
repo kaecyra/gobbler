@@ -185,8 +185,10 @@ test('every control on the cook page is at least 44px tall', async ({ page }) =>
   await page.goto(`/recipes/${pizza}/cook?step=2`);
   await page.getByTestId('timer-start').click();
   await expect(page.getByTestId('timer')).toHaveCount(1);
+  await page.getByTestId('step-list-toggle').click(); // the list is folded away
   const controls: Record<string, ReturnType<Page['locator']>> = {
     'back to recipe': page.getByTestId('cook-exit'),
+    'all steps toggle': page.getByTestId('step-list-toggle'),
     'timer start': page.getByTestId('timer-start'),
     'timer dismiss': page.getByTestId('timer').getByTestId('timer-dismiss'),
     'timer pause': page.getByTestId('timer-toggle'),
@@ -215,10 +217,16 @@ test('steps forward and back, and jumps from the step list', async ({ page }) =>
   await expect(page.getByTestId('step-text')).toHaveText('Bake the pizza.');
   await page.getByTestId('prev').click();
   await expect(page.getByTestId('step-text')).toHaveText('Let the dough rise.');
-  await page.getByTestId('step-list').getByRole('link', { name: 'Chop the tomatoes.' }).click();
+  await expect(page.locator('#cook-prog i').nth(1)).toHaveClass('cur'); // the header bar follows the swap
+  await page.getByTestId('step-list-toggle').click();
+  await expect(page.getByTestId('step-list')).toContainText('Chop the tomatoes.');
+  await page.getByTestId('step-list').getByRole('link', { name: 'Step 4', exact: true }).click();
   await expect(page.getByTestId('progress')).toContainText('Step 4 of 6');
   await expect(page.getByTestId('cook-ingredients')).toContainText('2 e2e tomato');
-  await expect(page.getByTestId('step-list').getByRole('link', { name: 'Chop the tomatoes.' })).toHaveAttribute('aria-current', 'step');
+  await expect(page.locator('#cook-prog i').nth(3)).toHaveClass('cur');
+  await expect(page.locator('#cook-prog i.done')).toHaveCount(3);
+  await page.getByTestId('step-list-toggle').click();
+  await expect(page.getByTestId('step-list').getByRole('link', { name: 'Step 4', exact: true })).toHaveAttribute('aria-current', 'step');
   // The URL alone reproduces the step.
   await page.reload();
   await expect(page.getByTestId('progress')).toContainText('Step 4 of 6');
@@ -227,10 +235,10 @@ test('steps forward and back, and jumps from the step list', async ({ page }) =>
 test('a passive step shows what to do meanwhile', async ({ page }) => {
   await page.goto(`/recipes/${pizza}/cook?step=2`);
   const guidance = page.getByTestId('meanwhile');
-  await expect(guidance).toContainText('step 4');
+  await expect(guidance).toContainText('Step 4');
   await expect(guidance).toContainText('Chop the tomatoes.');
   await expect(guidance).not.toContainText('Simmer the sauce.');
-  await guidance.getByRole('link', { name: 'step 4' }).click();
+  await guidance.getByRole('link', { name: 'Step 4', exact: true }).click();
   await expect(page.getByTestId('step-text')).toHaveText('Chop the tomatoes.');
   await expect(page.getByTestId('meanwhile')).toHaveCount(0);
 });
@@ -279,30 +287,47 @@ test('timers run side by side, keep their steps, and finish by the clock', async
   // Step 1: 10 minutes.
   await page.getByTestId('timer-start').click();
   // Stepping must not lose a running timer.
-  await page.getByTestId('step-list').getByRole('link', { name: 'Top and serve.' }).click();
+  await page.getByTestId('step-list-toggle').click();
+  await page.getByTestId('step-list').getByRole('link', { name: 'Step 6', exact: true }).click();
   await expect(page.getByTestId('step-text')).toHaveText('Top and serve.');
   await page.getByTestId('timer-start').click();
 
   const rows = page.getByTestId('timer');
+  const dough = page.locator('[data-testid="timer"][data-step="1"]');
+  const serve = page.locator('[data-testid="timer"][data-step="6"]');
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0)).toContainText('Step 1: Mix the dough.');
-  await expect(rows.nth(1)).toContainText('Step 6: Top and serve.');
-  await expect(rows.nth(1)).toContainText('1:00');
+  await expect(dough).toContainText('Make the dough');
+  await expect(dough).toContainText('Step 1');
+  await expect(serve).toContainText('Top and serve.');
+  await expect(serve).toContainText('Step 6');
+  await expect(serve).toContainText('1:00');
+  // The shown step's timer leads, at the top of the box (mockup: the main
+  // timer), though it was started second.
+  await expect(rows.nth(0)).toHaveAttribute('data-step', '6');
+  await expect(serve).toHaveClass(/\bcur\b/);
+  await expect(dough).not.toHaveClass(/\bcur\b/);
 
   // Jump the clock a minute in one go, as a backgrounded page would see it:
   // only an end timestamp gets this right.
   await page.clock.fastForward(60_000);
-  await expect(rows.nth(1)).toContainText('Done');
+  await expect(serve).toContainText('Done');
   // A finished timer has nothing to pause; the running one still does.
-  await expect(rows.nth(1).getByTestId('timer-toggle')).toBeHidden();
-  await expect(rows.nth(0).getByTestId('timer-toggle')).toBeVisible();
+  await expect(serve.getByTestId('timer-toggle')).toBeHidden();
+  await expect(dough.getByTestId('timer-toggle')).toBeVisible();
   await expect(page.getByTestId('timer-alert')).toContainText('Step 6: Top and serve.');
   expect(await page.evaluate(() => (window as any).__beeps)).toBeGreaterThan(0);
-  await expect(rows.nth(0)).not.toContainText('Done');
-  await expect(rows.nth(0)).toContainText('9:');
+  await expect(dough).not.toContainText('Done');
+  await expect(dough).toContainText('9:');
+
+  // Back on step 1, its timer moves to the top.
+  await page.getByTestId('step-list-toggle').click();
+  await page.getByTestId('step-list').getByRole('link', { name: 'Step 1', exact: true }).click();
+  await expect(page.getByTestId('progress')).toContainText('Step 1 of 6');
+  await expect(rows.nth(0)).toHaveAttribute('data-step', '1');
+  await expect(rows.nth(0)).toHaveClass(/\bcur\b/);
 
   await page.clock.fastForward(9 * 60_000);
-  await expect(rows.nth(0)).toContainText('Done');
+  await expect(dough).toContainText('Done');
 
   await page.getByRole('button', { name: 'Dismiss Step 6: Top and serve. timer' }).click();
   await expect(rows).toHaveCount(1);
@@ -313,11 +338,11 @@ test('a paused timer holds its time, resumes from it, and keeps that across step
   await page.goto(`/recipes/${pizza}/cook`);
   await page.getByTestId('timer-start').click(); // step 1: 10 minutes
   const row = page.getByTestId('timer');
-  const toggle = page.getByRole('button', { name: 'Pause Step 1: Mix the dough. timer' });
+  const toggle = page.getByRole('button', { name: 'Pause Step 1: Make the dough timer' });
   await page.clock.fastForward(120_000);
   await toggle.click();
   await expect(row).toContainText('8:00');
-  await expect(page.getByRole('button', { name: 'Resume Step 1: Mix the dough. timer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Resume Step 1: Make the dough timer' })).toBeVisible();
 
   // Time passing, stepping and reloading change nothing while paused.
   await page.clock.fastForward(300_000);
@@ -327,13 +352,13 @@ test('a paused timer holds its time, resumes from it, and keeps that across step
   await expect(row).toContainText('8:00');
   await page.reload();
   await expect(row).toContainText('8:00');
-  await expect(page.getByRole('button', { name: 'Resume Step 1: Mix the dough. timer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Resume Step 1: Make the dough timer' })).toBeVisible();
 
   // Resume continues from what was left.
-  await page.getByRole('button', { name: 'Resume Step 1: Mix the dough. timer' }).click();
+  await page.getByRole('button', { name: 'Resume Step 1: Make the dough timer' }).click();
   await page.clock.fastForward(60_000);
   await expect(row).toContainText('7:00');
-  await expect(page.getByRole('button', { name: 'Pause Step 1: Mix the dough. timer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause Step 1: Make the dough timer' })).toBeVisible();
 });
 
 test('timer icons use the secondary ink colour, as in the mockup', async ({ page }) => {
@@ -374,7 +399,7 @@ test('running timers survive a reload', async ({ page }) => {
   await page.reload();
   const row = page.getByTestId('timer');
   await expect(row).toHaveCount(1);
-  await expect(row).toContainText('Step 1: Mix the dough.');
+  await expect(row).toContainText('Make the dough');
   await expect(row).toContainText('8:');
 });
 

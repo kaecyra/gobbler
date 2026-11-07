@@ -1,6 +1,7 @@
-// Cook mode in the browser: step timers and the screen wake lock. HTMX swaps
-// the step panel when stepping, so everything here listens on the document and
-// the timer list lives outside the swapped panel. Timer arithmetic is in
+// Cook mode in the browser: step timers, the header's progress bar and the
+// screen wake lock. HTMX swaps the step panel when stepping, so everything here
+// listens on the document, and the timer list and progress bar live outside
+// the swapped panel. Timer arithmetic is in
 // cook-timers.js.
 //
 // htmx restores history (Back) by swapping the body and running its scripts
@@ -106,14 +107,46 @@
     else btn.appendChild(icon(d));
   }
 
+  // The step shown, as the number the step panel carries; '' with no panel.
+  function currentStep() {
+    var panel = byId('cook-step');
+    return panel ? panel.getAttribute('data-current') : '';
+  }
+
+  // A timer's label is the step's title or text; its step number makes it
+  // unique wherever it is read on its own: button names and the alert.
+  function fullName(t) { return 'Step ' + t.step + ': ' + t.label; }
+
+  // The progress bar sits in the header, outside the swapped step panel, so
+  // it follows the panel's step here.
+  function renderProgress() {
+    var prog = byId('cook-prog');
+    var n = Number(currentStep());
+    if (!prog || !n) return;
+    Array.prototype.forEach.call(prog.children, function (bar, i) {
+      bar.className = i + 1 < n ? 'done' : i + 1 === n ? 'cur' : '';
+    });
+  }
+
   function renderList(now) {
     var list = byId('cook-timer-list');
     if (!list) return;
+    var current = currentStep();
     var emptyNote = byId('cook-timers-empty');
     if (emptyNote) emptyNote.hidden = timers.length > 0;
     var existing = {};
-    Array.prototype.forEach.call(list.children, function (li) { existing[li.getAttribute('data-step')] = li; });
-    timers.forEach(function (t) {
+    var kept = {};
+    timers.forEach(function (t) { kept[t.step] = true; });
+    Array.prototype.slice.call(list.children).forEach(function (li) {
+      var step = li.getAttribute('data-step');
+      if (kept[step]) existing[step] = li;
+      else list.removeChild(li);
+    });
+    // The shown step's timer leads, as the mockup's main timer does; the rest
+    // keep the order they were started in.
+    var shown = timers.filter(function (t) { return t.step === current; })
+      .concat(timers.filter(function (t) { return t.step !== current; }));
+    shown.forEach(function (t, i) {
       var li = existing[t.step];
       if (!li) {
         li = document.createElement('li');
@@ -121,6 +154,8 @@
         li.setAttribute('data-testid', 'timer');
         var label = document.createElement('span');
         label.className = 'cook-timer-label';
+        label.appendChild(document.createElement('b'));
+        label.appendChild(document.createElement('small')).textContent = 'Step ' + t.step;
         var out = document.createElement('output');
         out.className = 'cook-timer-remaining';
         var actions = document.createElement('span');
@@ -138,13 +173,18 @@
         btn.appendChild(icon(ICON_CLOSE));
         actions.appendChild(toggle);
         actions.appendChild(btn);
+        // The clock and its buttons wrap below the label together.
+        var run = document.createElement('span');
+        run.className = 'cook-timer-run';
+        run.appendChild(out);
+        run.appendChild(actions);
         li.appendChild(label);
-        li.appendChild(out);
-        li.appendChild(actions);
-        list.appendChild(li);
+        li.appendChild(run);
       }
-      delete existing[t.step];
-      li.querySelector('.cook-timer-label').textContent = t.label;
+      // Moved only when out of place, so a tick does not touch the DOM.
+      if (list.children[i] !== li) list.insertBefore(li, list.children[i] || null);
+      li.querySelector('.cook-timer-label b').textContent = t.label;
+      li.classList.toggle('cur', t.step === current);
       var done = T.isDone(t, now);
       li.classList.toggle('done', done);
       var paused = T.isPaused(t);
@@ -153,10 +193,9 @@
       var toggle = li.querySelector('.cook-timer-toggle');
       toggle.hidden = done;
       setIcon(toggle, paused ? ICON_PLAY : ICON_PAUSE);
-      li.querySelector('.cook-timer-dismiss').setAttribute('aria-label', 'Dismiss ' + t.label + ' timer');
-      toggle.setAttribute('aria-label', (paused ? 'Resume ' : 'Pause ') + t.label + ' timer');
+      li.querySelector('.cook-timer-dismiss').setAttribute('aria-label', 'Dismiss ' + fullName(t) + ' timer');
+      toggle.setAttribute('aria-label', (paused ? 'Resume ' : 'Pause ') + fullName(t) + ' timer');
     });
-    Object.keys(existing).forEach(function (k) { list.removeChild(existing[k]); });
   }
 
   // A running timer's button says so, so a second tap reads as a restart.
@@ -174,7 +213,7 @@
     timers = T.markNotified(timers, finished.map(function (t) { return t.step; }));
     persist();
     var alertBox = byId('cook-alert');
-    if (alertBox) alertBox.textContent = finished.map(function (t) { return 'Timer done: ' + t.label; }).join(' ');
+    if (alertBox) alertBox.textContent = finished.map(function (t) { return 'Timer done: ' + fullName(t); }).join(' ');
     document.title = 'Timer done - ' + baseTitle;
     beep();
   }
@@ -190,6 +229,7 @@
     if (storageKey() !== loadedKey) load();
     announce();
     var now = Date.now();
+    renderProgress();
     renderList(now);
     renderButtons(now);
   }
@@ -226,8 +266,11 @@
   });
 
   // A backgrounded page may not have ticked; the end timestamps make catching
-  // up exact. After htmx swaps in a new step panel its buttons need their text.
+  // up exact. After htmx swaps in a new step panel its buttons need their text,
+  // and the progress bar and timer order follow the new step. afterSwap fires
+  // as the panel lands; afterSettle comes a timer later, after htmx settles.
   document.addEventListener('visibilitychange', tick);
+  document.addEventListener('htmx:afterSwap', tick);
   document.addEventListener('htmx:afterSettle', tick);
   window.setInterval(tick, 500);
 
