@@ -51,7 +51,7 @@ func centralListPage(v centralListView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><div><h1>Central ingredients</h1><p>Every household reads these ingredients, so a change here shows in every household's catalog. A household that chose its own aisle for an ingredient keeps that aisle, and its own aliases stay alongside the ones here.</p></div></div><form class=\"fields find panel\" method=\"get\" action=\"/operator/ingredients\" role=\"search\" data-testid=\"central-filter\"><label for=\"q\">Filter ingredients</label> <input type=\"search\" id=\"q\" name=\"q\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><div><h1>Central ingredients</h1><p>Every household reads these ingredients, so a change here shows in every household's catalog.</p></div></div><form class=\"fields find panel\" method=\"get\" action=\"/operator/ingredients\" role=\"search\" data-testid=\"central-filter\"><label for=\"q\">Filter ingredients</label> <input type=\"search\" id=\"q\" name=\"q\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -162,7 +162,7 @@ func centralListPage(v centralListView) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.OperatorPage("Central ingredients", layout.OperatorIngredients).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.OperatorPage("Central ingredients", layout.OperatorIngredients, "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -211,7 +211,7 @@ func centralEditPage(f formView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"muted\" data-testid=\"central-note\">Every household reads this ingredient. The USDA FoodData Central id is set by the USDA import and stays as it is.</p><form class=\"panel stack\" method=\"post\" action=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"muted\" data-testid=\"central-note\">Every household reads this ingredient.</p><form class=\"panel stack\" method=\"post\" action=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -238,7 +238,7 @@ func centralEditPage(f formView) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.OperatorPage("Edit "+f.Name, layout.OperatorIngredients).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.OperatorPage("Edit "+f.Name, layout.OperatorIngredients, f.Name).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

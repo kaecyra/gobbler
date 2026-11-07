@@ -149,6 +149,11 @@ func SpoonsOn(n int) []bool {
 // chilis lists the peppers of the spice scale.
 func chilis(n int) []struct{} { return make([]struct{}, n) }
 
+// showAfterChips decides whether a step shows its "after step 3" chip. Steps
+// are already listed in order, so the chip is hidden; RecipeStepView.After
+// still carries the dependencies, and turning this on shows the chip again.
+const showAfterChips = false
+
 // afterText renders "after step 3" or "after steps 3, 4, 5" for the steps a
 // step waits for.
 func afterText(nums []int) string { return stepRefs("after", nums) }

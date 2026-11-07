@@ -71,7 +71,7 @@ templ cardPicture(c cardView) {
 }
 
 // recipeCard is one library card: meal type and chilis, title and source,
-// components, key ingredients, rating, total time and made-it line. The title link is stretched over the whole card.
+// components, rating, total time and made-it line (and the key ingredients when showCardIngredients is on). The title link is stretched over the whole card.
 templ recipeCard(c cardView) {
 	<article class="rcard">
 		@cardPicture(c)
@@ -99,7 +99,7 @@ templ recipeCard(c cardView) {
 				}
 			</ul>
 		}
-		if len(c.Key) > 0 {
+		if showCardIngredients && len(c.Key) > 0 {
 			<p class="key">
 				<em>{ c.Key[0] }</em>
 				if len(c.Key) > 1 {

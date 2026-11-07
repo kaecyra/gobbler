@@ -5,7 +5,7 @@ import (
 )
 
 templ settingsPage(v backupView) {
-	@layout.OperatorPage("Deployment", layout.OperatorDeployment) {
+	@layout.OperatorPage("Deployment", layout.OperatorDeployment, "") {
 		<div class="pg">
 			<div class="screen-h"><h1>Deployment</h1></div>
 			@backupSection(v)

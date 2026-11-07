@@ -44,3 +44,24 @@ func OperatorSectionPaths() []string {
 	}
 	return paths
 }
+
+// operatorLabel returns the rail label of section s, which the breadcrumb
+// shows.
+func operatorLabel(s OperatorSection) string {
+	for _, it := range operatorSections {
+		if it.Section == s {
+			return it.Label
+		}
+	}
+	return ""
+}
+
+// operatorPath returns the path of section s.
+func operatorPath(s OperatorSection) string {
+	for _, it := range operatorSections {
+		if it.Section == s {
+			return it.Path
+		}
+	}
+	return OperatorPath
+}

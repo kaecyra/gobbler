@@ -92,7 +92,7 @@ test('a past version is shown in full and read only', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'E2E Loaf', level: 1, exact: true })).toBeVisible();
   await expect(page.getByText('3 cup e2e flour, sifted')).toBeVisible();
   await expect(page.getByText('Bake until golden.')).toBeVisible();
-  await expect(page.getByTestId('after')).toContainText('after step 1');
+  await expect(page.getByTestId('after')).toHaveCount(0);
   await expect(page.getByTestId('equipment')).toContainText('e2e loaf pan');
   await expect(page.getByTestId('total')).toContainText('55 min');
   // ADR-00004: the page says which rule produced the total.

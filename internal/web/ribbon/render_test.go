@@ -38,7 +38,7 @@ func TestRibbonMarkup(t *testing.T) {
 	got := render(t, Large(r))
 	for _, want := range []string{
 		`role="img"`,
-		`aria-label="20 minutes prep, then 30 minutes hands-on, then 3 hours braise"`,
+		`aria-label="20 minutes prep, 30 minutes hands-on, 3 hours braise"`,
 		`data-level="0"`,
 		`rib-full`, `rib-merged`,
 		`rib-merges`,

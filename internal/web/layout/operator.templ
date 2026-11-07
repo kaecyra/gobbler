@@ -3,7 +3,9 @@ package layout
 // OperatorPage renders an operator page inside the shared layout, beside the
 // rail of the operator area's sections with current marked
 // (docs/ui/design.md, Operator area). Its children are the page's own content.
-templ OperatorPage(title string, current OperatorSection) {
+// Every page but the overview opens with a breadcrumb: Operator, the section,
+// and here, the name of a page inside the section ("" on the section's own page).
+templ OperatorPage(title string, current OperatorSection, here string) {
 	@Page(title) {
 		<div class="op">
 			<nav class="op-rail" aria-label="Operator" data-testid="operator-rail">
@@ -20,6 +22,19 @@ templ OperatorPage(title string, current OperatorSection) {
 				}
 			</nav>
 			<div class="op-main">
+				if current != OperatorOverview {
+					<nav class="crumbs" aria-label="Breadcrumb" data-testid="operator-crumbs">
+						<a href={ templ.SafeURL(OperatorPath) }>Operator</a>
+						<span aria-hidden="true">/</span>
+						if here == "" {
+							<span aria-current="page">{ operatorLabel(current) }</span>
+						} else {
+							<a href={ templ.SafeURL(operatorPath(current)) }>{ operatorLabel(current) }</a>
+							<span aria-hidden="true">/</span>
+							<span aria-current="page">{ here }</span>
+						}
+					</nav>
+				}
 				{ children... }
 			</div>
 		</div>

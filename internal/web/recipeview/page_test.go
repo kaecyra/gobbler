@@ -117,7 +117,7 @@ func TestCookModeSitsInTheControlsRow(t *testing.T) {
 	start := indexOf(t, body, `class="recipe-controls"`)
 	end := start + indexOf(t, body[start:], `class="recipe-grid"`)
 	row := body[start:end]
-	if !strings.Contains(row, `data-testid="cook-link"`) || !strings.Contains(row, ">Cook mode<") {
+	if !strings.Contains(row, `data-testid="cook-link"`) || !strings.Contains(row, `aria-label="Cook mode"`) {
 		t.Errorf("Cook mode is not in the controls row\n%s", row)
 	}
 	mustNotContain(t, body, "Start cooking")
@@ -134,9 +134,9 @@ func TestRecipeWithNoTimedStepHasNoRibbon(t *testing.T) {
 	mustNotContain(t, body, "rib-big", "Ready in about")
 }
 
-func TestStepShowsWhatItWaitsFor(t *testing.T) {
+func TestStepHidesItsAfterChip(t *testing.T) {
 	body := page(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7")
-	mustContain(t, body, "after step 1")
+	mustNotContain(t, body, "after step", `data-testid="after"`)
 }
 
 func TestPageCarriesItsStylesheet(t *testing.T) {

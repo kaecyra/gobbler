@@ -32,7 +32,7 @@ test.describe('with recipes', () => {
     ids = srv.seed();
   });
 
-  test('cards carry meal type, chilis, source, parts, key ingredients, spoons and the made-it line', async ({ page }) => {
+  test('cards carry meal type, chilis, source, parts, spoons and the made-it line', async ({ page }) => {
     await page.goto('/recipes');
     await expect(cards(page)).toHaveCount(5);
 
@@ -45,7 +45,8 @@ test.describe('with recipes', () => {
     await expect(soup.locator('.heat svg')).toHaveCount(2);
     await expect(soup).toContainText('example.test');
     await expect(soup.getByRole('list', { name: 'Parts' })).toContainText('Main');
-    await expect(soup.locator('.key em')).toHaveText('tomato');
+    // The key ingredients are loaded but not shown on the card.
+    await expect(soup.locator('.key')).toHaveCount(0);
     // Unrated says New; three entries in the log, the newest two days ago.
     await expect(soup.locator('.rfoot')).toContainText('New');
     await expect(soup.locator('.rfoot')).toContainText(/Made 3× · /);

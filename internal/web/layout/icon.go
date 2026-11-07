@@ -27,6 +27,7 @@ const (
 	IconBack     IconName = "back"
 	IconBasket   IconName = "basket"
 	IconBulb     IconName = "bulb"
+	IconCart     IconName = "cart"
 	IconCheck    IconName = "check"
 	IconChevron  IconName = "chevron"
 	IconClock    IconName = "clock"
@@ -75,6 +76,7 @@ var lineGlyphs = map[IconName]lineGlyph{
 	IconBack:     {body: `<path d="M15 5l-7 7 7 7"></path>`, stroke: "2"},
 	IconBasket:   {body: `<path d="M3 10h18l-2 10H5zM8 10l3-6M16 10l-3-6M9 14v3M12 14v3M15 14v3"></path>`},
 	IconBulb:     {body: `<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path>`},
+	IconCart:     {body: `<path d="M2.5 4h2.6l2.4 10.5h10.2l2.3-7.5H6"></path><circle cx="9" cy="19" r="1.4"></circle><circle cx="17" cy="19" r="1.4"></circle>`},
 	IconCheck:    {body: `<path d="M5 13l4.4 4.4L19 7.6"></path>`, stroke: "4.4"},
 	IconChevron:  {body: `<path d="M6 9l6 6 6-6"></path>`, stroke: "1.8"},
 	IconClock:    {body: `<circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path>`},

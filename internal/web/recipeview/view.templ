@@ -481,15 +481,18 @@ templ controls(v view) {
 			}
 		</div>
 		<span class="grow"></span>
-		<form method="post" action={ templ.SafeURL(shoppingAddPath) } data-testid="shopping-add-form">
-			<input type="hidden" name="recipe" value={ strconv.FormatInt(v.ID, 10) }/>
-			<input type="hidden" name="multiplier" value={ v.Multiplier }/>
-			<button type="submit" class="btn" data-testid="shopping-add">Add to shopping list</button>
-		</form>
-		<a class="btn accent cookbtn" href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } data-testid="cook-link">
-			@layout.Icon(layout.IconPot)
-			<span>Cook mode</span>
-		</a>
+		<div class="recipe-actions">
+			<form method="post" action={ templ.SafeURL(shoppingAddPath) } data-testid="shopping-add-form">
+				<input type="hidden" name="recipe" value={ strconv.FormatInt(v.ID, 10) }/>
+				<input type="hidden" name="multiplier" value={ v.Multiplier }/>
+				<button type="submit" class="btn iconbtn" aria-label="Add to shopping list" title="Add to shopping list" data-testid="shopping-add">
+					@layout.Icon(layout.IconCart)
+				</button>
+			</form>
+			<a class="btn accent iconbtn cookbtn" href={ templ.SafeURL(cookHref(v.ID, v.Opts)) } aria-label="Cook mode" title="Cook mode" data-testid="cook-link">
+				@layout.Icon(layout.IconPot)
+			</a>
+		</div>
 	</div>
 }
 

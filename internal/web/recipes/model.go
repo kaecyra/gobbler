@@ -31,7 +31,8 @@ type cardView struct {
 	Spice      int    // chilis to draw; 0 draws none
 	SpiceLabel string
 	Components []string
-	// Key is the key ingredients; the first is emphasised.
+	// Key is the key ingredients; the first is emphasised. The card does not
+	// show them while showCardIngredients is off.
 	Key         []string
 	Rating      int // spoons, 0 when unrated
 	RatingLabel string
@@ -81,6 +82,11 @@ var timeBands = []struct {
 	{"Up to 3 hours", 3 * time.Hour},
 	{"Plan ahead", 0},
 }
+
+// showCardIngredients decides whether a library card lists the recipe's key
+// ingredients. They are hidden for now; the query still loads them into
+// cardView.Key, and turning this on shows them again.
+const showCardIngredients = false
 
 const noTimeTitle = "No time set"
 

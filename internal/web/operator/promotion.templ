@@ -7,12 +7,12 @@ import (
 )
 
 templ promotionsPage(v promotionsView) {
-	@layout.OperatorPage("Suggested ingredients", layout.OperatorSuggestions) {
+	@layout.OperatorPage("Suggested ingredients", layout.OperatorSuggestions, "") {
 		<div class="pg">
 			<div class="screen-h">
 				<div>
 					<h1>Suggested ingredients</h1>
-					<p>Households flag ingredients they would like every household to use. Promoting one makes its name visible to every household. This page shows no household's data.</p>
+					<p>Households flag ingredients they would like every household to use. Promoting one makes its name visible to every household.</p>
 				</div>
 			</div>
 			<section class="panel" aria-labelledby="suggested-h" data-testid="suggested">
@@ -38,7 +38,7 @@ templ promotionsPage(v promotionsView) {
 }
 
 templ reviewPage(v reviewView) {
-	@layout.OperatorPage("Review "+v.Name, layout.OperatorSuggestions) {
+	@layout.OperatorPage("Review "+v.Name, layout.OperatorSuggestions, v.Name) {
 		<div class="pg">
 			<div class="screen-h"><h1>Review { v.Name }</h1></div>
 			<p><a class="link" href="/operator/promotions">Back to the suggestions</a></p>

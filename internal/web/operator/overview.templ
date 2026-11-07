@@ -5,12 +5,12 @@ import (
 )
 
 templ overviewPage(v overviewView) {
-	@layout.OperatorPage("Operator", layout.OperatorOverview) {
+	@layout.OperatorPage("Operator", layout.OperatorOverview, "") {
 		<div class="pg wide">
 			<div class="screen-h">
 				<div>
 					<h1>Operator</h1>
-					<p>What you change here applies to every household on this gobbler. None of these pages shows a household's data.</p>
+					<p>Gobbler management functions that apply to the entire environment.</p>
 				</div>
 			</div>
 			<div class="cards op-cards" data-testid="operator-overview">

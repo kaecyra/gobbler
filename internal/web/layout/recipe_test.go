@@ -146,7 +146,9 @@ func TestStepShowsTagsOnlyForWhatItHas(t *testing.T) {
 		Title: "Rest", Text: "Leave it.", Passive: true, Time: "Timer · 1 h", After: []int{2, 3},
 	}, "5"))
 	has(t, body, `class="step passive"`, `<h4 data-testid="step-title">Rest</h4>`,
-		`class="stag t"`, "Timer · 1 h", `data-testid="after"`, "after steps 2, 3")
+		`class="stag t"`, "Timer · 1 h")
+	// The dependencies are kept in the view, but the step does not show them.
+	lacks(t, body, `data-testid="after"`, "after steps")
 
 	// An active step's time tag is not the waiting colour.
 	body = renderPart(t, RecipeStep(RecipeStepView{Text: "Chop.", Time: "5 min hands-on"}, "1"))
