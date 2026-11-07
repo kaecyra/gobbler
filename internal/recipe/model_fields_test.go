@@ -49,6 +49,19 @@ func TestClosedSetsMatchTheirValidators(t *testing.T) {
 	}
 }
 
+// A meal type's words live here and nowhere else (ADR-00022), so a type added
+// to the set without them fails here, not on a page.
+func TestEveryMealTypeHasItsWords(t *testing.T) {
+	for _, m := range MealTypes() {
+		if m.Label() == "" || m.Plural() == "" {
+			t.Errorf("meal type %q: Label=%q Plural=%q, want both", m, m.Label(), m.Plural())
+		}
+	}
+	if MealType("").Label() != "" || MealType("lunch").Plural() != "" {
+		t.Error("an unset or unknown meal type has no words")
+	}
+}
+
 func TestCuisineIsAClosedSetEndingInOther(t *testing.T) {
 	all := Cuisines()
 	if len(all) == 0 || all[len(all)-1] != CuisineOther {
