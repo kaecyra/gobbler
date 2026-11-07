@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-07, round 28, a-api-status-table in flight
+# Overseer handoff: 2026-11-07, round 28 closed, nothing in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -22,8 +22,9 @@ This file holds the volatile state the graph does not. The durable record is `do
 | a-api-households (#515) | #550 | 41435c3 |
 | a-api-ingest (#518) | #551 | 9e49949 |
 | a-api-profile (#516) | #552 | b7256d8 |
+| a-api-status-table (#517) | #553 | 15a9695 |
 
-**In flight:** a-api-status-table (#517) in wt-517 on branch refactor/517-api-status-table. It is the last node of the API split.
+**In flight:** nothing. a-api-status-table merged as #553 (15a9695), which completes the API split.
 
 **After it:** the graph has only blocked nodes left:
 - l-meal-planning (#38) needs an ADR.
