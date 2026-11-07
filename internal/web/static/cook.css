@@ -225,9 +225,11 @@
   list-style: none;
 }
 
-/* Label, clock and buttons share a line while the label has room for a short
-   word or two (it wraps to at most three lines); past that the clock and buttons drop to
-   a line of their own, at the right. */
+/* Label, clock and buttons share a line while the whole label fits beside the
+   clock on one line, as in the mockup; otherwise the clock and buttons drop to
+   a line of their own under the label, at the right. The label's flex basis is
+   its one-line width, which is what makes the row wrap instead of squeezing
+   the label into a narrow column. */
 .cook-timers li {
   display: flex;
   flex-wrap: wrap;
@@ -237,7 +239,7 @@
   border-radius: var(--r);
 }
 
-.cook-timer-label { display: block; flex: 1 1 4em; min-width: 0; }
+.cook-timer-label { display: block; flex: 1 1 auto; min-width: 0; }
 .cook-timer-run { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 
 .cook-timer-label b {
