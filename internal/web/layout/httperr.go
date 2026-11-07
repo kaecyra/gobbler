@@ -10,17 +10,14 @@ import (
 
 	"github.com/a-h/templ"
 
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
-	"github.com/kaecyra/gobbler/internal/apikey"
-	"github.com/kaecyra/gobbler/internal/catalog"
-	"github.com/kaecyra/gobbler/internal/household"
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
-	"github.com/kaecyra/gobbler/internal/ingest/extract"
-	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/parse"
-	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
-	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // Web-level error kinds. A feature that has no domain sentinel for a failure
@@ -40,35 +37,35 @@ var statusTable = []struct {
 }{
 	// ErrFetch wraps whatever the HTTP client or the OS returned, so it is
 	// above every row that cause could match.
-	{ingestcore.ErrFetch, http.StatusBadGateway},
-	{ingestcore.ErrNoSourceURL, http.StatusConflict},
+	{apiingest.ErrFetch, http.StatusBadGateway},
+	{apiingest.ErrNoSourceURL, http.StatusConflict},
 	{ErrNotFound, http.StatusNotFound},
-	{catalog.ErrNotFound, http.StatusNotFound},
+	{apicatalog.ErrNotFound, http.StatusNotFound},
 	{ErrInvalid, http.StatusBadRequest},
-	{catalog.ErrInvalid, http.StatusBadRequest},
+	{apicatalog.ErrInvalid, http.StatusBadRequest},
 	{ErrConflict, http.StatusConflict},
-	{catalog.ErrConflict, http.StatusConflict},
+	{apicatalog.ErrConflict, http.StatusConflict},
 	{parse.ErrEmptyText, http.StatusBadRequest},
-	{extract.ErrEmptyInput, http.StatusBadRequest},
-	{store.ErrNotFound, http.StatusNotFound},
+	{apiingest.ErrEmptyInput, http.StatusBadRequest},
+	{apirecipes.ErrNotFound, http.StatusNotFound},
 	{display.ErrInvalid, http.StatusBadRequest},
-	{store.ErrStaleVersion, http.StatusConflict},
-	{store.ErrNotPending, http.StatusConflict},
-	{store.ErrOnShoppingList, http.StatusConflict},
-	{household.ErrNotFound, http.StatusNotFound},
-	{household.ErrInvalid, http.StatusBadRequest},
-	{household.ErrConfirmation, http.StatusBadRequest},
-	{household.ErrAlreadyMember, http.StatusConflict},
-	{household.ErrLastMember, http.StatusConflict},
-	{household.ErrNotLastMember, http.StatusConflict},
-	{household.ErrExpired, http.StatusGone},
-	{household.ErrUsed, http.StatusGone},
-	{household.ErrRevoked, http.StatusGone},
-	{profile.ErrNotFound, http.StatusNotFound},
-	{profile.ErrInvalid, http.StatusBadRequest},
-	{apikey.ErrNotFound, http.StatusNotFound},
-	{apikey.ErrInvalid, http.StatusBadRequest},
-	{oauth.ErrNotFound, http.StatusNotFound},
+	{apirecipes.ErrStaleVersion, http.StatusConflict},
+	{apirecipes.ErrNotPending, http.StatusConflict},
+	{apirecipes.ErrOnShoppingList, http.StatusConflict},
+	{apihouseholds.ErrNotFound, http.StatusNotFound},
+	{apihouseholds.ErrInvalid, http.StatusBadRequest},
+	{apihouseholds.ErrConfirmation, http.StatusBadRequest},
+	{apihouseholds.ErrAlreadyMember, http.StatusConflict},
+	{apihouseholds.ErrLastMember, http.StatusConflict},
+	{apihouseholds.ErrNotLastMember, http.StatusConflict},
+	{apihouseholds.ErrExpired, http.StatusGone},
+	{apihouseholds.ErrUsed, http.StatusGone},
+	{apihouseholds.ErrRevoked, http.StatusGone},
+	{apiprofile.ErrNotFound, http.StatusNotFound},
+	{apiprofile.ErrInvalid, http.StatusBadRequest},
+	{apiprofile.ErrKeyNotFound, http.StatusNotFound},
+	{apiprofile.ErrKeyInvalid, http.StatusBadRequest},
+	{apiprofile.ErrGrantNotFound, http.StatusNotFound},
 	{apishop.ErrNotFound, http.StatusNotFound},
 	{apishop.ErrInvalid, http.StatusBadRequest},
 	{apishop.ErrUnknownReference, http.StatusBadRequest},
@@ -161,7 +158,7 @@ func statusText(status int) string { return http.StatusText(status) }
 // so; any other error goes through WriteError, which shows only the mapped
 // status text.
 func Fail(w http.ResponseWriter, r *http.Request, err error) {
-	if reason, ok := household.InvalidReason(err); ok {
+	if reason, ok := apihouseholds.InvalidReason(err); ok {
 		Render(w, r, http.StatusBadRequest, ErrorPage(http.StatusBadRequest, reason))
 		return
 	}

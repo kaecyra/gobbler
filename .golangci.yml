@@ -52,17 +52,11 @@ linters:
         # internal/picture stays a domain package the recipe service calls
         # (see the package doc of internal/api/recipes). Tests are exempt:
         # they build fixtures straight on the domain.
-        #
-        # The files excepted below belong to resources that have not migrated
-        # yet: a-api-rest (#471) moves them onto internal/api and deletes each
-        # exception with the file's import.
         recipes-through-api:
           files:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-rest (#471): the status table names the store's sentinels.
-            - "!**/internal/web/layout/httperr.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/store
               desc: use internal/api/recipes; the web handlers and MCP tools do not import the recipe store (ADR-00043)
@@ -80,32 +74,22 @@ linters:
               desc: use internal/api/sharing; the web handlers and MCP tools do not import the sharing domain (ADR-00043)
         # ADR-00043: the catalog is reached through internal/api/catalog. Tests
         # are exempt: they build fixtures straight on the domain.
-        #
-        # The files excepted below do not go through the service yet.
         catalog-through-api:
           files:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-status-table (#517): the status table names the catalog's
-            # sentinels.
-            - "!**/internal/web/layout/httperr.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/catalog
               desc: use internal/api/catalog; the web handlers and MCP tools do not import the catalog domain (ADR-00043)
         # ADR-00043: households, members and invitations are reached through
         # internal/api/households. Tests are exempt: they build fixtures straight
         # on the domain.
-        #
-        # The files excepted below do not go through the service yet.
         households-through-api:
           files:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-status-table (#517): the status table names the household
-            # sentinels.
-            - "!**/internal/web/layout/httperr.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/household
               desc: use internal/api/households; the web handlers and MCP tools do not import the household domain (ADR-00043)
@@ -114,16 +98,11 @@ linters:
         # internal/apikey and internal/oauth are not fenced: the sign-in, MCP and
         # OAuth adapters share them. Tests are exempt: they build fixtures
         # straight on the domain.
-        #
-        # The files excepted below do not go through the service yet.
         profile-through-api:
           files:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-status-table (#517): the status table names the profile
-            # sentinels.
-            - "!**/internal/web/layout/httperr.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/profile
               desc: use internal/api/profile; the web handlers and MCP tools do not import the profile domain (ADR-00043)
@@ -133,16 +112,11 @@ linters:
         # so it covers internal/ingest/extract and internal/ingest/ocr too.
         # internal/parse is pure logic and stays unfenced. Tests are exempt: they
         # build fixtures straight on the domain.
-        #
-        # The files excepted below do not go through the service yet.
         ingest-through-api:
           files:
             - "**/internal/web/**"
             - "**/internal/mcp/**"
             - "!$test"
-            # a-api-status-table (#517): the status table names the ingestion
-            # sentinels.
-            - "!**/internal/web/layout/httperr.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/ingest
               desc: use internal/api/ingest; the web handlers and MCP tools do not import the ingestion domain (ADR-00043)
