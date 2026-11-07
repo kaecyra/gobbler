@@ -1,24 +1,31 @@
-# Overseer handoff: 2026-11-07, round 28 in flight
+# Overseer handoff: 2026-11-07, round 28, a-api-catalog in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
-## Round 28 (2026-11-07): notes apart, suggest paths, video placement
+## Round 28 (2026-11-07): notes apart, suggest paths, video placement, catalog API
 
-**Merged:** #539 (graph: node u-suggest-paths for #522; a-api-catalog depends on it). #488 closed: it shipped in #501.
+**Merged** under the standing authority (read VERSION on main):
 
-**In flight:**
-| Node | Issue(s) | Worktree | Branch |
+| Node / PR | PR | SHA | VERSION |
 |---|---|---|---|
-| u-notes-apart | #527, plus #537 and #540 folded in | wt-527 | fix/527-notes-apart |
-| u-suggest-paths | #522 | wt-522 | refactor/522-suggest-paths |
+| (graph: node u-suggest-paths for #522) | #539 | a290f0b | none |
+| (ADR-00021 and design.md: video at top of steps column, #540) | #541 | cf13689 | none |
+| u-suggest-paths (#522) | #542 | 01c20db | 0.123.14 |
+| u-notes-apart (#527, folds #537 and #540) | #543 | 4619245 | 0.123.15 |
 
-- #540 is the owner's ruling of 2026-11-07: the video moves from above the title to the top of the steps column. It went to the wt-527 worker mid-flight, as its own commit.
-- **Dispatcher PR #541** corrects ADR-00021's Context line in place. A background review is running; merge it when review-clean.
-- Both branches bump VERSION patch. The second to merge re-bumps after the first.
+#488 closed: it shipped in #501.
 
-**Next:** a-api-catalog (#514) once both nodes merge. o-demo-reseed (#432) waits for the owner to deploy.
+**In flight:** a-api-catalog (#514), wt-514, branch refactor/514-api-catalog. It has its own round.
+
+**Owner:** deployed on 2026-11-07, before #542 and #543 landed. o-demo-reseed (#432) is theirs to do on the live site, since Google sign-in blocks seed.py. They import the six URLs and choose pictures, then tell me, and I record-done.
+
+**Open question to the owner:** a `bread` meal type? I recommended adding `bread`, sorted after `side`. Alternatives: `baking`, or a tag only. It is uncovered: ADR-00022 fixes six types. It needs a migration (CHECK rebuild), a picture, ingest mapping and editor options. The editor is in a-api-catalog's lane, so the node orders after it.
+
+**Leftover:** docs/adr/README.md's ADR-00041 row still says notes "end the step chain". Fix it with the next ADR PR.
+
+**Next:** a-api-households (#515) and a-api-ingest (#518) after a-api-catalog. Then a-api-profile (#516) and a-api-status-table (#517).
 
 ## Round 27 (2026-11-06): landed the round 26 leftovers, then stopped
 
