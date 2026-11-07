@@ -538,7 +538,6 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .op-rail a:hover { background: var(--sunk); }
 .op-rail a[aria-current="page"] { background: var(--ink); color: var(--paper); }
 .op-rail svg { width: 20px; height: 20px; flex: none; }
-.op-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-col-min), 1fr)); gap: 16px; }
 .op-cards .panel { display: flex; flex-direction: column; gap: 6px; }
 .op-cards .panel h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
 .op-cards .panel h2 svg { width: 20px; height: 20px; color: var(--ink-3); }

@@ -45,7 +45,7 @@ func overviewPage(v overviewView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><div><h1>Operator</h1><p>What you change here applies to every household on this gobbler. None of these pages shows a household's data.</p></div></div><div class=\"op-cards\" data-testid=\"operator-overview\"><section class=\"panel\" data-testid=\"overview-invitations\"><h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><div><h1>Operator</h1><p>What you change here applies to every household on this gobbler. None of these pages shows a household's data.</p></div></div><div class=\"cards op-cards\" data-testid=\"operator-overview\"><section class=\"panel\" data-testid=\"overview-invitations\"><h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
