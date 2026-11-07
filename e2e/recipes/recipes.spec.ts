@@ -59,6 +59,7 @@ test.describe('with recipes', () => {
     await expect(cake.locator('.rfoot')).toContainText('Made 1×');
 
     const knots = card(page, 'Cardamom Knots');
+    await expect(knots.locator('.mtype')).toContainText('Baked');
     await expect(knots.locator('.rfoot')).toContainText('Not made yet');
     await expect(knots.locator('.rfoot')).toContainText('New');
   });
@@ -66,7 +67,7 @@ test.describe('with recipes', () => {
   test('cards are grouped by meal, and the grouping moves to time to table', async ({ page }) => {
     await page.goto('/recipes');
     const headings = page.locator('.group h2');
-    await expect(headings).toHaveText([heading('Breakfast', 1), heading('Mains', 3), heading('Desserts', 1)]);
+    await expect(headings).toHaveText([heading('Mains', 3), heading('Baked', 1), heading('Desserts', 1)]);
     await expect(page.locator('.group', { hasText: 'Mains' }).locator('.rcard')).toHaveCount(3);
     await expect(page.getByRole('link', { name: 'Meal' })).toHaveAttribute('aria-current', 'true');
 
@@ -86,6 +87,12 @@ test.describe('with recipes', () => {
     await page.getByRole('link', { name: 'Meal' }).click();
     await expect(page).not.toHaveURL(/group=/);
     await expect(headings).toHaveText([heading('Mains', 2)]);
+  });
+
+  test('a baked recipe shows Baked on its page, and the library groups it after the mains', async ({ page }) => {
+    await page.goto(`/recipes/${ids['Cardamom Knots']}`);
+    await expect(page.getByTestId('meal-type')).toContainText('Baked');
+    await expect(page.getByTestId('meal-type').locator('svg')).toHaveCount(1);
   });
 
   test('the side panels read the made-it log', async ({ page }) => {

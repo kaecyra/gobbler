@@ -551,14 +551,9 @@ func (l lineDraft) ruleIs(r string) bool {
 func (l lineDraft) hasPackage() bool { return l.PkgQty != "" || l.PkgUnit != "" }
 func n0(i int) string                { return strconv.Itoa(i) }
 
-// mealOptions and stageOptions are the closed sets the selects offer.
-func mealOptions() []string {
-	var out []string
-	for _, m := range recipe.MealTypes() {
-		out = append(out, string(m))
-	}
-	return out
-}
+// mealOptions is the closed set the meal type select offers; the option text
+// is MealType.Label.
+func mealOptions() []recipe.MealType { return recipe.MealTypes() }
 
 // cuisineOption is one entry of the cuisine select.
 type cuisineOption struct{ Key, Label string }
@@ -571,6 +566,7 @@ func cuisineOptions() []cuisineOption {
 	return out
 }
 
+// stageOptions is the closed set the step kind select offers.
 func stageOptions() []string {
 	var out []string
 	for _, k := range recipe.StageKinds() {

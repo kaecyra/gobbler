@@ -4213,7 +4213,7 @@
       "wave": 13,
       "track": null,
       "issue": 514,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "a-api-recipes",
         "u-aisle-suggest",
@@ -4335,7 +4335,8 @@
       "depends_on": [
         "a-api-households",
         "u-qualifier-style",
-        "u-notes-apart"
+        "u-notes-apart",
+        "u-meal-baked"
       ],
       "owns": [
         "internal/api/ingest/**",
@@ -4513,7 +4514,11 @@
         "internal/web/recipes/*_test.go",
         "internal/db/*_test.go",
         "e2e/recipes/**",
-        "e2e/recipeview/**"
+        "e2e/recipeview/**",
+        "internal/web/editor/editor.templ",
+        "internal/web/editor/editor_templ.go",
+        "internal/web/editor/view.go",
+        "internal/web/editor/review_fields_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
@@ -5945,6 +5950,12 @@
         "00045"
       ],
       "note": "Implements the ADR attached to this node (amends ADR-00041): on the recipe page, remove every connector line from the last step to the notes and between notes; separate the notes from the steps by extra space; keep their alignment in the step-number column. Change only those elements (frontend.md). Cook mode is unchanged. Also update docs/ui/design.md's Author notes paragraph (ADR-00045 obligation 3); u-card-total-time edits the same file first. Folds in #537: port the deleted card-ribbon fit tests to e2e/recipeview against ribbon.Large. Folds in #540 (owner, 2026-11-07): the video moves from above the title to the top of the steps column."
+    },
+    {
+      "id": "a-api-catalog",
+      "title": "the catalog goes through internal/api/catalog",
+      "merged": "86b59da",
+      "note": "ADR-00043. Re-export the fenced package's sentinel errors from internal/api/<resource> so a-api-status-table can switch httperr.go to them. May edit the existing lines of the shared append-only files (internal/web/routes.go, internal/web/web.go, internal/web/profile/routes.go, internal/web/layout/layout_operator.go) that construct or name its own resource, and must move its domain imports out of them, because they sit inside the internal/web fence. In .golangci.yml, edit only its own rule and the exception lines naming files in its lane, including their a-api-rest (#471) comments."
     }
   ],
   "adr_sequence": {

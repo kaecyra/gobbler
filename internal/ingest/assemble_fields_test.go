@@ -25,6 +25,11 @@ func TestMealTypeFromRecipeCategory(t *testing.T) {
 		{[]string{"Snack"}, recipe.MealSnack},
 		{[]string{"Drink"}, recipe.MealDrink},
 		{[]string{"Beverage"}, recipe.MealDrink},
+		{[]string{"Bread"}, recipe.MealBaked},
+		{[]string{"Breads"}, recipe.MealBaked},
+		{[]string{"Baking"}, recipe.MealBaked},
+		{[]string{"Baked Goods"}, recipe.MealBaked},
+		{[]string{"Bread, Breakfast"}, ""},
 		{[]string{"  main   course "}, recipe.MealMain},
 		// One string may list several, comma separated.
 		{[]string{"Dinner, Main Course"}, recipe.MealMain},
@@ -121,5 +126,13 @@ func TestParserVersionCoversStageKindsAndMealType(t *testing.T) {
 	// one made before the rules read them (ParserVersion's contract).
 	if ParserVersion == "6" {
 		t.Errorf("ParserVersion %q predates meal type and stage kind proposals", ParserVersion)
+	}
+}
+
+func TestParserVersionCoversBakedMealType(t *testing.T) {
+	// A bread category now proposes baked, so a draft made by older rules must
+	// be distinguishable (ParserVersion's contract).
+	if ParserVersion == "18" {
+		t.Errorf("ParserVersion %q predates the baked meal type", ParserVersion)
 	}
 }

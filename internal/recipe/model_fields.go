@@ -28,24 +28,62 @@ const (
 	MealBreakfast MealType = "breakfast"
 	MealMain      MealType = "main"
 	MealSide      MealType = "side"
+	MealBaked     MealType = "baked"
 	MealDessert   MealType = "dessert"
 	MealSnack     MealType = "snack"
 	MealDrink     MealType = "drink"
 )
 
+// mealWords name the meal types on a page, in the order MealTypes lists them:
+// Label singly, as a card or a recipe page shows it, and Plural as a library
+// group heading.
+var mealWords = []struct {
+	Meal          MealType
+	Label, Plural string
+}{
+	{MealBreakfast, "Breakfast", "Breakfast"}, {MealMain, "Main", "Mains"}, {MealSide, "Side", "Sides"},
+	{MealBaked, "Baked", "Baked"}, {MealDessert, "Dessert", "Desserts"}, {MealSnack, "Snack", "Snacks"},
+	{MealDrink, "Drink", "Drinks"},
+}
+
 // MealTypes lists the closed set of meal types.
 func MealTypes() []MealType {
-	return []MealType{MealBreakfast, MealMain, MealSide, MealDessert, MealSnack, MealDrink}
+	out := make([]MealType, len(mealWords))
+	for i, w := range mealWords {
+		out[i] = w.Meal
+	}
+	return out
 }
 
 // Valid reports whether m is one of the defined meal types.
 func (m MealType) Valid() bool {
-	for _, k := range MealTypes() {
-		if m == k {
+	for _, k := range mealWords {
+		if m == k.Meal {
 			return true
 		}
 	}
 	return false
+}
+
+// Label is the name a page shows for m, empty for an unset or unknown type.
+func (m MealType) Label() string {
+	for _, k := range mealWords {
+		if m == k.Meal {
+			return k.Label
+		}
+	}
+	return ""
+}
+
+// Plural is the heading a library groups m under, empty for an unset or
+// unknown type.
+func (m MealType) Plural() string {
+	for _, k := range mealWords {
+		if m == k.Meal {
+			return k.Plural
+		}
+	}
+	return ""
 }
 
 // Cuisine is the one cuisine a recipe belongs to (ADR-00025). The empty value

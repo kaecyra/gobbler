@@ -17,12 +17,6 @@ import (
 // feature package, because a feature package does not import another one
 // (ADR-00012).
 
-// mealLabels name the meal types on the page, in the library's order.
-var mealLabels = map[recipe.MealType]string{
-	recipe.MealBreakfast: "Breakfast", recipe.MealMain: "Main", recipe.MealSide: "Side",
-	recipe.MealDessert: "Dessert", recipe.MealSnack: "Snack", recipe.MealDrink: "Drink",
-}
-
 // heatLabels are indexed by spice level; 0 is nothing to say.
 var heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
 
@@ -108,7 +102,7 @@ type RecipeMeta struct {
 // NewRecipeMeta reads the fields of r that the meta row shows.
 func NewRecipeMeta(r recipe.Recipe) RecipeMeta {
 	m := RecipeMeta{
-		MealType: r.MealType, Meal: mealLabels[r.MealType], Cuisine: r.Cuisine.Label(), Author: r.Author,
+		MealType: r.MealType, Meal: r.MealType.Label(), Cuisine: r.Cuisine.Label(), Author: r.Author,
 		Calories: r.CaloriesPerServing, SourceURL: r.SourceURL, SourceHost: sourceHost(r.SourceURL),
 	}
 	if r.SpiceLevel != nil && *r.SpiceLevel > 0 {
