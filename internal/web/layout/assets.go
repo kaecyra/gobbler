@@ -7,6 +7,10 @@ const (
 	// ThemePath is the light/dark toggle. It loads in the head, without defer,
 	// so a remembered dark choice is applied before the first paint.
 	ThemePath = "/static/theme.js"
+	// SuggestScriptPath and SuggestStylePath are the type-ahead suggestion
+	// widget shared by the catalog and the recipe editor.
+	SuggestScriptPath = "/static/suggest.js"
+	SuggestStylePath  = "/static/suggest.css"
 )
 
 // Mascot drawings, one embedded SVG each (docs/ui/design.md, Mascots). Pages

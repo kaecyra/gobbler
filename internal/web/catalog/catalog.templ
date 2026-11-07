@@ -139,8 +139,8 @@ templ editPage(f formView) {
 						<option value={ a }></option>
 					}
 				</datalist>
-				<link rel="stylesheet" href="/static/suggest.css"/>
-				<script src="/static/suggest.js" defer></script>
+				<link rel="stylesheet" href={ layout.SuggestStylePath }/>
+				<script src={ layout.SuggestScriptPath } defer></script>
 			</p>
 			@fieldProblem(f.Problem(fieldAisle), fieldAisle+"-error")
 			<p>
