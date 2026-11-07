@@ -1,16 +1,11 @@
 package profile
 
 import (
-	"context"
-	"database/sql"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/household"
-	domain "github.com/kaecyra/gobbler/internal/profile"
-	"github.com/kaecyra/gobbler/internal/session"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -18,32 +13,10 @@ import (
 // its admission rule lets a non-member open it (layout.Admits).
 const Pattern = layout.ProfilePath
 
-// Store is what the pages use from the profile store. *profile.Store satisfies
-// it.
-type Store interface {
-	Ensure(ctx context.Context, email string) (domain.Profile, error)
-	ByAddress(ctx context.Context, address string) (domain.Profile, error)
-	Rename(ctx context.Context, email, name string) error
-}
-
-// Households finds the household of an email, to tell whether the viewer and
-// the person share one. *household.Store satisfies it.
-type Households interface {
-	ForEmail(ctx context.Context, email string) (household.Household, error)
-}
-
-// Deps is what the routes need. Profiles and Households are the page's own.
-// The rest is for the sections that later nodes add, each of which builds its
-// store from them (see the package documentation).
+// Deps is what the routes need. The profile service does every read and write
+// (ADR-00043): the handlers hold no store.
 type Deps struct {
-	Profiles   Store
-	Households Households
-	DB         *sql.DB
-	Config     config.Config
-	// Sessions is nil when sign-in is not mounted (package web checks).
-	Sessions *session.Store
-	// Avatars runs avatar uploads and serves their pictures (ADR-00033).
-	Avatars *domain.Avatars
+	Profile *apiprofile.Service
 }
 
 type handler struct{ Deps }

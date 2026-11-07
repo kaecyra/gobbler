@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/media"
-	domain "github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -67,9 +67,9 @@ func (h *handler) serveAvatar(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("no profile on the request: %w", layout.ErrNotFound))
 		return
 	}
-	// As asks the visibility rule; a viewer who may not see the avatar gets
+	// The visibility rule decides; a viewer who may not see the avatar gets
 	// the same 404 as a profile with none.
-	key := s.Profile.As(s.Relation).Avatar
+	key := apiprofile.AvatarKey(s)
 	if key == "" {
 		layout.WriteError(w, r, fmt.Errorf("profile has no visible avatar: %w", layout.ErrNotFound))
 		return
@@ -81,7 +81,7 @@ func (h *handler) serveAvatar(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	b, err := h.Avatars.Open(r.Context(), key)
+	b, err := h.Profile.OpenAvatar(r.Context(), callerOf(r), s.Profile.Address)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -117,7 +117,7 @@ func refused(w http.ResponseWriter, r *http.Request, s subject, err error) bool 
 		refuse(w, r, s, http.StatusBadRequest, msg)
 		return true
 	}
-	if errors.Is(err, domain.ErrBusy) {
+	if errors.Is(err, apiprofile.ErrBusy) {
 		refuse(w, r, s, http.StatusConflict,
 			"Your last picture is still being processed. Wait for it to finish, then upload again.")
 		return true
@@ -146,7 +146,7 @@ func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	j, err := h.Avatars.Upload(r.Context(), s.Profile.Email, data)
+	j, err := h.Profile.UploadAvatar(r.Context(), callerOf(r), data)
 	if err != nil {
 		if !refused(w, r, s, err) {
 			layout.WriteError(w, r, err)
@@ -217,12 +217,12 @@ func (h *handler) cropPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Add("Vary", "HX-Request")
-	j, found, err := h.Avatars.Job(r.Context(), s.Profile.Email)
+	j, found, err := h.Profile.AvatarJob(r.Context(), callerOf(r))
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
 	}
-	if !found || j.State == domain.JobQueued {
+	if !found || j.State == apiprofile.JobQueued {
 		if r.Header.Get("HX-Request") == "true" {
 			layout.Render(w, r, http.StatusOK, uploadPanel(newPanelView(s.Profile.Address, s.Profile.Avatar, "")))
 			return
@@ -251,14 +251,14 @@ func (h *handler) cropAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 		*dst = v
 	}
-	if err := h.Avatars.Crop(r.Context(), s.Profile.Email, r.PostFormValue("id"), c); err != nil {
+	if err := h.Profile.CropAvatar(r.Context(), callerOf(r), r.PostFormValue("id"), c); err != nil {
 		if !refused(w, r, s, err) {
 			layout.WriteError(w, r, err)
 		}
 		return
 	}
 	if r.Header.Get("HX-Request") == "true" {
-		queued := newStatusView(s.Profile.Address, domain.Job{State: domain.JobQueued}, true, s.Profile.Avatar)
+		queued := newStatusView(s.Profile.Address, apiprofile.Job{State: apiprofile.JobQueued}, true, s.Profile.Avatar)
 		queued.OOB = true
 		layout.Render(w, r, http.StatusOK, savedPanel(queued))
 		return
@@ -267,11 +267,11 @@ func (h *handler) cropAvatar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) avatarPreview(w http.ResponseWriter, r *http.Request) {
-	s, ok := self(w, r)
+	_, ok := self(w, r)
 	if !ok {
 		return
 	}
-	b, err := h.Avatars.Preview(r.Context(), s.Profile.Email, chi.URLParam(r, "id"))
+	b, err := h.Profile.AvatarPreview(r.Context(), callerOf(r), chi.URLParam(r, "id"))
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -290,7 +290,7 @@ func (h *handler) avatarStatus(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	j, found, err := h.Avatars.Job(r.Context(), s.Profile.Email)
+	j, found, err := h.Profile.AvatarJob(r.Context(), callerOf(r))
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return

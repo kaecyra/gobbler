@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
@@ -34,6 +35,7 @@ type avatarSite struct {
 	t       *testing.T
 	h       http.Handler
 	avatars *domain.Avatars
+	svc     *apiprofile.Service
 	db      *sql.DB
 }
 
@@ -55,8 +57,9 @@ func newAvatarSite(t *testing.T) *avatarSite {
 	av := domain.NewAvatars(ctx, domain.New(d), media.NewLocal(t.TempDir()), nil)
 	r := chi.NewRouter()
 	r.Use(a.Middleware(layout.IsPublic))
-	r.Mount(Pattern, Routes(Deps{Profiles: domain.New(d), Households: fakeHouseholds{}, DB: d, Avatars: av}))
-	return &avatarSite{t: t, h: r, avatars: av, db: d}
+	svc := newService(t, d, fakeHouseholds{}, nil, av)
+	r.Mount(Pattern, Routes(Deps{Profile: svc}))
+	return &avatarSite{t: t, h: r, avatars: av, svc: svc, db: d}
 }
 
 func (s *avatarSite) do(req *http.Request, email string) *httptest.ResponseRecorder {
@@ -298,12 +301,22 @@ func TestServeAvatarAsksTheVisibilityRule(t *testing.T) {
 	if err != nil || p.Avatar == "" {
 		t.Fatalf("profile = %+v, %v", p, err)
 	}
-	h := &handler{Deps{Avatars: s.avatars}}
+	h := &handler{Deps{Profile: s.svc}}
+	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DevAuthBypass: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for rel, want := range map[domain.Relation]int{domain.Self: http.StatusOK, domain.Other: http.StatusOK, "unknown": http.StatusNotFound} {
+		// The subject middleware is replaced by one that stores the relation
+		// under test; the identity is the real middleware's.
+		serve := a.Middleware(layout.IsPublic)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), subjectKey{}, subject{Profile: p, Viewer: me, Relation: rel})
+			h.serveAvatar(w, r.WithContext(ctx))
+		}))
 		req := httptest.NewRequest(http.MethodGet, "/avatar", nil)
-		req = req.WithContext(context.WithValue(req.Context(), subjectKey{}, subject{Profile: p, Viewer: "x@example.com", Relation: rel}))
+		req.Header.Set(auth.DevIdentityHeader, me)
 		rec := httptest.NewRecorder()
-		h.serveAvatar(rec, req)
+		serve.ServeHTTP(rec, req)
 		if rec.Code != want {
 			t.Errorf("relation %q = %d, want %d", rel, rec.Code, want)
 		}

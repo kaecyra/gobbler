@@ -20,13 +20,13 @@ import (
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
-	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/video"
@@ -74,7 +74,7 @@ type Deps struct {
 	// builds it over the configured media store and resumes interrupted jobs
 	// before mounting the pages, and a nil one would mean a store chosen here,
 	// not by the configuration.
-	Avatars *profile.Avatars
+	Avatars *apiprofile.Avatars
 	// MCPVerifier checks the bearer credential of the MCP endpoint (ADR-00034).
 	// Nil means API keys (ADR-00031) and OAuth access tokens (ADR-00034).
 	MCPVerifier mcp.Verifier
@@ -92,6 +92,9 @@ type Deps struct {
 	// equipment names from, speaking for the Caller of each request
 	// (ADR-00043). Nil means one over DB.
 	Catalog *apicatalog.Bound
+	// Profile is the profile service the profile pages and the header avatar
+	// share (ADR-00043). Nil means one over DB, Avatars and Sessions.
+	Profile *apiprofile.Service
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -161,6 +164,14 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		d.Catalog = svc.Bind(caller.FromContext)
 	}
 
+	if d.Profile == nil {
+		svc, err := newProfileService(d)
+		if err != nil {
+			return nil, fmt.Errorf("web: build the profile service: %w", err)
+		}
+		d.Profile = svc
+	}
+
 	var members memberLookup = apihouseholds.NewStore(d.DB)
 	if d.Config.Server.DevAuthBypass {
 		members = &devSeeded{store: apihouseholds.NewStore(d.DB)}
@@ -179,7 +190,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		r.Use(markSignIn)
 	}
 	r.Use(onSession(d.Auth.Middleware(layout.IsPublic)), onBearer(siteOf(d.Config), mcp.Bearer(d.MCPVerifier, log)), membership(members, d.Config.Operator), cop.Handler)
-	r.Use(avatarSource(d.DB, log), admitOnce)
+	r.Use(avatarSource(d.Profile, log), admitOnce)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})

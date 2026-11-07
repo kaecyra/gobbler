@@ -6,8 +6,8 @@ import (
 
 	"github.com/a-h/templ"
 
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/media"
-	domain "github.com/kaecyra/gobbler/internal/profile"
 )
 
 // statusView is what the section's status fragment shows.
@@ -32,7 +32,7 @@ func (v statusView) oobAttrs() templ.Attributes {
 	return nil
 }
 
-func newStatusView(address string, j domain.Job, found bool, has string) statusView {
+func newStatusView(address string, j apiprofile.Job, found bool, has string) statusView {
 	if !found {
 		return statusView{Address: address, Has: has}
 	}
@@ -79,7 +79,7 @@ type cropView struct {
 	Failed string
 }
 
-func newCropView(address, has string, j domain.Job) cropView {
+func newCropView(address, has string, j apiprofile.Job) cropView {
 	return cropView{Address: address, Has: has, ID: j.ID, Failed: j.Error}
 }
 

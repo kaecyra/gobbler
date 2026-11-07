@@ -12,13 +12,13 @@ import (
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
-	"github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
 	webcatalog "github.com/kaecyra/gobbler/internal/web/catalog"
 	"github.com/kaecyra/gobbler/internal/web/cook"
@@ -261,14 +261,27 @@ func mountEquipment(r chi.Router, d Deps) {
 	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: svc.Bind(caller.FromContext)}))
 }
 
+// newProfileService builds the profile service over the database, the avatar
+// service and, when sign-in is mounted, the session store.
+func newProfileService(d Deps) (*apiprofile.Service, error) {
+	deps := apiprofile.Deps{
+		Profiles: apiprofile.NewStore(d.DB), Households: apihouseholds.NewStore(d.DB),
+		Keys: apikey.New(d.DB), Grants: oauth.New(d.DB), Avatars: d.Avatars,
+	}
+	// A nil *session.Store in the interface would not be nil: sessions exist
+	// only when sign-in is mounted.
+	if d.Sessions != nil {
+		deps.Sessions = d.Sessions
+	}
+	return apiprofile.New(deps)
+}
+
 // mountProfile mounts the profile pages (ADR-00032). A verified non-member may
 // open them, since every signed-in person has a profile (layout.Admits). The
-// sections later nodes add to the page take what they need from these deps.
+// profile service is the one place the page reads and writes the profile, the
+// person's sessions, keys and connected apps, and their avatar (ADR-00043).
 func mountProfile(r chi.Router, d Deps) {
-	r.Mount(webprofile.Pattern, webprofile.Routes(webprofile.Deps{
-		Profiles: profile.New(d.DB), Households: apihouseholds.NewStore(d.DB),
-		DB: d.DB, Config: d.Config, Sessions: d.Sessions, Avatars: d.Avatars,
-	}))
+	r.Mount(webprofile.Pattern, webprofile.Routes(webprofile.Deps{Profile: d.Profile}))
 }
 
 // mountMCP mounts the MCP endpoint (ADR-00034). By the time a request reaches

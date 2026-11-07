@@ -11,7 +11,7 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 
-	domain "github.com/kaecyra/gobbler/internal/profile"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 )
 
 // nameSection is the Profile section: a list of fields the person sets, one
@@ -83,9 +83,9 @@ func nameSection(v pageView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(domain.MaxNameRunes))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(apiprofile.MaxNameRunes))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 19, Col: 130}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/profile/name.templ`, Line: 19, Col: 134}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {

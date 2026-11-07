@@ -15,7 +15,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
-	domain "github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -58,7 +57,7 @@ func buildSessionSite(t *testing.T, bypass bool) *sessionSite {
 	}
 	r := chi.NewRouter()
 	r.Use(a.Middleware(layout.IsPublic))
-	r.Mount(Pattern, Routes(Deps{Profiles: domain.New(d), Households: fakeHouseholds{}, DB: d, Sessions: sessions}))
+	r.Mount(Pattern, Routes(Deps{Profile: newService(t, d, fakeHouseholds{}, sessions, nil)}))
 	return &sessionSite{t: t, h: r, sessions: sessions}
 }
 

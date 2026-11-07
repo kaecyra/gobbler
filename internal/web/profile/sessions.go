@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -21,11 +22,6 @@ import (
 // of the page's view. The IP and the user agent in the list are shown to the
 // person for their own information and are never used to allow or refuse
 // anything (ADR-00027).
-
-// errNoCurrent is an "end every other session" from a request that carries no
-// live session of its own, such as under the dev bypass, where there is no
-// session to keep.
-var errNoCurrent = errors.New("no current session to keep")
 
 // sessionsRoutes registers GET /{address}/sessions, which serves the list,
 // and the two POSTs that end sessions.
@@ -66,21 +62,24 @@ func (v sessionsView) others() int {
 	return n
 }
 
-// hasCurrent is whether the list holds the session making the request.
-func (v sessionsView) hasCurrent() bool {
-	for _, r := range v.Rows {
-		if r.Current {
-			return true
-		}
-	}
-	return false
-}
-
 func currentToken(r *http.Request) string {
 	if c, err := r.Cookie(auth.SessionCookie); err == nil {
 		return c.Value
 	}
 	return ""
+}
+
+// sessionError gives a refusal of the session service the web kind the status
+// table maps: no sessions to end is a missing page, and no current session to
+// keep is a bad request.
+func sessionError(err error) error {
+	switch {
+	case errors.Is(err, apiprofile.ErrNoSessions):
+		return fmt.Errorf("sessions are not in use: %w: %w", layout.ErrNotFound, err)
+	case errors.Is(err, apiprofile.ErrNoCurrentSession):
+		return fmt.Errorf("%w: %w", layout.ErrInvalid, err)
+	}
+	return err
 }
 
 func (h *handler) selfSubject(w http.ResponseWriter, r *http.Request) (subject, bool) {
@@ -94,14 +93,11 @@ func (h *handler) selfSubject(w http.ResponseWriter, r *http.Request) (subject, 
 
 func (h *handler) loadSessions(r *http.Request, s subject) (sessionsView, error) {
 	v := sessionsView{Address: s.Profile.Address}
-	if h.Sessions == nil {
-		return v, nil
-	}
-	v.Kept = true
-	list, err := h.Sessions.ListForEmail(r.Context(), s.Profile.Email, currentToken(r))
+	list, kept, err := h.Profile.ListSessions(r.Context(), callerOf(r), currentToken(r))
 	if err != nil {
-		return v, fmt.Errorf("list sessions: %w", err)
+		return v, err
 	}
+	v.Kept = kept
 	for _, i := range list {
 		v.Rows = append(v.Rows, sessionRow{
 			ID: i.ID, Device: session.ParseUserAgent(i.Client.UserAgent).String(), IP: i.Client.IP,
@@ -136,16 +132,12 @@ func (h *handler) sessionEnd(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if h.Sessions == nil {
-		layout.WriteError(w, r, fmt.Errorf("end a session without sessions: %w", layout.ErrNotFound))
-		return
-	}
-	// The email is the profile's person, which selfOnly has shown is the
-	// viewer; the request names only which of their sessions to end. One that
-	// is not theirs, or is already gone, ends nothing and is not an error:
-	// the page they return to shows what is left.
-	if _, err := h.Sessions.End(r.Context(), s.Profile.Email, r.PostFormValue("id")); err != nil {
-		layout.WriteError(w, r, err)
+	// The person is the Caller, which selfOnly has shown is the profile's; the
+	// request names only which of their sessions to end. One that is not
+	// theirs, or is already gone, ends nothing and is not an error: the page
+	// they return to shows what is left.
+	if err := h.Profile.EndSession(r.Context(), callerOf(r), r.PostFormValue("id")); err != nil {
+		layout.WriteError(w, r, sessionError(err))
 		return
 	}
 	redirectTo(w, r, s.Profile.Address)
@@ -156,23 +148,10 @@ func (h *handler) sessionEndOthers(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if h.Sessions == nil {
-		layout.WriteError(w, r, fmt.Errorf("end sessions without sessions: %w", layout.ErrNotFound))
-		return
-	}
-	// The cookie's token must be one of this person's live sessions, or "every
-	// other" would be every one.
-	v, err := h.loadSessions(r, s)
-	if err != nil {
-		layout.WriteError(w, r, err)
-		return
-	}
-	if !v.hasCurrent() {
-		layout.WriteError(w, r, fmt.Errorf("%w: %w", layout.ErrInvalid, errNoCurrent))
-		return
-	}
-	if _, err := h.Sessions.EndOthers(r.Context(), s.Profile.Email, currentToken(r)); err != nil {
-		layout.WriteError(w, r, err)
+	// The service checks that the cookie's token is one of this person's live
+	// sessions, or "every other" would be every one.
+	if err := h.Profile.EndOtherSessions(r.Context(), callerOf(r), currentToken(r)); err != nil {
+		layout.WriteError(w, r, sessionError(err))
 		return
 	}
 	redirectTo(w, r, s.Profile.Address)
