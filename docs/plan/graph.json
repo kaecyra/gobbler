@@ -4238,7 +4238,8 @@
         "internal/mcp/tools_edit*.go",
         "internal/mcp/mcp_test.go",
         "internal/mcp/mcp_edit_test.go",
-        "e2e/mcp/**"
+        "e2e/mcp/**",
+        "internal/web/operator/promotion_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
