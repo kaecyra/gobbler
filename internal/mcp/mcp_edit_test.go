@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -349,5 +350,63 @@ func TestAnIdlessStepNeverTakesALabelTheAgentWrote(t *testing.T) {
 	steps := p.Edit.Components[0].Steps
 	if len(steps) != 2 || steps[0].ID == steps[1].ID || len(steps[1].DependsOn) != 1 || steps[1].DependsOn[0] != steps[0].ID {
 		t.Errorf("steps = %+v, want two distinct ids with the second depending on the first", steps)
+	}
+}
+
+// The recipe tools read the catalog through the catalog service as the
+// credential of the request, whichever kind it is (ADR-00031, ADR-00043): the
+// ingredient names get_recipe shows and the ingredient lines an edit is read
+// with come from the credential's household.
+func TestTheCatalogIsReadAsEveryKindOfCredential(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	id := s.recipe(s.smiths, "ann@example.com", "Bread", s.flourLine(2))
+	hk, err := s.keys.CreateHousehold(context.Background(), s.smiths.ID, "ann@example.com", "kitchen", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pk, _ := s.personalKey("ann@example.com")
+	ok, _ := s.token("ann@example.com", mcpResource)
+	for name, secret := range map[string]string{"household key": hk, "personal key": pk, "oauth grant": ok} {
+		t.Run(name, func(t *testing.T) {
+			cs := s.connect(secret)
+			r := s.read(cs, id)
+			if got := r.Components[0].Ingredients[0].Text; got != "2 cup zz mcp flour" {
+				t.Fatalf("get_recipe line = %q, want the ingredient named from the catalog", got)
+			}
+			args := editArgs(r, "Bread", "more flour")
+			comp := args["recipe"].(map[string]any)["components"].([]map[string]any)[0]
+			comp["ingredients"] = append(comp["ingredients"].([]map[string]any), map[string]any{"text": "1 tsp zz mcp flour"})
+			var out proposed
+			if msg := call(t, cs, "propose_recipe_edit", args, &out); msg != "" {
+				t.Fatalf("propose_recipe_edit: %q", msg)
+			}
+			p, err := s.rec.GetProposal(s.as(s.smiths, "ann@example.com"), out.Token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := p.Edit.Components[0].Lines; len(got) != 2 || got[1].Ingredient != recipe.IngredientID(s.flour) {
+				t.Errorf("lines = %+v, want the new line matched to the household's flour", got)
+			}
+		})
+	}
+}
+
+// Another household's credential does not see the Smiths' overlay ingredient:
+// the catalog service reads in the credential's household, so an edit naming it
+// by id is refused as an ingredient the catalog does not have.
+func TestACredentialDoesNotSeeAnotherHouseholdsIngredient(t *testing.T) {
+	s := newSite(t, config.MCP{Rate: 100, Burst: 100})
+	id := s.recipe(s.joneses, "jo@example.com", "Stew")
+	secret, err := s.keys.CreateHousehold(context.Background(), s.joneses.ID, "jo@example.com", "kitchen", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cs := s.connect(secret)
+	args := editArgs(s.read(cs, id), "Stew", "salt it")
+	comp := args["recipe"].(map[string]any)["components"].([]map[string]any)[0]
+	comp["ingredients"] = []map[string]any{{"text": "1 tsp salt", "ingredient_id": s.flour}}
+	want := "there is no ingredient"
+	if msg := call(t, cs, "propose_recipe_edit", args, nil); !strings.Contains(msg, want) {
+		t.Errorf("propose_recipe_edit naming the Smiths' ingredient = %q, want it to contain %q", msg, want)
 	}
 }

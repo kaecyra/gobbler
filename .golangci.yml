@@ -78,6 +78,24 @@ linters:
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/sharing
               desc: use internal/api/sharing; the web handlers and MCP tools do not import the sharing domain (ADR-00043)
+        # ADR-00043: the catalog is reached through internal/api/catalog. Tests
+        # are exempt: they build fixtures straight on the domain.
+        #
+        # The files excepted below do not go through the service yet.
+        catalog-through-api:
+          files:
+            - "**/internal/web/**"
+            - "**/internal/mcp/**"
+            - "!$test"
+            # a-api-status-table (#517): the status table names the catalog's
+            # sentinels.
+            - "!**/internal/web/layout/httperr.go"
+            # a-api-ingest (#518): the ingest screen builds the catalog store
+            # and hands it to the ingestion pipeline and the editor's review.
+            - "!**/internal/web/ingest/ingest.go"
+          deny:
+            - pkg: github.com/kaecyra/gobbler/internal/catalog
+              desc: use internal/api/catalog; the web handlers and MCP tools do not import the catalog domain (ADR-00043)
 
 formatters:
   enable:

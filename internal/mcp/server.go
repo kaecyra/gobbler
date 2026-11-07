@@ -10,9 +10,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
-	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
@@ -35,15 +35,17 @@ func EditPath(recipeID int64, token string) string {
 
 // Catalog is what the recipe tools read from the ingredient catalog: ingredient
 // names for display, and the matching an edited line needs to be read like any
-// other ingredient line. *catalog.Store satisfies it.
+// other ingredient line. NewDeps gives it the catalog service bound to the
+// credential of the request (apicatalog.Bound), which checks membership on every
+// call, whichever kind of credential it is (ADR-00031, ADR-00043).
 type Catalog interface {
 	display.Ingredients
-	MatchIngredient(ctx context.Context, term string) (catalog.Ingredient, bool, error)
-	MatchUnit(ctx context.Context, term string) (catalog.Unit, bool, error)
+	MatchIngredient(ctx context.Context, term string) (apicatalog.Ingredient, bool, error)
+	MatchUnit(ctx context.Context, term string) (apicatalog.Unit, bool, error)
 	// ListIngredients and ListUnits are what the shopping service reads
 	// (apishop.Catalog).
-	ListIngredients(ctx context.Context) ([]catalog.Ingredient, error)
-	ListUnits(ctx context.Context) ([]catalog.Unit, error)
+	ListIngredients(ctx context.Context) ([]apicatalog.Ingredient, error)
+	ListUnits(ctx context.Context) ([]apicatalog.Unit, error)
 }
 
 // Drafter makes a draft from a URL or pasted text through the rule-first
@@ -82,12 +84,36 @@ type Deps struct {
 // already shares. The pipeline has no LLM provider: an agent's import takes the
 // rule-based path and a draft below the confidence threshold is flagged for the
 // reviewer, never sent to a model (ADR-00006).
-func NewDeps(rec *apirecipes.Service, reads apishop.Recipes, lists *apishop.Store, households apishop.Members, cat *catalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+func NewDeps(rec *apirecipes.Service, reads apishop.Recipes, lists *apishop.Store, households apishop.Members, cat *apicatalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
 	pipeline, err := ingest.New(cfg.Ingestion, ingest.Deps{Catalog: cat, Logger: log})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import pipeline: %w", err)
 	}
-	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: cat, Drafter: pipeline, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: households})
+	if err != nil {
+		return Deps{}, fmt.Errorf("build mcp catalog service: %w", err)
+	}
+	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(catalogCaller(log)), Drafter: pipeline, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+}
+
+// catalogCaller names the Caller of a catalog lookup from the credential and
+// household on the request's context (callerOf), for apicatalog.Bound. A
+// context with neither names nobody: the zero Caller, which the catalog service
+// refuses with ErrNotMember, so a lookup that lost its credential fails closed.
+// The cause is logged at debug, so the refusal can be traced to the scoping
+// failure.
+func catalogCaller(log *slog.Logger) func(ctx context.Context) apicatalog.Caller {
+	if log == nil {
+		log = slog.Default()
+	}
+	return func(ctx context.Context) apicatalog.Caller {
+		c, err := recipeCaller(ctx)
+		if err != nil {
+			log.DebugContext(ctx, "mcp catalog lookup has no caller", "error", err.Error())
+			return apicatalog.Caller{}
+		}
+		return c
+	}
 }
 
 // Routes returns the endpoint, to be mounted at Pattern behind Bearer and the

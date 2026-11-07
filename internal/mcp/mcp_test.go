@@ -105,10 +105,16 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 	if err != nil {
 		t.Fatal(err)
 	}
-	deps := mcp.Deps{
-		Recipes: svc, RecipeReads: s.rec, Lists: shop, Households: hs, Catalog: cat, Drafter: fakeDrafter{draft},
-		Audit: mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}, Limits: limits, Logger: slog.New(slog.DiscardHandler), Now: func() time.Time { return s.now },
+	// NewDeps is what the router uses, so every tool here reaches the catalog
+	// through the catalog service bound to the credential of its request
+	// (ADR-00043), whichever kind of credential it is (ADR-00031).
+	audit := mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}
+	cfg := config.Config{Ingestion: config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "t"}, MCP: limits}
+	deps, err := mcp.NewDeps(svc, s.rec, shop, hs, cat, audit, cfg, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
 	}
+	deps.Drafter, deps.Now = fakeDrafter{draft}, func() time.Time { return s.now }
 	if drafter != nil {
 		deps.Drafter = drafter(cat)
 	}

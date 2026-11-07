@@ -1,9 +1,11 @@
 // Package catalog is the catalog cleanup page: the ingredients ingestion
 // proposed, listed for review, with an edit form and a merge flow (ADR-00008).
-// Persistence and the merge itself belong to internal/catalog; this package is
-// the page over them. A household edits its own overlay entries freely and,
-// for a central entry, only its own aliases and aisle (ADR-00018). It never creates an ingredient: creation stays on the
-// ingest review screen. It is mounted from internal/web (ADR-00012).
+// Persistence and the merge itself belong to internal/catalog, reached through
+// internal/api/catalog (ADR-00043); this package is the page over them. A
+// household edits its own overlay entries freely and, for a central entry, only
+// its own aliases and aisle (ADR-00018). It never creates an ingredient:
+// creation stays on the ingest review screen. It is mounted from internal/web
+// (ADR-00012).
 package catalog
 
 import (
@@ -16,7 +18,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	domain "github.com/kaecyra/gobbler/internal/catalog"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -26,19 +28,20 @@ const Pattern = "/catalog"
 // maxFormBytes bounds a form body; an ingredient is a few short fields.
 const maxFormBytes = 64 << 10
 
-// Catalog is what the routes use from the catalog store. *catalog.Store
-// satisfies it.
+// Catalog is what the routes use from the catalog. The router gives it the
+// catalog service bound to the request's Caller (apicatalog.Bound), so every
+// call is checked for membership there, not here.
 type Catalog interface {
-	ListIngredients(ctx context.Context) ([]domain.Ingredient, error)
-	ListUnreviewedIngredients(ctx context.Context) ([]domain.Ingredient, error)
-	GetIngredient(ctx context.Context, id int64) (domain.Ingredient, error)
+	ListIngredients(ctx context.Context) ([]apicatalog.Ingredient, error)
+	ListUnreviewedIngredients(ctx context.Context) ([]apicatalog.Ingredient, error)
+	GetIngredient(ctx context.Context, id int64) (apicatalog.Ingredient, error)
 	SuggestIngredient(ctx context.Context, id int64) error
 	UnsuggestIngredient(ctx context.Context, id int64) error
-	UpdateIngredient(ctx context.Context, in domain.Ingredient) error
-	MergeIngredients(ctx context.Context, winnerID, loserID int64) (domain.Ingredient, error)
+	UpdateIngredient(ctx context.Context, in apicatalog.Ingredient) error
+	MergeIngredients(ctx context.Context, winnerID, loserID int64) (apicatalog.Ingredient, error)
 }
 
-// Usage counts what a merge would re-point. *catalog.Usage satisfies it. The
+// Usage counts what a merge would re-point (apicatalog.Bound). The
 // count comes from the tables' owners through the catalog, never from here.
 type Usage interface {
 	IngredientUsage(ctx context.Context, id int64) (int64, error)
@@ -149,7 +152,7 @@ func (h *handler) markReviewed(w http.ResponseWriter, r *http.Request) {
 	if in.Central {
 		// The operator curates the central catalog (ADR-00018); say so rather
 		// than redirect as though it had worked.
-		layout.WriteError(w, r, fmt.Errorf("mark ingredient %d reviewed: %w: %w", id, layout.ErrInvalid, domain.ErrCentral))
+		layout.WriteError(w, r, fmt.Errorf("mark ingredient %d reviewed: %w: %w", id, layout.ErrInvalid, apicatalog.ErrCentral))
 		return
 	}
 	in.Reviewed = true
@@ -218,7 +221,7 @@ func (h *handler) mergeDo(w http.ResponseWriter, r *http.Request) {
 // mergePair parses and loads source and target. A bad pair has already been
 // answered when ok is false: a self-merge with the chooser and its message, a
 // missing ingredient or an unreadable id with the error page.
-func (h *handler) mergePair(w http.ResponseWriter, r *http.Request, source, target string) (src, dst domain.Ingredient, ok bool) {
+func (h *handler) mergePair(w http.ResponseWriter, r *http.Request, source, target string) (src, dst apicatalog.Ingredient, ok bool) {
 	sourceID, err := idParam(source)
 	if err != nil {
 		layout.WriteError(w, r, err)
@@ -240,7 +243,7 @@ func (h *handler) mergePair(w http.ResponseWriter, r *http.Request, source, targ
 	if src.Central {
 		// Only a household's own entry can be merged away; the central
 		// catalog is the operator's (ADR-00018).
-		layout.WriteError(w, r, fmt.Errorf("merge ingredient %d: %w: %w", sourceID, layout.ErrInvalid, domain.ErrCentral))
+		layout.WriteError(w, r, fmt.Errorf("merge ingredient %d: %w: %w", sourceID, layout.ErrInvalid, apicatalog.ErrCentral))
 		return src, dst, false
 	}
 	if dst, err = h.Catalog.GetIngredient(r.Context(), targetID); err != nil {
