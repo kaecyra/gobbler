@@ -67,19 +67,6 @@ type results struct {
 	Filtered bool
 }
 
-// mealLabels name a meal type singly, as a card shows it; mealPlurals name it
-// as a group heading.
-var (
-	mealLabels = map[recipe.MealType]string{
-		recipe.MealBreakfast: "Breakfast", recipe.MealMain: "Main", recipe.MealSide: "Side",
-		recipe.MealDessert: "Dessert", recipe.MealSnack: "Snack", recipe.MealDrink: "Drink",
-	}
-	mealPlurals = map[recipe.MealType]string{
-		recipe.MealBreakfast: "Breakfast", recipe.MealMain: "Mains", recipe.MealSide: "Sides",
-		recipe.MealDessert: "Desserts", recipe.MealSnack: "Snacks", recipe.MealDrink: "Drinks",
-	}
-)
-
 // heatLabels name 1 to 3 chilis; the words for 1 to layout.MaxSpoons spoons are
 // layout.Verdict.
 var heatLabels = [...]string{"", "Mild heat", "Medium heat", "Hot"}
@@ -99,7 +86,7 @@ const noTimeTitle = "No time set"
 
 func cardFor(c apirecipes.Card, now time.Time) cardView {
 	v := cardView{
-		ID: c.ID, Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: mealLabels[c.MealType], Cuisine: c.Cuisine.Label(),
+		ID: c.ID, Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: c.MealType.Label(), Cuisine: c.Cuisine.Label(),
 		Components: c.Components, Key: c.KeyIngredients,
 		Made: madeLine(c.MadeCount, c.LastMade, now),
 	}
@@ -144,7 +131,7 @@ func groupByMeal(found []apirecipes.Card, now time.Time) []groupView {
 	for _, m := range append(recipe.MealTypes(), "") {
 		g := groupView{Title: "Other", Meal: m}
 		if m != "" {
-			g.Title = mealPlurals[m]
+			g.Title = m.Plural()
 		}
 		for _, c := range found {
 			if c.MealType == m {

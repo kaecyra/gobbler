@@ -524,7 +524,7 @@ templ metaFields(v view) {
 						<select id="f-meal-type" name="meal_type">
 							<option value="" selected?={ v.D.MealType == "" }>Not set</option>
 							for _, m := range mealOptions() {
-								<option value={ m } selected?={ v.D.MealType == m }>{ m }</option>
+								<option value={ string(m) } selected?={ v.D.MealType == string(m) }>{ m.Label() }</option>
 							}
 						</select>
 						@fieldError(v, "meal_type")

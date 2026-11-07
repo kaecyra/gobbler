@@ -29,7 +29,7 @@ func TestReviewShowsTheRecipeFieldsOfADraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := buf.String()
-	for _, want := range []string{`name="meal_type"`, `<option value="dessert" selected`, `name="spice"`, `<option value="1" selected`, `name="c.0.s.1.kind"`, `<option value="bake" selected`, `value="Bake it"`} {
+	for _, want := range []string{`name="meal_type"`, `<option value="dessert" selected`, `>Baked</option>`, `>Dessert</option>`, `name="spice"`, `<option value="1" selected`, `name="c.0.s.1.kind"`, `<option value="bake" selected`, `value="Bake it"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("review form lacks %q", want)
 		}

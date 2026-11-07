@@ -109,7 +109,7 @@ func TestMetaRowSourceWithoutAHostStillLinks(t *testing.T) {
 func TestMealIconsDifferPerMealType(t *testing.T) {
 	seen := map[string]recipe.MealType{}
 	for _, m := range recipe.MealTypes() {
-		body := renderPart(t, RecipeMetaRow(RecipeMeta{MealType: m, Meal: mealLabels[m]}))
+		body := renderPart(t, RecipeMetaRow(RecipeMeta{MealType: m, Meal: m.Label()}))
 		start := strings.Index(body, "<svg")
 		end := strings.Index(body, "</svg>")
 		if start < 0 || end < start {
