@@ -8,9 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/auth"
-	domain "github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -20,18 +21,19 @@ const (
 	InvitationsPattern = layout.InvitationsPath
 )
 
-// Store is what the pages use from the household store. *household.Store
-// satisfies it.
-type Store interface {
-	Members(ctx context.Context, householdID int64) ([]string, error)
-	PendingForHousehold(ctx context.Context, householdID int64) ([]domain.Invitation, error)
-	Invite(ctx context.Context, in domain.Invite) (string, error)
-	Revoke(ctx context.Context, code, issuedBy string) error
-	Remove(ctx context.Context, householdID int64, by, target string) error
-	Leave(ctx context.Context, email string) error
-	Delete(ctx context.Context, householdID int64, by, confirm string) error
-	InvitationFor(ctx context.Context, code, email string) (domain.Invitation, error)
-	Accept(ctx context.Context, code, email, householdName string) (domain.Household, error)
+// Households is what the pages call: the household service (ADR-00043), which
+// checks that the Caller is a member of the household it acts in.
+// *households.Service satisfies it.
+type Households interface {
+	Members(ctx context.Context, c apihouseholds.Caller) ([]string, error)
+	Pending(ctx context.Context, c apihouseholds.Caller) ([]apihouseholds.Invitation, error)
+	Invite(ctx context.Context, c apihouseholds.Caller, email string) (string, error)
+	Revoke(ctx context.Context, c apihouseholds.Caller, code string) error
+	Remove(ctx context.Context, c apihouseholds.Caller, target string) error
+	Leave(ctx context.Context, c apihouseholds.Caller) error
+	Delete(ctx context.Context, c apihouseholds.Caller, confirm string) error
+	InvitationFor(ctx context.Context, c apihouseholds.Caller, code string) (apihouseholds.Invitation, error)
+	Accept(ctx context.Context, c apihouseholds.Caller, code, name string) (apihouseholds.Household, error)
 }
 
 // KeyStore is what the household keys section uses from the API key store
@@ -44,7 +46,7 @@ type KeyStore interface {
 
 // Deps is what the routes need. Keys is required by MemberRoutes.
 type Deps struct {
-	Households Store
+	Households Households
 	Keys       KeyStore
 }
 
@@ -76,41 +78,42 @@ func InvitationRoutes(d Deps) chi.Router {
 	return r
 }
 
-// actor is the verified email and the household of a member's request. A
+// actor is the Caller of a member's request: the verified email and the
+// household the membership middleware stored. The service checks the
+// membership; this only refuses a request that has neither to check. A
 // request without both never reaches a handler (the membership middleware), so
 // a missing one is refused rather than guessed at.
-func actor(r *http.Request) (email string, hh domain.Household, err error) {
-	email, ok := auth.EmailFromContext(r.Context())
-	hh, inHousehold := domain.FromContext(r.Context())
-	if !ok || !inHousehold {
-		return "", domain.Household{}, fmt.Errorf("no member on the request: %w", layout.ErrNotFound)
+func actor(r *http.Request) (c apihouseholds.Caller, err error) {
+	c = caller.FromContext(r.Context())
+	if c.Person == "" || c.Household.ID == 0 {
+		return apihouseholds.Caller{}, fmt.Errorf("no member on the request: %w", layout.ErrNotFound)
 	}
-	return email, hh, nil
+	return c, nil
 }
 
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
-	email, hh, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	members, err := h.Households.Members(r.Context(), hh.ID)
+	members, err := h.Households.Members(r.Context(), c)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	pending, err := h.Households.PendingForHousehold(r.Context(), hh.ID)
+	pending, err := h.Households.Pending(r.Context(), c)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	keys, err := h.Keys.ListHousehold(r.Context(), hh.ID)
+	keys, err := h.Keys.ListHousehold(r.Context(), c.Household.ID)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
 	layout.Render(w, r, http.StatusOK, membersPage(pageView{
-		Name: hh.Name, Self: email, Members: members, Pending: layout.NewPendingInvitations(email, pending),
+		Name: c.Household.Name, Self: c.Person, Members: members, Pending: layout.NewPendingInvitations(c.Person, pending),
 		Keys: layout.NewAPIKeyRows(keys, time.Now(), true, keyRevokePath),
 	}))
 }
@@ -125,19 +128,17 @@ func done(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func (h *handler) invite(w http.ResponseWriter, r *http.Request) {
-	email, hh, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	_, err = h.Households.Invite(r.Context(), domain.Invite{
-		Kind: domain.KindJoin, Email: r.PostFormValue("email"), HouseholdID: hh.ID, IssuedBy: email,
-	})
+	_, err = h.Households.Invite(r.Context(), c, r.PostFormValue("email"))
 	done(w, r, err)
 }
 
 func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
-	email, _, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
@@ -147,25 +148,25 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	done(w, r, h.Households.Revoke(r.Context(), code, email))
+	done(w, r, h.Households.Revoke(r.Context(), c, code))
 }
 
 func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
-	email, hh, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	done(w, r, h.Households.Remove(r.Context(), hh.ID, email, r.PostFormValue("email")))
+	done(w, r, h.Households.Remove(r.Context(), c, r.PostFormValue("email")))
 }
 
 func (h *handler) leave(w http.ResponseWriter, r *http.Request) {
-	email, _, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	if err := h.Households.Leave(r.Context(), email); err != nil {
+	if err := h.Households.Leave(r.Context(), c); err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
@@ -174,12 +175,12 @@ func (h *handler) leave(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) delete(w http.ResponseWriter, r *http.Request) {
-	email, hh, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	if err := h.Households.Delete(r.Context(), hh.ID, email, r.PostFormValue("confirm")); err != nil {
+	if err := h.Households.Delete(r.Context(), c, r.PostFormValue("confirm")); err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
@@ -197,12 +198,12 @@ func (h *handler) showInvitation(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	inv, err := h.Households.InvitationFor(r.Context(), code, email)
+	inv, err := h.Households.InvitationFor(r.Context(), apihouseholds.Caller{Person: email}, code)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	_, member := domain.FromContext(r.Context())
+	_, member := apihouseholds.FromContext(r.Context())
 	layout.Render(w, r, http.StatusOK, acceptPage(acceptView{
 		Code: inv.Code, Self: email, Kind: inv.Kind, Household: inv.HouseholdName,
 		IssuedBy: inv.IssuedBy, Expires: layout.FormatTime(inv.ExpiresAt), Member: member,
@@ -220,7 +221,7 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	if _, err := h.Households.Accept(r.Context(), code, email, r.PostFormValue("name")); err != nil {
+	if _, err := h.Households.Accept(r.Context(), apihouseholds.Caller{Person: email}, code, r.PostFormValue("name")); err != nil {
 		layout.Fail(w, r, err)
 		return
 	}

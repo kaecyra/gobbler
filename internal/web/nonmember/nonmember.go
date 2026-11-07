@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/auth"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -19,7 +19,7 @@ const Pattern = layout.NotAMemberPath
 func Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := household.FromContext(r.Context()); ok {
+		if _, ok := apihouseholds.FromContext(r.Context()); ok {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}

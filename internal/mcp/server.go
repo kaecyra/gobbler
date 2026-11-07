@@ -11,10 +11,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 )
@@ -156,14 +156,14 @@ func Routes(d Deps) (http.Handler, error) {
 
 // scoped returns the credential and household of the request a tool runs for,
 // both put there by the layers in front of it.
-func scoped(ctx context.Context) (Credential, household.Household, error) {
+func scoped(ctx context.Context) (Credential, apihouseholds.Household, error) {
 	c, ok := CredentialFrom(ctx)
 	if !ok {
-		return Credential{}, household.Household{}, errors.New("mcp: no credential on the request")
+		return Credential{}, apihouseholds.Household{}, errors.New("mcp: no credential on the request")
 	}
-	h, ok := household.FromContext(ctx)
+	h, ok := apihouseholds.FromContext(ctx)
 	if !ok {
-		return Credential{}, household.Household{}, errors.New("mcp: no household on the request")
+		return Credential{}, apihouseholds.Household{}, errors.New("mcp: no household on the request")
 	}
 	return c, h, nil
 }

@@ -19,9 +19,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/auth"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -126,7 +126,7 @@ type callerKey struct{}
 func withCaller(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		email, ok := auth.EmailFromContext(r.Context())
-		h, hok := household.FromContext(r.Context())
+		h, hok := apihouseholds.FromContext(r.Context())
 		if !ok || !hok {
 			fail(w, r, fmt.Errorf("shopping request without a verified member: %w", apishop.ErrNotMember))
 			return

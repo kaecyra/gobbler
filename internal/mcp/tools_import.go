@@ -11,7 +11,7 @@ import (
 
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 
-	"github.com/kaecyra/gobbler/internal/household"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/ingest"
 )
 
@@ -141,7 +141,7 @@ func (t *tools) checkRoom(ctx context.Context, rc apirecipes.Caller, tool string
 }
 
 // hold puts the draft where the review screen finds it and records the write.
-func (t *tools) hold(ctx context.Context, tool string, c Credential, h household.Household, d ingest.Draft) (*mcp.CallToolResult, draftOut, error) {
+func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseholds.Household, d ingest.Draft) (*mcp.CallToolResult, draftOut, error) {
 	token, err := t.Recipes.AddDraft(ctx, callerOf(c, h), d, provenance(c, h.ID, tool))
 	if errors.Is(err, apirecipes.ErrDraftLimit) {
 		// Say so as it is: the agent can tell its user to review the drafts.

@@ -29,7 +29,7 @@ func keyRevokePath(id int64) string {
 }
 
 func (h *handler) createKey(w http.ResponseWriter, r *http.Request) {
-	email, hh, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
@@ -39,7 +39,7 @@ func (h *handler) createKey(w http.ResponseWriter, r *http.Request) {
 		h.keyRefused(w, r, err)
 		return
 	}
-	secret, err := h.Keys.CreateHousehold(r.Context(), hh.ID, email, r.PostFormValue("name"), life.Duration())
+	secret, err := h.Keys.CreateHousehold(r.Context(), c.Household.ID, c.Person, r.PostFormValue("name"), life.Duration())
 	if err != nil {
 		h.keyRefused(w, r, err)
 		return
@@ -48,7 +48,7 @@ func (h *handler) createKey(w http.ResponseWriter, r *http.Request) {
 	// the browser's history.
 	w.Header().Set("Cache-Control", "no-store")
 	layout.Render(w, r, http.StatusOK, layout.APIKeyCreatedPage(layout.APIKeyCreated{
-		Name: r.PostFormValue("name"), Secret: secret, For: "for the household " + hh.Name,
+		Name: r.PostFormValue("name"), Secret: secret, For: "for the household " + c.Household.Name,
 		BackHref: Pattern, BackLabel: "Back to the household",
 	}))
 }
@@ -64,7 +64,7 @@ func (h *handler) keyRefused(w http.ResponseWriter, r *http.Request, err error) 
 }
 
 func (h *handler) revokeKey(w http.ResponseWriter, r *http.Request) {
-	_, hh, err := actor(r)
+	c, err := actor(r)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
@@ -74,5 +74,5 @@ func (h *handler) revokeKey(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, layout.ErrNotFound)
 		return
 	}
-	done(w, r, h.Keys.RevokeHousehold(r.Context(), hh.ID, id))
+	done(w, r, h.Keys.RevokeHousehold(r.Context(), c.Household.ID, id))
 }

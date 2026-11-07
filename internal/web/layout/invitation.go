@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/household"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 )
 
 // InvitationsPath is where an invitee opens an invitation, by its code
@@ -22,7 +22,7 @@ const InvitationCodeParam = "code"
 // gets, so the shape check reveals nothing either (ADR-00028).
 func InvitationCode(r *http.Request) (string, error) {
 	code := chi.URLParam(r, InvitationCodeParam)
-	if !household.ValidCode(code) {
+	if !apihouseholds.ValidCode(code) {
 		return "", fmt.Errorf("invitation code %q: %w", code, ErrNotFound)
 	}
 	return code, nil
@@ -49,7 +49,7 @@ type PendingInvitation struct {
 }
 
 // NewPendingInvitations builds the list view of in for the reader self.
-func NewPendingInvitations(self string, in []household.Invitation) []PendingInvitation {
+func NewPendingInvitations(self string, in []apihouseholds.Invitation) []PendingInvitation {
 	out := make([]PendingInvitation, 0, len(in))
 	for _, i := range in {
 		out = append(out, PendingInvitation{

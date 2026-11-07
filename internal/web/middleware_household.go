@@ -9,17 +9,17 @@ import (
 	"strings"
 	"sync"
 
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/nonmember"
 )
 
-// memberLookup finds the household of a verified email. *household.Store
+// memberLookup finds the household of a verified email. *apihouseholds.Store
 // satisfies it.
 type memberLookup interface {
-	ForEmail(ctx context.Context, email string) (household.Household, error)
+	ForEmail(ctx context.Context, email string) (apihouseholds.Household, error)
 }
 
 // membership decides admission, after the identity middleware has verified
@@ -75,8 +75,8 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 			member := err == nil
 			switch {
 			case member:
-				r = r.WithContext(household.WithContext(r.Context(), h))
-			case errors.Is(err, household.ErrNotFound), errors.Is(err, household.ErrInvalid):
+				r = r.WithContext(apihouseholds.WithContext(r.Context(), h))
+			case errors.Is(err, apihouseholds.ErrNotFound), errors.Is(err, apihouseholds.ErrInvalid):
 				// ErrInvalid is an identity that is not a plain address, which
 				// cannot be a member.
 			default:
@@ -127,14 +127,14 @@ func hasDotSegment(r *http.Request) bool {
 // needs no migrated database; a failed seed is retried by the next request and
 // fails the one that hit it.
 type devSeeded struct {
-	store *household.Store
+	store *apihouseholds.Store
 	mu    sync.Mutex
 	done  bool
 }
 
-func (d *devSeeded) ForEmail(ctx context.Context, email string) (household.Household, error) {
+func (d *devSeeded) ForEmail(ctx context.Context, email string) (apihouseholds.Household, error) {
 	if err := d.seed(ctx); err != nil {
-		return household.Household{}, err
+		return apihouseholds.Household{}, err
 	}
 	return d.store.ForEmail(ctx, email)
 }
