@@ -205,7 +205,7 @@ equipment review was linked from nowhere.
 |---|---|---|
 | Home | `/` | `#library` (hero and side panels) |
 | Library and search results | `/recipes`, `/recipes?q=` | `#library` |
-| Recipe, journal and history | `/recipes/{id}` and its subpages | `#recipe` |
+| Recipe, journal and history | `/recipes/{id}-{slug}` and its subpages (`/recipes/{id}/…`) | `#recipe` |
 | Cook mode | `/recipes/{id}/cook` | `#cook` |
 | Shopping list | `/shopping` and its subpages | `#shop` |
 | Add and review | `/ingest`, `/ingest/{token}`, `/ingest/photo` | `#add` |

@@ -188,7 +188,21 @@ func serve(t *testing.T, recipes fakeRecipes, path string) (int, string) {
 	return rec.Code, rec.Body.String()
 }
 
+// serveRequest serves req and follows one canonical-URL redirect, as a browser
+// does, so tests may ask for /recipes/7 and read the page. serveOnce is the raw
+// answer, for tests of the redirect itself.
 func serveRequest(t *testing.T, recipes Recipes, cat Catalog, req *http.Request) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := serveOnce(t, recipes, cat, req)
+	if rec.Code != http.StatusMovedPermanently {
+		return rec
+	}
+	next := httptest.NewRequest(req.Method, rec.Header().Get("Location"), nil).WithContext(req.Context())
+	next.Header = req.Header.Clone()
+	return serveOnce(t, recipes, cat, next)
+}
+
+func serveOnce(t *testing.T, recipes Recipes, cat Catalog, req *http.Request) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
 	r.Mount(Pattern, Routes(Deps{Recipes: recipes, Catalog: cat}))
@@ -433,9 +447,9 @@ func TestUnresolvedLineIsShownAsWrittenAndFlagged(t *testing.T) {
 func TestControlsKeepTheOtherSetting(t *testing.T) {
 	_, body := serve(t, fakeRecipes{7: testRecipe(t)}, "/recipes/7?scale=2&units=metric")
 	mustContain(t, body,
-		`href="/recipes/7?scale=3&amp;units=metric"`, // scale link keeps units
-		`href="/recipes/7?scale=2&amp;units=weight"`, // unit link keeps scale
-		`hx-get="/recipes/7?scale=2&amp;units=weight"`,
+		`href="/recipes/7-sponge-cake?scale=3&amp;units=metric"`, // scale link keeps units
+		`href="/recipes/7-sponge-cake?scale=2&amp;units=weight"`, // unit link keeps scale
+		`hx-get="/recipes/7-sponge-cake?scale=2&amp;units=weight"`,
 		`aria-current="true"`,
 	)
 }

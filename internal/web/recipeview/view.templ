@@ -5,6 +5,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/video"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/ribbon"
@@ -36,7 +37,7 @@ const (
 
 // thumbnailHref is the stored preview of the recipe's video, reached through
 // the recipe so the household check applies.
-func thumbnailHref(id int64) string { return recipePath(id) + thumbnailRoute }
+func thumbnailHref(id int64) string { return recipepath.Base(id) + thumbnailRoute }
 
 // videoWatchURL is where the play control goes without scripts. It is only
 // followed when someone presses it.
@@ -45,33 +46,28 @@ func videoWatchURL(videoID string) string { return "https://www.youtube.com/watc
 // videoEmbedURL is the privacy-enhanced player that video.js loads on Play.
 func videoEmbedURL(videoID string) string { return video.EmbedURL(videoID) }
 
-// recipePath is the recipe page's path, the base of its sibling pages.
-func recipePath(id int64) string {
-	return "/recipes/" + strconv.FormatInt(id, 10)
-}
-
 // href is the URL of this recipe with the given state. Empty values are left
 // out so the default view keeps the bare URL.
-func href(id int64, scale, servings, units string) string {
-	return display.StateURL(recipePath(id), scale, servings, units, nil)
+func href(id int64, name, scale, servings, units string) string {
+	return display.StateURL(recipepath.View(id, name), scale, servings, units, nil)
 }
 
 // cookHref is the cook-mode page of this recipe with the same state. Cook mode
 // is its own feature package (ADR-00012), so only its URL is known here.
 func cookHref(id int64, o display.Options) string {
-	return o.URL(recipePath(id)+"/cook", nil)
+	return o.URL(recipepath.Base(id)+"/cook", nil)
 }
 
 // journalHref is the journal of this recipe: loaded into the page by HTMX, and
 // a plain link where scripts do not run. The journal is its own feature package
 // (ADR-00012), so only its URL is known here.
-func journalHref(id int64) string { return recipePath(id) + "/journal" }
+func journalHref(id int64) string { return recipepath.Base(id) + "/journal" }
 
 // historyHref is the history page of this recipe.
-func historyHref(id int64) string { return recipePath(id) + "/history" }
+func historyHref(id int64) string { return recipepath.Base(id) + "/history" }
 
 // cloneHref is where the clone form posts.
-func cloneHref(id int64) string { return recipePath(id) + "/clone" }
+func cloneHref(id int64) string { return recipepath.Base(id) + "/clone" }
 
 // originHref is the history page of one version of the recipe a clone came from.
 func originHref(o *originView) string {
@@ -81,7 +77,7 @@ func originHref(o *originView) string {
 // editHref is the editor page of this recipe. The editor is its own feature
 // package (ADR-00012), so only its URL is known here; it takes no display state.
 func editHref(id int64) string {
-	return recipePath(id) + "/edit"
+	return recipepath.Base(id) + "/edit"
 }
 
 // shareHref is the form that sends a copy of this recipe to another household.
@@ -187,7 +183,7 @@ templ recipeBody(v view) {
 				if v.Origin != nil {
 					<p class="muted origin" data-testid="origin">
 						Cloned from
-						<a href={ templ.SafeURL(recipePath(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
+						<a href={ templ.SafeURL(recipepath.Base(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
 						at
 						<a href={ templ.SafeURL(originHref(v.Origin)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
 					</p>
@@ -443,8 +439,8 @@ templ controls(v view) {
 		<div class="seg" role="group" aria-label="Scale">
 			for _, p := range scalePresets {
 				<a
-					href={ templ.SafeURL(href(v.ID, p.Param, "", v.Opts.Units)) }
-					hx-get={ href(v.ID, p.Param, "", v.Opts.Units) }
+					href={ templ.SafeURL(href(v.ID, v.Name, p.Param, "", v.Opts.Units)) }
+					hx-get={ href(v.ID, v.Name, p.Param, "", v.Opts.Units) }
 					hx-target="#recipe"
 					hx-select="#recipe"
 					hx-swap="outerHTML"
@@ -455,7 +451,7 @@ templ controls(v view) {
 				>{ p.Label }</a>
 			}
 		</div>
-		<form class="servings" method="get" action={ templ.SafeURL(href(v.ID, "", "", "")) } hx-get={ href(v.ID, "", "", "") } hx-target="#recipe" hx-select="#recipe" hx-swap="outerHTML" hx-push-url="true">
+		<form class="servings" method="get" action={ templ.SafeURL(href(v.ID, v.Name, "", "", "")) } hx-get={ href(v.ID, v.Name, "", "", "") } hx-target="#recipe" hx-select="#recipe" hx-swap="outerHTML" hx-push-url="true">
 			<label>
 				Servings
 				<input type="text" name="servings" inputmode="decimal" value={ v.Opts.Servings } size="4"/>
@@ -468,8 +464,8 @@ templ controls(v view) {
 		<div class="seg" role="group" aria-label="Units">
 			for _, m := range unitModes {
 				<a
-					href={ templ.SafeURL(href(v.ID, v.Opts.Scale, v.Opts.Servings, m.Param)) }
-					hx-get={ href(v.ID, v.Opts.Scale, v.Opts.Servings, m.Param) }
+					href={ templ.SafeURL(href(v.ID, v.Name, v.Opts.Scale, v.Opts.Servings, m.Param)) }
+					hx-get={ href(v.ID, v.Name, v.Opts.Scale, v.Opts.Servings, m.Param) }
 					hx-target="#recipe"
 					hx-select="#recipe"
 					hx-swap="outerHTML"

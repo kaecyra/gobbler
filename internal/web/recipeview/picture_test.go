@@ -26,7 +26,7 @@ func withPictures(t *testing.T, p Pictures) (int, string) {
 	r := chi.NewRouter()
 	r.Mount(Pattern, Routes(Deps{Recipes: fakeRecipes{7: testRecipe(t)}, Catalog: testCatalog(), Pictures: p}))
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/recipes/7", nil))
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/recipes/7-sponge-cake", nil))
 	return rec.Code, rec.Body.String()
 }
 

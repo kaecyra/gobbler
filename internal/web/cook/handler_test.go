@@ -287,7 +287,7 @@ func TestScaleAndUnitsApplyAndAreKept(t *testing.T) {
 	mustContain(t, body, "ml flour") // converted
 	mustContain(t, body,
 		`href="/recipes/3/cook?scale=3&amp;step=2&amp;units=metric"`, // stepping keeps the state
-		`href="/recipes/3?scale=3&amp;units=metric"`)                 // so does leaving
+		`href="/recipes/3-pizza-1?scale=3&amp;units=metric"`)         // so does leaving
 	_, body = serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?servings=8")
 	mustContain(t, body, "2 2/3 cup flour")
 }
@@ -298,7 +298,7 @@ func TestRecipeWithNoStepsShowsAnEmptyState(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status = %d\n%s", code, body)
 	}
-	mustContain(t, body, `data-testid="cook-empty"`, "no steps", `href="/recipes/5"`)
+	mustContain(t, body, `data-testid="cook-empty"`, "no steps", `href="/recipes/5-water"`)
 	mustNotContain(t, body, `data-testid="next"`, "data-cook-timer")
 }
 

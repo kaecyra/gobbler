@@ -131,8 +131,8 @@ test('a draft confirmed with a chosen picture saves it as the recipe picture', a
   await expect(group.getByRole('radio', { name: /1024 × 576/ })).toBeChecked();
   await expect(p.getByText('Pick a picture, or No picture, before saving.')).toBeHidden();
   await p.getByRole('button', { name: 'Confirm and save' }).first().click();
-  await expect(p).toHaveURL(/\/recipes\/\d+$/);
-  const id = p.url().match(/\/recipes\/(\d+)$/)![1];
+  await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
+  const id = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1];
   const res = await p.request.get(`/recipes/${id}/picture`);
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toMatch(/^image\//);
@@ -142,8 +142,8 @@ test('a draft confirmed with No picture saves a recipe with no picture', async (
   await review(p, '/with-pictures');
   await picker(p).locator('.pick.none').click();
   await p.getByRole('button', { name: 'Confirm and save' }).first().click();
-  await expect(p).toHaveURL(/\/recipes\/\d+$/);
-  const id = p.url().match(/\/recipes\/(\d+)$/)![1];
+  await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
+  const id = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1];
   expect((await p.request.get(`/recipes/${id}/picture`)).status()).toBe(404);
 });
 
@@ -180,7 +180,7 @@ test('a page with no pictures offers only No picture, and it saves', async ({ pa
   await expect(radios.first()).toBeChecked();
   await expect(p.getByText('This source had no usable pictures.')).toBeVisible();
   await p.getByRole('button', { name: 'Confirm and save' }).first().click();
-  await expect(p).toHaveURL(/\/recipes\/\d+$/);
+  await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 });
 
 test('the picker matches the mockup at its width', async ({ page: p }, info) => {

@@ -122,7 +122,7 @@ test.describe('with recipes', () => {
     const box = (await page.locator('#suggest .rcard').boundingBox())!;
     // The picture band, well away from the title link.
     await page.mouse.click(box.x + box.width / 2, box.y + 20);
-    await expect(page).toHaveURL(new RegExp(`/recipes/${ids['Beef Stew']}$`));
+    await expect(page).toHaveURL(new RegExp(`/recipes/${ids['Beef Stew']}(?:-[a-z0-9-]*)?$`));
   });
 
   test('the suggested card shows the recipe picture when it has one', async ({ page }) => {

@@ -1,9 +1,8 @@
 package journal
 
 import (
-	"strconv"
-
 	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -14,7 +13,7 @@ templ journalPage(v view) {
 	@layout.Page("Journal: " + v.Name) {
 		@layout.RecipeStyles()
 		<h1>{ v.Name }</h1>
-		<p><a href={ templ.SafeURL("/recipes/" + strconv.FormatInt(v.RecipeID, 10)) }>Back to the recipe</a></p>
+		<p><a href={ templ.SafeURL(recipepath.View(v.RecipeID, v.Name)) }>Back to the recipe</a></p>
 		@journalSection(v)
 	}
 }

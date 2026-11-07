@@ -5,6 +5,7 @@ import (
 	"time"
 
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 )
 
 // recentLimit is how many made-it entries the "recently made" panel lists.
@@ -72,7 +73,7 @@ func recentViews(entries []apirecipes.MadeEntry) []recentView {
 		}
 		out = append(out, recentView{
 			Day: strconv.Itoa(e.On.Day()), Month: e.On.Format("Jan"),
-			Href: recipeHref(e.RecipeID), Name: e.Name, Note: note,
+			Href: recipepath.View(e.RecipeID, e.Name), Name: e.Name, Note: note,
 		})
 	}
 	return out

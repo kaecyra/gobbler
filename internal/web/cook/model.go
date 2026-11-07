@@ -9,6 +9,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -99,7 +100,7 @@ type listItem struct {
 // buildPage resolves the step to show and everything relevant to it. A step
 // number past the end is an invalid request, not a missing page.
 func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o display.Options, n int) (page, error) {
-	p := page{ID: id, Name: r.Name, ExitHref: exitHref(id, o)}
+	p := page{ID: id, Name: r.Name, ExitHref: exitHref(id, r.Name, o)}
 	servings, err := display.ScaleQty(r.Servings, o)
 	if err != nil {
 		return page{}, fmt.Errorf("servings: %w", err)
@@ -223,12 +224,12 @@ func usesStep(link recipe.EquipmentLink, id recipe.StepID) bool {
 	return false
 }
 
-func exitHref(id int64, o display.Options) string {
-	return o.URL("/recipes/"+strconv.FormatInt(id, 10), nil)
+func exitHref(id int64, name string, o display.Options) string {
+	return o.URL(recipepath.View(id, name), nil)
 }
 
 func stepHref(id int64, n int, o display.Options) string {
-	return o.URL("/recipes/"+strconv.FormatInt(id, 10)+"/cook", url.Values{paramStep: {strconv.Itoa(n)}})
+	return o.URL(recipepath.Base(id)+"/cook", url.Values{paramStep: {strconv.Itoa(n)}})
 }
 
 // timerLabel renders a duration given in seconds, such as "45 min".

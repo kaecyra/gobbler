@@ -39,7 +39,7 @@ test('without JavaScript, the review bar confirms a draft', async ({ browser, ba
   const page = await ctx.newPage();
   await toReview(page);
   await page.locator('.savebar').getByRole('button', { name: 'Confirm and save' }).click();
-  await expect(page).toHaveURL(/\/recipes\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/recipes\/[0-9a-z-]+$/);
   await expect(page.getByRole('heading', { name: 'Bar Pancakes' })).toBeVisible();
   await ctx.close();
 });

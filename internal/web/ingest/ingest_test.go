@@ -511,8 +511,8 @@ func TestConfirmSavesAcceptedNewIngredientAndRedirects(t *testing.T) {
 	form.Set("name", "  Best apple pie ")
 	form.Set("c.0.s.1.text", "Bake until golden.")
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", form)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/1" {
-		t.Fatalf("status = %d location = %q, want 303 /recipes/1; body: %s", rec.Code, rec.Header().Get("Location"), rec.Body)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/recipes/1-best-apple-pie" {
+		t.Fatalf("status = %d location = %q, want 303 /recipes/1-best-apple-pie; body: %s", rec.Code, rec.Header().Get("Location"), rec.Body)
 	}
 	if len(f.store.recipes) != 1 || f.store.snapshots != 1 {
 		t.Fatalf("recipes = %d snapshots = %d, want one each", len(f.store.recipes), f.store.snapshots)

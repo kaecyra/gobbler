@@ -249,7 +249,7 @@ test('the recipe scale and units carry into cook mode', async ({ page }) => {
   await page.getByTestId('next').click();
   await expect(page).toHaveURL(`/recipes/${pizza}/cook?scale=2&step=2`);
   await page.getByTestId('cook-exit').click();
-  await expect(page).toHaveURL(`/recipes/${pizza}?scale=2`);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${pizza}(?:-[a-z0-9-]*)?\\?scale=2$`));
 });
 
 test('the recipe view links into cook mode', async ({ page }) => {

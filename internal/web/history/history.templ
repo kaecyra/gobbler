@@ -3,6 +3,7 @@ package history
 import (
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -11,7 +12,7 @@ templ crumbs(id int64, name, here string) {
 	<nav class="crumbs" aria-label="Breadcrumb">
 		<a href={ templ.SafeURL(libraryPath) }>Library</a>
 		<span aria-hidden="true">/</span>
-		<a href={ templ.SafeURL(recipePath(id)) }>{ name }</a>
+		<a href={ templ.SafeURL(recipepath.View(id, name)) }>{ name }</a>
 		<span aria-hidden="true">/</span>
 		<span aria-current="page">{ here }</span>
 	</nav>
@@ -26,16 +27,16 @@ templ listPage(v listView) {
 			<div class="screen-h">
 				<div>
 					<h1>History of { v.Name }</h1>
-					<p><a href={ templ.SafeURL(recipePath(v.ID)) } class="back">Back to the recipe</a></p>
+					<p><a href={ templ.SafeURL(recipepath.View(v.ID, v.Name)) } class="back">Back to the recipe</a></p>
 				</div>
-				<form method="post" action={ templ.SafeURL(recipePath(v.ID) + "/clone") }>
+				<form method="post" action={ templ.SafeURL(recipepath.Base(v.ID) + "/clone") }>
 					<button type="submit" class="btn">Clone this recipe</button>
 				</form>
 			</div>
 			if v.Origin != nil {
 				<p class="muted origin" data-testid="origin">
 					Cloned from
-					<a href={ templ.SafeURL(recipePath(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
+					<a href={ templ.SafeURL(recipepath.View(v.Origin.RecipeID, "")) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
 					at
 					<a href={ templ.SafeURL(versionPath(v.Origin.RecipeID, v.Origin.Version)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
 				</p>

@@ -23,6 +23,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -433,4 +434,4 @@ func parseRating(s string) (rating *int, valid bool) {
 
 func fromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 
-func journalPath(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) + "/journal" }
+func journalPath(id int64) string { return recipepath.Base(id) + "/journal" }

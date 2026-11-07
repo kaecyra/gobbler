@@ -164,7 +164,7 @@ func TestConfirmingAReimportReplacesTheRecipe(t *testing.T) {
 	id := f.savedRecipe(t)
 	token := f.holdReimport(t, id)
 	rec := f.do(http.MethodPost, "/"+token+"/confirm", reimportForm())
-	if want := fmt.Sprintf("/recipes/%d", id); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != want {
+	if want := fmt.Sprintf("/recipes/%d-apple-pie", id); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != want {
 		t.Fatalf("confirm = %d to %q, want 303 to %s; body %s", rec.Code, rec.Header().Get("Location"), want, rec.Body)
 	}
 	info, err := store.New(f.db).Info(f.ctx(t), id)

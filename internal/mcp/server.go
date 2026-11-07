@@ -18,6 +18,7 @@ import (
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 )
 
 // Pattern is where the endpoint is mounted.
@@ -31,7 +32,7 @@ const ReviewPath = "/ingest/"
 // the proposal's token in the query. ReviewPath's ingest screen is for new
 // recipes; an edit is reviewed in the editor (ADR-00035).
 func EditPath(recipeID int64, token string) string {
-	return fmt.Sprintf("/recipes/%d/edit?proposal=%s", recipeID, token)
+	return recipepath.Base(recipeID) + "/edit?proposal=" + token
 }
 
 // Catalog is what the recipe tools read from the ingredient catalog: ingredient

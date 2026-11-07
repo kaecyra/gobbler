@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -344,7 +345,7 @@ templ buildPage(v buildView) {
 								for _, e := range v.Entries {
 									<li data-testid="entry">
 										<div class="src-r">
-											<a href={ templ.SafeURL("/recipes/" + strconv.FormatInt(e.RecipeID, 10)) }>{ e.Name }</a>
+											<a href={ templ.SafeURL(recipepath.View(e.RecipeID, e.Name)) }>{ e.Name }</a>
 											<span class="num">{ "x" + e.Multiplier }</span>
 										</div>
 										<form method="post" action={ entryAction(v.ID, e.ID, "", groupOfList(v.List)) } class="inline">

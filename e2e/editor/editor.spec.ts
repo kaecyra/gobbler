@@ -331,7 +331,7 @@ test('edits and saves a recipe: new part, line with qualifier, step with depende
   await page.locator(`[name="c.2.s.0.dep"][value="${glaze}"]`).check();
 
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByRole('heading', { name: 'E2E Edited Loaf' })).toBeVisible();
 
   // The edit is stored: the editor loads it back.
@@ -362,7 +362,7 @@ test('a stale save is rejected rather than overwriting a newer edit', async ({ b
   await other.goto(`/recipes/${id}/edit`);
   await other.locator('[name="name"]').fill('Edited in another tab');
   await save(other);
-  await expect(other).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(other).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await other.close();
 
   await page.locator('[name="name"]').fill('Edited from the old form');
@@ -399,7 +399,7 @@ test('meal type, spice level, stage kind and step title are set in the editor an
   await page.locator('[name="c.0.s.0.kind"]').selectOption('braise');
   await page.locator('[name="c.0.s.0.title"]').fill('Start the braise');
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator('[name="meal_type"]')).toHaveValue('dessert');
   // Spice 0 is a recipe that is not spicy, which is not the same as unset.
@@ -413,7 +413,7 @@ test('meal type, spice level, stage kind and step title are set in the editor an
   await page.locator('[name="c.0.s.0.kind"]').selectOption('');
   await page.locator('[name="c.0.s.0.title"]').fill('');
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator('[name="meal_type"]')).toHaveValue('');
   await expect(page.locator('[name="spice"]')).toHaveValue('');
@@ -428,13 +428,13 @@ test('the cuisine is set from the fixed list in the editor, shown on the recipe 
   await expect(select.locator('option').last()).toHaveText('Other');
   await select.selectOption('middle_eastern');
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByTestId('cuisine')).toHaveText('Middle Eastern');
   await page.goto(`/recipes/${id}/edit`);
   await expect(select).toHaveValue('middle_eastern');
   await select.selectOption('');
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByTestId('cuisine')).toHaveCount(0);
 });
 
@@ -481,7 +481,7 @@ test('Save and Cancel stay in the viewport at the top and bottom of a long edito
   // Cancel leaves for the recipe without saving.
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('.savebar').getByRole('link', { name: 'Cancel' }).click();
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
 });
 
 test('Enter in a text field saves, with the bar in place', async ({ page }) => {
@@ -490,7 +490,7 @@ test('Enter in a text field saves, with the bar in place', async ({ page }) => {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('[name="name"]').fill('E2E Enter Loaf');
   await page.locator('[name="name"]').press('Enter');
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByRole('heading', { name: 'E2E Enter Loaf' })).toBeVisible();
   expect(await revisions(page)).toBe(before + 1);
 });
@@ -502,7 +502,7 @@ test('without JavaScript, Save in the bar saves', async ({ browser }) => {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('[name="name"]').fill('E2E No Script Loaf');
   await page.locator('.savebar').getByRole('button', { name: 'Save recipe' }).click();
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByRole('heading', { name: 'E2E No Script Loaf' })).toBeVisible();
   await ctx.close();
 });
@@ -526,7 +526,7 @@ test('without JavaScript, Enter in a field saves', async ({ browser }) => {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('[name="name"]').fill('E2E No Script Enter Loaf');
   await page.locator('[name="name"]').press('Enter');
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByRole('heading', { name: 'E2E No Script Enter Loaf' })).toBeVisible();
   await ctx.close();
 });
@@ -585,7 +585,7 @@ test('dragging an ingredient into another part saves it there at the dropped pos
   const at = async () => ({ qty: await get(1, 1, 'qty'), unit: await get(1, 1, 'unit'), ing: await get(1, 1, 'ing') });
   expect(await at()).toEqual(was);
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(lines(1)).toHaveCount(before1 + 1);
   expect(await at()).toEqual(was);
@@ -629,7 +629,7 @@ test('dragging a step into another part saves it there with its title, kind, dur
   expect(await now()).toEqual(was);
   await expect(link).toBeChecked();
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(field(1, 0, 'id')).toHaveValue(key);
   expect(await now()).toEqual(was);
@@ -678,7 +678,7 @@ test('a part is named from Steps as well as Ingredients, the two kept in step, a
   await steps.fill('Sugar glaze');
   expect(await page.locator('form#editor [name="c.1.name"]').count(), 'one input posts the name').toBe(1);
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(ingredients).toHaveValue('Sugar glaze');
   await expect(steps).toHaveValue('Sugar glaze');
@@ -714,7 +714,7 @@ test('author notes are added, reordered by their handle, paragraph-limited, remo
   await expect(rows.nth(0).getByRole('alert')).toContainText('one paragraph');
   await page.locator('[name="n.0.text"]').fill('x'.repeat(1000));
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
 
   // Saved: the recipe page shows both after the last step, the 1000-character one first.
   const notes = page.getByTestId('author-note');
@@ -727,7 +727,7 @@ test('author notes are added, reordered by their handle, paragraph-limited, remo
   await page.getByRole('button', { name: 'Remove note 1' }).click();
   await expect(rows).toHaveCount(1);
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByTestId('author-note')).toHaveCount(1);
   await expect(page.getByTestId('author-note-title')).toHaveText('Flour:');
 
@@ -815,7 +815,7 @@ test('suggestion lists: a value that is not in the list still saves', async ({ p
   await save(page);
   await page.getByRole('checkbox', { name: 'Add this ingredient to the catalog as new and unreviewed' }).check();
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await page.goto(`/recipes/${id}/edit`);
   await expect(page.locator(`[name="${name}"]`)).toHaveValue('e2e saffron');
 });

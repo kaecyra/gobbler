@@ -16,6 +16,7 @@ import (
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -130,7 +131,8 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 		rec, err := h.Recipes.Get(ctx, c, recipeID)
 		return rec.VideoID, err
 	})
-	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(recipeID, 10), http.StatusSeeOther)
+	// The copy's title is not at hand; the view page completes the slug with a 301.
+	http.Redirect(w, r, recipepath.View(recipeID, ""), http.StatusSeeOther)
 }
 
 func (h *handler) decline(w http.ResponseWriter, r *http.Request) {
