@@ -752,6 +752,24 @@ test.describe('large ribbon fit', () => {
   });
 });
 
+// #540: the video is at the top of the steps column, below the title.
+test('the video sits at the top of the steps column, under the title and above the first step', async ({ page }) => {
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/recipes/${id}`);
+    const player = page.locator('.method').getByTestId('video');
+    await expect(player).toBeVisible();
+    const video = (await player.boundingBox())!;
+    const title = (await page.getByRole('heading', { level: 1 }).boundingBox())!;
+    const first = (await page.locator('.method li.step').first().boundingBox())!;
+    expect(video.y, `${width}: below the title`).toBeGreaterThanOrEqual(title.y + title.height);
+    expect(video.y + video.height, `${width}: above the first step`).toBeLessThanOrEqual(first.y);
+    const col = (await page.locator('.method').boundingBox())!;
+    expect(video.x, `${width}: inside the column`).toBeGreaterThanOrEqual(col.x - 1);
+    expect(video.x + video.width, `${width}: inside the column`).toBeLessThanOrEqual(col.x + col.width + 1);
+  }
+});
+
 test('a recipe without author notes shows none, and the notes survive scaling', async ({ page }) => {
   await page.goto(`/recipes/${id}`);
   await expect(page.getByTestId('author-note')).toHaveCount(0);

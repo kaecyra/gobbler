@@ -142,6 +142,11 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   lighter than step text, a bold title leads when the note has one, and a small
   grey "From the author" closes it. Cook mode reaches them through an
   "Author's Notes" button. Variant A of `#recipe` in the mockup is the target.
+- **Video.** On the recipe page it sits at the top of the steps column, under
+  the title and above any tips and the first step, as a 16:9 box no wider than
+  the column. It plays only when its button is pressed
+  ([ADR-00021](../adr/00021-youtube-video-on-a-recipe.md)), and a playing video
+  stays put when the recipe is scaled. A recipe without a video shows nothing.
 - **Cook mode.** The entry is labelled "Cook mode", never "Start cooking". It
   sits in the recipe view's controls row, not as a big button under the title.
 - **Low confidence** (review screen). A grain-coloured mark on the source line

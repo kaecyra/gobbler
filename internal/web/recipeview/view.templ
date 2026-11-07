@@ -109,7 +109,7 @@ templ recipePage(v view) {
 		@layout.RecipeStyles()
 		@authorNoteStyles()
 		if v.VideoID != "" {
-			@videoPlayer(v)
+			@videoAssets()
 		}
 		if v.Proposal != nil {
 			@proposalBanner(v)
@@ -123,16 +123,23 @@ templ recipePage(v view) {
 	}
 }
 
-// videoPlayer is the recipe's video at the top of the page (ADR-00021). Until
+// videoAssets are the video's stylesheet and script. They sit on the page, not
+// in #recipe, so a scale swap does not run the script a second time.
+templ videoAssets() {
+	<link rel="stylesheet" href={ videoStylesheetPath }/>
+	<script src={ videoScriptPath } defer></script>
+}
+
+// videoPlayer is the recipe's video at the top of the steps column (ADR-00021). Until
 // Play is pressed it holds no address of a YouTube origin that the browser
 // would load: the thumbnail is the application's own copy, and the player's
 // address sits in a data attribute that video.js reads on click. The control
 // is a link to the video's watch page, which is what a browser without
-// scripts follows; video.js replaces it with the embedded player. It sits
-// outside #recipe so scaling the recipe does not reset a playing video.
+// scripts follows; video.js replaces it with the embedded player. It sits in
+// #recipe, which a scale swaps, so hx-preserve keeps the element, and a
+// playing video, across the swap.
 templ videoPlayer(v view) {
-	<link rel="stylesheet" href={ videoStylesheetPath }/>
-	<section class="recipe-video" aria-label="Video" data-testid="video">
+	<section id="recipe-video" class="recipe-video" aria-label="Video" data-testid="video" hx-preserve>
 		<a
 			class="recipe-video-play"
 			href={ templ.URL(videoWatchURL(v.VideoID)) }
@@ -148,7 +155,6 @@ templ videoPlayer(v view) {
 			<span class="recipe-video-button">Play video</span>
 		</a>
 	</section>
-	<script src={ videoScriptPath } defer></script>
 }
 
 // pictureHeader is the top of the page (ADR-00039, Showing): the recipe's
@@ -276,6 +282,9 @@ templ recipeBody(v view) {
 			</div>
 			<section class="method" aria-labelledby="steps-h">
 				<h2 id="steps-h" class="sr">Steps</h2>
+				if v.VideoID != "" {
+					@videoPlayer(v)
+				}
 				for _, t := range v.Tips {
 					<div class="tip" data-testid="tip">
 						<div class="co-label">
