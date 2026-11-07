@@ -4649,7 +4649,8 @@
         "e2e/editor/**",
         "docs/adr/00022-adopt-the-mockup-design.md",
         "VERSION",
-        "internal/web/static/ribbon.css"
+        "internal/web/static/ribbon.css",
+        "docs/ui/design.md"
       ],
       "needs_migration": "schema",
       "adrs": [],

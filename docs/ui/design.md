@@ -102,7 +102,7 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 
     | Stage kind | Family |
     |---|---|
-    | `prep`, `serve`, or none on an active step | `active` (coral) |
+    | `prep`, `mix`, `serve`, or none on an active step | `active` (coral) |
     | `rise`, `rest` | `sky` |
     | `steep`, `marinate` | `mint` |
     | `chill` | `ice` |

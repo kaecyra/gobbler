@@ -34,6 +34,8 @@ func TestFamilyOf(t *testing.T) {
 		"prep marked passive":    {recipe.StagePrep, true, FamilyActive},
 		"serve":                  {recipe.StageServe, false, FamilyActive},
 		"serve marked passive":   {recipe.StageServe, true, FamilyActive},
+		"mix":                    {recipe.StageMix, false, FamilyActive},
+		"mix marked passive":     {recipe.StageMix, true, FamilyActive},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {

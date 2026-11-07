@@ -62,12 +62,15 @@ Options considered:
      `snack`, `drink`. Ingest maps schema.org `recipeCategory` onto it when the mapping
      is unambiguous and leaves it empty otherwise.
    - **Spice level**, 0 to 3. Never set by ingest.
-   - **Step stage kind**, from a closed set (`prep`, `rise`, `rest`, `steep`,
-     `marinate`, `chill`, `bake`, `roast`, `simmer`, `braise`, `cook`, `serve`), beside
-     the existing active/passive flag, which keeps its meaning. Rule-based
-     ingest proposes a kind from the step text and, for `serve`, the source
-     step title; an unknown kind is empty, not
-     an error ([ADR-00006](00006-rule-first-ingestion.md)).
+   - **Step stage kind**, from a closed set (`prep`, `mix`, `rise`, `rest`,
+     `steep`, `marinate`, `chill`, `bake`, `roast`, `simmer`, `braise`, `cook`,
+     `serve`), beside the existing active/passive flag, which keeps its
+     meaning. `mix` is machine mixing and kneading: a stand or hand mixer, a
+     food processor, a blender, a bread machine, or kneading by hand or by
+     machine; stirring, whisking or combining by hand stays `prep` or unset.
+     Rule-based ingest proposes a kind from the step text and, for `serve` and
+     `mix`, the source step title; an unknown kind is empty, not an error
+     ([ADR-00006](00006-rule-first-ingestion.md)).
    - **Step title**, short free text, taken from the source when it has one.
 
    > Amended by [ADR-00025](00025-one-cuisine-per-recipe.md): a recipe also

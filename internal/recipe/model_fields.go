@@ -164,7 +164,11 @@ type StageKind string
 
 // The stage kinds.
 const (
-	StagePrep     StageKind = "prep"
+	StagePrep StageKind = "prep"
+	// StageMix is machine mixing and kneading: a stand or hand mixer, a food
+	// processor, a blender, a bread machine, or kneading by hand or machine.
+	// Stirring, whisking or combining by hand is prep, or no kind.
+	StageMix      StageKind = "mix"
 	StageRise     StageKind = "rise"
 	StageRest     StageKind = "rest"
 	StageSteep    StageKind = "steep"
@@ -181,7 +185,7 @@ const (
 // StageKinds lists the closed set of stage kinds.
 func StageKinds() []StageKind {
 	return []StageKind{
-		StagePrep, StageRise, StageRest, StageSteep, StageMarinate, StageChill,
+		StagePrep, StageMix, StageRise, StageRest, StageSteep, StageMarinate, StageChill,
 		StageBake, StageRoast, StageSimmer, StageBraise, StageCook, StageServe,
 	}
 }
