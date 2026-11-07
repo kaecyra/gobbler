@@ -18,7 +18,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -47,10 +49,19 @@ type Usage interface {
 	IngredientUsage(ctx context.Context, id int64) (int64, error)
 }
 
+// RecipeUses counts, per ingredient, how many of the household's recipes use
+// it (*apirecipes.Service satisfies it). It is the list page's "Used in"
+// column; Usage is the merge confirmation's row count and is not scoped to the
+// household, so it is not shown beside central entries.
+type RecipeUses interface {
+	RecipeCountsByIngredient(ctx context.Context, c apirecipes.Caller) (map[int64]int64, error)
+}
+
 // Deps is what the routes need.
 type Deps struct {
 	Catalog Catalog
 	Usage   Usage
+	Recipes RecipeUses
 }
 
 // Routes returns the routes of the page, relative to Pattern.
@@ -92,7 +103,12 @@ func (h *handler) list(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("list ingredients: %w", err))
 		return
 	}
-	layout.Render(w, r, http.StatusOK, listPage(newListView(q, unreviewed, all)))
+	uses, err := h.Recipes.RecipeCountsByIngredient(ctx, caller.FromContext(ctx))
+	if err != nil {
+		layout.WriteError(w, r, fmt.Errorf("count recipes by ingredient: %w", err))
+		return
+	}
+	layout.Render(w, r, http.StatusOK, listPage(newListView(q, unreviewed, all, uses)))
 }
 
 func (h *handler) editShow(w http.ResponseWriter, r *http.Request) {

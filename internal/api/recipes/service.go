@@ -134,6 +134,16 @@ func (s *Service) Idle(ctx context.Context, c Caller) ([]Card, error) {
 	return s.recipes.Idle(ctx)
 }
 
+// RecipeCountsByIngredient returns how many of the household's recipes use each
+// ingredient, keyed by ingredient id; an unused ingredient is absent.
+func (s *Service) RecipeCountsByIngredient(ctx context.Context, c Caller) (map[int64]int64, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	return s.recipes.RecipeCountsByIngredient(ctx)
+}
+
 // ListNotes returns recipe id's notes.
 func (s *Service) ListNotes(ctx context.Context, c Caller, id int64) ([]Note, error) {
 	ctx, err := s.enter(ctx, c)

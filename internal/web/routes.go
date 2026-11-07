@@ -115,7 +115,7 @@ func mountCatalogPage(r chi.Router, d Deps, cat *apicatalog.Store, usage *apicat
 		return
 	}
 	bound := svc.Bind(caller.FromContext)
-	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: bound, Usage: bound}))
+	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: bound, Usage: bound, Recipes: d.Recipes}))
 }
 
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its

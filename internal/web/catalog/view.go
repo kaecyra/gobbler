@@ -49,13 +49,28 @@ type row struct {
 	// reads and customises but does not own.
 	Central   bool
 	Suggested bool
+	// Recipes is how many of the household's recipes use the ingredient.
+	Recipes int64
 }
 
-func newListView(query string, unreviewed, all []apicatalog.Ingredient) listView {
+// UsedIn is the row's "Used in" text.
+func (r row) UsedIn() string {
+	switch r.Recipes {
+	case 0:
+		return "Unused"
+	case 1:
+		return "1 recipe"
+	}
+	return strconv.FormatInt(r.Recipes, 10) + " recipes"
+}
+
+// newListView builds the page. uses holds the household's recipe count per
+// ingredient id; an ingredient missing from it is unused.
+func newListView(query string, unreviewed, all []apicatalog.Ingredient, uses map[int64]int64) listView {
 	return listView{
 		Query:      query,
-		Unreviewed: rowsOf(filter(unreviewed, query)),
-		All:        rowsOf(filter(all, query)),
+		Unreviewed: rowsOf(filter(unreviewed, query), uses),
+		All:        rowsOf(filter(all, query), uses),
 		Total:      len(all),
 	}
 }
@@ -77,10 +92,11 @@ func filter(in []apicatalog.Ingredient, query string) []apicatalog.Ingredient {
 	return out
 }
 
-func rowsOf(in []apicatalog.Ingredient) []row {
+func rowsOf(in []apicatalog.Ingredient, uses map[int64]int64) []row {
 	out := make([]row, len(in))
 	for n, i := range in {
-		out[n] = row{ID: i.ID, Name: i.Name, Aisle: i.Aisle, Aliases: strings.Join(i.Aliases, ", "), Reviewed: i.Reviewed, Central: i.Central, Suggested: i.Suggested}
+		out[n] = row{ID: i.ID, Name: i.Name, Aisle: i.Aisle, Aliases: strings.Join(i.Aliases, ", "), Reviewed: i.Reviewed, Central: i.Central, Suggested: i.Suggested,
+			Recipes: uses[i.ID]}
 	}
 	return out
 }
