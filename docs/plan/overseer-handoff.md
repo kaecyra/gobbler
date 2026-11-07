@@ -1,8 +1,24 @@
-# Overseer handoff: 2026-11-06, round 27 closed on the owner's call (nothing in flight)
+# Overseer handoff: 2026-11-07, round 28 in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Round 28 (2026-11-07): notes apart, suggest paths, video placement
+
+**Merged:** #539 (graph: node u-suggest-paths for #522; a-api-catalog depends on it). #488 closed: it shipped in #501.
+
+**In flight:**
+| Node | Issue(s) | Worktree | Branch |
+|---|---|---|---|
+| u-notes-apart | #527, plus #537 and #540 folded in | wt-527 | fix/527-notes-apart |
+| u-suggest-paths | #522 | wt-522 | refactor/522-suggest-paths |
+
+- #540 is the owner's ruling of 2026-11-07: the video moves from above the title to the top of the steps column. It went to the wt-527 worker mid-flight, as its own commit.
+- **Dispatcher PR #541** corrects ADR-00021's Context line in place. A background review is running; merge it when review-clean.
+- Both branches bump VERSION patch. The second to merge re-bumps after the first.
+
+**Next:** a-api-catalog (#514) once both nodes merge. o-demo-reseed (#432) waits for the owner to deploy.
 
 ## Round 27 (2026-11-06): landed the round 26 leftovers, then stopped
 
