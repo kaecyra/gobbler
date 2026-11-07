@@ -10,11 +10,16 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 )
 
-// OperatorPaths are the operator's pages (ADR-00018, Invitations). Admits
-// opens a path under one of them to an operator alone. Paths are written out,
-// not imported, for the same reason navItems' are (ADR-00012), so a new
-// operator page is added here.
-var OperatorPaths = []string{"/settings", "/operator"}
+// OperatorPaths are the roots of the operator's pages (ADR-00018,
+// Invitations). Admits opens a path under one of them to an operator alone.
+// Every operator page sits under /operator (docs/ui/design.md, Operator
+// area), so a new one needs no entry here, only one in operatorSections.
+// /settings is the deployment page's old address, now only a redirect; it stays
+// an operator path so an operator who belongs to no household can follow it.
+var OperatorPaths = []string{OperatorPath, "/settings"}
+
+// OperatorPath is the root of the operator area and its overview page.
+const OperatorPath = "/operator"
 
 // NotAMemberPath is the page a verified non-member may always open. Package
 // nonmember mounts it here.

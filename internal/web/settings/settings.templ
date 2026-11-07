@@ -5,9 +5,9 @@ import (
 )
 
 templ settingsPage(v backupView) {
-	@layout.Page("Settings") {
+	@layout.OperatorPage("Deployment", layout.OperatorDeployment) {
 		<div class="pg">
-			<div class="screen-h"><h1>Settings</h1></div>
+			<div class="screen-h"><h1>Deployment</h1></div>
 			@backupSection(v)
 		</div>
 	}
@@ -34,7 +34,7 @@ templ backupSection(v backupView) {
 		} else {
 			<p class="muted" data-testid="backup-destination">Local only: no S3 endpoint is configured, so snapshots stay on this machine.</p>
 		}
-		<form method="post" action="/settings/backup" hx-post="/settings/backup" hx-target="#backup" hx-swap="outerHTML" hx-disabled-elt="find button">
+		<form method="post" action={ templ.SafeURL(backupPath) } hx-post={ backupPath } hx-target="#backup" hx-swap="outerHTML" hx-disabled-elt="find button">
 			<button type="submit" class="btn primary">Back up now</button>
 		</form>
 	</section>

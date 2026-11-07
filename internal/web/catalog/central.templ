@@ -11,7 +11,7 @@ func centralURL(id int64) templ.SafeURL {
 }
 
 templ centralListPage(v centralListView) {
-	@layout.Page("Central ingredients") {
+	@layout.OperatorPage("Central ingredients", layout.OperatorIngredients) {
 		<div class="pg wide">
 			<div class="screen-h">
 				<div>
@@ -57,13 +57,12 @@ templ centralListPage(v centralListView) {
 					</div>
 				}
 			</section>
-			<p><a class="link" href="/operator">Household invitations</a></p>
 		</div>
 	}
 }
 
 templ centralEditPage(f formView) {
-	@layout.Page("Edit " + f.Name) {
+	@layout.OperatorPage("Edit "+f.Name, layout.OperatorIngredients) {
 		<div class="pg">
 			<div class="screen-h"><h1>Edit central ingredient</h1></div>
 			<p><a class="link" href="/operator/ingredients">Back to the central ingredients</a></p>

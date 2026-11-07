@@ -65,7 +65,8 @@ type Deps struct {
 	// "details". The health route is unauthenticated, so these must not carry
 	// anything sensitive.
 	HealthDetails func(ctx context.Context) map[string]string
-	// Backup is the live backup job behind the settings page.
+	// Backup is the live backup job behind the deployment page and the
+	// operator overview. Without it the operator pages answer 500.
 	Backup settings.Backup
 	// BackupSecrets are the credential values redacted from the backup error
 	// the settings page shows.

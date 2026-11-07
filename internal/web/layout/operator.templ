@@ -1,0 +1,27 @@
+package layout
+
+// OperatorPage renders an operator page inside the shared layout, beside the
+// rail of the operator area's sections with current marked
+// (docs/ui/design.md, Operator area). Its children are the page's own content.
+templ OperatorPage(title string, current OperatorSection) {
+	@Page(title) {
+		<div class="op">
+			<nav class="op-rail" aria-label="Operator" data-testid="operator-rail">
+				for _, it := range operatorSections {
+					<a
+						href={ templ.SafeURL(it.Path) }
+						if it.Section == current {
+							aria-current="page"
+						}
+					>
+						@Icon(it.Icon)
+						<span>{ it.Label }</span>
+					</a>
+				}
+			</nav>
+			<div class="op-main">
+				{ children... }
+			</div>
+		</div>
+	}
+}

@@ -36,7 +36,7 @@ async function start(extraEnv: Record<string, string>) {
       GOBBLER_DATA_DIR: dataDir,
       GOBBLER_LOG_LEVEL: 'warn',
       GOBBLER_DEV_AUTH_BYPASS: 'true',
-      // /settings is operator-only (ADR-00018); the dev identity is the operator here.
+      // The deployment page is operator-only (ADR-00018); the dev identity is the operator here.
       GOBBLER_OPERATOR_EMAILS: 'dev@localhost',
       ...extraEnv,
     },
@@ -75,9 +75,9 @@ test.describe('local only', () => {
   test.afterAll(stop);
 
   test('shows never backed up and that snapshots stay local', async ({ page }) => {
-    const res = await page.goto('/settings');
+    const res = await page.goto('/operator/settings');
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Deployment', level: 1 })).toBeVisible();
     await expect(page.getByTestId('backup-never')).toBeVisible();
     await expect(page.getByTestId('backup-destination')).toContainText('Local only');
     await expect(page.getByTestId('backup-error')).toHaveCount(0);
@@ -85,9 +85,9 @@ test.describe('local only', () => {
   });
 
   test('back up now succeeds without a full reload and shows the time', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/operator/settings');
     await page.evaluate(() => ((window as unknown as { marker: string }).marker = 'same-document'));
-    const done = page.waitForResponse((r) => r.url().endsWith('/settings/backup') && r.request().method() === 'POST');
+    const done = page.waitForResponse((r) => r.url().endsWith('/operator/settings/backup') && r.request().method() === 'POST');
     await page.getByRole('button', { name: 'Back up now' }).click();
     expect((await done).status()).toBe(200);
     await expect(page.getByTestId('backup-outcome')).toHaveText('Backup finished.');
@@ -122,7 +122,7 @@ test.describe('failing upload', () => {
   test.afterAll(stop);
 
   test('shows that snapshots are uploaded, with no credentials', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/operator/settings');
     await expect(page.getByTestId('backup-destination')).toContainText('uploaded to S3');
     const html = await page.content();
     for (const secret of ['e2e-key-id', 'e2e-secret-key']) {
@@ -131,7 +131,7 @@ test.describe('failing upload', () => {
   });
 
   test('back up now reports the failure and the health check says only failed', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/operator/settings');
     await page.getByRole('button', { name: 'Back up now' }).click();
     await expect(page.getByTestId('backup-outcome')).toHaveText('Backup failed.', { timeout: 60_000 });
     await expect(page.getByTestId('backup-error')).toContainText('Last backup failed');
@@ -155,7 +155,7 @@ test.describe('tap targets', () => {
   test.afterAll(stop);
 
   test('the settings page keeps every control at least 44px tall', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/operator/settings');
     expect(await expectTapTargets(page)).toBeGreaterThan(0);
   });
 });

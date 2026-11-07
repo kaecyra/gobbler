@@ -5,7 +5,7 @@ import (
 )
 
 templ invitationsPage(v invitationsView) {
-	@layout.Page("Household invitations") {
+	@layout.OperatorPage("Household invitations", layout.OperatorInvitations) {
 		<div class="pg">
 			<div class="screen-h">
 				<div>
@@ -18,8 +18,6 @@ templ invitationsPage(v invitationsView) {
 					<label>Email address <input type="email" name="email" required/></label>
 					<button type="submit" class="btn accent">Invite</button>
 				</form>
-				<p><a class="link" href="/operator/promotions">Suggested ingredients</a> households would like every household to use.</p>
-				<p><a class="link" href="/operator/ingredients">Central ingredients</a>: the names, aliases, aisles and densities every household reads.</p>
 			</section>
 			<section class="panel" aria-labelledby="pending-h" data-testid="pending">
 				<h2 id="pending-h">Pending invitations</h2>

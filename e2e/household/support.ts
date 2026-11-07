@@ -26,7 +26,7 @@ export async function issueHouseholdInvitation(browser: Browser, baseURL: string
   const ctx = await as(browser, baseURL, OPERATOR);
   try {
     const page = await ctx.newPage();
-    await page.goto('/operator');
+    await page.goto('/operator/invitations');
     await page.getByLabel('Email address').fill(email);
     await page.getByRole('button', { name: 'Invite' }).click();
     return await linkFor(page, email);

@@ -12,7 +12,7 @@ test.describe('an authenticated non-member', () => {
   test.use(asIdentity(STRANGER));
 
   test('sees only the not-a-member page, whatever it asks for', async ({ page }) => {
-    for (const path of ['/', '/recipes', '/shopping', '/catalog', '/settings', '/no/such/page']) {
+    for (const path of ['/', '/recipes', '/shopping', '/catalog', '/operator/settings', '/no/such/page']) {
       const res = await page.goto(path);
       expect(res?.status(), path).toBe(403);
       await expect(page.getByRole('heading', { name: NOT_A_MEMBER }), path).toBeVisible();
@@ -36,7 +36,7 @@ test.describe('an authenticated non-member', () => {
   });
 
   test('is refused a write as well', async ({ request }) => {
-    const res = await request.post('/settings/backup');
+    const res = await request.post('/operator/settings/backup');
     expect(res.status()).toBe(403);
     expect(await res.text()).toContain(NOT_A_MEMBER);
   });
@@ -46,9 +46,9 @@ for (const email of [OTHER]) {
   test.describe(`${email}, a household member who is not the operator`, () => {
     test.use(asIdentity(email));
 
-    test('reaches the app but is refused /settings', async ({ page }) => {
+    test('reaches the app but is refused the operator pages', async ({ page }) => {
       expect((await page.goto('/'))?.status()).toBe(200);
-      const res = await page.goto('/settings');
+      const res = await page.goto('/operator/settings');
       expect(res?.status()).toBe(403);
       await expect(page.locator('body')).not.toContainText('Backup');
     });
@@ -63,10 +63,10 @@ for (const email of [OTHER]) {
 test.describe('the operator without a household', () => {
   test.use(asIdentity(OPERATOR));
 
-  test('reaches /settings and nothing else of the app', async ({ page }) => {
-    const settings = await page.goto('/settings');
+  test('reaches the operator pages and nothing else of the app', async ({ page }) => {
+    const settings = await page.goto('/operator/settings');
     expect(settings?.status()).toBe(200);
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Deployment' })).toBeVisible();
 
     const recipes = await page.goto('/recipes');
     expect(recipes?.status()).toBe(403);

@@ -292,7 +292,7 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   await ok(dev, 'POST', '/household/invitations', { email: INVITEE });
   const joinInvitation = lastMatch(await page(dev, '/household'), revokeLink('/household'), 'join invitation');
   await ok(op, 'POST', '/operator/invitations', { email: uniqueEmail('founder') });
-  const operatorInvitation = lastMatch(await page(op, '/operator'), revokeLink('/operator'), 'household invitation');
+  const operatorInvitation = lastMatch(await page(op, '/operator/invitations'), revokeLink('/operator'), 'household invitation');
 
   await ok(dev, 'POST', `/recipes/${recipe}/journal/made`, { comment: 'tenancy made-it' });
   await ok(dev, 'POST', `/recipes/${recipe}/journal/rating`, { rating: '4' });
@@ -326,7 +326,7 @@ export async function populatePersonalKey(dev: APIRequestContext): Promise<Pick<
 export async function startHousehold(playwright: Playwright, s: Server, op: APIRequestContext, name: string): Promise<{ email: string; ctx: APIRequestContext }> {
   const email = uniqueEmail('third');
   await ok(op, 'POST', '/operator/invitations', { email });
-  const code = lastMatch(await page(op, '/operator'), revokeLink('/operator'), 'household invitation');
+  const code = lastMatch(await page(op, '/operator/invitations'), revokeLink('/operator'), 'household invitation');
   const ctx = await as(playwright, s, email);
   await ok(ctx, 'POST', `/invitations/${code}/accept`, { name });
   return { email, ctx };
@@ -366,7 +366,7 @@ export async function expectUntouched(ids: Ids, who: { dev: APIRequestContext; o
   expect(keys).toContain(PERSONAL_KEY_NAME);
   expect(keys).toContain(`/profile/${ids.profile}/keys/${ids.personalKey}/revoke`);
   expect(keys).not.toContain('Hijack');
-  expect(await page(op, '/operator')).toContain(`/operator/invitations/${ids.operatorInvitation}/revoke`);
+  expect(await page(op, '/operator/invitations')).toContain(`/operator/invitations/${ids.operatorInvitation}/revoke`);
   expect(await page(op, '/operator/promotions')).toContain(`/operator/promotions/${ids.promotion}`);
   // The share is still pending for the household it was sent to.
   expect(await page(third, '/shares')).toContain(`/shares/${ids.share}/accept`);
