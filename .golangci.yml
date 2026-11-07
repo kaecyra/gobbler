@@ -93,13 +93,6 @@ linters:
             # a-api-ingest (#518): the ingest screen builds the catalog store
             # and hands it to the ingestion pipeline and the editor's review.
             - "!**/internal/web/ingest/ingest.go"
-            # The operator's curation of the central catalog (the equipment
-            # review and the promotions) is not household-scoped, and an
-            # operator need not be a member, so the service's membership check
-            # does not fit it. What should authorize it there is undecided;
-            # tracked in #514.
-            - "!**/internal/web/catalog/equipment.go"
-            - "!**/internal/web/operator/promotion.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/catalog
               desc: use internal/api/catalog; the web handlers and MCP tools do not import the catalog domain (ADR-00043)

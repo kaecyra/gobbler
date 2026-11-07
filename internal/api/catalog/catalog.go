@@ -20,16 +20,18 @@
 // lookups carry only a context (the line builder in internal/recipe/display, the
 // shopping service's catalog reads, a page's Catalog interface): it holds a
 // function that names the Caller from that context and sends every call through
-// the Service. And the operator's curation of the central catalog (promotions
-// and the equipment review) is not here: an operator need not be a household
-// member, so no membership check fits it, and what should stand in its place is
-// not decided.
+// the Service. And the operator's curation of the central catalog (the
+// promotions and the equipment review, the Operator* methods) reaches across
+// households, so it checks the Caller's person against the configured operators
+// instead of membership (ADR-00043): an operator need not be a member of any
+// household.
 package catalog
 
 import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	domain "github.com/kaecyra/gobbler/internal/catalog"
@@ -49,6 +51,9 @@ type (
 	Equipment = domain.Equipment
 	// Unit is a catalog unit of measure (catalog.Unit).
 	Unit = domain.Unit
+	// Promotion is what promoting a suggested entry would do or did
+	// (catalog.Promotion).
+	Promotion = domain.Promotion
 	// Store is the catalog store (catalog.Store). The router builds it with
 	// NewStore and registers the merge hooks of the stores that reference
 	// ingredients on it, so the web and MCP packages name no domain package.
@@ -99,6 +104,15 @@ type Catalog interface {
 	CreateEquipment(ctx context.Context, in Equipment) (Equipment, error)
 	ListUnits(ctx context.Context) ([]Unit, error)
 	MatchUnit(ctx context.Context, term string) (Unit, bool, error)
+	UpdateEquipment(ctx context.Context, in Equipment) error
+	ListSuggestedIngredients(ctx context.Context) ([]Ingredient, error)
+	PreviewPromotion(ctx context.Context, id int64) (Promotion, error)
+	PromoteIngredient(ctx context.Context, id int64) (Promotion, error)
+}
+
+// Operators says who the operators are. config.Operator satisfies it.
+type Operators interface {
+	IsOperator(email string) bool
 }
 
 // UsageCounter counts the rows a merge of an ingredient would re-point.
@@ -116,6 +130,9 @@ type Deps struct {
 	// Usage counts the references a merge re-points. Optional: without it
 	// IngredientUsage is an error.
 	Usage UsageCounter
+	// Operators decides who may use the Operator* methods. Optional: without it
+	// nobody is an operator and they all refuse.
+	Operators Operators
 }
 
 // Service is the catalog operations. It is safe for concurrent use.
@@ -123,6 +140,7 @@ type Service struct {
 	catalog Catalog
 	members Members
 	usage   UsageCounter
+	ops     Operators
 }
 
 // New returns a Service. Catalog and Members are required; a missing one is an
@@ -131,7 +149,7 @@ func New(d Deps) (*Service, error) {
 	if d.Catalog == nil || d.Members == nil {
 		return nil, errors.New("catalog service: catalog and members are required")
 	}
-	return &Service{catalog: d.Catalog, members: d.Members, usage: d.Usage}, nil
+	return &Service{catalog: d.Catalog, members: d.Members, usage: d.Usage, ops: d.Operators}, nil
 }
 
 // enter checks the Caller and returns a context that runs in its household
@@ -292,6 +310,70 @@ func (s *Service) MatchUnit(ctx context.Context, c Caller, term string) (Unit, b
 	return s.catalog.MatchUnit(ctx, term)
 }
 
+// operator admits an operator. The check is on the Caller's person, not on
+// membership, and not on the context: an operator reaches across households and
+// need not be in one (ADR-00043). Anyone else, and a Caller with no person, is
+// refused with ErrNotMember, which the web answers with 403 like the operator
+// pages do for a non-operator.
+func (s *Service) operator(c Caller) error {
+	if c.Person == "" || s.ops == nil || !s.ops.IsOperator(c.Person) {
+		return fmt.Errorf("not an operator: %w", ErrNotMember)
+	}
+	return nil
+}
+
+// OperatorListEquipment returns the catalog's equipment for the operator's
+// review.
+func (s *Service) OperatorListEquipment(ctx context.Context, c Caller) ([]Equipment, error) {
+	if err := s.operator(c); err != nil {
+		return nil, err
+	}
+	return s.catalog.ListEquipment(ctx)
+}
+
+// OperatorGetEquipment returns equipment id, or ErrNotFound.
+func (s *Service) OperatorGetEquipment(ctx context.Context, c Caller, id int64) (Equipment, error) {
+	if err := s.operator(c); err != nil {
+		return Equipment{}, err
+	}
+	return s.catalog.GetEquipment(ctx, id)
+}
+
+// OperatorUpdateEquipment saves in over the equipment with its id.
+func (s *Service) OperatorUpdateEquipment(ctx context.Context, c Caller, in Equipment) error {
+	if err := s.operator(c); err != nil {
+		return err
+	}
+	return s.catalog.UpdateEquipment(ctx, in)
+}
+
+// OperatorListSuggestedIngredients returns the overlay entries households
+// suggested for the central catalog, without the household that suggested them.
+func (s *Service) OperatorListSuggestedIngredients(ctx context.Context, c Caller) ([]Ingredient, error) {
+	if err := s.operator(c); err != nil {
+		return nil, err
+	}
+	return s.catalog.ListSuggestedIngredients(ctx)
+}
+
+// OperatorPreviewPromotion reports what promoting suggested entry id would
+// merge, changing nothing. An entry nobody suggested is ErrNotFound.
+func (s *Service) OperatorPreviewPromotion(ctx context.Context, c Caller, id int64) (Promotion, error) {
+	if err := s.operator(c); err != nil {
+		return Promotion{}, err
+	}
+	return s.catalog.PreviewPromotion(ctx, id)
+}
+
+// OperatorPromoteIngredient makes suggested entry id central and merges the
+// other households' duplicates into it.
+func (s *Service) OperatorPromoteIngredient(ctx context.Context, c Caller, id int64) (Promotion, error) {
+	if err := s.operator(c); err != nil {
+		return Promotion{}, err
+	}
+	return s.catalog.PromoteIngredient(ctx, id)
+}
+
 // Bound is the Service for callers whose lookups carry a context and no Caller:
 // the line builder, the shopping service's catalog reads, a page's Catalog
 // interface. Each call asks who for the Caller of its context and goes through
@@ -388,4 +470,34 @@ func (b *Bound) ListUnits(ctx context.Context) ([]Unit, error) {
 // MatchUnit is Service.MatchUnit.
 func (b *Bound) MatchUnit(ctx context.Context, term string) (Unit, bool, error) {
 	return b.s.MatchUnit(ctx, b.who(ctx), term)
+}
+
+// OperatorListEquipment is Service.OperatorListEquipment.
+func (b *Bound) OperatorListEquipment(ctx context.Context) ([]Equipment, error) {
+	return b.s.OperatorListEquipment(ctx, b.who(ctx))
+}
+
+// OperatorGetEquipment is Service.OperatorGetEquipment.
+func (b *Bound) OperatorGetEquipment(ctx context.Context, id int64) (Equipment, error) {
+	return b.s.OperatorGetEquipment(ctx, b.who(ctx), id)
+}
+
+// OperatorUpdateEquipment is Service.OperatorUpdateEquipment.
+func (b *Bound) OperatorUpdateEquipment(ctx context.Context, in Equipment) error {
+	return b.s.OperatorUpdateEquipment(ctx, b.who(ctx), in)
+}
+
+// OperatorListSuggestedIngredients is Service.OperatorListSuggestedIngredients.
+func (b *Bound) OperatorListSuggestedIngredients(ctx context.Context) ([]Ingredient, error) {
+	return b.s.OperatorListSuggestedIngredients(ctx, b.who(ctx))
+}
+
+// OperatorPreviewPromotion is Service.OperatorPreviewPromotion.
+func (b *Bound) OperatorPreviewPromotion(ctx context.Context, id int64) (Promotion, error) {
+	return b.s.OperatorPreviewPromotion(ctx, b.who(ctx), id)
+}
+
+// OperatorPromoteIngredient is Service.OperatorPromoteIngredient.
+func (b *Bound) OperatorPromoteIngredient(ctx context.Context, id int64) (Promotion, error) {
+	return b.s.OperatorPromoteIngredient(ctx, b.who(ctx), id)
 }

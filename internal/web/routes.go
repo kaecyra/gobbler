@@ -175,7 +175,20 @@ func mountPromotion(r chi.Router, d Deps) {
 	cat := apicatalog.NewStore(d.DB)
 	apirecipes.NewStore(d.DB).RegisterMergeHooks(cat)
 	apishop.NewStore(d.DB, apirecipes.NewStore(d.DB), cat).RegisterMergeHooks(cat)
-	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: cat}))
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: household.New(d.DB), Operators: d.Config.Operator})
+	if err != nil {
+		// Unreachable while the deps above are non-nil; fail loud if that changes.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("promotion pages unavailable", "error", err.Error())
+		r.Mount(operator.PromotionPattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the promotion pages are not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
+	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: svc.Bind(caller.FromContext)}))
 }
 
 // mountSharing mounts the pages that send a recipe copy to another household
@@ -202,7 +215,20 @@ func mountSharing(r chi.Router, d Deps) {
 // sized flag behind the scaled view's larger-pan hint is set (ADR-00019). It
 // sits under /operator, so the membership middleware admits only an operator.
 func mountEquipment(r chi.Router, d Deps) {
-	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: apicatalog.NewStore(d.DB)}))
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: household.New(d.DB), Operators: d.Config.Operator})
+	if err != nil {
+		// Unreachable while the deps above are non-nil; fail loud if that changes.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("equipment review unavailable", "error", err.Error())
+		r.Mount(webcatalog.EquipmentPattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the equipment review is not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
+	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: svc.Bind(caller.FromContext)}))
 }
 
 // mountProfile mounts the profile pages (ADR-00032). A verified non-member may

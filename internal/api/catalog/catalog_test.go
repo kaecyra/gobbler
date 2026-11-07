@@ -313,3 +313,109 @@ func TestBoundSpeaksForTheCallerOfTheContext(t *testing.T) {
 		t.Errorf("Bound with a household on the context but no caller: err = %v, want ErrNotMember", err)
 	}
 }
+
+// operatorService is the service with "root@example.com" configured as the
+// operator. That address is a member of no household.
+func operatorService(t *testing.T, f *fixture) (*apicatalog.Service, apicatalog.Caller) {
+	t.Helper()
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: f.store, Members: f.members, Operators: config.Operator{Emails: []string{"root@example.com"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return svc, apicatalog.Caller{Person: "root@example.com"}
+}
+
+// The operator reaches across households and need not be in one: the check is
+// the configured operators, not membership (ADR-00043).
+func TestAnOperatorWhoIsNoMemberIsAdmitted(t *testing.T) {
+	f := newFixture(t)
+	svc, root := operatorService(t, f)
+	ctx := context.Background()
+	if err := f.store.SuggestIngredient(household.WithContext(ctx, f.smiths), f.pepper.ID); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := svc.OperatorListSuggestedIngredients(ctx, root)
+	if err != nil || len(listed) != 1 || listed[0].ID != f.pepper.ID {
+		t.Fatalf("OperatorListSuggestedIngredients = %+v, %v, want the Smiths' suggestion", listed, err)
+	}
+	if p, err := svc.OperatorPreviewPromotion(ctx, root, f.pepper.ID); err != nil || p.Ingredient.ID != f.pepper.ID {
+		t.Fatalf("OperatorPreviewPromotion = %+v, %v", p, err)
+	}
+	if _, err := svc.OperatorPromoteIngredient(ctx, root, f.pepper.ID); err != nil {
+		t.Fatalf("OperatorPromoteIngredient: %v", err)
+	}
+	eq, err := f.store.CreateEquipment(ctx, apicatalog.Equipment{Name: "zz operator tin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.OperatorGetEquipment(ctx, root, eq.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got.Sized = true
+	if err := svc.OperatorUpdateEquipment(ctx, root, got); err != nil {
+		t.Fatal(err)
+	}
+	if all, err := svc.OperatorListEquipment(ctx, root); err != nil || len(all) == 0 {
+		t.Fatalf("OperatorListEquipment = %d, %v", len(all), err)
+	}
+	if again, _ := f.store.GetEquipment(ctx, eq.ID); !again.Sized {
+		t.Error("OperatorUpdateEquipment did not save")
+	}
+	// A missing entry is not found, not a refusal.
+	if _, err := svc.OperatorPreviewPromotion(ctx, root, 1<<40); !errors.Is(err, apicatalog.ErrNotFound) {
+		t.Errorf("preview of nothing: err = %v, want ErrNotFound", err)
+	}
+}
+
+// A household member who is not an operator is refused, whatever household the
+// context names, and nothing is written.
+func TestANonOperatorMemberIsRefusedTheOperatorOperations(t *testing.T) {
+	f := newFixture(t)
+	svc, _ := operatorService(t, f)
+	ctx := household.WithContext(context.Background(), f.smiths)
+	if err := f.store.SuggestIngredient(ctx, f.pepper.ID); err != nil {
+		t.Fatal(err)
+	}
+	eq, err := f.store.CreateEquipment(ctx, apicatalog.Equipment{Name: "zz member tin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := f.pepper.ID
+	ops := map[string]func(c apicatalog.Caller) error{
+		"OperatorListEquipment":   func(c apicatalog.Caller) error { _, err := svc.OperatorListEquipment(ctx, c); return err },
+		"OperatorGetEquipment":    func(c apicatalog.Caller) error { _, err := svc.OperatorGetEquipment(ctx, c, eq.ID); return err },
+		"OperatorUpdateEquipment": func(c apicatalog.Caller) error { eq.Sized = true; return svc.OperatorUpdateEquipment(ctx, c, eq) },
+		"OperatorListSuggestedIngredients": func(c apicatalog.Caller) error {
+			_, err := svc.OperatorListSuggestedIngredients(ctx, c)
+			return err
+		},
+		"OperatorPreviewPromotion": func(c apicatalog.Caller) error { _, err := svc.OperatorPreviewPromotion(ctx, c, id); return err },
+		"OperatorPromoteIngredient": func(c apicatalog.Caller) error {
+			_, err := svc.OperatorPromoteIngredient(ctx, c, id)
+			return err
+		},
+	}
+	callers := map[string]apicatalog.Caller{
+		"member":        f.ann,
+		"household key": {Household: f.smiths, HouseholdKey: true},
+		"no person":     {},
+	}
+	for op, call := range ops {
+		for who, c := range callers {
+			if err := call(c); !errors.Is(err, apicatalog.ErrNotMember) {
+				t.Errorf("%s as %s: err = %v, want ErrNotMember", op, who, err)
+			}
+		}
+	}
+	if got, err := f.store.GetIngredient(ctx, id); err != nil || got.Central {
+		t.Errorf("a refused promotion promoted the entry: %+v, %v", got, err)
+	}
+	if got, _ := f.store.GetEquipment(ctx, eq.ID); got.Sized {
+		t.Error("a refused update changed the equipment")
+	}
+	// With no operators configured nobody is one.
+	if _, err := f.svc.OperatorListEquipment(ctx, apicatalog.Caller{Person: "root@example.com"}); !errors.Is(err, apicatalog.ErrNotMember) {
+		t.Errorf("service with no operators: err = %v, want ErrNotMember", err)
+	}
+}

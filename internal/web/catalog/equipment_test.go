@@ -11,9 +11,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
+	"github.com/kaecyra/gobbler/internal/auth"
 	domain "github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -33,9 +37,16 @@ func newEquipmentFixture(t *testing.T) *domain.Store {
 
 func doEquipment(cat *domain.Store, operator bool, method, target string, form url.Values) *httptest.ResponseRecorder {
 	root := chi.NewRouter()
-	root.Mount(EquipmentPattern, EquipmentRoutes(EquipmentDeps{Catalog: cat}))
+	// The operator is the dev identity, who is a member of no household here.
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: household.New(nil), Operators: config.Operator{Emails: []string{auth.DevEmail}}})
+	if err != nil {
+		panic(err)
+	}
+	root.Mount(EquipmentPattern, EquipmentRoutes(EquipmentDeps{Catalog: svc.Bind(caller.FromContext)}))
 	req := httptest.NewRequest(method, EquipmentPattern+target, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set(auth.DevIdentityHeader, auth.DevEmail)
+	req = req.WithContext(verified(req))
 	if operator {
 		req = req.WithContext(layout.WithOperator(req.Context()))
 	}
@@ -137,4 +148,20 @@ func TestSizedRequestsAreValidated(t *testing.T) {
 	if got, err := cat.GetEquipment(ctx, tin.ID); err != nil || got.Sized {
 		t.Errorf("a rejected request changed the flag: %+v err %v", got, err)
 	}
+}
+
+// verified returns req's context after the auth middleware, in dev-bypass
+// mode, has put a verified identity on it.
+func verified(req *http.Request) context.Context {
+	a, err := auth.New(config.Config{Server: config.Server{ListenAddr: "127.0.0.1:0", DevAuthBypass: true}})
+	if err != nil {
+		panic(err)
+	}
+	var got context.Context
+	a.Middleware(nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Context() })).
+		ServeHTTP(httptest.NewRecorder(), req)
+	if got == nil {
+		panic("auth middleware did not pass the request on")
+	}
+	return got
 }

@@ -12,6 +12,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -24,6 +26,7 @@ type promotionFixture struct {
 	t     *testing.T
 	d     *sql.DB
 	cat   *catalog.Store
+	svc   *apicatalog.Service
 	alpha context.Context
 	beta  context.Context
 }
@@ -40,6 +43,12 @@ func newPromotionFixture(t *testing.T) *promotionFixture {
 		t.Fatal(err)
 	}
 	f := &promotionFixture{t: t, d: d, cat: catalog.New(d)}
+	// The operator is the dev identity, who is a member of no household here.
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: f.cat, Members: household.New(d), Operators: config.Operator{Emails: []string{auth.DevEmail}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.svc = svc
 	f.alpha = f.household("Alpha Secret Household")
 	f.beta = f.household("Beta Secret Household")
 	return f
@@ -69,7 +78,7 @@ func (f *promotionFixture) suggested(ctx context.Context, name string, aliases .
 func (f *promotionFixture) do(operator bool, method, target string) *httptest.ResponseRecorder {
 	f.t.Helper()
 	root := chi.NewRouter()
-	root.Mount(PromotionPattern, PromotionRoutes(PromotionDeps{Catalog: f.cat}))
+	root.Mount(PromotionPattern, PromotionRoutes(PromotionDeps{Catalog: f.svc.Bind(caller.FromContext)}))
 	req := httptest.NewRequest(method, PromotionPattern+target, strings.NewReader(url.Values{}.Encode()))
 	ctx := verified(f.t, req)
 	if operator {
