@@ -78,6 +78,8 @@ func TestMarkdownRendersTheAllowedSubset(t *testing.T) {
 			`<p>See <a href="https://example.com/v" rel="nofollow noopener noreferrer">the video</a>.</p>` + "\n"},
 		{"http link with a title", `[x](http://example.com/a?b=1&c=2 "Tip")`,
 			`<p><a href="http://example.com/a?b=1&amp;c=2" rel="nofollow noopener noreferrer" title="Tip">x</a></p>` + "\n"},
+		{"a title's escapes and entities are resolved once", `[a](https://x.test "a \"q\" &amp; b")`,
+			`<p><a href="https://x.test" rel="nofollow noopener noreferrer" title="a &quot;q&quot; &amp; b">a</a></p>` + "\n"},
 		{"http autolink", "<https://example.com/x>",
 			`<p><a href="https://example.com/x" rel="nofollow noopener noreferrer">https://example.com/x</a></p>` + "\n"},
 		{"angle brackets and ampersands stay text", "Keeps for <3 days> & freezes.", "<p>Keeps for &lt;3 days&gt; &amp; freezes.</p>\n"},

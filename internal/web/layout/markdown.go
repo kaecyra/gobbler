@@ -260,7 +260,9 @@ func openLink(w util.BufWriter, dest, title []byte) error {
 	_, _ = w.WriteString(`" rel="` + linkRel + `"`)
 	if title != nil {
 		_, _ = w.WriteString(` title="`)
-		_, _ = w.Write(util.EscapeHTML(title))
+		// Through goldmark's writer, as link and paragraph text are: it
+		// resolves backslash escapes and entities, then escapes for HTML.
+		html.DefaultWriter.Write(w, title)
 		_ = w.WriteByte('"')
 	}
 	_ = w.WriteByte('>')
