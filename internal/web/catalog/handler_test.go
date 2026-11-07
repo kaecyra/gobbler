@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/auth"
 	domain "github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -56,8 +57,17 @@ func newFixture(t *testing.T) *fixture {
 			next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
 		})
 	})
-	root.Mount(Pattern, Routes(Deps{Catalog: cat, Usage: usage}))
+	root.Mount(Pattern, Routes(Deps{Catalog: cat, Usage: usage, Recipes: storeUses{rec}}))
 	return &fixture{t: t, d: d, cat: cat, rec: rec, srv: root}
+}
+
+// storeUses serves RecipeUses from the store, in the household the fixture's
+// middleware put on the context; the service's membership check is its own
+// package's to test.
+type storeUses struct{ s *store.Store }
+
+func (u storeUses) RecipeCountsByIngredient(ctx context.Context, _ apirecipes.Caller) (map[int64]int64, error) {
+	return u.s.RecipeCountsByIngredient(ctx)
 }
 
 func (f *fixture) ingredient(name, aisle string, reviewed bool, aliases ...string) domain.Ingredient {
@@ -161,6 +171,44 @@ func TestListShowsUnreviewedFirstAndFiltersAll(t *testing.T) {
 	if strings.Contains(body, "zz checked mint") {
 		t.Error("filter kept a non-matching ingredient")
 	}
+}
+
+func TestListShowsHowManyRecipesUseEachIngredient(t *testing.T) {
+	f := newFixture(t)
+	used := f.ingredient("zz used dill", "produce", false)
+	f.ingredient("zz spare mint", "produce", true)
+	f.recipeUsing("zz soup", used.ID, used.ID)
+	f.recipeUsing("zz salad", used.ID)
+
+	body := wantStatus(t, f.do("GET", "/catalog/", nil), 200)
+	all := body[strings.Index(body, `data-testid="all"`):]
+	if got := usedInOf(t, all, "zz used dill"); got != "2 recipes" {
+		t.Errorf("used dill in the full list: Used in = %q, want %q", got, "2 recipes")
+	}
+	if got := usedInOf(t, all, "zz spare mint"); got != "Unused" {
+		t.Errorf("spare mint: Used in = %q, want %q", got, "Unused")
+	}
+	unreviewed := body[strings.Index(body, `data-testid="unreviewed"`):strings.Index(body, `data-testid="all"`)]
+	if got := usedInOf(t, unreviewed, "zz used dill"); got != "2 recipes" {
+		t.Errorf("used dill awaiting review: Used in = %q, want %q", got, "2 recipes")
+	}
+}
+
+// usedInOf returns the "Used in" text of the first row after name in body.
+func usedInOf(t *testing.T, body, name string) string {
+	t.Helper()
+	at := strings.Index(body, name)
+	if at < 0 {
+		t.Fatalf("%q not listed in\n%s", name, body)
+	}
+	rest := body[at:]
+	mark := `data-testid="used-in">`
+	i := strings.Index(rest, mark)
+	if i < 0 {
+		t.Fatalf("no Used in after %q", name)
+	}
+	rest = rest[i+len(mark):]
+	return rest[:strings.Index(rest, "<")]
 }
 
 func TestListEmptyUnreviewedShowsEmptyState(t *testing.T) {

@@ -42,7 +42,7 @@ templ listPage(v listView) {
 				<ul class="list">
 					for _, r := range v.Unreviewed {
 						<li data-testid="unreviewed-row">
-							<span class="grow"><a href={ editURL(r.ID) }>{ r.Name }</a> <span class="muted">{ r.Aisle }</span></span>
+							<span class="grow"><a href={ editURL(r.ID) }>{ r.Name }</a> <span class="muted">{ r.Aisle }</span> <span class="muted" data-testid="used-in">{ r.UsedIn() }</span></span>
 							<form class="row-form" method="post" action={ templ.SafeURL(postURL(r.ID, "/reviewed")) }>
 								<button type="submit" class="btn" aria-label={ "Mark " + r.Name + " reviewed" }>Mark reviewed</button>
 							</form>
@@ -70,6 +70,7 @@ templ listPage(v listView) {
 							<th scope="col">Name</th>
 							<th scope="col">Aisle</th>
 							<th scope="col">Also called</th>
+							<th scope="col">Used in</th>
 							<th scope="col">Status</th>
 						</tr>
 					</thead>
@@ -79,6 +80,7 @@ templ listPage(v listView) {
 								<td><a href={ editURL(r.ID) }>{ r.Name }</a></td>
 								<td>{ r.Aisle }</td>
 								<td>{ r.Aliases }</td>
+								<td data-testid="used-in">{ r.UsedIn() }</td>
 								<td>
 									if r.Central {
 										<span data-testid="central-badge">Central</span>

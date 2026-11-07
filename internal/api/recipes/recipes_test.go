@@ -119,8 +119,12 @@ func TestEveryOperationRefusesANonMember(t *testing.T) {
 		"Cards":        func(c apirecipes.Caller) error { _, err := f.svc.Cards(ctx, c, apirecipes.SearchQuery{}); return err },
 		"RecentlyMade": func(c apirecipes.Caller) error { _, err := f.svc.RecentlyMade(ctx, c, 5); return err },
 		"Idle":         func(c apirecipes.Caller) error { _, err := f.svc.Idle(ctx, c); return err },
-		"ListNotes":    func(c apirecipes.Caller) error { _, err := f.svc.ListNotes(ctx, c, id); return err },
-		"ListMadeIt":   func(c apirecipes.Caller) error { _, err := f.svc.ListMadeIt(ctx, c, id); return err },
+		"RecipeCountsByIngredient": func(c apirecipes.Caller) error {
+			_, err := f.svc.RecipeCountsByIngredient(ctx, c)
+			return err
+		},
+		"ListNotes":  func(c apirecipes.Caller) error { _, err := f.svc.ListNotes(ctx, c, id); return err },
+		"ListMadeIt": func(c apirecipes.Caller) error { _, err := f.svc.ListMadeIt(ctx, c, id); return err },
 		"ListRevisions": func(c apirecipes.Caller) error {
 			_, err := f.svc.ListRevisions(ctx, c, id)
 			return err

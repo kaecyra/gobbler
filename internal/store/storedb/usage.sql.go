@@ -20,3 +20,42 @@ func (q *Queries) CountIngredientLines(ctx context.Context, ingredientID sql.Nul
 	err := row.Scan(&count)
 	return count, err
 }
+
+const countRecipesByIngredient = `-- name: CountRecipesByIngredient :many
+SELECT l.ingredient_id AS ingredient_id, COUNT(DISTINCT c.recipe_id) AS recipes
+FROM ingredient_lines l
+JOIN components c ON c.household_id = l.household_id AND c.id = l.component_id
+WHERE l.household_id = ? AND l.ingredient_id IS NOT NULL
+GROUP BY l.ingredient_id
+`
+
+type CountRecipesByIngredientRow struct {
+	IngredientID sql.NullInt64
+	Recipes      int64
+}
+
+// CountRecipesByIngredient is, for every ingredient a household's recipes use,
+// how many of its recipes use it. A recipe naming the ingredient on several
+// lines counts once. Unresolved lines (NULL ingredient) are left out.
+func (q *Queries) CountRecipesByIngredient(ctx context.Context, householdID int64) ([]CountRecipesByIngredientRow, error) {
+	rows, err := q.db.QueryContext(ctx, countRecipesByIngredient, householdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountRecipesByIngredientRow
+	for rows.Next() {
+		var i CountRecipesByIngredientRow
+		if err := rows.Scan(&i.IngredientID, &i.Recipes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -73,6 +73,11 @@ test('lists the unreviewed ingredients first', async ({ page }) => {
   await expect(unreviewed.getByText('e2e dill', { exact: true })).toBeVisible();
   await expect(unreviewed.getByText('e2e dillweed', { exact: true })).toBeVisible();
   await expect(unreviewed.getByText('e2e fresh dill')).toHaveCount(0);
+  // The recipe names dillweed on two lines: one recipe, counted once.
+  await expect(unreviewed.getByTestId('unreviewed-row').filter({ hasText: 'e2e dillweed' }).getByTestId('used-in')).toHaveText('1 recipe');
+  const allRows = page.getByTestId('all-row');
+  await expect(allRows.filter({ hasText: 'e2e dillweed' }).getByTestId('used-in')).toHaveText('1 recipe');
+  await expect(allRows.filter({ has: page.getByRole('link', { name: 'e2e fresh dill', exact: true }) }).getByTestId('used-in')).toHaveText('Unused');
   // The full list holds the reviewed one too, and the filter narrows it.
   await expect(page.getByTestId('all').getByText('e2e fresh dill')).toBeVisible();
   await page.getByLabel('Filter ingredients').fill('e2e fresh');
