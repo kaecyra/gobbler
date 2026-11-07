@@ -4479,7 +4479,7 @@
       "wave": 13,
       "track": null,
       "issue": 522,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/layout/assets.go",
@@ -5903,6 +5903,12 @@
       "title": "a refused save says so at the top of the page and scrolls to the first error",
       "merged": "749324e",
       "note": "frontend.md: a message about the page is a page-level callout. Confirm on the review screen answered a refused draft with 200 and inline errors far below the fold; the save bar's count ignores errors."
+    },
+    {
+      "id": "u-suggest-paths",
+      "title": "one named constant for the shared suggest.js and suggest.css paths",
+      "merged": "01c20db",
+      "note": "Found in review of #519. Ordered before a-api-catalog, which owns internal/web/catalog/** and internal/web/editor/**."
     }
   ],
   "adr_sequence": {
