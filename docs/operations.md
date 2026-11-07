@@ -132,8 +132,10 @@ acceptance and sign-out. Nobody joins or starts a
 household without an invitation addressed to their email.
 
 The **operator** is whoever `GOBBLER_OPERATOR_EMAILS` lists (comma-separated).
-An operator email reaches the operator's pages, today `/settings`
-(backup, storage and health), without being a member of any household; a member
+An operator email reaches the operator's pages, `/settings` (backup, storage
+and health) and the pages under `/operator` (household invitations, suggested
+ingredients, the equipment catalog and the central ingredients), without being
+a member of any household; a member
 who is not an operator is refused there. Operator status lives only in
 configuration and cannot be granted from inside the app. Set the variable
 before first use: with no operator and no household nobody can issue the first
