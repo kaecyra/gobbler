@@ -17,9 +17,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
-	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
@@ -87,6 +88,10 @@ type Deps struct {
 	// Recipes is the recipe service the recipe screens share (ADR-00043). Nil
 	// means one over DB, Media and Pictures.
 	Recipes *apirecipes.Service
+	// Catalog is the catalog service the recipe screens read ingredient and
+	// equipment names from, speaking for the Caller of each request
+	// (ADR-00043). Nil means one over DB.
+	Catalog *apicatalog.Bound
 }
 
 // New builds the router. Middleware order is fixed here: request logging, then
@@ -138,7 +143,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 	if d.Recipes == nil {
 		svc, err := apirecipes.New(apirecipes.Deps{
-			Recipes: apirecipes.NewStore(d.DB), Catalog: catalog.New(d.DB), Members: household.New(d.DB),
+			Recipes: apirecipes.NewStore(d.DB), Catalog: apicatalog.NewStore(d.DB), Members: household.New(d.DB),
 			Pictures: d.Pictures, Reaper: apirecipes.NewReaper(d.Media, d.Logger),
 			Thumbnails: video.NewFetcherAt(d.Config.Video.ThumbnailHost),
 		})
@@ -146,6 +151,14 @@ func newRouter(d Deps) (*chi.Mux, error) {
 			return nil, fmt.Errorf("web: build the recipe service: %w", err)
 		}
 		d.Recipes = svc
+	}
+
+	if d.Catalog == nil {
+		svc, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: household.New(d.DB)})
+		if err != nil {
+			return nil, fmt.Errorf("web: build the catalog service: %w", err)
+		}
+		d.Catalog = svc.Bind(caller.FromContext)
 	}
 
 	var members memberLookup = household.New(d.DB)

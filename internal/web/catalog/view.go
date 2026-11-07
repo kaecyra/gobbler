@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	domain "github.com/kaecyra/gobbler/internal/catalog"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 )
 
 // Form fields that can carry a problem. fieldForm is the whole form.
@@ -51,7 +51,7 @@ type row struct {
 	Suggested bool
 }
 
-func newListView(query string, unreviewed, all []domain.Ingredient) listView {
+func newListView(query string, unreviewed, all []apicatalog.Ingredient) listView {
 	return listView{
 		Query:      query,
 		Unreviewed: rowsOf(filter(unreviewed, query)),
@@ -62,12 +62,12 @@ func newListView(query string, unreviewed, all []domain.Ingredient) listView {
 
 // filter keeps the ingredients whose name, aisle or any alias contains the
 // query, ignoring case. An empty query keeps all.
-func filter(in []domain.Ingredient, query string) []domain.Ingredient {
+func filter(in []apicatalog.Ingredient, query string) []apicatalog.Ingredient {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
 		return in
 	}
-	var out []domain.Ingredient
+	var out []apicatalog.Ingredient
 	for _, i := range in {
 		if strings.Contains(i.Name, q) || strings.Contains(i.Aisle, q) ||
 			slices.ContainsFunc(i.Aliases, func(a string) bool { return strings.Contains(a, q) }) {
@@ -77,7 +77,7 @@ func filter(in []domain.Ingredient, query string) []domain.Ingredient {
 	return out
 }
 
-func rowsOf(in []domain.Ingredient) []row {
+func rowsOf(in []apicatalog.Ingredient) []row {
 	out := make([]row, len(in))
 	for n, i := range in {
 		out[n] = row{ID: i.ID, Name: i.Name, Aisle: i.Aisle, Aliases: strings.Join(i.Aliases, ", "), Reviewed: i.Reviewed, Central: i.Central, Suggested: i.Suggested}
@@ -105,7 +105,7 @@ type formView struct {
 	Aisles []string
 }
 
-func formFrom(in domain.Ingredient) formView {
+func formFrom(in apicatalog.Ingredient) formView {
 	f := formView{ID: in.ID, Name: in.Name, Aisle: in.Aisle, Aliases: strings.Join(in.Aliases, "\n"), Reviewed: in.Reviewed,
 		Central: in.Central, Suggested: in.Suggested}
 	if in.DensityGPerML != nil {
@@ -122,9 +122,9 @@ func (f formView) Problem(field string) string { return f.Problems[field] }
 // ingredient builds the ingredient the form describes. A problem found here is
 // the page's to report; the catalog checks the rest (aisle, qualifiers,
 // collisions) and its verdict is shown inline too.
-func (f formView) ingredient() (domain.Ingredient, map[string]string) {
+func (f formView) ingredient() (apicatalog.Ingredient, map[string]string) {
 	problems := map[string]string{}
-	in := domain.Ingredient{ID: f.ID, Name: f.Name, Aisle: f.Aisle, Reviewed: f.Reviewed}
+	in := apicatalog.Ingredient{ID: f.ID, Name: f.Name, Aisle: f.Aisle, Reviewed: f.Reviewed}
 	if strings.TrimSpace(f.Name) == "" {
 		problems[fieldName] = nameMessage
 	}
@@ -169,20 +169,20 @@ const usdaTakenMessage = "That USDA FoodData Central id already belongs to anoth
 // raised about the submitted values. ok is false for any other error.
 func inlineMessage(err error) (field, msg string, ok bool) {
 	switch {
-	case errors.Is(err, domain.ErrInvalid):
+	case errors.Is(err, apicatalog.ErrInvalid):
 		return fieldForm, err.Error(), true
-	case errors.Is(err, domain.ErrConflict):
+	case errors.Is(err, apicatalog.ErrConflict):
 		if text := err.Error(); strings.Contains(text, conflictDetail) {
 			return fieldForm, text, true
 		} else if strings.Contains(text, usdaColumn) {
 			return fieldUSDA, usdaTakenMessage, true
 		}
-		return fieldForm, domain.ErrConflict.Error() + ". Choose a different name or alias.", true
+		return fieldForm, apicatalog.ErrConflict.Error() + ". Choose a different name or alias.", true
 	}
 	return "", "", false
 }
 
-func aislesOf(all []domain.Ingredient) []string {
+func aislesOf(all []apicatalog.Ingredient) []string {
 	var out []string
 	for _, i := range all {
 		out = append(out, i.Aisle)
@@ -193,12 +193,12 @@ func aislesOf(all []domain.Ingredient) []string {
 
 // chooserView is the first merge step: pick the ingredient to keep.
 type chooserView struct {
-	Source  domain.Ingredient
-	Targets []domain.Ingredient
+	Source  apicatalog.Ingredient
+	Targets []apicatalog.Ingredient
 	Problem string
 }
 
-func newChooserView(src domain.Ingredient, all []domain.Ingredient, problem string) chooserView {
+func newChooserView(src apicatalog.Ingredient, all []apicatalog.Ingredient, problem string) chooserView {
 	v := chooserView{Source: src, Problem: problem}
 	for _, i := range all {
 		if i.ID != src.ID {
@@ -210,7 +210,7 @@ func newChooserView(src domain.Ingredient, all []domain.Ingredient, problem stri
 
 // confirmView is the second merge step: what the merge will do.
 type confirmView struct {
-	Source, Target domain.Ingredient
+	Source, Target apicatalog.Ingredient
 	// Uses is the number of rows the merge re-points, as summed by the catalog
 	// over every table that references the ingredient: recipe lines and shopping
 	// rows. The counters are not told apart.

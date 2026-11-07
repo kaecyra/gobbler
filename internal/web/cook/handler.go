@@ -16,8 +16,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
-	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -37,9 +37,11 @@ type Recipes interface {
 }
 
 // Catalog is what cook mode reads from the ingredient and equipment catalog.
+// The router gives it the catalog service bound to the request's Caller
+// (apicatalog.Bound), which checks membership on every call (ADR-00043).
 type Catalog interface {
-	GetIngredient(ctx context.Context, id int64) (catalog.Ingredient, error)
-	GetEquipment(ctx context.Context, id int64) (catalog.Equipment, error)
+	GetIngredient(ctx context.Context, id int64) (apicatalog.Ingredient, error)
+	GetEquipment(ctx context.Context, id int64) (apicatalog.Equipment, error)
 }
 
 // Deps is what the routes need.

@@ -13,7 +13,7 @@ import (
 
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 
-	"github.com/kaecyra/gobbler/internal/catalog"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	"github.com/kaecyra/gobbler/internal/parse"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -366,7 +366,7 @@ func (t *tools) editedLine(ctx context.Context, lines *display.LineBuilder, m *l
 	case id != 0:
 		// Reading the ingredient is what checks it exists and is the household's.
 		if _, err := t.Catalog.GetIngredient(ctx, id); err != nil {
-			if errors.Is(err, catalog.ErrNotFound) {
+			if errors.Is(err, apicatalog.ErrNotFound) {
 				return recipe.IngredientLine{}, refuse("%s: there is no ingredient %d in the catalog", where, id)
 			}
 			return recipe.IngredientLine{}, err

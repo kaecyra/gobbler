@@ -9,12 +9,12 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
-	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
@@ -47,14 +47,14 @@ import (
 // The router has already applied authentication by the time r is passed here.
 func mountFeatures(r chi.Router, d Deps) {
 	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Recipes: d.Recipes, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
-	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB), Pictures: recipePictures(d)}))
+	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: d.Recipes, Catalog: d.Catalog, Pictures: recipePictures(d)}))
 	r.Mount(recipeview.DeletePattern, recipeview.DeleteRoutes(recipeview.DeleteDeps{Recipes: d.Recipes}))
 	mountJournal(r, d)
-	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
-	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
-	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
+	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
+	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
+	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
-	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: d.Recipes, Catalog: catalog.New(d.DB)}))
+	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: d.Recipes, Pictures: recipePictures(d)}))
 	// The home page: "/" is registered here and nowhere else.
 	r.Get("/", homeRoute(d))
@@ -88,17 +88,38 @@ func mountJournal(r chi.Router, d Deps) {
 	r.Mount(journal.Pattern, journal.Routes(journal.Deps{Journal: svc}))
 }
 
+// mountCatalogPage mounts the catalog cleanup page over the catalog service
+// (ADR-00043). cat is the merging store and usage its counter, so the page
+// merges and counts through the service.
+func mountCatalogPage(r chi.Router, d Deps, cat *apicatalog.Store, usage *apicatalog.Usage) {
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: household.New(d.DB), Usage: usage})
+	if err != nil {
+		// Unreachable while the deps above are non-nil; fail loud if that changes.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("catalog page unavailable", "error", err.Error())
+		r.Mount(webcatalog.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the catalog page is not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
+	bound := svc.Bind(caller.FromContext)
+	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: bound, Usage: bound}))
+}
+
 // mountCatalog mounts the catalog cleanup page and the shopping pages. Its
 // catalog store is the one that merges ingredients, so the recipe store's merge
 // hooks and usage counters are registered on it here: without the hooks a merge
 // of an ingredient that recipes use fails on the foreign key, and without the
 // counters the confirmation cannot state how many rows it re-points.
 func mountCatalog(r chi.Router, d Deps) {
-	cat, rec := catalog.New(d.DB), apirecipes.NewStore(d.DB)
-	usage := catalog.NewUsage(cat)
+	cat, rec := apicatalog.NewStore(d.DB), apirecipes.NewStore(d.DB)
+	usage := apicatalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
-	r.Mount(webcatalog.Pattern, webcatalog.Routes(webcatalog.Deps{Catalog: cat, Usage: usage}))
+	mountCatalogPage(r, d, cat, usage)
 
 	// The shopping pages share the merging catalog store: the shopping store's
 	// hooks re-point its manual items, pantry and checks on a merge, and its
@@ -151,7 +172,7 @@ func mountHouseholds(r chi.Router, d Deps) {
 // stores that hold ingredient references, because promoting merges other
 // households' duplicates into the promoted entry and re-points their rows.
 func mountPromotion(r chi.Router, d Deps) {
-	cat := catalog.New(d.DB)
+	cat := apicatalog.NewStore(d.DB)
 	apirecipes.NewStore(d.DB).RegisterMergeHooks(cat)
 	apishop.NewStore(d.DB, apirecipes.NewStore(d.DB), cat).RegisterMergeHooks(cat)
 	r.Mount(operator.PromotionPattern, operator.PromotionRoutes(operator.PromotionDeps{Catalog: cat}))
@@ -161,7 +182,7 @@ func mountPromotion(r chi.Router, d Deps) {
 // and accept or decline one sent to this household (ADR-00018, Sharing).
 func mountSharing(r chi.Router, d Deps) {
 	hs := household.New(d.DB)
-	svc, err := apisharing.New(apisharing.Deps{Recipes: apirecipes.NewStore(d.DB), Households: hs, Catalog: catalog.New(d.DB), Members: hs})
+	svc, err := apisharing.New(apisharing.Deps{Recipes: apirecipes.NewStore(d.DB), Households: hs, Catalog: apicatalog.NewStore(d.DB), Members: hs})
 	if err != nil {
 		// Unreachable while the deps above are non-nil; fail loud if that changes.
 		log := d.Logger
@@ -181,7 +202,7 @@ func mountSharing(r chi.Router, d Deps) {
 // sized flag behind the scaled view's larger-pan hint is set (ADR-00019). It
 // sits under /operator, so the membership middleware admits only an operator.
 func mountEquipment(r chi.Router, d Deps) {
-	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: catalog.New(d.DB)}))
+	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: apicatalog.NewStore(d.DB)}))
 }
 
 // mountProfile mounts the profile pages (ADR-00032). A verified non-member may
@@ -203,8 +224,8 @@ func mountMCP(r chi.Router, d Deps) {
 	// service d.Recipes does it with a store that deletes the re-import's
 	// picture candidates. rec is the store the shopping service reads recipes
 	// from and the merge hooks and usage counters attach to.
-	cat, rec := catalog.New(d.DB), apirecipes.NewStore(d.DB)
-	usage := catalog.NewUsage(cat)
+	cat, rec := apicatalog.NewStore(d.DB), apirecipes.NewStore(d.DB)
+	usage := apicatalog.NewUsage(cat)
 	rec.RegisterMergeHooks(cat)
 	rec.RegisterUsageCounters(usage)
 	shop := apishop.NewStore(d.DB, rec, cat)

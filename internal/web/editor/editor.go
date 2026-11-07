@@ -22,8 +22,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
-	"github.com/kaecyra/gobbler/internal/catalog"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -58,16 +58,18 @@ type Recipes interface {
 }
 
 // Catalog is what the editor needs from the catalog: matching what the user
-// typed, listing names to suggest, and proposing an unreviewed entry.
+// typed, listing names to suggest, and proposing an unreviewed entry. The
+// router gives it the catalog service bound to the request's Caller
+// (apicatalog.Bound), which checks membership on every call (ADR-00043).
 type Catalog interface {
-	MatchIngredient(ctx context.Context, term string) (catalog.Ingredient, bool, error)
-	MatchEquipment(ctx context.Context, term string) (catalog.Equipment, bool, error)
-	MatchUnit(ctx context.Context, term string) (catalog.Unit, bool, error)
-	ListIngredients(ctx context.Context) ([]catalog.Ingredient, error)
-	ListEquipment(ctx context.Context) ([]catalog.Equipment, error)
-	ListUnits(ctx context.Context) ([]catalog.Unit, error)
-	CreateIngredient(ctx context.Context, in catalog.Ingredient) (catalog.Ingredient, error)
-	CreateEquipment(ctx context.Context, in catalog.Equipment) (catalog.Equipment, error)
+	MatchIngredient(ctx context.Context, term string) (apicatalog.Ingredient, bool, error)
+	MatchEquipment(ctx context.Context, term string) (apicatalog.Equipment, bool, error)
+	MatchUnit(ctx context.Context, term string) (apicatalog.Unit, bool, error)
+	ListIngredients(ctx context.Context) ([]apicatalog.Ingredient, error)
+	ListEquipment(ctx context.Context) ([]apicatalog.Equipment, error)
+	ListUnits(ctx context.Context) ([]apicatalog.Unit, error)
+	CreateIngredient(ctx context.Context, in apicatalog.Ingredient) (apicatalog.Ingredient, error)
+	CreateEquipment(ctx context.Context, in apicatalog.Equipment) (apicatalog.Equipment, error)
 }
 
 // Deps is what the routes need.
