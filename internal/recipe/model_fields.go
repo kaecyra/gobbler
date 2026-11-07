@@ -28,6 +28,7 @@ const (
 	MealBreakfast MealType = "breakfast"
 	MealMain      MealType = "main"
 	MealSide      MealType = "side"
+	MealBaked     MealType = "baked"
 	MealDessert   MealType = "dessert"
 	MealSnack     MealType = "snack"
 	MealDrink     MealType = "drink"
@@ -41,7 +42,8 @@ var mealWords = []struct {
 	Label, Plural string
 }{
 	{MealBreakfast, "Breakfast", "Breakfast"}, {MealMain, "Main", "Mains"}, {MealSide, "Side", "Sides"},
-	{MealDessert, "Dessert", "Desserts"}, {MealSnack, "Snack", "Snacks"}, {MealDrink, "Drink", "Drinks"},
+	{MealBaked, "Baked", "Baked"}, {MealDessert, "Dessert", "Desserts"}, {MealSnack, "Snack", "Snacks"},
+	{MealDrink, "Drink", "Drinks"},
 }
 
 // MealTypes lists the closed set of meal types.

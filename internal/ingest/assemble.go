@@ -511,6 +511,7 @@ var mealTypeByCategory = map[string]recipe.MealType{
 	"side": recipe.MealSide, "side dish": recipe.MealSide, "side dishes": recipe.MealSide, "sides": recipe.MealSide,
 	"snack": recipe.MealSnack, "snacks": recipe.MealSnack,
 	"drink": recipe.MealDrink, "drinks": recipe.MealDrink, "beverage": recipe.MealDrink, "beverages": recipe.MealDrink,
+	"bread": recipe.MealBaked, "breads": recipe.MealBaked, "baking": recipe.MealBaked, "baked goods": recipe.MealBaked,
 }
 
 // mealTypeFor reads schema.org recipeCategory values (each may list several,
