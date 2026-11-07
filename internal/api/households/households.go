@@ -128,8 +128,8 @@ func InvalidReason(err error) (string, bool) { return domain.InvalidReason(err) 
 func NewStore(d *sql.DB) *Store { return domain.New(d) }
 
 // Households is what the service calls on the household store. *household.Store
-// satisfies it. It is also the membership lookup (Members) every method checks
-// the Caller against, so the two cannot disagree.
+// satisfies it. ForEmail is also the membership lookup every method checks the
+// Caller against (caller.Enter), so the two cannot disagree.
 type Households interface {
 	ForEmail(ctx context.Context, email string) (Household, error)
 	Members(ctx context.Context, householdID int64) ([]string, error)
@@ -185,7 +185,10 @@ func (s *Service) member(ctx context.Context, c Caller) (context.Context, Househ
 	if err != nil {
 		return nil, Household{}, err
 	}
-	h, _ := domain.FromContext(ctx)
+	h, ok := domain.FromContext(ctx)
+	if !ok {
+		return nil, Household{}, fmt.Errorf("membership check left no household: %w", ErrNotMember)
+	}
 	return ctx, h, nil
 }
 

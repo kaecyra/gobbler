@@ -89,6 +89,7 @@ func TestAMemberOperationRefusesACallerThatIsNoMember(t *testing.T) {
 		"no person":                            {Household: f.smiths},
 		"no household":                         {Person: annEmail},
 		"a household key":                      {Household: f.smiths, HouseholdKey: true},
+		"a household key that names a person":  {Person: annEmail, Household: f.smiths, HouseholdKey: true},
 	}
 	for opName, op := range memberOps(f) {
 		for who, c := range cases {
@@ -185,8 +186,9 @@ func TestTheInvitationOperationsNeedAPerson(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
 	for who, c := range map[string]households.Caller{
-		"no person":       {},
-		"a household key": {Household: f.smiths, HouseholdKey: true},
+		"no person":                           {},
+		"a household key":                     {Household: f.smiths, HouseholdKey: true},
+		"a household key that names a person": {Person: newEmail, Household: f.smiths, HouseholdKey: true},
 	} {
 		if _, err := f.svc.InvitationFor(ctx, c, "x"); !errors.Is(err, households.ErrNotMember) {
 			t.Errorf("InvitationFor as %s = %v, want ErrNotMember", who, err)
@@ -250,9 +252,10 @@ func TestANonOperatorIsRefusedTheOperatorOperations(t *testing.T) {
 	}
 	for name, op := range ops {
 		for who, c := range map[string]households.Caller{
-			"a member":        f.ann,
-			"no person":       {Household: f.smiths},
-			"a household key": {Household: f.smiths, HouseholdKey: true},
+			"a member":                               f.ann,
+			"no person":                              {Household: f.smiths},
+			"a household key":                        {Household: f.smiths, HouseholdKey: true},
+			"a household key that names an operator": {Person: rootEmail, Household: f.smiths, HouseholdKey: true},
 		} {
 			if err := op(c); !errors.Is(err, households.ErrNotMember) {
 				t.Errorf("%s as %s = %v, want ErrNotMember", name, who, err)
