@@ -76,6 +76,7 @@ func TestStageKindMixIsMachineMixingAndKneading(t *testing.T) {
 		{"Turn the dough out and knead it until elastic.", recipe.StageMix},
 		{"Continue kneading until the dough passes the windowpane test.", recipe.StageMix},
 		{"Use a stand mixer on low.", recipe.StageMix},
+		{"Hand-knead the dough for 8 minutes.", recipe.StageMix},
 		{"In the bowl of a stand mixer, combine the flour, yeast and water.", recipe.StageMix},
 		{"Beat the butter and sugar with a hand mixer until fluffy.", recipe.StageMix},
 		{"Beat the cream with an electric mixer to soft peaks.", recipe.StageMix},
@@ -99,6 +100,8 @@ func TestStageKindMixIsMachineMixingAndKneading(t *testing.T) {
 		{"Using a pastry cutter, blend the butter into the flour.", ""},
 		{"Blend in the butter with your fingertips.", ""},
 		{"Stir to blend.", ""},
+		{"Cut in the butter with a pastry blender.", ""},
+		{"Work the fat in with pastry blenders, then use a blender for the filling.", recipe.StageMix},
 		{"Blend the spices together in a small bowl.", ""},
 		{"Top with your mixer of choice.", ""},
 		// mix beside another kind is two kinds.

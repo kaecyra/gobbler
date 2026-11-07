@@ -240,8 +240,11 @@ var (
 	// The verb "blend" is not here, since it is as often done by hand ("blend
 	// the butter into the flour"); a blender is. It also matches "knead" in
 	// any form but "kneaded", an adjective ("the kneaded dough"), and
-	// "no-knead", a kind of bread.
-	mixWordRE = regexp.MustCompile(`(?i)(^|[^\w-])knead(s|ing)?\b|\b((stand|hand|electric) mixers?|food processors?|blenders?|bread machines?|dough hooks?)\b`)
+	// "no-knead", a kind of bread; "hand-knead" is kneading.
+	mixWordRE = regexp.MustCompile(`(?i)(^|[^\w-]|hand-)knead(s|ing)?\b|\b((stand|hand|electric) mixers?|food processors?|blenders?|bread machines?|dough hooks?)\b`)
+	// pastryBlenderRE is the hand tool for cutting fat into flour, which is
+	// not a blender. It is removed from the text before mixWordRE reads it.
+	pastryBlenderRE = regexp.MustCompile(`(?i)\bpastry blenders?\b`)
 )
 
 // stageKindOf proposes a stage kind for a step from its source title and its
@@ -308,7 +311,7 @@ func stageKinds(text string) map[recipe.StageKind]bool {
 	if prepVerbRE.MatchString(text) {
 		kinds[recipe.StagePrep] = true
 	}
-	if mixWordRE.MatchString(text) {
+	if mixWordRE.MatchString(pastryBlenderRE.ReplaceAllString(text, "")) {
 		kinds[recipe.StageMix] = true
 	}
 	return kinds
