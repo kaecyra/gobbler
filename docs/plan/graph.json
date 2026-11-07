@@ -4222,7 +4222,8 @@
         "r-note-length",
         "u-save-errors-visible",
         "u-qualifier-style",
-        "u-notes-apart"
+        "u-notes-apart",
+        "u-suggest-paths"
       ],
       "owns": [
         "internal/api/catalog/**",
@@ -4449,7 +4450,7 @@
       "adrs": [
         "00045"
       ],
-      "note": "Implements the ADR attached to this node (amends ADR-00041): on the recipe page, remove every connector line from the last step to the notes and between notes; separate the notes from the steps by extra space; keep their alignment in the step-number column. Change only those elements (frontend.md). Cook mode is unchanged. Also update docs/ui/design.md's Author notes paragraph (ADR-00045 obligation 3); u-card-total-time edits the same file first."
+      "note": "Implements the ADR attached to this node (amends ADR-00041): on the recipe page, remove every connector line from the last step to the notes and between notes; separate the notes from the steps by extra space; keep their alignment in the step-number column. Change only those elements (frontend.md). Cook mode is unchanged. Also update docs/ui/design.md's Author notes paragraph (ADR-00045 obligation 3); u-card-total-time edits the same file first. Folds in #537: port the deleted card-ribbon fit tests to e2e/recipeview against ribbon.Large."
     },
     {
       "id": "u-card-total-time",
@@ -4471,6 +4472,25 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner's design call, 2026-11-06: library cards (the library and the home suggestion card) drop the time ribbon pinned to the card's bottom edge and show only the recipe's total time, as a small clock icon and the time in the card's meta text, not edge to edge. The recipe page's large 'Ready in about' ribbon is unchanged. Update docs/ui/design.md's Time ribbon component and the home suggestion card text to match, in the same PR. Delete card-only ribbon code that nothing calls afterwards. The total is the figure the library's time grouping (timeToTable in internal/web/recipes) already uses for that card, so a card never contradicts the time group it sits under. It may differ from the recipe page's 'Ready in about' figure, which needs step data the card does not carry."
+    },
+    {
+      "id": "u-suggest-paths",
+      "title": "one named constant for the shared suggest.js and suggest.css paths",
+      "wave": 13,
+      "track": null,
+      "issue": 522,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/layout/assets.go",
+        "internal/web/catalog/catalog.templ",
+        "internal/web/catalog/catalog_templ.go",
+        "internal/web/editor/editor.templ",
+        "internal/web/editor/editor_templ.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Found in review of #519. Ordered before a-api-catalog, which owns internal/web/catalog/** and internal/web/editor/**."
     }
   ],
   "shared_files": [
