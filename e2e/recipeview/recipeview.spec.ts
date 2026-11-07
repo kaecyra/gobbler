@@ -92,7 +92,7 @@ test('shows the recipe as written', async ({ page }) => {
   await expect(page.getByTestId('total')).toContainText('55 min');
 });
 
-test('qualifiers show as muted italic text set off by spaces, not commas', async ({ page }) => {
+test('qualifiers show as muted italic text, set off from the name by a space and from each other by a comma', async ({ page }) => {
   await page.goto(`/recipes/${styledId}`);
   const row = page.locator('.ing li', { hasText: 'e2e whole milk' });
   const quals = row.getByTestId('qualifier');
@@ -101,7 +101,7 @@ test('qualifiers show as muted italic text set off by spaces, not commas', async
   const plain = await row.getByText('e2e whole milk').first().evaluate((el) => getComputedStyle(el).color);
   const muted = await quals.first().evaluate((el) => getComputedStyle(el).color);
   expect(muted).not.toBe(plain);
-  expect((await row.locator('span').first().innerText()).trim()).toBe('1 cup e2e whole milk warmed divided');
+  expect((await row.locator('span').first().innerText()).trim()).toBe('1 cup e2e whole milk warmed, divided');
   // The ribs line has no qualifiers and so no qualifier element.
   await expect(page.locator('.ing li', { hasText: 'e2e short ribs' }).getByTestId('qualifier')).toHaveCount(0);
 });
