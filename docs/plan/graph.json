@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00033",
+      "last_used": "00034",
       "contiguous": true
     }
   },
@@ -4526,6 +4526,154 @@
       "needs_migration": "schema",
       "adrs": [],
       "note": "Owner ruling 2026-11-07. Labels move to recipe.MealType.Label/Plural; migration widens the meal_type CHECK by column round-trip."
+    },
+    {
+      "id": "c-use-counts",
+      "title": "recipe use counts on the catalog page",
+      "wave": 13,
+      "track": null,
+      "issue": 554,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/store/queries/usage.sql",
+        "internal/store/storedb/usage.sql.go",
+        "internal/store/usage.go",
+        "internal/store/usage_test.go",
+        "internal/api/recipes/service.go",
+        "internal/api/recipes/recipes_test.go",
+        "internal/web/catalog/**",
+        "internal/web/routes.go",
+        "e2e/catalog/**",
+        "VERSION"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner ruling 2026-11-07. Per-household recipe counts; PR #556."
+    },
+    {
+      "id": "c-operator-ingredients",
+      "title": "operator page to edit central ingredients",
+      "wave": 13,
+      "track": null,
+      "issue": 555,
+      "status": "todo",
+      "depends_on": [
+        "c-use-counts"
+      ],
+      "owns": [
+        "internal/api/catalog/**",
+        "internal/household/context.go",
+        "internal/household/store_test.go",
+        "internal/web/catalog/**",
+        "internal/web/operator/**",
+        "internal/web/routes.go",
+        "e2e/operator/**",
+        "e2e/tenancy/**",
+        "docs/design.md",
+        "docs/operations.md",
+        "VERSION"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner ruling 2026-11-07. PR #560. Rebases after c-use-counts (routes.go, web/catalog/view.go)."
+    },
+    {
+      "id": "q-qualifier-commas",
+      "title": "comma between qualifiers in the recipe ingredient list",
+      "wave": 13,
+      "track": null,
+      "issue": 559,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/recipeview/view.templ",
+        "internal/web/recipeview/view_templ.go",
+        "internal/web/recipeview/handler_test.go",
+        "e2e/recipeview/recipeview.spec.ts",
+        "VERSION"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner ruling 2026-11-07."
+    },
+    {
+      "id": "m-markdown-steps",
+      "title": "markdown in recipe steps and author notes",
+      "wave": 13,
+      "track": null,
+      "issue": 557,
+      "status": "todo",
+      "depends_on": [
+        "q-qualifier-commas"
+      ],
+      "owns": [
+        "go.mod",
+        "go.sum",
+        "internal/recipe/display/**",
+        "internal/web/recipeview/**",
+        "internal/web/layout/**",
+        "e2e/recipeview/**",
+        "docs/adr/00046-markdown-in-steps.md",
+        "docs/adr/README.md",
+        "docs/ui/design.md",
+        "VERSION",
+        "internal/web/static/app.css"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00046"
+      ],
+      "note": "Owner ruling 2026-11-07 (ADR-00046)."
+    },
+    {
+      "id": "s-stage-mix",
+      "title": "mix as a step stage kind",
+      "wave": 13,
+      "track": null,
+      "issue": 558,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/model_fields.go",
+        "internal/recipe/model_fields_test.go",
+        "internal/recipe/model.go",
+        "internal/ingest/**",
+        "internal/db/migrations/**",
+        "internal/db/*_test.go",
+        "internal/web/ribbon/**",
+        "internal/web/editor/**",
+        "internal/mcp/**",
+        "e2e/editor/**",
+        "docs/adr/00022-adopt-the-mockup-design.md",
+        "VERSION",
+        "internal/web/static/ribbon.css"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "Owner ruling 2026-11-07: machine mixing and kneading only; hand stirring stays prep. Follows #403 (serve)."
+    },
+    {
+      "id": "k-cook-mockup",
+      "title": "cook mode matches the mockup",
+      "wave": 13,
+      "track": null,
+      "issue": 561,
+      "status": "todo",
+      "depends_on": [
+        "m-markdown-steps"
+      ],
+      "owns": [
+        "internal/web/cook/**",
+        "internal/web/layout/**",
+        "e2e/cook/**",
+        "VERSION",
+        "internal/web/static/cook.css",
+        "internal/web/static/cook.js"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner 2026-11-07: cook mode is ugly. Target docs/ui/mockup.html #cook. Also renders step and author-note text through the ADR-00046 markdown renderer m-markdown-steps adds."
     }
   ],
   "shared_files": [
@@ -5992,7 +6140,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00045",
+    "last_used": "00046",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
