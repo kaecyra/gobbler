@@ -4435,7 +4435,7 @@
       "wave": 13,
       "track": null,
       "issue": 527,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "u-qualifier-style",
         "u-card-total-time"
@@ -5909,6 +5909,15 @@
       "title": "one named constant for the shared suggest.js and suggest.css paths",
       "merged": "01c20db",
       "note": "Found in review of #519. Ordered before a-api-catalog, which owns internal/web/catalog/** and internal/web/editor/**."
+    },
+    {
+      "id": "u-notes-apart",
+      "title": "author notes sit apart from the steps, with no connector lines",
+      "merged": "4619245",
+      "adrs": [
+        "00045"
+      ],
+      "note": "Implements the ADR attached to this node (amends ADR-00041): on the recipe page, remove every connector line from the last step to the notes and between notes; separate the notes from the steps by extra space; keep their alignment in the step-number column. Change only those elements (frontend.md). Cook mode is unchanged. Also update docs/ui/design.md's Author notes paragraph (ADR-00045 obligation 3); u-card-total-time edits the same file first. Folds in #537: port the deleted card-ribbon fit tests to e2e/recipeview against ribbon.Large. Folds in #540 (owner, 2026-11-07): the video moves from above the title to the top of the steps column."
     }
   ],
   "adr_sequence": {
