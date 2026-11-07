@@ -251,8 +251,6 @@ func (failingProfiles) ByAddress(context.Context, string) (profile.Profile, erro
 	return profile.Profile{Email: annEmail, Address: "addr"}, nil
 }
 
-type failingAvatars struct{ profile.AvatarUploads }
-
 func TestRenameActsOnTheCallerAlone(t *testing.T) {
 	f := newFixture(t, true)
 	ctx := context.Background()
