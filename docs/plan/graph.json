@@ -3753,7 +3753,8 @@
       "owns": [],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00039 obligation 15. An operator action on the deployed site after u-picture-cards ships; no repository files."
+      "note": "ADR-00039 obligation 15. An operator action on the deployed site after u-picture-cards ships; no repository files.",
+      "blocked": "deferred by the owner (2026-11-07): they reseed the live demo themselves, when they choose; Google sign-in rules out seed.py there"
     },
     {
       "id": "r-credential-describe",
