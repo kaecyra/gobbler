@@ -3,9 +3,11 @@ package layout
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/yuin/goldmark/ast"
@@ -14,6 +16,7 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
+	nethtml "golang.org/x/net/html"
 )
 
 // Step text and author-note text are markdown, rendered to a safe subset
@@ -79,6 +82,41 @@ func Markdown(src string) templ.Component {
 		// The renderer's output is the one place step text is trusted as HTML.
 		return templ.Raw(out).Render(ctx, w)
 	})
+}
+
+// textBreaks are the elements of the ADR-00046 subset that end a run of words.
+var textBreaks = map[string]bool{"p": true, "br": true, "ul": true, "ol": true, "li": true, "blockquote": true}
+
+// MarkdownText is step or note text as the reader sees it, without markup:
+// the text of RenderMarkdown's output, whitespace collapsed to single spaces.
+// It is for places that can show only plain text, such as cook mode's timer
+// labels, its alert and button names, so "Mix **well**." reads "Mix well."
+// there as it does in the step.
+func MarkdownText(src string) (string, error) {
+	out, err := RenderMarkdown(src)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	z := nethtml.NewTokenizer(strings.NewReader(out))
+	for {
+		switch z.Next() {
+		case nethtml.ErrorToken:
+			if err := z.Err(); !errors.Is(err, io.EOF) {
+				return "", fmt.Errorf("read rendered markdown: %w", err)
+			}
+			return strings.Join(strings.Fields(b.String()), " "), nil
+		case nethtml.TextToken:
+			b.Write(z.Text())
+		case nethtml.StartTagToken, nethtml.EndTagToken, nethtml.SelfClosingTagToken:
+			// A block or a line break separates words: "<li>a</li><li>b</li>"
+			// reads "a b". Inline tags do not: "<strong>well</strong>." stays
+			// "well.".
+			if name, _ := z.TagName(); textBreaks[string(name)] {
+				b.WriteByte(' ')
+			}
+		}
+	}
 }
 
 // noRuleLists is goldmark's list parser refusing a line that is a horizontal

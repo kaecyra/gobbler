@@ -135,8 +135,18 @@
     var emptyNote = byId('cook-timers-empty');
     if (emptyNote) emptyNote.hidden = timers.length > 0;
     var existing = {};
-    Array.prototype.forEach.call(list.children, function (li) { existing[li.getAttribute('data-step')] = li; });
-    timers.forEach(function (t) {
+    var kept = {};
+    timers.forEach(function (t) { kept[t.step] = true; });
+    Array.prototype.slice.call(list.children).forEach(function (li) {
+      var step = li.getAttribute('data-step');
+      if (kept[step]) existing[step] = li;
+      else list.removeChild(li);
+    });
+    // The shown step's timer leads, as the mockup's main timer does; the rest
+    // keep the order they were started in.
+    var shown = timers.filter(function (t) { return t.step === current; })
+      .concat(timers.filter(function (t) { return t.step !== current; }));
+    shown.forEach(function (t, i) {
       var li = existing[t.step];
       if (!li) {
         li = document.createElement('li');
@@ -170,9 +180,9 @@
         run.appendChild(actions);
         li.appendChild(label);
         li.appendChild(run);
-        list.appendChild(li);
       }
-      delete existing[t.step];
+      // Moved only when out of place, so a tick does not touch the DOM.
+      if (list.children[i] !== li) list.insertBefore(li, list.children[i] || null);
       li.querySelector('.cook-timer-label b').textContent = t.label;
       li.classList.toggle('cur', t.step === current);
       var done = T.isDone(t, now);
@@ -186,7 +196,6 @@
       li.querySelector('.cook-timer-dismiss').setAttribute('aria-label', 'Dismiss ' + fullName(t) + ' timer');
       toggle.setAttribute('aria-label', (paused ? 'Resume ' : 'Pause ') + fullName(t) + ' timer');
     });
-    Object.keys(existing).forEach(function (k) { list.removeChild(existing[k]); });
   }
 
   // A running timer's button says so, so a second tap reads as a restart.
@@ -257,8 +266,11 @@
   });
 
   // A backgrounded page may not have ticked; the end timestamps make catching
-  // up exact. After htmx swaps in a new step panel its buttons need their text.
+  // up exact. After htmx swaps in a new step panel its buttons need their text,
+  // and the progress bar and timer order follow the new step. afterSwap fires
+  // as the panel lands; afterSettle comes a timer later, after htmx settles.
   document.addEventListener('visibilitychange', tick);
+  document.addEventListener('htmx:afterSwap', tick);
   document.addEventListener('htmx:afterSettle', tick);
   window.setInterval(tick, 500);
 

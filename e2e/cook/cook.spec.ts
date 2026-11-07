@@ -293,30 +293,41 @@ test('timers run side by side, keep their steps, and finish by the clock', async
   await page.getByTestId('timer-start').click();
 
   const rows = page.getByTestId('timer');
+  const dough = page.locator('[data-testid="timer"][data-step="1"]');
+  const serve = page.locator('[data-testid="timer"][data-step="6"]');
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0)).toContainText('Make the dough');
-  await expect(rows.nth(0)).toContainText('Step 1');
-  await expect(rows.nth(1)).toContainText('Top and serve.');
-  await expect(rows.nth(1)).toContainText('Step 6');
-  await expect(rows.nth(1)).toContainText('1:00');
-  // The shown step's timer leads (mockup: the main timer).
-  await expect(rows.nth(1)).toHaveClass(/\bcur\b/);
-  await expect(rows.nth(0)).not.toHaveClass(/\bcur\b/);
+  await expect(dough).toContainText('Make the dough');
+  await expect(dough).toContainText('Step 1');
+  await expect(serve).toContainText('Top and serve.');
+  await expect(serve).toContainText('Step 6');
+  await expect(serve).toContainText('1:00');
+  // The shown step's timer leads, at the top of the box (mockup: the main
+  // timer), though it was started second.
+  await expect(rows.nth(0)).toHaveAttribute('data-step', '6');
+  await expect(serve).toHaveClass(/\bcur\b/);
+  await expect(dough).not.toHaveClass(/\bcur\b/);
 
   // Jump the clock a minute in one go, as a backgrounded page would see it:
   // only an end timestamp gets this right.
   await page.clock.fastForward(60_000);
-  await expect(rows.nth(1)).toContainText('Done');
+  await expect(serve).toContainText('Done');
   // A finished timer has nothing to pause; the running one still does.
-  await expect(rows.nth(1).getByTestId('timer-toggle')).toBeHidden();
-  await expect(rows.nth(0).getByTestId('timer-toggle')).toBeVisible();
+  await expect(serve.getByTestId('timer-toggle')).toBeHidden();
+  await expect(dough.getByTestId('timer-toggle')).toBeVisible();
   await expect(page.getByTestId('timer-alert')).toContainText('Step 6: Top and serve.');
   expect(await page.evaluate(() => (window as any).__beeps)).toBeGreaterThan(0);
-  await expect(rows.nth(0)).not.toContainText('Done');
-  await expect(rows.nth(0)).toContainText('9:');
+  await expect(dough).not.toContainText('Done');
+  await expect(dough).toContainText('9:');
+
+  // Back on step 1, its timer moves to the top.
+  await page.getByTestId('step-list-toggle').click();
+  await page.getByTestId('step-list').getByRole('link', { name: 'Step 1', exact: true }).click();
+  await expect(page.getByTestId('progress')).toContainText('Step 1 of 6');
+  await expect(rows.nth(0)).toHaveAttribute('data-step', '1');
+  await expect(rows.nth(0)).toHaveClass(/\bcur\b/);
 
   await page.clock.fastForward(9 * 60_000);
-  await expect(rows.nth(0)).toContainText('Done');
+  await expect(dough).toContainText('Done');
 
   await page.getByRole('button', { name: 'Dismiss Step 6: Top and serve. timer' }).click();
   await expect(rows).toHaveCount(1);

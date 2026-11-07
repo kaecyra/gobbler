@@ -1,7 +1,6 @@
 package cook
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"net/url"
@@ -69,7 +68,8 @@ type stepView struct {
 	Text   string
 	// Title is the step's short heading, empty when it has none.
 	Title string
-	// Label names the step's timer: its title, else its text.
+	// Label names the step's timer: its title, else its text as plain text
+	// (layout.MarkdownText).
 	Label string
 	Note  string
 	// Seconds is the step's duration, 0 when unknown: no timer is offered.
@@ -125,7 +125,14 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	comp := r.Components[ref.ComponentIndex]
 	step := comp.Steps[ref.Position-1]
 
-	p.Step = stepView{Number: n, Text: step.Text, Title: step.Title, Label: cmp.Or(step.Title, step.Text), Note: display.StepNote(step), Seconds: int(step.Duration / time.Second)}
+	p.Step = stepView{Number: n, Text: step.Text, Title: step.Title, Label: step.Title, Note: display.StepNote(step), Seconds: int(step.Duration / time.Second)}
+	if p.Step.Label == "" {
+		// The label is plain text (a button name, the alert, the page
+		// title), so it is the rendered step's text, not its markdown.
+		if p.Step.Label, err = layout.MarkdownText(step.Text); err != nil {
+			return page{}, fmt.Errorf("step %d timer label: %w", n, err)
+		}
+	}
 	p.Component = comp.Name
 	if n > 1 {
 		p.PrevHref = stepHref(id, n-1, o)

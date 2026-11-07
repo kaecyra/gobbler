@@ -244,6 +244,13 @@ func TestStepWithDurationOffersALabelledTimer(t *testing.T) {
 	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=2")
 	mustContain(t, body, `data-cook-timer`, `data-step="2"`, `data-seconds="3600"`,
 		`data-label="Let it rise."`, "Start timer (1 h)")
+	// A step without a title names its timer by its text as the reader sees
+	// it, not its markdown source (ADR-00046).
+	r := pizza(t)
+	r.Components[0].Steps[1].Text = "Let it **rise** & `rest`."
+	_, body = serve(t, fakeRecipes{3: r}, "/recipes/3/cook?step=2")
+	mustContain(t, body, `data-label="Let it rise &amp; rest."`)
+	mustNotContain(t, body, `data-label="Let it **rise**`)
 	// A step with a title names its timer by it.
 	_, body = serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=1")
 	mustContain(t, body, `data-label="Make the dough"`)

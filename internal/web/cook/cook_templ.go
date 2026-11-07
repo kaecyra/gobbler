@@ -309,7 +309,7 @@ func timersPanel() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" alt=\"\" width=\"96\" height=\"93\"><div class=\"cook-timers-box\"><h2 id=\"cook-timers-h\" class=\"cook-vh\">Timers</h2><p class=\"muted\" id=\"cook-timers-empty\" data-testid=\"timers-empty\">No timers running.</p><ul id=\"cook-timer-list\" data-testid=\"timer-list\"></ul><p id=\"cook-alert\" class=\"cook-alert\" role=\"alert\" data-testid=\"timer-alert\"></p></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" alt=\"\" width=\"96\" height=\"93\"><div class=\"cook-timers-box\"><h2 id=\"cook-timers-h\" class=\"sr\">Timers</h2><p class=\"muted\" id=\"cook-timers-empty\" data-testid=\"timers-empty\">No timers running.</p><ul id=\"cook-timer-list\" data-testid=\"timer-list\"></ul><p id=\"cook-alert\" class=\"cook-alert\" role=\"alert\" data-testid=\"timer-alert\"></p></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -543,7 +543,7 @@ func stepPanel(p page) templ.Component {
 			}
 		}
 		if len(p.Lines) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<section class=\"cook-uses\" aria-labelledby=\"cook-ing-h\"><h2 id=\"cook-ing-h\" class=\"cook-vh\">Ingredients</h2><ul class=\"cook-chips\" data-testid=\"cook-ingredients\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<section class=\"cook-uses\" aria-labelledby=\"cook-ing-h\"><h2 id=\"cook-ing-h\" class=\"sr\">Ingredients</h2><ul class=\"cook-chips\" data-testid=\"cook-ingredients\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -619,7 +619,7 @@ func stepPanel(p page) templ.Component {
 			}
 		}
 		if len(p.Equipment) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<section class=\"cook-uses\" aria-labelledby=\"cook-eq-h\"><h2 id=\"cook-eq-h\" class=\"cook-vh\">Equipment</h2><ul class=\"cook-chips\" data-testid=\"cook-equipment\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<section class=\"cook-uses\" aria-labelledby=\"cook-eq-h\"><h2 id=\"cook-eq-h\" class=\"sr\">Equipment</h2><ul class=\"cook-chips\" data-testid=\"cook-equipment\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -62,7 +62,7 @@ templ timersPanel() {
 	<section class="cook-timers" aria-labelledby="cook-timers-h">
 		<img class="cook-peek" src={ layout.MascotWhisk } alt="" width="96" height="93"/>
 		<div class="cook-timers-box">
-			<h2 id="cook-timers-h" class="cook-vh">Timers</h2>
+			<h2 id="cook-timers-h" class="sr">Timers</h2>
 			<p class="muted" id="cook-timers-empty" data-testid="timers-empty">No timers running.</p>
 			<ul id="cook-timer-list" data-testid="timer-list"></ul>
 			<p id="cook-alert" class="cook-alert" role="alert" data-testid="timer-alert"></p>
@@ -109,7 +109,7 @@ templ stepPanel(p page) {
 			}
 			if len(p.Lines) > 0 {
 				<section class="cook-uses" aria-labelledby="cook-ing-h">
-					<h2 id="cook-ing-h" class="cook-vh">Ingredients</h2>
+					<h2 id="cook-ing-h" class="sr">Ingredients</h2>
 					<ul class="cook-chips" data-testid="cook-ingredients">
 						for _, l := range p.Lines {
 							<li>
@@ -128,7 +128,7 @@ templ stepPanel(p page) {
 			}
 			if len(p.Equipment) > 0 {
 				<section class="cook-uses" aria-labelledby="cook-eq-h">
-					<h2 id="cook-eq-h" class="cook-vh">Equipment</h2>
+					<h2 id="cook-eq-h" class="sr">Equipment</h2>
 					<ul class="cook-chips" data-testid="cook-equipment">
 						for _, e := range p.Equipment {
 							<li class="equip-chip">

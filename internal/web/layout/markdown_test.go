@@ -225,3 +225,24 @@ func TestMarkdownComponentWritesTheRenderedHTML(t *testing.T) {
 		t.Errorf("Markdown wrote %q", b.String())
 	}
 }
+
+func TestMarkdownTextIsWhatTheReaderSees(t *testing.T) {
+	for src, want := range map[string]string{
+		"Mix **well**.":                      "Mix well.",
+		"Use `00` flour & *cold* water <ok>": "Use 00 flour & cold water <ok>",
+		"- one\n- two":                       "one two",
+		"line one\nline two":                 "line one line two",
+		"> rest it\n\nthen bake":             "rest it then bake",
+		"see [the video](https://x.test/v)":  "see the video",
+		"# not a heading":                    "# not a heading",
+		"":                                   "",
+	} {
+		got, err := MarkdownText(src)
+		if err != nil {
+			t.Fatalf("MarkdownText(%q): %v", src, err)
+		}
+		if got != want {
+			t.Errorf("MarkdownText(%q) = %q, want %q", src, got, want)
+		}
+	}
+}
