@@ -3,6 +3,7 @@ package catalog_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync/atomic"
 	"testing"
 
@@ -431,7 +432,7 @@ func TestAnOperatorWhoIsAMemberEditsTheCentralIngredient(t *testing.T) {
 			t.Fatalf("%s: %v", who, err)
 		}
 		if in.Name != "zz basil leaves" || in.Aisle != "herbs" || in.DensityGPerML == nil || *in.DensityGPerML != density ||
-			len(in.Aliases) != 2 || in.Aliases[0] != "zz genovese basil" && in.Aliases[1] != "zz genovese basil" {
+			!slices.Equal(slices.Sorted(slices.Values(in.Aliases)), []string{"zz genovese basil", "zz sweet basil"}) {
 			t.Errorf("%s reads %+v, want the operator's edit", who, in)
 		}
 	}

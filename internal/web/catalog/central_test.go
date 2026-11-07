@@ -115,6 +115,9 @@ func TestCentralEditFormLetsTheOperatorChangeTheNameAndDensity(t *testing.T) {
 	if !strings.Contains(body, `value="zz sage" required>`) {
 		t.Errorf("the name is not editable\n%s", body)
 	}
+	if !strings.Contains(body, `inputmode="decimal">`) || strings.Contains(body, `inputmode="decimal" readonly`) {
+		t.Errorf("the density is not editable\n%s", body)
+	}
 	if !strings.Contains(body, `value="170931" inputmode="numeric" readonly>`) {
 		t.Errorf("the USDA id is not shown read-only\n%s", body)
 	}
@@ -165,11 +168,19 @@ func TestCentralSaveShowsProblemsInline(t *testing.T) {
 		t.Errorf("the conflict is not shown on the form\n%s", body)
 	}
 
+	w = doCentral(cat, true, http.MethodPost, target, url.Values{"name": {"zz sage"}, "aliases": {"zz thyme"}, "aisle": {"produce"}})
+	if w.Code != http.StatusConflict {
+		t.Errorf("alias naming another entry = %d, want 409", w.Code)
+	}
+	if body := w.Body.String(); !strings.Contains(body, `data-testid="form-error"`) || !strings.Contains(body, "is already used by") {
+		t.Errorf("the alias conflict is not shown on the form\n%s", body)
+	}
+
 	w = doCentral(cat, true, http.MethodPost, target, url.Values{"name": {"zz sage"}, "aisle": {"produce"}, "density": {"heavy"}})
 	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), densityMessage) {
 		t.Errorf("bad density = %d, want 400 with the density message\n%s", w.Code, w.Body)
 	}
-	if got, err := cat.GetIngredient(context.Background(), sage.ID); err != nil || got.Name != "zz sage" || got.DensityGPerML != nil {
+	if got, err := cat.GetIngredient(context.Background(), sage.ID); err != nil || got.Name != "zz sage" || got.DensityGPerML != nil || len(got.Aliases) != 0 {
 		t.Errorf("a refused save changed the ingredient: %+v, %v", got, err)
 	}
 }
