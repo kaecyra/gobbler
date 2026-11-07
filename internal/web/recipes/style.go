@@ -23,7 +23,7 @@ const libraryStyle = `
 .hero .search { width: 100%; max-width: 680px; padding: 6px 10px 6px 20px; border-radius: var(--r); }
 .hero .search input { font-size: 20px; padding: 14px 0; min-height: var(--tap); }
 .hero.compact { align-items: stretch; text-align: left; padding-block: 0 22px; }
-.hero.compact .search { max-width: 640px; }
+.hero.compact .search { max-width: none; }
 .search kbd { min-height: 0; }
 
 .lib { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 32px; align-items: start; }
