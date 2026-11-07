@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/auth"
-	"github.com/kaecyra/gobbler/internal/household"
 )
 
 // OperatorPaths are the operator's pages (ADR-00018, Invitations). Admits
@@ -150,7 +150,7 @@ func offerSignOut(ctx context.Context) bool {
 // visible reports whether the nav shows item to the request in ctx: exactly
 // when Admits would let that request open it.
 func visible(ctx context.Context, item navItem) bool {
-	_, member := household.FromContext(ctx)
+	_, member := apihouseholds.FromContext(ctx)
 	return Admits(item.Path, member, IsOperator(ctx))
 }
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/web/layout"
 
-	domain "github.com/kaecyra/gobbler/internal/household"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 )
 
 func acceptPage(v acceptView) templ.Component {
@@ -69,7 +69,7 @@ func acceptPage(v acceptView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			} else if v.Kind == domain.KindJoin {
+			} else if v.Kind == apihouseholds.KindJoin {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p data-testid=\"invitation-join\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

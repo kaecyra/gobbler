@@ -9,9 +9,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/parse"
 )
@@ -29,7 +29,7 @@ type tools struct {
 // services (their Caller types alias caller.Caller): the credential's owner and
 // the household the membership check admitted it to. A household key has no
 // owner, only the household (ADR-00031).
-func callerOf(c Credential, h household.Household) caller.Caller {
+func callerOf(c Credential, h apihouseholds.Household) caller.Caller {
 	return caller.Caller{Person: c.Email, Household: h, HouseholdKey: c.Email == "" && c.HouseholdID != 0}
 }
 

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	weboauth "github.com/kaecyra/gobbler/internal/web/oauth"
@@ -92,13 +92,13 @@ func admitBearer(members memberLookup, ops config.Operator, next http.Handler, w
 		layout.WriteError(w, r, layout.ErrNotFound)
 		return
 	}
-	h := household.Household{ID: c.HouseholdID, Name: c.HouseholdName}
+	h := apihouseholds.Household{ID: c.HouseholdID, Name: c.HouseholdName}
 	if c.HouseholdID == 0 {
 		var err error
 		h, err = members.ForEmail(r.Context(), c.Email)
 		switch {
 		case err == nil:
-		case errors.Is(err, household.ErrNotFound), errors.Is(err, household.ErrInvalid):
+		case errors.Is(err, apihouseholds.ErrNotFound), errors.Is(err, apihouseholds.ErrInvalid):
 			http.Error(w, "this credential's owner is not a member of a household", http.StatusForbidden)
 			return
 		default:
@@ -110,5 +110,5 @@ func admitBearer(members memberLookup, ops config.Operator, next http.Handler, w
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	next.ServeHTTP(w, r.WithContext(household.WithContext(r.Context(), h)))
+	next.ServeHTTP(w, r.WithContext(apihouseholds.WithContext(r.Context(), h)))
 }

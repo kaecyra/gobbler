@@ -1,7 +1,7 @@
 package household
 
 import "github.com/kaecyra/gobbler/internal/web/layout"
-import domain "github.com/kaecyra/gobbler/internal/household"
+import apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 
 templ acceptPage(v acceptView) {
 	@layout.Page("Invitation") {
@@ -12,7 +12,7 @@ templ acceptPage(v acceptView) {
 				if v.Member {
 					<p class="alert" role="alert" data-testid="invitation-member">You already belong to a household. Leave it first, then open this invitation again.</p>
 					<p><a class="link" href="/household">Your household</a></p>
-				} else if v.Kind == domain.KindJoin {
+				} else if v.Kind == apihouseholds.KindJoin {
 					<p data-testid="invitation-join">{ v.IssuedBy } invited you to join <strong>{ v.Household }</strong>. The invitation expires { v.Expires }.</p>
 					<form method="post" action={ templ.SafeURL(acceptPath(v.Code)) }>
 						<button type="submit" class="btn accent">Join { v.Household }</button>

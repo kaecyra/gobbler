@@ -19,10 +19,10 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
@@ -143,7 +143,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 	if d.Recipes == nil {
 		svc, err := apirecipes.New(apirecipes.Deps{
-			Recipes: apirecipes.NewStore(d.DB), Catalog: apicatalog.NewStore(d.DB), Members: household.New(d.DB),
+			Recipes: apirecipes.NewStore(d.DB), Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB),
 			Pictures: d.Pictures, Reaper: apirecipes.NewReaper(d.Media, d.Logger),
 			Thumbnails: video.NewFetcherAt(d.Config.Video.ThumbnailHost),
 		})
@@ -154,16 +154,16 @@ func newRouter(d Deps) (*chi.Mux, error) {
 	}
 
 	if d.Catalog == nil {
-		svc, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: household.New(d.DB)})
+		svc, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB)})
 		if err != nil {
 			return nil, fmt.Errorf("web: build the catalog service: %w", err)
 		}
 		d.Catalog = svc.Bind(caller.FromContext)
 	}
 
-	var members memberLookup = household.New(d.DB)
+	var members memberLookup = apihouseholds.NewStore(d.DB)
 	if d.Config.Server.DevAuthBypass {
-		members = &devSeeded{store: household.New(d.DB)}
+		members = &devSeeded{store: apihouseholds.NewStore(d.DB)}
 	}
 
 	r := chi.NewRouter()

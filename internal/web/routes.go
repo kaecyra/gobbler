@@ -10,12 +10,12 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apijournal "github.com/kaecyra/gobbler/internal/api/journal"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/profile"
@@ -82,7 +82,7 @@ func mountFeatures(r chi.Router, d Deps) {
 // that cannot be built leaves the route answering 500 with the cause, as the
 // shopping pages do, so a bad build is a loud failure and not a missing page.
 func mountJournal(r chi.Router, d Deps) {
-	svc, err := apijournal.New(apijournal.Deps{Recipes: apirecipes.NewStore(d.DB), Members: household.New(d.DB)})
+	svc, err := apijournal.New(apijournal.Deps{Recipes: apirecipes.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB)})
 	if err != nil {
 		log := d.Logger
 		if log == nil {
@@ -101,7 +101,7 @@ func mountJournal(r chi.Router, d Deps) {
 // (ADR-00043). cat is the merging store and usage its counter, so the page
 // merges and counts through the service.
 func mountCatalogPage(r chi.Router, d Deps, cat *apicatalog.Store, usage *apicatalog.Usage) {
-	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: household.New(d.DB), Usage: usage})
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: apihouseholds.NewStore(d.DB), Usage: usage})
 	if err != nil {
 		// Unreachable while the deps above are non-nil; fail loud if that changes.
 		log := d.Logger
@@ -136,7 +136,7 @@ func mountCatalog(r chi.Router, d Deps) {
 	shop := apishop.NewStore(d.DB, rec, cat)
 	shop.RegisterMergeHooks(cat)
 	shop.RegisterUsageCounters(usage)
-	svc, err := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: household.New(d.DB)})
+	svc, err := apishop.New(apishop.Deps{Lists: shop, Recipes: rec, Catalog: cat, Members: apihouseholds.NewStore(d.DB)})
 	if err != nil {
 		// Every route still exists and answers 500 with the cause, as the MCP
 		// endpoint does, so a bad build is a loud failure and not a missing page.
@@ -159,7 +159,7 @@ func mountCatalog(r chi.Router, d Deps) {
 // It is the only household store that removes members, so it is the one that
 // ends a former member's sessions (ADR-00030).
 func mountHouseholds(r chi.Router, d Deps) {
-	hs := household.New(d.DB)
+	hs := apihouseholds.NewStore(d.DB)
 	// Nil exactly when sign-in is not mounted (newRouter checks), and then
 	// there are no sessions to end.
 	if d.Sessions != nil {
@@ -171,9 +171,30 @@ func mountHouseholds(r chi.Router, d Deps) {
 	hs.OnMemberLeave(keys.RevokeForMember)
 	// And their OAuth grants (ADR-00034), in that same transaction.
 	hs.OnMemberLeave(oauth.New(d.DB).RevokeForMember)
-	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: pictures.Households{Store: hs, Reaper: apirecipes.NewReaper(d.Media, d.Logger)}, Keys: keys}))
-	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: hs}))
-	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: hs}))
+	// Deleting a household also deletes its picture objects (ADR-00039), which
+	// the store the service calls does through pictures.Households.
+	svc, err := apihouseholds.New(apihouseholds.Deps{
+		Households: pictures.Households{Store: hs, Reaper: apirecipes.NewReaper(d.Media, d.Logger)},
+		Operators:  d.Config.Operator,
+	})
+	if err != nil {
+		// Unreachable while the deps above are non-nil; fail loud if that changes.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("household pages unavailable", "error", err.Error())
+		unavailable := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the household pages are not available: "+err.Error(), http.StatusInternalServerError)
+		})
+		r.Mount(webhousehold.Pattern, unavailable)
+		r.Mount(webhousehold.InvitationsPattern, unavailable)
+		r.Mount(operator.Pattern, unavailable)
+		return
+	}
+	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: svc, Keys: keys}))
+	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: svc}))
+	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: svc}))
 }
 
 // mountPromotion mounts the operator's review of overlay entries suggested for
@@ -184,7 +205,7 @@ func mountPromotion(r chi.Router, d Deps) {
 	cat := apicatalog.NewStore(d.DB)
 	apirecipes.NewStore(d.DB).RegisterMergeHooks(cat)
 	apishop.NewStore(d.DB, apirecipes.NewStore(d.DB), cat).RegisterMergeHooks(cat)
-	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: household.New(d.DB), Operators: d.Config.Operator})
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: cat, Members: apihouseholds.NewStore(d.DB), Operators: d.Config.Operator})
 	if err != nil {
 		// Unreachable while the deps above are non-nil; fail loud if that changes.
 		log := d.Logger
@@ -203,7 +224,7 @@ func mountPromotion(r chi.Router, d Deps) {
 // mountSharing mounts the pages that send a recipe copy to another household
 // and accept or decline one sent to this household (ADR-00018, Sharing).
 func mountSharing(r chi.Router, d Deps) {
-	hs := household.New(d.DB)
+	hs := apihouseholds.NewStore(d.DB)
 	svc, err := apisharing.New(apisharing.Deps{Recipes: apirecipes.NewStore(d.DB), Households: hs, Catalog: apicatalog.NewStore(d.DB), Members: hs})
 	if err != nil {
 		// Unreachable while the deps above are non-nil; fail loud if that changes.
@@ -224,7 +245,7 @@ func mountSharing(r chi.Router, d Deps) {
 // sized flag behind the scaled view's larger-pan hint is set (ADR-00019). It
 // sits under /operator, so the membership middleware admits only an operator.
 func mountEquipment(r chi.Router, d Deps) {
-	svc, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: household.New(d.DB), Operators: d.Config.Operator})
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB), Operators: d.Config.Operator})
 	if err != nil {
 		// Unreachable while the deps above are non-nil; fail loud if that changes.
 		log := d.Logger
@@ -245,7 +266,7 @@ func mountEquipment(r chi.Router, d Deps) {
 // sections later nodes add to the page take what they need from these deps.
 func mountProfile(r chi.Router, d Deps) {
 	r.Mount(webprofile.Pattern, webprofile.Routes(webprofile.Deps{
-		Profiles: profile.New(d.DB), Households: household.New(d.DB),
+		Profiles: profile.New(d.DB), Households: apihouseholds.NewStore(d.DB),
 		DB: d.DB, Config: d.Config, Sessions: d.Sessions, Avatars: d.Avatars,
 	}))
 }
@@ -270,7 +291,7 @@ func mountMCP(r chi.Router, d Deps) {
 	if log == nil {
 		log = slog.Default()
 	}
-	deps, err := mcp.NewDeps(d.Recipes, rec, shop, household.New(d.DB), cat, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
+	deps, err := mcp.NewDeps(d.Recipes, rec, shop, apihouseholds.NewStore(d.DB), cat, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
 	if err == nil {
 		var h http.Handler
 		if h, err = mcp.Routes(deps); err == nil {

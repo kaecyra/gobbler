@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
@@ -60,7 +61,11 @@ func newSite(t *testing.T) *site {
 			next.ServeHTTP(w, r.WithContext(domain.WithContext(r.Context(), hh)))
 		})
 	})
-	r.Mount(Pattern, MemberRoutes(Deps{Households: hs, Keys: keys}))
+	svc, err := apihouseholds.New(apihouseholds.Deps{Households: hs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Mount(Pattern, MemberRoutes(Deps{Households: svc, Keys: keys}))
 	return &site{h: r, hs: hs, keys: keys}
 }
 

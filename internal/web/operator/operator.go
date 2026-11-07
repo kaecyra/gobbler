@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/auth"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -15,12 +15,13 @@ import (
 // layout.OperatorPaths, which is what keeps everyone but an operator out.
 const Pattern = "/operator"
 
-// Households is what the pages use from the household store.
-// *household.Store satisfies it.
+// Households is what the pages call: the Operator* methods of the household
+// service (ADR-00043), which check the operator and not membership.
+// *households.Service satisfies it.
 type Households interface {
-	Invite(ctx context.Context, in household.Invite) (string, error)
-	Revoke(ctx context.Context, code, issuedBy string) error
-	PendingHouseholdInvitations(ctx context.Context, issuer string) ([]household.Invitation, error)
+	OperatorInvite(ctx context.Context, c apihouseholds.Caller, email string) (string, error)
+	OperatorRevoke(ctx context.Context, c apihouseholds.Caller, code string) error
+	OperatorPending(ctx context.Context, c apihouseholds.Caller) ([]apihouseholds.Invitation, error)
 }
 
 // Deps is what the routes need.
@@ -52,32 +53,41 @@ func operatorEmail(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return email, true
 }
 
-func (h *handler) show(w http.ResponseWriter, r *http.Request) {
+// operatorCaller is the Caller of an operator's request: the verified email and
+// no household, since an operator need not be a member of one. operatorEmail
+// is the second lock; the service checks the operator a third time.
+func operatorCaller(w http.ResponseWriter, r *http.Request) (apihouseholds.Caller, bool) {
 	email, ok := operatorEmail(w, r)
+	if !ok {
+		return apihouseholds.Caller{}, false
+	}
+	return apihouseholds.Caller{Person: email}, true
+}
+
+func (h *handler) show(w http.ResponseWriter, r *http.Request) {
+	c, ok := operatorCaller(w, r)
 	if !ok {
 		return
 	}
-	pending, err := h.Households.PendingHouseholdInvitations(r.Context(), email)
+	pending, err := h.Households.OperatorPending(r.Context(), c)
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
 	}
-	layout.Render(w, r, http.StatusOK, invitationsPage(invitationsView{Pending: layout.NewPendingInvitations(email, pending)}))
+	layout.Render(w, r, http.StatusOK, invitationsPage(invitationsView{Pending: layout.NewPendingInvitations(c.Person, pending)}))
 }
 
 func (h *handler) invite(w http.ResponseWriter, r *http.Request) {
-	email, ok := operatorEmail(w, r)
+	c, ok := operatorCaller(w, r)
 	if !ok {
 		return
 	}
-	_, err := h.Households.Invite(r.Context(), household.Invite{
-		Kind: household.KindHousehold, Email: r.PostFormValue("email"), IssuedBy: email,
-	})
+	_, err := h.Households.OperatorInvite(r.Context(), c, r.PostFormValue("email"))
 	redirect(w, r, err)
 }
 
 func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
-	email, ok := operatorEmail(w, r)
+	c, ok := operatorCaller(w, r)
 	if !ok {
 		return
 	}
@@ -86,7 +96,7 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	redirect(w, r, h.Households.Revoke(r.Context(), code, email))
+	redirect(w, r, h.Households.OperatorRevoke(r.Context(), c, code))
 }
 
 func redirect(w http.ResponseWriter, r *http.Request, err error) {

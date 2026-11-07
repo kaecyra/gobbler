@@ -1,7 +1,7 @@
 package household
 
 import (
-	domain "github.com/kaecyra/gobbler/internal/household"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -28,7 +28,7 @@ func revokePath(code string) string {
 type acceptView struct {
 	Code      string
 	Self      string
-	Kind      domain.Kind
+	Kind      apihouseholds.Kind
 	Household string
 	IssuedBy  string
 	Expires   string

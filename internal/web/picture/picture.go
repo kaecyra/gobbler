@@ -24,8 +24,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
+	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
-	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -246,9 +246,9 @@ func writeImage(w http.ResponseWriter, b []byte) {
 // household's picture objects (ADR-00039). It embeds the store, so it is a
 // drop-in for the members page, whose Delete it replaces.
 type Households struct {
-	*household.Store
+	*apihouseholds.Store
 	// Reaper is *picture.Reaper.
-	Reaper household.PictureReaper
+	Reaper apihouseholds.PictureReaper
 }
 
 // Delete deletes the household and, after the delete commits, its pictures.
