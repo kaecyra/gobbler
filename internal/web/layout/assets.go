@@ -22,6 +22,7 @@ const (
 	MascotHerbs      = "/static/img/gob-herbs.svg"
 	MascotPie        = "/static/img/gob-full-pie.svg"
 	MascotTasting    = "/static/img/gob-tasting.svg"
+	MascotWink       = "/static/img/gob-wink.svg"
 )
 
 // The repository the footer links, as a URL and as the text shown for it.

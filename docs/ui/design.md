@@ -80,9 +80,9 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   leaf.
 - **Mascots.** Each drawing is its own embedded SVG file, served cached:
   `gob` in the header, plus `gob-full-rolling-pin`, `gob-full-mixing-bowl`,
-  `gob-whisk`, `gob-herbs`, `gob-full-pie` and `gob-tasting` for the panels,
-  timers and empty states. A mascot is never clipped. In a box he is shown
-  whole, standing on a baseline.
+  `gob-whisk`, `gob-herbs`, `gob-full-pie`, `gob-tasting` and `gob-wink` for
+  the panels, timers and empty states. A mascot is never clipped. In a box he
+  is shown whole, standing on a baseline.
 
 ## Components
 
@@ -220,7 +220,7 @@ equipment review was linked from nowhere.
   - The suggestion offers recipes never made first, by name, then those not
     made in a while, made longest ago first. On the library it skips the
     recipe the haven't-made-in-a-while panel names, so the two never repeat.
-  - The suggestion is a library card, total time included: a small mascot
+  - The suggestion is a library card, total time included: a small winking mascot
     head speaks the voice line above it.
   - Haven't made in a while shows the rating as spoons.
   - A panel with nothing to show is not drawn. With none to draw, the library
