@@ -4320,7 +4320,8 @@
       ],
       "owns": [
         "internal/web/layout/httperr.go",
-        "internal/api/**"
+        "internal/api/**",
+        "internal/web/layout/httperr*_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
