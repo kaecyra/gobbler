@@ -1,0 +1,80 @@
+package catalog
+
+import (
+	"fmt"
+
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+func centralURL(id int64) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("%s/%d", CentralPattern, id))
+}
+
+templ centralListPage(v centralListView) {
+	@layout.Page("Central ingredients") {
+		<div class="pg wide">
+			<div class="screen-h">
+				<div>
+					<h1>Central ingredients</h1>
+					<p>Every household reads these ingredients, so a change here shows in every household's catalog. A household that chose its own aisle for an ingredient keeps that aisle, and its own aliases stay alongside the ones here.</p>
+				</div>
+			</div>
+			<form class="fields find panel" method="get" action="/operator/ingredients" role="search" data-testid="central-filter">
+				<label for="q">Filter ingredients</label>
+				<input type="search" id="q" name="q" value={ v.Query }/>
+				<button type="submit" class="btn primary">Filter</button>
+			</form>
+			<section class="panel" aria-labelledby="central-h" data-testid="central">
+				<h2 id="central-h">All central ingredients</h2>
+				if len(v.Rows) == 0 {
+					<p class="muted" data-testid="central-empty">
+						if v.Total == 0 {
+							The central catalog is empty.
+						} else {
+							No ingredient matches the filter.
+						}
+					</p>
+				} else {
+					<div class="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th scope="col">Name</th>
+									<th scope="col">Aisle</th>
+									<th scope="col">Also called</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, r := range v.Rows {
+									<tr data-testid="central-row">
+										<td><a href={ centralURL(r.ID) }>{ r.Name }</a></td>
+										<td>{ r.Aisle }</td>
+										<td>{ r.Aliases }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</section>
+			<p><a class="link" href="/operator">Household invitations</a></p>
+		</div>
+	}
+}
+
+templ centralEditPage(f formView) {
+	@layout.Page("Edit " + f.Name) {
+		<div class="pg">
+			<div class="screen-h"><h1>Edit central ingredient</h1></div>
+			<p><a class="link" href="/operator/ingredients">Back to the central ingredients</a></p>
+			@fieldProblem(f.Problem(fieldForm), fieldForm+"-error")
+			<p class="muted" data-testid="central-note">
+				Every household reads this ingredient. The USDA FoodData Central id is set by the USDA import and stays as it is.
+			</p>
+			<form class="panel stack" method="post" action={ centralURL(f.ID) } data-testid="edit-form">
+				@ingredientFields(f)
+				<button type="submit" class="btn primary">Save</button>
+			</form>
+		</div>
+	}
+}

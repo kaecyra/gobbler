@@ -21,10 +21,12 @@
 // shopping service's catalog reads, a page's Catalog interface): it holds a
 // function that names the Caller from that context and sends every call through
 // the Service. And the operator's curation of the central catalog (the
-// promotions and the equipment review, the Operator* methods) reaches across
-// households, so it checks the Caller's person against the configured operators
-// instead of membership (ADR-00043): an operator need not be a member of any
-// household.
+// promotions, the equipment review and the central ingredient edits, the
+// Operator* methods) reaches across households, so it checks the Caller's
+// person against the configured operators instead of membership (ADR-00043):
+// an operator need not be a member of any household. The ingredient ones also
+// drop any household from the context, so an operator who is a member edits
+// the central entry and not their household's overlay.
 package catalog
 
 import (
@@ -389,6 +391,48 @@ func (s *Service) OperatorUpdateEquipment(ctx context.Context, c Caller, in Equi
 	return s.catalog.UpdateEquipment(ctx, in)
 }
 
+// central admits an operator and returns ctx with no household on it, so the
+// ingredient calls made on it run in the central scope: they see only central
+// entries and write the central row. An operator who is also a member arrives
+// with that household on the context, and in its scope an edit of a central
+// entry would become the household's own aliases and aisle (ADR-00018).
+func (s *Service) central(ctx context.Context, c Caller) (context.Context, error) {
+	if err := s.operator(c); err != nil {
+		return nil, err
+	}
+	return household.WithoutHousehold(ctx), nil
+}
+
+// OperatorListIngredients returns the central catalog's ingredients for the
+// operator to curate. No household's overlay entries are among them.
+func (s *Service) OperatorListIngredients(ctx context.Context, c Caller) ([]Ingredient, error) {
+	ctx, err := s.central(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	return s.catalog.ListIngredients(ctx)
+}
+
+// OperatorGetIngredient returns central ingredient id, or ErrNotFound for an
+// id that does not exist or is a household's overlay entry.
+func (s *Service) OperatorGetIngredient(ctx context.Context, c Caller, id int64) (Ingredient, error) {
+	ctx, err := s.central(ctx, c)
+	if err != nil {
+		return Ingredient{}, err
+	}
+	return s.catalog.GetIngredient(ctx, id)
+}
+
+// OperatorUpdateIngredient saves in over the central ingredient with its id,
+// every field and the central aliases. An overlay entry's id is ErrNotFound.
+func (s *Service) OperatorUpdateIngredient(ctx context.Context, c Caller, in Ingredient) error {
+	ctx, err := s.central(ctx, c)
+	if err != nil {
+		return err
+	}
+	return s.catalog.UpdateIngredient(ctx, in)
+}
+
 // OperatorListSuggestedIngredients returns the overlay entries households
 // suggested for the central catalog, without the household that suggested them.
 func (s *Service) OperatorListSuggestedIngredients(ctx context.Context, c Caller) ([]Ingredient, error) {
@@ -527,6 +571,21 @@ func (b *Bound) OperatorGetEquipment(ctx context.Context, id int64) (Equipment, 
 // OperatorUpdateEquipment is Service.OperatorUpdateEquipment.
 func (b *Bound) OperatorUpdateEquipment(ctx context.Context, in Equipment) error {
 	return b.s.OperatorUpdateEquipment(ctx, b.who(ctx), in)
+}
+
+// OperatorListIngredients is Service.OperatorListIngredients.
+func (b *Bound) OperatorListIngredients(ctx context.Context) ([]Ingredient, error) {
+	return b.s.OperatorListIngredients(ctx, b.who(ctx))
+}
+
+// OperatorGetIngredient is Service.OperatorGetIngredient.
+func (b *Bound) OperatorGetIngredient(ctx context.Context, id int64) (Ingredient, error) {
+	return b.s.OperatorGetIngredient(ctx, b.who(ctx), id)
+}
+
+// OperatorUpdateIngredient is Service.OperatorUpdateIngredient.
+func (b *Bound) OperatorUpdateIngredient(ctx context.Context, in Ingredient) error {
+	return b.s.OperatorUpdateIngredient(ctx, b.who(ctx), in)
 }
 
 // OperatorListSuggestedIngredients is Service.OperatorListSuggestedIngredients.

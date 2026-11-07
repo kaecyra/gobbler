@@ -122,47 +122,7 @@ templ editPage(f formView) {
 			</p>
 		}
 		<form class="panel stack" method="post" action={ templ.SafeURL(postURL(f.ID, "")) } data-testid="edit-form">
-			<p>
-				<label for="name">Name</label>
-				<input type="text" id="name" name="name" value={ f.Name } required readonly?={ f.Central }/>
-				<span class="hint">The bare name, without preparation: "butter", not "melted butter".</span>
-			</p>
-			@fieldProblem(f.Problem(fieldName), fieldName+"-error")
-			<p>
-				<label for="aliases">Aliases</label>
-				<textarea id="aliases" name="aliases" rows="4">{ f.Aliases }</textarea>
-				<span class="hint">One per line: plurals and synonyms.</span>
-			</p>
-			<p>
-				<label for="aisle">Aisle</label>
-				<input type="text" id="aisle" name="aisle" value={ f.Aisle } list="aisles" autocomplete="off" required/>
-				<datalist id="aisles">
-					for _, a := range f.Aisles {
-						<option value={ a }></option>
-					}
-				</datalist>
-				<link rel="stylesheet" href={ layout.SuggestStylePath }/>
-				<script src={ layout.SuggestScriptPath } defer></script>
-			</p>
-			@fieldProblem(f.Problem(fieldAisle), fieldAisle+"-error")
-			<p>
-				<label for="density">Density (grams per millilitre)</label>
-				<input type="text" id="density" name="density" value={ f.Density } inputmode="decimal" readonly?={ f.Central }/>
-			</p>
-			@fieldProblem(f.Problem(fieldDensity), fieldDensity+"-error")
-			<p>
-				<label for="usda_id">USDA FoodData Central id</label>
-				<input type="text" id="usda_id" name="usda_id" value={ f.USDAID } inputmode="numeric" readonly?={ f.Central }/>
-			</p>
-			@fieldProblem(f.Problem(fieldUSDA), fieldUSDA+"-error")
-			if !f.Central {
-				<p>
-					<label class="check">
-						<input type="checkbox" name="reviewed" value="1" checked?={ f.Reviewed }/>
-						Reviewed
-					</label>
-				</p>
-			}
+			@ingredientFields(f)
 			<button type="submit" class="btn primary">Save</button>
 		</form>
 		if !f.Central {
@@ -180,6 +140,53 @@ templ editPage(f formView) {
 			}
 		}
 		</div>
+	}
+}
+
+// ingredientFields are the edit form's fields, shared by the household's
+// catalog page and the operator's central ingredient page. Which of them can
+// be changed follows formView.
+templ ingredientFields(f formView) {
+	<p>
+		<label for="name">Name</label>
+		<input type="text" id="name" name="name" value={ f.Name } required readonly?={ f.locked() }/>
+		<span class="hint">The bare name, without preparation: "butter", not "melted butter".</span>
+	</p>
+	@fieldProblem(f.Problem(fieldName), fieldName+"-error")
+	<p>
+		<label for="aliases">Aliases</label>
+		<textarea id="aliases" name="aliases" rows="4">{ f.Aliases }</textarea>
+		<span class="hint">One per line: plurals and synonyms.</span>
+	</p>
+	<p>
+		<label for="aisle">Aisle</label>
+		<input type="text" id="aisle" name="aisle" value={ f.Aisle } list="aisles" autocomplete="off" required/>
+		<datalist id="aisles">
+			for _, a := range f.Aisles {
+				<option value={ a }></option>
+			}
+		</datalist>
+		<link rel="stylesheet" href={ layout.SuggestStylePath }/>
+		<script src={ layout.SuggestScriptPath } defer></script>
+	</p>
+	@fieldProblem(f.Problem(fieldAisle), fieldAisle+"-error")
+	<p>
+		<label for="density">Density (grams per millilitre)</label>
+		<input type="text" id="density" name="density" value={ f.Density } inputmode="decimal" readonly?={ f.locked() }/>
+	</p>
+	@fieldProblem(f.Problem(fieldDensity), fieldDensity+"-error")
+	<p>
+		<label for="usda_id">USDA FoodData Central id</label>
+		<input type="text" id="usda_id" name="usda_id" value={ f.USDAID } inputmode="numeric" readonly?={ f.Central }/>
+	</p>
+	@fieldProblem(f.Problem(fieldUSDA), fieldUSDA+"-error")
+	if !f.Central {
+		<p>
+			<label class="check">
+				<input type="checkbox" name="reviewed" value="1" checked?={ f.Reviewed }/>
+				Reviewed
+			</label>
+		</p>
 	}
 }
 
