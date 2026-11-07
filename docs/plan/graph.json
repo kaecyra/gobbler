@@ -4533,7 +4533,7 @@
       "wave": 13,
       "track": null,
       "issue": 554,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/store/queries/usage.sql",
@@ -4557,7 +4557,7 @@
       "wave": 13,
       "track": null,
       "issue": 555,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "c-use-counts"
       ],
@@ -4577,7 +4577,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Owner ruling 2026-11-07. PR #560. Rebases after c-use-counts (routes.go, web/catalog/view.go)."
+      "note": "Merged fcfe07f (#560). Its squash also touched docs/plan/graph.json: the branch widened its own lane through graph-node. Status set with --force for that reason; no done[] entry."
     },
     {
       "id": "q-qualifier-commas",
@@ -4585,7 +4585,7 @@
       "wave": 13,
       "track": null,
       "issue": 559,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/web/recipeview/view.templ",
@@ -4597,7 +4597,7 @@
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Owner ruling 2026-11-07."
+      "note": "Merged 53bcc98 (#563). Its squash also touched docs/plan/graph.json: the branch widened its own lane through graph-node. Status set with --force for that reason; no done[] entry."
     },
     {
       "id": "m-markdown-steps",
@@ -4605,7 +4605,7 @@
       "wave": 13,
       "track": null,
       "issue": 557,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "q-qualifier-commas"
       ],
@@ -4634,7 +4634,7 @@
       "wave": 13,
       "track": null,
       "issue": 558,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/recipe/model_fields.go",
@@ -4654,7 +4654,7 @@
       ],
       "needs_migration": "schema",
       "adrs": [],
-      "note": "Owner ruling 2026-11-07: machine mixing and kneading only; hand stirring stays prep. Follows #403 (serve)."
+      "note": "Merged 51a6efa (#564). Its squash also touched docs/plan/graph.json: the branch widened its own lane through graph-node. Status set with --force for that reason; no done[] entry."
     },
     {
       "id": "k-cook-mockup",
@@ -4662,7 +4662,7 @@
       "wave": 13,
       "track": null,
       "issue": 561,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "m-markdown-steps"
       ],
@@ -6140,6 +6140,27 @@
       "title": "the status table maps internal/api errors, not domain sentinels",
       "merged": "15a9695",
       "note": "ADR-00043. Switches internal/web/layout/httperr.go from domain sentinels to the internal/api re-exports added by every earlier a-api node, and deletes the httperr.go exception in .golangci.yml. Status codes are unchanged."
+    },
+    {
+      "id": "c-use-counts",
+      "title": "recipe use counts on the catalog page",
+      "merged": "8dcc4c7",
+      "note": "Owner ruling 2026-11-07. Per-household recipe counts; PR #556."
+    },
+    {
+      "id": "m-markdown-steps",
+      "title": "markdown in recipe steps and author notes",
+      "merged": "03c8f4d",
+      "adrs": [
+        "00046"
+      ],
+      "note": "Owner ruling 2026-11-07 (ADR-00046)."
+    },
+    {
+      "id": "k-cook-mockup",
+      "title": "cook mode matches the mockup",
+      "merged": "15c8753",
+      "note": "Owner 2026-11-07: cook mode is ugly. Target docs/ui/mockup.html #cook. Also renders step and author-note text through the ADR-00046 markdown renderer m-markdown-steps adds."
     }
   ],
   "adr_sequence": {
