@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kaecyra/gobbler/internal/apikey"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -27,9 +27,6 @@ func (h *handler) keysRoutes(r chi.Router) {
 	r.Post("/keys/{"+keyIDParam+"}/revoke", h.revokeKey)
 }
 
-// keys is the key store over the page's database.
-func (h *handler) keys() *apikey.Store { return apikey.New(h.DB) }
-
 func selfSubject(r *http.Request) (subject, error) {
 	s, ok := subjectFrom(r.Context())
 	if !ok || !s.Self() {
@@ -45,7 +42,7 @@ func (h *handler) keysPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := newView(s)
-	keys, err := h.keys().ListPersonal(r.Context(), s.Profile.Email)
+	keys, err := h.Profile.ListKeys(r.Context(), callerOf(r))
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return
@@ -60,13 +57,9 @@ func (h *handler) createKey(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
-	life, err := apikey.LifetimeFor(r.PostFormValue("lifetime"))
-	var secret string
-	if err == nil {
-		secret, err = h.keys().CreatePersonal(r.Context(), s.Profile.Email, r.PostFormValue("name"), life.Duration())
-	}
+	secret, err := h.Profile.CreateKey(r.Context(), callerOf(r), r.PostFormValue("name"), r.PostFormValue("lifetime"))
 	if err != nil {
-		if reason, ok := apikey.InvalidReason(err); ok {
+		if reason, ok := apiprofile.InvalidReason(err); ok {
 			layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest, reason))
 			return
 		}
@@ -93,7 +86,7 @@ func (h *handler) revokeKey(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("key id %q: %w", chi.URLParam(r, keyIDParam), layout.ErrNotFound))
 		return
 	}
-	if err := h.keys().RevokePersonal(r.Context(), s.Profile.Email, id); err != nil {
+	if err := h.Profile.RevokeKey(r.Context(), callerOf(r), id); err != nil {
 		layout.WriteError(w, r, err)
 		return
 	}

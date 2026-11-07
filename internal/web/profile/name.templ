@@ -3,7 +3,7 @@ package profile
 import (
 	"strconv"
 
-	domain "github.com/kaecyra/gobbler/internal/profile"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 )
 
 // nameSection is the Profile section: a list of fields the person sets, one
@@ -16,7 +16,7 @@ templ nameSection(v pageView) {
 		<form class="fields" method="post" action={ templ.SafeURL(v.sectionPath("name")) }>
 			<label>
 				Name
-				<input type="text" name="name" value={ v.OwnName } placeholder={ v.DefaultName } maxlength={ strconv.Itoa(domain.MaxNameRunes) } autocomplete="off"/>
+				<input type="text" name="name" value={ v.OwnName } placeholder={ v.DefaultName } maxlength={ strconv.Itoa(apiprofile.MaxNameRunes) } autocomplete="off"/>
 			</label>
 			<p class="muted">Leave it empty to show the start of your email address instead.</p>
 			<button type="submit" class="btn accent">Save</button>

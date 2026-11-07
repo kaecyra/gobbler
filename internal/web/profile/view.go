@@ -1,7 +1,7 @@
 package profile
 
 import (
-	domain "github.com/kaecyra/gobbler/internal/profile"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 )
 
 // pageView is everything the profile page shows. Fields of the person come only
@@ -14,7 +14,7 @@ type pageView struct {
 	// Self is whether the viewer is the profile's person. The self-only
 	// sections render only then.
 	Self  bool
-	Shown domain.Shown
+	Shown apiprofile.Shown
 	// OwnName is the display name the person set, empty if none, and
 	// DefaultName what the page shows then. Both are filled for the person
 	// themself only, for the form that sets the name.
@@ -29,7 +29,7 @@ func newView(s subject) pageView {
 	v := pageView{Address: s.Profile.Address, Self: s.Self(), Shown: s.Profile.As(s.Relation)}
 	if v.Self {
 		v.OwnName = s.Profile.DisplayName
-		v.DefaultName = domain.Profile{Email: s.Profile.Email}.Name()
+		v.DefaultName = apiprofile.Profile{Email: s.Profile.Email}.Name()
 	}
 	return v
 }

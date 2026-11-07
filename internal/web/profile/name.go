@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	domain "github.com/kaecyra/gobbler/internal/profile"
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -25,8 +25,8 @@ func (h *handler) rename(w http.ResponseWriter, r *http.Request) {
 	}
 	// The person is the profile's, which selfOnly has shown is the viewer; the
 	// request never names whose name to set.
-	if err := h.Profiles.Rename(r.Context(), s.Profile.Email, r.PostFormValue("name")); err != nil {
-		if reason, ok := domain.InvalidReason(err); ok {
+	if err := h.Profile.Rename(r.Context(), callerOf(r), r.PostFormValue("name")); err != nil {
+		if reason, ok := apiprofile.InvalidReason(err); ok {
 			layout.Render(w, r, http.StatusBadRequest, layout.ErrorPage(http.StatusBadRequest, reason))
 			return
 		}

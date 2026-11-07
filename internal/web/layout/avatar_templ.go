@@ -12,8 +12,8 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	"github.com/kaecyra/gobbler/internal/auth"
-	"github.com/kaecyra/gobbler/internal/profile"
 )
 
 // Avatar draws the default avatar of an email: a mirrored pattern from a hash
@@ -40,7 +40,7 @@ func Avatar(email string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		ic := profile.NewIdenticon(email)
+		ic := apiprofile.NewIdenticon(email)
 		var templ_7745c5c3_Var2 = []any{"avatar", fmt.Sprintf("av-bg-%d", ic.Bg)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {

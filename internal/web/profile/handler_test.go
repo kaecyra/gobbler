@@ -2,7 +2,7 @@ package profile
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,13 +11,37 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
+	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/media"
+	"github.com/kaecyra/gobbler/internal/oauth"
 	domain "github.com/kaecyra/gobbler/internal/profile"
+	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
+
+// newService builds the profile service over d as the router does. Without
+// avatars it builds them over a temporary media directory; without sessions
+// the session operations are off.
+func newService(t *testing.T, d *sql.DB, hs apiprofile.Households, sessions *session.Store, avatars *domain.Avatars) *apiprofile.Service {
+	t.Helper()
+	if avatars == nil {
+		avatars = domain.NewAvatars(context.Background(), domain.New(d), media.NewLocal(t.TempDir()), nil)
+	}
+	deps := apiprofile.Deps{Profiles: domain.New(d), Households: hs, Keys: apikey.New(d), Grants: oauth.New(d), Avatars: avatars}
+	if sessions != nil {
+		deps.Sessions = sessions
+	}
+	svc, err := apiprofile.New(deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return svc
+}
 
 type fakeHouseholds struct {
 	byEmail map[string]household.Household
@@ -33,57 +57,6 @@ func (f fakeHouseholds) ForEmail(_ context.Context, email string) (household.Hou
 		return household.Household{}, household.ErrNotFound
 	}
 	return h, nil
-}
-
-// ADR-00032 obligation 1: the visibility rule is asked with the right relation
-// for a viewer in the same household and for one who is not.
-func TestRelationOfTheViewerToThePerson(t *testing.T) {
-	alpha := household.Household{ID: 1, Name: "Alpha"}
-	beta := household.Household{ID: 2, Name: "Beta"}
-	hs := fakeHouseholds{byEmail: map[string]household.Household{
-		"ann@example.com": alpha, "bob@example.com": alpha, "cy@example.com": beta,
-	}}
-	cases := []struct {
-		name            string
-		viewer, person  string
-		viewerHousehold *household.Household
-		want            domain.Relation
-	}{
-		{"self", "ann@example.com", "ann@example.com", &alpha, domain.Self},
-		{"self without a household", "stranger@example.com", "stranger@example.com", nil, domain.Self},
-		{"same household", "ann@example.com", "bob@example.com", &alpha, domain.SameHousehold},
-		{"another household", "ann@example.com", "cy@example.com", &alpha, domain.Other},
-		{"a person with no household", "ann@example.com", "stranger@example.com", &alpha, domain.Other},
-		{"a viewer with no household", "stranger@example.com", "ann@example.com", nil, domain.Other},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
-			if tc.viewerHousehold != nil {
-				ctx = household.WithContext(ctx, *tc.viewerHousehold)
-			}
-			h := &handler{Deps{Households: hs}}
-			got, err := h.relation(ctx, tc.viewer, tc.person)
-			if err != nil || got != tc.want {
-				t.Errorf("relation = %q, %v; want %q", got, err, tc.want)
-			}
-		})
-	}
-}
-
-// A household lookup that fails is a failure, not "not the same household": it
-// must not quietly decide what a viewer may see.
-func TestRelationReportsAFailingHouseholdLookup(t *testing.T) {
-	boom := errors.New("database is locked")
-	h := &handler{Deps{Households: fakeHouseholds{err: boom}}}
-	ctx := household.WithContext(context.Background(), household.Household{ID: 1})
-	if _, err := h.relation(ctx, "ann@example.com", "bob@example.com"); !errors.Is(err, boom) {
-		t.Errorf("relation error = %v, want the lookup's error", err)
-	}
-	// Self needs no lookup, so a failing store does not break one's own page.
-	if rel, err := h.relation(ctx, "ann@example.com", "Ann@Example.com"); err != nil || rel != domain.Self {
-		t.Errorf("own profile with a failing store = %q, %v", rel, err)
-	}
 }
 
 // The form that sets the name is filled for the person themself only.
@@ -115,7 +88,7 @@ type site struct {
 	h http.Handler
 }
 
-func newSite(t *testing.T, hs Households) *site {
+func newSite(t *testing.T, hs apiprofile.Households) *site {
 	t.Helper()
 	ctx := context.Background()
 	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
@@ -132,7 +105,7 @@ func newSite(t *testing.T, hs Households) *site {
 	}
 	r := chi.NewRouter()
 	r.Use(a.Middleware(layout.IsPublic))
-	r.Mount(Pattern, Routes(Deps{Profiles: domain.New(d), Households: hs, DB: d}))
+	r.Mount(Pattern, Routes(Deps{Profile: newService(t, d, hs, nil, nil)}))
 	return &site{h: r}
 }
 

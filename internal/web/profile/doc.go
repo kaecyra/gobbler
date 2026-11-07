@@ -5,7 +5,9 @@
 //
 // A page's address is the opaque random one the store gave the profile, never
 // the email. Every field of another person's profile that a page shows comes
-// from domain.Profile.As, which asks the one visibility rule.
+// from Profile.As, which asks the one visibility rule. Every read and write
+// goes through the profile service, internal/api/profile (ADR-00043), which
+// checks the Caller; the handlers do not import internal/profile.
 //
 // # Adding a section
 //
@@ -20,9 +22,9 @@
 //   - routes.go: in selfRoutes, a line "h.<name>Routes(r)" that registers the
 //     section's routes on r. They are mounted under /{address}/ behind a check
 //     that the viewer is the profile's owner, and read the profile from
-//     subjectFrom. The section's deps come from h.Deps.
+//     subjectFrom. The section calls h.Profile, the service.
 //
 // A section that other viewers see too is not self-only: it asks
-// domain.Visible for each field it shows, and is added to the page outside
+// Visible for each field it shows, and is added to the page outside
 // selfSections.
 package profile

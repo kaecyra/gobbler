@@ -109,17 +109,30 @@ linters:
             # a-api-status-table (#517): the status table names the household
             # sentinels.
             - "!**/internal/web/layout/httperr.go"
-            # a-api-profile: the avatar reads the household off the context.
-            - "!**/internal/web/layout/avatar.go"
-            # a-api-profile: the profile page looks the person's household up.
-            - "!**/internal/web/profile/handler.go"
-            - "!**/internal/web/profile/routes.go"
             # a-api-ingest (#518): the ingest screen reads the household off the
             # context.
             - "!**/internal/web/ingest/ingest.go"
           deny:
             - pkg: github.com/kaecyra/gobbler/internal/household
               desc: use internal/api/households; the web handlers and MCP tools do not import the household domain (ADR-00043)
+        # ADR-00043: a person's profile, sessions, personal keys, connected apps
+        # and avatar are reached through internal/api/profile. internal/session,
+        # internal/apikey and internal/oauth are not fenced: the sign-in, MCP and
+        # OAuth adapters share them. Tests are exempt: they build fixtures
+        # straight on the domain.
+        #
+        # The files excepted below do not go through the service yet.
+        profile-through-api:
+          files:
+            - "**/internal/web/**"
+            - "**/internal/mcp/**"
+            - "!$test"
+            # a-api-status-table (#517): the status table names the profile
+            # sentinels.
+            - "!**/internal/web/layout/httperr.go"
+          deny:
+            - pkg: github.com/kaecyra/gobbler/internal/profile
+              desc: use internal/api/profile; the web handlers and MCP tools do not import the profile domain (ADR-00043)
 
 formatters:
   enable:

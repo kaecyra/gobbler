@@ -14,7 +14,6 @@ import (
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/oauth"
-	domain "github.com/kaecyra/gobbler/internal/profile"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -43,7 +42,7 @@ func newGrantSite(t *testing.T) *grantSite {
 	}
 	r := chi.NewRouter()
 	r.Use(a.Middleware(layout.IsPublic))
-	r.Mount(Pattern, Routes(Deps{Profiles: domain.New(d), Households: fakeHouseholds{}, DB: d}))
+	r.Mount(Pattern, Routes(Deps{Profile: newService(t, d, fakeHouseholds{}, nil, nil)}))
 	return &grantSite{site: &site{h: r}, db: d}
 }
 
