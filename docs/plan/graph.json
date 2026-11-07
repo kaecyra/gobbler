@@ -4592,7 +4592,8 @@
         "internal/web/recipeview/view_templ.go",
         "internal/web/recipeview/handler_test.go",
         "e2e/recipeview/recipeview.spec.ts",
-        "VERSION"
+        "VERSION",
+        "e2e/recipeview/proposal.spec.ts"
       ],
       "needs_migration": null,
       "adrs": [],

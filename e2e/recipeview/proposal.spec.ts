@@ -106,7 +106,7 @@ test('a pending proposal is marked in place with its old and new values', async 
   const proposed = page.getByTestId('proposal-line-new');
   await expect(proposed.getByTestId('qualifier')).toHaveText(['sifted', 'warmed']);
   await expect(proposed.getByTestId('qualifier').first()).toHaveCSS('font-style', 'italic');
-  expect((await proposed.innerText()).trim()).toMatch(/flour sifted warmed \(optional\)$/);
+  expect((await proposed.innerText()).trim()).toMatch(/flour sifted, warmed \(optional\)$/);
   await expect(page.getByTestId('proposal-line-removed')).toHaveCount(1);
   // A changed step shows both texts; a removed one and an added one are noted.
   const changed = page.getByTestId('proposal-step-changed');

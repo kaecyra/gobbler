@@ -227,7 +227,7 @@ func TestViewShowsRecipeAsWritten(t *testing.T) {
 	mustContain(t, body,
 		"<title>Sponge &lt;cake&gt; - gobbler</title>",
 		"1 1/3 cup flour",
-		`<span class="qual" data-testid="qualifier">sifted</span>`, // no comma: the qualifier has its own element
+		`<span class="qual" data-testid="qualifier">sifted</span> </span>`, // one qualifier: no comma before or after it
 		"1/3 cup sugar",
 		"2 egg",
 		"1 bay leaf",
@@ -245,15 +245,21 @@ func TestViewShowsRecipeAsWritten(t *testing.T) {
 
 // A line with qualifiers and a tail reads as one phrase once the markup is
 // gone: spaces between the name, each qualifier and the tail, and no commas.
-func TestQualifiersAndTailAreSeparatedBySpaces(t *testing.T) {
+// TestQualifiersAreSeparatedByCommasAndFromTheNameBySpace: the name and the
+// first qualifier are set off by a space, qualifiers from each other by a
+// comma right after the qualifier, and the tail by a space.
+func TestQualifiersAreSeparatedByCommasAndFromTheNameBySpace(t *testing.T) {
 	r := testRecipe(t)
 	r.Components[0].Lines[4].Qualifiers = []recipe.Qualifier{
 		{Kind: recipe.QualState, Text: "flaky"}, {Kind: recipe.QualPreparation, Text: "crushed"},
 	}
 	_, body := serve(t, fakeRecipes{7: r}, "/recipes/7")
+	if !regexp.MustCompile(`flaky</span><span class="qual">,</span>\s+<span class="qual" data-testid="qualifier">crushed</span>`).MatchString(body) {
+		t.Errorf("the comma does not follow the first qualifier directly\n%s", body)
+	}
 	text := strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, " ")), " ")
-	mustContain(t, text, "salt flaky crushed to taste (optional)")
-	mustNotContain(t, text, "salt, flaky", "flaky, crushed")
+	mustContain(t, text, "salt flaky , crushed to taste (optional)") // tags stripped to spaces
+	mustNotContain(t, text, "salt,", "salt ,", "crushed ,")
 }
 
 func TestScaleMultipliesLinearLinesOnly(t *testing.T) {
