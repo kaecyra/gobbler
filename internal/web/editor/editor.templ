@@ -349,8 +349,8 @@ templ editorForm(v view) {
 		</datalist>
 		<script src={ morphPath } defer></script>
 		<script src={ scriptPath } defer></script>
-		<link rel="stylesheet" href="/static/suggest.css"/>
-		<script src="/static/suggest.js" defer></script>
+		<link rel="stylesheet" href={ layout.SuggestStylePath }/>
+		<script src={ layout.SuggestScriptPath } defer></script>
 	</form>
 }
 
