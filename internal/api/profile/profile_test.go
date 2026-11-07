@@ -28,6 +28,11 @@ type fixture struct {
 	svc                *profile.Service
 	sessions           *session.Store
 	media              media.Store
+	profiles           profile.Profiles
+	households         profile.Households
+	keys               profile.Keys
+	grants             profile.Grants
+	avatars            profile.AvatarUploads
 	ann, bob, cy, lone profile.Caller
 }
 
@@ -65,8 +70,8 @@ func newFixture(t *testing.T, withSessions bool) fixture {
 		Avatars: domain.NewAvatars(ctx, ps, ms, nil),
 	}
 	f := fixture{
-		media: ms,
-		ann:   profile.Caller{Person: annEmail}, bob: profile.Caller{Person: bobEmail},
+		media: ms, profiles: ps, households: hs, keys: deps.Keys, grants: deps.Grants, avatars: deps.Avatars,
+		ann: profile.Caller{Person: annEmail}, bob: profile.Caller{Person: bobEmail},
 		cy: profile.Caller{Person: cyEmail}, lone: profile.Caller{Person: loneEmail},
 	}
 	if withSessions {
@@ -108,10 +113,7 @@ func ops(f fixture) map[string]func(c profile.Caller) error {
 		"AvatarJob":        func(c profile.Caller) error { _, _, err := f.svc.AvatarJob(ctx, c); return err },
 		"AvatarPreview":    func(c profile.Caller) error { _, err := f.svc.AvatarPreview(ctx, c, "x"); return err },
 		"CropAvatar":       func(c profile.Caller) error { return f.svc.CropAvatar(ctx, c, "x", media.Crop{}) },
-		"OpenAvatar": func(c profile.Caller) error {
-			_, err := f.svc.OpenAvatar(ctx, c, profile.Subject{Viewer: c.Person, Relation: profile.Self})
-			return err
-		},
+		"OpenAvatar":       func(c profile.Caller) error { _, err := f.svc.OpenAvatar(ctx, c, "x"); return err },
 	}
 }
 
@@ -199,29 +201,45 @@ func TestSubjectWorksOutTheRelation(t *testing.T) {
 	}
 }
 
-type failingHouseholds struct{ err error }
+// failsFor succeeds for every email but one.
+type failsFor struct {
+	fail string
+	err  error
+	ok   household.Household
+}
 
-func (f failingHouseholds) ForEmail(context.Context, string) (household.Household, error) {
-	return household.Household{}, f.err
+func (f failsFor) ForEmail(_ context.Context, email string) (household.Household, error) {
+	if email == f.fail {
+		return household.Household{}, f.err
+	}
+	return f.ok, nil
 }
 
 // A household lookup that fails is a failure, not "not the same household": it
-// must not quietly decide what a viewer may see.
+// must not quietly decide what a viewer may see. The viewer's lookup and the
+// profile person's lookup are two branches, and each must report.
 func TestSubjectReportsAFailingHouseholdLookup(t *testing.T) {
 	f := newFixture(t, true)
 	ctx := context.Background()
 	boom := errors.New("database is locked")
-	svc, err := profile.New(profile.Deps{
-		Profiles: failingProfiles{}, Households: failingHouseholds{boom},
-		Keys: apikey.New(nil), Grants: oauth.New(nil), Avatars: failingAvatars{},
-	})
-	if err != nil {
-		t.Fatal(err)
+	build := func(fail string) *profile.Service {
+		svc, err := profile.New(profile.Deps{
+			Profiles:   failingProfiles{},
+			Households: failsFor{fail: fail, err: boom, ok: household.Household{ID: 1}},
+			Keys:       f.keys, Grants: f.grants, Avatars: f.avatars,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return svc
 	}
-	if _, err := svc.Subject(ctx, f.bob, "addr"); !errors.Is(err, boom) {
-		t.Errorf("Subject error = %v, want the lookup's error", err)
+	for name, fail := range map[string]string{"viewer": bobEmail, "profile person": annEmail} {
+		if _, err := build(fail).Subject(ctx, f.bob, "addr"); !errors.Is(err, boom) {
+			t.Errorf("Subject with the %s's lookup failing = %v, want the lookup's error", name, err)
+		}
 	}
 	// Self needs no lookup, so a failing store does not break one's own page.
+	svc := build(annEmail)
 	if s, err := svc.Subject(ctx, profile.Caller{Person: "Ann@Example.com"}, "addr"); err != nil || s.Relation != profile.Self {
 		t.Errorf("own profile with a failing store = %+v, %v", s, err)
 	}
@@ -344,26 +362,61 @@ func TestKeysAndGrantsAreTheCallers(t *testing.T) {
 	}
 }
 
-func TestOpenAvatarAsksTheVisibilityRule(t *testing.T) {
+// withAvatars gives the profiles of the emails an avatar key, which only the
+// avatar job sets in production.
+type withAvatars struct {
+	profile.Profiles
+	keys map[string]string
+}
+
+func (w withAvatars) ByAddress(ctx context.Context, address string) (profile.Profile, error) {
+	p, err := w.Profiles.ByAddress(ctx, address)
+	p.Avatar = w.keys[p.Email]
+	return p, err
+}
+
+// OpenAvatar takes an address and no relation: the service works the relation
+// out from the Caller, so there is no subject for a caller to forge, and what
+// is read is the avatar of the profile the address names.
+func TestOpenAvatarReadsTheAvatarOfTheAddressedProfile(t *testing.T) {
 	f := newFixture(t, true)
 	ctx := context.Background()
-	const key = "people/ann/avatar/v1.webp"
-	if err := f.media.Put(ctx, key, []byte("picture"), "image/webp"); err != nil {
-		t.Fatal(err)
-	}
-	p := profile.Profile{Email: annEmail, Avatar: key}
-	for _, rel := range []profile.Relation{profile.Self, profile.SameHousehold, profile.Other} {
-		b, err := f.svc.OpenAvatar(ctx, f.bob, profile.Subject{Profile: p, Viewer: bobEmail, Relation: rel})
-		if err != nil || string(b) != "picture" {
-			t.Errorf("relation %q = %q, %v", rel, b, err)
+	annKey, bobKey := "people/ann/avatar/v1.webp", "people/bob/avatar/v1.webp"
+	for k, v := range map[string]string{annKey: "ann's picture", bobKey: "bob's picture"} {
+		if err := f.media.Put(ctx, k, []byte(v), "image/webp"); err != nil {
+			t.Fatal(err)
 		}
 	}
-	// A relation the rule does not know sees no avatar, even when there is one.
-	if _, err := f.svc.OpenAvatar(ctx, f.bob, profile.Subject{Profile: p, Viewer: bobEmail, Relation: "unknown"}); !errors.Is(err, profile.ErrNotFound) {
-		t.Errorf("an unknown relation = %v, want ErrNotFound", err)
+	annP, _ := f.svc.Own(ctx, f.ann)
+	bobP, _ := f.svc.Own(ctx, f.bob)
+	loneP, _ := f.svc.Own(ctx, f.lone)
+	svc, err := profile.New(profile.Deps{
+		Profiles:   withAvatars{f.profiles, map[string]string{annEmail: annKey, bobEmail: bobKey}},
+		Households: f.households, Keys: f.keys, Grants: f.grants, Avatars: f.avatars,
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	// A subject worked out for someone else is not the Caller's to open.
-	if _, err := f.svc.OpenAvatar(ctx, f.cy, profile.Subject{Profile: p, Viewer: bobEmail, Relation: profile.Other}); !errors.Is(err, profile.ErrNotMember) {
-		t.Errorf("another viewer's subject = %v, want ErrNotMember", err)
+	// Whoever asks, a profile's address gives that profile's picture, never the
+	// asker's own, and a stranger in another household sees it as Other.
+	for _, c := range []profile.Caller{f.ann, f.bob, f.cy, f.lone} {
+		b, err := svc.OpenAvatar(ctx, c, annP.Address)
+		if err != nil || string(b) != "ann's picture" {
+			t.Errorf("%s opening ann's avatar = %q, %v", c.Person, b, err)
+		}
+	}
+	if b, err := svc.OpenAvatar(ctx, f.ann, bobP.Address); err != nil || string(b) != "bob's picture" {
+		t.Errorf("ann opening bob's avatar = %q, %v", b, err)
+	}
+	if _, err := svc.OpenAvatar(ctx, f.ann, loneP.Address); !errors.Is(err, profile.ErrNotFound) {
+		t.Errorf("a profile with no avatar = %v, want ErrNotFound", err)
+	}
+	if _, err := svc.OpenAvatar(ctx, f.ann, "AAAAAAAAAAAAAAAAAAAAAA"); !errors.Is(err, profile.ErrNotFound) {
+		t.Errorf("a guessed address = %v, want ErrNotFound", err)
+	}
+	// The visibility rule itself is profile.Visible's; a relation it does not
+	// know sees no avatar.
+	if got := profile.AvatarKey(profile.Subject{Profile: profile.Profile{Avatar: annKey}, Relation: "unknown"}); got != "" {
+		t.Errorf("AvatarKey for an unknown relation = %q, want none", got)
 	}
 }

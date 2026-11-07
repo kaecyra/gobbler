@@ -81,7 +81,7 @@ func (h *handler) serveAvatar(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	b, err := h.Profile.OpenAvatar(r.Context(), callerOf(r), s)
+	b, err := h.Profile.OpenAvatar(r.Context(), callerOf(r), s.Profile.Address)
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return

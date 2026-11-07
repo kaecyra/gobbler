@@ -298,8 +298,8 @@ func (s *Service) Subject(ctx context.Context, c Caller, address string) (Subjec
 // from the store. Someone with no household shares one with nobody. A lookup
 // that fails is a failure, not "not the same household", so it cannot quietly
 // decide what a viewer may see.
-func (s *Service) relation(ctx context.Context, viewer, person string) (Relation, error) {
-	if rel := domain.RelationBetween(viewer, person, false); rel == Self {
+func (s *Service) relation(ctx context.Context, viewer, subject string) (Relation, error) {
+	if rel := domain.RelationBetween(viewer, subject, false); rel == Self {
 		return rel, nil
 	}
 	mine, ok, err := s.householdOf(ctx, viewer)
@@ -307,13 +307,13 @@ func (s *Service) relation(ctx context.Context, viewer, person string) (Relation
 		return "", fmt.Errorf("household of the viewer: %w", err)
 	}
 	if !ok {
-		return domain.RelationBetween(viewer, person, false), nil
+		return domain.RelationBetween(viewer, subject, false), nil
 	}
-	theirs, ok, err := s.householdOf(ctx, person)
+	theirs, ok, err := s.householdOf(ctx, subject)
 	if err != nil {
 		return "", fmt.Errorf("household of the profile's person: %w", err)
 	}
-	return domain.RelationBetween(viewer, person, ok && theirs.ID == mine.ID), nil
+	return domain.RelationBetween(viewer, subject, ok && theirs.ID == mine.ID), nil
 }
 
 // householdOf is the household of an email, and false for someone in none.
@@ -506,16 +506,14 @@ func (s *Service) CropAvatar(ctx context.Context, c Caller, id string, crop medi
 // profile field is filtered by the same rule (ADR-00032).
 func AvatarKey(s Subject) string { return s.Profile.As(s.Relation).Avatar }
 
-// OpenAvatar reads the avatar of the Subject's profile, if the Caller is the
-// viewer it was worked out for and the visibility rule shows them one. A viewer
-// who may not see it gets the same ErrNotFound as a profile with none.
-func (s *Service) OpenAvatar(ctx context.Context, c Caller, sub Subject) ([]byte, error) {
-	email, err := person(c)
+// OpenAvatar reads the avatar of the profile the address names, as the visibility
+// rule shows it to the Caller. The relation is worked out here, by Subject, from
+// the Caller and the profile's person; a caller cannot supply one. A viewer who
+// may not see the avatar gets the same ErrNotFound as a profile with none.
+func (s *Service) OpenAvatar(ctx context.Context, c Caller, address string) ([]byte, error) {
+	sub, err := s.Subject(ctx, c, address)
 	if err != nil {
 		return nil, err
-	}
-	if email != sub.Viewer {
-		return nil, fmt.Errorf("avatar subject was made for another viewer: %w", ErrNotMember)
 	}
 	key := AvatarKey(sub)
 	if key == "" {
