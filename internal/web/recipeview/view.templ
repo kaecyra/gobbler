@@ -341,14 +341,13 @@ templ authorNote(n noteView) {
 				@layout.Icon(layout.IconBulb)
 			</span>
 		</div>
-		<div>
-			<p>
-				if n.Lead != "" {
-					<b data-testid="author-note-title">{ n.Lead }</b>
-				}
-				{ " " + n.Text }
-				<small>From the author</small>
-			</p>
+		<div class="ntext md">
+			if n.Lead != "" {
+				<b data-testid="author-note-title">{ n.Lead }</b>
+			}
+			{ " " }
+			@layout.Markdown(n.Text)
+			<small>From the author</small>
 		</div>
 	</li>
 }
@@ -366,8 +365,10 @@ templ authorNoteStyles() {
 		.step.anote .an { width: 44px; height: 44px; display: grid; place-items: center; position: relative; z-index: 1; }
 		.step.anote .an span { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--wattle-soft); color: var(--wattle-ink); }
 		.step.anote .an svg { width: 17px; height: 17px; }
-		.step.anote p { margin: 9px 0 0; font-size: 17px; line-height: 1.55; color: var(--ink-2); max-width: 60ch; }
-		.step.anote p b { color: var(--ink); font-weight: 650; }
+		.step.anote .ntext { margin: 9px 0 0; font-size: 17px; line-height: 1.55; color: var(--ink-2); max-width: 60ch; }
+		.step.anote .ntext :is(p, ul, ol, blockquote) { font-size: inherit; line-height: inherit; color: inherit; }
+		.step.anote .ntext > p:only-of-type { display: inline; margin: 0; }
+		.step.anote .ntext > b { color: var(--ink); font-weight: 650; }
 		.step.anote small { color: var(--ink-3); font-size: 13.5px; font-weight: 450; white-space: nowrap; margin-left: 4px; }
 	</style>
 }

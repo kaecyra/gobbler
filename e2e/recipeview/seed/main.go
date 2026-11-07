@@ -187,7 +187,11 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"ribbon": ribbonID, "notes": notesID, "recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID, "doomed": doomedID, "doomed_clone": doomedCloneID, "listed": listedID})
+	markdownID, err := seedMarkdown(ctx, d)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"markdown": markdownID, "ribbon": ribbonID, "notes": notesID, "recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID, "doomed": doomedID, "doomed_clone": doomedCloneID, "listed": listedID})
 }
 
 // seedDoomed stores the recipe the delete specs remove: one with a picture, a
@@ -345,6 +349,25 @@ func seedNotes(ctx context.Context, d *sql.DB) (int64, error) {
 			{Title: "Wine", Text: "Any dry red you would drink works. A cooking wine adds salt you then have to cook out."},
 			{Title: "Make ahead", Text: "The braise is better the next day. Cool the ribs in their liquid, lift off the set fat, and reheat gently."},
 			{Text: "Bone-in ribs give a richer sauce than boneless, but boneless cook about 30 minutes faster."},
+		},
+	})
+}
+
+// seedMarkdown stores a recipe whose step and author note are written in
+// markdown (ADR-00046): bold and lists to render, and a script tag and a
+// heading that must stay text.
+func seedMarkdown(ctx context.Context, d *sql.DB) (int64, error) {
+	return store.New(d).Create(ctx, recipe.Recipe{
+		Name: "E2E Marked Custard",
+		Components: []recipe.Component{{
+			Name: "Main",
+			Steps: []recipe.Step{
+				{ID: "whisk", Text: "Whisk **hard** until pale.\n- 3 eggs\n- 100 g sugar\n\n<script>window.injected = 1</script>\n# Not a heading", Duration: 5 * time.Minute},
+				{ID: "bake", Text: "Bake in a water bath:\n1. Fill the tray\n2. Bake 40 minutes", Duration: 40 * time.Minute, Passive: true, DependsOn: []recipe.StepID{"whisk"}},
+			},
+		}},
+		AuthorNotes: []recipe.AuthorNote{
+			{Title: "Swaps", Text: "Use **cream** or:\n- whole milk\n- oat milk"},
 		},
 	})
 }

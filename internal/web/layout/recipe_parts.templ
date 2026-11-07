@@ -68,7 +68,9 @@ templ RecipeStep(s RecipeStepView, number string) {
 			if s.Title != "" {
 				<h4 data-testid="step-title">{ s.Title }</h4>
 			}
-			<p>{ s.Text }</p>
+			<div class="md">
+				@Markdown(s.Text)
+			</div>
 			if s.Time != "" || len(s.After) > 0 || len(s.During) > 0 {
 				<div class="stags">
 					if s.Time != "" {
@@ -98,7 +100,13 @@ templ meanwhile(items []display.MeanwhileItem) {
 			</div>
 			<ul>
 				for _, it := range items {
-					<li><b>step { strconv.Itoa(it.Number) }:</b> <span>{ it.Text }</span></li>
+					<li>
+						<b>step { strconv.Itoa(it.Number) }:</b>
+						{ " " }
+						<div class="md">
+							@Markdown(it.Text)
+						</div>
+					</li>
 				}
 			</ul>
 		</div>

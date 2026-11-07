@@ -33,6 +33,7 @@ let doomedCloneId = 0;
 let listedId = 0;
 let notesId = 0;
 let ribbonId = 0;
+let markdownId = 0;
 let thumbnails: Awaited<ReturnType<typeof startThumbnailHost>> | undefined;
 
 test.use({ baseURL: origin });
@@ -45,7 +46,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId, notes: notesId, ribbon: ribbonId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId, notes: notesId, ribbon: ribbonId, markdown: markdownId } = JSON.parse(out));
   thumbnails = await startThumbnailHost();
   server = spawn(bin, ['serve'], {
     env: {
@@ -711,6 +712,36 @@ test('a note bulb sits in the step-number column', async ({ page }) => {
   const bulb = (await page.getByTestId('author-note').first().locator('.an').boundingBox())!;
   expect(bulb.x).toBe(mark.x);
   expect(bulb.width).toBe(mark.width);
+});
+
+// ADR-00046: step and author-note text is markdown. The allowed subset renders
+// as markup; a script tag and a heading stay the text they were written as.
+test('markdown in a step and an author note renders bold and lists, and leaves a script and a heading as text', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  await page.goto(`/recipes/${markdownId}`);
+  const steps = page.locator('.method li.step:not(.anote)');
+  const whisk = steps.nth(0).locator('.md');
+  await expect(whisk.locator('strong')).toHaveText('hard');
+  await expect(whisk.locator('ul > li')).toHaveText(['3 eggs', '100 g sugar']);
+  // The list is drawn as a list, at the step text's size.
+  expect(await whisk.locator('ul').evaluate((el) => getComputedStyle(el).listStyleType)).toBe('disc');
+  const size = (loc: import('@playwright/test').Locator) => loc.evaluate((el) => getComputedStyle(el).fontSize);
+  expect(await size(whisk.locator('ul > li').first())).toBe(await size(whisk.locator('p').first()));
+  await expect(steps.nth(1).locator('.md ol > li')).toHaveText(['Fill the tray', 'Bake 40 minutes']);
+  expect(await steps.nth(1).locator('.md ol').evaluate((el) => getComputedStyle(el).listStyleType)).toBe('decimal');
+
+  // The script and the heading are shown as written, and neither is an element.
+  await expect(whisk).toContainText('<script>window.injected = 1</script>');
+  await expect(whisk).toContainText('# Not a heading');
+  await expect(page.locator('.method script')).toHaveCount(0);
+  await expect(page.locator('.method :is(h1, h2, h3, h4, h5, h6)', { hasText: 'Not a heading' })).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { injected?: number }).injected)).toBeUndefined();
+
+  const note = page.getByTestId('author-note');
+  await expect(note.getByTestId('author-note-title')).toHaveText('Swaps:');
+  await expect(note.locator('strong')).toHaveText('cream');
+  await expect(note.locator('ul > li')).toHaveText(['whole milk', 'oat milk']);
+  await expect(note.locator('small')).toHaveText('From the author');
 });
 
 // #537: ribbon.js is the only thing that merges the large ribbon's segments as

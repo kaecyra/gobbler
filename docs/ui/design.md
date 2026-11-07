@@ -144,6 +144,23 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   "Author's Notes" button. Variant A of `#recipe` in the mockup is the target,
   except that ADR-00045 overrides it on the connectors and the gap: the mockup
   still draws dotted lines to and between notes.
+- **Markdown in steps and notes**
+  ([ADR-00046](../adr/00046-markdown-in-steps.md)). Step text and author-note
+  text render through `layout.Markdown` inside an element with the `md` class.
+  - Every block takes the size, line height and colour of the text it sits
+    in: 18.5px `--ink-2` in a step, 17px `--ink-2` in an author note, and the
+    callout's own size in a meanwhile item. Blocks sit 6px apart.
+  - Lists are indented 1.4em, with discs for a bulleted list and numbers for
+    a numbered one. Items sit 2px apart.
+  - A blockquote is a `--sunk` panel with the `--r` radius and 8px by 14px of
+    padding, and no border.
+  - Strong text is `--ink` at weight 650, the weight of an author note's
+    title. Inline code is `--f-mono` at 0.88em on a `--sunk` chip with the
+    `--r-sm` radius.
+  - Links keep the page's link colour.
+  - In an author note, the bold title, a lone paragraph and the "From the
+    author" credit share one line, as before. When the note holds a list, the
+    list starts on a line of its own and the credit follows it on another.
 - **Video.** On the recipe page it sits at the top of the steps column, under
   the title and above any tips and the first step, as a 16:9 box no wider than
   the column. It plays only when its button is pressed
