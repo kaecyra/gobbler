@@ -61,6 +61,11 @@ func run() error {
 		},
 		OIDC:    config.OIDC{Issuer: "http://127.0.0.1:1", ClientID: "routes", PublicBaseURL: "http://127.0.0.1:0"},
 		Session: config.Session{Lifetime: time.Hour},
+		// The ingest routes and the MCP endpoint refuse to mount without these,
+		// and would then be walked as one catch-all each, hiding their routes
+		// from the coverage check.
+		Ingestion: config.Ingestion{FetchTimeout: 15 * time.Second, UserAgent: "gobbler-routes", ConfidenceThreshold: 0.5},
+		MCP:       config.MCP{Rate: 1, Burst: 1},
 	}
 	d, err := db.Open(ctx, cfg)
 	if err != nil {
