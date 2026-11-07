@@ -236,12 +236,12 @@ var (
 	// mixWordRE matches a mixing machine named anywhere in the step ("in the
 	// bowl of a stand mixer", "pulse in a food processor", "fit the dough
 	// hook"). A mixer counts only as a stand, hand or electric mixer: a bare
-	// "mixer" is as often a drink's tonic or soda ("top with your mixer") and "knead" in any form but "kneaded", an adjective ("the kneaded
-	// dough"), and "no-knead", a kind of bread.
+	// "mixer" is as often a drink's tonic or soda ("top with your mixer").
+	// The verb "blend" is not here, since it is as often done by hand ("blend
+	// the butter into the flour"); a blender is. It also matches "knead" in
+	// any form but "kneaded", an adjective ("the kneaded dough"), and
+	// "no-knead", a kind of bread.
 	mixWordRE = regexp.MustCompile(`(?i)(^|[^\w-])knead(s|ing)?\b|\b((stand|hand|electric) mixers?|food processors?|blenders?|bread machines?|dough hooks?)\b`)
-	// mixVerbRE matches "blend" where it is the instruction, as verbRE reads
-	// it, so "the spice blend" is not mixing.
-	mixVerbRE = verbRE(`(blend)`)
 )
 
 // stageKindOf proposes a stage kind for a step from its source title and its
@@ -308,7 +308,7 @@ func stageKinds(text string) map[recipe.StageKind]bool {
 	if prepVerbRE.MatchString(text) {
 		kinds[recipe.StagePrep] = true
 	}
-	if mixWordRE.MatchString(text) || mixVerbRE.MatchString(text) {
+	if mixWordRE.MatchString(text) {
 		kinds[recipe.StageMix] = true
 	}
 	return kinds

@@ -80,7 +80,6 @@ func TestStageKindMixIsMachineMixingAndKneading(t *testing.T) {
 		{"Beat the butter and sugar with a hand mixer until fluffy.", recipe.StageMix},
 		{"Beat the cream with an electric mixer to soft peaks.", recipe.StageMix},
 		{"Pulse the oats in a food processor until fine.", recipe.StageMix},
-		{"Blend until smooth.", recipe.StageMix},
 		{"Pour the soup into a blender and puree.", recipe.StageMix},
 		{"Add everything to the bread machine and start the dough cycle.", recipe.StageMix},
 		{"Mix on medium speed with the dough hook for 5 minutes.", recipe.StageMix},
@@ -95,11 +94,17 @@ func TestStageKindMixIsMachineMixingAndKneading(t *testing.T) {
 		{"Shape the kneaded dough into a ball.", ""},
 		{"This no-knead dough needs no work.", ""},
 		{"Sprinkle with the spice blend.", ""},
+		// Blending by hand is not mix; only a blender is.
+		{"Blend until smooth.", ""},
+		{"Using a pastry cutter, blend the butter into the flour.", ""},
+		{"Blend in the butter with your fingertips.", ""},
+		{"Stir to blend.", ""},
+		{"Blend the spices together in a small bowl.", ""},
 		{"Top with your mixer of choice.", ""},
 		// mix beside another kind is two kinds.
 		{"Knead the dough, then let it rise for 1 hour.", ""},
 		{"Chop the nuts in a food processor.", ""},
-		{"Blend the soup, then simmer for 10 minutes.", ""},
+		{"Blend the soup in a blender, then simmer for 10 minutes.", ""},
 	}
 	for _, c := range cases {
 		if got := stageKindOf("", c.text); got != c.want {
