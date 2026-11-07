@@ -8,7 +8,7 @@ import (
 
 	"github.com/a-h/templ"
 
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
@@ -588,10 +588,10 @@ func spiceOptions() []string {
 // hint under it.
 func noteIssueText(codes []string) []string {
 	words := map[string]string{
-		ingestcore.IssueNoteTooLong:     "it is longer than one short paragraph",
-		ingestcore.IssueNoteNutrition:   "it reads as nutrition facts",
-		ingestcore.IssueNotePublication: "it reads as the page's publication history",
-		ingestcore.IssueNoteMealPlan:    "it reads as a meal plan",
+		apiingest.IssueNoteTooLong:     "it is longer than one short paragraph",
+		apiingest.IssueNoteNutrition:   "it reads as nutrition facts",
+		apiingest.IssueNotePublication: "it reads as the page's publication history",
+		apiingest.IssueNoteMealPlan:    "it reads as a meal plan",
 	}
 	var out []string
 	for _, c := range codes {

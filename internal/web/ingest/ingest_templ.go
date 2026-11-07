@@ -9,7 +9,7 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -696,7 +696,7 @@ func picker(p pickerView) templ.Component {
 
 // sourceBox shows the ingredient lines as the source wrote them, with the
 // lines the rules were unsure of marked in grain.
-func sourceBox(d ingestcore.Draft) templ.Component {
+func sourceBox(d apiingest.Draft) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -790,7 +790,7 @@ func sourceBox(d ingestcore.Draft) templ.Component {
 
 // summary shows how sure the rules were, as words. look is how many items
 // the form marks for a look, the count its save bar shows.
-func summary(d ingestcore.Draft, look int) templ.Component {
+func summary(d apiingest.Draft, look int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

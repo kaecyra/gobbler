@@ -8,8 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
-	"github.com/kaecyra/gobbler/internal/ingest/ocr"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -20,7 +19,7 @@ const (
 	maxPhotoRequestBytes = maxPhotoBytes + 1<<20
 )
 
-// TextReader reads the text out of a photo; ocr.Runner satisfies it.
+// TextReader reads the text out of a photo; apiingest.OCRRunner satisfies it.
 type TextReader interface {
 	Text(ctx context.Context, image []byte) (string, error)
 }
@@ -38,9 +37,9 @@ var photoTypes = map[string]bool{
 }
 
 // PhotoDrafter drafts a recipe from OCR text and the photo it came from;
-// *ingestcore.Pipeline satisfies it.
+// *apiingest.Bound satisfies it.
 type PhotoDrafter interface {
-	FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (ingestcore.Draft, error)
+	FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (apiingest.Draft, error)
 }
 
 // photoView is what the photo upload form renders.
@@ -56,7 +55,7 @@ func (h *handler) photoForm(w http.ResponseWriter, r *http.Request) {
 // same pipeline as pasted text, so it gets the same extraction, scoring and
 // fallback, and then the review screen. The photo is never saved: only the OCR
 // text is the draft's source snapshot. The photo is held in memory beside the
-// draft (ingest.Photos), for the vision fallback and retry, until it expires,
+// draft (apiingest.Photos), for the vision fallback and retry, until it expires,
 // the draft ends or the process restarts (ADR-00035). Nothing is saved here.
 func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPhotoRequestBytes)
@@ -100,10 +99,10 @@ func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {
 
 	text, err := h.ocr.Text(r.Context(), image)
 	switch {
-	case errors.Is(err, ocr.ErrNoText):
+	case errors.Is(err, apiingest.ErrNoText):
 		h.photoFormError(w, r, http.StatusUnprocessableEntity, "No text could be read from that photo. Try a sharper, better lit photo of the page.")
 		return
-	case errors.Is(err, ocr.ErrFailed):
+	case errors.Is(err, apiingest.ErrOCRFailed):
 		h.log.WarnContext(r.Context(), "photo ocr failed", "error", err.Error())
 		h.photoFormError(w, r, http.StatusUnprocessableEntity, "That photo could not be read. Try a different photo, or one that is sharper and smaller.")
 		return
@@ -131,4 +130,4 @@ func (h *handler) photoFormError(w http.ResponseWriter, r *http.Request, status 
 	layout.Render(w, r, status, photoPage(photoView{Error: msg}))
 }
 
-var _ TextReader = ocr.Runner{}
+var _ TextReader = apiingest.OCRRunner{}

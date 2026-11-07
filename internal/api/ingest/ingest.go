@@ -1,0 +1,321 @@
+// Package ingest is the ingestion service: every operation that reads a
+// recipe from a URL, pasted text or a photograph into a draft, and the retry
+// that asks the LLM to read a draft again, written once for the web screens
+// and the MCP tools (ADR-00043). It is in-process. It is not a network API, it
+// speaks neither HTTP nor JSON and it reads no cookie or header. It follows the
+// pattern internal/api/catalog and internal/api/households set: a method takes
+// the context, then the caller.Caller, then its own arguments; it refuses a
+// Caller that is not a member of the household with ErrNotMember before
+// touching the pipeline (ADR-00018); and it returns the domain's errors, which
+// the web turns into statuses in internal/web/layout (statusTable) and the MCP
+// tools into tool errors. The Caller is the same whichever credential
+// authenticated: a session, a household key, a personal key or an OAuth grant
+// (ADR-00031).
+//
+// The pipeline itself (acquire, extract, parse, score, draft, and the LLM
+// fallback) stays in internal/ingest, which this package wraps. The order it
+// enforces is untouched here: the rule-based path always runs first, and the
+// provider is asked only for a draft that scored below the threshold or when
+// a person presses retry. What the LLM returns is a Draft like any other, and
+// reaches a recipe only through the review screen (ADR-00006, ADR-00034). The
+// package re-exports the types, errors and pure helpers its callers need as
+// aliases, so internal/web and internal/mcp import this package and not
+// internal/ingest; the ingest-through-api rule in .golangci.yml fails make
+// lint when they do.
+//
+// The pipeline reads the household's catalog overlay from the context. The
+// membership check supplies it: the household the pipeline reads is the one
+// the check found, never the Caller's claim or the context's.
+//
+// Bound serves the callers whose seams carry only a context: the web handler's
+// Drafter, PhotoDrafter and Retrier, the MCP endpoint's Drafter and the
+// re-import's URLDrafter. Each call names the Caller from its context and goes
+// through the Service.
+package ingest
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"time"
+
+	"github.com/kaecyra/gobbler/internal/api/caller"
+	"github.com/kaecyra/gobbler/internal/config"
+	domain "github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/ingest/extract"
+	"github.com/kaecyra/gobbler/internal/ingest/ocr"
+)
+
+// Caller is who an operation is for (caller.Caller).
+type Caller = caller.Caller
+
+// Members is the membership lookup the service enforces (caller.Members).
+type Members = caller.Members
+
+// The ingestion values the callers of the service work with.
+type (
+	// Draft is a recipe as the pipeline read it, awaiting review
+	// (ingest.Draft).
+	Draft = domain.Draft
+	// Field is one value of a Draft with the confidence it was read with
+	// (ingest.Field).
+	Field[T any] = domain.Field[T]
+	// Component is a group of lines and steps in a Draft (ingest.Component).
+	Component = domain.Component
+	// Line is an ingredient line of a Draft (ingest.Line).
+	Line = domain.Line
+	// Step is an instruction of a Draft (ingest.Step).
+	Step = domain.Step
+	// Equipment is a piece of equipment a Draft names (ingest.Equipment).
+	Equipment = domain.Equipment
+	// AuthorNote is a note the author wrote on the page (ingest.AuthorNote).
+	AuthorNote = domain.AuthorNote
+	// ProposedIngredient is a catalog entry a draft would add
+	// (ingest.ProposedIngredient).
+	ProposedIngredient = domain.ProposedIngredient
+	// Reimport is what a draft made again from its source carries
+	// (ingest.Reimport).
+	Reimport = domain.Reimport
+	// Confirmed is a draft the review screen approved (ingest.Confirmed). Only
+	// Confirm makes one.
+	Confirmed = domain.Confirmed
+	// Saved is what saving a confirmed draft produced (ingest.Saved).
+	Saved = domain.Saved
+	// PictureChoice is the picture a person chose for a draft
+	// (ingest.PictureChoice).
+	PictureChoice = domain.PictureChoice
+	// UnknownUnitError is a unit the catalog does not have
+	// (ingest.UnknownUnitError).
+	UnknownUnitError = domain.UnknownUnitError
+	// URLDrafter drafts a recipe from a URL (ingest.URLDrafter). *Bound
+	// satisfies it.
+	URLDrafter = domain.URLDrafter
+	// Provider is the LLM provider interface (ingest.Provider, ADR-00007).
+	Provider = domain.Provider
+	// ProviderFactory builds one provider (ingest.ProviderFactory).
+	ProviderFactory = domain.ProviderFactory
+	// OCRRunner reads the text out of a photograph by running tesseract
+	// (ocr.Runner). The zero value uses the defaults.
+	OCRRunner = ocr.Runner
+	// Photos holds the photos behind OCR drafts, in memory only
+	// (ingest.Photos).
+	Photos = domain.Photos
+	// CatalogReader is what the pipeline reads from the catalog
+	// (ingest.CatalogReader). *catalog.Store satisfies it; every call runs in
+	// the household the Caller was admitted to.
+	CatalogReader = domain.CatalogReader
+)
+
+// The picture choices a draft can carry (ingest.PictureUnchosen and the
+// others).
+const (
+	PictureUnchosen = domain.PictureUnchosen
+	PictureNone     = domain.PictureNone
+	PictureKeep     = domain.PictureKeep
+)
+
+// The note issues the review screen explains (ingest.IssueNoteTooLong and the
+// others).
+const (
+	IssueNoteTooLong     = domain.IssueNoteTooLong
+	IssueNoteNutrition   = domain.IssueNoteNutrition
+	IssueNotePublication = domain.IssueNotePublication
+	IssueNoteMealPlan    = domain.IssueNoteMealPlan
+)
+
+// The errors a service method returns, and the ones the callers of the drafts
+// branch on, for errors.Is. They are the domain's own values, so errors.Is
+// matches either name.
+var (
+	// ErrFetch is a page that could not be fetched (ingest.ErrFetch).
+	ErrFetch = domain.ErrFetch
+	// ErrDraftGone is a draft that expired or was discarded
+	// (ingest.ErrDraftGone).
+	ErrDraftGone = domain.ErrDraftGone
+	// ErrNoProvider is a retry with no LLM provider configured
+	// (ingest.ErrNoProvider).
+	ErrNoProvider = domain.ErrNoProvider
+	// ErrLLMFailed is a provider that failed or answered badly
+	// (ingest.ErrLLMFailed).
+	ErrLLMFailed = domain.ErrLLMFailed
+	// ErrIncompleteDraft is a draft that cannot be confirmed yet
+	// (ingest.ErrIncompleteDraft).
+	ErrIncompleteDraft = domain.ErrIncompleteDraft
+	// ErrBadPictureChoice is a picture that is not one of the draft's
+	// candidates (ingest.ErrBadPictureChoice).
+	ErrBadPictureChoice = domain.ErrBadPictureChoice
+	// ErrNoSourceURL is a re-import of a recipe with no source address
+	// (ingest.ErrNoSourceURL).
+	ErrNoSourceURL = domain.ErrNoSourceURL
+	// ErrEmptyInput is a page with nothing in it to read (extract.ErrEmptyInput).
+	ErrEmptyInput = extract.ErrEmptyInput
+	// ErrNoText is a photograph OCR found no text in (ocr.ErrNoText).
+	ErrNoText = ocr.ErrNoText
+	// ErrOCRFailed is OCR that ran and failed on the photograph (ocr.ErrFailed).
+	ErrOCRFailed = ocr.ErrFailed
+	// ErrNotMember is returned for a Caller that is not a verified member of a
+	// household (caller.ErrNotMember).
+	ErrNotMember = caller.ErrNotMember
+)
+
+// Confirm turns a draft the review screen approved into a Confirmed one
+// (ingest.Confirm). It is pure and touches no household data.
+func Confirm(d Draft) (Confirmed, error) { return domain.Confirm(d) }
+
+// ProposedFor lists the catalog entries a draft's lines and equipment would
+// add (ingest.ProposedFor). It is pure.
+func ProposedFor(comps []Component, prior []ProposedIngredient) []ProposedIngredient {
+	return domain.ProposedFor(comps, prior)
+}
+
+// SourceHost names the host of a recipe's source address (ingest.SourceHost).
+func SourceHost(sourceURL string) string { return domain.SourceHost(sourceURL) }
+
+// NewPhotos returns an empty photo cache (ingest.NewPhotos).
+func NewPhotos(now func() time.Time) *Photos { return domain.NewPhotos(now) }
+
+// SelectProvider builds the provider cfg names from factories, or none when
+// cfg names none (ingest.SelectProvider).
+func SelectProvider(ctx context.Context, cfg config.LLM, log *slog.Logger, factories map[string]ProviderFactory) (Provider, error) {
+	return domain.SelectProvider(ctx, cfg, log, factories)
+}
+
+// Pipeline is what the service calls to draft a recipe. *ingest.Pipeline
+// satisfies it.
+type Pipeline interface {
+	FromURL(ctx context.Context, rawURL string) (Draft, error)
+	FromText(ctx context.Context, text string) (Draft, error)
+	FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (Draft, error)
+}
+
+// Fallback is what the service calls to retry a draft with the LLM.
+// *ingest.Fallback satisfies it.
+type Fallback interface {
+	Retry(ctx context.Context, d Draft) (Draft, error)
+	Configured() bool
+}
+
+// Deps is what the service is built from.
+type Deps struct {
+	// Catalog resolves ingredient names, units and equipment for the pipeline.
+	// Required.
+	Catalog CatalogReader
+	// Members is the membership lookup. Required.
+	Members Members
+	// Provider is the LLM provider of the fallback. Optional: without one a
+	// draft below the threshold is only flagged, and Retry is ErrNoProvider.
+	Provider Provider
+	// Logger receives the fallback's warnings; nil means slog.Default().
+	Logger *slog.Logger
+}
+
+// Service is the ingestion operations. It is safe for concurrent use.
+type Service struct {
+	pipeline Pipeline
+	fallback Fallback
+	members  Members
+}
+
+// New returns a Service over a pipeline built from cfg and d. Catalog and
+// Members are required, and cfg must be one the pipeline can work with; a bad
+// value is an error here, not on the first request.
+func New(cfg config.Ingestion, d Deps) (*Service, error) {
+	if d.Members == nil {
+		return nil, errors.New("ingest service: members are required")
+	}
+	p, err := domain.New(cfg, domain.Deps{Catalog: d.Catalog, Provider: d.Provider, Logger: d.Logger})
+	if err != nil {
+		return nil, err
+	}
+	return &Service{pipeline: p, fallback: p.Fallback(), members: d.Members}, nil
+}
+
+// enter checks the Caller and returns a context that runs in its household
+// (caller.Enter). It is the first line of every method.
+func (s *Service) enter(ctx context.Context, c Caller) (context.Context, error) {
+	return caller.Enter(ctx, s.members, c)
+}
+
+// FromURL fetches the page at rawURL and drafts the recipe on it. A failed or
+// timed-out fetch wraps ErrFetch.
+func (s *Service) FromURL(ctx context.Context, c Caller, rawURL string) (Draft, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return Draft{}, err
+	}
+	return s.pipeline.FromURL(ctx, rawURL)
+}
+
+// FromText drafts a recipe from pasted text.
+func (s *Service) FromText(ctx context.Context, c Caller, text string) (Draft, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return Draft{}, err
+	}
+	return s.pipeline.FromText(ctx, text)
+}
+
+// FromOCR drafts a recipe from the text OCR read off a photograph. The image
+// is held on the draft in memory only, for the vision fallback.
+func (s *Service) FromOCR(ctx context.Context, c Caller, text string, image []byte, imageMIME string) (Draft, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return Draft{}, err
+	}
+	return s.pipeline.FromOCR(ctx, text, image, imageMIME)
+}
+
+// Retry asks the LLM to read d's source again, whatever d scored. It is only
+// for the review screen's retry button, and returns a draft for review; it
+// saves nothing. It is ErrNoProvider when no provider is configured.
+func (s *Service) Retry(ctx context.Context, c Caller, d Draft) (Draft, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return Draft{}, err
+	}
+	return s.fallback.Retry(ctx, d)
+}
+
+// Configured reports whether an LLM provider is available. It reads
+// configuration, not household data, so it takes no Caller.
+func (s *Service) Configured() bool { return s.fallback.Configured() }
+
+// Bound is the Service for callers whose seams carry a context and no Caller.
+// Each call asks who for the Caller of its context and goes through the
+// Service, so the membership check runs on every call. A who that finds no
+// identity returns the zero Caller, which the Service refuses with
+// ErrNotMember: a Bound with nobody to speak for fails closed.
+type Bound struct {
+	s   *Service
+	who func(ctx context.Context) Caller
+}
+
+// Bind returns the Service speaking for the Caller who names from a call's
+// context. A web adapter passes caller.FromContext; the MCP adapter builds the
+// Caller from the credential on the context.
+func (s *Service) Bind(who func(ctx context.Context) Caller) *Bound {
+	return &Bound{s: s, who: who}
+}
+
+// FromURL is Service.FromURL.
+func (b *Bound) FromURL(ctx context.Context, rawURL string) (Draft, error) {
+	return b.s.FromURL(ctx, b.who(ctx), rawURL)
+}
+
+// FromText is Service.FromText.
+func (b *Bound) FromText(ctx context.Context, text string) (Draft, error) {
+	return b.s.FromText(ctx, b.who(ctx), text)
+}
+
+// FromOCR is Service.FromOCR.
+func (b *Bound) FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (Draft, error) {
+	return b.s.FromOCR(ctx, b.who(ctx), text, image, imageMIME)
+}
+
+// Retry is Service.Retry.
+func (b *Bound) Retry(ctx context.Context, d Draft) (Draft, error) {
+	return b.s.Retry(ctx, b.who(ctx), d)
+}
+
+// Configured is Service.Configured.
+func (b *Bound) Configured() bool { return b.s.Configured() }

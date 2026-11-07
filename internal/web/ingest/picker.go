@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	webpicture "github.com/kaecyra/gobbler/internal/web/picture"
 )
@@ -51,12 +51,12 @@ type pickerView struct {
 
 // picker builds the picker for d. A draft with candidates starts with no
 // choice, and confirm refuses until one is made.
-func (h *handler) picker(ctx context.Context, d ingestcore.Draft) (pickerView, error) {
-	v := pickerView{NoneChecked: d.Picture == ingestcore.PictureNone || (d.Candidates == 0 && d.Reimport == nil)}
+func (h *handler) picker(ctx context.Context, d apiingest.Draft) (pickerView, error) {
+	v := pickerView{NoneChecked: d.Picture == apiingest.PictureNone || (d.Candidates == 0 && d.Reimport == nil)}
 	if d.Reimport != nil {
 		// Keeping the picture is the default, so no choice is ever missing.
 		v.Keep = true
-		v.KeepChecked = d.Picture == ingestcore.PictureKeep || d.Picture == ingestcore.PictureUnchosen
+		v.KeepChecked = d.Picture == apiingest.PictureKeep || d.Picture == apiingest.PictureUnchosen
 		key, ok, err := h.recipes.PictureKey(ctx, caller.FromContext(ctx), d.Reimport.RecipeID)
 		if err != nil {
 			return pickerView{}, fmt.Errorf("read the recipe's picture: %w", err)
@@ -74,7 +74,7 @@ func (h *handler) picker(ctx context.Context, d ingestcore.Draft) (pickerView, e
 		return pickerView{}, fmt.Errorf("read picture candidates: %w", err)
 	}
 	for _, c := range cs {
-		checked := d.Picture == ingestcore.PictureChoice(c.Position)
+		checked := d.Picture == apiingest.PictureChoice(c.Position)
 		v.Chosen = v.Chosen || checked
 		v.Options = append(v.Options, pickOption{
 			Value: strconv.Itoa(c.Position), Src: webpicture.CandidateSrc(d.ProposalID, c.Position),
@@ -87,28 +87,28 @@ func (h *handler) picker(ctx context.Context, d ingestcore.Draft) (pickerView, e
 // choosePicture keeps the choice posted with the review form on the draft, and
 // on base. No value leaves the draft as it is. A value that is not "none" or a
 // whole position, or a position the draft has no candidate for, is a bad request.
-func (h *handler) choosePicture(ctx context.Context, token, value string, base *ingestcore.Draft) error {
+func (h *handler) choosePicture(ctx context.Context, token, value string, base *apiingest.Draft) error {
 	if value == "" {
 		return nil
 	}
-	choice := ingestcore.PictureNone
+	choice := apiingest.PictureNone
 	if value == pictureKeep {
-		choice = ingestcore.PictureKeep
+		choice = apiingest.PictureKeep
 	} else if value != pictureNone {
 		n, err := strconv.Atoi(value)
 		if err != nil || n < 1 {
 			return fmt.Errorf("picture %q: %w", value, layout.ErrInvalid)
 		}
-		choice = ingestcore.PictureChoice(n)
+		choice = apiingest.PictureChoice(n)
 	}
-	if choice == base.Picture || (choice == ingestcore.PictureKeep && base.Picture == ingestcore.PictureUnchosen && base.Reimport != nil) {
+	if choice == base.Picture || (choice == apiingest.PictureKeep && base.Picture == apiingest.PictureUnchosen && base.Reimport != nil) {
 		return nil
 	}
 	err := h.recipes.ChoosePicture(ctx, caller.FromContext(ctx), token, choice)
-	if errors.Is(err, ingestcore.ErrBadPictureChoice) {
+	if errors.Is(err, apiingest.ErrBadPictureChoice) {
 		return fmt.Errorf("%w: %w", layout.ErrInvalid, err)
 	}
-	if errors.Is(err, ingestcore.ErrDraftGone) {
+	if errors.Is(err, apiingest.ErrDraftGone) {
 		return errGone
 	}
 	if err != nil {

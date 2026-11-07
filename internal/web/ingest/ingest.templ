@@ -1,7 +1,7 @@
 package ingest
 
 import (
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
@@ -227,7 +227,7 @@ templ picker(p pickerView) {
 
 // sourceBox shows the ingredient lines as the source wrote them, with the
 // lines the rules were unsure of marked in grain.
-templ sourceBox(d ingestcore.Draft) {
+templ sourceBox(d apiingest.Draft) {
 	if rows := sourceRows(d); len(rows) > 0 {
 		<details class="srcbox-wrap" open>
 			<summary class="sec-h"><h2>What the source said</h2><span class="toggle hide">Hide</span><span class="toggle show">Show</span></summary>
@@ -248,7 +248,7 @@ templ sourceBox(d ingestcore.Draft) {
 
 // summary shows how sure the rules were, as words. look is how many items
 // the form marks for a look, the count its save bar shows.
-templ summary(d ingestcore.Draft, look int) {
+templ summary(d apiingest.Draft, look int) {
 	<section aria-label="Confidence">
 		if d.LLMError != "" {
 			<div class="error" role="alert">
