@@ -32,6 +32,7 @@ let doomedId = 0;
 let doomedCloneId = 0;
 let listedId = 0;
 let notesId = 0;
+let ribbonId = 0;
 let thumbnails: Awaited<ReturnType<typeof startThumbnailHost>> | undefined;
 
 test.use({ baseURL: origin });
@@ -44,7 +45,7 @@ test.beforeAll(async () => {
   if (stale) throw new Error(`something already listens on ${origin}; set GOBBLER_E2E_RECIPEVIEW_PORT`);
   dataDir = mkdtempSync(join(tmpdir(), 'gobbler-e2e-recipeview-'));
   const out = execFileSync('go', ['run', './e2e/recipeview/seed', dataDir], { cwd: repoRoot, encoding: 'utf8' });
-  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId, notes: notesId } = JSON.parse(out));
+  ({ recipe: id, meanwhile: meanwhileId, clone: cloneId, bare_video: bareVideoId, video_later: laterId, styled: styledId, doomed: doomedId, doomed_clone: doomedCloneId, listed: listedId, notes: notesId, ribbon: ribbonId } = JSON.parse(out));
   thumbnails = await startThumbnailHost();
   server = spawn(bin, ['serve'], {
     env: {
@@ -709,6 +710,46 @@ test('a note bulb sits in the step-number column', async ({ page }) => {
   const bulb = (await page.getByTestId('author-note').first().locator('.an').boundingBox())!;
   expect(bulb.x).toBe(mark.x);
   expect(bulb.width).toBe(mark.width);
+});
+
+// #537: ribbon.js is the only thing that merges the large ribbon's segments as
+// the page narrows; without it the ribbon shows every segment and wraps.
+test.describe('large ribbon fit', () => {
+  test('on a phone the ribbon moves to a merged level, and every segment stays inside it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(`/recipes/${ribbonId}`);
+    const rib = page.locator('.rib-big');
+    await expect(rib).toHaveClass(/rib-merges/);
+    await expect.poll(() => rib.getAttribute('data-level')).toMatch(/^[12]$/);
+    const box = (await rib.boundingBox())!;
+    const edges = await rib.locator('.rib-merged .rib-seg').evaluateAll((segs) => segs.map((s) => s.getBoundingClientRect().right));
+    expect(edges.length).toBeGreaterThan(0);
+    for (const right of edges) expect(right).toBeLessThanOrEqual(box.x + box.width + 1);
+    expect(await rib.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  });
+
+  test('a wide page shows every segment', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await page.goto(`/recipes/${ribbonId}`);
+    await expect(page.locator('.rib-big')).toHaveAttribute('data-level', '0');
+    await expect(page.locator('.rib-big .rib-full .rib-seg')).toHaveCount(6);
+  });
+
+  test('without the script a narrow ribbon wraps and nothing is clipped', async ({ page }) => {
+    await page.route('**/static/ribbon.js', (route) => route.abort());
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(`/recipes/${ribbonId}`);
+    const rib = page.locator('.rib-big');
+    await expect(rib).toHaveAttribute('data-level', '0');
+    await expect(rib).not.toHaveAttribute('data-fit', '');
+    const box = (await rib.boundingBox())!;
+    // More than one line of segments, every one inside the ribbon.
+    expect(box.height).toBeGreaterThan(40);
+    const edges = await rib.locator('.rib-full .rib-seg').evaluateAll((segs) => segs.map((s) => s.getBoundingClientRect().right));
+    expect(edges).toHaveLength(6);
+    for (const right of edges) expect(right).toBeLessThanOrEqual(box.x + box.width + 1);
+    expect(await rib.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  });
 });
 
 test('a recipe without author notes shows none, and the notes survive scaling', async ({ page }) => {
