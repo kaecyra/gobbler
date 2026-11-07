@@ -58,8 +58,8 @@ Options considered:
 3. **Corners are 4–6px.** The mockup's 12px card radius is not carried over.
 4. **New recipe fields.** All are optional, part of the recipe revision, and
    shown and editable on the review screen and in the editor:
-   - **Meal type**, one of `breakfast`, `main`, `side`, `dessert`, `snack`,
-     `drink`. Ingest maps schema.org `recipeCategory` onto it when the mapping
+   - **Meal type**, one of `breakfast`, `main`, `side`, `baked`, `dessert`,
+     `snack`, `drink`. Ingest maps schema.org `recipeCategory` onto it when the mapping
      is unambiguous and leaves it empty otherwise.
    - **Spice level**, 0 to 3. Never set by ingest.
    - **Step stage kind**, from a closed set (`prep`, `rise`, `rest`, `steep`,
