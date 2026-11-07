@@ -139,7 +139,7 @@ func Build(steps []recipe.Step) Ribbon {
 		labels = append(labels, long(p.Minutes)+" "+p.Kind)
 	}
 	r.Merged = merge(r.Full)
-	r.Label = strings.Join(labels, ", then ")
+	r.Label = strings.Join(labels, ", ")
 	return r
 }
 

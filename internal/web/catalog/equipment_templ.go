@@ -51,7 +51,7 @@ func equipmentPage(v equipmentView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><h1>Equipment catalog</h1></div><p class=\"muted\">Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows \"may need a larger pan\" on them.</p><div class=\"panel table-wrap\"><table data-testid=\"equipment-table\"><thead><tr><th scope=\"col\">Name</th><th scope=\"col\">Also called</th><th scope=\"col\">Sized</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg wide\"><div class=\"screen-h\"><h1>Equipment catalog</h1></div><p class=\"muted\">Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows \"may need a larger pan\"</p><div class=\"panel table-wrap\"><table data-testid=\"equipment-table\"><thead><tr><th scope=\"col\">Name</th><th scope=\"col\">Also called</th><th scope=\"col\">Sized</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

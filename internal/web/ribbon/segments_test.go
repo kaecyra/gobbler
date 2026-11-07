@@ -205,7 +205,7 @@ func TestLabelAndTitle(t *testing.T) {
 		step(180, true, recipe.StageBraise),
 		step(10, true, ""),
 	})
-	want := "20 minutes prep, then 30 minutes hands-on, then 3 hours braise, then 10 minutes waiting"
+	want := "20 minutes prep, 30 minutes hands-on, 3 hours braise, 10 minutes waiting"
 	if r.Label != want {
 		t.Errorf("Label = %q, want %q", r.Label, want)
 	}
@@ -214,6 +214,18 @@ func TestLabelAndTitle(t *testing.T) {
 	}
 	if got := r.Full[2].Title; got != "3h braise" {
 		t.Errorf("Full[2].Title = %q", got)
+	}
+}
+
+func TestLabelGroupsARecurringKindIntoOneEntry(t *testing.T) {
+	r := Build([]recipe.Step{
+		step(60, true, recipe.StageRise),
+		step(20, false, recipe.StagePrep),
+		step(45, true, recipe.StageRise),
+	})
+	want := "1 hour 45 minutes rise, 20 minutes prep"
+	if r.Label != want {
+		t.Errorf("Label = %q, want %q", r.Label, want)
 	}
 }
 

@@ -94,7 +94,7 @@
 .recipe-actions { display: flex; gap: 8px; }
 .iconbtn { width: var(--tap); padding: 0; }
 .iconbtn svg { width: 22px; height: 22px; }
-.cookbtn svg { width: 20px; height: 20px; display: block; flex: none; }
+.cookbtn svg { display: block; flex: none; }
 .recipe-error { color: var(--wattle-ink); font-weight: 600; }
 
 /* ---- ingredients and steps ---- */
