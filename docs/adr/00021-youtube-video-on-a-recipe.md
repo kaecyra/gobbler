@@ -7,8 +7,8 @@
 ## Context
 
 The owner wants to link a recipe to a YouTube video, optionally, and have it
-play at the top of the recipe page in a minimal player. Two settled positions
-stand in the way:
+play on the recipe page, at the top of the steps column, in a minimal player.
+Two settled positions stand in the way:
 
 - [ADR-00002](00002-single-binary-go-stack.md) (static assets, obligation 3)
   and the repository boundary on third-party scripts: no page loads a script

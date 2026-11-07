@@ -18,8 +18,8 @@ and this document is wrong.
   ([ADR-00022](adr/00022-adopt-the-mockup-design.md)); the cuisine is one value
   from a fixed list ([ADR-00025](adr/00025-one-cuisine-per-recipe.md)).
 - **Watch** it, optionally: a recipe may carry a YouTube video that plays at the
-  top of its page only when someone presses Play; the thumbnail is downloaded at
-  save and kept in SQLite ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)).
+  top of the steps column only when someone presses Play; the thumbnail is
+  downloaded at save and kept in SQLite ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)).
 - **Find** it by full-text search and tags.
 - **Follow** it: scale it, switch units, see "meanwhile" guidance, use cook mode
   ([ADR-00005](adr/00005-quantities-and-units.md)).
