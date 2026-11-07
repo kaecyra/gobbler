@@ -86,6 +86,7 @@ var (
 	ErrDraftLimit       = store.ErrDraftLimit
 	ErrNoIdentity       = store.ErrNoIdentity
 	ErrNoHousehold      = store.ErrNoHousehold
+	ErrOnShoppingList   = store.ErrOnShoppingList
 )
 
 // Reaper finds and deletes the media objects of a recipe and of the drafts
