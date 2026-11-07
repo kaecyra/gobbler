@@ -229,14 +229,32 @@ var (
 // and "Stir before you serve" are left to the verb rules.
 var serveRE = regexp.MustCompile(`(?i)^\W*serv(?:e|ing)\b`)
 
+// Machine mixing and kneading (ADR-00022). Plain "mix", "stir", "whisk" and
+// "combine" are not here: by hand they are prep or no kind, and they say
+// nothing of a machine.
+var (
+	// mixWordRE matches a mixing machine named anywhere in the step ("in the
+	// bowl of a stand mixer", "pulse in a food processor", "fit the dough
+	// hook") and "knead" in any form but "kneaded", an adjective ("the kneaded
+	// dough"), and "no-knead", a kind of bread.
+	mixWordRE = regexp.MustCompile(`(?i)(^|[^\w-])knead(s|ing)?\b|\b(mixers?|food processors?|blenders?|bread machines?|dough hooks?)\b`)
+	// mixVerbRE matches "blend" where it is the instruction, as verbRE reads
+	// it, so "the spice blend" is not mixing.
+	mixVerbRE = verbRE(`(blend)`)
+)
+
 // stageKindOf proposes a stage kind for a step from its source title and its
-// text. A title that opens with "serve" says so outright. In the text, an
-// opening "serve" counts as the kind serve beside the kinds the verbs name, so
-// serve alone is serve and serve with another kind is ambiguous and gets none
-// (ADR-00022, ADR-00006).
+// text. A title that opens with "serve" says so outright, and so does a title
+// whose only kind is mix ("Knead the dough"). In the text, an opening "serve"
+// counts as the kind serve beside the kinds the verbs name, so serve alone is
+// serve and serve with another kind is ambiguous and gets none (ADR-00022,
+// ADR-00006).
 func stageKindOf(title, text string) recipe.StageKind {
 	if serveRE.MatchString(title) {
 		return recipe.StageServe
+	}
+	if soleKind(stageKinds(title)) == recipe.StageMix {
+		return recipe.StageMix
 	}
 	kinds := stageKinds(text)
 	if serveRE.MatchString(text) {
@@ -288,6 +306,9 @@ func stageKinds(text string) map[recipe.StageKind]bool {
 	}
 	if prepVerbRE.MatchString(text) {
 		kinds[recipe.StagePrep] = true
+	}
+	if mixWordRE.MatchString(text) || mixVerbRE.MatchString(text) {
+		kinds[recipe.StageMix] = true
 	}
 	return kinds
 }

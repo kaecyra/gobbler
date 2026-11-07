@@ -136,3 +136,11 @@ func TestParserVersionCoversBakedMealType(t *testing.T) {
 		t.Errorf("ParserVersion %q predates the baked meal type", ParserVersion)
 	}
 }
+
+func TestParserVersionCoversMixStageKind(t *testing.T) {
+	// Kneading and machine mixing now propose mix, so a draft made by older
+	// rules must be distinguishable (ParserVersion's contract).
+	if ParserVersion == "19" {
+		t.Errorf("ParserVersion %q predates the mix stage kind", ParserVersion)
+	}
+}

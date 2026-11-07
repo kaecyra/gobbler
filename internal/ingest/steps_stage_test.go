@@ -42,7 +42,6 @@ func TestStageKindIsProposedFromTheInstruction(t *testing.T) {
 		// Not instructions: adjectives, ingredients, other phrases.
 		{"Add the roasted peppers and baked beans.", ""},
 		{"Add the carrots and roast beef.", ""},
-		{"Use a stand mixer on low.", ""},
 		{"Stir while the sauce simmers.", ""},
 		{"Stir before you serve.", ""},
 		{"Observe the dough.", ""},
@@ -61,6 +60,68 @@ func TestStageKindIsProposedFromTheInstruction(t *testing.T) {
 	for _, c := range cases {
 		if got := stageKindOf("", c.text); got != c.want {
 			t.Errorf("stageKindOf(%q) = %q, want %q", c.text, got, c.want)
+		}
+	}
+}
+
+// mix is machine mixing and kneading (ADR-00022). Mixing, stirring, whisking
+// or combining by hand is not, and a step that names mix beside another kind
+// is ambiguous and gets none (ADR-00006, precision over recall).
+func TestStageKindMixIsMachineMixingAndKneading(t *testing.T) {
+	cases := []struct {
+		text string
+		want recipe.StageKind
+	}{
+		{"Knead the dough for 10 minutes until smooth.", recipe.StageMix},
+		{"Turn the dough out and knead it until elastic.", recipe.StageMix},
+		{"Continue kneading until the dough passes the windowpane test.", recipe.StageMix},
+		{"Use a stand mixer on low.", recipe.StageMix},
+		{"In the bowl of a stand mixer, combine the flour, yeast and water.", recipe.StageMix},
+		{"Beat the butter and sugar with a hand mixer until fluffy.", recipe.StageMix},
+		{"Pulse the oats in a food processor until fine.", recipe.StageMix},
+		{"Blend until smooth.", recipe.StageMix},
+		{"Pour the soup into a blender and puree.", recipe.StageMix},
+		{"Add everything to the bread machine and start the dough cycle.", recipe.StageMix},
+		{"Mix on medium speed with the dough hook for 5 minutes.", recipe.StageMix},
+
+		// Mixing by hand is not mix.
+		{"Mix the flour and water.", ""},
+		{"Stir in the chocolate chips.", ""},
+		{"Whisk the eggs and milk together.", ""},
+		{"Combine the dry ingredients in a large bowl.", ""},
+		{"Mix well, by hand.", ""},
+		// Not the instruction: an adjective, a kind of bread, a noun.
+		{"Shape the kneaded dough into a ball.", ""},
+		{"This no-knead dough needs no work.", ""},
+		{"Sprinkle with the spice blend.", ""},
+		// mix beside another kind is two kinds.
+		{"Knead the dough, then let it rise for 1 hour.", ""},
+		{"Chop the nuts in a food processor.", ""},
+		{"Blend the soup, then simmer for 10 minutes.", ""},
+	}
+	for _, c := range cases {
+		if got := stageKindOf("", c.text); got != c.want {
+			t.Errorf("stageKindOf(%q) = %q, want %q", c.text, got, c.want)
+		}
+	}
+}
+
+// A source title whose only kind is mix says so, whatever the text names.
+func TestStageKindMixFromTheTitle(t *testing.T) {
+	cases := []struct {
+		title, text string
+		want        recipe.StageKind
+	}{
+		{"Knead the dough", "Work it for 10 minutes until smooth.", recipe.StageMix},
+		{"Knead", "Knead for 8 minutes, then rest for 5 minutes.", recipe.StageMix},
+		{"In the stand mixer", "Beat the eggs and sugar until pale.", recipe.StageMix},
+		{"Mix the dough", "Stir the flour and water together.", ""},
+		{"Knead and let rise", "Work the dough, then leave it.", ""},
+		{"Serve", "Knead the dough.", recipe.StageServe},
+	}
+	for _, c := range cases {
+		if got := stageKindOf(c.title, c.text); got != c.want {
+			t.Errorf("stageKindOf(%q, %q) = %q, want %q", c.title, c.text, got, c.want)
 		}
 	}
 }

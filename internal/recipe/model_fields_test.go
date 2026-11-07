@@ -22,6 +22,7 @@ func TestValidateRecipeFields(t *testing.T) {
 		{"spice too high", Recipe{SpiceLevel: &four, Components: []Component{step("")}}, ErrInvalidSpiceLevel},
 		{"spice negative", Recipe{SpiceLevel: &neg, Components: []Component{step("")}}, ErrInvalidSpiceLevel},
 		{"known stage kind", rec(step(StageBake)), nil},
+		{"mix stage kind", rec(step(StageMix)), nil},
 		{"unknown stage kind", rec(step("fry")), ErrInvalidStageKind},
 	}
 	for _, tt := range tests {

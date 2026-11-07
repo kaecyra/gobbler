@@ -96,7 +96,7 @@ type Step struct {
 	GraphFromLLM bool
 	// Kind is what the step is doing, for the time ribbon (ADR-00022): proposed
 	// by rule from the text where the text is unambiguous, or from a source
-	// title opening with "serve", else empty. Empty is
+	// title opening with "serve" or naming only mix, else empty. Empty is
 	// unknown, never an error (ADR-00006).
 	Kind recipe.StageKind
 	// Title is a short heading the source gave the step, empty when it had none.
