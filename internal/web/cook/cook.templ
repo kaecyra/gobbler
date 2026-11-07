@@ -13,28 +13,47 @@ const (
 	scriptPath     = "/static/cook.js"
 )
 
+// cookPage is drawn after #cook in docs/ui/mockup.html: a header row with the
+// way back, the recipe, its servings and units and the progress bar; the step
+// on the left; timers, what comes next and the author's notes on a sunk side
+// column; Back and Next under both.
 templ cookPage(p page) {
 	@layout.Page(p.Name + " - cook mode") {
 		<link rel="stylesheet" href={ stylesheetPath }/>
 		<article id="cook" class="cook" data-recipe={ strconv.FormatInt(p.ID, 10) }>
 			<header class="cook-head">
-				<a class="cook-back" href={ templ.SafeURL(p.ExitHref) } data-cook-exit data-testid="cook-exit">
+				<a class="btn cook-back" href={ templ.SafeURL(p.ExitHref) } data-cook-exit data-testid="cook-exit">
 					@layout.Icon(layout.IconBack)
 					<span>Back to recipe</span>
 				</a>
 				<h1>{ p.Name }</h1>
+				<span class="cook-meta" data-testid="cook-meta">{ p.Meta }</span>
+				if !p.Empty {
+					@progress(p.StepList)
+				}
 			</header>
+			<p id="cook-wake" class="cook-wake" role="status" data-testid="wake-status" hidden></p>
 			if p.Empty {
 				<p class="cook-empty" data-testid="cook-empty">This recipe has no steps yet, so there is nothing to cook through. <a href={ templ.SafeURL(p.ExitHref) }>Back to the recipe</a>.</p>
 			} else {
 				@stepPanel(p)
 			}
-			<p id="cook-wake" class="muted cook-wake" role="status" data-testid="wake-status" hidden></p>
 			@timersPanel()
 		</article>
 		<script src={ timersPath } defer></script>
 		<script src={ scriptPath } defer></script>
 	}
+}
+
+// progress is one bar per step. It sits in the header, outside the swapped
+// step panel, so cook.js moves the current mark after each step swap from the
+// panel's data-current.
+templ progress(steps []listItem) {
+	<div id="cook-prog" class="cook-prog" aria-hidden="true">
+		for _, s := range steps {
+			<i class={ progClass(s) }></i>
+		}
+	</div>
 }
 
 // timersPanel sits outside the swapped step panel so running timers survive
@@ -43,7 +62,7 @@ templ timersPanel() {
 	<section class="cook-timers" aria-labelledby="cook-timers-h">
 		<img class="cook-peek" src={ layout.MascotWhisk } alt="" width="96" height="93"/>
 		<div class="cook-timers-box">
-			<h2 id="cook-timers-h" class="eyebrow">Timers</h2>
+			<h2 id="cook-timers-h" class="cook-vh">Timers</h2>
 			<p class="muted" id="cook-timers-empty" data-testid="timers-empty">No timers running.</p>
 			<ul id="cook-timer-list" data-testid="timer-list"></ul>
 			<p id="cook-alert" class="cook-alert" role="alert" data-testid="timer-alert"></p>
@@ -52,43 +71,45 @@ templ timersPanel() {
 }
 
 templ stepPanel(p page) {
-	<div id="cook-step" class="cook-step" data-testid="cook-step">
-		<div class="cook-prog" aria-hidden="true">
-			for _, s := range p.StepList {
-				<i class={ progClass(s) }></i>
-			}
-		</div>
+	<div id="cook-step" class="cook-step" data-testid="cook-step" data-current={ strconv.Itoa(p.Current) }>
 		<section class="cook-main" aria-label="Current step">
-			<p class="eyebrow cook-progress" data-testid="progress">Step { strconv.Itoa(p.Current) } of { strconv.Itoa(p.Total) }
+			<p class="eyebrow cook-progress" data-testid="progress">
+				Step { strconv.Itoa(p.Current) } of { strconv.Itoa(p.Total) }
 				if p.Component != "" {
-					<span> - { p.Component }</span>
+					{ " · " + p.Component }
+				}
+				if p.IsMeanwhile {
+					{ " · meanwhile" }
 				}
 			</p>
 			if p.Step.Title != "" {
 				<h2 class="cook-title" data-testid="step-title">{ p.Step.Title }</h2>
 			}
-			<p class="cook-text" data-testid="step-text">{ p.Step.Text }</p>
-			if p.Step.Note != "" {
-				<p class="muted" data-testid="step-note">{ p.Step.Note }</p>
+			<div class="cook-text md" data-testid="step-text">
+				@layout.Markdown(p.Step.Text)
+			</div>
+			if p.Step.Note != "" || p.Step.Seconds > 0 {
+				<div class="cook-when">
+					if p.Step.Seconds > 0 {
+						<button
+							type="button"
+							class="cook-timer-start"
+							data-cook-timer
+							data-step={ strconv.Itoa(p.Step.Number) }
+							data-label={ p.Step.Label }
+							data-seconds={ strconv.Itoa(p.Step.Seconds) }
+							data-duration={ timerLabel(p.Step.Seconds) }
+							data-testid="timer-start"
+						>Start timer ({ timerLabel(p.Step.Seconds) })</button>
+					}
+					if p.Step.Note != "" {
+						<span class="muted" data-testid="step-note">{ p.Step.Note }</span>
+					}
+				</div>
 			}
-			if p.Step.Seconds > 0 {
-				<p>
-					<button
-						type="button"
-						class="cook-timer-start"
-						data-cook-timer
-						data-step={ strconv.Itoa(p.Step.Number) }
-						data-label={ "Step " + strconv.Itoa(p.Step.Number) + ": " + p.Step.Text }
-						data-seconds={ strconv.Itoa(p.Step.Seconds) }
-						data-duration={ timerLabel(p.Step.Seconds) }
-						data-testid="timer-start"
-					>Start timer ({ timerLabel(p.Step.Seconds) })</button>
-				</p>
-			}
-			@meanwhile(p)
 			if len(p.Lines) > 0 {
-				<section aria-labelledby="cook-ing-h">
-					<h2 id="cook-ing-h" class="eyebrow">Ingredients</h2>
+				<section class="cook-uses" aria-labelledby="cook-ing-h">
+					<h2 id="cook-ing-h" class="cook-vh">Ingredients</h2>
 					<ul class="cook-chips" data-testid="cook-ingredients">
 						for _, l := range p.Lines {
 							<li>
@@ -106,8 +127,8 @@ templ stepPanel(p page) {
 				</section>
 			}
 			if len(p.Equipment) > 0 {
-				<section aria-labelledby="cook-eq-h">
-					<h2 id="cook-eq-h" class="eyebrow">Equipment</h2>
+				<section class="cook-uses" aria-labelledby="cook-eq-h">
+					<h2 id="cook-eq-h" class="cook-vh">Equipment</h2>
 					<ul class="cook-chips" data-testid="cook-equipment">
 						for _, e := range p.Equipment {
 							<li class="equip-chip">
@@ -119,17 +140,16 @@ templ stepPanel(p page) {
 				</section>
 			}
 		</section>
-		if p.UpNext.Label != "" {
-			<aside class="cook-upnext" data-testid="up-next">
-				<span class="eyebrow">Up next</span>
-				<a
-					href={ templ.SafeURL(p.UpNext.Href) }
-					hx-get={ p.UpNext.Href }
-					hx-target="#cook-step"
-					hx-select="#cook-step"
-					hx-swap="outerHTML"
-					hx-push-url="true"
-				>{ p.UpNext.Label }</a>
+		if len(p.Meanwhile) > 0 || p.UpNext != nil {
+			<aside class="cook-upnext" aria-label="What comes next">
+				@meanwhile(p)
+				if p.UpNext != nil {
+					<div class="cook-go" data-testid="up-next">
+						<span class="eyebrow">Up next</span>
+						@goTo(p.UpNext.Number, p.UpNext.Href, false)
+						@stepLabel(p.UpNext.Title, p.UpNext.Text)
+					</div>
+				}
 			</aside>
 		}
 		@authorNotes(p.Notes)
@@ -145,27 +165,52 @@ templ stepPanel(p page) {
 				<span class="cook-btn next disabled" aria-disabled="true">Next step</span>
 			}
 		</nav>
-		<section class="cook-all" aria-labelledby="cook-list-h">
-			<h2 id="cook-list-h" class="eyebrow">All steps</h2>
+		<details class="cook-all">
+			<summary data-testid="step-list-toggle">All steps</summary>
 			<ol class="cook-steps" data-testid="step-list">
 				for _, s := range p.StepList {
-					<li>
-						<a
-							href={ templ.SafeURL(s.Href) }
-							hx-get={ s.Href }
-							hx-target="#cook-step"
-							hx-select="#cook-step"
-							hx-swap="outerHTML"
-							hx-push-url="true"
-							if s.Current {
-								aria-current="step"
-							}
-						>{ s.Text }</a>
+					<li class="cook-go">
+						@goTo(s.Number, s.Href, s.Current)
+						@stepLabel(s.Title, s.Text)
 					</li>
 				}
 			</ol>
-		</section>
+		</details>
 	</div>
+}
+
+// goTo is the link to another step from a list row: "Step 4" and a chevron at
+// the row's end, with the whole row as its tap target (cook.css, .cook-go).
+// The step's words sit beside it in stepLabel rather than inside it, because
+// step text may hold links of its own and links cannot nest.
+templ goTo(n int, href string, current bool) {
+	<a
+		class="cook-go-n"
+		href={ templ.SafeURL(href) }
+		hx-get={ href }
+		hx-target="#cook-step"
+		hx-select="#cook-step"
+		hx-swap="outerHTML"
+		hx-push-url="true"
+		if current {
+			aria-current="step"
+		}
+	>
+		<span>Step { strconv.Itoa(n) }</span>
+		@layout.Icon(layout.IconChevron)
+	</a>
+}
+
+// stepLabel names a step in a list: its title when it has one, else its text
+// through the one markdown renderer (ADR-00046).
+templ stepLabel(title, text string) {
+	if title != "" {
+		<b class="cook-go-t">{ title }</b>
+	} else {
+		<div class="cook-go-t md">
+			@layout.Markdown(text)
+		</div>
+	}
 }
 
 func progClass(s listItem) string {
@@ -178,23 +223,17 @@ func progClass(s listItem) string {
 	return ""
 }
 
-// meanwhile lists the work offered while a passive step runs. It renders
-// nothing when there is none.
+// meanwhile lists the work offered while a passive step runs, above up next.
+// It renders nothing when there is none.
 templ meanwhile(p page) {
 	if len(p.Meanwhile) > 0 {
-		<div class="callout meanwhile cook-meanwhile" data-testid="meanwhile">
-			<p class="co-label">Meanwhile</p>
+		<div class="cook-meanwhile" data-testid="meanwhile">
+			<span class="eyebrow">Meanwhile</span>
 			<ul>
 				for _, it := range p.Meanwhile {
-					<li>
-						<a
-							href={ templ.SafeURL(it.Href) }
-							hx-get={ it.Href }
-							hx-target="#cook-step"
-							hx-select="#cook-step"
-							hx-swap="outerHTML"
-							hx-push-url="true"
-						>step { strconv.Itoa(it.Number) }</a>: { it.Text }
+					<li class="cook-go">
+						@goTo(it.Number, it.Href, false)
+						@stepLabel(it.Title, it.Text)
 					</li>
 				}
 			</ul>
@@ -205,36 +244,31 @@ templ meanwhile(p page) {
 // authorNotes is the "Author's Notes" button and the notes it opens
 // (ADR-00041). The panel is a popover, so the button works without a script
 // and the panel closes on Escape or a tap outside it. It renders nothing when
-// the recipe has no author notes.
+// the recipe has no author notes. Note text goes through the one markdown
+// renderer (ADR-00046).
 templ authorNotes(notes []noteView) {
 	if len(notes) > 0 {
-		<style>
-			.cook-notes-row { margin: 0 0 14px; }
-			.cook-notes-panel { max-width: min(34rem, calc(100vw - 32px)); max-height: 80vh; overflow: auto; margin: auto; padding: 20px 22px 18px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
-			.cook-notes-panel::backdrop { background: color-mix(in srgb, var(--ink) 35%, transparent); }
-			.cook-notes-panel h2 { margin: 0 0 12px; }
-			.cook-notes-panel ul { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-			.cook-notes-panel li { font-size: 17px; line-height: 1.55; color: var(--ink-2); }
-			.cook-notes-panel li b { color: var(--ink); font-weight: 650; }
-			.cook-notes-panel small { color: var(--ink-3); font-size: 13.5px; white-space: nowrap; margin-left: 4px; }
-		</style>
 		<p class="cook-notes-row">
-			<button type="button" class="cook-btn" popovertarget="cook-notes" data-testid="notes-open">Author's Notes</button>
+			<button type="button" class="btn cook-notes-open" popovertarget="cook-notes" data-testid="notes-open">
+				@layout.Icon(layout.IconBulb)
+				<span>Author's Notes</span>
+			</button>
 		</p>
 		<div id="cook-notes" class="cook-notes-panel" popover aria-labelledby="cook-notes-h" data-testid="notes-panel">
 			<h2 id="cook-notes-h" class="eyebrow">Author's Notes</h2>
 			<ul data-testid="notes-list">
 				for _, n := range notes {
-					<li data-testid="author-note">
+					<li class="md" data-testid="author-note">
 						if n.Lead != "" {
 							<b>{ n.Lead }</b>
 						}
-						{ " " + n.Text }
+						{ " " }
+						@layout.Markdown(n.Text)
 						<small>From the author</small>
 					</li>
 				}
 			</ul>
-			<button type="button" class="cook-btn" popovertarget="cook-notes" popovertargetaction="hide" data-testid="notes-close">Close</button>
+			<button type="button" class="btn" popovertarget="cook-notes" popovertargetaction="hide" data-testid="notes-close">Close</button>
 		</div>
 	}
 }

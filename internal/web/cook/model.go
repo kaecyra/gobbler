@@ -19,6 +19,9 @@ type page struct {
 	Name string
 	// ExitHref returns to the recipe view with the same scale and units.
 	ExitHref string
+	// Meta is the scaled servings and the unit mode, such as "Serves 4 ·
+	// Metric"; the servings part is left out when the recipe has none.
+	Meta string
 
 	// Empty is true when the recipe has no steps; the other fields are then
 	// unset.
@@ -31,11 +34,15 @@ type page struct {
 	NextHref  string
 	StepList  []listItem
 	Component string
-	Lines     []display.Line
-	Equipment []equipmentChip
-	Meanwhile []meanwhileLink
-	// UpNext is the step after this one, empty on the last step.
-	UpNext upNext
+	// IsMeanwhile is true when this step is offered as work to do while an
+	// earlier passive step runs.
+	IsMeanwhile bool
+	Lines       []display.Line
+	Equipment   []equipmentChip
+	Meanwhile   []meanwhileLink
+	// UpNext is the step after this one, named by its title when it has one,
+	// else its text; nil on the last step.
+	UpNext *listItem
 	// Notes are the recipe author's notes, the same on every step: cook mode
 	// shows one step at a time, so it reaches them through a button
 	// (ADR-00041).
@@ -57,17 +64,13 @@ type equipmentChip struct {
 	Name string
 }
 
-// upNext names the following step: its title when it has one, else its text.
-type upNext struct {
-	Label string
-	Href  string
-}
-
 type stepView struct {
 	Number int
 	Text   string
 	// Title is the step's short heading, empty when it has none.
 	Title string
+	// Label names the step's timer: its title, else its text.
+	Label string
 	Note  string
 	// Seconds is the step's duration, 0 when unknown: no timer is offered.
 	Seconds int
@@ -77,12 +80,15 @@ type stepView struct {
 // its own step page.
 type meanwhileLink struct {
 	Number int
-	Text   string
-	Href   string
+	// Title is the step's title, empty when it has none.
+	Title string
+	Text  string
+	Href  string
 }
 
 type listItem struct {
 	Number  int
+	Title   string
 	Text    string
 	Href    string
 	Current bool
@@ -94,6 +100,14 @@ type listItem struct {
 // number past the end is an invalid request, not a missing page.
 func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o display.Options, n int) (page, error) {
 	p := page{ID: id, Name: r.Name, ExitHref: exitHref(id, o)}
+	servings, err := display.ScaleQty(r.Servings, o)
+	if err != nil {
+		return page{}, fmt.Errorf("servings: %w", err)
+	}
+	p.Meta = unitsLabel(o.Units)
+	if servings != "" {
+		p.Meta = "Serves " + servings + " · " + p.Meta
+	}
 	refs := r.LinearOrder()
 	p.Total = len(refs)
 	if p.Total == 0 {
@@ -111,7 +125,7 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	comp := r.Components[ref.ComponentIndex]
 	step := comp.Steps[ref.Position-1]
 
-	p.Step = stepView{Number: n, Text: step.Text, Title: step.Title, Note: display.StepNote(step), Seconds: int(step.Duration / time.Second)}
+	p.Step = stepView{Number: n, Text: step.Text, Title: step.Title, Label: cmp.Or(step.Title, step.Text), Note: display.StepNote(step), Seconds: int(step.Duration / time.Second)}
 	p.Component = comp.Name
 	if n > 1 {
 		p.PrevHref = stepHref(id, n-1, o)
@@ -121,13 +135,12 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 	}
 	for i, rf := range refs {
 		s := r.Components[rf.ComponentIndex].Steps[rf.Position-1]
-		p.StepList = append(p.StepList, listItem{Number: i + 1, Text: s.Text, Href: stepHref(id, i+1, o), Current: i+1 == n, Done: i+1 < n})
+		p.StepList = append(p.StepList, listItem{Number: i + 1, Title: s.Title, Text: s.Text, Href: stepHref(id, i+1, o), Current: i+1 == n, Done: i+1 < n})
 	}
 
 	if n < p.Total {
-		next := refs[n]
-		ns := r.Components[next.ComponentIndex].Steps[next.Position-1]
-		p.UpNext = upNext{Label: cmp.Or(ns.Title, ns.Text), Href: stepHref(id, n+1, o)}
+		next := p.StepList[n]
+		p.UpNext = &next
 	}
 
 	// Ingredients belong to components, not to steps, so the step shows its
@@ -159,9 +172,36 @@ func buildPage(ctx context.Context, cat Catalog, id int64, r recipe.Recipe, o di
 		return page{}, err
 	}
 	for _, it := range guidance[step.ID] {
-		p.Meanwhile = append(p.Meanwhile, meanwhileLink{Number: it.Number, Text: it.Text, Href: stepHref(id, it.Number, o)})
+		title := p.StepList[it.Number-1].Title
+		p.Meanwhile = append(p.Meanwhile, meanwhileLink{Number: it.Number, Title: title, Text: it.Text, Href: stepHref(id, it.Number, o)})
+	}
+	// The next step is often the first piece of meanwhile work; it is named
+	// once, under Meanwhile.
+	for _, m := range p.Meanwhile {
+		if p.UpNext != nil && m.Number == p.UpNext.Number {
+			p.UpNext = nil
+		}
+	}
+	for _, items := range guidance {
+		for _, it := range items {
+			if it.Number == n {
+				p.IsMeanwhile = true
+			}
+		}
 	}
 	return p, nil
+}
+
+// unitsLabel names a unit mode with the words of the recipe view's unit
+// buttons.
+func unitsLabel(units string) string {
+	switch units {
+	case display.UnitsMetric:
+		return "Metric"
+	case display.UnitsWeight:
+		return "Weight"
+	}
+	return "As written"
 }
 
 func usesStep(link recipe.EquipmentLink, id recipe.StepID) bool {

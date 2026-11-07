@@ -144,7 +144,8 @@ func TestFirstStepShowsOneStepAndItsContext(t *testing.T) {
 		`data-testid="step-list"`, `aria-current="step"`,
 		"Pizza &lt;1&gt;",
 	)
-	mustNotContain(t, body, "2 tomato", "Let it rise.</p>", `data-testid="prev"`)
+	mustNotContain(t, body, "2 tomato", `data-testid="prev"`)
+	mustNotContain(t, elementOf(t, body, "step-text", "</div>"), "Let it rise.")
 	// The other steps appear only in the step list, not as the shown step.
 	if n := strings.Count(body, `data-testid="step-text"`); n != 1 {
 		t.Errorf("shown steps = %d, want 1", n)
@@ -171,15 +172,64 @@ func TestUpNextShowsTheNextStepsTitleWhenItHasOne(t *testing.T) {
 // upNextOf returns the up-next element of a rendered cook page.
 func upNextOf(t *testing.T, body string) string {
 	t.Helper()
-	i := strings.Index(body, `data-testid="up-next"`)
+	return elementOf(t, body, "up-next", "</aside>")
+}
+
+// elementOf returns a rendered page from the element with the test id up to
+// the first end after it.
+func elementOf(t *testing.T, body, testID, end string) string {
+	t.Helper()
+	i := strings.Index(body, `data-testid="`+testID+`"`)
 	if i < 0 {
-		t.Fatalf("no up-next element\n%s", body)
+		t.Fatalf("no %s element\n%s", testID, body)
 	}
-	j := strings.Index(body[i:], "</aside>")
+	j := strings.Index(body[i:], end)
 	if j < 0 {
-		t.Fatalf("up-next element is not closed\n%s", body)
+		t.Fatalf("%s element is not closed by %s\n%s", testID, end, body)
 	}
 	return body[i : i+j]
+}
+
+// ADR-00046: cook mode renders step text through the one markdown renderer,
+// in the step itself and wherever a step without a title is named.
+func TestStepTextRendersAsMarkdown(t *testing.T) {
+	r := pizza(t)
+	r.Components[0].Steps[0].Text = "Mix **well**."
+	r.Components[0].Steps[1].Text = "Let it *rise*."
+	_, body := serve(t, fakeRecipes{3: r}, "/recipes/3/cook")
+	mustContain(t, body, `<div class="cook-text md" data-testid="step-text">`)
+	mustContain(t, elementOf(t, body, "step-text", "</div>"), "<p>Mix <strong>well</strong>.</p>")
+	mustContain(t, upNextOf(t, body), "<p>Let it <em>rise</em>.</p>")
+	mustNotContain(t, body, "**well**", "*rise*")
+}
+
+func TestHeaderShowsServingsAndUnits(t *testing.T) {
+	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?scale=2&units=metric")
+	mustContain(t, elementOf(t, body, "cook-meta", "</span>"), "Serves 8 · Metric")
+	r := pizza(t)
+	r.Servings = quantity.Quantity{}
+	_, body = serve(t, fakeRecipes{3: r}, "/recipes/3/cook")
+	mustContain(t, body, `data-testid="cook-meta">As written</span>`)
+}
+
+// The mockup marks a step done while another waits ("Step 4 of 6 ·
+// meanwhile"), and the next step is named once when it is also meanwhile work.
+func TestMeanwhileStepsAreMarkedAndNamedOnce(t *testing.T) {
+	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=4")
+	mustContain(t, elementOf(t, body, "progress", "</p>"), "· meanwhile")
+	_, body = serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=3")
+	mustNotContain(t, elementOf(t, body, "progress", "</p>"), "meanwhile")
+
+	// Bake moves to the last component, so chop follows the rise: offered
+	// meanwhile during it, and also the next step.
+	r := pizza(t)
+	bake := r.Components[0].Steps[2]
+	r.Components[0].Steps = r.Components[0].Steps[:2]
+	r.Components[2].Steps = append([]recipe.Step{bake}, r.Components[2].Steps...)
+	_, body = serve(t, fakeRecipes{3: r}, "/recipes/3/cook?step=2")
+	mustContain(t, elementOf(t, body, "meanwhile", "</ul>"), "Chop &lt;tomatoes&gt;.", `href="/recipes/3/cook?step=3"`)
+	mustNotContain(t, body, `data-testid="up-next"`)
+	mustContain(t, body, `data-testid="next"`) // Next still goes there
 }
 
 func TestLaterStepHasPreviousAndOtherComponentContext(t *testing.T) {
@@ -193,7 +243,10 @@ func TestLaterStepHasPreviousAndOtherComponentContext(t *testing.T) {
 func TestStepWithDurationOffersALabelledTimer(t *testing.T) {
 	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=2")
 	mustContain(t, body, `data-cook-timer`, `data-step="2"`, `data-seconds="3600"`,
-		`data-label="Step 2: Let it rise."`, "Start timer (1 h)")
+		`data-label="Let it rise."`, "Start timer (1 h)")
+	// A step with a title names its timer by it.
+	_, body = serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=1")
+	mustContain(t, body, `data-label="Make the dough"`)
 }
 
 func TestStepWithoutDurationHasNoTimer(t *testing.T) {
@@ -215,8 +268,9 @@ func TestTimersSitOutsideTheSwappedStepPanel(t *testing.T) {
 
 func TestPassiveStepShowsMeanwhileGuidance(t *testing.T) {
 	_, body := serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=2")
-	mustContain(t, body, `data-testid="meanwhile"`, "Meanwhile", "step 4", "Chop &lt;tomatoes&gt;.", `href="/recipes/3/cook?step=4"`)
-	mustNotContain(t, body, "Simmer the sauce.</li>") // waits for chop, so not offered
+	guidance := elementOf(t, body, "meanwhile", "</ul>")
+	mustContain(t, guidance, "Meanwhile", "Step 4", "Chop &lt;tomatoes&gt;.", `href="/recipes/3/cook?step=4"`)
+	mustNotContain(t, guidance, "Simmer the sauce.") // waits for chop, so not offered
 	_, body = serve(t, fakeRecipes{3: pizza(t)}, "/recipes/3/cook?step=1")
 	mustNotContain(t, body, `data-testid="meanwhile"`)
 }
