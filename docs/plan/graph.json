@@ -4517,7 +4517,8 @@
         "e2e/recipeview/**",
         "internal/web/editor/editor.templ",
         "internal/web/editor/editor_templ.go",
-        "internal/web/editor/view.go"
+        "internal/web/editor/view.go",
+        "internal/web/editor/review_fields_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
