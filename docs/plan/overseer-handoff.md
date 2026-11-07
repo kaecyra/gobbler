@@ -1,31 +1,43 @@
-# Overseer handoff: 2026-11-07, round 28, a-api-catalog in flight
+# Overseer handoff: 2026-11-07, round 28, a-api-status-table in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
-## Round 28 (2026-11-07): notes apart, suggest paths, video placement, catalog API
+## Round 28 (2026-11-07): notes apart, baked, library search, the API split
 
 **Merged** under the standing authority (read VERSION on main):
 
-| Node / PR | PR | SHA | VERSION |
-|---|---|---|---|
-| (graph: node u-suggest-paths for #522) | #539 | a290f0b | none |
-| (ADR-00021 and design.md: video at top of steps column, #540) | #541 | cf13689 | none |
-| u-suggest-paths (#522) | #542 | 01c20db | 0.123.14 |
-| u-notes-apart (#527, folds #537 and #540) | #543 | 4619245 | 0.123.15 |
+| What | PR | SHA |
+|---|---|---|
+| graph: node u-suggest-paths | #539 | a290f0b |
+| ADR-00021 and design.md: video at the top of the steps column (#540) | #541 | cf13689 |
+| u-suggest-paths (#522) | #542 | 01c20db |
+| u-notes-apart (#527, folds #537 and #540) | #543 | 4619245 |
+| graph and ADR-00022: node u-meal-baked | #545 | 9ac3d28 |
+| a-api-catalog (#514), including operator ops | #546 | 86b59da |
+| ADR-00043: operator operations check operators, not membership | #547 | 5677062 |
+| u-meal-baked (#544): baked type, meal words in `internal/recipe`, migration 00033 | #548 | 30dba64 |
+| library search box at full width (owner request, no issue) | #549 | c382673 |
+| a-api-households (#515) | #550 | 41435c3 |
+| a-api-ingest (#518) | #551 | 9e49949 |
+| a-api-profile (#516) | #552 | b7256d8 |
 
-#488 closed: it shipped in #501.
+**In flight:** a-api-status-table (#517) in wt-517 on branch refactor/517-api-status-table. It is the last node of the API split.
 
-**In flight:** a-api-catalog (#514), wt-514, branch refactor/514-api-catalog. It has its own round.
+**After it:** the graph has only blocked nodes left:
+- l-meal-planning (#38) needs an ADR.
+- i-site-extractors (#193) is parked.
+- o-demo-reseed (#432) is deferred: the owner will do it.
 
-**Owner:** deployed on 2026-11-07, before #542 and #543 landed. o-demo-reseed (#432) is theirs to do on the live site, since Google sign-in blocks seed.py. They import the six URLs and choose pictures, then tell me, and I record-done.
+**Owner rulings this round** (memory: feedback-speed-no-duplicate-gates):
+- Each gate runs once: the worker's make check, then CI. The dispatcher does not re-run it.
+- Owner-ruled doc, ADR and graph PRs merge without a review agent.
+- Never park in-scope work in a follow-up node. Rule on it and finish it in the PR.
 
-**Open question to the owner:** a `bread` meal type? I recommended adding `bread`, sorted after `side`. Alternatives: `baking`, or a tag only. It is uncovered: ADR-00022 fixes six types. It needs a migration (CHECK rebuild), a picture, ingest mapping and editor options. The editor is in a-api-catalog's lane, so the node orders after it.
-
-**Leftover:** docs/adr/README.md's ADR-00041 row still says notes "end the step chain". Fix it with the next ADR PR.
-
-**Next:** a-api-households (#515) and a-api-ingest (#518) after a-api-catalog. Then a-api-profile (#516) and a-api-status-table (#517).
+**Lessons:**
+- Workers still add `Co-Authored-By` despite the brief (#551's MUST). Check `git log origin/main..<branch> --format=%B` before every push.
+- A `git pull --rebase` on main with local bookkeeping commits went wrong. Use `git reset --hard origin/main` and redo the `node.ts` writes; they are idempotent.
 
 ## Round 27 (2026-11-06): landed the round 26 leftovers, then stopped
 
