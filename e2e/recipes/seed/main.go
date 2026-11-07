@@ -146,7 +146,7 @@ func fixtures() []fixture {
 		},
 		{doc: mk("Beef Stew", "Slow and rich", recipe.MealMain, &one, "1 kg beef :: beef", []string{"dinner"}, nil, 20*time.Minute, 150*time.Minute, hands("brown", 20, recipe.StagePrep), wait("braise", 150, recipe.StageBraise)), notes: []string{"Needs more thyme"}},
 		{doc: mk("Slow Ribs", "Falls off the bone", recipe.MealMain, nil, "2 kg ribs :: short ribs", []string{"bbq"}, nil, 20*time.Minute, 240*time.Minute, hands("rub", 20, recipe.StagePrep), wait("roast", 240, recipe.StageRoast))},
-		{doc: mk("Cardamom Knots", "Sticky morning buns", recipe.MealBreakfast, nil, "4 tsp cardamom :: cardamom", []string{"bread"}, nil, 20*time.Minute, 20*time.Minute,
+		{doc: mk("Cardamom Knots", "Sticky morning buns", recipe.MealBaked, nil, "4 tsp cardamom :: cardamom", []string{"bread"}, nil, 20*time.Minute, 20*time.Minute,
 			hands("knead", 20, recipe.StagePrep), wait("rise", 90, recipe.StageRise), hands("shape", 40, ""), wait("rest", 30, recipe.StageRest), wait("bake", 20, recipe.StageBake))},
 	}
 	return fx

@@ -595,23 +595,28 @@ func MealIcon(m recipe.MealType) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+		case recipe.MealBaked:
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5.5 19a1.5 1.5 0 0 1-1.5-1.5V12a1 1 0 0 1-.5-.9C3.5 7.7 7 5.5 12 5.5s8.5 2.2 8.5 5.6a1 1 0 0 1-.5.9v5.5a1.5 1.5 0 0 1-1.5 1.5zM9 9.5l-1 3M13 9l-1 3.5M17 9.500l-1 3\"></path></svg>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		case recipe.MealDessert:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 20V11l18-3v12zM3 15l18-2.5M15 8.4V5.5M15 3.6v.1\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 20V11l18-3v12zM3 15l18-2.5M15 8.4V5.5M15 3.6v.1\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		case recipe.MealSnack:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"></circle><circle cx=\"9\" cy=\"9.5\" r=\".9\" fill=\"currentColor\"></circle><circle cx=\"14.5\" cy=\"10\" r=\".9\" fill=\"currentColor\"></circle><circle cx=\"10.5\" cy=\"14.5\" r=\".9\" fill=\"currentColor\"></circle><circle cx=\"15\" cy=\"15\" r=\".9\" fill=\"currentColor\"></circle></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"></circle><circle cx=\"9\" cy=\"9.5\" r=\".9\" fill=\"currentColor\"></circle><circle cx=\"14.5\" cy=\"10\" r=\".9\" fill=\"currentColor\"></circle><circle cx=\"10.5\" cy=\"14.5\" r=\".9\" fill=\"currentColor\"></circle><circle cx=\"15\" cy=\"15\" r=\".9\" fill=\"currentColor\"></circle></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		case recipe.MealDrink:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 4h12l-1.6 15.2a1 1 0 0 1-1 .8H8.6a1 1 0 0 1-1-.8zM6.6 9.5h10.8M15 4l2-2\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 4h12l-1.6 15.2a1 1 0 0 1-1 .8H8.6a1 1 0 0 1-1-.8zM6.6 9.5h10.8M15 4l2-2\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		default:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 18h18M5 18a7 7 0 0 1 14 0M12 11V9M10.5 8.5h3M4 21h16\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 18h18M5 18a7 7 0 0 1 14 0M12 11V9M10.5 8.5h3M4 21h16\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -642,7 +647,7 @@ func Chili() templ.Component {
 			templ_7745c5c3_Var28 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<svg class=\"chili\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M15.6 8c-3.6.2-5.6 3-7.2 6.3S5.3 19.6 3.6 20.2c4.6 1.1 11.2-.9 13.3-5.9 1-2.4.4-4.9-1.3-6.3z\" fill=\"currentColor\"></path><path d=\"M15.6 8c.2-2 1.4-3.6 3.6-4.2\" fill=\"none\" stroke=\"var(--ok)\" stroke-width=\"1.8\" stroke-linecap=\"round\"></path></svg>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<svg class=\"chili\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M15.6 8c-3.6.2-5.6 3-7.2 6.3S5.3 19.6 3.6 20.2c4.6 1.1 11.2-.9 13.3-5.9 1-2.4.4-4.9-1.3-6.3z\" fill=\"currentColor\"></path><path d=\"M15.6 8c.2-2 1.4-3.6 3.6-4.2\" fill=\"none\" stroke=\"var(--ok)\" stroke-width=\"1.8\" stroke-linecap=\"round\"></path></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -677,7 +682,7 @@ func Spoon(on bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<svg class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<svg class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -690,7 +695,7 @@ func Spoon(on bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><ellipse cx=\"7.5\" cy=\"7.5\" rx=\"3.4\" ry=\"4.8\" transform=\"rotate(-45 7.5 7.5)\"></ellipse><path d=\"M10.4 10.4 20 20\"></path></svg>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><ellipse cx=\"7.5\" cy=\"7.5\" rx=\"3.4\" ry=\"4.8\" transform=\"rotate(-45 7.5 7.5)\"></ellipse><path d=\"M10.4 10.4 20 20\"></path></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

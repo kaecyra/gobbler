@@ -500,3 +500,19 @@ func TestLibraryReadsTheCardsOnceWhenNothingNarrowsThem(t *testing.T) {
 		t.Errorf("Cards called %d times for the whole library, want once", lib.reads)
 	}
 }
+
+// The library lists baked after sides and before desserts, the order of
+// recipe.MealTypes, under the plural the type itself names.
+func TestGroupByMealListsBakedAfterSides(t *testing.T) {
+	today := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	found := []store.Card{
+		card(1, "Cake", recipe.MealDessert), card(2, "Loaf", recipe.MealBaked), card(3, "Slaw", recipe.MealSide), card(4, "Roast", recipe.MealMain),
+	}
+	var got []string
+	for _, g := range buildResults("", "meal", found, today).Groups {
+		got = append(got, g.Title)
+	}
+	if want := "Mains,Sides,Baked,Desserts"; strings.Join(got, ",") != want {
+		t.Errorf("group order = %v, want %s", got, want)
+	}
+}
