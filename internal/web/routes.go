@@ -38,6 +38,15 @@ import (
 	webshopping "github.com/kaecyra/gobbler/internal/web/shopping"
 )
 
+// admitOnce lets the catalog service check a request's Caller once: the line
+// builder reads the catalog once per ingredient line, and each read would
+// otherwise look the person's household up again (apicatalog.WithAdmission).
+func admitOnce(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(apicatalog.WithAdmission(r.Context())))
+	})
+}
+
 // mountFeatures is where feature packages attach their routes (ADR-00012). A
 // feature exposes a constructor that returns its routes. Append one line per
 // feature below, for example:

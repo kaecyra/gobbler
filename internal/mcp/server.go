@@ -93,19 +93,27 @@ func NewDeps(rec *apirecipes.Service, reads apishop.Recipes, lists *apishop.Stor
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp catalog service: %w", err)
 	}
-	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(catalogCaller), Drafter: pipeline, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(catalogCaller(log)), Drafter: pipeline, Audit: audit, Limits: cfg.MCP, Logger: log}, nil
 }
 
 // catalogCaller names the Caller of a catalog lookup from the credential and
 // household on the request's context (callerOf), for apicatalog.Bound. A
 // context with neither names nobody: the zero Caller, which the catalog service
 // refuses with ErrNotMember, so a lookup that lost its credential fails closed.
-func catalogCaller(ctx context.Context) apicatalog.Caller {
-	c, err := recipeCaller(ctx)
-	if err != nil {
-		return apicatalog.Caller{}
+// The cause is logged at debug, so the refusal can be traced to the scoping
+// failure.
+func catalogCaller(log *slog.Logger) func(ctx context.Context) apicatalog.Caller {
+	if log == nil {
+		log = slog.Default()
 	}
-	return c
+	return func(ctx context.Context) apicatalog.Caller {
+		c, err := recipeCaller(ctx)
+		if err != nil {
+			log.DebugContext(ctx, "mcp catalog lookup has no caller", "error", err.Error())
+			return apicatalog.Caller{}
+		}
+		return c
+	}
 }
 
 // Routes returns the endpoint, to be mounted at Pattern behind Bearer and the

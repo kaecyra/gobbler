@@ -3,6 +3,7 @@ package catalog_test
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
@@ -417,5 +418,71 @@ func TestANonOperatorMemberIsRefusedTheOperatorOperations(t *testing.T) {
 	// With no operators configured nobody is one.
 	if _, err := f.svc.OperatorListEquipment(ctx, apicatalog.Caller{Person: "root@example.com"}); !errors.Is(err, apicatalog.ErrNotMember) {
 		t.Errorf("service with no operators: err = %v, want ErrNotMember", err)
+	}
+}
+
+// countingMembers counts the membership lookups the service makes.
+type countingMembers struct {
+	apicatalog.Members
+	n atomic.Int32
+}
+
+func (c *countingMembers) ForEmail(ctx context.Context, email string) (household.Household, error) {
+	c.n.Add(1)
+	return c.Members.ForEmail(ctx, email)
+}
+
+// A request that reads many ingredients (the line builder reads one per line)
+// is admitted once. A context without WithAdmission checks every call, and the
+// remembered admission serves only the Caller it was made for.
+func TestAdmissionIsCheckedOncePerRequest(t *testing.T) {
+	f := newFixture(t)
+	counter := &countingMembers{Members: f.members}
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: f.store, Members: counter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(ctx context.Context, c apicatalog.Caller, n int) error {
+		for range n {
+			if _, err := svc.GetIngredient(ctx, c, f.pepper.ID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	counter.n.Store(0)
+	if err := read(apicatalog.WithAdmission(context.Background()), f.ann, 5); err != nil {
+		t.Fatal(err)
+	}
+	if got := counter.n.Load(); got != 1 {
+		t.Errorf("5 reads in one request made %d membership lookups, want 1", got)
+	}
+
+	counter.n.Store(0)
+	if err := read(context.Background(), f.ann, 5); err != nil {
+		t.Fatal(err)
+	}
+	if got := counter.n.Load(); got != 5 {
+		t.Errorf("5 reads with no admission memo made %d lookups, want 5 (fail closed)", got)
+	}
+
+	// Another Caller on the same request is not served from ann's admission.
+	ctx := apicatalog.WithAdmission(context.Background())
+	if err := read(ctx, f.ann, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := read(ctx, f.jo, 1); !errors.Is(err, apicatalog.ErrNotFound) {
+		t.Errorf("jo after ann on one request: err = %v, want ErrNotFound (jo's own household)", err)
+	}
+	// A refused Caller is never remembered, and does not unseat the admitted one.
+	stranger := apicatalog.Caller{Person: "ann@example.com", Household: f.jo.Household}
+	for range 2 {
+		if err := read(ctx, stranger, 1); !errors.Is(err, apicatalog.ErrNotMember) {
+			t.Errorf("a person claiming another household: err = %v, want ErrNotMember", err)
+		}
+	}
+	if err := read(ctx, f.ann, 1); err != nil {
+		t.Errorf("ann after a refusal: %v", err)
 	}
 }

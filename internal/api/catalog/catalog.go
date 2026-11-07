@@ -32,9 +32,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	domain "github.com/kaecyra/gobbler/internal/catalog"
+	"github.com/kaecyra/gobbler/internal/household"
 )
 
 // Caller is who an operation is for (caller.Caller).
@@ -153,9 +155,49 @@ func New(d Deps) (*Service, error) {
 }
 
 // enter checks the Caller and returns a context that runs in its household
-// (caller.Enter). It is the first line of every method.
+// (caller.Enter). It is the first line of every method. On a context from
+// WithAdmission it checks a given Caller once and reuses the result.
 func (s *Service) enter(ctx context.Context, c Caller) (context.Context, error) {
-	return caller.Enter(ctx, s.members, c)
+	a, ok := ctx.Value(admissionKey{}).(*admission)
+	if !ok {
+		return caller.Enter(ctx, s.members, c)
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.svc == s && a.person == c.Person && a.hid == c.Household.ID && a.key == c.HouseholdKey {
+		return household.WithContext(ctx, a.h), nil
+	}
+	ectx, err := caller.Enter(ctx, s.members, c)
+	if err != nil {
+		return nil, err
+	}
+	h, _ := household.FromContext(ectx)
+	a.svc, a.person, a.hid, a.key, a.h = s, c.Person, c.Household.ID, c.HouseholdKey, h
+	return ectx, nil
+}
+
+type admissionKey struct{}
+
+// admission is the one Caller a request has been admitted as, and the
+// household that admission found.
+type admission struct {
+	mu     sync.Mutex
+	svc    *Service
+	person string
+	hid    int64
+	key    bool
+	h      household.Household
+}
+
+// WithAdmission returns ctx with room to remember the Caller the service
+// admitted, so a request that calls it many times (the line builder reads one
+// ingredient per line) looks the person's membership up once, not once per
+// call. Only a Caller that passed the check is remembered, and only that exact
+// Caller (person, household and kind of credential) is served from it: any
+// other Caller, a refused one included, is checked afresh. A context without it
+// checks every call. Adapters put it on a request's context.
+func WithAdmission(ctx context.Context) context.Context {
+	return context.WithValue(ctx, admissionKey{}, &admission{})
 }
 
 // ListIngredients returns the ingredients the household sees: the central

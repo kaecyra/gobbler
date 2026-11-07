@@ -179,7 +179,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		r.Use(markSignIn)
 	}
 	r.Use(onSession(d.Auth.Middleware(layout.IsPublic)), onBearer(siteOf(d.Config), mcp.Bearer(d.MCPVerifier, log)), membership(members, d.Config.Operator), cop.Handler)
-	r.Use(avatarSource(d.DB, log))
+	r.Use(avatarSource(d.DB, log), admitOnce)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, layout.ErrNotFound)
 	})
