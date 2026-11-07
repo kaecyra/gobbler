@@ -141,7 +141,9 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   wattle circle. The text is a little smaller and
   lighter than step text, a bold title leads when the note has one, and a small
   grey "From the author" closes it. Cook mode reaches them through an
-  "Author's Notes" button. Variant A of `#recipe` in the mockup is the target.
+  "Author's Notes" button. Variant A of `#recipe` in the mockup is the target,
+  except that ADR-00045 overrides it on the connectors and the gap: the mockup
+  still draws dotted lines to and between notes.
 - **Video.** On the recipe page it sits at the top of the steps column, under
   the title and above any tips and the first step, as a 16:9 box no wider than
   the column. It plays only when its button is pressed

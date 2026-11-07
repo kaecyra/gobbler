@@ -615,8 +615,9 @@ test.describe('deleting a recipe', () => {
   });
 });
 
-// The author's notes end the step chain (ADR-00041), drawn after variant A of
-// the recipe screen in docs/ui/mockup.html.
+// The author's notes follow the last step (ADR-00041), apart from the chain
+// (ADR-00045), drawn after variant A of the recipe screen in docs/ui/mockup.html
+// except for the connectors and the gap, which ADR-00045 overrides.
 test('author notes follow the last step, each credited, with no heading', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 1000 });
   await page.goto(`/recipes/${notesId}`);

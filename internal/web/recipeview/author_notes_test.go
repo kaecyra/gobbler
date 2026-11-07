@@ -33,7 +33,7 @@ func TestAuthorNotesEndTheStepChain(t *testing.T) {
 	if n := strings.Count(body, `<small>From the author</small>`); n != 2 {
 		t.Errorf("%d credits, want one on each note", n)
 	}
-	// After the last step, inside the same list, so the rail runs on.
+	// After the last step, inside the same list, so the notes follow the last step in the steps column.
 	lastStep := strings.LastIndex(body, `class="step"`)
 	firstNote := strings.Index(body, `class="step anote"`)
 	closing := strings.Index(body[firstNote:], "</ol>")
