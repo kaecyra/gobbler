@@ -260,10 +260,10 @@ it can revoke it before it is accepted.
 
 The **operator** is defined in configuration (a list of emails), never in the
 database, so operator status cannot be granted from inside the app. The
-operator's pages offer only three things: issuing and revoking household
-invitations, reviewing overlay entries suggested for central, and the
-deployment settings (backup, storage and health). None of them shows a
-household's data. Members who are not operators cannot reach them.
+operator's pages do only this: issuing and revoking household invitations,
+reviewing overlay entries suggested for central, curating the central catalog
+(its ingredients and equipment), and the deployment settings (backup, storage
+and health). None of them shows a household's data. Members who are not operators cannot reach them.
 
 The deployment settings are operator-only because backup, storage and health
 belong to the whole deployment, not to any household. Showing them to every
