@@ -130,6 +130,8 @@
 .step.passive .sn { border-style: dashed; border-color: var(--slate); }
 .step h4 { font-size: 21px; font-weight: 650; margin-top: 6px; }
 .step p { margin: 6px 0 0; max-width: 60ch; color: var(--ink-2); font-size: 18.5px; line-height: 1.6; }
+/* The video heads the steps column, flush with the steps rather than centred. */
+.method .recipe-video { margin: 0 0 var(--gutter); }
 .stags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
 .callout ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }

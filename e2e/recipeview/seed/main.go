@@ -183,7 +183,11 @@ func run(dir string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"notes": notesID, "recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID, "doomed": doomedID, "doomed_clone": doomedCloneID, "listed": listedID})
+	ribbonID, err := seedRibbon(ctx, d)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]int64{"ribbon": ribbonID, "notes": notesID, "recipe": id, "meanwhile": meanwhileID, "clone": cloneID, "bare_video": bareID, "video_later": laterID, "styled": styledID, "doomed": doomedID, "doomed_clone": doomedCloneID, "listed": listedID})
 }
 
 // seedDoomed stores the recipe the delete specs remove: one with a picture, a
@@ -298,6 +302,29 @@ func mustRat(s string) quantity.Rat {
 		panic(err)
 	}
 	return r
+}
+
+// seedRibbon stores a recipe with enough alternating steps for its large ribbon
+// to need merging on a phone: hands-on and waiting steps take turns, and the
+// last three waiting steps merge into one segment at the merged level.
+func seedRibbon(ctx context.Context, d *sql.DB) (int64, error) {
+	step := func(id string, minutes int, passive bool, kind recipe.StageKind) recipe.Step {
+		return recipe.Step{ID: recipe.StepID(id), Text: "Do " + id + ".", Duration: time.Duration(minutes) * time.Minute, Passive: passive, Kind: kind}
+	}
+	return store.New(d).Create(ctx, recipe.Recipe{
+		Name: "E2E Cardamom Knots",
+		Components: []recipe.Component{{
+			Name: "Main",
+			Steps: []recipe.Step{
+				step("knead", 20, false, recipe.StagePrep),
+				step("rise", 90, true, recipe.StageRise),
+				step("shape", 40, false, ""),
+				step("rest", 30, true, recipe.StageRest),
+				step("proof", 45, true, recipe.StageRise),
+				step("bake", 20, true, recipe.StageBake),
+			},
+		}},
+	})
 }
 
 // seedNotes stores the recipe whose page ends in the author's notes
