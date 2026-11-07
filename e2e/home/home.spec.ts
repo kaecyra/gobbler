@@ -86,7 +86,7 @@ test.describe('with recipes', () => {
     await expect(card.getByTestId('card-time').locator('svg')).toHaveCount(1);
     // The card opens the recipe from anywhere on it; no separate button does.
     await expect(suggest.getByRole('link', { name: 'Open recipe' })).toHaveCount(0);
-    await expect(card.getByRole('link', { name: 'Beef Stew' })).toHaveAttribute('href', `/recipes/${ids['Beef Stew']}`);
+    await expect(card.getByRole('link', { name: 'Beef Stew' })).toHaveAttribute('href', new RegExp(`^/recipes/${ids['Beef Stew']}-beef-stew$`));
 
     await suggest.getByRole('link', { name: 'Another idea' }).click();
     await expect(suggest.locator('.rcard h3')).toHaveText('Cardamom Knots');
@@ -159,7 +159,7 @@ test.describe('with recipes', () => {
     await expect(entries.nth(0)).toContainText('Tomato Soup');
     await expect(entries.nth(0)).toContainText('Made it');
     await expect(entries.nth(1)).toContainText('“Added basil”');
-    await expect(entries.nth(0).getByRole('link', { name: 'Tomato Soup' })).toHaveAttribute('href', `/recipes/${ids['Tomato Soup']}`);
+    await expect(entries.nth(0).getByRole('link', { name: 'Tomato Soup' })).toHaveAttribute('href', new RegExp(`^/recipes/${ids['Tomato Soup']}-tomato-soup$`));
   });
 
   test('every control is at least 44px tall', async ({ page }) => {

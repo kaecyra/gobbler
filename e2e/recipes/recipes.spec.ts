@@ -37,7 +37,7 @@ test.describe('with recipes', () => {
     await expect(cards(page)).toHaveCount(5);
 
     const soup = card(page, 'Tomato Soup');
-    await expect(soup.getByRole('link', { name: 'Tomato Soup' })).toHaveAttribute('href', `/recipes/${ids['Tomato Soup']}`);
+    await expect(soup.getByRole('link', { name: 'Tomato Soup' })).toHaveAttribute('href', new RegExp(`^/recipes/${ids['Tomato Soup']}-tomato-soup$`));
     await expect(soup.locator('.mtype')).toContainText('Main');
     await expect(soup.getByTestId('card-cuisine')).toHaveText('Italian');
     await expect(card(page, 'Beef Stew').getByTestId('card-cuisine')).toHaveCount(0);
@@ -109,7 +109,7 @@ test.describe('with recipes', () => {
     const forgot = page.getByTestId('forgot');
     await expect(forgot).toContainText('Last made in');
     await expect(forgot.getByRole('img', { name: 'Make it again' })).toBeVisible();
-    await expect(forgot.getByRole('link', { name: 'Lemon Cake' })).toHaveAttribute('href', `/recipes/${ids['Lemon Cake']}`);
+    await expect(forgot.getByRole('link', { name: 'Lemon Cake' })).toHaveAttribute('href', new RegExp(`^/recipes/${ids['Lemon Cake']}-lemon-cake$`));
   });
 
   test('the library has the suggestion, and Another idea stays on the library page', async ({ page }) => {

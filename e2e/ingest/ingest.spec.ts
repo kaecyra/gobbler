@@ -702,7 +702,7 @@ test('on review a line and a step are dragged into an empty part and a part is n
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByText('Cooking').first()).toBeVisible();
-  await page.goto(page.url() + '/edit');
+  await page.goto(page.url().replace(/(\/recipes\/\d+).*$/, '$1') + '/edit');
   await expect(page.locator('[name="c.1.name"]')).toHaveValue('Cooking');
   await expect(page.locator('[name="c.1.l.0.ing"]')).toHaveValue(ing);
   await expect(page.locator('[name="c.1.s.0.text"]')).toHaveValue(text);
