@@ -96,7 +96,7 @@ test.describe('the operator', () => {
     try {
       const page = await ctx.newPage();
       await page.goto('/operator');
-      await page.getByRole('link', { name: 'Central ingredients' }).click();
+      await page.getByRole('navigation', { name: 'Operator' }).getByRole('link', { name: 'Central ingredients' }).click();
       await expect(page).toHaveURL(/\/operator\/ingredients$/);
       await expect(page.getByRole('heading', { name: 'Central ingredients', level: 1 })).toBeVisible();
     } finally {

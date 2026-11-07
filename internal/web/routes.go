@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -63,6 +64,10 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
 	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
+	// The deployment page moved under the operator area; old bookmarks follow.
+	r.Get(settings.LegacyPattern, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, settings.Pattern, http.StatusMovedPermanently)
+	})
 	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: d.Recipes, Pictures: recipePictures(d)}))
 	// The home page: "/" is registered here and nowhere else.
@@ -194,7 +199,31 @@ func mountHouseholds(r chi.Router, d Deps) {
 	}
 	r.Mount(webhousehold.Pattern, webhousehold.MemberRoutes(webhousehold.Deps{Households: svc, Keys: keys}))
 	r.Mount(webhousehold.InvitationsPattern, webhousehold.InvitationRoutes(webhousehold.Deps{Households: svc}))
-	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: svc}))
+	mountOperator(r, d, svc)
+}
+
+// mountOperator mounts the operator area's overview and invitation pages
+// (ADR-00018). The overview reads the pending invitations, the suggested
+// ingredients and the backup status.
+func mountOperator(r chi.Router, d Deps, households operator.Households) {
+	cat, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB), Operators: d.Config.Operator})
+	if err == nil && d.Backup == nil {
+		err = errors.New("the backup job is required")
+	}
+	if err != nil {
+		// Production always passes the backup job (cmd/gobbler); a router
+		// built without one serves this error rather than a nil dereference.
+		log := d.Logger
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("operator pages unavailable", "error", err.Error())
+		r.Mount(operator.Pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "the operator pages are not available: "+err.Error(), http.StatusInternalServerError)
+		}))
+		return
+	}
+	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: households, Suggestions: cat.Bind(caller.FromContext), Backup: d.Backup}))
 }
 
 // mountPromotion mounts the operator's review of overlay entries suggested for

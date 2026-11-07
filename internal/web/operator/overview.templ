@@ -1,0 +1,49 @@
+package operator
+
+import (
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
+
+templ overviewPage(v overviewView) {
+	@layout.OperatorPage("Operator", layout.OperatorOverview) {
+		<div class="pg wide">
+			<div class="screen-h">
+				<div>
+					<h1>Operator</h1>
+					<p>What you change here applies to every household on this gobbler. None of these pages shows a household's data.</p>
+				</div>
+			</div>
+			<div class="op-cards" data-testid="operator-overview">
+				<section class="panel" data-testid="overview-invitations">
+					<h2>@layout.Icon(layout.IconMail) Invitations</h2>
+					<p>{ v.Pending }</p>
+					<a class="link" href={ templ.SafeURL(InvitationsPath) }>Invite a household</a>
+				</section>
+				<section class="panel" data-testid="overview-suggestions">
+					<h2>@layout.Icon(layout.IconBulb) Suggested ingredients</h2>
+					<p>{ v.Suggested }</p>
+					<a class="link" href={ templ.SafeURL(PromotionPattern) }>Review suggestions</a>
+				</section>
+				<section class="panel">
+					<h2>@layout.Icon(layout.IconTag) Central ingredients</h2>
+					<p class="muted">The names, aliases, aisles and densities every household reads.</p>
+					<a class="link" href="/operator/ingredients">Edit central ingredients</a>
+				</section>
+				<section class="panel">
+					<h2>@layout.Icon(layout.IconPot) Equipment</h2>
+					<p class="muted">Which pans, tins and dishes are sized, so a scaled recipe can warn about them.</p>
+					<a class="link" href="/operator/equipment">Review equipment</a>
+				</section>
+				<section class="panel" data-testid="overview-backup">
+					<h2>@layout.Icon(layout.IconGear) Deployment</h2>
+					if v.BackupFailed {
+						<p class="alert" role="alert">{ v.Backup }</p>
+					} else {
+						<p>{ v.Backup }</p>
+					}
+					<a class="link" href="/operator/settings">View backups</a>
+				</section>
+			</div>
+		</div>
+	}
+}

@@ -518,6 +518,38 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .pg thead th { border-top: 0; color: var(--ink-3); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
 .pg td form { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; }
 
+/* The operator area (docs/ui/design.md, Operator area): a rail of its sections
+   beside the page, and a scrolling strip above it on narrow screens, where a
+   rail beside the tables would leave them too little width. */
+.op { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; align-items: start; }
+.op-rail { display: flex; flex-direction: column; gap: 2px; }
+.op-rail a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border-radius: var(--r);
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+}
+.op-rail a:hover { background: var(--sunk); }
+.op-rail a[aria-current="page"] { background: var(--ink); color: var(--paper); }
+.op-rail svg { width: 20px; height: 20px; flex: none; }
+.op-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-col-min), 1fr)); gap: 16px; }
+.op-cards .panel { display: flex; flex-direction: column; gap: 6px; }
+.op-cards .panel h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.op-cards .panel h2 svg { width: 20px; height: 20px; color: var(--ink-3); }
+.op-cards .panel p { margin: 0; }
+.op-cards .panel .link { margin-top: auto; }
+@media (max-width: 767px) {
+  .op { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .op-rail { flex-direction: row; overflow-x: auto; margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
+  .op-rail a { flex: none; white-space: nowrap; }
+}
+
 /* ---- profile page (internal/web/profile) ---- */
 
 .profile-head { display: flex; align-items: center; gap: 16px; }

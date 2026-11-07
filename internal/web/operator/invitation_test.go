@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// The invitations page is the operator's landing page, and the promotion pages
-// have no other way in. The link is only ever rendered on this page, which
-// package web refuses to everyone but an operator.
+// Every operator page carries the operator rail, so the promotion pages are
+// reachable from the invitations page. The rail is only ever rendered on
+// operator pages, which package web refuses to everyone but an operator.
 func TestInvitationsPageLinksToPromotions(t *testing.T) {
 	var b bytes.Buffer
 	if err := invitationsPage(invitationsView{}).Render(context.Background(), &b); err != nil {

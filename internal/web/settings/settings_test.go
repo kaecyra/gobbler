@@ -124,7 +124,7 @@ func serve(h http.Handler, method, target string, htmx bool) *httptest.ResponseR
 func TestShowRendersPage(t *testing.T) {
 	f := &fakeBackup{status: backup.Status{LastSuccess: lastOK, Destination: backup.DestinationLocalOnly}}
 	rec := serve(Routes(Deps{Backup: f}), http.MethodGet, "/", false)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<h1>Settings</h1>") {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<h1>Deployment</h1>") {
 		t.Fatalf("status %d body %s", rec.Code, rec.Body)
 	}
 }

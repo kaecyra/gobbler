@@ -6,14 +6,19 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/backup"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // Pattern is where the router mounts Routes. It is also listed in
 // layout.OperatorPaths, which is what keeps everyone but an operator out.
-const Pattern = "/operator"
+const Pattern = layout.OperatorPath
+
+// InvitationsPath is the operator's household invitations page.
+const InvitationsPath = Pattern + "/invitations"
 
 // Households is what the pages call: the Operator* methods of the household
 // service (ADR-00043), which check the operator and not membership.
@@ -24,9 +29,24 @@ type Households interface {
 	OperatorPending(ctx context.Context, c apihouseholds.Caller) ([]apihouseholds.Invitation, error)
 }
 
+// Suggestions is what the overview reads from the catalog: the entries
+// households suggested for central, bound to the request's Caller
+// (apicatalog.Bound). The service checks the person is an operator.
+type Suggestions interface {
+	OperatorListSuggestedIngredients(ctx context.Context) ([]apicatalog.Ingredient, error)
+}
+
+// BackupStatus is what the overview reads from the backup job (ADR-00010).
+// *backup.Runner satisfies it.
+type BackupStatus interface {
+	Status() backup.Status
+}
+
 // Deps is what the routes need.
 type Deps struct {
-	Households Households
+	Households  Households
+	Suggestions Suggestions
+	Backup      BackupStatus
 }
 
 type handler struct{ Deps }
@@ -35,7 +55,8 @@ type handler struct{ Deps }
 func Routes(d Deps) chi.Router {
 	h := &handler{d}
 	r := chi.NewRouter()
-	r.Get("/", h.show)
+	r.Get("/", h.overview)
+	r.Get("/invitations", h.show)
 	r.Post("/invitations", h.invite)
 	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/revoke", h.revoke)
 	return r
@@ -62,6 +83,26 @@ func operatorCaller(w http.ResponseWriter, r *http.Request) (apihouseholds.Calle
 		return apihouseholds.Caller{}, false
 	}
 	return apihouseholds.Caller{Person: email}, true
+}
+
+// overview is the operator area's landing page: one card per section, with
+// what is waiting in each (docs/ui/design.md, Operator area).
+func (h *handler) overview(w http.ResponseWriter, r *http.Request) {
+	c, ok := operatorCaller(w, r)
+	if !ok {
+		return
+	}
+	pending, err := h.Households.OperatorPending(r.Context(), c)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
+	suggested, err := h.Suggestions.OperatorListSuggestedIngredients(r.Context())
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
+	layout.Render(w, r, http.StatusOK, overviewPage(newOverviewView(len(pending), len(suggested), h.Backup.Status())))
 }
 
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
@@ -104,5 +145,5 @@ func redirect(w http.ResponseWriter, r *http.Request, err error) {
 		layout.Fail(w, r, err)
 		return
 	}
-	http.Redirect(w, r, Pattern, http.StatusSeeOther)
+	http.Redirect(w, r, InvitationsPath, http.StatusSeeOther)
 }

@@ -16,8 +16,7 @@ const menu = [
   { name: 'Catalog', path: '/catalog' },
   { name: 'Shared', path: '/shares' },
   { name: 'Household', path: '/household' },
-  { name: 'Invitations', path: '/operator' },
-  { name: 'Settings', path: '/settings' },
+  { name: 'Operator', path: '/operator' },
 ];
 
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Primary' });
@@ -372,18 +371,17 @@ test.describe('header spacing', () => {
   }
 });
 
-// Settings and Invitations are operator pages. DEV is a member and an operator (the default
+// The Operator section holds the operator pages. DEV is a member and an operator (the default
 // identity, as stated at the top of this file); OTHER is a member who is not. The server refuses OTHER
 // either way, so this is about what the nav offers.
 test.describe('a member who is not an operator', () => {
   test.use(asIdentity(OTHER));
 
-  test('has no Settings link in the menu', async ({ page }) => {
+  test('has no Operator link in the menu', async ({ page }) => {
     await page.goto('/');
     await expect(nav(page).getByRole('link', { name: 'Library' })).toBeVisible();
     await openMenu(page);
-    await expect(nav(page).getByRole('link', { name: 'Settings' })).toHaveCount(0);
-    await expect(nav(page).getByRole('link', { name: 'Invitations' })).toHaveCount(0);
+    await expect(nav(page).getByRole('link', { name: 'Operator' })).toHaveCount(0);
     await expect(nav(page).getByRole('link', { name: 'Household' })).toHaveAttribute('href', '/household');
   });
 });
@@ -391,17 +389,16 @@ test.describe('a member who is not an operator', () => {
 test.describe('an operator who belongs to no household', () => {
   test.use(asIdentity(OPERATOR));
 
-  test('sees Settings in the menu on the operator page', async ({ page }) => {
-    await page.goto('/settings');
+  test('sees Operator in the menu on an operator page', async ({ page }) => {
+    await page.goto('/operator/settings');
     await openMenu(page);
-    await expect(nav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
-    await expect(nav(page).getByRole('link', { name: 'Invitations' })).toHaveAttribute('href', '/operator');
+    await expect(nav(page).getByRole('link', { name: 'Operator' })).toHaveAttribute('href', '/operator');
   });
 
   test('is offered only the operator pages', async ({ page }) => {
     await page.goto('/operator');
     await openMenu(page);
     const hrefs = await nav(page).getByRole('link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-    expect(hrefs.sort()).toEqual(['/operator', '/settings']);
+    expect(hrefs).toEqual(['/operator']);
   });
 });

@@ -20,6 +20,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/auth"
+	"github.com/kaecyra/gobbler/internal/backup"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/media"
@@ -28,6 +29,16 @@ import (
 	"github.com/kaecyra/gobbler/internal/web"
 	"github.com/kaecyra/gobbler/internal/web/signin"
 )
+
+// idleBackup stands in for the backup job, which the operator pages read. It
+// never runs: the routes are walked, never served.
+type idleBackup struct{}
+
+func (idleBackup) Status() backup.Status { return backup.Status{} }
+
+func (idleBackup) Run(context.Context) (backup.Result, error) {
+	return backup.Result{}, fmt.Errorf("routes: the backup job does not run here")
+}
 
 type route struct {
 	Method  string `json:"method"`
@@ -90,7 +101,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	h, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn, SignIn: signIn, Sessions: sessions,
+	h, err := web.New(web.Deps{Config: cfg, DB: d, Auth: authn, SignIn: signIn, Sessions: sessions, Backup: idleBackup{},
 		Avatars: profile.NewAvatars(ctx, profile.New(d), media.NewLocal(filepath.Join(dir, media.LocalDirName)), nil)})
 	if err != nil {
 		return err

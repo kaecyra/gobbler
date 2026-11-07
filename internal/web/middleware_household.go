@@ -39,8 +39,9 @@ func membership(members memberLookup, ops config.Operator) func(http.Handler) ht
 				next.ServeHTTP(w, r)
 				return
 			}
-			// chi routes the raw path, so "/settings/.." is dispatched into the
-			// /settings mount while its cleaned form "/" names no operator page.
+			// chi routes the raw path, so "/operator/settings/../../recipes" is
+			// dispatched into the /operator/settings mount while its cleaned
+			// form "/recipes" names no operator page.
 			// No page lives behind a dot segment, so refuse one before any
 			// admission decision, whoever asks, and the rule below can read
 			// the path as written.

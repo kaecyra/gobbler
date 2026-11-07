@@ -49,7 +49,7 @@ func TestInvitationFlowFromOperatorToSecondMember(t *testing.T) {
 	const newcomer, guest = "new@example.com", "guest@example.com"
 
 	wantStatus(t, "operator invites", post(h, "/operator/invitations", operatorEmail, url.Values{"email": {newcomer}}), http.StatusSeeOther)
-	page := do(h, http.MethodGet, "/operator/", operatorEmail)
+	page := do(h, http.MethodGet, "/operator/invitations", operatorEmail)
 	wantStatus(t, "operator page", page, http.StatusOK)
 	code := lastInvitationCode(t, page.Body.String())
 	link := "/invitations/" + code
@@ -143,7 +143,7 @@ func TestLeaveRemoveAndDelete(t *testing.T) {
 		wantStatus(t, "invite "+email, post(h, path, issuer, form), http.StatusSeeOther)
 	}
 	join(owner, url.Values{"email": {owner}}, "/operator/invitations", operatorEmail)
-	oid := lastInvitationCode(t, do(h, http.MethodGet, "/operator/", operatorEmail).Body.String())
+	oid := lastInvitationCode(t, do(h, http.MethodGet, "/operator/invitations", operatorEmail).Body.String())
 	wantStatus(t, "start", post(h, "/invitations/"+oid+"/accept", owner, url.Values{"name": {"Kitchen"}}), http.StatusSeeOther)
 	join(mate, url.Values{"email": {mate}}, "/household/invitations", owner)
 	mid := lastInvitationCode(t, do(h, http.MethodGet, "/household/", owner).Body.String())
@@ -213,7 +213,7 @@ func TestOperatorInvitationPageIsOperatorOnly(t *testing.T) {
 			t.Errorf("%s: %s %s = %d, want %d", c.name, c.method, c.path, rec.Code, c.want)
 		}
 	}
-	body := do(h, http.MethodGet, "/operator/", operatorEmail).Body.String()
+	body := do(h, http.MethodGet, "/operator/invitations", operatorEmail).Body.String()
 	for _, leak := range []string{"Dev household", "Other household", auth.DevEmail, auth.DevOtherEmail} {
 		if strings.Contains(body, leak) {
 			t.Errorf("operator invitation page shows household data %q", leak)
@@ -225,18 +225,18 @@ func TestOperatorInvitationPageIsOperatorOnly(t *testing.T) {
 func TestOperatorRevokesOnlyOwnInvitations(t *testing.T) {
 	h := tenantRouter(t)
 	wantStatus(t, "issue", post(h, "/operator/invitations", operatorEmail, url.Values{"email": {"a@example.com"}}), http.StatusSeeOther)
-	code := lastInvitationCode(t, do(h, http.MethodGet, "/operator/", operatorEmail).Body.String())
+	code := lastInvitationCode(t, do(h, http.MethodGet, "/operator/invitations", operatorEmail).Body.String())
 	revoke := "/operator/invitations/" + code + "/revoke"
 
-	wantStatus(t, "another operator's page", do(h, http.MethodGet, "/operator/", auth.DevOtherEmail), http.StatusOK)
-	if strings.Contains(do(h, http.MethodGet, "/operator/", auth.DevOtherEmail).Body.String(), "a@example.com") {
+	wantStatus(t, "another operator's page", do(h, http.MethodGet, "/operator/invitations", auth.DevOtherEmail), http.StatusOK)
+	if strings.Contains(do(h, http.MethodGet, "/operator/invitations", auth.DevOtherEmail).Body.String(), "a@example.com") {
 		t.Error("an operator sees another operator's invitation")
 	}
 	wantStatus(t, "another operator revokes", post(h, revoke, auth.DevOtherEmail, nil), http.StatusNotFound)
 	wantStatus(t, "revoke", post(h, revoke, operatorEmail, nil), http.StatusSeeOther)
 	wantStatus(t, "revoke twice", post(h, revoke, operatorEmail, nil), http.StatusNotFound)
 	wantStatus(t, "malformed code", post(h, "/operator/invitations/1/revoke", operatorEmail, nil), http.StatusNotFound)
-	if strings.Contains(do(h, http.MethodGet, "/operator/", operatorEmail).Body.String(), "a@example.com") {
+	if strings.Contains(do(h, http.MethodGet, "/operator/invitations", operatorEmail).Body.String(), "a@example.com") {
 		t.Error("a revoked invitation is still listed")
 	}
 }
@@ -261,7 +261,7 @@ func TestInvitationsAreNamedOnlyByCode(t *testing.T) {
 	wantStatus(t, "invite", post(h, "/household/invitations", auth.DevEmail, url.Values{"email": {"cy@example.com"}}), http.StatusSeeOther)
 	wantStatus(t, "operator invites", post(h, "/operator/invitations", operatorEmail, url.Values{"email": {"dee@example.com"}}), http.StatusSeeOther)
 	members := do(h, http.MethodGet, "/household/", auth.DevEmail).Body.String()
-	operator := do(h, http.MethodGet, "/operator/", operatorEmail).Body.String()
+	operator := do(h, http.MethodGet, "/operator/invitations", operatorEmail).Body.String()
 	for page, body := range map[string]string{"members": members, "operator": operator} {
 		if integerInvitationLink.MatchString(body) {
 			t.Errorf("%s page names an invitation by its integer key:\n%s", page, body)

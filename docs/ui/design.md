@@ -47,8 +47,8 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   header's bottom line, with space before the wordmark "gobbler" and the line
   "Find it. Cook it. Gobble it." The nav sits on the right with line icons:
   Library, Shopping list, and Add recipe as the coral action. The other
-  sections (catalog, shared, household, invitations, settings) sit behind one
-  menu button at the end of the nav. Below 560px the nav becomes a fixed bottom
+  sections (catalog, shared, household and, for an operator, operator) sit
+  behind one menu button at the end of the nav. Below 560px the nav becomes a fixed bottom
   bar. The account button ends the header (below).
 - **Header spacing.** Every item in the header's right-hand group, the nav
   entries, the coral action and the account button, is separated by the same
@@ -170,6 +170,27 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   sits in the recipe view's controls row, not as a big button under the title.
 - **Low confidence** (review screen). A grain-coloured mark on the source line
   and a dot on the parsed line, with a hint. No left border.
+
+## Operator area
+
+Every operator page sits under `/operator`, and the header's menu has one
+Operator entry that opens it. The pages used to link each other ad hoc, and the
+equipment review was linked from nowhere.
+
+- **Overview.** `/operator` has one card per section. Invitations, suggested
+  ingredients and deployment say what is waiting there: pending invitations,
+  suggestions to review, and the last backup, shown as an alert when it failed.
+- **Rail.** Every operator page is drawn in `layout.OperatorPage`, with a rail
+  of the sections beside it: Overview, Invitations (`/operator/invitations`),
+  Suggested ingredients (`/operator/promotions`), Central ingredients
+  (`/operator/ingredients`), Equipment (`/operator/equipment`) and Deployment
+  (`/operator/settings`). The section of the page is marked current, subpages
+  included. Below 768px the rail becomes a strip above the page that scrolls
+  sideways, since a rail beside the tables would leave them too little width.
+- **No cross-links.** A page links only within its own section (a review page
+  back to its list). Moving between sections is the rail's job.
+- `/settings`, the deployment page's old address, answers with a permanent
+  redirect to `/operator/settings`.
 
 ## Screens
 

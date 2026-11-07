@@ -46,7 +46,7 @@ import {
 //   - household routes: a non-member is refused (403). A member of another
 //     household gets 404 for any id that is not its own, and for a page with no
 //     id sees only its own data. Neither response contains anything of DEV's.
-//   - operator and settings routes: both are refused (403). Neither is an
+//   - operator routes: both are refused (403). Neither is an
 //     operator, and these pages show no household data to anyone (ADR-00018).
 //   - invitation routes: an invitation names the one email it is for, so both
 //     identities get 404 for DEV's invitation, as for one that does not exist.
@@ -143,10 +143,13 @@ const PROBES: Probe[] = [
   own('GET', '/ingest/photo'),
   hidden('GET', (i) => `/catalog/merge?source=${i.ingredient}&target=1`),
 
-  // Operator and settings pages are refused to both: neither is an operator.
+  // Operator pages, the deployment page among them, are refused to both: neither is an operator.
+  refusedToBoth('GET', () => '/operator/settings'),
+  // The deployment page's old address, which redirects an operator alone.
   refusedToBoth('GET', () => '/settings'),
-  refusedToBoth('POST', () => '/settings/backup'),
+  refusedToBoth('POST', () => '/operator/settings/backup'),
   refusedToBoth('GET', () => '/operator'),
+  refusedToBoth('GET', () => '/operator/invitations'),
   refusedToBoth('GET', () => '/operator/promotions'),
   refusedToBoth('GET', (i) => `/operator/promotions/${i.promotion}`),
   refusedToBoth('POST', (i) => `/operator/promotions/${i.promotion}`),

@@ -1,4 +1,5 @@
-// Package settings is the settings page: the state of the nightly backup, a
+// Package settings is the operator's deployment page, at /operator/settings
+// (ADR-00018): the state of the nightly backup, a
 // "back up now" action that runs the same job, and the entries the
 // unauthenticated health check reports about it (ADR-00010). It depends on the
 // backup job through the small Backup interface and imports no other web

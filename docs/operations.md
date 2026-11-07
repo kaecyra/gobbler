@@ -132,9 +132,10 @@ acceptance and sign-out. Nobody joins or starts a
 household without an invitation addressed to their email.
 
 The **operator** is whoever `GOBBLER_OPERATOR_EMAILS` lists (comma-separated).
-An operator email reaches the operator's pages, `/settings` (backup, storage
-and health) and the pages under `/operator` (household invitations, suggested
-ingredients, the equipment catalog and the central ingredients), without being
+An operator email reaches the operator's pages under `/operator`: an overview,
+household invitations, suggested ingredients, the central ingredients, the
+equipment catalog and the deployment page (`/operator/settings`: backup,
+storage and health), without being
 a member of any household; a member
 who is not an operator is refused there. Operator status lives only in
 configuration and cannot be granted from inside the app. Set the variable
@@ -209,7 +210,7 @@ the container runs in UTC.
 | `GOBBLER_OIDC_CLIENT_SECRET` | none | yes | OAuth client secret. |
 | `GOBBLER_PUBLIC_BASE_URL` | none | no | Origin the site is reached at, e.g. `https://gobbler.example.com`, with no path. The sign-in redirect URI is it plus `/auth/callback`, and must be registered with the issuer exactly. `https://` is required unless the dev bypass is on. |
 | `GOBBLER_SESSION_LIFETIME` | `720h` (30 days) | no | Go duration, positive. A session ends this long after sign-in, however recently it was used. |
-| `GOBBLER_OPERATOR_EMAILS` | empty (no operator) | no | Comma-separated bare email addresses, case-insensitive. Each is an operator: it reaches `/settings` and the other operator pages without being a household member ([ADR-00018](./adr/00018-households-as-tenants.md)). A malformed entry is an error. |
+| `GOBBLER_OPERATOR_EMAILS` | empty (no operator) | no | Comma-separated bare email addresses, case-insensitive. Each is an operator: it reaches the operator pages under `/operator` without being a household member ([ADR-00018](./adr/00018-households-as-tenants.md)). A malformed entry is an error. |
 | `GOBBLER_LISTEN_ADDR` | `127.0.0.1:8080` | no | |
 | `GOBBLER_DATA_DIR` | `data` | no | Holds `gobbler.db`, `backups/` and, when no S3 media bucket is set, `media/`. |
 | `GOBBLER_LOG_LEVEL` | `info` | no | `debug`, `info`, `warn` or `error`. |
@@ -450,7 +451,7 @@ Design and reasoning: [ADR-00010](./adr/00010-backups.md).
   ```
 
 - Status (last success time, last error) is stored in
-  `<data dir>/backups/status.json`. The operator's `/settings` page shows it,
+  `<data dir>/backups/status.json`. The operator's deployment page, `/operator/settings`, shows it,
   and `/healthz` reports it under `details`.
 
 ## Media

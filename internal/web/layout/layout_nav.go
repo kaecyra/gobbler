@@ -28,8 +28,7 @@ var navItems = []navItem{
 	{Label: "Catalog", Path: "/catalog", Icon: IconTag, Menu: true},
 	{Label: "Shared", Path: "/shares", Icon: IconShare, Menu: true},
 	{Label: "Household", Path: "/household", Icon: IconHome, Menu: true},
-	{Label: "Invitations", Path: "/operator", Icon: IconMail, Menu: true},
-	{Label: "Settings", Path: "/settings", Icon: IconGear, Menu: true},
+	{Label: "Operator", Path: "/operator", Icon: IconGear, Menu: true},
 }
 
 // profileIcon is the icon of the account menu's link to the person's own

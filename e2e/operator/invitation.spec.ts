@@ -13,26 +13,26 @@ test.describe('the operator', () => {
 
   test('issues a household invitation that shows no household data', async ({ page }) => {
     const email = uniqueEmail('founder');
-    await page.goto('/operator');
+    await page.goto('/operator/invitations');
     await expect(page.getByRole('heading', { name: 'Household invitations' })).toBeVisible();
     await page.getByLabel('Email address').fill(email);
     await page.getByRole('button', { name: 'Invite' }).click();
-    await expect(page).toHaveURL(/\/operator\/?$/);
+    await expect(page).toHaveURL(/\/operator\/invitations$/);
     expect(await linkFor(page, email)).toMatch(/^\/invitations\/[0-9A-Za-z]{8}$/);
     await expect(page.locator('body')).not.toContainText('Dev household');
     await expect(page.locator('body')).not.toContainText('Other household');
   });
 
-  test('reaches the promotion suggestions from the operator page', async ({ page }) => {
-    await page.goto('/operator');
-    await page.getByRole('link', { name: 'Suggested ingredients' }).click();
+  test('reaches the promotion suggestions from the invitations page', async ({ page }) => {
+    await page.goto('/operator/invitations');
+    await page.getByRole('navigation', { name: 'Operator' }).getByRole('link', { name: 'Suggested ingredients' }).click();
     await expect(page).toHaveURL(/\/operator\/promotions\/?$/);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   test('revokes an invitation, which the invitee can then no longer open', async ({ page, browser, baseURL }) => {
     const email = uniqueEmail('founder');
-    await page.goto('/operator');
+    await page.goto('/operator/invitations');
     await page.getByLabel('Email address').fill(email);
     await page.getByRole('button', { name: 'Invite' }).click();
     const link = await linkFor(page, email);
@@ -84,11 +84,13 @@ test.describe('a member who is not an operator, and a non-member', () => {
     test(`${who} cannot use the operator's invitation routes`, async ({ browser, baseURL }) => {
       const ctx = await as(browser, baseURL, who);
       expect((await ctx.request.get('/operator')).status()).toBe(403);
+      expect((await ctx.request.get('/operator/invitations')).status()).toBe(403);
       expect((await ctx.request.post('/operator/invitations', { form: { email: uniqueEmail('x') } })).status()).toBe(403);
       expect((await ctx.request.post('/operator/invitations/aZ09bY18/revoke')).status()).toBe(403);
       const page = await ctx.newPage();
-      await page.goto('/operator');
+      await page.goto('/operator/invitations');
       await expect(page.locator('body')).not.toContainText('Pending invitations');
+      await expect(page.getByRole('navigation', { name: 'Operator' })).toHaveCount(0);
       await expect(page.getByRole('link', { name: 'Suggested ingredients' })).toHaveCount(0);
       expect(await page.locator('a[href^="/operator/promotions"]').count()).toBe(0);
       await ctx.close();
@@ -99,7 +101,7 @@ test.describe('a member who is not an operator, and a non-member', () => {
 test('the invitation page keeps every control at least 44px tall', async ({ browser, baseURL }) => {
   const ctx = await as(browser, baseURL, OPERATOR);
   const page = await ctx.newPage();
-  await page.goto('/operator');
+  await page.goto('/operator/invitations');
   await page.getByLabel('Email address').fill(uniqueEmail('founder'));
   await page.getByRole('button', { name: 'Invite' }).click();
   await expect(page.getByTestId('pending-invitation').first()).toBeVisible();

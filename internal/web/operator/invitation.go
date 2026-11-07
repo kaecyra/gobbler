@@ -9,5 +9,5 @@ type invitationsView struct {
 }
 
 func revokePath(code string) string {
-	return Pattern + "/invitations/" + code + "/revoke"
+	return InvitationsPath + "/" + code + "/revoke"
 }

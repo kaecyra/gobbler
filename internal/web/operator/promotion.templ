@@ -7,7 +7,7 @@ import (
 )
 
 templ promotionsPage(v promotionsView) {
-	@layout.Page("Suggested ingredients") {
+	@layout.OperatorPage("Suggested ingredients", layout.OperatorSuggestions) {
 		<div class="pg">
 			<div class="screen-h">
 				<div>
@@ -33,13 +33,12 @@ templ promotionsPage(v promotionsView) {
 					</ul>
 				}
 			</section>
-			<p><a class="link" href="/operator">Household invitations</a></p>
 		</div>
 	}
 }
 
 templ reviewPage(v reviewView) {
-	@layout.Page("Review " + v.Name) {
+	@layout.OperatorPage("Review "+v.Name, layout.OperatorSuggestions) {
 		<div class="pg">
 			<div class="screen-h"><h1>Review { v.Name }</h1></div>
 			<p><a class="link" href="/operator/promotions">Back to the suggestions</a></p>

@@ -172,7 +172,7 @@ func renderAtAs(t *testing.T, path string, who identity) string {
 	}
 	r := chi.NewRouter()
 	r.Get("/", page)
-	for _, pattern := range []string{"/recipes", "/recipes/{id}/cook", "/ingest", "/catalog", "/shopping", "/shares", "/household", "/operator", "/settings"} {
+	for _, pattern := range []string{"/recipes", "/recipes/{id}/cook", "/ingest", "/catalog", "/shopping", "/shares", "/household", "/operator"} {
 		sub := chi.NewRouter()
 		sub.Get("/", page)
 		sub.Get("/*", page)
@@ -188,7 +188,7 @@ func renderAtAs(t *testing.T, path string, who identity) string {
 
 func TestNavLinksEveryTopLevelPage(t *testing.T) {
 	got := renderAtAs(t, "/", memberOperator)
-	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/shares", "/household", "/operator", "/settings"} {
+	for _, href := range []string{"/recipes", "/ingest", "/catalog", "/shopping", "/shares", "/household", "/operator"} {
 		if !strings.Contains(got, `href="`+href+`"`) {
 			t.Errorf("nav missing link to %s in:\n%s", href, got)
 		}
@@ -210,7 +210,7 @@ func TestNavMarksOnlyTheCurrentSection(t *testing.T) {
 		{"/shares/new/7", "/shares"},
 		{"/household", "/household"},
 		{"/operator", "/operator"},
-		{"/settings", "/settings"},
+		{"/operator/settings", "/operator"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.path, func(t *testing.T) {
@@ -236,7 +236,7 @@ func TestNavWithoutRouterMarksNothing(t *testing.T) {
 }
 
 func TestNavHidesOperatorLinksFromEveryoneElse(t *testing.T) {
-	for _, op := range OperatorPaths {
+	for _, op := range []string{OperatorPath} {
 		if got := renderAtAs(t, "/", memberOnly); strings.Contains(got, `href="`+op+`"`) {
 			t.Errorf("non-operator nav links operator page %s:\n%s", op, got)
 		}
@@ -361,8 +361,11 @@ func TestAdmits(t *testing.T) {
 		{"/recipes", true, false, true},
 		{"/recipes", false, false, false},
 		{"/recipes", false, true, false},
+		{"/operator/settings", true, false, false},
+		{"/operator/settings", true, true, true},
+		// The deployment page's old address redirects, for an operator only.
 		{"/settings", true, false, false},
-		{"/settings", true, true, true},
+		{"/settings", false, true, true},
 		{"/operator/invitations", false, true, true},
 		{"/operator/invitations", false, false, false},
 		{"//operator", true, false, false},

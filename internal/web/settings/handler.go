@@ -13,8 +13,16 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-// Pattern is where the router mounts Routes.
-const Pattern = "/settings"
+// Pattern is where the router mounts Routes. It sits under the operator
+// area, which layout.OperatorPaths keeps to an operator alone (ADR-00018).
+const Pattern = layout.OperatorPath + "/settings"
+
+// backupPath is where "back up now" posts.
+const backupPath = Pattern + "/backup"
+
+// LegacyPattern is where the page used to be. The router answers a GET there
+// with a permanent redirect to Pattern, so old bookmarks still arrive.
+const LegacyPattern = "/settings"
 
 // Backup is what the page uses from the backup job. *backup.Runner satisfies
 // it; the live Runner must be passed, never a second one, so manual and

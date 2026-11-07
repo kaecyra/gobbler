@@ -123,15 +123,15 @@ func TestSettingsIsOperatorOnly(t *testing.T) {
 		name, email, method, path string
 		want                      int
 	}{
-		{"non-operator member", auth.DevEmail, http.MethodGet, "/settings", http.StatusForbidden},
-		{"non-operator member, slash", auth.DevEmail, http.MethodGet, "/settings/", http.StatusForbidden},
-		{"non-operator member, action", auth.DevEmail, http.MethodPost, "/settings/backup", http.StatusForbidden},
-		{"operator who is a member", auth.DevOtherEmail, http.MethodGet, "/settings", http.StatusOK},
-		{"operator with no household", operatorEmail, http.MethodGet, "/settings", http.StatusOK},
-		{"operator with no household, action", operatorEmail, http.MethodPost, "/settings/backup", http.StatusSeeOther},
-		{"non-member non-operator", strangerEmail, http.MethodGet, "/settings", http.StatusForbidden},
+		{"non-operator member", auth.DevEmail, http.MethodGet, "/operator/settings", http.StatusForbidden},
+		{"non-operator member, slash", auth.DevEmail, http.MethodGet, "/operator/settings/", http.StatusForbidden},
+		{"non-operator member, action", auth.DevEmail, http.MethodPost, "/operator/settings/backup", http.StatusForbidden},
+		{"operator who is a member", auth.DevOtherEmail, http.MethodGet, "/operator/settings", http.StatusOK},
+		{"operator with no household", operatorEmail, http.MethodGet, "/operator/settings", http.StatusOK},
+		{"operator with no household, action", operatorEmail, http.MethodPost, "/operator/settings/backup", http.StatusSeeOther},
+		{"non-member non-operator", strangerEmail, http.MethodGet, "/operator/settings", http.StatusForbidden},
 		// The rule is applied to the escaped path as well as the decoded one.
-		{"non-operator member, encoded", auth.DevEmail, http.MethodGet, "/%73ettings", http.StatusForbidden},
+		{"non-operator member, encoded", auth.DevEmail, http.MethodGet, "/%6Fperator/settings", http.StatusForbidden},
 		{"operator with no household, encoded", operatorEmail, http.MethodGet, "/%6Fperator", http.StatusForbidden},
 		{"non-member, encoded not-a-member page", strangerEmail, http.MethodGet, "/not-a-m%65mber", http.StatusForbidden},
 	}
@@ -141,11 +141,11 @@ func TestSettingsIsOperatorOnly(t *testing.T) {
 			t.Errorf("%s: %s %s = %d, want %d", c.name, c.method, c.path, rec.Code, c.want)
 		}
 	}
-	if body := do(h, http.MethodGet, "/settings", auth.DevEmail).Body.String(); !strings.Contains(body, "operator") || strings.Contains(body, "Backup") {
+	if body := do(h, http.MethodGet, "/operator/settings", auth.DevEmail).Body.String(); !strings.Contains(body, "operator") || strings.Contains(body, "Backup") {
 		t.Errorf("refusal of a member should name the operator and show no settings:\n%s", body)
 	}
 	// The refusal carries the member's household, so its nav is a member's.
-	if body := do(h, http.MethodGet, "/settings", auth.DevEmail).Body.String(); !strings.Contains(body, `href="/recipes"`) {
+	if body := do(h, http.MethodGet, "/operator/settings", auth.DevEmail).Body.String(); !strings.Contains(body, `href="/recipes"`) {
 		t.Errorf("refusal of a member should keep the member nav:\n%s", body)
 	}
 }
@@ -188,25 +188,25 @@ func TestDevHouseholdsAreNotSeededOutsideTheBypass(t *testing.T) {
 	}
 }
 
-// dotSegmentPaths are spellings chi would dispatch into the /settings mount
-// (it routes the raw path) but whose cleaned form names no operator page.
-var dotSegmentPaths = []string{"/invitations/../recipes", "/static/../recipes", "/settings/..", "/settings/%2e%2e", "/settings/%2E%2E", "/settings/./backup", "/settings/%2e/backup", "/settings/.%2e", "/settings/../recipes"}
+// dotSegmentPaths are spellings chi would dispatch into an /operator mount (it
+// routes the raw path) but whose cleaned form names no operator page.
+var dotSegmentPaths = []string{"/invitations/../recipes", "/static/../recipes", "/operator/probe/..", "/operator/probe/%2e%2e", "/operator/probe/%2E%2E", "/operator/probe/./5", "/operator/probe/%2e/5", "/operator/probe/.%2e", "/operator/probe/../../recipes", "/operator/../recipes"}
 
-// probeRouter is tenantRouter plus a /settings/{id} child, so a path that slips
-// past the operator check is observable as a 200 instead of a 404.
+// probeRouter is tenantRouter plus an /operator/probe/{id} child, so a path that
+// slips past the operator check is observable as a 200 instead of a 404.
 func probeRouter(t *testing.T) http.Handler {
 	t.Helper()
 	cfg := devConfig()
 	cfg.Operator = config.Operator{Emails: []string{operatorEmail}}
 	r := testRouter(t, cfg, Deps{Backup: idleBackup{}})
-	r.Get("/settings/{id}", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("operator child")) })
+	r.Get("/operator/probe/{id}", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("operator child")) })
 	return r
 }
 
 func TestDotSegmentsNeverReachAnOperatorChild(t *testing.T) {
 	h := probeRouter(t)
-	if rec := do(h, http.MethodGet, "/settings/5", auth.DevEmail); rec.Code != http.StatusForbidden {
-		t.Fatalf("control: member on /settings/5 = %d, want 403", rec.Code)
+	if rec := do(h, http.MethodGet, "/operator/probe/5", auth.DevEmail); rec.Code != http.StatusForbidden {
+		t.Fatalf("control: member on /operator/probe/5 = %d, want 403", rec.Code)
 	}
 	for _, email := range []string{auth.DevEmail, strangerEmail, operatorEmail} {
 		for _, p := range dotSegmentPaths {
@@ -220,9 +220,9 @@ func TestDotSegmentsNeverReachAnOperatorChild(t *testing.T) {
 	}
 }
 
-const settingsLink = `href="/settings"`
+const operatorLink = `href="/operator"`
 
-func TestNavShowsSettingsToOperatorsOnly(t *testing.T) {
+func TestNavShowsOperatorToOperatorsOnly(t *testing.T) {
 	h := tenantRouter(t)
 	cases := []struct {
 		name, email, path string
@@ -230,22 +230,49 @@ func TestNavShowsSettingsToOperatorsOnly(t *testing.T) {
 	}{
 		{"non-operator member", auth.DevEmail, "/recipes", false},
 		{"operator who is a member", auth.DevOtherEmail, "/recipes", true},
-		{"operator with no household, on the operator page", operatorEmail, "/settings", true},
+		{"operator with no household, on the operator page", operatorEmail, "/operator/settings", true},
 	}
 	for _, c := range cases {
 		rec := do(h, http.MethodGet, c.path, c.email)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("%s: GET %s = %d", c.name, c.path, rec.Code)
 		}
-		if got := strings.Contains(rec.Body.String(), settingsLink); got != c.want {
-			t.Errorf("%s: nav has Settings link = %v, want %v", c.name, got, c.want)
+		if got := strings.Contains(rec.Body.String(), operatorLink); got != c.want {
+			t.Errorf("%s: nav has Operator link = %v, want %v", c.name, got, c.want)
 		}
 	}
 }
 
 func TestSettingsIsAnOperatorPath(t *testing.T) {
-	if !slices.Contains(layout.OperatorPaths, settings.Pattern) {
-		t.Errorf("layout.OperatorPaths %v lacks the settings pattern %q", layout.OperatorPaths, settings.Pattern)
+	if layout.Admits(settings.Pattern, true, false) {
+		t.Errorf("layout.Admits opens the settings pattern %q to a member who is not an operator", settings.Pattern)
+	}
+}
+
+// The deployment page moved under /operator; the old path sends a bookmark on.
+// Only an operator is sent on, a household member or not.
+func TestLegacySettingsRedirects(t *testing.T) {
+	h := tenantRouter(t)
+	for _, email := range []string{auth.DevOtherEmail, operatorEmail} {
+		rec := do(h, http.MethodGet, settings.LegacyPattern, email)
+		if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != settings.Pattern {
+			t.Errorf("%s: = %d -> %q, want 301 to %s", email, rec.Code, rec.Header().Get("Location"), settings.Pattern)
+		}
+	}
+	if rec := do(h, http.MethodGet, settings.LegacyPattern, auth.DevEmail); rec.Code != http.StatusForbidden {
+		t.Errorf("non-operator member: = %d, want 403", rec.Code)
+	}
+}
+
+// Every entry of the operator rail is a page an operator can open, and the
+// overview is the operator's landing page.
+func TestOperatorRailPagesAreServed(t *testing.T) {
+	h := tenantRouter(t)
+	for _, p := range layout.OperatorSectionPaths() {
+		rec := do(h, http.MethodGet, p, operatorEmail)
+		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `data-testid="operator-rail"`) {
+			t.Errorf("GET %s as the operator = %d, want 200 with the operator rail", p, rec.Code)
+		}
 	}
 }
 
