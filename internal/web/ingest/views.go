@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 )
 
 func percent(f float64) string { return fmt.Sprintf("%.0f%%", f*100) }
@@ -18,7 +18,7 @@ func issueText(code string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-func sourceText(d ingestcore.Draft) string {
+func sourceText(d apiingest.Draft) string {
 	if d.Source.URL != "" {
 		return d.Source.URL
 	}
@@ -56,7 +56,7 @@ type srcRow struct {
 // sourceRows lists the ingredient lines as the source wrote them, under their
 // component's name. A line the rules were unsure of is Low. Lines with no raw
 // text (the LLM supplied them) have nothing to show and are left out.
-func sourceRows(d ingestcore.Draft) []srcRow {
+func sourceRows(d apiingest.Draft) []srcRow {
 	var rows []srcRow
 	for _, c := range d.Components {
 		start := len(rows)

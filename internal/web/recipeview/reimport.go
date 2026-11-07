@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
-	"github.com/kaecyra/gobbler/internal/ingest"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 )
 
 // A recipe with a source URL can be re-imported from its source (ADR-00042).
@@ -49,5 +49,5 @@ func reimportFor(ctx context.Context, d Deps, id int64, sourceURL string, versio
 	if !found {
 		return nil, nil //nolint:nilnil // nil is "no re-import waiting"
 	}
-	return &reimportView{Token: p.Token, Host: ingest.SourceHost(sourceURL), Stale: p.StaleAt(version)}, nil
+	return &reimportView{Token: p.Token, Host: apiingest.SourceHost(sourceURL), Stale: p.StaleAt(version)}, nil
 }

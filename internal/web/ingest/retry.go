@@ -10,33 +10,33 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/config"
-	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/llm/claude"
 	"github.com/kaecyra/gobbler/internal/llm/gemini"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-// Retrier asks the LLM to read a draft's source again; *ingestcore.Fallback
+// Retrier asks the LLM to read a draft's source again; *apiingest.Bound
 // satisfies it.
 type Retrier interface {
-	Retry(ctx context.Context, d ingestcore.Draft) (ingestcore.Draft, error)
+	Retry(ctx context.Context, d apiingest.Draft) (apiingest.Draft, error)
 	Configured() bool
 }
 
 // providerFactories maps each configured provider name to its constructor. It
 // is the one place that knows the provider packages; selecting a provider or a
 // model is configuration only (ADR-00007).
-func providerFactories() map[string]ingestcore.ProviderFactory {
-	return map[string]ingestcore.ProviderFactory{
-		config.ProviderClaude: func(ctx context.Context, cfg config.LLM, log *slog.Logger) (ingestcore.Provider, error) {
+func providerFactories() map[string]apiingest.ProviderFactory {
+	return map[string]apiingest.ProviderFactory{
+		config.ProviderClaude: func(ctx context.Context, cfg config.LLM, log *slog.Logger) (apiingest.Provider, error) {
 			p, err := claude.New(ctx, cfg, log)
 			if err != nil {
 				return nil, err
 			}
 			return p, nil
 		},
-		config.ProviderGemini: func(ctx context.Context, cfg config.LLM, log *slog.Logger) (ingestcore.Provider, error) {
+		config.ProviderGemini: func(ctx context.Context, cfg config.LLM, log *slog.Logger) (apiingest.Provider, error) {
 			p, err := gemini.New(ctx, cfg, log)
 			if err != nil {
 				return nil, err
@@ -70,10 +70,10 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.retrier.Retry(r.Context(), d)
 	switch {
-	case errors.Is(err, ingestcore.ErrNoProvider):
+	case errors.Is(err, apiingest.ErrNoProvider):
 		fail(http.StatusServiceUnavailable, "No LLM provider is configured.")
 		return
-	case err != nil && !errors.Is(err, ingestcore.ErrLLMFailed):
+	case err != nil && !errors.Is(err, apiingest.ErrLLMFailed):
 		// The pipeline broke (the catalog could not be read), which is not an
 		// LLM failure.
 		layout.WriteError(w, r, fmt.Errorf("retry with LLM: %w", err))
@@ -84,7 +84,7 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.recipes.ReplaceDraft(r.Context(), caller.FromContext(r.Context()), token, out); err != nil {
-		if errors.Is(err, ingestcore.ErrDraftGone) {
+		if errors.Is(err, apiingest.ErrDraftGone) {
 			layout.WriteError(w, r, errGone)
 			return
 		}
@@ -94,4 +94,4 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/ingest/"+token, http.StatusSeeOther)
 }
 
-var _ Retrier = (*ingestcore.Fallback)(nil)
+var _ Retrier = (*apiingest.Bound)(nil)

@@ -75,6 +75,14 @@ func newSite(t *testing.T, limits config.MCP) *site { return newSiteWith(t, limi
 // newSiteWith is newSite with the drafter replaced, when drafter is not nil.
 func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) mcp.Drafter) *site {
 	t.Helper()
+	return newSiteDrafting(t, limits, drafter, false)
+}
+
+// newSiteDrafting is newSiteWith that, with service true, keeps the drafter
+// NewDeps built (the ingestion service bound to the request's credential)
+// instead of the fake, so a test drives the real service.
+func newSiteDrafting(t *testing.T, limits config.MCP, drafter func(*catalog.Store) mcp.Drafter, service bool) *site {
+	t.Helper()
 	ctx := context.Background()
 	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
 	if err != nil {
@@ -114,7 +122,10 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 	if err != nil {
 		t.Fatal(err)
 	}
-	deps.Drafter, deps.Now = fakeDrafter{draft}, func() time.Time { return s.now }
+	deps.Now = func() time.Time { return s.now }
+	if !service {
+		deps.Drafter = fakeDrafter{draft}
+	}
 	if drafter != nil {
 		deps.Drafter = drafter(cat)
 	}
