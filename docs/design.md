@@ -62,7 +62,7 @@ dependencies.
 | `session` | Server-side sign-in sessions named by a random cookie token, stored as its SHA-256; queries in `queries/`, sqlc-generated `sessiondb` ([ADR-00030](adr/00030-google-sign-in.md)) | `db` |
 | `profile` | A person's profile keyed by email (display name, avatar reference) at an opaque random address; the one visibility rule keyed on the viewer's relation (`Visible`); the default avatar drawn from a hash of the email (`NewIdenticon`); queries in `queries/`, sqlc-generated `profiledb` ([ADR-00032](adr/00032-profiles.md)) | `db` |
 | `apikey` | Personal and household API keys: a random secret shown once, stored as its SHA-256; lookup by secret (`Lookup`) for the MCP endpoint, and the write log that records which key made each MCP write; queries in `queries/`, sqlc-generated `apikeydb` ([ADR-00031](adr/00031-api-keys.md)) | `db` |
-| `mcp` | The MCP server at `/mcp` over Streamable HTTP, on the official Go SDK ([ADR-00034](adr/00034-mcp-server.md)): the bearer check behind a `Verifier` interface (API keys today), the per-credential leaky-bucket rate limit, paged list tools, and the recipe, import and shopping tools. Recipe writes become drafts for the review screen; shopping writes apply and are recorded against the credential | `apikey`, `store`, `shopping`, `catalog`, `ingest`, `recipe/display`, `household` |
+| `mcp` | The MCP server at `/mcp` over Streamable HTTP, on the official Go SDK ([ADR-00034](adr/00034-mcp-server.md)): the bearer check behind a `Verifier` interface (API keys today), the per-credential leaky-bucket rate limit, paged list tools, and the recipe, import and shopping tools. Recipe writes become drafts for the review screen; shopping writes apply and are recorded against the credential | `apikey`, `store`, `shopping`, `catalog`, `api/ingest`, `recipe/display`, `household` |
 | `media` | Uploaded media (ADR-00033): the storage interface with S3 and local-directory implementations, and the image pipeline that decodes JPEG, PNG, GIF, WebP, HEIC and AVIF, crops, bounds to 1024 by 1024 and encodes metadata-free lossy WebP (pure Go, no cgo) ([ADR-00033](adr/00033-media-object-storage.md)) | `config` |
 | `oauth` | The OAuth 2.1 authorization server for MCP clients ([ADR-00034](adr/00034-mcp-server.md)): client registration and Client ID Metadata Document fetching (HTTPS only, never a private address), authorization codes with PKCE, per-person grants, rotating refresh tokens stored as hashes, and the access-token verifier `/mcp` uses; served by `web/oauth`, with grants listed on the profile by `web/profile`; queries in `queries/`, sqlc-generated `oauthdb` | `db` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
@@ -111,8 +111,8 @@ are excepted by name until #471. The rules read generated files too: golangci-li
 skips them by default, and every `*_templ.go` is generated, so `.golangci.yml` turns that off and
 excludes the other linters from templ and sqlc output instead, leaving depguard alone to read them.
 The router builds the store, the pictures and the reaper with `apirecipes.NewStore`, `NewPictures` and
-`NewReaper`. Fetching and reading a page into a draft stays in `ingest`, a library the adapters call;
-the service holds its result.
+`NewReaper`. Fetching and reading a page into a draft stays in `ingest`, a library that `api/ingest` calls
+and the adapters do not; the recipe service holds its result.
 
 `api/journal` holds the notes, rating and made-it log of a recipe for `internal/web/journal`, built over the recipe store (the journal has no domain package of its own) with the same `Caller` and membership check.
 

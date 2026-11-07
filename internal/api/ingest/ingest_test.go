@@ -163,7 +163,7 @@ func TestTheProviderIsNotAskedForACleanDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	if d.BelowThreshold {
-		t.Skip("the sample draft scored below the threshold")
+		t.Fatalf("the sample draft scored below the threshold (overall %v, threshold %v): the test needs a clean draft to prove the provider is not asked first", d.Overall, d.Threshold)
 	}
 	if n := f.provider.asked.Load(); n != 0 {
 		t.Errorf("the LLM was asked %d times before anyone pressed retry", n)

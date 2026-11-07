@@ -10,6 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kaecyra/gobbler/internal/api/caller"
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
@@ -95,25 +96,25 @@ func NewDeps(rec *apirecipes.Service, reads apishop.Recipes, lists *apishop.Stor
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp catalog service: %w", err)
 	}
-	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(catalogCaller(log)), Drafter: ing.Bind(catalogCaller(log)), Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(credentialCaller(log)), Drafter: ing.Bind(credentialCaller(log)), Audit: audit, Limits: cfg.MCP, Logger: log}, nil
 }
 
-// catalogCaller names the Caller of a catalog lookup or a draft from the
+// credentialCaller names the Caller of a catalog lookup or a draft from the
 // credential and household on the request's context (callerOf), for
 // apicatalog.Bound and apiingest.Bound. A context with neither names nobody: the
 // zero Caller, which those services refuse with ErrNotMember, so a call that
 // lost its credential fails closed.
 // The cause is logged at debug, so the refusal can be traced to the scoping
 // failure.
-func catalogCaller(log *slog.Logger) func(ctx context.Context) apicatalog.Caller {
+func credentialCaller(log *slog.Logger) func(ctx context.Context) caller.Caller {
 	if log == nil {
 		log = slog.Default()
 	}
-	return func(ctx context.Context) apicatalog.Caller {
+	return func(ctx context.Context) caller.Caller {
 		c, err := recipeCaller(ctx)
 		if err != nil {
 			log.DebugContext(ctx, "mcp catalog lookup has no caller", "error", err.Error())
-			return apicatalog.Caller{}
+			return caller.Caller{}
 		}
 		return c
 	}
