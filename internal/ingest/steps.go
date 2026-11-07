@@ -235,9 +235,10 @@ var serveRE = regexp.MustCompile(`(?i)^\W*serv(?:e|ing)\b`)
 var (
 	// mixWordRE matches a mixing machine named anywhere in the step ("in the
 	// bowl of a stand mixer", "pulse in a food processor", "fit the dough
-	// hook") and "knead" in any form but "kneaded", an adjective ("the kneaded
+	// hook"). A mixer counts only as a stand, hand or electric mixer: a bare
+	// "mixer" is as often a drink's tonic or soda ("top with your mixer") and "knead" in any form but "kneaded", an adjective ("the kneaded
 	// dough"), and "no-knead", a kind of bread.
-	mixWordRE = regexp.MustCompile(`(?i)(^|[^\w-])knead(s|ing)?\b|\b(mixers?|food processors?|blenders?|bread machines?|dough hooks?)\b`)
+	mixWordRE = regexp.MustCompile(`(?i)(^|[^\w-])knead(s|ing)?\b|\b((stand|hand|electric) mixers?|food processors?|blenders?|bread machines?|dough hooks?)\b`)
 	// mixVerbRE matches "blend" where it is the instruction, as verbRE reads
 	// it, so "the spice blend" is not mixing.
 	mixVerbRE = verbRE(`(blend)`)
