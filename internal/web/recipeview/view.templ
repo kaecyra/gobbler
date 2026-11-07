@@ -687,13 +687,12 @@ templ newPartMark(p newPart) {
 
 // lineText is an ingredient line's text with each qualifier in its own muted
 // italic element. The name and the first qualifier are set off by a space, and
-// the qualifiers from each other by a comma. Line.Text keeps the comma form,
-// name included, for every other surface.
+// the qualifiers from each other by a comma, which sits against the qualifier
+// before it in the same muted italic, outside the qualifier's own element.
+// Line.Text keeps the comma form, name included, for every other surface.
 templ lineText(l display.Line) {
 	{ l.Head }
 	for i, q := range l.Qualifiers {
-		// The comma sits against the qualifier before it, in the same muted
-		// italic, outside the qualifier's own element.
 		if i < len(l.Qualifiers)-1 {
 			<span class="qual" data-testid="qualifier">{ q }</span><span class="qual">,</span>
 		} else {

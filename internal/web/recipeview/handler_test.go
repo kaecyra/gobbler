@@ -243,8 +243,6 @@ func TestViewShowsRecipeAsWritten(t *testing.T) {
 	mustNotContain(t, body, "time may change", "Scaled by")
 }
 
-// A line with qualifiers and a tail reads as one phrase once the markup is
-// gone: spaces between the name, each qualifier and the tail, and no commas.
 // TestQualifiersAreSeparatedByCommasAndFromTheNameBySpace: the name and the
 // first qualifier are set off by a space, qualifiers from each other by a
 // comma right after the qualifier, and the tail by a space.
