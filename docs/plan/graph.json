@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00032",
+      "last_used": "00033",
       "contiguous": true
     }
   },
@@ -3753,8 +3753,7 @@
       "owns": [],
       "needs_migration": null,
       "adrs": [],
-      "note": "ADR-00039 obligation 15. An operator action on the deployed site after u-picture-cards ships; no repository files.",
-      "blocked": "deferred by the owner (2026-11-07): they reseed the live demo themselves, when they choose; Google sign-in rules out seed.py there"
+      "note": "ADR-00039 obligation 15. An operator action on the deployed site after u-picture-cards ships; no repository files."
     },
     {
       "id": "r-credential-describe",
@@ -4492,6 +4491,32 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Found in review of #519. Ordered before a-api-catalog, which owns internal/web/catalog/** and internal/web/editor/**."
+    },
+    {
+      "id": "u-meal-baked",
+      "title": "a baked meal type, and meal types defined in one place",
+      "wave": 13,
+      "track": null,
+      "issue": 544,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/model_fields.go",
+        "internal/recipe/model_fields_test.go",
+        "internal/ingest/**",
+        "internal/web/layout/recipe.go",
+        "internal/web/layout/recipe_test.go",
+        "internal/web/layout/recipe_parts.templ",
+        "internal/web/layout/recipe_parts_templ.go",
+        "internal/web/recipes/model.go",
+        "internal/web/recipes/*_test.go",
+        "internal/db/*_test.go",
+        "e2e/recipes/**",
+        "e2e/recipeview/**"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "Owner ruling 2026-11-07. Labels move to recipe.MealType.Label/Plural; migration widens the meal_type CHECK by column round-trip."
     }
   ],
   "shared_files": [
