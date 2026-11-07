@@ -59,7 +59,7 @@ func (h *centralHandler) list(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, fmt.Errorf("list central ingredients: %w", err))
 		return
 	}
-	layout.Render(w, r, http.StatusOK, centralListPage(centralListView{Query: q, Rows: rowsOf(filter(all, q)), Total: len(all)}))
+	layout.Render(w, r, http.StatusOK, centralListPage(centralListView{Query: q, Rows: rowsOf(filter(all, q), nil), Total: len(all)}))
 }
 
 func (h *centralHandler) editShow(w http.ResponseWriter, r *http.Request) {
