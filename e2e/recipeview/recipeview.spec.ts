@@ -616,7 +616,7 @@ test.describe('deleting a recipe', () => {
 
 // The author's notes end the step chain (ADR-00041), drawn after variant A of
 // the recipe screen in docs/ui/mockup.html.
-test('author notes continue the step chain after the last step, each credited, with no heading', async ({ page }) => {
+test('author notes follow the last step, each credited, with no heading', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 1000 });
   await page.goto(`/recipes/${notesId}`);
   const notes = page.getByTestId('author-note');
@@ -635,7 +635,7 @@ test('author notes continue the step chain after the last step, each credited, w
   await expect(page.locator('.method')).not.toContainText("Author's Notes");
 });
 
-test('an author note is a bulb in a soft circle on a dotted rail, its text smaller and lighter than a step, with no coloured edge', async ({ page }) => {
+test('an author note is a bulb in a soft circle, its text smaller and lighter than a step, with no coloured edge', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 1000 });
   await page.goto(`/recipes/${notesId}`);
   const note = page.getByTestId('author-note').first();
@@ -649,12 +649,7 @@ test('an author note is a bulb in a soft circle on a dotted rail, its text small
   expect(await circle.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('50%');
   expect(await circle.evaluate((el) => getComputedStyle(el).backgroundColor), 'a soft fill, not transparent').not.toBe('rgba(0, 0, 0, 0)');
 
-  // The rail runs on from the last step: dotted, 2px, and no thicker edge anywhere else.
-  const rail = await note.evaluate((el) => {
-    const s = getComputedStyle(el, '::before');
-    return { style: s.borderLeftStyle, width: s.borderLeftWidth };
-  });
-  expect(rail).toEqual({ style: 'dotted', width: '2px' });
+  // No coloured edge on the note.
   expect(await note.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe('0px');
 
   const size = async (loc: typeof note) => loc.locator('p').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
@@ -663,6 +658,57 @@ test('an author note is a bulb in a soft circle on a dotted rail, its text small
   expect(credit.size).toBeLessThan(await size(note));
   const bodyColor = await note.locator('p').evaluate((el) => getComputedStyle(el).color);
   expect(credit.color, 'the credit is lighter than the note text').not.toBe(bodyColor);
+});
+
+// ADR-00045 obligation 1: the connector line is the ::before of a step. None
+// reaches the notes from the last step, and none joins one note to the next.
+test('no connector line joins the last step to the notes, or one note to the next', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  await page.goto(`/recipes/${notesId}`);
+  const drawn = (loc: import('@playwright/test').Locator) =>
+    loc.evaluate((el) => {
+      const s = getComputedStyle(el, '::before');
+      return s.display !== 'none' && s.content !== 'none';
+    });
+  // The line is still drawn between two steps, so the check can tell.
+  const steps = page.locator('.method li.step:not(.anote)');
+  expect(await drawn(steps.first())).toBe(true);
+  // The last step has no line below it, and neither has any note.
+  expect(await drawn(steps.last())).toBe(false);
+  const notes = page.getByTestId('author-note');
+  await expect(notes).toHaveCount(3);
+  for (let i = 0; i < 3; i++) expect(await drawn(notes.nth(i)), `note ${i}`).toBe(false);
+});
+
+test('the notes are set apart from the steps by more space than lies between two steps', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  await page.goto(`/recipes/${notesId}`);
+  // The gap is the free space from one item's content (its right-hand column)
+  // to the next item's marker.
+  const gap = async (from: import('@playwright/test').Locator, to: import('@playwright/test').Locator) => {
+    const text = (await from.locator(':scope > :last-child').boundingBox())!;
+    const mark = (await to.locator('.sn, .an').first().boundingBox())!;
+    return mark.y - (text.y + text.height);
+  };
+  const steps = page.locator('.method li.step:not(.anote)');
+  const notes = page.getByTestId('author-note');
+  // Braise has two steps; Finish has one, then the notes.
+  const between = await gap(steps.nth(0), steps.nth(1));
+  const apart = await gap(steps.last(), notes.first());
+  expect(between).toBeGreaterThan(0);
+  expect(apart).toBeGreaterThan(between);
+  // The notes keep their own spacing among themselves.
+  expect(Math.abs((await gap(notes.nth(0), notes.nth(1))) - (await gap(notes.nth(1), notes.nth(2))))).toBeLessThan(2);
+});
+
+// The bulb stays in the step-number column.
+test('a note bulb sits in the step-number column', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  await page.goto(`/recipes/${notesId}`);
+  const mark = (await page.locator('.method li.step:not(.anote) .sn').last().boundingBox())!;
+  const bulb = (await page.getByTestId('author-note').first().locator('.an').boundingBox())!;
+  expect(bulb.x).toBe(mark.x);
+  expect(bulb.width).toBe(mark.width);
 });
 
 test('a recipe without author notes shows none, and the notes survive scaling', async ({ page }) => {

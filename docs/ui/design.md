@@ -134,9 +134,11 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 - **Rating.** Wooden spoons, never stars. An unrated recipe says "New".
 - **Tips.** They float free, with no box or tint, but stand out: a coral icon
   and label, with the text at full recipe size.
-- **Author notes.** They end the step chain on the recipe page (ADR-00041).
-  Each sits where a step number would, behind a bulb in a soft wattle circle,
-  joined to the next by a dotted line. The text is a little smaller and
+- **Author notes.** They follow the last step on the recipe page, apart from
+  the chain (ADR-00041, ADR-00045): extra vertical space separates them from
+  the steps, and no connector line joins the last step to the first note or one
+  note to the next. Each sits where a step number would, behind a bulb in a soft
+  wattle circle. The text is a little smaller and
   lighter than step text, a bold title leads when the note has one, and a small
   grey "From the author" closes it. Cook mode reaches them through an
   "Author's Notes" button. Variant A of `#recipe` in the mockup is the target.

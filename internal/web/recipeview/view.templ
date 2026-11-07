@@ -321,8 +321,8 @@ templ recipeBody(v view) {
 	</article>
 }
 
-// authorNote is one of the author's notes, continuing the step chain after the
-// last step (ADR-00041): a bulb in a soft circle where a step number would be,
+// authorNote is one of the author's notes, after the last step and apart from
+// the chain (ADR-00041, ADR-00045): a bulb in a soft circle where a step number would be,
 // the title in bold, the text, and a quiet credit. It is drawn after variant A
 // of the recipe screen in docs/ui/mockup.html.
 templ authorNote(n noteView) {
@@ -344,14 +344,16 @@ templ authorNote(n noteView) {
 	</li>
 }
 
-// authorNoteStyles are the rules of an author note. The note is a step of the
-// chain, so it takes the step's grid and rail from layout.RecipeStyles and
-// changes the rail to dotted, the number to a bulb and the text to a little
-// smaller and lighter.
+// authorNoteStyles are the rules of an author note. The note takes the step's
+// grid from layout.RecipeStyles and changes the number to a bulb and the text
+// to a little smaller and lighter. No connector runs from the last step into
+// the notes or between them, and the first note sits 24px (the list's own
+// bottom margin) below the last step's usual gap (ADR-00045).
 templ authorNoteStyles() {
 	<style>
 		.step.anote { grid-template-columns: 44px minmax(0, 1fr); padding-bottom: 22px; }
-		.step.anote::before { background: none; border-left: 2px dotted var(--line); width: 0; }
+		.step.anote::before, .step:has(+ .anote)::before { display: none; }
+		.step:not(.anote) + .step.anote { margin-top: 24px; }
 		.step.anote .an { width: 44px; height: 44px; display: grid; place-items: center; position: relative; z-index: 1; }
 		.step.anote .an span { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--wattle-soft); color: var(--wattle-ink); }
 		.step.anote .an svg { width: 17px; height: 17px; }
