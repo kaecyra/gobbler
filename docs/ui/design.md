@@ -93,6 +93,10 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   - Each segment shows only an icon and its time: a hand for active, a clock
     for waiting. There is no legend and no words. The stage kinds go in the
     tooltip and the screen-reader label.
+  - A segment is a stage kind, not a step: the time of every step of one kind
+    is added up (`ribbon.Group`), in the order each kind first appears, so
+    three rising steps read as one block. Unkinded hands-on and waiting steps
+    are a group each.
   - Segments are soft and semi-transparent, with a 1px border in the same hue.
     They are never flat opaque blocks.
   - The server computes the segments. An embedded script only fits them to
@@ -187,6 +191,9 @@ equipment review was linked from nowhere.
   (`/operator/settings`). The section of the page is marked current, subpages
   included. Below 768px the rail becomes a strip above the page that scrolls
   sideways, since a rail beside the tables would leave them too little width.
+- **Breadcrumb.** Every page but the overview opens with the same `.crumbs`
+  trail the recipe pages use: Operator, the section and, on a page inside a
+  section (an ingredient's edit page, a suggestion's review), that page.
 - **No cross-links.** A page links only within its own section (a review page
   back to its list). Moving between sections is the rail's job.
 - `/settings`, the deployment page's old address, answers with a permanent

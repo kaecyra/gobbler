@@ -71,12 +71,12 @@ templ RecipeStep(s RecipeStepView, number string) {
 			<div class="md">
 				@Markdown(s.Text)
 			</div>
-			if s.Time != "" || len(s.After) > 0 || len(s.During) > 0 {
+			if s.Time != "" || showAfterChips && len(s.After) > 0 || len(s.During) > 0 {
 				<div class="stags">
 					if s.Time != "" {
 						<span class={ "stag", templ.KV("t", s.Passive) }>{ s.Time }</span>
 					}
-					if len(s.After) > 0 {
+					if showAfterChips && len(s.After) > 0 {
 						<span class="stag dep" data-testid="after">{ afterText(s.After) }</span>
 					}
 					if len(s.During) > 0 {

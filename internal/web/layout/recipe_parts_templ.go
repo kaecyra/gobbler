@@ -378,7 +378,7 @@ func RecipeStep(s RecipeStepView, number string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if s.Time != "" || len(s.After) > 0 || len(s.During) > 0 {
+		if s.Time != "" || showAfterChips && len(s.After) > 0 || len(s.During) > 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"stags\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -420,7 +420,7 @@ func RecipeStep(s RecipeStepView, number string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if len(s.After) > 0 {
+			if showAfterChips && len(s.After) > 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span class=\"stag dep\" data-testid=\"after\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

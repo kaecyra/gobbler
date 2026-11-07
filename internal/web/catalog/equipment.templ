@@ -11,11 +11,11 @@ func sizedAction(id int64) templ.SafeURL {
 }
 
 templ equipmentPage(v equipmentView) {
-	@layout.OperatorPage("Equipment catalog", layout.OperatorEquipment) {
+	@layout.OperatorPage("Equipment catalog", layout.OperatorEquipment, "") {
 		<div class="pg wide">
 		<div class="screen-h"><h1>Equipment catalog</h1></div>
 		<p class="muted">
-			Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows "may need a larger pan" on them and on nothing else.
+			Mark the pans, tins, dishes and pots whose size matters. A recipe scaled up shows "may need a larger pan" on them.
 		</p>
 		<div class="panel table-wrap">
 <table data-testid="equipment-table">

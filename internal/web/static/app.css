@@ -478,6 +478,10 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
    and the not-a-member page wrap their content in class "pg". Linked on every
    page, so a verified non-member gets it too. */
 
+/* Breadcrumb: the recipe, history and operator pages. */
+.crumbs { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-3); margin-bottom: 6px; }
+.crumbs a { display: inline-flex; align-items: center; min-height: var(--tap); color: inherit; }
+
 .pg { max-width: 760px; }
 .pg.wide { max-width: none; }
 .pg > .panel + .panel { margin-top: 16px; }

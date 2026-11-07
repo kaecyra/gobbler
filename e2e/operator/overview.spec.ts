@@ -41,6 +41,20 @@ test.describe('the operator area', () => {
     });
   }
 
+  for (const s of sections.filter((x) => x.path !== '/operator')) {
+    test(`${s.name} opens with a breadcrumb back to the Operator overview`, async ({ page }) => {
+      await page.goto(s.path);
+      const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
+      await expect(crumbs.getByRole('link', { name: 'Operator', exact: true })).toHaveAttribute('href', '/operator');
+      await expect(crumbs.locator('[aria-current="page"]')).toHaveText(s.name);
+    });
+  }
+
+  test('the overview has no breadcrumb', async ({ page }) => {
+    await page.goto('/operator');
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toHaveCount(0);
+  });
+
   test('the old /settings address sends a bookmark to the deployment page', async ({ page }) => {
     await page.goto('/settings');
     await expect(page).toHaveURL(/\/operator\/settings$/);

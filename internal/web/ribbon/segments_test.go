@@ -1,6 +1,7 @@
 package ribbon
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -62,20 +63,58 @@ func TestBuildEmpty(t *testing.T) {
 	}
 }
 
-func TestBuildFullOneSegmentPerStep(t *testing.T) {
+func TestGroupAddsUpTimeByStageKind(t *testing.T) {
+	tests := map[string]struct {
+		steps []recipe.Step
+		want  []Part
+	}{
+		"nothing":      {nil, nil},
+		"untimed only": {[]recipe.Step{step(0, false, ""), {Passive: true}}, nil},
+		"one kind across steps adds up, in first-seen order": {
+			[]recipe.Step{step(60, true, recipe.StageRise), step(20, false, recipe.StagePrep), step(45, true, recipe.StageRise)},
+			[]Part{{FamilySky, "rise", 105}, {FamilyActive, "prep", 20}},
+		},
+		"unkinded hands-on and waiting are a group each": {
+			[]recipe.Step{step(30, false, ""), step(10, true, ""), step(15, false, "")},
+			[]Part{{FamilyActive, "hands-on", 45}, {FamilySlate, "waiting", 10}},
+		},
+		"a kind that is hands-on in one step and waiting in another stays two groups": {
+			[]recipe.Step{step(10, false, recipe.StageSimmer), step(30, true, recipe.StageSimmer)},
+			[]Part{{FamilyActive, "simmer", 10}, {FamilyButter, "simmer", 30}},
+		},
+		"durations are summed before they are rounded": {
+			[]recipe.Step{{Duration: 40 * time.Second, Passive: true, Kind: recipe.StageRest}, {Duration: 40 * time.Second, Passive: true, Kind: recipe.StageRest}},
+			[]Part{{FamilySky, "rest", 1}},
+		},
+		"untimed steps are left out": {
+			[]recipe.Step{step(0, true, recipe.StageBake), step(25, true, recipe.StageBake)},
+			[]Part{{FamilyApricot, "bake", 25}},
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := Group(tc.steps); !slices.Equal(got, tc.want) {
+				t.Fatalf("Group = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBuildFullOneSegmentPerStageKind(t *testing.T) {
 	r := Build([]recipe.Step{
 		step(20, false, recipe.StagePrep),
 		step(30, false, ""),
 		step(180, true, recipe.StageBraise),
 		step(15, false, ""),
 	})
-	if len(r.Full) != 4 {
-		t.Fatalf("Full has %d segments, want one per step: %+v", len(r.Full), r.Full)
+	if len(r.Full) != 3 {
+		t.Fatalf("Full has %d segments, want one per stage kind: %+v", len(r.Full), r.Full)
 	}
-	wantFam := []Family{FamilyActive, FamilyActive, FamilyButter, FamilyActive}
+	wantFam := []Family{FamilyActive, FamilyActive, FamilyButter}
+	wantMin := []int{20, 45, 180}
 	for i, s := range r.Full {
-		if s.Family != wantFam[i] {
-			t.Errorf("Full[%d].Family = %q, want %q", i, s.Family, wantFam[i])
+		if s.Family != wantFam[i] || s.Minutes != wantMin[i] {
+			t.Errorf("Full[%d] = %q %dm, want %q %dm", i, s.Family, s.Minutes, wantFam[i], wantMin[i])
 		}
 	}
 	if r.Total != 245*time.Minute {
@@ -91,12 +130,12 @@ func TestBuildMergesNeighboursOfTheSameKind(t *testing.T) {
 		step(60, true, recipe.StageRest),
 		step(15, false, ""),
 	})
-	if len(r.Merged) != 3 {
-		t.Fatalf("Merged = %+v, want active, waiting, active", r.Merged)
+	if len(r.Merged) != 2 {
+		t.Fatalf("Merged = %+v, want active, waiting", r.Merged)
 	}
 	m := r.Merged[0]
-	if !m.Active || m.Minutes != 50 || m.Family != FamilyActive || len(m.Parts) != 2 {
-		t.Errorf("Merged[0] = %+v, want 50 active minutes in two parts", m)
+	if !m.Active || m.Minutes != 65 || m.Family != FamilyActive || len(m.Parts) != 2 {
+		t.Errorf("Merged[0] = %+v, want 65 active minutes in two parts", m)
 	}
 	w := r.Merged[1]
 	if w.Active || w.Minutes != 240 {
@@ -128,7 +167,7 @@ func TestBuildDeduplicatesWhenNothingMerges(t *testing.T) {
 }
 
 func TestBuildMergesReportsMerging(t *testing.T) {
-	r := Build([]recipe.Step{step(10, false, ""), step(5, false, "")})
+	r := Build([]recipe.Step{step(10, false, ""), step(5, false, recipe.StagePrep)})
 	if !r.Merges() {
 		t.Fatal("two active neighbours merge, but Merges() is false")
 	}

@@ -496,11 +496,11 @@ test('every control on a clone page with its origin link is at least 44px tall',
   }
 });
 
-test('steps carry their time tag, dependency tag and the passive number mark', async ({ page }) => {
+test('steps carry their time tag and the passive number mark, and no after-step chip', async ({ page }) => {
   await page.goto(`/recipes/${styledId}`);
   const steps = page.locator('.step');
   await expect(steps.nth(0).locator('.stag')).toHaveText(['20 min hands-on']);
-  await expect(steps.nth(1).locator('.stag')).toHaveText(['Timer · 3 h', 'after step 1']);
+  await expect(steps.nth(1).locator('.stag')).toHaveText(['Timer · 3 h']);
   // The timer tag is the waiting colour, the hands-on tag is not.
   const bg = (i: number) => steps.nth(i).locator('.stag').first().evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(await bg(1)).not.toBe(await bg(0));
@@ -764,7 +764,7 @@ test.describe('large ribbon fit', () => {
     await page.setViewportSize({ width: 1400, height: 900 });
     await page.goto(`/recipes/${ribbonId}`);
     await expect(page.locator('.rib-big')).toHaveAttribute('data-level', '0');
-    await expect(page.locator('.rib-big .rib-full .rib-seg')).toHaveCount(6);
+    await expect(page.locator('.rib-big .rib-full .rib-seg')).toHaveCount(5);
   });
 
   test('without the script a narrow ribbon wraps and nothing is clipped', async ({ page }) => {
@@ -778,7 +778,7 @@ test.describe('large ribbon fit', () => {
     // More than one line of segments, every one inside the ribbon.
     expect(box.height).toBeGreaterThan(40);
     const edges = await rib.locator('.rib-full .rib-seg').evaluateAll((segs) => segs.map((s) => s.getBoundingClientRect().right));
-    expect(edges).toHaveLength(6);
+    expect(edges).toHaveLength(5);
     for (const right of edges) expect(right).toBeLessThanOrEqual(box.x + box.width + 1);
     expect(await rib.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   });

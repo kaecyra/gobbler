@@ -271,12 +271,15 @@ func TestViewShowsTheWholeDocumentOfThatVersion(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Loaf v1", "3 cup test flour, sifted", "Mix the dough.", "Let it rise.", "Bake it.",
-		"after step 1", "after step 2", "test pan", "(steps 3)", "1 h", "Dough", "Finish", "bread", "Makes", "loaf",
+		"test pan", "(steps 3)", "1 h", "Dough", "Finish", "bread", "Makes", "loaf",
 		"an earlier version", `action="/recipes/` + itoa(id) + `/history/1/restore"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("version page lacks %q:\n%s", want, body)
 		}
+	}
+	if strings.Contains(body, "after step") {
+		t.Errorf("version page shows an after-step chip:\n%s", body)
 	}
 	if strings.Contains(body, "Loaf v2") || strings.Contains(body, "4 cup") {
 		t.Errorf("version 1 shows content of version 2:\n%s", body)

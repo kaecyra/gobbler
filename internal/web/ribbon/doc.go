@@ -1,6 +1,6 @@
 // Package ribbon renders a recipe's time ribbon (docs/ui/design.md, Time
-// ribbon): one segment per timed step, an icon and a time in each, soft
-// translucent fill with a same-hue border.
+// ribbon): one segment per stage kind, the steps' time added up by kind, an icon
+// and a time in each, soft translucent fill with a same-hue border.
 //
 // The server computes everything: Build turns steps into segments at two merge
 // levels, and the templ components print both. The embedded script

@@ -76,7 +76,7 @@ type Segment struct {
 
 // Ribbon is the computed ribbon for a recipe.
 type Ribbon struct {
-	// Full has one segment per timed step.
+	// Full has one segment per stage kind (Group).
 	Full []Segment
 	// Merged joins neighbours that are both hands-on or both waiting.
 	Merged []Segment
@@ -92,19 +92,50 @@ func (r Ribbon) Empty() bool { return len(r.Full) == 0 }
 // Merges reports whether the merged level differs from the full one.
 func (r Ribbon) Merges() bool { return len(r.Merged) < len(r.Full) }
 
-// Build computes the ribbon from a recipe's steps in order. Steps without a
+// Group adds up the steps' time by stage kind, in the order each kind first
+// appears: three rise steps are one 2h part, not three. Hands-on and waiting
+// steps without a kind are their own groups, and a kind marked hands-on in one
+// step and waiting in another stays two groups, since they are different
+// colours. Steps without a duration are left out. Each group's duration is
+// summed before it is rounded to minutes, so rounding does not drift with the
+// number of steps.
+func Group(steps []recipe.Step) []Part {
+	type key struct {
+		family Family
+		kind   string
+	}
+	var order []key
+	totals := map[key]time.Duration{}
+	for _, s := range steps {
+		if s.Duration <= 0 {
+			continue
+		}
+		k := key{familyOf(s.Kind, s.Passive), kindName(s)}
+		if _, seen := totals[k]; !seen {
+			order = append(order, k)
+		}
+		totals[k] += s.Duration
+	}
+	parts := make([]Part, len(order))
+	for i, k := range order {
+		parts[i] = Part{Family: k.family, Kind: k.kind, Minutes: minutes(totals[k])}
+	}
+	return parts
+}
+
+// Build computes the ribbon from a recipe's steps. Its segments are the
+// steps' time grouped by stage kind (Group), not one per step. Steps without a
 // duration are left out: a ribbon shows time, and an unknown time is not zero.
 func Build(steps []recipe.Step) Ribbon {
 	var r Ribbon
 	var labels []string
 	for _, s := range steps {
-		if s.Duration <= 0 {
-			continue
+		if s.Duration > 0 {
+			r.Total += s.Duration
 		}
-		fam := familyOf(s.Kind, s.Passive)
-		p := Part{Family: fam, Kind: kindName(s), Minutes: minutes(s.Duration)}
-		r.Full = append(r.Full, newSegment(fam == FamilyActive, []Part{p}))
-		r.Total += s.Duration
+	}
+	for _, p := range Group(steps) {
+		r.Full = append(r.Full, newSegment(p.Family == FamilyActive, []Part{p}))
 		labels = append(labels, long(p.Minutes)+" "+p.Kind)
 	}
 	r.Merged = merge(r.Full)

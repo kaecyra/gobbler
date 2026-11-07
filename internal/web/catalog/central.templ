@@ -11,12 +11,12 @@ func centralURL(id int64) templ.SafeURL {
 }
 
 templ centralListPage(v centralListView) {
-	@layout.OperatorPage("Central ingredients", layout.OperatorIngredients) {
+	@layout.OperatorPage("Central ingredients", layout.OperatorIngredients, "") {
 		<div class="pg wide">
 			<div class="screen-h">
 				<div>
 					<h1>Central ingredients</h1>
-					<p>Every household reads these ingredients, so a change here shows in every household's catalog. A household that chose its own aisle for an ingredient keeps that aisle, and its own aliases stay alongside the ones here.</p>
+					<p>Every household reads these ingredients, so a change here shows in every household's catalog.</p>
 				</div>
 			</div>
 			<form class="fields find panel" method="get" action="/operator/ingredients" role="search" data-testid="central-filter">
@@ -62,13 +62,13 @@ templ centralListPage(v centralListView) {
 }
 
 templ centralEditPage(f formView) {
-	@layout.OperatorPage("Edit "+f.Name, layout.OperatorIngredients) {
+	@layout.OperatorPage("Edit "+f.Name, layout.OperatorIngredients, f.Name) {
 		<div class="pg">
 			<div class="screen-h"><h1>Edit central ingredient</h1></div>
 			<p><a class="link" href="/operator/ingredients">Back to the central ingredients</a></p>
 			@fieldProblem(f.Problem(fieldForm), fieldForm+"-error")
 			<p class="muted" data-testid="central-note">
-				Every household reads this ingredient. The USDA FoodData Central id is set by the USDA import and stays as it is.
+				Every household reads this ingredient.
 			</p>
 			<form class="panel stack" method="post" action={ centralURL(f.ID) } data-testid="edit-form">
 				@ingredientFields(f)

@@ -328,7 +328,7 @@ func cardPicture(c cardView) templ.Component {
 }
 
 // recipeCard is one library card: meal type and chilis, title and source,
-// components, key ingredients, rating, total time and made-it line. The title link is stretched over the whole card.
+// components, rating, total time and made-it line (and the key ingredients when showCardIngredients is on). The title link is stretched over the whole card.
 func recipeCard(c cardView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -478,7 +478,7 @@ func recipeCard(c cardView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		if len(c.Key) > 0 {
+		if showCardIngredients && len(c.Key) > 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"key\"><em>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

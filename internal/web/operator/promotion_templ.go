@@ -47,7 +47,7 @@ func promotionsPage(v promotionsView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\"><div class=\"screen-h\"><div><h1>Suggested ingredients</h1><p>Households flag ingredients they would like every household to use. Promoting one makes its name visible to every household. This page shows no household's data.</p></div></div><section class=\"panel\" aria-labelledby=\"suggested-h\" data-testid=\"suggested\"><h2 id=\"suggested-h\">Waiting for review</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\"><div class=\"screen-h\"><div><h1>Suggested ingredients</h1><p>Households flag ingredients they would like every household to use. Promoting one makes its name visible to every household.</p></div></div><section class=\"panel\" aria-labelledby=\"suggested-h\" data-testid=\"suggested\"><h2 id=\"suggested-h\">Waiting for review</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -140,7 +140,7 @@ func promotionsPage(v promotionsView) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.OperatorPage("Suggested ingredients", layout.OperatorSuggestions).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.OperatorPage("Suggested ingredients", layout.OperatorSuggestions, "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -280,7 +280,7 @@ func reviewPage(v reviewView) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.OperatorPage("Review "+v.Name, layout.OperatorSuggestions).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.OperatorPage("Review "+v.Name, layout.OperatorSuggestions, v.Name).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

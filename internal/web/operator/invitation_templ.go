@@ -45,7 +45,7 @@ func invitationsPage(v invitationsView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\"><div class=\"screen-h\"><div><h1>Household invitations</h1><p>Nobody starts a household without an invitation. Invite an email address to start one; accepting it creates the household with that person as its first member. This page shows no household's data.</p></div></div><section class=\"panel\"><form class=\"fields\" method=\"post\" action=\"/operator/invitations\"><label>Email address <input type=\"email\" name=\"email\" required></label> <button type=\"submit\" class=\"btn accent\">Invite</button></form></section><section class=\"panel\" aria-labelledby=\"pending-h\" data-testid=\"pending\"><h2 id=\"pending-h\">Pending invitations</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pg\"><div class=\"screen-h\"><div><h1>Household invitations</h1><p>Invite people to start using Gobbler. When accepted, these invitations create a new household.</p></div></div><section class=\"panel\"><form class=\"fields\" method=\"post\" action=\"/operator/invitations\"><label>Email address <input type=\"email\" name=\"email\" required></label> <button type=\"submit\" class=\"btn accent\">Invite</button></form></section><section class=\"panel\" aria-labelledby=\"pending-h\" data-testid=\"pending\"><h2 id=\"pending-h\">Pending invitations</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -154,7 +154,7 @@ func invitationsPage(v invitationsView) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.OperatorPage("Household invitations", layout.OperatorInvitations).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.OperatorPage("Household invitations", layout.OperatorInvitations, "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -309,8 +309,9 @@ func mustRat(s string) quantity.Rat {
 }
 
 // seedRibbon stores a recipe with enough alternating steps for its large ribbon
-// to need merging on a phone: hands-on and waiting steps take turns, and the
-// last three waiting steps merge into one segment at the merged level.
+// to need merging on a phone: hands-on and waiting steps take turns. The ribbon
+// adds up time by stage kind, so the two rises are one segment (five in all),
+// and the last two waiting kinds merge into one segment at the merged level.
 func seedRibbon(ctx context.Context, d *sql.DB) (int64, error) {
 	step := func(id string, minutes int, passive bool, kind recipe.StageKind) recipe.Step {
 		return recipe.Step{ID: recipe.StepID(id), Text: "Do " + id + ".", Duration: time.Duration(minutes) * time.Minute, Passive: passive, Kind: kind}

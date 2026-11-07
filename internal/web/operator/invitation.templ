@@ -5,12 +5,12 @@ import (
 )
 
 templ invitationsPage(v invitationsView) {
-	@layout.OperatorPage("Household invitations", layout.OperatorInvitations) {
+	@layout.OperatorPage("Household invitations", layout.OperatorInvitations, "") {
 		<div class="pg">
 			<div class="screen-h">
 				<div>
 					<h1>Household invitations</h1>
-					<p>Nobody starts a household without an invitation. Invite an email address to start one; accepting it creates the household with that person as its first member. This page shows no household's data.</p>
+					<p>Invite people to start using Gobbler. When accepted, these invitations create a new household.</p>
 				</div>
 			</div>
 			<section class="panel">
