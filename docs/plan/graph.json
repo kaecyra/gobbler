@@ -4572,7 +4572,8 @@
         "e2e/tenancy/**",
         "docs/design.md",
         "docs/operations.md",
-        "VERSION"
+        "VERSION",
+        "docs/adr/00018-households-as-tenants.md"
       ],
       "needs_migration": null,
       "adrs": [],

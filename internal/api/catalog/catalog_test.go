@@ -3,6 +3,7 @@ package catalog_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync/atomic"
 	"testing"
 
@@ -369,6 +370,81 @@ func TestAnOperatorWhoIsNoMemberIsAdmitted(t *testing.T) {
 	}
 }
 
+// An operator who is also a member arrives with their household on the context,
+// as the membership middleware puts it there. The central ingredient operations
+// still run in the central scope: they list and open only central entries, and
+// an edit changes the central row that every household reads, not the
+// operator's household's aliases and aisle (ADR-00018).
+func TestAnOperatorWhoIsAMemberEditsTheCentralIngredient(t *testing.T) {
+	f := newFixture(t)
+	svc, err := apicatalog.New(apicatalog.Deps{Catalog: f.store, Members: f.members, Operators: config.Operator{Emails: []string{"ann@example.com"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := context.Background()
+	basil, err := f.store.CreateIngredient(base, apicatalog.Ingredient{Name: "zz central basil", Aisle: "produce", Aliases: []string{"zz sweet basil"}, Reviewed: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	smiths := household.WithContext(base, f.smiths)
+
+	listed, err := svc.OperatorListIngredients(smiths, f.ann)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawBasil bool
+	for _, in := range listed {
+		if !in.Central {
+			t.Errorf("OperatorListIngredients listed overlay entry %q", in.Name)
+		}
+		sawBasil = sawBasil || in.ID == basil.ID
+	}
+	if !sawBasil {
+		t.Error("OperatorListIngredients did not list the central basil")
+	}
+	if _, err := svc.OperatorGetIngredient(smiths, f.ann, f.pepper.ID); !errors.Is(err, apicatalog.ErrNotFound) {
+		t.Errorf("OperatorGetIngredient of an overlay entry: err = %v, want ErrNotFound", err)
+	}
+
+	got, err := svc.OperatorGetIngredient(smiths, f.ann, basil.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	density := 0.25
+	got.Name = "zz basil leaves"
+	got.Aisle = "herbs"
+	got.Aliases = []string{"zz sweet basil", "zz genovese basil"}
+	got.DensityGPerML = &density
+	if err := svc.OperatorUpdateIngredient(smiths, f.ann, got); err != nil {
+		t.Fatalf("OperatorUpdateIngredient: %v", err)
+	}
+
+	// Both households read the same edited central entry. Had the edit landed
+	// in the Smiths' scope, the rename would have been refused and the aisle
+	// and alias kept as the Smiths' own, invisible to the Joneses.
+	joneses, err := f.members.ForEmail(base, "jo@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for who, ctx := range map[string]context.Context{"Smiths": smiths, "Joneses": household.WithContext(base, joneses), "central": base} {
+		in, err := f.store.GetIngredient(ctx, basil.ID)
+		if err != nil {
+			t.Fatalf("%s: %v", who, err)
+		}
+		if in.Name != "zz basil leaves" || in.Aisle != "herbs" || in.DensityGPerML == nil || *in.DensityGPerML != density ||
+			!slices.Equal(slices.Sorted(slices.Values(in.Aliases)), []string{"zz genovese basil", "zz sweet basil"}) {
+			t.Errorf("%s reads %+v, want the operator's edit", who, in)
+		}
+	}
+
+	// An overlay entry cannot be edited through the operator's operation.
+	pepper := f.pepper
+	pepper.Aisle = "condiments"
+	if err := svc.OperatorUpdateIngredient(smiths, f.ann, pepper); !errors.Is(err, apicatalog.ErrNotFound) {
+		t.Errorf("OperatorUpdateIngredient of an overlay entry: err = %v, want ErrNotFound", err)
+	}
+}
+
 // A household member who is not an operator is refused, whatever household the
 // context names, and nothing is written.
 func TestANonOperatorMemberIsRefusedTheOperatorOperations(t *testing.T) {
@@ -382,8 +458,22 @@ func TestANonOperatorMemberIsRefusedTheOperatorOperations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	central, err := f.store.CreateIngredient(context.Background(), apicatalog.Ingredient{Name: "zz central thyme", Aisle: "produce", Reviewed: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	id := f.pepper.ID
 	ops := map[string]func(c apicatalog.Caller) error{
+		"OperatorListIngredients": func(c apicatalog.Caller) error { _, err := svc.OperatorListIngredients(ctx, c); return err },
+		"OperatorGetIngredient": func(c apicatalog.Caller) error {
+			_, err := svc.OperatorGetIngredient(ctx, c, central.ID)
+			return err
+		},
+		"OperatorUpdateIngredient": func(c apicatalog.Caller) error {
+			in := central
+			in.Aisle = "spices"
+			return svc.OperatorUpdateIngredient(ctx, c, in)
+		},
 		"OperatorListEquipment":   func(c apicatalog.Caller) error { _, err := svc.OperatorListEquipment(ctx, c); return err },
 		"OperatorGetEquipment":    func(c apicatalog.Caller) error { _, err := svc.OperatorGetEquipment(ctx, c, eq.ID); return err },
 		"OperatorUpdateEquipment": func(c apicatalog.Caller) error { eq.Sized = true; return svc.OperatorUpdateEquipment(ctx, c, eq) },
@@ -414,6 +504,9 @@ func TestANonOperatorMemberIsRefusedTheOperatorOperations(t *testing.T) {
 	}
 	if got, _ := f.store.GetEquipment(ctx, eq.ID); got.Sized {
 		t.Error("a refused update changed the equipment")
+	}
+	if got, err := f.store.GetIngredient(context.Background(), central.ID); err != nil || got.Aisle != "produce" {
+		t.Errorf("a refused update changed the central ingredient: %+v, %v", got, err)
 	}
 	// With no operators configured nobody is one.
 	if _, err := f.svc.OperatorListEquipment(ctx, apicatalog.Caller{Person: "root@example.com"}); !errors.Is(err, apicatalog.ErrNotMember) {

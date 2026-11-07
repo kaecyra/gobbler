@@ -116,7 +116,10 @@ type formView struct {
 	// own entry for the operator to promote.
 	Central   bool
 	Suggested bool
-	Problems  map[string]string
+	// Curator: the operator is editing the central entry itself, so its name
+	// and density can be changed too. Its USDA id stays as it is.
+	Curator  bool
+	Problems map[string]string
 	// Aisles are the aisles already in use, offered as suggestions.
 	Aisles []string
 }
@@ -134,6 +137,10 @@ func formFrom(in apicatalog.Ingredient) formView {
 }
 
 func (f formView) Problem(field string) string { return f.Problems[field] }
+
+// locked reports whether the name and density are shown read-only: on a
+// central entry, unless the operator is curating it.
+func (f formView) locked() bool { return f.Central && !f.Curator }
 
 // ingredient builds the ingredient the form describes. A problem found here is
 // the page's to report; the catalog checks the rest (aisle, qualifiers,

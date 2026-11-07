@@ -71,7 +71,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	mountHouseholds(r, d)
 	mountPromotion(r, d)
 	mountSharing(r, d)
-	mountEquipment(r, d)
+	mountCentralCatalog(r, d)
 	mountProfile(r, d)
 	mountMCP(r, d)
 	mountOAuth(r, d)
@@ -241,10 +241,12 @@ func mountSharing(r chi.Router, d Deps) {
 	r.Mount(websharing.Pattern, websharing.Routes(websharing.Deps{Shares: svc, Recipes: d.Recipes}))
 }
 
-// mountEquipment mounts the operator's review of catalog equipment, where the
-// sized flag behind the scaled view's larger-pan hint is set (ADR-00019). It
-// sits under /operator, so the membership middleware admits only an operator.
-func mountEquipment(r chi.Router, d Deps) {
+// mountCentralCatalog mounts the operator's curation of the central catalog:
+// the equipment review, where the sized flag behind the scaled view's
+// larger-pan hint is set (ADR-00019), and the central ingredient editor
+// (ADR-00018, Catalog). Both sit under /operator, so the membership middleware
+// admits only an operator.
+func mountCentralCatalog(r chi.Router, d Deps) {
 	svc, err := apicatalog.New(apicatalog.Deps{Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB), Operators: d.Config.Operator})
 	if err != nil {
 		// Unreachable while the deps above are non-nil; fail loud if that changes.
@@ -252,13 +254,17 @@ func mountEquipment(r chi.Router, d Deps) {
 		if log == nil {
 			log = slog.Default()
 		}
-		log.Error("equipment review unavailable", "error", err.Error())
-		r.Mount(webcatalog.EquipmentPattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "the equipment review is not available: "+err.Error(), http.StatusInternalServerError)
-		}))
+		log.Error("central catalog pages unavailable", "error", err.Error())
+		for _, pattern := range []string{webcatalog.EquipmentPattern, webcatalog.CentralPattern} {
+			r.Mount(pattern, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, "the central catalog pages are not available: "+err.Error(), http.StatusInternalServerError)
+			}))
+		}
 		return
 	}
-	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: svc.Bind(caller.FromContext)}))
+	bound := svc.Bind(caller.FromContext)
+	r.Mount(webcatalog.EquipmentPattern, webcatalog.EquipmentRoutes(webcatalog.EquipmentDeps{Catalog: bound}))
+	r.Mount(webcatalog.CentralPattern, webcatalog.CentralRoutes(webcatalog.CentralDeps{Catalog: bound}))
 }
 
 // newProfileService builds the profile service over the database, the avatar

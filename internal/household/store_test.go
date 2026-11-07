@@ -305,6 +305,14 @@ func TestContext(t *testing.T) {
 	if got, ok := FromContext(WithContext(context.Background(), h)); !ok || got != h {
 		t.Fatalf("FromContext = %+v, %v", got, ok)
 	}
+	// WithoutHousehold masks the household a context carried, so a catalog
+	// call made on it runs in the central scope.
+	if got, ok := FromContext(WithoutHousehold(WithContext(context.Background(), h))); ok {
+		t.Fatalf("FromContext after WithoutHousehold = %+v, true", got)
+	}
+	if _, ok := FromContext(WithoutHousehold(context.Background())); ok {
+		t.Fatal("WithoutHousehold of an empty context has a household")
+	}
 }
 
 // Invite and Revoke run together from many goroutines. Each write queues
