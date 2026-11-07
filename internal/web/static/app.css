@@ -440,6 +440,18 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* Something the person should look at. */
 .callout.check { --co-bg: var(--grain-soft); --co-ink: var(--grain-ink); }
 
+/* Markdown: step and author-note text (ADR-00046). Its blocks sit 6px apart
+   and take the size and colour of the text they are in; the page sets those. */
+.md :is(p, ul, ol, blockquote) { margin: 6px 0 0; }
+.md ul, .md ol { padding-left: 1.4em; }
+.md ul { list-style: disc; }
+.md ol { list-style: decimal; }
+.md li + li { margin-top: 2px; }
+.md li > :first-child, .md blockquote > :first-child { margin-top: 0; }
+.md blockquote { padding: 8px 14px; background: var(--sunk); border-radius: var(--r); }
+.md code { font-family: var(--f-mono); font-size: 0.88em; background: var(--sunk); border-radius: var(--r-sm); padding: 1px 5px; }
+.md strong { color: var(--ink); font-weight: 650; }
+
 /* Tip: floats free with no box or tint, a coral icon and label, recipe-size text. */
 .tip { position: relative; margin: 30px 0 34px 62px; max-width: 34em; }
 .tip .co-label { color: var(--wattle-ink); font-size: 15px; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 10px; }

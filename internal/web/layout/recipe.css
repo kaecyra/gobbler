@@ -109,7 +109,7 @@
 .ing li { padding: 8px 0; border-bottom: 1px solid var(--line); }
 
 .part { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
-.method ol { list-style: none; margin: 0 0 24px; padding: 0; position: relative; }
+.method ol:not(.md ol) { list-style: none; margin: 0 0 24px; padding: 0; position: relative; }
 .step { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 18px; position: relative; padding-bottom: 30px; }
 .step::before { content: ""; position: absolute; left: 21px; top: 42px; bottom: 2px; width: 2px; background: var(--line); }
 .step:last-child::before { display: none; }
@@ -130,14 +130,19 @@
 .step.passive .sn { border-style: dashed; border-color: var(--slate); }
 .step h4 { font-size: 21px; font-weight: 650; margin-top: 6px; }
 .step p { margin: 6px 0 0; max-width: 60ch; color: var(--ink-2); font-size: 18.5px; line-height: 1.6; }
+/* A step's lists and quotes are set like its paragraphs (ADR-00046). */
+.step .md :is(ul, ol, blockquote) { max-width: 60ch; color: var(--ink-2); font-size: 18.5px; line-height: 1.6; }
 /* The video heads the steps column, flush with the steps rather than centred. */
 .method .recipe-video { margin: 0 0 var(--gutter); }
 .stags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
-.callout ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
-.callout li { display: flex; gap: 10px; align-items: baseline; font-size: 16.5px; }
-.callout li b { font-family: var(--f-display); color: var(--co-ink); flex: none; }
-.callout li span { color: var(--ink-2); }
+.callout > ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.callout > ul > li { display: flex; gap: 10px; align-items: baseline; font-size: 16.5px; }
+.callout > ul > li > b { font-family: var(--f-display); color: var(--co-ink); flex: none; }
+/* An item offered while a step waits is that step's text, set at the callout's size. */
+.callout > ul > li > .md { color: var(--ink-2); }
+.callout > ul > li > .md :is(p, ul, ol, blockquote) { font-size: inherit; line-height: inherit; color: inherit; max-width: none; }
+.callout > ul > li > .md > :first-child { margin-top: 0; }
 .tip small { color: var(--ink-3); font-size: 14.5px; font-weight: 450; white-space: nowrap; margin-left: 4px; }
 .tip p { white-space: pre-line; }
 
