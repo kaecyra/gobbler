@@ -60,6 +60,7 @@ index below in the same commit.
 | [00043](00043-discrete-api.md) | Operations live in an in-process service layer under internal/api, called by the web handlers and the MCP tools | Accepted |
 | [00044](00044-author-note-length-flagged.md) | An author note's length is flagged on review, never refused | Accepted |
 | [00045](00045-author-notes-apart-from-steps.md) | Author notes sit apart from the step chain, with no connector lines | Accepted |
+| [00046](00046-markdown-in-steps.md) | Step text and author notes render a safe markdown subset | Accepted |
 
 ## What needs one
 
