@@ -38,14 +38,18 @@ type draftOut struct {
 	// confidence, which the reviewer will see highlighted.
 	LowConfidence int    `json:"low_confidence_lines"`
 	Note          string `json:"note"`
+	// sameSourceOut is filled for import_recipe given a url, from what the
+	// household held before this draft.
+	sameSourceOut
 }
 
 const draftNote = "This is a draft. Nothing is saved until a person opens the review path in gobbler and confirms it."
 
 func (t *tools) registerImport(s *mcp.Server) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "import_recipe",
-		Description: "Read a recipe from a web page address or from pasted text, and leave a draft for a person to review. Nothing is saved until they confirm it.",
+		Name: "import_recipe",
+		Description: "Read a recipe from a web page address or from pasted text, and leave a draft for a person to review. Nothing is saved until they confirm it. " +
+			"Given an address, it also lists the household's saved recipes and other pending drafts from the same address; it imports regardless.",
 		Annotations: drafts,
 	}, t.importRecipe)
 	mcp.AddTool(s, &mcp.Tool{
@@ -63,6 +67,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 	}
 	rawURL, text := strings.TrimSpace(in.URL), strings.TrimSpace(in.Text)
 	var d apiingest.Draft
+	var same sameSourceOut
 	switch {
 	case (rawURL == "") == (text == ""):
 		return nil, draftOut{}, refuse("give either url or text, not both and not neither")
@@ -74,6 +79,10 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 			return nil, draftOut{}, err
 		}
 		d, err = t.Drafter.FromURL(ctx, rawURL)
+		// Read before the draft is held, so it does not report itself.
+		if err == nil {
+			same, err = t.sameSource(ctx, callerOf(c, h), rawURL)
+		}
 	default:
 		if len(text) > maxDraftText {
 			return nil, draftOut{}, refuse("the text is too long: at most %d bytes", maxDraftText)
@@ -86,7 +95,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
-	return t.hold(ctx, tool, c, h, d)
+	return t.hold(ctx, tool, c, h, d, same)
 }
 
 func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, in createDraftIn) (*mcp.CallToolResult, draftOut, error) {
@@ -122,7 +131,7 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	d.Name = apiingest.Field[string]{Value: name, Confidence: 1}
-	return t.hold(ctx, tool, c, h, d)
+	return t.hold(ctx, tool, c, h, d, sameSourceOut{})
 }
 
 // checkPageURL refuses an address the pipeline would not fetch a page from:
@@ -151,7 +160,8 @@ func (t *tools) checkRoom(ctx context.Context, rc apirecipes.Caller, tool string
 }
 
 // hold puts the draft where the review screen finds it and records the write.
-func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseholds.Household, d apiingest.Draft) (*mcp.CallToolResult, draftOut, error) {
+// same is reported with it.
+func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseholds.Household, d apiingest.Draft, same sameSourceOut) (*mcp.CallToolResult, draftOut, error) {
 	token, err := t.Recipes.AddDraft(ctx, callerOf(c, h), d, provenance(c, h.ID, tool))
 	if errors.Is(err, apirecipes.ErrDraftLimit) {
 		// Say so as it is: the agent can tell its user to review the drafts.
@@ -171,7 +181,7 @@ func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseh
 			}
 		}
 	}
-	return nil, draftOut{ReviewPath: ReviewPath + token, Name: d.Name.Value, LowConfidence: low, Note: draftNote}, nil
+	return nil, draftOut{ReviewPath: ReviewPath + token, Name: d.Name.Value, LowConfidence: low, Note: draftNote, sameSourceOut: same}, nil
 }
 
 // oneLine collapses every run of whitespace, newlines included, to one space,

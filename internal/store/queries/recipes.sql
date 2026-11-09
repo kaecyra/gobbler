@@ -126,3 +126,11 @@ SELECT key FROM recipe_keys WHERE recipe_id = sqlc.arg(recipe_id) AND household_
 
 -- name: InsertRecipeKey :exec
 INSERT OR IGNORE INTO recipe_keys (household_id, recipe_id, key) VALUES (?, ?, ?);
+
+-- The household's recipes that have a source address, for the duplicate check
+-- of an import (ADR-00048). The caller compares the addresses
+-- (SourceAddress).
+-- name: ListSourcedRecipes :many
+SELECT id, name, source_url FROM recipes
+WHERE household_id = sqlc.arg(household_id) AND source_url != ''
+ORDER BY id;

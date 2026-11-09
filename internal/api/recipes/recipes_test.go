@@ -153,6 +153,10 @@ func TestEveryOperationRefusesANonMember(t *testing.T) {
 			return f.svc.AcceptEdit(ctx, c, "tok", one, sample("Accepted"))
 		},
 		"DraftsFull": func(c apirecipes.Caller) error { _, err := f.svc.DraftsFull(ctx, c); return err },
+		"SameSource": func(c apirecipes.Caller) error {
+			_, err := f.svc.SameSource(ctx, c, "https://example.com/bread")
+			return err
+		},
 		"AddDraft": func(c apirecipes.Caller) error {
 			_, err := f.svc.AddDraft(ctx, c, ingest.Draft{}, apirecipes.Provenance{Person: "ann@example.com"})
 			return err

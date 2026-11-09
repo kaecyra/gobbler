@@ -414,8 +414,9 @@ type ListPendingDraftsRow struct {
 }
 
 // The household's pending ingestion drafts, re-imports included, oldest first,
-// for an agent to list (ADR-00048). The name and source address are read from
-// the draft document, where the draft codec writes them.
+// for an agent to list and for an import's duplicate check (ADR-00048). The
+// name and source address are read from the draft document, where the draft
+// codec writes them.
 func (q *Queries) ListPendingDrafts(ctx context.Context, householdID int64) ([]ListPendingDraftsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPendingDrafts, householdID)
 	if err != nil {
