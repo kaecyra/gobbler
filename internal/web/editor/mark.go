@@ -46,7 +46,7 @@ func (m mark) String() string {
 }
 
 // markedFields are the metadata fields that can carry a mark.
-var markedFields = []string{"name", "author", "description", "yield", "prep", "cook", "total"}
+var markedFields = []string{"name", "author", "description", "yield", "servings", "calories", "prep", "cook", "total", "meal_type", "cuisine"}
 
 // markName is the name of the hidden field that carries a metadata mark.
 func markName(field string) string { return "mark." + field }
@@ -62,6 +62,36 @@ func parseMarks(f url.Values) map[string]mark {
 }
 
 func (d draft) mark(field string) mark { return d.Marks[field] }
+
+// empty reports whether the metadata field named field has no value, so its
+// LLM mark says the field was cleared (ADR-00048).
+func (d draft) empty(field string) bool {
+	switch field {
+	case "name":
+		return strings.TrimSpace(d.Name) == ""
+	case "author":
+		return strings.TrimSpace(d.Author) == ""
+	case "description":
+		return strings.TrimSpace(d.Description) == ""
+	case "yield":
+		return strings.TrimSpace(d.YieldQty) == "" && strings.TrimSpace(d.YieldUnit) == ""
+	case "servings":
+		return strings.TrimSpace(d.Servings) == ""
+	case "calories":
+		return strings.TrimSpace(d.Calories) == ""
+	case "prep":
+		return strings.TrimSpace(d.Prep) == ""
+	case "cook":
+		return strings.TrimSpace(d.Cook) == ""
+	case "total":
+		return strings.TrimSpace(d.Total) == ""
+	case "meal_type":
+		return d.MealType == ""
+	case "cuisine":
+		return d.Cuisine == ""
+	}
+	return false
+}
 
 // graphMark says where a step's passive flag and dependencies came from on the
 // review screen: a rule matched the step's text (Cue), the LLM supplied the

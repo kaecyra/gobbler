@@ -183,6 +183,10 @@ type Draft struct {
 	// Cuisine is the recipe's cuisine when the source's recipeCuisine names one
 	// the list knows, else empty (ADR-00025).
 	Cuisine recipe.Cuisine
+	// MealTypeFromLLM and CuisineFromLLM mark a meal type or cuisine an
+	// agent's revision supplied (ADR-00048), as Field.FromLLM marks a field.
+	MealTypeFromLLM bool
+	CuisineFromLLM  bool
 
 	Components []Component
 

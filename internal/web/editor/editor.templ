@@ -450,11 +450,18 @@ templ moreToggle(name string) {
 	</summary>
 }
 
-// markInput carries a metadata field's mark through the form.
+// markInput carries a metadata field's mark through the form. An LLM mark on
+// an empty field says the field was cleared.
 templ markInput(v view, field string) {
 	if m := v.D.mark(field); !m.zero() {
 		<input type="hidden" name={ markName(field) } value={ m.String() }/>
-		<div class={ "mark " + m.String() }>@badges(m)</div>
+		<div class={ "mark " + m.String() }>
+			if m.LLM && v.D.empty(field) {
+				<strong class="llm-mark">LLM: cleared</strong>
+			} else {
+				@badges(m)
+			}
+		</div>
 	}
 }
 
@@ -511,16 +518,17 @@ templ metaFields(v view) {
 					</div>
 					@fieldError(v, "yield_qty")
 				</div>
-				@fact(v, "f-servings", "servings", "Servings", "", v.D.Servings, "", "servings", "")
-				@fact(v, "f-calories", "calories", "Calories", "per serving", v.D.Calories, "", "calories", "per serving")
+				@fact(v, "f-servings", "servings", "Servings", "", v.D.Servings, "servings", "servings", "")
+				@fact(v, "f-calories", "calories", "Calories", "per serving", v.D.Calories, "calories", "calories", "per serving")
 				@fact(v, "f-prep", "prep", "Prep", "time", v.D.Prep, "prep", "prep", "")
 				@fact(v, "f-cook", "cook", "Cook", "time", v.D.Cook, "cook", "cook", "")
 			</div>
 			<div class="facts four">
 				@fact(v, "f-total", "total", "Total", "time", v.D.Total, "total", "total", "worked out")
 				if v.carries(groupRecipeFields) {
-					<div class="fl fact">
+					<div class={ "fl fact " + v.D.mark("meal_type").String() }>
 						<label for="f-meal-type">Meal type</label>
+						@markInput(v, "meal_type")
 						<select id="f-meal-type" name="meal_type">
 							<option value="" selected?={ v.D.MealType == "" }>Not set</option>
 							for _, m := range mealOptions() {
@@ -529,8 +537,9 @@ templ metaFields(v view) {
 						</select>
 						@fieldError(v, "meal_type")
 					</div>
-					<div class="fl fact">
+					<div class={ "fl fact " + v.D.mark("cuisine").String() }>
 						<label for="f-cuisine">Cuisine</label>
+						@markInput(v, "cuisine")
 						<select id="f-cuisine" name="cuisine">
 							<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
 							for _, c := range cuisineOptions() {
@@ -949,7 +958,7 @@ templ noteSection(v view) {
 			<p class="help note-help">The author's own tips, substitutions and storage hints. Each is one paragraph, and shows after the last step.</p>
 			<ol data-drag-list="move-note">
 				for ni, n := range v.D.Notes {
-					<li class={ "item note " + n.Mark.String() } data-low?={ n.Mark.Low }>
+					<li class={ "item note " + n.Mark.String() } data-low?={ n.Mark.Low } data-llm?={ n.Mark.LLM }>
 						@grip()
 						<span class="snum" aria-hidden="true">
 							@layout.Icon(layout.IconBulb)
@@ -965,6 +974,7 @@ templ noteSection(v view) {
 							<input id={ nField(ni, "title") } class="quiet stitle" type="text" name={ nField(ni, "title") } value={ n.Title } placeholder="Add a title"/>
 							<label class="sr" for={ nField(ni, "text") }>Author's note { n1(ni) } text</label>
 							<textarea id={ nField(ni, "text") } class="quiet" name={ nField(ni, "text") } rows="1" autofocus?={ v.D.Focus == nField(ni, "text") }>{ n.Text }</textarea>
+							@llmBadge(n.Mark)
 							@checkHint(n.Mark.Low, nil, noteHint(n.Issues))
 							if n.Err != "" {
 								<p class="alert" role="alert">{ n.Err }</p>

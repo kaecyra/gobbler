@@ -39,6 +39,8 @@ type AuthorNote struct {
 	// Confidence is 0 to 1; Issues says why it is below 1.
 	Confidence float64
 	Issues     []string
+	// FromLLM marks a note an agent's revision supplied (ADR-00048).
+	FromLLM bool
 }
 
 var (

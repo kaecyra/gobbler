@@ -114,7 +114,12 @@ func Revise(ctx context.Context, cat CatalogReader, held Draft, r Revision) (Dra
 	out.Prep = revisedField(held.Prep, r.Prep, sameDur, r.Prep == 0)
 	out.Cook = revisedField(held.Cook, r.Cook, sameDur, r.Cook == 0)
 	out.Total = revisedField(held.Total, r.Total, sameDur, r.Total == 0)
-	out.MealType, out.Cuisine = r.MealType, r.Cuisine
+	if r.MealType != held.MealType {
+		out.MealType, out.MealTypeFromLLM = r.MealType, true
+	}
+	if r.Cuisine != held.Cuisine {
+		out.Cuisine, out.CuisineFromLLM = r.Cuisine, true
+	}
 
 	comps, err := reviseComponents(a, held.Components, r.Components)
 	if err != nil {
@@ -132,14 +137,16 @@ func Revise(ctx context.Context, cat CatalogReader, held Draft, r Revision) (Dra
 	return out, nil
 }
 
-// revisedField is held when v is held's value, the zero field when v is empty,
-// and otherwise v marked as supplied by the LLM, as the fallback marks it.
+// revisedField is held when v is held's value, and otherwise v marked as
+// supplied by the LLM, as the fallback marks it. A field the agent cleared is
+// marked too, with no value, so the reviewer sees what was removed.
 func revisedField[T any](held Field[T], v T, same func(a, b T) bool, empty bool) Field[T] {
 	switch {
 	case same(held.Value, v):
 		return held
 	case empty:
-		return Field[T]{}
+		var zero T
+		return Field[T]{Value: zero, Confidence: llmFieldConfidence, FromLLM: true}
 	}
 	return Field[T]{Value: v, Confidence: llmFieldConfidence, FromLLM: true}
 }
@@ -160,10 +167,6 @@ func reviseComponents(a *assembler, held []Component, in []RevisedComponent) ([]
 	}
 	usedLine := make([]bool, len(heldLines))
 	usedStep := make([]bool, len(heldSteps))
-	total := 0
-	for _, c := range in {
-		total += len(c.Steps)
-	}
 
 	// matched[n-1] is the held step number (from 1) the revision's step n was
 	// matched to, or 0.
@@ -195,11 +198,6 @@ func reviseComponents(a *assembler, held []Component, in []RevisedComponent) ([]
 			case s.Duration < 0:
 				return nil, fmt.Errorf("%w: %s: its time cannot be negative", ErrInvalidRevision, where)
 			}
-			for _, d := range s.DependsOn {
-				if d < 1 || d > total || d == n {
-					return nil, fmt.Errorf("%w: %s depends on step %d, which is not another step of the recipe (steps are numbered 1 to %d across every component)", ErrInvalidRevision, where, d, total)
-				}
-			}
 			at := 0
 			st := Step{Text: text, Title: title, Kind: s.Kind, Duration: s.Duration, Confidence: llmFieldConfidence, FromLLM: true}
 			for hi, h := range heldSteps {
@@ -219,6 +217,10 @@ func reviseComponents(a *assembler, held []Component, in []RevisedComponent) ([]
 			comp.Steps = append(comp.Steps, st)
 		}
 		out = append(out, comp)
+	}
+
+	if err := checkStepGraph(out); err != nil {
+		return nil, fmt.Errorf("%w: %w (steps are numbered from 1 in reading order across every component)", ErrInvalidRevision, err)
 	}
 
 	// A held step's dependencies, renumbered to the revision's numbers, are
@@ -284,9 +286,8 @@ func reviseLine(a *assembler, held []Line, used []bool, l RevisedLine) (Line, er
 	return line, nil
 }
 
-// reviseNotes keeps a held note the revision repeats, with its confidence and
-// issues; a new note is the agent's, at full confidence. A note carries no LLM
-// mark (see AuthorNote).
+// reviseNotes keeps a held note the revision repeats, with its confidence,
+// issues and mark; a new or changed note is the agent's, marked FromLLM.
 func reviseNotes(held []AuthorNote, in []RevisedNote) []AuthorNote {
 	used := make([]bool, len(held))
 	var out []AuthorNote
@@ -295,7 +296,7 @@ func reviseNotes(held []AuthorNote, in []RevisedNote) []AuthorNote {
 		if text == "" {
 			continue
 		}
-		note := AuthorNote{Title: title, Text: text, Confidence: 1}
+		note := AuthorNote{Title: title, Text: text, Confidence: llmFieldConfidence, FromLLM: true}
 		for i, h := range held {
 			if !used[i] && h.Title == title && h.Text == text {
 				used[i], note = true, h

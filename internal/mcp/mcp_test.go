@@ -280,6 +280,7 @@ func TestToolsAreListed(t *testing.T) {
 		got[tool.Name] = true
 	}
 	for _, want := range []string{"search_recipes", "list_recipes", "get_recipe", "import_recipe", "create_recipe_draft", "propose_recipe_edit", "get_recipe_proposal",
+		"get_recipe_draft", "list_recipe_drafts", "revise_recipe_draft",
 		"list_shopping_lists", "get_shopping_list", "create_shopping_list", "add_recipe_to_shopping_list",
 		"add_manual_shopping_item", "check_shopping_item", "get_pantry", "get_house_style"} {
 		if !got[want] {

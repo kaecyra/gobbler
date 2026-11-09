@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
 )
 
@@ -43,6 +44,7 @@ func TestReviseMarksOnlyWhatChanged(t *testing.T) {
 	held.Components[0].Lines[0].Ingredient = 0
 	held.Equipment = held.Equipment[1:] // the catalog in this test has no dutch oven
 	held.Proposed = ProposedFor(held.Components, nil)
+	held.AuthorNotes = []AuthorNote{{Title: "Storage", Text: "Keeps two days.", Confidence: 0.6, Issues: []string{"long"}}}
 
 	same, err := Revise(e.ctx, e.catalog, held, revisionOf(held))
 	if err != nil {
@@ -57,6 +59,12 @@ func TestReviseMarksOnlyWhatChanged(t *testing.T) {
 	r := revisionOf(held)
 	r.Description = "Sharp."
 	r.Cook = 0
+	r.Author = ""
+	r.Servings = quantity.Exact(quantity.Int(6))
+	r.Calories = 280
+	r.MealType = recipe.MealType("breakfast")
+	r.Cuisine = recipe.Cuisine("french")
+	r.AuthorNotes = append(r.AuthorNotes, RevisedNote{Text: "Serve warm."})
 	c := &r.Components[0]
 	c.Lines[0], c.Lines[1] = c.Lines[1], c.Lines[0] // moved, not changed
 	c.Steps[0].Duration = 7 * time.Minute
@@ -69,10 +77,22 @@ func TestReviseMarksOnlyWhatChanged(t *testing.T) {
 	if got.Description.Value != "Sharp." || !got.Description.FromLLM {
 		t.Errorf("description = %+v, want the agent's, marked", got.Description)
 	}
-	if got.Cook != (Field[time.Duration]{}) {
-		t.Errorf("cleared cook time = %+v, want none", got.Cook)
+	if got.Cook.Value != 0 || !got.Cook.FromLLM {
+		t.Errorf("cleared cook time = %+v, want no value, marked", got.Cook)
 	}
-	if got.Name != held.Name || got.Author != held.Author {
+	if got.Author.Value != "" || !got.Author.FromLLM {
+		t.Errorf("cleared author = %+v, want no value, marked", got.Author)
+	}
+	if got.Servings.Value.String() != "6" || !got.Servings.FromLLM || got.Calories.Value != 280 || !got.Calories.FromLLM {
+		t.Errorf("servings %+v and calories %+v, want the agent's, marked", got.Servings, got.Calories)
+	}
+	if got.MealType != "breakfast" || !got.MealTypeFromLLM || got.Cuisine != "french" || !got.CuisineFromLLM {
+		t.Errorf("meal type %q (%v), cuisine %q (%v); want the agent's, marked", got.MealType, got.MealTypeFromLLM, got.Cuisine, got.CuisineFromLLM)
+	}
+	if ns := got.AuthorNotes; len(ns) != 2 || ns[0].FromLLM || ns[0].Confidence != 0.6 || !ns[1].FromLLM {
+		t.Errorf("author notes = %+v, want the held note as it was and the new one marked", ns)
+	}
+	if got.Name != held.Name || got.Yield.FromLLM != held.Yield.FromLLM || got.Prep != held.Prep {
 		t.Error("an unchanged field lost its marks")
 	}
 	ls := got.Components[0].Lines
@@ -111,5 +131,34 @@ func TestReviseRefusesWhatCannotBeADraft(t *testing.T) {
 		if _, err := Revise(e.ctx, e.catalog, held, r); !errors.Is(err, ErrInvalidRevision) {
 			t.Errorf("%s: %v, want ErrInvalidRevision", name, err)
 		}
+	}
+}
+
+// The revision marks on meal type, cuisine and author notes survive the draft
+// document, and a document stored before them reads as unmarked.
+func TestRevisionMarksSurviveTheDraftDocument(t *testing.T) {
+	d := richDraft(0)
+	d.Cuisine = recipe.Cuisine("french")
+	d.MealTypeFromLLM, d.CuisineFromLLM = true, true
+	d.AuthorNotes = []AuthorNote{{Text: "Serve warm.", Confidence: 1, FromLLM: true}}
+	doc, err := EncodeDraft(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := DecodeDraft(doc, snapshotOf(d))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !back.MealTypeFromLLM || !back.CuisineFromLLM || len(back.AuthorNotes) != 1 || !back.AuthorNotes[0].FromLLM {
+		t.Errorf("marks after a round trip: meal type %v, cuisine %v, notes %+v", back.MealTypeFromLLM, back.CuisineFromLLM, back.AuthorNotes)
+	}
+
+	old := []byte(`{"parser_version":"20","name":{"v":"Pie","c":1},"meal_type":"dessert","cuisine":"french","components":[],"author_notes":[{"text":"Serve warm.","confidence":1}],"overall":1,"threshold":0.7}`)
+	was, err := DecodeDraft(old, snapshotOf(d))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if was.MealType != "dessert" || was.MealTypeFromLLM || was.CuisineFromLLM || len(was.AuthorNotes) != 1 || was.AuthorNotes[0].FromLLM {
+		t.Errorf("a document stored before the marks reads as %+v", was)
 	}
 }

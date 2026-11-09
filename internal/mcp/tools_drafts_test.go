@@ -71,6 +71,9 @@ func TestReviseRecipeDraftMarksWhatChangedAndKeepsTheSnapshot(t *testing.T) {
 
 	r := held.Recipe
 	r["name"] = map[string]any{"value": "Salted pie"}
+	r["servings"] = map[string]any{"value": "4"}
+	r["calories"] = map[string]any{"value": 320}
+	r["meal_type"] = "dessert"
 	c := component(r)
 	lines := c["lines"].([]any)
 	lines[1].(map[string]any)["text"] = "2 tsp salt"
@@ -126,7 +129,10 @@ func TestReviseRecipeDraftMarksWhatChangedAndKeepsTheSnapshot(t *testing.T) {
 	if !ss[2].FromLLM || !ss[2].GraphFromLLM || len(ss[2].DependsOn) != 1 || ss[2].DependsOn[0] != 2 {
 		t.Errorf("new step = %+v, want it marked and depending on step 2", ss[2])
 	}
-	if d.Author.FromLLM || d.Description.FromLLM {
+	if !d.Servings.FromLLM || d.Servings.Value.String() != "4" || !d.Calories.FromLLM || d.Calories.Value != 320 || !d.MealTypeFromLLM {
+		t.Errorf("servings %+v, calories %+v, meal type marked %v; want the agent's, marked", d.Servings, d.Calories, d.MealTypeFromLLM)
+	}
+	if d.Author.FromLLM || d.Description.FromLLM || d.Yield.FromLLM || d.CuisineFromLLM {
 		t.Error("an unchanged field is marked")
 	}
 

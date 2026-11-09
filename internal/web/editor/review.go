@@ -168,8 +168,10 @@ func fromIngest(d apiingest.Draft, names lookups) draft {
 	if d.Calories.Value > 0 {
 		ed.Calories = fmt.Sprint(d.Calories.Value)
 	}
+	// An LLM mark shows on an empty field too: an agent's revision that
+	// cleared it (ADR-00048). The fallback never marks an empty field.
 	flag := func(field string, present bool, conf float64, fromLLM bool) {
-		if m := (mark{Low: present && low(conf), LLM: present && fromLLM}); !m.zero() {
+		if m := (mark{Low: present && low(conf), LLM: fromLLM}); !m.zero() {
 			ed.Marks[field] = m
 		}
 	}
@@ -180,6 +182,10 @@ func fromIngest(d apiingest.Draft, names lookups) draft {
 	flag("prep", d.Prep.Value > 0, d.Prep.Confidence, d.Prep.FromLLM)
 	flag("cook", d.Cook.Value > 0, d.Cook.Confidence, d.Cook.FromLLM)
 	flag("total", d.Total.Value > 0, d.Total.Confidence, d.Total.FromLLM)
+	flag("servings", ed.Servings != "", d.Servings.Confidence, d.Servings.FromLLM)
+	flag("calories", d.Calories.Value > 0, d.Calories.Confidence, d.Calories.FromLLM)
+	flag("meal_type", false, 0, d.MealTypeFromLLM)
+	flag("cuisine", false, 0, d.CuisineFromLLM)
 
 	n := 0 // the draft numbers its steps from 1 across every component
 	for _, c := range d.Components {
@@ -223,7 +229,7 @@ func fromIngest(d apiingest.Draft, names lookups) draft {
 		ed.Components = append(ed.Components, cd)
 	}
 	for _, n := range d.AuthorNotes {
-		ed.Notes = append(ed.Notes, noteDraft{Title: n.Title, Text: n.Text, Issues: n.Issues, Mark: mark{Low: low(n.Confidence)}})
+		ed.Notes = append(ed.Notes, noteDraft{Title: n.Title, Text: n.Text, Issues: n.Issues, Mark: mark{Low: low(n.Confidence), LLM: n.FromLLM}})
 	}
 	for _, e := range d.Equipment {
 		name := e.Name
@@ -270,6 +276,9 @@ func toIngest(base apiingest.Draft, rec recipe.Recipe, props []proposal, rows ke
 	carryMark(&out.Prep, ed.mark("prep"), base.Threshold)
 	carryMark(&out.Cook, ed.mark("cook"), base.Threshold)
 	carryMark(&out.Total, ed.mark("total"), base.Threshold)
+	carryMark(&out.Servings, ed.mark("servings"), base.Threshold)
+	carryMark(&out.Calories, ed.mark("calories"), base.Threshold)
+	out.MealTypeFromLLM, out.CuisineFromLLM = ed.mark("meal_type").LLM, ed.mark("cuisine").LLM
 
 	newLine := map[[2]int]string{}
 	newEquip := map[int]string{}
@@ -326,7 +335,7 @@ func toIngest(base apiingest.Draft, rec recipe.Recipe, props []proposal, rows ke
 	for ni, n := range rec.AuthorNotes {
 		form := ed.Notes[rows.notes[ni]]
 		out.AuthorNotes = append(out.AuthorNotes, apiingest.AuthorNote{
-			Title: n.Title, Text: n.Text, Confidence: confidence(form.Mark, base.Threshold), Issues: form.Issues,
+			Title: n.Title, Text: n.Text, Confidence: confidence(form.Mark, base.Threshold), Issues: form.Issues, FromLLM: form.Mark.LLM,
 		})
 	}
 	out.Proposed = apiingest.ProposedFor(out.Components, base.Proposed)

@@ -78,6 +78,7 @@ type draftAuthorNote struct {
 	Text       string   `json:"text"`
 	Confidence float64  `json:"confidence,omitempty" jsonschema:"ignored by revise_recipe_draft"`
 	Issues     []string `json:"issues,omitempty" jsonschema:"ignored by revise_recipe_draft"`
+	FromLLM    bool     `json:"from_llm,omitempty" jsonschema:"ignored by revise_recipe_draft"`
 }
 
 type draftEquipment struct {
@@ -99,7 +100,9 @@ type draftRecipe struct {
 	CookMinutes  draftNumber       `json:"cook_minutes,omitempty"`
 	TotalMinutes draftNumber       `json:"total_minutes,omitempty"`
 	MealType     string            `json:"meal_type,omitempty"`
+	MealTypeLLM  bool              `json:"meal_type_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the meal type; ignored by revise_recipe_draft"`
 	Cuisine      string            `json:"cuisine,omitempty"`
+	CuisineLLM   bool              `json:"cuisine_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the cuisine; ignored by revise_recipe_draft"`
 	Components   []draftComponent  `json:"components"`
 	AuthorNotes  []draftAuthorNote `json:"author_notes,omitempty"`
 	Equipment    []draftEquipment  `json:"equipment,omitempty"`
@@ -240,6 +243,7 @@ func draftRecipeOf(d apiingest.Draft) draftRecipe {
 		CookMinutes:  minutesOf(d.Cook),
 		TotalMinutes: minutesOf(d.Total),
 		MealType:     string(d.MealType), Cuisine: string(d.Cuisine),
+		MealTypeLLM: d.MealTypeFromLLM, CuisineLLM: d.CuisineFromLLM,
 		Components: []draftComponent{},
 	}
 	for _, c := range d.Components {
@@ -264,7 +268,7 @@ func draftRecipeOf(d apiingest.Draft) draftRecipe {
 		r.Components = append(r.Components, dc)
 	}
 	for _, n := range d.AuthorNotes {
-		r.AuthorNotes = append(r.AuthorNotes, draftAuthorNote{Title: n.Title, Text: n.Text, Confidence: n.Confidence, Issues: n.Issues})
+		r.AuthorNotes = append(r.AuthorNotes, draftAuthorNote{Title: n.Title, Text: n.Text, Confidence: n.Confidence, Issues: n.Issues, FromLLM: n.FromLLM})
 	}
 	for _, e := range d.Equipment {
 		r.Equipment = append(r.Equipment, draftEquipment{Name: e.Name, EquipmentID: int64(e.Equipment), FromLLM: e.FromLLM})
