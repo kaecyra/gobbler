@@ -154,7 +154,7 @@ test('a confident input never calls the provider', async ({ page }) => {
   await ingest(page, PANCAKES);
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
   expect(calls).toBe(0);
-  await expect(page.locator('.llm-mark')).toHaveCount(0);
+  await expect(page.locator('.glitter')).toHaveCount(0);
 });
 
 test('retry fills gaps only: the rule values are kept, unmarked, and nothing is saved', async ({ page }) => {
@@ -165,7 +165,7 @@ test('retry fills gaps only: the rule values are kept, unmarked, and nothing is 
   expect(calls).toBe(1);
   // Every line and field the rules read well is kept, whatever the answer says.
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
-  await expect(page.locator('#f-name').locator('xpath=preceding-sibling::div[1]').locator('.llm-mark')).toHaveCount(0);
+  await expect(page.locator('.fl:has(#f-name) .glitter')).toHaveCount(0);
   await expect(page.locator('li.line[data-llm]')).toHaveCount(0);
   await expect(page.locator('li.step[data-llm]')).toHaveCount(0);
   await expect(page.locator('input[value="dragonfruit zest"]')).toHaveCount(0);
@@ -184,7 +184,7 @@ test('a failing provider shows the error and keeps the rule-based draft saveable
   await page.getByRole('button', { name: 'Retry with LLM' }).click();
   await expect(page.getByRole('alert').first()).toContainText('The LLM could not read this recipe');
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
-  await expect(page.locator('.llm-mark')).toHaveCount(0);
+  await expect(page.locator('.glitter')).toHaveCount(0);
   expect(calls).toBe(1);
 
   // The same draft is still pending and can be saved.
@@ -200,9 +200,11 @@ test('a below-threshold input calls the provider once on its own', async ({ page
   // The weak line is replaced and marked; the name the rules read is kept.
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Mystery Stew');
   await expect(page.locator('li.line[data-llm]')).toHaveCount(1);
+  await expect(page.locator('li.line[data-llm]').getByRole('img', { name: 'Filled by the LLM' })).toHaveCount(1);
   await expect(page.getByLabel('Ingredient', { exact: true })).toHaveValue('dragonfruit zest');
   await expect(page.getByLabel('Add this ingredient to the catalog as new and unreviewed')).toBeChecked();
-  await expect(page.getByText('The LLM filled the gaps the rules left')).toBeVisible();
+  // The marks say what the LLM supplied; no note above the form repeats it.
+  await expect(page.getByText('The LLM filled the gaps the rules left')).toHaveCount(0);
 });
 
 test('a below-threshold input with a failing provider keeps the rule draft and shows the error', async ({ page }) => {
@@ -211,7 +213,7 @@ test('a below-threshold input with a failing provider keeps the rule draft and s
   expect(calls).toBe(1);
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Mystery Stew');
   await expect(page.getByRole('alert').first()).toContainText('LLM');
-  await expect(page.locator('.llm-mark')).toHaveCount(0);
+  await expect(page.locator('.glitter')).toHaveCount(0);
 });
 
 test('retry on an unknown draft is 404', async ({ request }) => {

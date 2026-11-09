@@ -47,8 +47,6 @@ templ styles() {
 		.via .chip.need { background: var(--grain-soft); color: var(--grain-ink); }
 		.via .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
 		.via .from { color: var(--ink-3); font-size: 14px; margin-left: 4px; }
-		.review-note { margin: 0 0 10px; max-width: 70ch; }
-		.review-note .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
 		.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }
 		.review-grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 28px; align-items: start; }
 		.review-side { display: flex; flex-direction: column; gap: 12px; }
@@ -336,9 +334,6 @@ templ summary(d apiingest.Draft, look int) {
 				}
 			</span>
 		</div>
-		if d.UsedLLM {
-			<p class="review-note"><strong class="llm-mark">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>
-		}
 		if len(d.Issues) > 0 {
 			<ul class="issues">
 				for _, i := range d.Issues {

@@ -41,7 +41,7 @@ func TestReviewMarksEveryRevisedField(t *testing.T) {
 			t.Errorf("the review form does not mark %s", field)
 		}
 	}
-	if !strings.Contains(body, "LLM: cleared") {
+	if !strings.Contains(body, `aria-label="Cleared by the LLM"`) {
 		t.Error("the cleared author is not marked as cleared")
 	}
 	if !strings.Contains(body, `name="n.0.mark" value="llm"`) {

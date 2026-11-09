@@ -37,6 +37,8 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 | `--slate` | `#a3adaa` | waiting time |
 | `--ok` | `#3f8a57` | done, high confidence |
 | `--maple` `--maple-ink` `--maple-soft` | `#dd2e44` `#a51d30` `#fde8ea` | Canadian red: the footer leaf and the Canada marks on `/canada` |
+| `--spark-a` `--spark-b` `--spark-c` | `#8b7cf6` `#4fb3e8` `#f08ac2` | the LLM mark: shimmer border, sparkles gradient, glints |
+| `--sheen` `--glint-white` | `rgba(255, 255, 255, 0.85)` `#ffffff` | the LLM mark: the sheen across a field, the white glints |
 | `--f-display` | `ui-rounded`, then system stack | headings |
 | `--f-body` | system stack | body text, 17px with 1.55 line height |
 | `--r` | **6px** (the mockup's 12px is not carried over) | cards and inputs; never above 6px, never pill-shaped |
@@ -178,7 +180,24 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 - **Cook mode.** The entry is labelled "Cook mode", never "Start cooking". It
   sits in the recipe view's controls row, not as a big button under the title.
 - **Low confidence** (review screen). A grain-coloured mark on the source line
-  and a dot on the parsed line, with a hint. No left border.
+  and a dot on the parsed line, with a hint. No left border. A low recipe
+  field (name, servings, calories and the rest) keeps its grain tint, and its
+  label leads with the 15px alert triangle in grain-ink, read as "Check" by
+  screen readers. No line goes under the field.
+- **LLM mark** (review screen). Glitter, with no visible words, on the field
+  the LLM changed: an ingredient line's name, a step's text (also when only
+  its order came from the LLM), a note's text, an equipment row's name, or a
+  metadata field's own input. A shimmer border in the three spark colours turns
+  round the field, a sheen sweeps across it, the sparkles icon
+  (`layout.IconSparkles`, filled with the spark gradient) sits on its
+  top-right corner, and eleven glints in the spark colours and white flicker
+  on its border, a few drifting outward as they fade. The sparkles carry the
+  accessible name: "Filled by the LLM", "Cleared by the LLM" on a field the
+  LLM emptied, which keeps its glitter, or "Order suggested by the LLM". A
+  flagged item keeps its grain tint and hint under the glitter. No note above
+  the form repeats what the marks say. Under
+  `prefers-reduced-motion: reduce` nothing moves. The owner chose this look
+  from the "H++" option of a glitter mockup.
 
 ## Operator area
 

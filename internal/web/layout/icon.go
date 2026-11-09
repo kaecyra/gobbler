@@ -12,7 +12,8 @@ import (
 // through Icon. Each is drawn on the mockup's 24px grid in currentColor
 // (docs/ui/design.md), so the caller's text colour and CSS size it. They are
 // decoration, hidden from screen readers: the text beside each one, or an
-// aria-label on its wrapper, is the accessible name.
+// aria-label on its wrapper, is the accessible name. The one filled drawing,
+// the LLM's sparkles, takes its gradient from app.css through IconDefs.
 //
 // Pictures with a meaning of their own stay with their owners: the meal-type
 // and equipment glyphs (MealIcon, EquipIcon, ADR-00024), the filled chili and
@@ -54,14 +55,15 @@ const (
 	IconShare    IconName = "share"
 	IconSignIn   IconName = "signin"
 	IconSignOut  IconName = "signout"
+	IconSparkles IconName = "sparkles"
 	IconTag      IconName = "tag"
 	IconUp       IconName = "up"
 	IconUser     IconName = "user"
 )
 
-// lineGlyph is one drawing. Most share the default line; a few were drawn heavier,
+// glyph is one drawing. Most share the default line; a few were drawn heavier,
 // at a fixed size, or with square ends where they sit, and keep that look.
-type lineGlyph struct {
+type glyph struct {
 	body string
 	// stroke is the line width, "1.75" when empty.
 	stroke string
@@ -69,9 +71,11 @@ type lineGlyph struct {
 	size int
 	// square drops the round line ends and joins.
 	square bool
+	// filled fills the shapes in currentColor and draws no line.
+	filled bool
 }
 
-var lineGlyphs = map[IconName]lineGlyph{
+var glyphs = map[IconName]glyph{
 	IconAlert:    {body: `<path d="M12 3.5 21.5 20h-19zM12 10v4.5M12 17.5v.01"></path>`},
 	IconBack:     {body: `<path d="M15 5l-7 7 7 7"></path>`, stroke: "2"},
 	IconBasket:   {body: `<path d="M3 10h18l-2 10H5zM8 10l3-6M16 10l-3-6M9 14v3M12 14v3M15 14v3"></path>`},
@@ -103,6 +107,9 @@ var lineGlyphs = map[IconName]lineGlyph{
 	IconShare:    {body: `<circle cx="6" cy="12" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="18" cy="18" r="2.5"></circle><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"></path>`},
 	IconSignIn:   {body: `<path d="M14 4h5v16h-5M3 12h11M10 8l4 4-4 4"></path>`},
 	IconSignOut:  {body: `<path d="M10 4H5v16h5M9 12h11M16 8l4 4-4 4"></path>`},
+	// The LLM's mark: one big four-point star and two small ones, each with a
+	// class of its own so app.css twinkles them out of step.
+	IconSparkles: {body: `<path class="s1" d="M10 3Q10 12 18 12Q10 12 10 21Q10 12 2 12Q10 12 10 3Z"></path><path class="s2" d="M19 1.5Q19 5 22.5 5Q19 5 19 8.5Q19 5 15.5 5Q19 5 19 1.5Z"></path><path class="s3" d="M19.5 16Q19.5 18.5 22 18.5Q19.5 18.5 19.5 21Q19.5 18.5 17 18.5Q19.5 18.5 19.5 16Z"></path>`, filled: true},
 	IconTag:      {body: `<path d="M3 12V4h8l10 10-8 8z"></path><circle cx="7.5" cy="8.5" r="1.2"></circle>`},
 	IconUp:       {body: `<path d="M12 19V5M6 11l6-6 6 6"></path>`, stroke: "1.8"},
 	IconUser:     {body: `<circle cx="12" cy="8.5" r="3.5"></circle><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"></path>`},
@@ -112,17 +119,17 @@ var lineGlyphs = map[IconName]lineGlyph{
 // nothing, so a typo shows up as an error and not as a missing picture.
 func Icon(n IconName) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		g, ok := lineGlyphs[n]
+		g, ok := glyphs[n]
 		if !ok {
 			return fmt.Errorf("icon %q is not in the set", n)
 		}
-		_, err := io.WriteString(w, lineSVG(g))
+		_, err := io.WriteString(w, iconSVG(g))
 		return err
 	})
 }
 
-// lineSVG is the whole drawing. Every part is a constant of this package.
-func lineSVG(g lineGlyph) string {
+// iconSVG is the whole drawing. Every part is a constant of this package.
+func iconSVG(g glyph) string {
 	stroke := g.stroke
 	if stroke == "" {
 		stroke = "1.75"
@@ -131,9 +138,28 @@ func lineSVG(g lineGlyph) string {
 	if g.size > 0 {
 		s += fmt.Sprintf(` width="%d" height="%d"`, g.size, g.size)
 	}
+	if g.filled {
+		return s + ` fill="currentColor" stroke="none" aria-hidden="true">` + g.body + `</svg>`
+	}
 	s += ` fill="none" stroke="currentColor" stroke-width="` + stroke + `"`
 	if !g.square {
 		s += ` stroke-linecap="round" stroke-linejoin="round"`
 	}
 	return s + ` aria-hidden="true">` + g.body + `</svg>`
 }
+
+// IconDefs holds the paint the filled icons reference: the sparkles'
+// gradient, whose stops take the --spark-a, --spark-b and --spark-c tokens
+// through app.css. Page draws it once, at the top of the body. A page without
+// it draws the sparkles in currentColor.
+func IconDefs() templ.Component {
+	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
+		_, err := io.WriteString(w, iconDefs)
+		return err
+	})
+}
+
+const iconDefs = `<svg class="icon-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>` +
+	`<linearGradient id="spark-grad" x1="0" y1="0" x2="1" y2="1">` +
+	`<stop offset="0" class="spark-a"></stop><stop offset=".55" class="spark-b"></stop><stop offset="1" class="spark-c"></stop>` +
+	`</linearGradient></defs></svg>`
