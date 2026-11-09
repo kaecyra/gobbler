@@ -70,6 +70,7 @@ type previewAuthorNote struct {
 	Text       string   `json:"text"`
 	Confidence float64  `json:"confidence"`
 	Issues     []string `json:"issues,omitempty"`
+	FromLLM    bool     `json:"from_llm,omitempty"`
 }
 
 type previewEquipment struct {
@@ -78,8 +79,9 @@ type previewEquipment struct {
 	FromLLM     bool   `json:"from_llm,omitempty"`
 }
 
-// previewOut is a draft as the review screen would receive it. Nothing of it
-// is held.
+// previewOut is a draft as the review screen would receive it: what
+// preview_import returns, and the draft get_recipe_draft returns
+// (ADR-00048). revise_recipe_draft reads it back as a revisedDraft.
 type previewOut struct {
 	SourceURL   string               `json:"source_url,omitempty"`
 	Name        previewField[string] `json:"name"`
@@ -93,7 +95,9 @@ type previewOut struct {
 	// TotalMinutes is the time the source states; zero when it states none.
 	TotalMinutes previewField[int]   `json:"total_minutes"`
 	MealType     string              `json:"meal_type,omitempty"`
+	MealTypeLLM  bool                `json:"meal_type_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the meal type"`
 	Cuisine      string              `json:"cuisine,omitempty"`
+	CuisineLLM   bool                `json:"cuisine_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the cuisine"`
 	VideoID      string              `json:"video_id,omitempty"`
 	Components   []previewComponent  `json:"components"`
 	AuthorNotes  []previewAuthorNote `json:"author_notes,omitempty"`
@@ -166,6 +170,7 @@ func previewOf(d apiingest.Draft) previewOut {
 		CookMinutes:  field(d.Cook, int(d.Cook.Value.Minutes())),
 		TotalMinutes: field(d.Total, int(d.Total.Value.Minutes())),
 		MealType:     string(d.MealType), Cuisine: string(d.Cuisine), VideoID: d.VideoID,
+		MealTypeLLM: d.MealTypeFromLLM, CuisineLLM: d.CuisineFromLLM,
 		Components: []previewComponent{},
 		Method:     string(d.Method), ParserVersion: d.ParserVersion,
 		Overall: d.Overall, Threshold: d.Threshold, BelowThreshold: d.BelowThreshold,
@@ -198,7 +203,7 @@ func previewOf(d apiingest.Draft) previewOut {
 		out.Components = append(out.Components, co)
 	}
 	for _, an := range d.AuthorNotes {
-		out.AuthorNotes = append(out.AuthorNotes, previewAuthorNote{Title: an.Title, Text: an.Text, Confidence: an.Confidence, Issues: an.Issues})
+		out.AuthorNotes = append(out.AuthorNotes, previewAuthorNote{Title: an.Title, Text: an.Text, Confidence: an.Confidence, Issues: an.Issues, FromLLM: an.FromLLM})
 	}
 	for _, e := range d.Equipment {
 		out.Equipment = append(out.Equipment, previewEquipment{Name: e.Name, EquipmentID: int64(e.Equipment), FromLLM: e.FromLLM})

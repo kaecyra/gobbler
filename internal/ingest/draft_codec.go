@@ -82,6 +82,7 @@ type docAuthorNote struct {
 	Text       string   `json:"text"`
 	Confidence float64  `json:"confidence"`
 	Issues     []string `json:"issues,omitempty"`
+	FromLLM    bool     `json:"from_llm,omitempty"`
 }
 
 type docComponent struct {
@@ -122,12 +123,16 @@ type docDraft struct {
 	Cook        docField[int64]    `json:"cook"`
 	Total       docField[int64]    `json:"total"`
 
-	VideoID    string       `json:"video_id,omitempty"`
-	Picture    int          `json:"picture,omitempty"`
-	Reimport   *docReimport `json:"reimport,omitempty"`
-	MealType   string       `json:"meal_type,omitempty"`
-	SpiceLevel *int         `json:"spice_level,omitempty"`
-	Cuisine    string       `json:"cuisine,omitempty"`
+	VideoID  string       `json:"video_id,omitempty"`
+	Picture  int          `json:"picture,omitempty"`
+	Reimport *docReimport `json:"reimport,omitempty"`
+	MealType string       `json:"meal_type,omitempty"`
+	// MealTypeLLM and CuisineLLM mark an agent's revision of them (ADR-00048);
+	// a document written before them reads as unmarked.
+	MealTypeLLM bool   `json:"meal_type_llm,omitempty"`
+	CuisineLLM  bool   `json:"cuisine_llm,omitempty"`
+	SpiceLevel  *int   `json:"spice_level,omitempty"`
+	Cuisine     string `json:"cuisine,omitempty"`
 
 	Components []docComponent `json:"components"`
 	Equipment  []docEquipment `json:"equipment,omitempty"`
@@ -193,6 +198,7 @@ func EncodeDraft(d Draft) ([]byte, error) {
 		Cook:        docField[int64]{int64(d.Cook.Value), d.Cook.Confidence, d.Cook.FromLLM},
 		Total:       docField[int64]{int64(d.Total.Value), d.Total.Confidence, d.Total.FromLLM},
 		VideoID:     d.VideoID, Picture: int(d.Picture), MealType: string(d.MealType), SpiceLevel: d.SpiceLevel, Cuisine: string(d.Cuisine),
+		MealTypeLLM: d.MealTypeFromLLM, CuisineLLM: d.CuisineFromLLM,
 		Overall: d.Overall, Threshold: d.Threshold, BelowThreshold: d.BelowThreshold,
 		UsedLLM: d.UsedLLM, LLMError: d.LLMError, Issues: d.Issues, Proposed: d.Proposed,
 	}
@@ -279,6 +285,7 @@ func DecodeDraft(doc []byte, snap store.Snapshot) (Draft, error) {
 		Cook:        Field[time.Duration]{time.Duration(in.Cook.V), in.Cook.C, in.Cook.LLM},
 		Total:       Field[time.Duration]{time.Duration(in.Total.V), in.Total.C, in.Total.LLM},
 		VideoID:     in.VideoID, Picture: PictureChoice(in.Picture), MealType: recipe.MealType(in.MealType), SpiceLevel: in.SpiceLevel, Cuisine: recipe.Cuisine(in.Cuisine),
+		MealTypeFromLLM: in.MealTypeLLM, CuisineFromLLM: in.CuisineLLM,
 		Overall: in.Overall, Threshold: in.Threshold, BelowThreshold: in.BelowThreshold,
 		UsedLLM: in.UsedLLM, LLMError: in.LLMError, Issues: in.Issues, Proposed: in.Proposed,
 	}

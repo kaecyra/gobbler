@@ -33,7 +33,7 @@ templ styles() {
 		.ingest-form input[type=file] { padding: 8px 12px; }
 		.ingest-form textarea { min-height: 12rem; font-family: var(--f-mono); font-size: 14px; line-height: 1.65; }
 		.ingest-form input:focus-visible, .ingest-form textarea:focus-visible { outline: none; border-color: var(--wattle); }
-		.reimport-note { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
+		.reimport-note, .revision-note { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
 		.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 		.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
 		.retry-form { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; }
@@ -152,6 +152,9 @@ templ reviewPage(v reviewView) {
 			}
 			if v.Reimport != nil {
 				<p class="reimport-note" role="status" data-testid="reimport-callout">Saving replaces the current recipe. Your earlier edits are kept in History.</p>
+			}
+			if v.Draft.Reason != "" {
+				<p class="revision-note" role="status" data-testid="revision-reason">An agent revised this draft, and what it changed is marked LLM. Its reason: { v.Draft.Reason }</p>
 			}
 			@picker(v.Picker)
 			<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>

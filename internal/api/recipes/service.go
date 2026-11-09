@@ -49,7 +49,9 @@ type Service struct {
 	reaper   Reaper
 	thumbs   video.ThumbnailSource
 	drafts   *ingest.Drafts
-	saver    *ingest.Saver
+	// catalog reads the lines and equipment of an agent's draft revision.
+	catalog ingest.CatalogReader
+	saver   *ingest.Saver
 }
 
 // New returns a Service. Recipes, Catalog and Members are required; a missing
@@ -61,7 +63,7 @@ func New(d Deps) (*Service, error) {
 	if d.Recipes == nil || d.Catalog == nil || d.Members == nil {
 		return nil, errors.New("recipes service: recipes, catalog and members are required")
 	}
-	s := &Service{recipes: d.Recipes, members: d.Members, pictures: d.Pictures, reaper: d.Reaper, thumbs: d.Thumbnails}
+	s := &Service{recipes: d.Recipes, catalog: d.Catalog, members: d.Members, pictures: d.Pictures, reaper: d.Reaper, thumbs: d.Thumbnails}
 	if d.Reaper != nil {
 		s.recipes = d.Recipes.WithObjects(d.Reaper)
 	}

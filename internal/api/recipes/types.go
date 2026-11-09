@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log/slog"
 
+	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/picture"
 	"github.com/kaecyra/gobbler/internal/store"
@@ -87,6 +88,31 @@ var (
 	ErrNoIdentity       = store.ErrNoIdentity
 	ErrNoHousehold      = store.ErrNoHousehold
 	ErrOnShoppingList   = store.ErrOnShoppingList
+	// ErrDraftGone names no pending draft; ErrDraftChanged is a revision made
+	// from a draft that has changed since; ErrInvalidRevision is a revision
+	// that cannot be a draft (ADR-00048).
+	ErrDraftGone       = ingest.ErrDraftGone
+	ErrDraftChanged    = ingest.ErrDraftChanged
+	ErrInvalidRevision = ingest.ErrInvalidRevision
+)
+
+// An agent's revision of a held draft, and a pending draft as an agent lists
+// it (ADR-00048).
+type (
+	// DraftRevision is an agent's whole recipe for a held draft (ingest.Revision).
+	DraftRevision = ingest.Revision
+	// RevisedComponent is a component of a revision (ingest.RevisedComponent).
+	RevisedComponent = ingest.RevisedComponent
+	// RevisedLine is an ingredient line of a revision (ingest.RevisedLine).
+	RevisedLine = ingest.RevisedLine
+	// RevisedStep is a step of a revision (ingest.RevisedStep).
+	RevisedStep = ingest.RevisedStep
+	// RevisedNote is an author note of a revision (ingest.RevisedNote).
+	RevisedNote = ingest.RevisedNote
+	// RevisedEquipment is equipment of a revision (ingest.RevisedEquipment).
+	RevisedEquipment = ingest.RevisedEquipment
+	// DraftSummary is a pending draft as an agent lists it (store.DraftSummary).
+	DraftSummary = store.DraftSummary
 )
 
 // Reaper finds and deletes the media objects of a recipe and of the drafts

@@ -112,6 +112,28 @@ func (s *Service) ReplaceDraft(ctx context.Context, c Caller, token string, d in
 	return s.drafts.Replace(ctx, token, d)
 }
 
+// ReviseDraft replaces the draft held under token with an agent's revision of
+// it, made from the draft at revision, and stores reason on it (ADR-00048). It
+// is ReplaceDraft's replace, refused with ErrDraftChanged when the draft has
+// changed since revision. It returns the draft as now held; it never saves it.
+func (s *Service) ReviseDraft(ctx context.Context, c Caller, token, revision string, r DraftRevision, reason string) (ingest.Draft, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return ingest.Draft{}, err
+	}
+	return s.drafts.Revise(ctx, s.catalog, token, revision, r, reason)
+}
+
+// PendingDrafts lists the household's pending drafts, re-imports included,
+// oldest first.
+func (s *Service) PendingDrafts(ctx context.Context, c Caller) ([]DraftSummary, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	return s.drafts.Pending(ctx)
+}
+
 // DiscardDraft drops the draft held under token with its picture candidates.
 func (s *Service) DiscardDraft(ctx context.Context, c Caller, token string) error {
 	ctx, err := s.enter(ctx, c)

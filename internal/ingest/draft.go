@@ -183,6 +183,10 @@ type Draft struct {
 	// Cuisine is the recipe's cuisine when the source's recipeCuisine names one
 	// the list knows, else empty (ADR-00025).
 	Cuisine recipe.Cuisine
+	// MealTypeFromLLM and CuisineFromLLM mark a meal type or cuisine an
+	// agent's revision supplied (ADR-00048), as Field.FromLLM marks a field.
+	MealTypeFromLLM bool
+	CuisineFromLLM  bool
 
 	Components []Component
 
@@ -209,6 +213,11 @@ type Draft struct {
 	// held draft; they are not in the document.
 	Candidates int
 	ProposalID int64
+	// Revision names the held document's content (store.DraftRevision) and
+	// Reason is what the agent that last revised the draft said, empty when
+	// none has (ADR-00048). Drafts.Get sets both; they are not in the document.
+	Revision string
+	Reason   string
 
 	// Equipment is what the recipe uses, in reading order, once each.
 	Equipment []Equipment

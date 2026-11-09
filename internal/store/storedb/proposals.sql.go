@@ -394,6 +394,58 @@ func (q *Queries) ListFinishedProposals(ctx context.Context) ([]ListFinishedProp
 	return items, nil
 }
 
+const listPendingDrafts = `-- name: ListPendingDrafts :many
+SELECT token, CAST(COALESCE(json_extract(document, '$.name.v'), '') AS TEXT) AS name,
+    CAST(COALESCE(json_extract(document, '$.source_url'), '') AS TEXT) AS source_url,
+    CAST(json_extract(document, '$.reimport.recipe') IS NOT NULL AS INTEGER) AS reimport,
+    reason, created_at
+FROM proposals
+WHERE household_id = ?1 AND kind = 'draft' AND state = 'pending'
+ORDER BY created_at, id
+`
+
+type ListPendingDraftsRow struct {
+	Token     string
+	Name      string
+	SourceUrl string
+	Reimport  int64
+	Reason    string
+	CreatedAt string
+}
+
+// The household's pending ingestion drafts, re-imports included, oldest first,
+// for an agent to list (ADR-00048). The name and source address are read from
+// the draft document, where the draft codec writes them.
+func (q *Queries) ListPendingDrafts(ctx context.Context, householdID int64) ([]ListPendingDraftsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPendingDrafts, householdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingDraftsRow
+	for rows.Next() {
+		var i ListPendingDraftsRow
+		if err := rows.Scan(
+			&i.Token,
+			&i.Name,
+			&i.SourceUrl,
+			&i.Reimport,
+			&i.Reason,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingProposalAges = `-- name: ListPendingProposalAges :many
 SELECT id, created_at FROM proposals WHERE state = 'pending'
 `
@@ -515,18 +567,26 @@ func (q *Queries) SetProposalState(ctx context.Context, arg SetProposalStatePara
 }
 
 const updateDraftDocument = `-- name: UpdateDraftDocument :execrows
-UPDATE proposals SET document = ?1
-WHERE id = ?2 AND household_id = ?3 AND kind = 'draft' AND state = 'pending'
+UPDATE proposals SET document = ?1, reason = COALESCE(?2, reason)
+WHERE id = ?3 AND household_id = ?4 AND kind = 'draft' AND state = 'pending'
 `
 
 type UpdateDraftDocumentParams struct {
 	Document    string
+	Reason      sql.NullString
 	ID          int64
 	HouseholdID int64
 }
 
+// reason is left as it is when NULL: a person's edit on the review screen
+// keeps the reason an agent gave for its revision (ADR-00048).
 func (q *Queries) UpdateDraftDocument(ctx context.Context, arg UpdateDraftDocumentParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateDraftDocument, arg.Document, arg.ID, arg.HouseholdID)
+	result, err := q.db.ExecContext(ctx, updateDraftDocument,
+		arg.Document,
+		arg.Reason,
+		arg.ID,
+		arg.HouseholdID,
+	)
 	if err != nil {
 		return 0, err
 	}
