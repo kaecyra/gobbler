@@ -466,7 +466,7 @@ func TestReviewShowsDraftAndSavesNothing(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Review recipe", "Apple pie", "2 tbsp butter", "Mix everything.", "20 min", "Nothing is saved until you confirm"} {
+	for _, want := range []string{"Review recipe", "Apple pie", "2 tbsp butter", "Mix everything.", "20 min"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("review lacks %q", want)
 		}

@@ -66,8 +66,8 @@ func TestReviewFlagsLowConfidenceAndLLMItemsInWords(t *testing.T) {
 	if !strings.Contains(between(t, body, `<li class="item equipment llm" data-llm>`, "</li>"), "LLM") {
 		t.Error("LLM equipment is not marked in words")
 	}
-	if !strings.Contains(body, "Check this draft.") {
-		t.Error("a below-threshold draft has no overall warning")
+	if strings.Contains(body, "Check this draft.") {
+		t.Error("a below-threshold draft repeats its chips in a banner")
 	}
 }
 

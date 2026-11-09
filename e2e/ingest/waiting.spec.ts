@@ -67,14 +67,12 @@ test('waiting drafts are listed and counted, and confirming one opens the next',
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Second Pancakes');
   const done = page.getByTestId('draft-done');
   await expect(done).toContainText('Saved First Pancakes.');
-  await expect(done).toContainText('This is the last draft waiting for review.');
   await expect(badge(page)).toHaveText('1');
 
   // Discarding the last one goes back to the import page, which says so.
   await page.getByRole('button', { name: 'Cancel' }).first().click();
   await expect(page).toHaveURL(/\/ingest\?done=[0-9a-f]+$/);
   await expect(done).toContainText('Discarded Second Pancakes.');
-  await expect(done).toContainText('No drafts are waiting for review.');
   await expect(page.getByTestId('waiting-drafts-list')).toHaveCount(0);
   await expect(badge(page)).toHaveCount(0);
 

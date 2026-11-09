@@ -97,7 +97,7 @@ test('an edit is a proposal: the recipe is unchanged until a person saves it, an
   await ctx.dispose();
 });
 
-test('an agent revises a held draft, and the review page shows its reason and marks', async () => {
+test('an agent revises a held draft, and the review page shows its marks but not its reason', async () => {
   const ctx = await withKey(server.origin, server.seed.devKey);
   const created = await tool(ctx, 'create_recipe_draft', { name: 'Agent scones', ingredients: ['2 cups flour'], steps: ['Mix.', 'Bake.'] });
   const token = created.review_path.replace('/ingest/', '');
@@ -117,8 +117,7 @@ test('an agent revises a held draft, and the review page shows its reason and ma
   const page = await person.get(created.review_path);
   expect(page.status()).toBe(200);
   const html = await page.text();
-  expect(html).toContain('data-testid="revision-reason"');
-  expect(html).toContain('House style names the doneness cue.');
+  expect(html).not.toContain('House style names the doneness cue.');
   expect(html).toContain('Bake until golden.');
   expect(html).toContain('llm-mark');
   await person.dispose();

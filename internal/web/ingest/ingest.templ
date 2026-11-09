@@ -33,7 +33,7 @@ templ styles() {
 		.ingest-form input[type=file] { padding: 8px 12px; }
 		.ingest-form textarea { min-height: 12rem; font-family: var(--f-mono); font-size: 14px; line-height: 1.65; }
 		.ingest-form input:focus-visible, .ingest-form textarea:focus-visible { outline: none; border-color: var(--wattle); }
-		.reimport-note, .revision-note { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
+		.reimport-note { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
 		.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 		.error { background: var(--wattle-soft); color: var(--wattle-ink); border: 1px solid var(--wattle); border-radius: var(--r); padding: 10px 14px; margin: 0 0 18px; }
 		.retry-form { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; }
@@ -48,8 +48,6 @@ templ styles() {
 		.via .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
 		.via .from { color: var(--ink-3); font-size: 14px; margin-left: 4px; }
 		.review-note { margin: 0 0 10px; max-width: 70ch; }
-		.review-note.check { background: var(--grain-soft); border-radius: var(--r); padding: 10px 14px; }
-		.review-note .flag { color: var(--grain-ink); font-weight: 700; margin-right: 0.4rem; }
 		.review-note .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 0.3rem; margin-right: 0.4rem; font-size: 0.8em; }
 		.issues { margin: 0 0 12px; padding-left: 1.2rem; color: var(--ink-2); font-size: 15px; }
 		.review-grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 28px; align-items: start; }
@@ -94,8 +92,7 @@ templ styles() {
 }
 
 // doneNote is the page-level message after a draft was confirmed or
-// discarded (ADR-00049): what happened to it, and how many drafts are still
-// waiting.
+// discarded (ADR-00049): what happened to it.
 templ doneNote(d *doneView) {
 	if d != nil {
 		<div class="callout done-note" role="status" data-testid="draft-done">
@@ -106,7 +103,6 @@ templ doneNote(d *doneView) {
 			} else {
 				Discarded { d.Name }.
 			}
-			{ d.waitingSentence() }
 		</div>
 	}
 }
@@ -198,7 +194,6 @@ templ reviewPage(v reviewView) {
 		<div class="screen-h">
 			<div>
 				<h1>Review recipe</h1>
-				<p>Nothing is saved until you confirm. Items marked amber need a look.</p>
 			</div>
 			if v.CanRetry {
 				<form class="retry-form" method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/retry") }>
@@ -218,9 +213,6 @@ templ reviewPage(v reviewView) {
 			}
 			if v.Reimport != nil {
 				<p class="reimport-note" role="status" data-testid="reimport-callout">Saving replaces the current recipe. Your earlier edits are kept in History.</p>
-			}
-			if v.Draft.Reason != "" {
-				<p class="revision-note" role="status" data-testid="revision-reason">An agent revised this draft, and what it changed is marked LLM. Its reason: { v.Draft.Reason }</p>
 			}
 			@picker(v.Picker)
 			<form id={ editor.CancelFormID } method="post" action={ templ.SafeURL("/ingest/" + v.Token + "/cancel") }></form>
@@ -346,8 +338,6 @@ templ summary(d apiingest.Draft, look int) {
 		</div>
 		if d.UsedLLM {
 			<p class="review-note"><strong class="llm-mark">LLM</strong> The LLM filled the gaps the rules left. Check every item marked LLM before you confirm.</p>
-		} else if d.BelowThreshold {
-			<p class="review-note check"><strong class="flag">Check this draft.</strong> The rules are not sure they read it correctly (confidence { percent(d.Overall) } of the { percent(d.Threshold) } needed). Look over every flagged item.</p>
 		}
 		if len(d.Issues) > 0 {
 			<ul class="issues">
