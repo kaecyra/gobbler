@@ -180,7 +180,10 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 - **Cook mode.** The entry is labelled "Cook mode", never "Start cooking". It
   sits in the recipe view's controls row, not as a big button under the title.
 - **Low confidence** (review screen). A grain-coloured mark on the source line
-  and a dot on the parsed line, with a hint. No left border.
+  and a dot on the parsed line, with a hint. No left border. A low recipe
+  field (name, servings, calories and the rest) keeps its grain tint, and its
+  label leads with the 15px alert triangle in grain-ink, read as "Check" by
+  screen readers. No line goes under the field.
 - **LLM mark** (review screen). Glitter, with no visible words, on the field
   the LLM changed: an ingredient line's name, a step's text (also when only
   its order came from the LLM), a note's text, an equipment row's name, or a

@@ -78,7 +78,8 @@ templ editorForm(v view) {
 			.editor .pair input:first-of-type { width: 72px; flex: none; }
 			.editor .fl.low, .editor .fact.low { background: var(--grain-soft); border-radius: var(--r); padding: 10px 12px; }
 			.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }
-			.editor .fl.low > label::before, .editor .fact.low > label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
+			.editor .fl.low > label .chk { display: flex; flex: none; }
+			.editor .fl.low > label .chk svg { display: block; width: 15px; height: 15px; flex: none; stroke-width: 2; }
 			.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }
 			.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }
 			.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }
@@ -480,15 +481,25 @@ templ markInput(v view, field string) {
 	}
 }
 
-// markedField shows a metadata field's marks on its own input: the LLM's
-// glitter round it, which on an empty field says the field was cleared, and
-// under it the "Check:" hint of a low mark, so the field's grain tint is
-// never the only sign (ADR-00006).
+// markedField is the LLM's glitter round a metadata field's own input, which
+// on an empty field says the field was cleared. checkIcon, in the label,
+// shows the field's low mark.
 templ markedField(v view, field string) {
 	@glitter(v.D.mark(field).LLM, v.D.llmLabel(field)) {
 		{ children... }
 	}
-	@checkHint(v.D.mark(field).Low, nil, "the rules were not sure of this.")
+}
+
+// checkIcon leads a low metadata field's label: the alert triangle, read as
+// "Check", so the field's grain tint is never the only sign (ADR-00006). It
+// shows no word and adds no line under the field.
+templ checkIcon(v view, field string) {
+	if v.D.mark(field).Low {
+		<span class="chk">
+			@layout.Icon(layout.IconAlert)
+			<span class="sr">Check </span>
+		</span>
+	}
 }
 
 templ fieldError(v view, field string) {
@@ -503,6 +514,7 @@ templ fieldError(v view, field string) {
 templ fact(v view, id, name, label, labelRest, value, field, errField, placeholder string) {
 	<div class={ "fl fact " + v.D.mark(field).String() }>
 		<label for={ id }>
+			@checkIcon(v, field)
 			{ label }
 			if labelRest != "" {
 				<span class="sr">{ " " + labelRest }</span>
@@ -527,7 +539,10 @@ templ metaFields(v view) {
 		@sectionHead("ed-h-recipe", "Recipe")
 		<div class="ed-card meta-card">
 			<div class={ "fl " + v.D.mark("name").String() }>
-				<label for="f-name">Name</label>
+				<label for="f-name">
+					@checkIcon(v, "name")
+					Name
+				</label>
 				@markInput(v, "name")
 				@markedField(v, "name") {
 					<input id="f-name" class="quiet ed-name" type="text" name="name" value={ v.D.Name }/>
@@ -535,7 +550,10 @@ templ metaFields(v view) {
 				@fieldError(v, "name")
 			</div>
 			<div class={ "fl " + v.D.mark("description").String() }>
-				<label for="f-description">Description</label>
+				<label for="f-description">
+					@checkIcon(v, "description")
+					Description
+				</label>
 				@markInput(v, "description")
 				@markedField(v, "description") {
 					<textarea id="f-description" name="description" rows="2">{ v.D.Description }</textarea>
@@ -543,7 +561,10 @@ templ metaFields(v view) {
 			</div>
 			<div class="facts">
 				<div class={ "fl fact yield " + v.D.mark("yield").String() }>
-					<label for="f-yield-qty">Yield<span class="sr">{ " amount" }</span></label>
+					<label for="f-yield-qty">
+						@checkIcon(v, "yield")
+						Yield<span class="sr">{ " amount" }</span>
+					</label>
 					@markInput(v, "yield")
 					@markedField(v, "yield") {
 						<span class="pair">
@@ -563,7 +584,10 @@ templ metaFields(v view) {
 				@fact(v, "f-total", "total", "Total", "time", v.D.Total, "total", "total", "worked out")
 				if v.carries(groupRecipeFields) {
 					<div class={ "fl fact " + v.D.mark("meal_type").String() }>
-						<label for="f-meal-type">Meal type</label>
+						<label for="f-meal-type">
+							@checkIcon(v, "meal_type")
+							Meal type
+						</label>
 						@markInput(v, "meal_type")
 						@markedField(v, "meal_type") {
 							<select id="f-meal-type" name="meal_type">
@@ -576,7 +600,10 @@ templ metaFields(v view) {
 						@fieldError(v, "meal_type")
 					</div>
 					<div class={ "fl fact " + v.D.mark("cuisine").String() }>
-						<label for="f-cuisine">Cuisine</label>
+						<label for="f-cuisine">
+							@checkIcon(v, "cuisine")
+							Cuisine
+						</label>
 						@markInput(v, "cuisine")
 						@markedField(v, "cuisine") {
 							<select id="f-cuisine" name="cuisine">
@@ -610,7 +637,10 @@ templ metaFields(v view) {
 						</div>
 					}
 					<div class={ "fl " + v.D.mark("author").String() }>
-						<label for="f-author">Author</label>
+						<label for="f-author">
+							@checkIcon(v, "author")
+							Author
+						</label>
 						@markInput(v, "author")
 						@markedField(v, "author") {
 							<input id="f-author" type="text" name="author" value={ v.D.Author }/>

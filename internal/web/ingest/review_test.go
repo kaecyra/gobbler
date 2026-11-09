@@ -354,7 +354,7 @@ func TestDraftPutBackAfterAFailedSaveKeepsEditsAndFlags(t *testing.T) {
 			if !strings.Contains(items(body, "equipment")[2], `class="glitter"`) {
 				t.Error("the equipment lost its LLM mark")
 			}
-			if !lowName.MatchString(body) || !strings.Contains(between(t, body, `<label for="f-name">`, "</div>"), "Check:") {
+			if !lowName.MatchString(body) || !strings.Contains(between(t, body, `<label for="f-name">`, "</label>"), `<span class="sr">Check </span>`) {
 				t.Error("the name lost its flag")
 			}
 		})

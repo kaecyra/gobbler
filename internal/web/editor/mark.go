@@ -9,9 +9,11 @@ import (
 
 // mark is a flag the review screen puts on something it asks the user to
 // check: the rules were less sure of it than the draft's threshold (Low), or
-// the LLM supplied it (LLM). Neither is colour alone (ADR-00006): a low mark
-// says "Check:", and an LLM mark is the sparkles of the glitter, named for
-// screen readers by one of the labels below. A stored recipe's editor has none.
+// the LLM supplied it (LLM). Neither is colour alone (ADR-00006). A low line,
+// step, note or equipment says "Check:" in its hint; a low metadata field's
+// label leads with the alert triangle, read as "Check". An LLM mark is the
+// sparkles of the glitter, named for screen readers by one of the labels
+// below. A stored recipe's editor has none.
 type mark struct{ Low, LLM bool }
 
 const (
