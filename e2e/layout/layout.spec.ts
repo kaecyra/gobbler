@@ -49,7 +49,9 @@ for (const p of primary) {
     await expect(page).toHaveURL(new RegExp(`${p.path}$`));
     const current = nav(page).locator('[aria-current="page"]');
     await expect(current).toHaveCount(1);
-    await expect(current).toHaveAccessibleName(p.name);
+    // Add recipe's name also counts the drafts waiting for review, when there
+    // are any (ADR-00049); other specs' drafts come and go on this server.
+    await expect(current).toHaveAccessibleName(new RegExp(`^${p.name}(, \\d+ drafts? waiting for review)?$`));
   });
 }
 

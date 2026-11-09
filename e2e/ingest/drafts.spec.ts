@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { pasteText } from './helpers';
+import { openSaved, pasteText } from './helpers';
 
 // Drafts wait for review in the database, not in the process (ADR-00035): a
 // restart does not lose one, and a household holds at most 20, the 21st being
@@ -94,6 +94,7 @@ test('a draft is still waiting for review after the server restarts, and confirm
   await page.goto(review);
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByRole('heading', { name: 'Fluffy Pancakes' })).toBeVisible();
   // It was confirmed once: the review page is gone.

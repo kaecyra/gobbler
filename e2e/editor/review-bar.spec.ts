@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pasteText } from '../ingest/helpers';
+import { openSaved, pasteText } from '../ingest/helpers';
 
 // The save bar on the ingest review screen (ADR-00020: the review screen is the
 // recipe editor on a draft). Runs on the suite's shared server, which has the
@@ -39,6 +39,7 @@ test('without JavaScript, the review bar confirms a draft', async ({ browser, ba
   const page = await ctx.newPage();
   await toReview(page);
   await page.locator('.savebar').getByRole('button', { name: 'Confirm and save' }).click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/[0-9a-z-]+$/);
   await expect(page.getByRole('heading', { name: 'Bar Pancakes' })).toBeVisible();
   await ctx.close();

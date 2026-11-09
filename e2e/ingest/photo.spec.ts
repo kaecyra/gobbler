@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
+import { openSaved } from './helpers';
 
 // Photo ingestion (ADR-00006). This spec starts its own gobbler whose PATH
 // begins with a directory holding a stub `tesseract` that prints fixture text,
@@ -81,6 +82,7 @@ test('an uploaded photo is read, reviewed, and saved only when confirmed', async
   await expect(page.locator('[name="c.0.l.0.raw"]')).toHaveValue('2 cups all-purpose flour');
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByRole('heading', { name: 'Photo Pancakes' })).toBeVisible();
   expect((await request.get(page.url())).status()).toBe(200);

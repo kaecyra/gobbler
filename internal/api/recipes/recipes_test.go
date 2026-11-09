@@ -169,6 +169,8 @@ func TestEveryOperationRefusesANonMember(t *testing.T) {
 			return err
 		},
 		"PendingDrafts": func(c apirecipes.Caller) error { _, err := f.svc.PendingDrafts(ctx, c); return err },
+		"WaitingDrafts": func(c apirecipes.Caller) error { _, err := f.svc.WaitingDrafts(ctx, c); return err },
+		"EndedDraft":    func(c apirecipes.Caller) error { _, err := f.svc.EndedDraft(ctx, c, "tok"); return err },
 		"ChoosePicture": func(c apirecipes.Caller) error {
 			return f.svc.ChoosePicture(ctx, c, "tok", ingest.PictureNone)
 		},

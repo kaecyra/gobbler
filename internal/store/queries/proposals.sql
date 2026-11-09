@@ -96,14 +96,36 @@ UPDATE proposals SET state = 'superseded', state_at = sqlc.arg(state_at)
 WHERE recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id) AND kind = 'edit' AND state = 'pending';
 
 -- The household's pending ingestion drafts, re-imports included, oldest first,
--- for an agent to list and for an import's duplicate check (ADR-00048). The
--- name and source address are read from the draft document, where the draft
--- codec writes them.
+-- for an agent to list, for an import's duplicate check (ADR-00048) and for the
+-- import page's list (ADR-00049). The name and source address are read from
+-- the draft document, where the draft codec writes them; the source kind from
+-- the draft's snapshot, and a re-import's recipe name from the recipe.
 -- name: ListPendingDrafts :many
-SELECT token, CAST(COALESCE(json_extract(document, '$.name.v'), '') AS TEXT) AS name,
-    CAST(COALESCE(json_extract(document, '$.source_url'), '') AS TEXT) AS source_url,
-    CAST(json_extract(document, '$.reimport.recipe') IS NOT NULL AS INTEGER) AS reimport,
-    reason, created_at
-FROM proposals
-WHERE household_id = sqlc.arg(household_id) AND kind = 'draft' AND state = 'pending'
-ORDER BY created_at, id;
+SELECT p.token, CAST(COALESCE(json_extract(p.document, '$.name.v'), '') AS TEXT) AS name,
+    CAST(COALESCE(json_extract(p.document, '$.source_url'), '') AS TEXT) AS source_url,
+    CAST(COALESCE(s.kind, '') AS TEXT) AS source_kind,
+    CAST(COALESCE(json_extract(p.document, '$.reimport.recipe'), 0) AS INTEGER) AS reimport_of,
+    CAST(COALESCE(r.name, '') AS TEXT) AS reimport_name,
+    p.reason, p.created_at
+FROM proposals p
+LEFT JOIN source_snapshots s ON s.id = p.snapshot_id AND s.household_id = p.household_id
+LEFT JOIN recipes r ON r.household_id = p.household_id AND r.id = json_extract(p.document, '$.reimport.recipe')
+WHERE p.household_id = sqlc.arg(household_id) AND p.kind = 'draft' AND p.state = 'pending'
+ORDER BY p.created_at, p.id;
+
+-- Every pending ingestion draft of the household, re-imports included: the
+-- count the menu shows (ADR-00049). CountPendingDrafts is the bound's count.
+-- name: CountWaitingDrafts :one
+SELECT COUNT(*) FROM proposals
+WHERE household_id = ? AND kind = 'draft' AND state = 'pending';
+
+-- A draft a person just confirmed or discarded, for the message on the page
+-- they land on (ADR-00049): its state, the recipe it saved, and its name, the
+-- saved recipe's when there is one. The recipe is 0 when it no longer exists.
+-- name: GetEndedDraft :one
+SELECT p.state, CAST(COALESCE(r.id, 0) AS INTEGER) AS result_recipe_id,
+    CAST(COALESCE(r.name, json_extract(p.document, '$.name.v'), '') AS TEXT) AS name
+FROM proposals p
+LEFT JOIN recipes r ON r.household_id = p.household_id AND r.id = p.result_recipe_id
+WHERE p.token = sqlc.arg(token) AND p.household_id = sqlc.arg(household_id) AND p.kind = 'draft'
+  AND p.state IN ('accepted', 'rejected');

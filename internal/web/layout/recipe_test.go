@@ -65,8 +65,8 @@ func TestSourceHostStripsWWWAndSurvivesGarbage(t *testing.T) {
 		"":                                "",
 		"http://[::1":                     "",
 	} {
-		if got := sourceHost(in); got != want {
-			t.Errorf("sourceHost(%q) = %q, want %q", in, got, want)
+		if got := SourceHost(in); got != want {
+			t.Errorf("SourceHost(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

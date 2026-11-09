@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { pasteText } from './helpers';
+import { discardedURL, openSaved, pasteText } from './helpers';
 import { dragRow } from '../editor/drag';
 import { userCopy } from '../fixtures/copy';
 
@@ -291,6 +291,7 @@ test('pasted text goes to review, then confirm saves and redirects to the recipe
   await page.getByLabel('Name', { exact: true }).fill('Best Pancakes');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
   // The recipe view is a later node; the redirect target is its URL.
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 });
 
@@ -356,6 +357,7 @@ test('a proposed new ingredient is offered as new, and is created only when the 
   await page.locator('li.line').nth(1).getByLabel('Ingredient', { exact: true }).fill('dragonfruit zest');
   await page.locator('li.line').nth(1).getByLabel('Add this ingredient to the catalog as new and unreviewed').check();
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 });
 
@@ -365,6 +367,7 @@ test('a proposed line can be mapped to an existing ingredient', async ({ page })
   await page.getByRole('button', { name: 'Read recipe' }).click();
   await page.locator('li.line').nth(1).getByLabel('Ingredient', { exact: true }).fill('sugar');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 });
 
@@ -388,6 +391,7 @@ test('an amount, a unit and a whole line can be corrected on review before anyth
   await page.locator('li.line').last().getByRole('button', { name: 'Remove line' }).click();
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByText('3 tbsp')).toBeVisible();
 });
@@ -421,6 +425,7 @@ test('an amount, a unit and a step dependency edited on review are what confirm 
   await expect(page.locator('[name="c.0.s.2.dep"][value="s1"]')).toBeChecked();
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/);
   const id = page.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1];
   await expect(page.getByText('3 tbsp')).toBeVisible();
@@ -445,7 +450,8 @@ test('cancel discards the draft and saves nothing', async ({ page, request }) =>
   const token = reviewURL.split('/').pop();
 
   await page.getByRole('button', { name: 'Cancel' }).first().click();
-  await expect(page).toHaveURL(/\/ingest$/);
+  await expect(page).toHaveURL(discardedURL);
+  await expect(page.getByTestId('draft-done')).toContainText('Discarded');
 
   // The draft is gone, so it can be neither reviewed nor confirmed.
   expect((await request.get(`/ingest/${token}`)).status()).toBe(404);
@@ -487,6 +493,7 @@ test('a YouTube video in the page markup reaches the review screen and is saved 
   await expect(page.locator('[name="source_url"]')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByTestId('video')).toHaveCount(1);
 });
@@ -528,6 +535,7 @@ test('meal type, stage kinds and step titles from the page reach review and are 
   await page.locator('[name="c.0.s.1.kind"]').selectOption('');
 
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/);
   const id = page.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1];
 
@@ -700,6 +708,7 @@ test('on review a line and a step are dragged into an empty part and a part is n
   await named.fill('Cooking');
   await expect(page.locator('[name="c.1.name"]')).toHaveValue('Cooking');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByText('Cooking').first()).toBeVisible();
   await page.goto(page.url().replace(/(\/recipes\/\d+).*$/, '$1') + '/edit');
@@ -740,6 +749,7 @@ test('the author notes of a page arrive as rows, the junk flagged in words, and 
   await expect(rows.nth(2)).toContainText('it is longer than one short paragraph');
   await page.locator('[name="n.1.text"]').fill('Keeps three days in a tin, or freeze it.');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 
   // They end the step chain on the recipe page, each credited to the author.

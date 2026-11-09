@@ -103,7 +103,7 @@ type RecipeMeta struct {
 func NewRecipeMeta(r recipe.Recipe) RecipeMeta {
 	m := RecipeMeta{
 		MealType: r.MealType, Meal: r.MealType.Label(), Cuisine: r.Cuisine.Label(), Author: r.Author,
-		Calories: r.CaloriesPerServing, SourceURL: r.SourceURL, SourceHost: sourceHost(r.SourceURL),
+		Calories: r.CaloriesPerServing, SourceURL: r.SourceURL, SourceHost: SourceHost(r.SourceURL),
 	}
 	if r.SpiceLevel != nil && *r.SpiceLevel > 0 {
 		m.Spice = min(*r.SpiceLevel, recipe.MaxSpiceLevel)
@@ -114,9 +114,10 @@ func NewRecipeMeta(r recipe.Recipe) RecipeMeta {
 	return m
 }
 
-// sourceHost is the host of a source address for the link text, empty when the
+// SourceHost is the host of a source address, without "www.", for the text that
+// names it (a recipe's source link, a waiting draft's source); empty when the
 // address does not parse or has none.
-func sourceHost(raw string) string {
+func SourceHost(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return ""

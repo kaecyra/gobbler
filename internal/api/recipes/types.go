@@ -113,6 +113,9 @@ type (
 	RevisedEquipment = ingest.RevisedEquipment
 	// DraftSummary is a pending draft as an agent lists it (store.DraftSummary).
 	DraftSummary = store.DraftSummary
+	// EndedDraft is a draft just confirmed or discarded (store.EndedDraft,
+	// ADR-00049).
+	EndedDraft = store.EndedDraft
 	// SourcedRecipe is a recipe named by the address it was imported from
 	// (store.SourcedRecipe).
 	SourcedRecipe = store.SourcedRecipe

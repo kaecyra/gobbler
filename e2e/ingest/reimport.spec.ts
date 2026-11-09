@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { pasteText, png } from './helpers';
+import { openSaved, pasteText, png } from './helpers';
 
 // Re-importing a saved recipe from its source (ADR-00042). The page is fetched
 // from a local fixture server that the spec changes between imports; the e2e
@@ -120,6 +120,7 @@ test('an import carries no re-import callout and no Keep current picture; its re
   await expect(picker(p).getByText('Keep current picture')).toHaveCount(0);
   await picker(p).locator('.pick', { hasText: '1024 × 341' }).click();
   await confirm(p).click();
+  await openSaved(p);
   await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   recipeId = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1]!;
   // ADR-00042 obligation 9: the button is among the action links, after Share and above Delete.
@@ -143,6 +144,7 @@ test('a recipe with no source URL has no button', async ({ page: p }) => {
   await p.getByRole('button', { name: 'Read recipe' }).click();
   await expect(p).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await confirm(p).click();
+  await openSaved(p);
   await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   typedId = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1]!;
   await expect(p.getByTestId('reimport-button')).toHaveCount(0);
@@ -210,6 +212,7 @@ test('saving a re-import with the default replaces the recipe, keeps its picture
   await p.getByTestId('reimport-button').click();
   await expect(p).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await confirm(p).click();
+  await openSaved(p);
   await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   await expect(p.getByRole('heading', { name: 'Reimport Toast, read again' })).toBeVisible();
   expect(await pictureSrc(p)).toBe(before);
@@ -234,6 +237,7 @@ test('choosing a candidate replaces the picture', async ({ page: p }) => {
   await p.getByTestId('reimport-button').click();
   await picker(p).locator('.pick', { hasText: '1024 × 576' }).click();
   await confirm(p).click();
+  await openSaved(p);
   await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   const after = await pictureSrc(p);
   expect(after).not.toBe(before);
@@ -245,6 +249,7 @@ test('No picture removes the picture', async ({ page: p }) => {
   await p.getByTestId('reimport-button').click();
   await picker(p).locator('.pick.none').click();
   await confirm(p).click();
+  await openSaved(p);
   await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   expect((await p.request.get(`/recipes/${recipeId}/picture`)).status()).toBe(404);
 });

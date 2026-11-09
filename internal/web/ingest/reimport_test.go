@@ -212,7 +212,7 @@ func TestCancellingAReimportReturnsToTheRecipe(t *testing.T) {
 		t.Error("the re-import is still pending")
 	}
 	other := f.ingestText(t)
-	if resp := f.do(http.MethodPost, "/"+other+"/cancel", url.Values{}); resp.Header().Get("Location") != "/ingest" {
-		t.Errorf("cancelling an import went to %q, want /ingest", resp.Header().Get("Location"))
+	if resp := f.do(http.MethodPost, "/"+other+"/cancel", url.Values{}); resp.Header().Get("Location") != "/ingest?done="+other {
+		t.Errorf("cancelling an import went to %q, want /ingest?done=%s", resp.Header().Get("Location"), other)
 	}
 }

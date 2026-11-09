@@ -195,6 +195,27 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .tab.cta { background: var(--wattle-ink); color: var(--on-accent); }
 .tab.cta:hover { background: color-mix(in srgb, var(--wattle-ink) 88%, var(--shade)); }
 .tab.cta[aria-current="page"] { box-shadow: inset 0 0 0 2px var(--on-accent), 0 0 0 2px var(--wattle-ink); }
+/* How many drafts wait for review (ADR-00049): a small count on the Add recipe
+   entry, at its top corner at every width so it never moves the label. */
+.tab { position: relative; }
+.tab-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: var(--r-sm);
+  background: var(--grain);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--card);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 
 /* The sections behind the menu button. */
 .menu { position: relative; }

@@ -18,13 +18,16 @@ type navItem struct {
 	CTA bool
 	// Menu puts the entry behind the nav's menu button instead of in the bar.
 	Menu bool
+	// Waiting marks the entry that shows the count of drafts waiting for
+	// review as a badge (ADR-00049).
+	Waiting bool
 }
 
 // navItems lists the sections in display order: the bar first, then the menu.
 var navItems = []navItem{
 	{Label: "Library", Path: "/recipes", Icon: IconLibrary},
 	{Label: "Shopping list", Path: "/shopping", Icon: IconBasket},
-	{Label: "Add recipe", Path: "/ingest", Icon: IconPlus, CTA: true},
+	{Label: "Add recipe", Path: "/ingest", Icon: IconPlus, CTA: true, Waiting: true},
 	{Label: "Catalog", Path: "/catalog", Icon: IconTag, Menu: true},
 	{Label: "Shared", Path: "/shares", Icon: IconShare, Menu: true},
 	{Label: "Household", Path: "/household", Icon: IconHome, Menu: true},
