@@ -3,7 +3,6 @@ package mcp
 import (
 	"context"
 	"errors"
-	"net/url"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -137,8 +136,8 @@ func (t *tools) previewImport(ctx context.Context, _ *mcp.CallToolRequest, in pr
 	case in.RecipeID < 0:
 		return nil, previewOut{}, refuse("give the recipe's id")
 	case rawURL != "":
-		if u, perr := url.Parse(rawURL); perr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return nil, previewOut{}, refuse("url must be an http or https address")
+		if err := checkPageURL(rawURL); err != nil {
+			return nil, previewOut{}, err
 		}
 	}
 	p, err := t.Previewer.Preview(ctx, apiingest.PreviewSource{URL: rawURL, RecipeID: in.RecipeID})
