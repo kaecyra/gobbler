@@ -183,7 +183,7 @@ templ recipeBody(v view) {
 				if v.Origin != nil {
 					<p class="muted origin" data-testid="origin">
 						Cloned from
-						<a href={ templ.SafeURL(recipepath.Base(v.Origin.RecipeID)) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
+						<a href={ templ.SafeURL(recipepath.View(v.Origin.RecipeID, "")) }>recipe { strconv.FormatInt(v.Origin.RecipeID, 10) }</a>
 						at
 						<a href={ templ.SafeURL(originHref(v.Origin)) }>version { strconv.FormatInt(v.Origin.Version, 10) }</a>.
 					</p>
