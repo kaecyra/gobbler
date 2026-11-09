@@ -131,7 +131,7 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 		rec, err := h.Recipes.Get(ctx, c, recipeID)
 		return rec.VideoID, err
 	})
-	// The copy's title is not at hand; the view page completes the slug with a 301.
+	// The copy's title is not at hand; the view page completes the slug with a 302.
 	http.Redirect(w, r, recipepath.View(recipeID, ""), http.StatusSeeOther)
 }
 

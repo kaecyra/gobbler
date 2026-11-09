@@ -18,12 +18,12 @@ func TestViewURLCanonicalisation(t *testing.T) {
 	}{
 		{"canonical", canon, http.StatusOK, ""},
 		{"canonical keeps its query", canon + "?scale=2", http.StatusOK, ""},
-		{"plain id", "/recipes/7", http.StatusMovedPermanently, canon},
-		{"plain id keeps the query", "/recipes/7?scale=2&units=metric", http.StatusMovedPermanently, canon + "?scale=2&units=metric"},
-		{"stale slug", "/recipes/7-old-name", http.StatusMovedPermanently, canon},
-		{"stale slug keeps the query", "/recipes/7-old-name?scale=1/2", http.StatusMovedPermanently, canon + "?scale=1/2"},
-		{"trailing dash", "/recipes/7-", http.StatusMovedPermanently, canon},
-		{"leading zeros", "/recipes/007-sponge-cake", http.StatusMovedPermanently, canon},
+		{"plain id", "/recipes/7", http.StatusFound, canon},
+		{"plain id keeps the query", "/recipes/7?scale=2&units=metric", http.StatusFound, canon + "?scale=2&units=metric"},
+		{"stale slug", "/recipes/7-old-name", http.StatusFound, canon},
+		{"stale slug keeps the query", "/recipes/7-old-name?scale=1/2", http.StatusFound, canon + "?scale=1/2"},
+		{"trailing dash", "/recipes/7-", http.StatusFound, canon},
+		{"leading zeros", "/recipes/007-sponge-cake", http.StatusFound, canon},
 		{"no digits", "/recipes/sponge-cake", http.StatusNotFound, ""},
 		{"digits then a letter", "/recipes/7sponge", http.StatusNotFound, ""},
 		{"zero id", "/recipes/0-x", http.StatusNotFound, ""},
@@ -43,6 +43,27 @@ func TestViewURLCanonicalisation(t *testing.T) {
 	}
 }
 
+// The redirect is a 302, never a cached 301: the canonical form follows the
+// title, so a rename back to an earlier title makes an old slug canonical again.
+// A browser holding a cached hop away from it would loop (ADR-00047).
+func TestViewRedirectSurvivesARenameBack(t *testing.T) {
+	r := testRecipe(t)
+	r.Name = "Chicken curry"
+	before := serveOnce(t, fakeRecipes{7: r}, testCatalog(), httptest.NewRequest(http.MethodGet, "/recipes/7-curry", nil))
+	if before.Code != http.StatusFound || before.Header().Get("Location") != "/recipes/7-chicken-curry" {
+		t.Fatalf("before rename back: status = %d, Location = %q", before.Code, before.Header().Get("Location"))
+	}
+	r.Name = "Curry"
+	after := serveOnce(t, fakeRecipes{7: r}, testCatalog(), httptest.NewRequest(http.MethodGet, "/recipes/7-curry", nil))
+	if after.Code != http.StatusOK {
+		t.Errorf("after rename back: status = %d, want 200", after.Code)
+	}
+	back := serveOnce(t, fakeRecipes{7: r}, testCatalog(), httptest.NewRequest(http.MethodGet, "/recipes/7-chicken-curry", nil))
+	if back.Code != http.StatusFound || back.Header().Get("Location") != "/recipes/7-curry" {
+		t.Errorf("old canonical after rename back: status = %d, Location = %q", back.Code, back.Header().Get("Location"))
+	}
+}
+
 // A redirect names the title, so it is only given to a caller who can read the
 // recipe: an id the caller cannot see answers 404 with no Location.
 func TestViewRedirectNeverRevealsATitle(t *testing.T) {
@@ -57,13 +78,13 @@ func TestViewRedirectNeverRevealsATitle(t *testing.T) {
 	}
 }
 
-// An HTMX request is redirected like any other: the browser follows a 301
+// An HTMX request is redirected like any other: the browser follows a 302
 // inside the request, so htmx swaps in the canonical page.
 func TestViewRedirectAlsoAnswersHTMX(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/recipes/7?scale=2", nil)
 	req.Header.Set("HX-Request", "true")
 	rec := serveOnce(t, fakeRecipes{7: testRecipe(t)}, testCatalog(), req)
-	if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != "/recipes/7-sponge-cake?scale=2" {
+	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/recipes/7-sponge-cake?scale=2" {
 		t.Errorf("status = %d, Location = %q", rec.Code, rec.Header().Get("Location"))
 	}
 }

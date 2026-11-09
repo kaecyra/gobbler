@@ -194,7 +194,7 @@ func serve(t *testing.T, recipes fakeRecipes, path string) (int, string) {
 func serveRequest(t *testing.T, recipes Recipes, cat Catalog, req *http.Request) *httptest.ResponseRecorder {
 	t.Helper()
 	rec := serveOnce(t, recipes, cat, req)
-	if rec.Code != http.StatusMovedPermanently {
+	if rec.Code != http.StatusFound {
 		return rec
 	}
 	next := httptest.NewRequest(req.Method, rec.Header().Get("Location"), nil).WithContext(req.Context())

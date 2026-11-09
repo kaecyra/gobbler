@@ -251,7 +251,7 @@ func clone(d Deps) http.HandlerFunc {
 			cloned, err := d.Recipes.Get(ctx, caller.FromContext(ctx), newID)
 			return cloned.VideoID, err
 		})
-		// The clone's title is not at hand; the view page completes the slug with a 301.
+		// The clone's title is not at hand; the view page completes the slug with a 302.
 		http.Redirect(w, r, recipepath.View(newID, ""), http.StatusSeeOther)
 	}
 }

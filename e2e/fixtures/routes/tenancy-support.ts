@@ -183,7 +183,7 @@ export async function ok(ctx: APIRequestContext, method: string, path: string, f
 export async function page(ctx: APIRequestContext, path: string): Promise<string> {
   let res = await send(ctx, 'GET', path);
   // The recipe view redirects /recipes/{id} to /recipes/{id}-{slug} (ADR-00047).
-  const to = res.status() === 301 ? res.headers()['location'] : undefined;
+  const to = res.status() === 302 ? res.headers()['location'] : undefined;
   if (to) res = await send(ctx, 'GET', to);
   expect(res.status(), `GET ${path}`).toBe(200);
   return res.text();

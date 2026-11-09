@@ -154,14 +154,14 @@ func handle(d Deps) http.HandlerFunc {
 		// Only after Get has checked access: a redirect names the title, which
 		// a caller who cannot see the recipe must not learn (ADR-00047). The
 		// route answers GET only. An HTMX request is redirected the same way:
-		// the browser follows a 301 inside the request and htmx swaps the
+		// the browser follows a 302 inside the request and htmx swaps the
 		// canonical page.
 		if want := recipepath.Segment(id, rec.Name); chi.URLParam(r, "id") != want {
 			to := recipepath.Prefix + want
 			if r.URL.RawQuery != "" {
 				to += "?" + r.URL.RawQuery
 			}
-			http.Redirect(w, r, to, http.StatusMovedPermanently)
+			http.Redirect(w, r, to, http.StatusFound)
 			return
 		}
 		info, err := d.Recipes.Info(r.Context(), caller.FromContext(r.Context()), id)

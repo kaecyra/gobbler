@@ -37,12 +37,12 @@ The view page is `/recipes/{id}-{slug}`, one path segment, for example
    positive `int64`. After them the segment ends, or has `-` followed by
    anything, which is ignored. No leading digits, digits followed by any other
    character, and overflow answer 404.
-3. **One canonical form.** A GET or HEAD whose segment is not exactly
+3. **One canonical form.** A GET whose segment is not exactly
    `{id}-{slug}` for the current title (the plain `/recipes/42`, a stale slug
-   after a rename, a wrong slug) answers 301 to the canonical URL and keeps the
+   after a rename, a wrong slug) answers 302 to the canonical URL and keeps the
    query string. The recipe is loaded, and the caller's access checked, before
    the redirect: an id that is unknown or not visible to the caller answers 404,
-   so a redirect never discloses a title. An HTMX request gets the same 301;
+   so a redirect never discloses a title. An HTMX request gets the same 302;
    the browser follows it and the page swaps in the canonical response.
 4. **Sub-pages are unchanged.** `/recipes/{id}/edit`, `/picture`, `/journal`,
    `/cook`, `/history`, `/clone` and `/delete` keep a plain numeric id. The slug
@@ -56,15 +56,17 @@ The view page is `/recipes/{id}-{slug}`, one path segment, for example
    URL from an id and a title, builds the plain-id base for sub-pages, and
    reads the segment. Every link to the view page, in a template, a redirect or
    output for an agent, goes through it. Where only the id is at hand, the
-   builder gives the plain form and the 301 completes it.
+   builder gives the plain form and the 302 completes it.
 
 ## Consequences
 
-- A rename changes the canonical URL. Old links keep working through the 301,
+- A rename changes the canonical URL. Old links keep working through the 302,
   and nothing is stored that could fall out of step with the title.
 - A link built without a title costs one redirect; it is never wrong.
-- The permanent redirect is cached by browsers. A cached `/recipes/42` leads to
-  the older slug, which redirects again to the current one.
+- The redirect is temporary because the canonical form follows the title. A
+  browser caches a 301, so after a rename back to an earlier title (a history
+  restore does this) the cached hop and the server would send each other in a
+  loop. A 302 is not cached, and costs one extra request per stale link.
 - Chi's `{id}` parameter of the view route now carries the whole segment, so the
   view route must parse it with the segment reader. Sub-page routes keep
   parsing a plain integer.
@@ -76,7 +78,10 @@ The view page is `/recipes/{id}-{slug}`, one path segment, for example
 1. `internal/recipepath` is the only place that formats or parses the view
    URL: `rg '"/recipes/" \+|"/recipes/%d"' internal --glob '!*_test.go'`
    finds only sub-page paths and the library path.
-2. The view handler answers 404 for an unknown id before it can answer 301, and
+2. The view handler answers 404 for an unknown id before it can answer 302, and
    a handler test proves it.
 3. `docs/design.md` names the URL scheme where it describes the recipe page.
-4. The end-to-end route list names `/recipes/{id}-{slug}` as the view route.
+4. The end-to-end suite requests the view page at `/recipes/{id}-{slug}`, and
+   the route-coverage check's own tests assert that the view route's `{id}`
+   pattern matches that form. The route list itself is walked from chi and
+   names `/recipes/{id}`, since the slug lives inside the one `{id}` segment.

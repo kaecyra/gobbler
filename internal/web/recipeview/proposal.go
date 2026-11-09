@@ -328,7 +328,7 @@ func reject(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("reject proposal: %w", err))
 			return
 		}
-		// The title is not at hand; the view page completes the slug with a 301.
+		// The title is not at hand; the view page completes the slug with a 302.
 		http.Redirect(w, r, recipepath.View(id, ""), http.StatusSeeOther)
 	}
 }

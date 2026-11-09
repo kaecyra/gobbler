@@ -234,12 +234,12 @@ test('a clone shows where it came from, and the original does not', async ({ pag
 
 test('the recipe page lives at /recipes/{id}-{slug}; other forms redirect to it and keep the query', async ({ request, page }) => {
   const plain = await request.get(`/recipes/${id}?scale=2`, { maxRedirects: 0 });
-  expect(plain.status()).toBe(301);
+  expect(plain.status()).toBe(302);
   const canonical = plain.headers()['location'] ?? '';
   expect(canonical).toMatch(new RegExp(`^/recipes/${id}-[a-z0-9-]+\\?scale=2$`));
 
   const stale = await request.get(`/recipes/${id}-no-longer-the-title?scale=2`, { maxRedirects: 0 });
-  expect(stale.status()).toBe(301);
+  expect(stale.status()).toBe(302);
   expect(stale.headers()['location']).toBe(canonical);
 
   expect((await request.get(canonical, { maxRedirects: 0 })).status()).toBe(200);
