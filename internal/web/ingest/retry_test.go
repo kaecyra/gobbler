@@ -88,7 +88,7 @@ func TestRetryFailureShowsErrorKeepsRuleDraftAndStaysSaveable(t *testing.T) { //
 	if !strings.Contains(body, "Apple pie") || strings.Contains(body, "LLM pie") {
 		t.Error("the rule-based draft must be what is shown")
 	}
-	if strings.Contains(body, `class="glitter"`) && strings.Contains(between(t, body, "<h1>", "<form id=\"editor\""), "filled the gaps") {
+	if strings.Contains(body, `class="glitter"`) {
 		t.Error("a failed retry must not be presented as an LLM draft")
 	}
 	// A second look at the pending draft has no partial LLM state.
@@ -162,8 +162,9 @@ func TestReviewMarksLLMSuppliedValues(t *testing.T) { // ADR-00006 obligation 4
 	if !strings.Contains(line, `aria-label="Filled by the LLM"`) || !strings.Contains(line, "butter") {
 		t.Errorf("LLM line not marked: %s", line)
 	}
-	if !strings.Contains(body, "The LLM filled the gaps the rules left") {
-		t.Error("no summary of LLM origin")
+	// The marks say it; no note above the form repeats it.
+	if strings.Contains(body, "filled the gaps") || strings.Contains(body, "review-note") {
+		t.Error("the review screen still carries the LLM review note")
 	}
 	// A rule-based draft carries no marker.
 	g := newFixture(t)

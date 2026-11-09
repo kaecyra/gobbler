@@ -191,8 +191,8 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   on its border, a few drifting outward as they fade. The sparkles carry the
   accessible name: "Filled by the LLM", "Cleared by the LLM" on a field the
   LLM emptied, which keeps its glitter, or "Order suggested by the LLM". A
-  flagged item keeps its grain tint and hint under the glitter. The review
-  note before the form leads with the sparkles icon. Under
+  flagged item keeps its grain tint and hint under the glitter. No note above
+  the form repeats what the marks say. Under
   `prefers-reduced-motion: reduce` nothing moves. The owner chose this look
   from the "H++" option of a glitter mockup.
 

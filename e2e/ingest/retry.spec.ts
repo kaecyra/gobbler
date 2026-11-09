@@ -203,7 +203,8 @@ test('a below-threshold input calls the provider once on its own', async ({ page
   await expect(page.locator('li.line[data-llm]').getByRole('img', { name: 'Filled by the LLM' })).toHaveCount(1);
   await expect(page.getByLabel('Ingredient', { exact: true })).toHaveValue('dragonfruit zest');
   await expect(page.getByLabel('Add this ingredient to the catalog as new and unreviewed')).toBeChecked();
-  await expect(page.getByText('The LLM filled the gaps the rules left')).toBeVisible();
+  // The marks say what the LLM supplied; no note above the form repeats it.
+  await expect(page.getByText('The LLM filled the gaps the rules left')).toHaveCount(0);
 });
 
 test('a below-threshold input with a failing provider keeps the rule draft and shows the error', async ({ page }) => {
