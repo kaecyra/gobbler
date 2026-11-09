@@ -77,6 +77,9 @@ type Catalog interface {
 type Deps struct {
 	Recipes Recipes
 	Catalog Catalog
+	// Pictures is the edit page's picture picker (ADR-00051). Nil leaves the
+	// page without one.
+	Pictures Pictures
 }
 
 // Routes returns the routes of the editor, relative to Pattern.
@@ -85,6 +88,10 @@ func Routes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.show)
 	r.Post("/", h.post)
+	if d.Pictures != nil {
+		r.Post("/picture/search", h.searchPictures)
+		r.Post("/picture/upload", h.uploadPicture)
+	}
 	return r
 }
 
@@ -192,6 +199,11 @@ func (h *handler) post(w http.ResponseWriter, r *http.Request) {
 // with what the user typed and the stored recipe untouched.
 func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base recipe.Recipe, d draft, names lookups) {
 	ctx := r.Context()
+	choice, err := pictureChoice(r.PostForm)
+	if err != nil {
+		layout.WriteError(w, r, err)
+		return
+	}
 	rec, proposals, _, ok, err := h.build(ctx, &d, base)
 	if err != nil {
 		layout.WriteError(w, r, err)
@@ -219,10 +231,22 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		layout.WriteError(w, r, err)
 		return
 	}
-	if d.Proposal != "" {
-		err = h.Recipes.AcceptEdit(ctx, caller.FromContext(ctx), d.Proposal, d.Version, rec)
-	} else {
-		err = h.Recipes.UpdateIfVersion(ctx, caller.FromContext(ctx), id, d.Version, rec)
+	err = h.saveWithPicture(ctx, id, choice, func(ctx context.Context) error {
+		if d.Proposal != "" {
+			return h.Recipes.AcceptEdit(ctx, caller.FromContext(ctx), d.Proposal, d.Version, rec)
+		}
+		return h.Recipes.UpdateIfVersion(ctx, caller.FromContext(ctx), id, d.Version, rec)
+	})
+	if errors.Is(err, apirecipes.ErrOfferGone) {
+		d.Problems = append(d.Problems, offerGone)
+		h.render(w, r, rejectedStatus(r), id, d, names)
+		return
+	}
+	if errors.Is(err, apirecipes.ErrPictureNotApplied) {
+		// The recipe is saved; say so, after keeping its video's preview.
+		h.Recipes.KeepThumbnail(ctx, caller.FromContext(ctx), id, rec.VideoID)
+		layout.WriteError(w, r, fmt.Errorf("save recipe %d: %w", id, err))
+		return
 	}
 	if msg, ok := acceptFailure(err); ok {
 		h.stale(w, r, id, d, names, err, msg)
@@ -278,6 +302,20 @@ func (h *handler) render(w http.ResponseWriter, r *http.Request, status int, id 
 		layout.Render(w, r, status, editorForm(v))
 		return
 	}
+	// The picker sits outside the form, so only a whole page draws it. A form
+	// shown again keeps the picture it chose. A page a search without scripts
+	// sent the browser back to shows that search's outcome and starts none.
+	outcome := r.URL.Query().Get(searchParam)
+	pic, err := h.picture(r.Context(), id, d.SourceURL, r.PostForm.Get(fieldPicture), outcome == "")
+	if err != nil {
+		layout.WriteError(w, r, err)
+		return
+	}
+	if pic != nil {
+		pic.NothingFound = outcome == searchEmpty && len(pic.Offers) == 0
+		pic.SearchFailed = outcome == searchFailed
+	}
+	v.Picture = pic
 	layout.Render(w, r, status, editorPage(v))
 }
 

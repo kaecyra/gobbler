@@ -199,7 +199,7 @@ func TestAvatarRoutesRefuseWhatThePersonMustFix(t *testing.T) {
 		code  int
 		want  string
 	}{
-		"over 5 MB":     {"avatar", bytes.Repeat([]byte{9}, media.MaxUploadBytes+multipartOverhead+10), http.StatusBadRequest, "5 MB"},
+		"over 5 MB":     {"avatar", bytes.Repeat([]byte{9}, media.MaxUploadBytes+layout.MultipartOverhead+10), http.StatusBadRequest, "5 MB"},
 		"not a picture": {"avatar", []byte("text"), http.StatusBadRequest, "JPEG, PNG, GIF, WebP, HEIC or AVIF"},
 		"no file":       {"", nil, http.StatusBadRequest, "Choose a picture"},
 		"wrong field":   {"photo", picture(t), http.StatusBadRequest, "Choose a picture"},

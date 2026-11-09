@@ -1,6 +1,6 @@
 # ADR-00039: A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header
 
-**Status:** Amended by [ADR-00040](00040-loopback-fetches-under-the-dev-bypass.md), [ADR-00050](00050-picture-candidates-fall-back-to-1x.md)
+**Status:** Amended by [ADR-00040](00040-loopback-fetches-under-the-dev-bypass.md), [ADR-00050](00050-picture-candidates-fall-back-to-1x.md), [ADR-00051](00051-edit-page-picture-picker.md)
 
 **Date:** 2026-11-05
 
@@ -164,6 +164,11 @@ Options considered for a recipe with no picture:
   deletion, since what remains is unreachable bytes.
 
 ### Changing a picture later
+
+> Amended by [ADR-00051](00051-edit-page-picture-picker.md): the edit page
+> now offers this operation through a picture picker, and re-find reads the
+> live source page first, falling back to the saved `html` snapshot when the
+> fetch fails.
 
 The server offers one operation on any recipe, with no UI built for it yet. It
 can upload a file as the picture, with the same limits and refusals as an

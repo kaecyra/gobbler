@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { issuerEnv, startIssuer } from '../issuer.mjs';
 import { freePorts } from '../ports.mjs';
 import { DEV, OTHER, OPERATOR, asIdentity } from '../identity';
+import { png } from '../../ingest/helpers';
 
 // Setup and verification for the cross-household specs (*.tenancy.spec.ts). It
 // lives here, not in a spec, on purpose: the route-coverage gate counts the URL
@@ -239,12 +240,17 @@ export interface Ids {
  * issues a household invitation. Returns the ids and codes the probes address.
  */
 export async function populate(dev: APIRequestContext, op: APIRequestContext, recipe: number, shareTo: string): Promise<Ids> {
+  // A picture uploaded on the edit page (ADR-00051) is offered until the save
+  // below chooses it by its ID, which makes it the recipe's picture.
+  const offer = await uploadPicture(dev, recipe);
   // One save through the editor adds what the seed lacks: tags, a line
-  // qualifier, a second step that depends on the first, and equipment used in a
-  // step. It keeps the seeded lines and the first step as they were.
+  // qualifier, a second step that depends on the first, equipment used in a
+  // step, and the picture. It keeps the seeded lines and the first step as
+  // they were.
   await ok(dev, 'POST', `/recipes/${recipe}/edit`, {
     version: '1',
     action: 'save',
+    picture: offer,
     name: 'E2E Shared Pie',
     tags: 'pie, dessert',
     'c.0.name': '',
@@ -269,6 +275,8 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
     'e.0.qty': '1',
     'e.0.step': 'bake',
   });
+  // A second upload stays offered, unsaved.
+  await uploadPicture(dev, recipe);
   // Changing a central ingredient's aisle is stored as the household's own override.
   const onion = lastId(await page(dev, '/catalog?q=onion'), /href="\/catalog\/(\d+)">onion</g, 'central onion');
   await ok(dev, 'POST', `/catalog/${onion}`, { name: 'onion', aisle: 'bakery', aliases: '', density: '', usda_id: '' });
@@ -307,6 +315,21 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   await ok(dev, 'POST', '/household/style', { style: HOUSE_STYLE });
   const key = lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
   return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key, profile: '', personalKey: 0, otherProfile: '' };
+}
+
+/**
+ * Uploads a picture on recipe's edit page, the way the picker's form does
+ * without scripts, and returns the ID the edit page offers it under.
+ */
+async function uploadPicture(ctx: APIRequestContext, recipe: number): Promise<string> {
+  const res = await ctx.fetch(`/recipes/${recipe}/edit/picture/upload`, {
+    method: 'POST', maxRedirects: 0, failOnStatusCode: false, timeout: 5_000,
+    multipart: { file: { name: 'pie.png', mimeType: 'image/png', buffer: png(64, 48, [180, 120, 60]) } },
+  });
+  expect(res.status(), 'upload a picture on the edit page').toBe(303);
+  const offer = (await page(ctx, `/recipes/${recipe}/edit`)).match(/name="picture" value="([A-Za-z0-9_-]{22})"/)?.[1];
+  expect(offer, 'the uploaded picture offered on the edit page').toBeTruthy();
+  return offer!;
 }
 
 /** The address of the profile /profile sends ctx's person to. */
@@ -423,7 +446,7 @@ export const UNPOPULATED: Record<string, string> = {
     'only an MCP tool writes it, with an API key as its bearer credential (e2e/mcp), and populate() drives the HTML pages. ' +
     'Household deletion reaches it through the household_id cascade (TestDeletingAHouseholdDeletesItsKeyWrites in internal/apikey/lookup_test.go).',
   draft_candidates:
-    'no page or tool fetches candidates yet: the picture package (internal/picture) has no handler that fetches them until the review screen node; only serving them exists (internal/web/picture). ' +
+    'only a draft read from a web page has candidates, and the draft populate() ingests is pasted text. ' +
     'Household deletion reaches it through the household_id cascade, and collects its object keys first (TestDeletingAHouseholdDeletesItsPicturesAndCandidates in internal/picture/picture_test.go).',
   oauth_grant_writes:
     'only an MCP tool writes it, with an OAuth access token as its bearer credential (e2e/mcp), and populate() drives the HTML pages. ' +
@@ -431,9 +454,6 @@ export const UNPOPULATED: Record<string, string> = {
   proposal_ingredients:
     'only a draft or edit proposal that names a catalog ingredient writes it, and the draft populate() ingests names none. ' +
     'Household deletion reaches it through the household_id cascade from proposals (internal/store/proposal_test.go).',
-  recipe_pictures:
-    'no page sets a picture yet: the set-picture operation (internal/picture) has no handler until the UI node; only serving the picture exists (internal/web/picture). ' +
-    'Household deletion reaches it through the household_id cascade, and collects its object keys first (TestDeletingAHouseholdDeletesItsPicturesAndCandidates in internal/picture/picture_test.go).',
   recipe_special_times:
     'no web form creates special times: the editor only preserves them and an LLM draft is the only source, which e2e never runs. ' +
     'Deleting a recipe empties the table (internal/store/recipe_test.go), and household deletion reaches it through the same cascade from recipes.',

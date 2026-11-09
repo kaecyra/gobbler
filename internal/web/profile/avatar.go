@@ -3,7 +3,6 @@ package profile
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -24,8 +23,6 @@ import (
 const (
 	// uploadField is the multipart field the picture arrives in.
 	uploadField = "avatar"
-	// multipartOverhead is what a multipart body may add to the picture itself.
-	multipartOverhead = 64 << 10
 )
 
 // AvatarSrc is the address of a profile's uploaded avatar. The key is the
@@ -139,7 +136,7 @@ func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	data, err := readUpload(w, r)
+	data, err := layout.ReadUpload(w, r, uploadField)
 	if err != nil {
 		if !refused(w, r, s, err) {
 			layout.WriteError(w, r, err)
@@ -158,41 +155,6 @@ func (h *handler) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, Pattern+"/"+s.Profile.Address+"/avatar/crop", http.StatusSeeOther)
-}
-
-// readUpload reads the picture from the multipart body, stopping past the limit
-// rather than buffering what the server will refuse.
-func readUpload(w http.ResponseWriter, r *http.Request) ([]byte, error) {
-	r.Body = http.MaxBytesReader(w, r.Body, media.MaxUploadBytes+multipartOverhead)
-	mr, err := r.MultipartReader()
-	if err != nil {
-		return nil, &media.Refusal{Msg: "Choose a picture to upload."}
-	}
-	for {
-		part, err := mr.NextPart()
-		if errors.Is(err, io.EOF) {
-			return nil, &media.Refusal{Msg: "Choose a picture to upload."}
-		}
-		if err != nil {
-			return nil, tooLargeOr(err, &media.Refusal{Msg: "The upload could not be read. Try again."})
-		}
-		if part.FormName() != uploadField {
-			continue
-		}
-		data, err := io.ReadAll(io.LimitReader(part, media.MaxUploadBytes+1))
-		if err != nil {
-			return nil, tooLargeOr(err, &media.Refusal{Msg: "The upload could not be read. Try again."})
-		}
-		return data, nil
-	}
-}
-
-func tooLargeOr(err error, otherwise error) error {
-	var tooBig *http.MaxBytesError
-	if errors.As(err, &tooBig) {
-		return &media.Refusal{Msg: "That file is over 5 MB. Choose a smaller picture."}
-	}
-	return otherwise
 }
 
 // uploadPage is the upload step: a fragment for the dialog to start over with,

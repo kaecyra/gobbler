@@ -143,7 +143,7 @@ func newRouter(d Deps) (*chi.Mux, error) {
 		d.Media = m
 	}
 	if d.Pictures == nil {
-		d.Pictures = apirecipes.NewPictures(d.DB, d.Media, apirecipes.NewStore(d.DB), d.Config.Server.DevAuthBypass, d.Config.Ingestion.UserAgent, d.Logger)
+		d.Pictures = apirecipes.NewPictures(d.DB, d.Media, apirecipes.NewStore(d.DB), d.Config.Ingestion, d.Logger)
 	}
 	if d.Recipes == nil {
 		svc, err := apirecipes.New(apirecipes.Deps{

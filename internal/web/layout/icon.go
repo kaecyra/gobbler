@@ -58,6 +58,7 @@ const (
 	IconSparkles IconName = "sparkles"
 	IconTag      IconName = "tag"
 	IconUp       IconName = "up"
+	IconUpload   IconName = "upload"
 	IconUser     IconName = "user"
 )
 
@@ -112,6 +113,7 @@ var glyphs = map[IconName]glyph{
 	IconSparkles: {body: `<path class="s1" d="M10 3Q10 12 18 12Q10 12 10 21Q10 12 2 12Q10 12 10 3Z"></path><path class="s2" d="M19 1.5Q19 5 22.5 5Q19 5 19 8.5Q19 5 15.5 5Q19 5 19 1.5Z"></path><path class="s3" d="M19.5 16Q19.5 18.5 22 18.5Q19.5 18.5 19.5 21Q19.5 18.5 17 18.5Q19.5 18.5 19.5 16Z"></path>`, filled: true},
 	IconTag:      {body: `<path d="M3 12V4h8l10 10-8 8z"></path><circle cx="7.5" cy="8.5" r="1.2"></circle>`},
 	IconUp:       {body: `<path d="M12 19V5M6 11l6-6 6 6"></path>`, stroke: "1.8"},
+	IconUpload:   {body: `<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"></path>`, stroke: "1.8"},
 	IconUser:     {body: `<circle cx="12" cy="8.5" r="3.5"></circle><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"></path>`},
 }
 

@@ -343,10 +343,12 @@ func (s *Service) Promote(ctx context.Context, proposalID int64, position int, i
 	return key, nil
 }
 
-// Refind runs the candidate step against recipe id's saved html source snapshot
-// and returns what survives, for a choice (Choose). A recipe with no html
-// snapshot, or a page naming no usable image, has no candidates: that is an
-// answer, not an error. Nothing is stored.
+// Refind runs the candidate step against recipe id's source page and returns
+// what survives, for a choice (Choose, Search). The page is fetched live when
+// the service has a page fetcher (WithPages), and is otherwise, or when that
+// fetch fails, the recipe's newest saved html source snapshot (ADR-00051). A
+// recipe with neither, or a page naming no usable image, has no candidates:
+// that is an answer, not an error. Nothing is stored.
 func (s *Service) Refind(ctx context.Context, id int64) ([]Found, error) {
 	hid, err := scope(ctx)
 	if err != nil {
@@ -356,17 +358,14 @@ func (s *Service) Refind(ctx context.Context, id int64) ([]Found, error) {
 	if err != nil {
 		return nil, err
 	}
-	snap, err := s.snapshots.GetSnapshot(ctx, id, store.SnapshotHTML)
-	if errors.Is(err, store.ErrNotFound) {
-		return nil, nil
+	content, page, ok, err := s.sourcePage(ctx, id, page)
+	if err != nil || !ok {
+		return nil, err
 	}
-	if err != nil {
-		return nil, fmt.Errorf("read html snapshot of recipe %d: %w", id, err)
-	}
-	res, err := extract.Extract(snap.Content, page)
+	res, err := extract.Extract(content, page)
 	if err != nil || res.Recipe == nil {
 		if err != nil {
-			s.log.InfoContext(ctx, "re-find found no recipe in the saved page", "recipe_id", id, "error", err.Error())
+			s.log.InfoContext(ctx, "re-find found no recipe in the source page", "recipe_id", id, "error", err.Error())
 		}
 		return nil, nil
 	}

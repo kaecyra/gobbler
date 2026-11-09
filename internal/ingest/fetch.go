@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/netguard"
 )
@@ -40,20 +41,42 @@ func (p *Pipeline) client() HTTPClient {
 
 // fetch returns the body of rawURL and the URL it was finally served from.
 func (p *Pipeline) fetch(ctx context.Context, rawURL string) (body []byte, finalURL string, err error) {
+	return NewPageFetcher(p.client(), p.cfg.UserAgent, p.cfg.FetchTimeout).FetchPage(ctx, rawURL)
+}
+
+// PageFetcher fetches a recipe page the way an import does: an http or https
+// URL only, the configured User-Agent, a timeout, a body that must be a page
+// and no larger than maxPageBytes. The picture search of a saved recipe uses
+// it too (ADR-00051), so there is one page fetch.
+type PageFetcher struct {
+	client    HTTPClient
+	userAgent string
+	timeout   time.Duration
+}
+
+// NewPageFetcher returns a PageFetcher over client, which must be a guarded
+// one (netguard) in production.
+func NewPageFetcher(client HTTPClient, userAgent string, timeout time.Duration) *PageFetcher {
+	return &PageFetcher{client: client, userAgent: userAgent, timeout: timeout}
+}
+
+// FetchPage returns the body of rawURL and the URL it was finally served from.
+// A failure wraps ErrFetch.
+func (f *PageFetcher) FetchPage(ctx context.Context, rawURL string) (body []byte, finalURL string, err error) {
 	u, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return nil, "", fmt.Errorf("%w: %q is not an http or https URL", ErrFetch, rawURL)
 	}
-	ctx, cancel := context.WithTimeout(ctx, p.cfg.FetchTimeout)
+	ctx, cancel := context.WithTimeout(ctx, f.timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: build request for %s: %w", ErrFetch, u, err)
 	}
-	req.Header.Set("User-Agent", p.cfg.UserAgent)
+	req.Header.Set("User-Agent", f.userAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")
 
-	resp, err := p.client().Do(req)
+	resp, err := f.client.Do(req)
 	switch {
 	case errors.Is(err, netguard.ErrBlocked):
 		return nil, "", fmt.Errorf("%w: %s is, or leads to, an address on a private or local network, which gobbler does not fetch from: %w", ErrFetch, u, err)

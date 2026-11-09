@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log/slog"
 
+	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/picture"
@@ -155,9 +156,51 @@ type MediaReaper = picture.Reaper
 func NewReaper(m media.Store, log *slog.Logger) *MediaReaper { return picture.NewReaper(m, log) }
 
 // NewPictures returns the picture service over d and the media store m, which
-// reads recipe sources from rec. allowLoopback lets candidate downloads reach
-// a loopback address, for the dev bypass only; userAgent is what they send
-// (picture.New, picture.NewFetcher).
-func NewPictures(d *sql.DB, m media.Store, rec *Store, allowLoopback bool, userAgent string, log *slog.Logger) *Pictures {
-	return picture.New(d, m, rec, picture.NewFetcher(allowLoopback), log).WithUserAgent(userAgent)
+// reads recipe sources from rec. Its candidate downloads and the live page
+// fetch of a picture search go through the guarded client (ADR-00039,
+// "Fetching"), which reaches loopback only when cfg.AllowLoopbackFetch is set
+// for the dev bypass, and send cfg.UserAgent; the page fetch is the one an
+// import makes, with cfg.FetchTimeout (picture.New, picture.NewFetcher,
+// ingest.PageFetcher, ADR-00051).
+func NewPictures(d *sql.DB, m media.Store, rec *Store, cfg config.Ingestion, log *slog.Logger) *Pictures {
+	client := picture.NewFetcher(cfg.AllowLoopbackFetch)
+	return picture.New(d, m, rec, client, log).WithUserAgent(cfg.UserAgent).
+		WithPages(ingest.NewPageFetcher(client, cfg.UserAgent, cfg.FetchTimeout))
 }
+
+// The pictures offered for a saved recipe on its edit page (ADR-00051).
+type (
+	// Offered is a picture a search found or a person uploaded, named by its
+	// ID (picture.Offered).
+	Offered = picture.Offered
+	// PictureChoice is the edit form's choice of picture (picture.Choice): an
+	// offered picture by its ID, KeepPicture or NoPicture.
+	PictureChoice = picture.Choice
+)
+
+// The edit form's choices that are not an offered picture.
+var (
+	KeepPicture = picture.ChoiceKeep
+	NoPicture   = picture.ChoiceNone
+)
+
+// OfferLifetime is how long an offered picture waits for the edit form to be
+// saved (picture.FoundLifetime).
+const OfferLifetime = picture.FoundLifetime
+
+// The errors of a save with a picture choice: ErrOfferGone is a choice naming
+// a picture no longer offered, refused before anything is written;
+// ErrPictureNotApplied is a picture that could not be set after the recipe
+// was saved.
+var (
+	ErrOfferGone         = picture.ErrOfferGone
+	ErrPictureNotApplied = picture.ErrNotApplied
+)
+
+// ValidOfferID reports whether s has the shape of an offered picture's ID
+// (picture.ValidOfferID).
+func ValidOfferID(s string) bool { return picture.ValidOfferID(s) }
+
+// FindOffer returns the picture of offers whose ID is id, and whether there
+// is one (picture.FindOffer).
+func FindOffer(offers []Offered, id string) (Offered, bool) { return picture.FindOffer(offers, id) }

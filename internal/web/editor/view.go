@@ -25,6 +25,8 @@ type view struct {
 	// Proposal is the summary of the proposed edit under review, shown above the
 	// form; nil for an ordinary edit.
 	Proposal *proposalView
+	// Picture is the edit page's picture picker (ADR-00051); nil draws none.
+	Picture *pictureView
 }
 
 func (v view) reviewing() bool { return v.Review != nil }

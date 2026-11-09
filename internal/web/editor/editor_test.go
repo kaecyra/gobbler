@@ -40,6 +40,10 @@ type env struct {
 	// thumbs stands in for YouTube's image host; no test reaches the network.
 	thumbs *stubThumbs
 	svc    *apirecipes.Service
+	// d and mw are the database and the middleware the routes are mounted
+	// behind, for withPictures to mount them again.
+	d  *sql.DB
+	mw []func(http.Handler) http.Handler
 }
 
 func newEnv(t *testing.T) *env {
@@ -66,7 +70,7 @@ func newEnv(t *testing.T) *env {
 	hh := devHousehold(t, d)
 	authed = household.WithContext(authed, hh)
 	s, c := store.New(d), catalog.New(d)
-	e := &env{t: t, ctx: authed, store: s, cat: c, thumbs: &stubThumbs{}}
+	e := &env{t: t, ctx: authed, store: s, cat: c, thumbs: &stubThumbs{}, d: d, mw: []func(http.Handler) http.Handler{a.Middleware(nil), asMember(hh)}}
 	svc, err := apirecipes.New(apirecipes.Deps{Recipes: s, Catalog: c, Members: household.New(d), Thumbnails: e.thumbs})
 	if err != nil {
 		t.Fatalf("recipes service: %v", err)
@@ -77,7 +81,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("create recipe: %v", err)
 	}
 	r := chi.NewRouter()
-	r.Use(a.Middleware(nil), asMember(hh))
+	r.Use(e.mw...)
 	r.Mount(Pattern, Routes(Deps{Recipes: svc, Catalog: c}))
 	e.h = r
 	return e

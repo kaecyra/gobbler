@@ -3,9 +3,11 @@ import { expect, type Page } from '@playwright/test';
 /**
  * Asserts every control inside scope is at least --tap (44px) tall
  * (docs/ui/design.md): links, buttons, text inputs, selects, textareas,
- * disclosure summaries and the labels that carry a checkbox. It fails when it
- * finds none, so a scope that holds no controls cannot pass by measuring
- * nothing, and returns how many it measured.
+ * disclosure summaries and the labels that carry a checkbox. A visually
+ * hidden input (.sr), such as a picture picker's radio or file input, is
+ * pressed through the label around it, so the label is measured in its place.
+ * It fails when it finds none, so a scope that holds no controls cannot pass
+ * by measuring nothing, and returns how many it measured.
  */
 export async function expectTapTargets(page: Page, scope = 'main'): Promise<number> {
   const result = await page.locator(scope).evaluate((root) => {
@@ -14,7 +16,8 @@ export async function expectTapTargets(page: Page, scope = 'main'): Promise<numb
     );
     const tooSmall: string[] = [];
     let measured = 0;
-    for (const el of controls) {
+    for (const control of controls) {
+      const el = control.matches('input.sr') ? (control.closest('label') ?? control) : control;
       const box = el.getBoundingClientRect();
       if (box.width === 0 && box.height === 0) continue; // not rendered
       measured++;

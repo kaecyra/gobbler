@@ -182,8 +182,17 @@ func TestEveryOperationRefusesANonMember(t *testing.T) {
 			_, err := f.svc.StartReimport(ctx, c, id, nil, apirecipes.Provenance{Person: "ann@example.com"})
 			return err
 		},
-		"PictureKey": func(c apirecipes.Caller) error { _, _, err := f.svc.PictureKey(ctx, c, id); return err },
-		"Candidates": func(c apirecipes.Caller) error { _, err := f.svc.Candidates(ctx, c, one); return err },
+		"PictureKey":   func(c apirecipes.Caller) error { _, _, err := f.svc.PictureKey(ctx, c, id); return err },
+		"Candidates":   func(c apirecipes.Caller) error { _, err := f.svc.Candidates(ctx, c, one); return err },
+		"FindPictures": func(c apirecipes.Caller) error { _, err := f.svc.FindPictures(ctx, c, id); return err },
+		"OfferPicture": func(c apirecipes.Caller) error { _, err := f.svc.OfferPicture(ctx, c, id, nil); return err },
+		"OfferedPictures": func(c apirecipes.Caller) error {
+			_, err := f.svc.OfferedPictures(ctx, c, id)
+			return err
+		},
+		"SaveWithPicture": func(c apirecipes.Caller) error {
+			return f.svc.SaveWithPicture(ctx, c, id, apirecipes.NoPicture, nil)
+		},
 	}
 	callers := map[string]apirecipes.Caller{
 		"zero caller":     {},
