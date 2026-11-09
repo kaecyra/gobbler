@@ -98,7 +98,7 @@ type previewOut struct {
 	MealTypeLLM  bool                `json:"meal_type_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the meal type"`
 	Cuisine      string              `json:"cuisine,omitempty"`
 	CuisineLLM   bool                `json:"cuisine_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the cuisine"`
-	VideoID      string              `json:"video_id,omitempty" jsonschema:"ignored by revise_recipe_draft"`
+	VideoID      string              `json:"video_id,omitempty" jsonschema:"the recipe's YouTube video; revise_recipe_draft refuses a draft whose video_id differs from the held draft's"`
 	Components   []previewComponent  `json:"components"`
 	AuthorNotes  []previewAuthorNote `json:"author_notes,omitempty"`
 	Equipment    []previewEquipment  `json:"equipment,omitempty"`

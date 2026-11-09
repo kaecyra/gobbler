@@ -53,7 +53,7 @@ type draftSummaryOut struct {
 type reviseDraftIn struct {
 	Token    string     `json:"token" jsonschema:"the draft's token"`
 	Revision string     `json:"revision" jsonschema:"the revision get_recipe_draft gave when you read the draft"`
-	Draft    previewOut `json:"draft" jsonschema:"the whole draft as it should be: the draft get_recipe_draft gave, with your changes. Confidences, marks, the parse details and video_id are ignored"`
+	Draft    previewOut `json:"draft" jsonschema:"the whole draft as it should be: the draft get_recipe_draft gave, with your changes. Confidences, marks and the parse details are ignored; video_id must be sent back unchanged"`
 	Reason   string     `json:"reason" jsonschema:"what you changed and why, shown to the person who reviews the draft"`
 }
 
@@ -206,8 +206,12 @@ func (t *tools) reviseRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 
 // revisionOf reads the agent's draft into a revision of held. Minutes equal
 // to the whole minutes held shows keep held's duration, which may have seconds
-// in it.
+// in it. A revision cannot change the video, so a changed video_id is refused
+// rather than dropped.
 func revisionOf(held apiingest.Draft, in previewOut) (apirecipes.DraftRevision, error) {
+	if video := strings.TrimSpace(in.VideoID); video != held.VideoID {
+		return apirecipes.DraftRevision{}, refuse("a revision cannot change video_id: send back %q, the held draft's, and a person can change the video on the review screen", held.VideoID)
+	}
 	minutes := func(heldDur time.Duration, m int) time.Duration {
 		if m == int(heldDur.Minutes()) {
 			return heldDur

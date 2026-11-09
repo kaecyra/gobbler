@@ -257,6 +257,23 @@ func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 	}
 }
 
+// A revision cannot change the video, and says so rather than dropping it.
+func TestReviseRecipeDraftRefusesAChangedVideo(t *testing.T) {
+	s := newSiteDrafting(t, config.MCP{Rate: 100, Burst: 100}, nil, true)
+	secret, _ := s.personalKey("ann@example.com")
+	token := importForRevision(t, s, secret)
+	held := readDraft(t, s, secret, token)
+	held.Recipe["video_id"] = "dQw4w9WgXcQ"
+	held.Recipe["name"] = map[string]any{"value": "Video pie"}
+	msg := call(t, s.connect(secret), "revise_recipe_draft", map[string]any{"token": token, "revision": held.Revision, "draft": held.Recipe, "reason": "video"}, nil)
+	if !strings.Contains(msg, "cannot change video_id") {
+		t.Errorf("a changed video_id = %q, want a refusal naming it", msg)
+	}
+	if d, _ := s.draft(s.smiths, "ann@example.com", token); d.Name.Value != "Pie" || d.VideoID != "" {
+		t.Errorf("the refused revision changed the draft: name %q, video %q", d.Name.Value, d.VideoID)
+	}
+}
+
 // A step's depends_on must name another step of the revision.
 func TestReviseRecipeDraftRefusesADependencyOnNoStep(t *testing.T) {
 	s := newSiteDrafting(t, config.MCP{Rate: 100, Burst: 100}, nil, true)
