@@ -156,6 +156,13 @@ func TestPreviewOfAURLIsTheDraftAnImportHolds(t *testing.T) {
 	if msg := call(t, s.connect(secret), "preview_import", map[string]any{"url": p.url()}, &got); msg != "" {
 		t.Fatal(msg)
 	}
+	// The import just held is reported beside the draft as a pending draft
+	// from the same address (TestPreviewReportsWhatTheHouseholdHoldsFromTheAddress);
+	// it is not part of the draft.
+	if _, ok := got["pending_drafts"]; !ok {
+		t.Error("the preview did not report the held import from the same address")
+	}
+	delete(got, "pending_drafts")
 	if want := asMap(t, mcp.PreviewOf(held)); !reflect.DeepEqual(got, want) {
 		t.Errorf("preview differs from the held import:\n preview: %v\n import:  %v", got, want)
 	}

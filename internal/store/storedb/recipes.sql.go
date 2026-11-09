@@ -757,6 +757,44 @@ func (q *Queries) ListRecipeTags(ctx context.Context, arg ListRecipeTagsParams) 
 	return items, nil
 }
 
+const listSourcedRecipes = `-- name: ListSourcedRecipes :many
+SELECT id, name, source_url FROM recipes
+WHERE household_id = ?1 AND source_url != ''
+ORDER BY id
+`
+
+type ListSourcedRecipesRow struct {
+	ID        int64
+	Name      string
+	SourceUrl string
+}
+
+// The household's recipes that have a source address, for the duplicate check
+// of an import (ADR-00048). The caller compares the addresses
+// (SourceAddress).
+func (q *Queries) ListSourcedRecipes(ctx context.Context, householdID int64) ([]ListSourcedRecipesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSourcedRecipes, householdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSourcedRecipesRow
+	for rows.Next() {
+		var i ListSourcedRecipesRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.SourceUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSpecialTimes = `-- name: ListSpecialTimes :many
 SELECT label, duration_ns FROM recipe_special_times WHERE recipe_id = ? AND household_id = ? ORDER BY position
 `

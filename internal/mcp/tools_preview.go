@@ -119,6 +119,13 @@ type previewOut struct {
 	Note                  string   `json:"note"`
 }
 
+// previewImportOut is what preview_import returns: the draft, and for a url
+// what the household already holds from it.
+type previewImportOut struct {
+	previewOut
+	sameSourceOut
+}
+
 const previewNote = "This is a preview. Nothing was saved or held, and no draft is waiting for review. Use import_recipe to leave a draft for a person."
 
 func (t *tools) registerPreview(s *mcp.Server) {
@@ -126,33 +133,43 @@ func (t *tools) registerPreview(s *mcp.Server) {
 		Name: "preview_import",
 		Description: "Show what importing a recipe would produce, without saving or holding anything. Give a web page address, " +
 			"or a saved recipe's id to read its original imported page again with no fetch, to compare with the saved recipe from get_recipe. " +
-			"Every field carries the confidence it was read with and whether the LLM supplied it.",
+			"Every field carries the confidence it was read with and whether the LLM supplied it. " +
+			"Given an address, it also lists the household's saved recipes and pending drafts from the same address.",
 		Annotations: readOnly,
 	}, t.previewImport)
 }
 
-func (t *tools) previewImport(ctx context.Context, _ *mcp.CallToolRequest, in previewIn) (*mcp.CallToolResult, previewOut, error) {
+func (t *tools) previewImport(ctx context.Context, _ *mcp.CallToolRequest, in previewIn) (*mcp.CallToolResult, previewImportOut, error) {
 	const tool = "preview_import"
 	rawURL := strings.TrimSpace(in.URL)
 	switch {
 	case (rawURL == "") == (in.RecipeID == 0):
-		return nil, previewOut{}, refuse("give either url or recipe_id, not both and not neither")
+		return nil, previewImportOut{}, refuse("give either url or recipe_id, not both and not neither")
 	case in.RecipeID < 0:
-		return nil, previewOut{}, refuse("give the recipe's id")
+		return nil, previewImportOut{}, refuse("give the recipe's id")
 	case rawURL != "":
 		if err := checkPageURL(rawURL); err != nil {
-			return nil, previewOut{}, err
+			return nil, previewImportOut{}, err
 		}
 	}
 	p, err := t.Previewer.Preview(ctx, apiingest.PreviewSource{URL: rawURL, RecipeID: in.RecipeID})
 	if errors.Is(err, apiingest.ErrNoPageSnapshot) {
-		return nil, previewOut{}, refuse("%s", apiingest.ErrNoPageSnapshot)
+		return nil, previewImportOut{}, refuse("%s", apiingest.ErrNoPageSnapshot)
 	}
 	if err != nil {
-		return nil, previewOut{}, t.toolError(ctx, tool, err)
+		return nil, previewImportOut{}, t.toolError(ctx, tool, err)
 	}
-	out := previewOf(p.Draft)
+	out := previewImportOut{previewOut: previewOf(p.Draft)}
 	out.SnapshotParserVersion = p.SnapshotParserVersion
+	if rawURL != "" {
+		rc, err := recipeCaller(ctx)
+		if err != nil {
+			return nil, previewImportOut{}, t.toolError(ctx, tool, err)
+		}
+		if out.sameSourceOut, err = t.sameSource(ctx, rc, rawURL); err != nil {
+			return nil, previewImportOut{}, t.toolError(ctx, tool, err)
+		}
+	}
 	return nil, out, nil
 }
 

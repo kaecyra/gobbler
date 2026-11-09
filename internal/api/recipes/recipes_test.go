@@ -153,6 +153,10 @@ func TestEveryOperationRefusesANonMember(t *testing.T) {
 			return f.svc.AcceptEdit(ctx, c, "tok", one, sample("Accepted"))
 		},
 		"DraftsFull": func(c apirecipes.Caller) error { _, err := f.svc.DraftsFull(ctx, c); return err },
+		"SameSource": func(c apirecipes.Caller) error {
+			_, err := f.svc.SameSource(ctx, c, "https://example.com/bread")
+			return err
+		},
 		"AddDraft": func(c apirecipes.Caller) error {
 			_, err := f.svc.AddDraft(ctx, c, ingest.Draft{}, apirecipes.Provenance{Person: "ann@example.com"})
 			return err
@@ -160,6 +164,11 @@ func TestEveryOperationRefusesANonMember(t *testing.T) {
 		"GetDraft":     func(c apirecipes.Caller) error { _, err := f.svc.GetDraft(ctx, c, "tok"); return err },
 		"ReplaceDraft": func(c apirecipes.Caller) error { return f.svc.ReplaceDraft(ctx, c, "tok", ingest.Draft{}) },
 		"DiscardDraft": func(c apirecipes.Caller) error { return f.svc.DiscardDraft(ctx, c, "tok") },
+		"ReviseDraft": func(c apirecipes.Caller) error {
+			_, err := f.svc.ReviseDraft(ctx, c, "tok", "rev", apirecipes.DraftRevision{}, "because")
+			return err
+		},
+		"PendingDrafts": func(c apirecipes.Caller) error { _, err := f.svc.PendingDrafts(ctx, c); return err },
 		"ChoosePicture": func(c apirecipes.Caller) error {
 			return f.svc.ChoosePicture(ctx, c, "tok", ingest.PictureNone)
 		},

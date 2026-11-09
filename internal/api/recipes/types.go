@@ -113,7 +113,18 @@ type (
 	RevisedEquipment = ingest.RevisedEquipment
 	// DraftSummary is a pending draft as an agent lists it (store.DraftSummary).
 	DraftSummary = store.DraftSummary
+	// SourcedRecipe is a recipe named by the address it was imported from
+	// (store.SourcedRecipe).
+	SourcedRecipe = store.SourcedRecipe
 )
+
+// SameSource is what the household already holds from one source address: its
+// saved recipes and its pending drafts, re-imports included, whose address is
+// the same once fragments are dropped (store.SourceAddress, ADR-00048).
+type SameSource struct {
+	Recipes []SourcedRecipe
+	Drafts  []DraftSummary
+}
 
 // Reaper finds and deletes the media objects of a recipe and of the drafts
 // that name it (picture.Reaper). With it the service removes a deleted

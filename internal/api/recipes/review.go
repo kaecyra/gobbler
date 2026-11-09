@@ -6,6 +6,7 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // This file is what waits for a person to review: a proposed edit to a saved
@@ -132,6 +133,35 @@ func (s *Service) PendingDrafts(ctx context.Context, c Caller) ([]DraftSummary, 
 		return nil, err
 	}
 	return s.drafts.Pending(ctx)
+}
+
+// SameSource lists the household's saved recipes and pending drafts whose
+// source address is sourceURL's, fragments ignored, for an import or preview
+// to report (ADR-00048). It reports and refuses nothing. The drafts are read
+// from PendingDrafts' list, the one read of drafts' source addresses.
+func (s *Service) SameSource(ctx context.Context, c Caller, sourceURL string) (SameSource, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return SameSource{}, err
+	}
+	var out SameSource
+	if out.Recipes, err = s.recipes.RecipesFromSource(ctx, sourceURL); err != nil {
+		return SameSource{}, err
+	}
+	addr := store.SourceAddress(sourceURL)
+	if addr == "" {
+		return out, nil
+	}
+	pending, err := s.drafts.Pending(ctx)
+	if err != nil {
+		return SameSource{}, err
+	}
+	for _, d := range pending {
+		if store.SourceAddress(d.SourceURL) == addr {
+			out.Drafts = append(out.Drafts, d)
+		}
+	}
+	return out, nil
 }
 
 // DiscardDraft drops the draft held under token with its picture candidates.

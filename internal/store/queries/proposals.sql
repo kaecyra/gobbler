@@ -96,8 +96,9 @@ UPDATE proposals SET state = 'superseded', state_at = sqlc.arg(state_at)
 WHERE recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id) AND kind = 'edit' AND state = 'pending';
 
 -- The household's pending ingestion drafts, re-imports included, oldest first,
--- for an agent to list (ADR-00048). The name and source address are read from
--- the draft document, where the draft codec writes them.
+-- for an agent to list and for an import's duplicate check (ADR-00048). The
+-- name and source address are read from the draft document, where the draft
+-- codec writes them.
 -- name: ListPendingDrafts :many
 SELECT token, CAST(COALESCE(json_extract(document, '$.name.v'), '') AS TEXT) AS name,
     CAST(COALESCE(json_extract(document, '$.source_url'), '') AS TEXT) AS source_url,
