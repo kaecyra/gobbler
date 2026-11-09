@@ -48,7 +48,7 @@ func TestReviewOffersNoControlTheDraftCannotKeep(t *testing.T) {
 	}
 }
 
-func TestReviewFlagsLowConfidenceAndLLMItemsInWords(t *testing.T) {
+func TestReviewFlagsLowConfidenceInWordsAndNamesLLMItems(t *testing.T) {
 	f := newFixture(t)
 	f.drafter.draft.Equipment[2].FromLLM = true
 	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
@@ -316,6 +316,10 @@ func TestCancelIsAButtonOfItsOwnForm(t *testing.T) {
 	}
 }
 
+// lowName finds the name's field carrying the low class, whatever other
+// classes it has.
+var lowName = regexp.MustCompile(`class="fl[^"]*\blow\b[^"]*"><label for="f-name">`)
+
 // A draft put back after a failed save is what the user left: their edits and
 // the flags the rules and the LLM raised, which the next GET shows again
 // (ADR-00006 obligation 4).
@@ -350,7 +354,7 @@ func TestDraftPutBackAfterAFailedSaveKeepsEditsAndFlags(t *testing.T) {
 			if !strings.Contains(items(body, "equipment")[2], `class="glitter"`) {
 				t.Error("the equipment lost its LLM mark")
 			}
-			if !strings.Contains(body, `<div class="fl low"><label for="f-name">`) {
+			if !lowName.MatchString(body) || !strings.Contains(between(t, body, `<label for="f-name">`, "</div>"), "Check:") {
 				t.Error("the name lost its flag")
 			}
 		})

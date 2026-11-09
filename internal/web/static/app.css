@@ -153,7 +153,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* The sparkles: each star twinkles out of step with the others. */
 .spk { display: inline-block; flex: none; width: 20px; height: 20px; }
 .spk svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.spk path { fill: url(#spark-grad); transform-box: fill-box; transform-origin: center; }
+.spk path { fill: url(#spark-grad) currentColor; transform-box: fill-box; transform-origin: center; }
 .spk .s1 { animation: spk-twinkle 2.4s ease-in-out infinite; }
 .spk .s2 { animation: spk-twinkle 2.4s ease-in-out 0.8s infinite; }
 .spk .s3 { animation: spk-twinkle 2.4s ease-in-out 1.6s infinite; }
@@ -164,18 +164,10 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 
 /* A field the LLM filled: a shimmer border turning round it, a sheen across
    it, the sparkles on its top-right corner and eleven glints flickering on
-   its border, a few drifting outward as they fade. */
+   its border, a few drifting outward as they fade. The field's own skin is
+   drawn by the editor (editor.templ), whose field rules it must outrank. */
 @property --ang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
 .glitter { position: relative; display: block; min-width: 0; }
-.glitter > input, .glitter > textarea, .glitter > select, .glitter > .pair > input {
-  border: 1.5px solid transparent !important;
-  background:
-    linear-gradient(110deg, transparent 35%, var(--sheen) 50%, transparent 65%) padding-box,
-    linear-gradient(var(--card), var(--card)) padding-box,
-    conic-gradient(from var(--ang), var(--spark-a), var(--spark-b), var(--spark-c), var(--spark-a)) border-box !important;
-  background-size: 300% 100%, auto, auto !important;
-  animation: glitter-spin 4s linear infinite, glitter-sweep 3.6s ease-in-out infinite;
-}
 @keyframes glitter-spin { to { --ang: 360deg; } }
 @keyframes glitter-sweep {
   0% { background-position: 120% 0, 0 0, 0 0; }
@@ -216,8 +208,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3) rotate(90deg); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .spk path:nth-child(n), .glitter > .gl:nth-of-type(n),
-  .glitter > input, .glitter > textarea, .glitter > select, .glitter > .pair > input { animation: none; }
+  .spk path:nth-child(n), .glitter > .gl:nth-of-type(n) { animation: none; }
 }
 
 /* ---- header ---- */

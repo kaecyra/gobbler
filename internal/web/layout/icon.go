@@ -61,9 +61,9 @@ const (
 	IconUser     IconName = "user"
 )
 
-// lineGlyph is one drawing. Most share the default line; a few were drawn heavier,
+// glyph is one drawing. Most share the default line; a few were drawn heavier,
 // at a fixed size, or with square ends where they sit, and keep that look.
-type lineGlyph struct {
+type glyph struct {
 	body string
 	// stroke is the line width, "1.75" when empty.
 	stroke string
@@ -75,7 +75,7 @@ type lineGlyph struct {
 	filled bool
 }
 
-var lineGlyphs = map[IconName]lineGlyph{
+var glyphs = map[IconName]glyph{
 	IconAlert:    {body: `<path d="M12 3.5 21.5 20h-19zM12 10v4.5M12 17.5v.01"></path>`},
 	IconBack:     {body: `<path d="M15 5l-7 7 7 7"></path>`, stroke: "2"},
 	IconBasket:   {body: `<path d="M3 10h18l-2 10H5zM8 10l3-6M16 10l-3-6M9 14v3M12 14v3M15 14v3"></path>`},
@@ -119,17 +119,17 @@ var lineGlyphs = map[IconName]lineGlyph{
 // nothing, so a typo shows up as an error and not as a missing picture.
 func Icon(n IconName) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		g, ok := lineGlyphs[n]
+		g, ok := glyphs[n]
 		if !ok {
 			return fmt.Errorf("icon %q is not in the set", n)
 		}
-		_, err := io.WriteString(w, lineSVG(g))
+		_, err := io.WriteString(w, iconSVG(g))
 		return err
 	})
 }
 
-// lineSVG is the whole drawing. Every part is a constant of this package.
-func lineSVG(g lineGlyph) string {
+// iconSVG is the whole drawing. Every part is a constant of this package.
+func iconSVG(g glyph) string {
 	stroke := g.stroke
 	if stroke == "" {
 		stroke = "1.75"
