@@ -122,6 +122,7 @@ test('every mascot drawing is served as an SVG revalidated by its ETag', async (
     'gob-herbs',
     'gob-full-pie',
     'gob-tasting',
+    'gob-wink',
   ]) {
     const res = await request.get(`/static/img/${name}.svg`);
     expect(res.status(), name).toBe(200);
