@@ -120,8 +120,8 @@ test('an import carries no re-import callout and no Keep current picture; its re
   await expect(picker(p).getByText('Keep current picture')).toHaveCount(0);
   await picker(p).locator('.pick', { hasText: '1024 × 341' }).click();
   await confirm(p).click();
-  await expect(p).toHaveURL(/\/recipes\/\d+$/);
-  recipeId = p.url().match(/\/recipes\/(\d+)$/)![1]!;
+  await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
+  recipeId = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1]!;
   // ADR-00042 obligation 9: the button is among the action links, after Share and above Delete.
   const button = p.getByTestId('reimport-button');
   await expect(button).toHaveText('Re-import from source');
@@ -143,8 +143,8 @@ test('a recipe with no source URL has no button', async ({ page: p }) => {
   await p.getByRole('button', { name: 'Read recipe' }).click();
   await expect(p).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await confirm(p).click();
-  await expect(p).toHaveURL(/\/recipes\/\d+$/);
-  typedId = p.url().match(/\/recipes\/(\d+)$/)![1]!;
+  await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
+  typedId = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1]!;
   await expect(p.getByTestId('reimport-button')).toHaveCount(0);
   await expect(p.getByText('Re-import from source')).toHaveCount(0);
 });
@@ -194,11 +194,11 @@ test('after the recipe is edited the banner says it changed and offers Discard; 
   await p.goto(`/recipes/${recipeId}/edit`);
   await p.getByLabel('Name', { exact: true }).fill('Edited Toast');
   await p.getByRole('button', { name: 'Save recipe' }).first().click();
-  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}$`));
+  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   await expect(p.getByTestId('reimport-stale')).toContainText('The recipe changed since the re-import');
   await expect(p.getByTestId('reimport-review')).toHaveCount(0);
   await p.getByTestId('reimport-discard').click();
-  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}$`));
+  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   await expect(p.getByTestId('reimport-banner')).toHaveCount(0);
   await expect(p.getByRole('heading', { name: 'Edited Toast' })).toBeVisible();
 });
@@ -210,7 +210,7 @@ test('saving a re-import with the default replaces the recipe, keeps its picture
   await p.getByTestId('reimport-button').click();
   await expect(p).toHaveURL(/\/ingest\/[0-9a-f]+$/);
   await confirm(p).click();
-  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}$`));
+  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   await expect(p.getByRole('heading', { name: 'Reimport Toast, read again' })).toBeVisible();
   expect(await pictureSrc(p)).toBe(before);
   await expect(p.getByTestId('reimport-banner')).toHaveCount(0);
@@ -224,7 +224,7 @@ test('saving a re-import with the default replaces the recipe, keeps its picture
   // The library still holds two recipes, the imported one and the typed one: a re-import made no second.
   await p.goto('/recipes');
   const hrefs = await p.locator('main a[href^="/recipes/"]').evaluateAll((as) =>
-    [...new Set(as.map((a) => a.getAttribute('href')).filter((h) => /^\/recipes\/\d+$/.test(h ?? '')))]);
+    [...new Set(as.map((a) => a.getAttribute('href')).filter((h) => /^\/recipes\/\d+(?:-[a-z0-9-]*)?$/.test(h ?? '')).map((h) => h!.replace(/^(\/recipes\/\d+).*$/, '$1')))]);
   expect(hrefs.sort()).toEqual([`/recipes/${recipeId}`, `/recipes/${typedId}`].sort());
 });
 
@@ -234,7 +234,7 @@ test('choosing a candidate replaces the picture', async ({ page: p }) => {
   await p.getByTestId('reimport-button').click();
   await picker(p).locator('.pick', { hasText: '1024 × 576' }).click();
   await confirm(p).click();
-  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}$`));
+  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   const after = await pictureSrc(p);
   expect(after).not.toBe(before);
   expect((await p.request.get(after)).status()).toBe(200);
@@ -245,7 +245,7 @@ test('No picture removes the picture', async ({ page: p }) => {
   await p.getByTestId('reimport-button').click();
   await picker(p).locator('.pick.none').click();
   await confirm(p).click();
-  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}$`));
+  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   expect((await p.request.get(`/recipes/${recipeId}/picture`)).status()).toBe(404);
 });
 
@@ -253,7 +253,7 @@ test('cancelling a re-import returns to the recipe and leaves it as it was', asy
   await p.goto(`/recipes/${recipeId}`);
   await p.getByTestId('reimport-button').click();
   await p.getByRole('button', { name: 'Cancel' }).first().click();
-  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}$`));
+  await expect(p).toHaveURL(new RegExp(`/recipes/${recipeId}(?:-[a-z0-9-]*)?$`));
   await expect(p.getByTestId('reimport-banner')).toHaveCount(0);
 });
 

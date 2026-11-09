@@ -270,8 +270,8 @@ func TestHTMXFormIsAFragmentAndConfirmRedirectsWithAHeader(t *testing.T) {
 		t.Errorf("rejected htmx form: status = %d, body = %s", code, body)
 	}
 	code, _, redirect := post(reviewForm())
-	if code != http.StatusOK || redirect != "/recipes/1" {
-		t.Errorf("confirmed htmx form: status = %d HX-Redirect = %q, want 200 /recipes/1", code, redirect)
+	if code != http.StatusOK || redirect != "/recipes/1-apple-pie" {
+		t.Errorf("confirmed htmx form: status = %d HX-Redirect = %q, want 200 /recipes/1-apple-pie", code, redirect)
 	}
 }
 

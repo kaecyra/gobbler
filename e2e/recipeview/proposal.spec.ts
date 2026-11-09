@@ -80,7 +80,7 @@ async function editInEditor(page: Page, id: number, description: string) {
   await page.goto(`/recipes/${id}/edit`);
   await page.locator('[name="description"]').fill(description);
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
 }
 
 test('a pending proposal is marked in place with its old and new values', async ({ page }) => {
@@ -147,7 +147,7 @@ test('Reject turns the proposal down and leaves the recipe unchanged', async ({ 
   await page.goto(`/recipes/${id}`);
   await expect(page.getByTestId('proposal-reject').locator('xpath=ancestor::form')).toHaveAttribute('action', `/recipes/${id}/proposal/reject`);
   await page.getByTestId('proposal-reject').click();
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByTestId('proposal-banner')).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Reject Loaf');
   await expect(page.getByText('Mix the dough.')).toBeVisible();
@@ -195,7 +195,7 @@ test('the editor opens the proposal pre-filled with a summary, and saving it rec
   // The person changes the proposal before saving; saving is an ordinary save.
   await page.locator('[name="description"]').fill('Edited by the person.');
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByTestId('proposal-banner')).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Accept Loaf Revised');
   await expect(page.getByText('Edited by the person.')).toBeVisible();
@@ -220,7 +220,7 @@ test('restoring the version a proposal replaced round-trips the whole recipe', a
   const { recipe: id, token } = seeded.restore;
   await page.goto(`/recipes/${id}/edit?proposal=${token}`);
   await save(page);
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Restore Loaf Revised');
   // The current version came from the proposal, and history says so.
   await page.goto(`/recipes/${id}/history`);

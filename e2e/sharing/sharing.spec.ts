@@ -139,8 +139,8 @@ test('accepting makes an independent copy without the sender private data or ove
   await page.goto('/shares');
   await page.getByTestId('share').first().getByRole('button', { name: 'Accept E2E Shared Pie' }).click();
 
-  await expect(page).toHaveURL(/\/recipes\/\d+$/);
-  const copyId = page.url().split('/').pop();
+  await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
+  const copyId = page.url().split('/').pop()!.replace(/-.*$/, '');
   await expect(page.getByRole('heading', { name: 'E2E Shared Pie', level: 1 })).toBeVisible();
   await expect(page.getByText('3 e2e sender fruit')).toBeVisible();
   expect(copyId).not.toBe(String(recipeId));

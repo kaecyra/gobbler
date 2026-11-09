@@ -146,7 +146,7 @@ test('scaling by a preset swaps the recipe in place and keeps the URL shareable'
   await expect(page.getByText('6 e2e egg')).toBeVisible();
   await expect(page.getByText('1 e2e bay leaf')).toBeVisible();
   await expect(page.getByTestId('servings')).toHaveText('12');
-  await expect(page).toHaveURL(`/recipes/${id}?scale=3`);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?\\?scale=3$`));
 
   // The URL alone reproduces the state.
   await page.reload();
@@ -170,7 +170,7 @@ test('unit modes convert the view and combine with scaling', async ({ page }) =>
   await expect(page.getByText('160 g e2e flour')).toBeVisible();
   await expect(page.getByText('79 ml e2e sugar')).toBeVisible();
   await page.getByRole('link', { name: '2×' }).click();
-  await expect(page).toHaveURL(`/recipes/${id}?scale=2&units=weight`);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?\\?scale=2&units=weight$`));
   await expect(page.getByText('315 g e2e flour')).toBeVisible();
   await page.getByRole('link', { name: 'As written' }).click();
   await expect(page.getByText('2 2/3 cup e2e flour')).toBeVisible();
@@ -183,7 +183,7 @@ test('a servings value that cannot be used shows a message in place', async ({ p
   await expect(page.getByTestId('view-error')).toContainText('cannot be used');
   // The recipe stays on screen and the bad value does not reach the address bar.
   await expect(page.getByText('1 1/3 cup e2e flour')).toBeVisible();
-  await expect(page).toHaveURL(`/recipes/${id}`);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
 });
 
 test('a missing recipe is a 404 page', async ({ page }) => {
@@ -229,14 +229,33 @@ test('a clone shows where it came from, and the original does not', async ({ pag
   await page.goto(`/recipes/${cloneId}`);
   await expect(page.getByTestId('origin')).toContainText(`recipe ${id}`);
   await page.getByTestId('origin').getByRole('link', { name: /^recipe / }).click();
-  await expect(page).toHaveURL(`/recipes/${id}`);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
+});
+
+test('the recipe page lives at /recipes/{id}-{slug}; other forms redirect to it and keep the query', async ({ request, page }) => {
+  const plain = await request.get(`/recipes/${id}?scale=2`, { maxRedirects: 0 });
+  expect(plain.status()).toBe(302);
+  const canonical = plain.headers()['location'] ?? '';
+  expect(canonical).toMatch(new RegExp(`^/recipes/${id}-[a-z0-9-]+\\?scale=2$`));
+
+  const stale = await request.get(`/recipes/${id}-no-longer-the-title?scale=2`, { maxRedirects: 0 });
+  expect(stale.status()).toBe(302);
+  expect(stale.headers()['location']).toBe(canonical);
+
+  expect((await request.get(canonical, { maxRedirects: 0 })).status()).toBe(200);
+  expect((await request.get(`/recipes/${id}abc`, { maxRedirects: 0 })).status()).toBe(404);
+  expect((await request.get('/recipes/999999-anything', { maxRedirects: 0 })).status()).toBe(404);
+
+  // The browser ends on the canonical address, whichever form it asked for.
+  await page.goto(`/recipes/${id}`);
+  await expect(page).toHaveURL(new RegExp(`/recipes/${id}-[a-z0-9-]+$`));
 });
 
 test('the Clone button makes a new recipe that points back at this one', async ({ page }) => {
   await page.goto(`/recipes/${id}`);
   await page.getByTestId('clone-button').click();
-  await expect(page).not.toHaveURL(`/recipes/${id}`);
-  await expect(page).toHaveURL(/\/recipes\/\d+$/);
+  await expect(page).not.toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
+  await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByTestId('origin')).toContainText(`recipe ${id}`);
 });
 
@@ -363,7 +382,7 @@ test('saving a recipe with a video stores the thumbnail the image host served', 
   await page.goto(`/recipes/${laterId}/edit`);
   await page.locator('[name="video"]').fill('https://youtu.be/aqz-KE-bpKQ');
   await page.getByRole('button', { name: 'Save recipe' }).first().click();
-  await expect(page).toHaveURL(new RegExp(`/recipes/${laterId}$`));
+  await expect(page).toHaveURL(new RegExp(`/recipes/${laterId}(?:-[a-z0-9-]*)?$`));
   const res = await request.get(`/recipes/${laterId}/video/thumbnail`);
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toBe('image/jpeg');

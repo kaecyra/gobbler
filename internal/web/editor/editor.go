@@ -25,6 +25,7 @@ import (
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -236,7 +237,7 @@ func (h *handler) save(w http.ResponseWriter, r *http.Request, id int64, base re
 		return
 	}
 	h.Recipes.KeepThumbnail(ctx, caller.FromContext(ctx), id, rec.VideoID)
-	to := recipePath(id)
+	to := recipepath.View(id, rec.Name)
 	if FromHTMX(r) {
 		w.Header().Set("HX-Redirect", to)
 		w.WriteHeader(http.StatusOK)
@@ -323,6 +324,4 @@ func recipeID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 // the page instead of loading it.
 func FromHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 
-func recipePath(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }
-
-func editPath(id int64) string { return recipePath(id) + "/edit" }
+func editPath(id int64) string { return recipepath.Base(id) + "/edit" }

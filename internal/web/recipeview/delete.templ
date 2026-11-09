@@ -1,6 +1,9 @@
 package recipeview
 
-import "github.com/kaecyra/gobbler/internal/web/layout"
+import (
+	"github.com/kaecyra/gobbler/internal/recipepath"
+	"github.com/kaecyra/gobbler/internal/web/layout"
+)
 
 // deleteView is the confirmation page of a recipe's deletion.
 type deleteView struct {
@@ -13,7 +16,7 @@ type deleteView struct {
 const deleteScriptPath = "/static/recipe-delete.js"
 
 // deleteHref is the confirmation page of recipe id's deletion.
-func deleteHref(id int64) string { return recipePath(id) + "/delete" }
+func deleteHref(id int64) string { return recipepath.Base(id) + "/delete" }
 
 // deletePage names the recipe and what goes with it, and enables the final
 // button only once the word is typed. The server checks the word as well:
@@ -41,7 +44,7 @@ templ deletePage(v deleteView) {
 				<label><span>Type <strong>DELETE</strong> to confirm</span> <input type="text" name="confirm" required autocomplete="off" data-testid="delete-input"/></label>
 				<div class="actions">
 					<button type="submit" class="btn danger" disabled data-testid="delete-submit">Delete</button>
-					<a href={ templ.SafeURL(recipePath(v.ID)) } class="btn" data-testid="delete-cancel">Cancel</a>
+					<a href={ templ.SafeURL(recipepath.View(v.ID, v.Name)) } class="btn" data-testid="delete-cancel">Cancel</a>
 				</div>
 			</form>
 			<script src={ deleteScriptPath } defer></script>

@@ -61,6 +61,7 @@ index below in the same commit.
 | [00044](00044-author-note-length-flagged.md) | An author note's length is flagged on review, never refused | Accepted |
 | [00045](00045-author-notes-apart-from-steps.md) | Author notes sit apart from the step chain, with no connector lines | Accepted |
 | [00046](00046-markdown-in-steps.md) | Step text and author notes render a safe markdown subset | Accepted |
+| [00047](00047-recipe-view-urls.md) | A recipe view page lives at /recipes/{id}-{slug}; the id alone is the lookup | Accepted |
 
 ## What needs one
 

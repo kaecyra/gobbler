@@ -131,8 +131,8 @@ test('cloning makes a new recipe that shows where it came from', async ({ page }
   await expect(form).toHaveAttribute('action', `/recipes/${edited}/clone`);
   await form.getByRole('button').click();
 
-  await expect(page).not.toHaveURL(`/recipes/${edited}`);
-  const cloneId = Number(new URL(page.url()).pathname.split('/').pop());
+  await expect(page).not.toHaveURL(new RegExp(`/recipes/${edited}(?:-[a-z0-9-]*)?$`));
+  const cloneId = parseInt(new URL(page.url()).pathname.split('/').pop()!, 10);
   expect(cloneId).toBeGreaterThan(plain);
   await expect(page.getByRole('heading', { name: 'E2E Loaf', level: 1, exact: true })).toBeVisible();
 

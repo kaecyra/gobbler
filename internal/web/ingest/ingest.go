@@ -35,16 +35,13 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/parse"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/editor"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // maxFormBytes bounds a submitted form: pasted text and the edited draft.
 const maxFormBytes = 4 << 20
-
-// recipePath is where a saved recipe is viewed. The recipe view owns the
-// route; this package only redirects to it.
-func recipePath(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }
 
 // Drafter produces drafts; *apiingest.Bound satisfies it, which sends every
 // call through the ingestion service and its membership check.
@@ -546,11 +543,11 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	h.log.InfoContext(r.Context(), "recipe ingested", "recipe_id", saved.RecipeID,
 		"new_ingredients", len(saved.NewIngredients), "new_equipment", len(saved.NewEquipment))
 	if editor.FromHTMX(r) {
-		w.Header().Set("HX-Redirect", recipePath(saved.RecipeID))
+		w.Header().Set("HX-Redirect", recipepath.View(saved.RecipeID, d.Name.Value))
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	http.Redirect(w, r, recipePath(saved.RecipeID), http.StatusSeeOther)
+	http.Redirect(w, r, recipepath.View(saved.RecipeID, d.Name.Value), http.StatusSeeOther)
 }
 
 // staleReimport is shown on the review screen when the recipe changed after the
@@ -621,7 +618,7 @@ func (h *handler) cancel(w http.ResponseWriter, r *http.Request) {
 	// A discarded re-import goes back to its recipe, not to the add form.
 	back := "/ingest"
 	if d, err := h.recipes.GetDraft(r.Context(), caller.FromContext(r.Context()), token); err == nil && d.Reimport != nil {
-		back = recipePath(d.Reimport.RecipeID)
+		back = recipepath.View(d.Reimport.RecipeID, "")
 	}
 	if err := h.recipes.DiscardDraft(r.Context(), caller.FromContext(r.Context()), token); err != nil && !errors.Is(err, apiingest.ErrDraftGone) {
 		layout.WriteError(w, r, err)

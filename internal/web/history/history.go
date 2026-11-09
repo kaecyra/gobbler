@@ -21,10 +21,11 @@ import (
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-// Mount points. recipeview owns the bare /recipes/{id}; the history and the
+// Mount points. recipeview owns the view page, /recipes/{id}-{slug} (ADR-00047); the history and the
 // clone action mount beneath it.
 const (
 	Pattern      = "/recipes/{id}/history"
@@ -95,9 +96,7 @@ func styles() templ.Component {
 	return templ.Raw("<style>" + stylesheet + "</style>")
 }
 
-func recipePath(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }
-
-func historyPath(id int64) string { return recipePath(id) + "/history" }
+func historyPath(id int64) string { return recipepath.Base(id) + "/history" }
 
 func versionPath(id, version int64) string {
 	return historyPath(id) + "/" + strconv.FormatInt(version, 10)
@@ -252,6 +251,7 @@ func clone(d Deps) http.HandlerFunc {
 			cloned, err := d.Recipes.Get(ctx, caller.FromContext(ctx), newID)
 			return cloned.VideoID, err
 		})
-		http.Redirect(w, r, recipePath(newID), http.StatusSeeOther)
+		// The clone's title is not at hand; the view page completes the slug with a 302.
+		http.Redirect(w, r, recipepath.View(newID, ""), http.StatusSeeOther)
 	}
 }

@@ -22,6 +22,8 @@ test('a trailing slash does not change the path', () => {
 test('a {param} matches exactly one segment', () => {
   assert.ok(matchesPattern('/recipes/{id}', '/recipes/42'));
   assert.ok(matchesPattern('/recipes/{id:[0-9]+}', '/recipes/42'));
+  // The recipe view's {id} segment is {id}-{slug} (ADR-00047).
+  assert.ok(matchesPattern('/recipes/{id}', '/recipes/42-chicken-curry'));
   assert.ok(!matchesPattern('/recipes/{id}', '/recipes'));
   assert.ok(!matchesPattern('/recipes/{id}', '/recipes/42/edit'));
   assert.ok(matchesPattern('/recipes/{id}/edit', '/recipes/42/edit'));

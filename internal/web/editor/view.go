@@ -11,6 +11,7 @@ import (
 	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 )
 
 // view is everything the editor templates show.
@@ -84,7 +85,9 @@ func (v view) saveLabel() string {
 	return "Save recipe"
 }
 
-func (v view) back() string { return recipePath(v.ID) }
+// back is the recipe page the editor returns to. The draft name may hold unsaved
+// edits, so the slug can be stale; the view page redirects to the canonical URL.
+func (v view) back() string { return recipepath.View(v.ID, v.D.Name) }
 
 func (v view) version() string { return strconv.FormatInt(v.D.Version, 10) }
 

@@ -20,11 +20,13 @@ import (
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // Pattern is where the router mounts Routes. Other recipe features mount under
-// the same prefix; this one owns the bare recipe URL.
+// the same prefix; this one owns the view URL, whose {id} segment is
+// {id}-{slug} (ADR-00047). Its other routes take a plain numeric id.
 const Pattern = "/recipes/{id}"
 
 // Recipes is what the view reads from the recipe service
@@ -126,9 +128,20 @@ func recipeID(r *http.Request) (int64, error) {
 	return id, nil
 }
 
+// viewID is the recipe the view page's path segment names. The segment is
+// {id}-{slug} (ADR-00047); the slug is ignored here.
+func viewID(r *http.Request) (int64, error) {
+	seg := chi.URLParam(r, "id")
+	id, err := recipepath.ParseSegment(seg)
+	if err != nil {
+		return 0, fmt.Errorf("recipe path %q: %w", seg, layout.ErrNotFound)
+	}
+	return id, nil
+}
+
 func handle(d Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := recipeID(r)
+		id, err := viewID(r)
 		if err != nil {
 			layout.WriteError(w, r, err)
 			return
@@ -136,6 +149,19 @@ func handle(d Deps) http.HandlerFunc {
 		rec, err := d.Recipes.Get(r.Context(), caller.FromContext(r.Context()), id)
 		if err != nil {
 			layout.WriteError(w, r, fmt.Errorf("load recipe %d: %w", id, err))
+			return
+		}
+		// Only after Get has checked access: a redirect names the title, which
+		// a caller who cannot see the recipe must not learn (ADR-00047). The
+		// route answers GET only. An HTMX request is redirected the same way:
+		// the browser follows a 302 inside the request and htmx swaps the
+		// canonical page.
+		if want := recipepath.Segment(id, rec.Name); chi.URLParam(r, "id") != want {
+			to := recipepath.Prefix + want
+			if r.URL.RawQuery != "" {
+				to += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, to, http.StatusFound)
 			return
 		}
 		info, err := d.Recipes.Info(r.Context(), caller.FromContext(r.Context()), id)

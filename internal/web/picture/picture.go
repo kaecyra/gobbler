@@ -27,6 +27,7 @@ import (
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/media"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -84,7 +85,7 @@ func newHandler(d Deps) *handler {
 // so a new picture is a new address and no cache keeps showing the old one.
 func Src(recipeID int64, key string) string {
 	v := strings.TrimSuffix(path.Base(key), ".webp")
-	return "/recipes/" + strconv.FormatInt(recipeID, 10) + "/picture?v=" + url.QueryEscape(v)
+	return recipepath.Base(recipeID) + "/picture?v=" + url.QueryEscape(v)
 }
 
 // CandidateSrc is the address of candidate position of the draft proposal.

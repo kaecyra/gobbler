@@ -94,7 +94,7 @@ test('a draft is still waiting for review after the server restarts, and confirm
   await page.goto(review);
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Fluffy Pancakes');
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
-  await expect(page).toHaveURL(/\/recipes\/\d+$/);
+  await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   await expect(page.getByRole('heading', { name: 'Fluffy Pancakes' })).toBeVisible();
   // It was confirmed once: the review page is gone.
   expect((await page.request.get(review)).status()).toBe(404);

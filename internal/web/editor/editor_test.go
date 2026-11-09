@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 
 	"github.com/go-chi/chi/v5"
 
@@ -336,7 +337,7 @@ func TestSavingTwiceWritesTwoRevisionsAndTheFirstHoldsThePreEditDocument(t *test
 	f.Set("name", "First Edit")
 	res := e.post(f)
 	res.wantStatus(t, http.StatusSeeOther)
-	if loc := res.Header().Get("Location"); loc != "/recipes/"+strconv.FormatInt(e.id, 10) {
+	if loc := res.Header().Get("Location"); loc != recipepath.View(e.id, "First Edit") {
 		t.Errorf("redirect to %q, want the recipe page", loc)
 	}
 
@@ -496,7 +497,7 @@ func TestAcceptedSaveWithHTMXRedirectsTheBrowser(t *testing.T) {
 	e := newEnv(t)
 	res := e.postHTMX(e.form())
 	res.wantStatus(t, http.StatusOK)
-	if got := res.Header().Get("HX-Redirect"); got != "/recipes/"+strconv.FormatInt(e.id, 10) {
+	if got := res.Header().Get("HX-Redirect"); got != recipepath.View(e.id, "Test Loaf") {
 		t.Errorf("HX-Redirect = %q", got)
 	}
 }

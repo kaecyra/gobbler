@@ -14,6 +14,7 @@ import (
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -122,7 +123,7 @@ func reviewHref(id int64, token string) string {
 	return editHref(id) + "?" + url.Values{fieldProposal: {token}}.Encode()
 }
 
-func rejectHref(id int64) string { return recipePath(id) + rejectRoute }
+func rejectHref(id int64) string { return recipepath.Base(id) + rejectRoute }
 
 func changeLabel(n int) string {
 	if n == 1 {
@@ -327,7 +328,8 @@ func reject(d Deps) http.HandlerFunc {
 			layout.WriteError(w, r, fmt.Errorf("reject proposal: %w", err))
 			return
 		}
-		http.Redirect(w, r, recipePath(id), http.StatusSeeOther)
+		// The title is not at hand; the view page completes the slug with a 302.
+		http.Redirect(w, r, recipepath.View(id, ""), http.StatusSeeOther)
 	}
 }
 

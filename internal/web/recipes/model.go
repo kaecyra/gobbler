@@ -8,6 +8,7 @@ import (
 
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/recipepath"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	"github.com/kaecyra/gobbler/internal/web/ribbon"
 )
@@ -92,7 +93,7 @@ const noTimeTitle = "No time set"
 
 func cardFor(c apirecipes.Card, now time.Time) cardView {
 	v := cardView{
-		ID: c.ID, Href: recipeHref(c.ID), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: c.MealType.Label(), Cuisine: c.Cuisine.Label(),
+		ID: c.ID, Href: recipepath.View(c.ID, c.Name), Name: c.Name, Source: c.Source, Meal: c.MealType, MealLabel: c.MealType.Label(), Cuisine: c.Cuisine.Label(),
 		Components: c.Components, Key: c.KeyIngredients,
 		Made: madeLine(c.MadeCount, c.LastMade, now),
 	}
@@ -285,8 +286,6 @@ func ago(t, now time.Time) string {
 	}
 	return strconv.Itoa(days/365) + " years ago"
 }
-
-func recipeHref(id int64) string { return "/recipes/" + strconv.FormatInt(id, 10) }
 
 func itoa(n int) string { return strconv.Itoa(n) }
 
