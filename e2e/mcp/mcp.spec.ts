@@ -119,7 +119,7 @@ test('an agent revises a held draft, and the review page shows its marks but not
   const html = await page.text();
   expect(html).not.toContain('House style names the doneness cue.');
   expect(html).toContain('Bake until golden.');
-  expect(html).toContain('llm-mark');
+  expect(html).toContain('class="glitter"');
   await person.dispose();
   await ctx.dispose();
 });

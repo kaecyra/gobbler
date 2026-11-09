@@ -536,7 +536,7 @@ func (s stepDraft) open() bool {
 }
 
 // fromLLM reports whether the LLM supplied the step's reading or its order and
-// passive flag. The step shows it as one LLM pill either way.
+// passive flag. The step's text carries one glitter mark either way.
 func (s stepDraft) fromLLM() bool { return s.Mark.LLM || s.Graph.LLM }
 
 // open reports whether an equipment row's details start open, on the same

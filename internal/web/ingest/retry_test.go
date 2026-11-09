@@ -88,7 +88,7 @@ func TestRetryFailureShowsErrorKeepsRuleDraftAndStaysSaveable(t *testing.T) { //
 	if !strings.Contains(body, "Apple pie") || strings.Contains(body, "LLM pie") {
 		t.Error("the rule-based draft must be what is shown")
 	}
-	if strings.Contains(body, "llm-mark") && strings.Contains(between(t, body, "<h1>", "<form id=\"editor\""), "filled the gaps") {
+	if strings.Contains(body, `class="glitter"`) && strings.Contains(between(t, body, "<h1>", "<form id=\"editor\""), "filled the gaps") {
 		t.Error("a failed retry must not be presented as an LLM draft")
 	}
 	// A second look at the pending draft has no partial LLM state.
@@ -155,11 +155,11 @@ func TestReviewMarksLLMSuppliedValues(t *testing.T) { // ADR-00006 obligation 4
 	f.drafter.draft = llmDraft()
 	body := f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String()
 	name := between(t, body, `<label for="f-name">`, "</div>")
-	if !strings.Contains(name, `llm-mark">LLM`) {
+	if !strings.Contains(name, `class="glitter"`) || !strings.Contains(name, `aria-label="Filled by the LLM"`) {
 		t.Errorf("LLM name not marked: %s", name)
 	}
 	line := between(t, body, `<li class="item line llm" data-llm>`, "</li>")
-	if !strings.Contains(line, "LLM") || !strings.Contains(line, "butter") {
+	if !strings.Contains(line, `aria-label="Filled by the LLM"`) || !strings.Contains(line, "butter") {
 		t.Errorf("LLM line not marked: %s", line)
 	}
 	if !strings.Contains(body, "The LLM filled the gaps the rules left") {
@@ -167,7 +167,7 @@ func TestReviewMarksLLMSuppliedValues(t *testing.T) { // ADR-00006 obligation 4
 	}
 	// A rule-based draft carries no marker.
 	g := newFixture(t)
-	if b := g.do(http.MethodGet, "/"+g.ingestText(t), nil).Body.String(); strings.Contains(b, `class="llm-mark"`) {
+	if b := g.do(http.MethodGet, "/"+g.ingestText(t), nil).Body.String(); strings.Contains(b, `class="glitter"`) {
 		t.Error("a rule-based draft shows an LLM marker")
 	}
 }

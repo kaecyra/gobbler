@@ -9,14 +9,44 @@ import (
 
 // mark is a flag the review screen puts on something it asks the user to
 // check: the rules were less sure of it than the draft's threshold (Low), or
-// the LLM supplied it (LLM). Both are shown as words, never colour alone
-// (ADR-00006). A stored recipe's editor has none.
+// the LLM supplied it (LLM). Neither is colour alone (ADR-00006): a low mark
+// says "Check:", and an LLM mark is the sparkles of the glitter, named for
+// screen readers by one of the labels below. A stored recipe's editor has none.
 type mark struct{ Low, LLM bool }
 
 const (
 	markLow = "low"
 	markLLM = "llm"
 )
+
+// glints is how many glints the glitter scatters round a field's border;
+// app.css places each one.
+const glints = 11
+
+// The accessible names of the glitter, which shows no words.
+const (
+	llmFilled  = "Filled by the LLM"
+	llmCleared = "Cleared by the LLM"
+	llmOrdered = "Order suggested by the LLM"
+)
+
+// llmLabel names the LLM mark on the metadata field named field. On an empty
+// field the mark says the field was cleared (ADR-00048).
+func (d draft) llmLabel(field string) string {
+	if d.empty(field) {
+		return llmCleared
+	}
+	return llmFilled
+}
+
+// llmLabel names a step's LLM mark: its text came from the LLM, or only its
+// order and passive flag did.
+func (s stepDraft) llmLabel() string {
+	if s.Mark.LLM {
+		return llmFilled
+	}
+	return llmOrdered
+}
 
 func parseMark(s string) mark {
 	var m mark

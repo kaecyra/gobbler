@@ -59,8 +59,6 @@ templ editorForm(v view) {
 			.editor .alert p { margin: 0; }
 			.editor .field-error { color: var(--wattle-ink); font-weight: 600; font-size: 15px; margin: 2px 0 0; }
 			.editor .flag { color: var(--grain-ink); font-weight: 700; }
-			.editor .llm-mark { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8em; color: var(--ink-2); background: var(--card); }
-			.editor .mark { display: flex; gap: 6px; align-items: center; font-size: 14px; }
 			.editor .hint { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; color: var(--grain-ink); font-size: 15px; }
 			.editor .hint svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
 			.editor ol { list-style: none; padding: 0; margin: 0; }
@@ -82,7 +80,6 @@ templ editorForm(v view) {
 			.editor .fl.low > label, .editor .fact.low > label { color: var(--grain-ink); display: flex; align-items: center; gap: 6px; }
 			.editor .fl.low > label::before, .editor .fact.low > label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--grain); flex: none; }
 			.editor .fl.low input, .editor .fl.low textarea { background: var(--card); }
-			.editor .fl.low .mark { display: none; }
 			.editor details.more-meta { border-top: 1px solid var(--line); padding-top: 6px; }
 			.editor details.more-meta > summary { display: flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer; font-weight: 650; color: var(--ink-2); }
 			.editor .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding-top: 4px; }
@@ -148,7 +145,7 @@ templ editorForm(v view) {
 			}
 			.editor .help-tip:hover .help-pop, .editor .help-btn:focus-visible + .help-pop { display: block; }
 			/* Ingredient lines: plain text until hovered or focused. */
-			.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+			.editor .cols, .editor .row { display: grid; grid-template-columns: 76px 96px minmax(0, 1fr); gap: 8px; align-items: center; }
 			.editor .cols { padding: 12px 112px 6px 44px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
 			.editor .cols span { padding-left: 11px; }
 			.editor li.line { padding: 6px 112px 6px 36px; }
@@ -162,7 +159,7 @@ templ editorForm(v view) {
 			/* The ingredient input fits its name, so the qualifiers follow it, muted, and wrap rather than clip. */
 			.editor .c-ing input[type=text] { flex: 0 1 auto; width: auto; min-width: 8ch; max-width: 100%; field-sizing: content; }
 			.editor .qual { flex: 1 1 8rem; min-width: 0; color: var(--ink-3); font-style: italic; overflow-wrap: anywhere; }
-			.editor .c-mark { display: flex; gap: 6px; align-items: center; }
+			.editor .c-ing > .glitter { flex: 0 1 auto; }
 			/* The confidence dot of a line under review, before its remove button. */
 			.editor.reviewing li.line::before {
 				content: ""; position: absolute; right: 98px; top: 24px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
@@ -217,6 +214,10 @@ templ editorForm(v view) {
 			.editor .sbody:has(> details.more[open]) .smeta { display: inline; }
 			.editor .sbody textarea.quiet { padding: 2px 10px; margin-left: -10px; width: calc(100% + 10px); field-sizing: content; min-height: var(--tap); resize: none; color: var(--ink-2); }
 			.editor .sbody:has(> details.more[open]) textarea.quiet { background: var(--card); border-color: var(--line); padding: 8px 12px; margin-left: 0; width: 100%; resize: vertical; }
+			/* A quiet field the LLM filled keeps its place: its glitter takes the pull to the left, so the glints sit on the field's border. */
+			.editor .glitter:has(> .quiet) { margin-left: -10px; }
+			.editor .glitter > input.quiet, .editor .glitter > textarea.quiet { margin-left: 0; width: 100%; }
+			.editor .sbody:has(> details.more[open]) > .glitter { margin-left: 0; }
 			.editor .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 			.editor .pills:not(:has(*)), .editor .sbody:has(> details.more[open]) .pills { display: none; }
 			.editor .pill {
@@ -236,7 +237,6 @@ templ editorForm(v view) {
 			.editor .att label.on:has(input:checked) { background: var(--wattle-soft); border-color: color-mix(in srgb, var(--wattle) 45%, var(--card)); color: var(--wattle-ink); }
 			.editor .att label:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }
 			.editor .att svg { width: 16px; height: 16px; }
-			.editor .llm { margin: 0; font-size: 15px; color: var(--ink-2); }
 			.editor fieldset.deps { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 			.editor fieldset.deps legend { padding: 0; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }
 			.editor fieldset.deps legend .help { font-weight: 400; }
@@ -292,8 +292,7 @@ templ editorForm(v view) {
 				.editor input.ed-name { font-size: 24px; }
 				.editor .cols { display: none; }
 				.editor .row { grid-template-columns: 4.5rem minmax(0, 1fr); }
-				.editor .c-ing, .editor .c-mark { grid-column: 1 / -1; }
-				.editor .c-mark:empty { display: none; }
+				.editor .c-ing { grid-column: 1 / -1; }
 				.editor li.step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 96px; }
 				.editor li.note { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding-right: 56px; }
 				.editor .snum { width: 28px; height: 28px; font-size: 14px; }
@@ -404,20 +403,23 @@ templ sectionHead(id, title string) {
 	<div class="sec-h"><h2 id={ id }>{ title }</h2>{ children... }</div>
 }
 
-// badges are the words that flag an item of a draft under review.
-templ badges(m mark) {
-	if m.Low {
-		<strong class="flag">Check:</strong>
-	}
-	if m.LLM {
-		<strong class="llm-mark">LLM</strong>
-	}
-}
-
-// llmBadge is the LLM word alone, for a row whose low mark is a hint of its own.
-templ llmBadge(m mark) {
-	if m.LLM {
-		<strong class="llm-mark">LLM</strong>
+// glitter is the LLM's mark on the field it wraps (docs/ui/design.md): app.css
+// draws the shimmer border and sheen on the field, the sparkles on its corner
+// and the glints round its border. It has no visible words, so label, on the
+// sparkles, is what a screen reader says. Off, it is the field alone.
+templ glitter(on bool, label string) {
+	if on {
+		<span class="glitter">
+			{ children... }
+			<span class="spk" role="img" aria-label={ label }>
+				@layout.Icon(layout.IconSparkles)
+			</span>
+			for i := 0; i < glints; i++ {
+				<i class="gl" aria-hidden="true"></i>
+			}
+		</span>
+	} else {
+		{ children... }
 	}
 }
 
@@ -450,18 +452,19 @@ templ moreToggle(name string) {
 	</summary>
 }
 
-// markInput carries a metadata field's mark through the form. An LLM mark on
-// an empty field says the field was cleared.
+// markInput carries a metadata field's mark through the form. The field's
+// class shows a low mark and metaGlitter its LLM mark.
 templ markInput(v view, field string) {
 	if m := v.D.mark(field); !m.zero() {
 		<input type="hidden" name={ markName(field) } value={ m.String() }/>
-		<div class={ "mark " + m.String() }>
-			if m.LLM && v.D.empty(field) {
-				<strong class="llm-mark">LLM: cleared</strong>
-			} else {
-				@badges(m)
-			}
-		</div>
+	}
+}
+
+// metaGlitter is the LLM's mark on a metadata field's own input. On an empty
+// field it says the field was cleared.
+templ metaGlitter(v view, field string) {
+	@glitter(v.D.mark(field).LLM, v.D.llmLabel(field)) {
+		{ children... }
 	}
 }
 
@@ -485,7 +488,9 @@ templ fact(v view, id, name, label, labelRest, value, field, errField, placehold
 		if field != "" {
 			@markInput(v, field)
 		}
-		<input id={ id } type="text" name={ name } value={ value } placeholder={ placeholder }/>
+		@metaGlitter(v, field) {
+			<input id={ id } type="text" name={ name } value={ value } placeholder={ placeholder }/>
+		}
 		if errField != "" {
 			@fieldError(v, errField)
 		}
@@ -499,23 +504,29 @@ templ metaFields(v view) {
 			<div class={ "fl " + v.D.mark("name").String() }>
 				<label for="f-name">Name</label>
 				@markInput(v, "name")
-				<input id="f-name" class="quiet ed-name" type="text" name="name" value={ v.D.Name }/>
+				@metaGlitter(v, "name") {
+					<input id="f-name" class="quiet ed-name" type="text" name="name" value={ v.D.Name }/>
+				}
 				@fieldError(v, "name")
 			</div>
 			<div class={ "fl " + v.D.mark("description").String() }>
 				<label for="f-description">Description</label>
 				@markInput(v, "description")
-				<textarea id="f-description" name="description" rows="2">{ v.D.Description }</textarea>
+				@metaGlitter(v, "description") {
+					<textarea id="f-description" name="description" rows="2">{ v.D.Description }</textarea>
+				}
 			</div>
 			<div class="facts">
 				<div class={ "fl fact yield " + v.D.mark("yield").String() }>
 					<label for="f-yield-qty">Yield<span class="sr">{ " amount" }</span></label>
 					@markInput(v, "yield")
-					<div class="pair">
-						<input id="f-yield-qty" type="text" name="yield_qty" value={ v.D.YieldQty } placeholder="1"/>
-						<label class="sr" for="f-yield-unit">Yield unit</label>
-						<input id="f-yield-unit" type="text" name="yield_unit" value={ v.D.YieldUnit } placeholder="loaf"/>
-					</div>
+					@metaGlitter(v, "yield") {
+						<span class="pair">
+							<input id="f-yield-qty" type="text" name="yield_qty" value={ v.D.YieldQty } placeholder="1"/>
+							<label class="sr" for="f-yield-unit">Yield unit</label>
+							<input id="f-yield-unit" type="text" name="yield_unit" value={ v.D.YieldUnit } placeholder="loaf"/>
+						</span>
+					}
 					@fieldError(v, "yield_qty")
 				</div>
 				@fact(v, "f-servings", "servings", "Servings", "", v.D.Servings, "servings", "servings", "")
@@ -529,23 +540,27 @@ templ metaFields(v view) {
 					<div class={ "fl fact " + v.D.mark("meal_type").String() }>
 						<label for="f-meal-type">Meal type</label>
 						@markInput(v, "meal_type")
-						<select id="f-meal-type" name="meal_type">
-							<option value="" selected?={ v.D.MealType == "" }>Not set</option>
-							for _, m := range mealOptions() {
-								<option value={ string(m) } selected?={ v.D.MealType == string(m) }>{ m.Label() }</option>
-							}
-						</select>
+						@metaGlitter(v, "meal_type") {
+							<select id="f-meal-type" name="meal_type">
+								<option value="" selected?={ v.D.MealType == "" }>Not set</option>
+								for _, m := range mealOptions() {
+									<option value={ string(m) } selected?={ v.D.MealType == string(m) }>{ m.Label() }</option>
+								}
+							</select>
+						}
 						@fieldError(v, "meal_type")
 					</div>
 					<div class={ "fl fact " + v.D.mark("cuisine").String() }>
 						<label for="f-cuisine">Cuisine</label>
 						@markInput(v, "cuisine")
-						<select id="f-cuisine" name="cuisine">
-							<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
-							for _, c := range cuisineOptions() {
-								<option value={ c.Key } selected?={ v.D.Cuisine == c.Key }>{ c.Label }</option>
-							}
-						</select>
+						@metaGlitter(v, "cuisine") {
+							<select id="f-cuisine" name="cuisine">
+								<option value="" selected?={ v.D.Cuisine == "" }>Not set</option>
+								for _, c := range cuisineOptions() {
+									<option value={ c.Key } selected?={ v.D.Cuisine == c.Key }>{ c.Label }</option>
+								}
+							</select>
+						}
 						@fieldError(v, "cuisine")
 					</div>
 					<div class="fl fact">
@@ -572,7 +587,9 @@ templ metaFields(v view) {
 					<div class={ "fl " + v.D.mark("author").String() }>
 						<label for="f-author">Author</label>
 						@markInput(v, "author")
-						<input id="f-author" type="text" name="author" value={ v.D.Author }/>
+						@metaGlitter(v, "author") {
+							<input id="f-author" type="text" name="author" value={ v.D.Author }/>
+						}
 					</div>
 					if v.carries(groupVideo) {
 						<div class="fl">
@@ -708,13 +725,12 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 			</div>
 			<div class="c-ing">
 				<label class="sr" for={ lField(ci, li, "ing") }>Ingredient</label>
-				<input id={ lField(ci, li, "ing") } type="text" name={ lField(ci, li, "ing") } value={ l.Ingredient } list="ingredient-names" autocomplete="off"/>
+				@glitter(l.Mark.LLM, llmFilled) {
+					<input id={ lField(ci, li, "ing") } type="text" name={ lField(ci, li, "ing") } value={ l.Ingredient } list="ingredient-names" autocomplete="off"/>
+				}
 				if q := l.qualText(); q != "" {
 					<span class="qual">{ q }</span>
 				}
-			</div>
-			<div class="c-mark">
-				@llmBadge(l.Mark)
 			</div>
 		</div>
 		@iconButton(act("rm-line", ci, li), "Remove "+v.lineRef(ci, li), layout.IconClose, false, "rm danger")
@@ -869,7 +885,9 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 				<span class="smeta">{ v.stepMeta(ci, s) }</span>
 			</div>
 			<label class="sr" for={ sField(ci, si, "text") }>Step { strconv.Itoa(v.stepNum(ci, si)) } instruction</label>
-			<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="1" autofocus?={ v.D.Focus == sField(ci, si, "text") }>{ s.Text }</textarea>
+			@glitter(s.fromLLM(), s.llmLabel()) {
+				<textarea id={ sField(ci, si, "text") } class="quiet" name={ sField(ci, si, "text") } rows="1" autofocus?={ v.D.Focus == sField(ci, si, "text") }>{ s.Text }</textarea>
+			}
 			<div class="pills">
 				if strings.TrimSpace(s.Duration) != "" {
 					<span class="pill">
@@ -886,7 +904,6 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 				for _, e := range v.equipmentFor(s.ID) {
 					<span class="pill">{ e }</span>
 				}
-				@llmBadge(mark{LLM: s.fromLLM()})
 			</div>
 			@checkHint(s.Mark.Low, nil, "the rules were not sure how to read this step.")
 			if s.Err != "" {
@@ -970,8 +987,9 @@ templ noteSection(v view) {
 							<label class="sr" for={ nField(ni, "title") }>Author's note { n1(ni) } title (optional)</label>
 							<input id={ nField(ni, "title") } class="quiet stitle" type="text" name={ nField(ni, "title") } value={ n.Title } placeholder="Add a title"/>
 							<label class="sr" for={ nField(ni, "text") }>Author's note { n1(ni) } text</label>
-							<textarea id={ nField(ni, "text") } class="quiet" name={ nField(ni, "text") } rows="1" autofocus?={ v.D.Focus == nField(ni, "text") }>{ n.Text }</textarea>
-							@llmBadge(n.Mark)
+							@glitter(n.Mark.LLM, llmFilled) {
+								<textarea id={ nField(ni, "text") } class="quiet" name={ nField(ni, "text") } rows="1" autofocus?={ v.D.Focus == nField(ni, "text") }>{ n.Text }</textarea>
+							}
 							@checkHint(n.Mark.Low, nil, noteHint(n.Issues))
 							if n.Err != "" {
 								<p class="alert" role="alert">{ n.Err }</p>
@@ -1046,11 +1064,12 @@ templ equipmentFields(v view) {
 							}
 							<span class="erow" id={ equipAnchor(ei) }>
 								<label class="sr" for={ eField(ei, "name") }>Equipment</label>
-								<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
+								@glitter(e.Mark.LLM, llmFilled) {
+									<input id={ eField(ei, "name") } type="text" name={ eField(ei, "name") } value={ e.Name } list="equipment-names" autocomplete="off"/>
+								}
 								if strings.TrimSpace(e.Qty) != "" {
 									<span class="qual">{ e.Qty }</span>
 								}
-								@llmBadge(e.Mark)
 							</span>
 							@iconButton(act("rm-equip", ei), "Remove "+equipRef(e, ei), layout.IconClose, false, "rm danger")
 							<details class="more" open?={ e.open() }>

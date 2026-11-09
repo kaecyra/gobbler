@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-// Every icon in the set draws a line picture that screen readers skip.
+// Every icon in the set draws a picture in currentColor that screen readers
+// skip: a line, or a shape for a filled icon.
 func TestEveryLineIconDraws(t *testing.T) {
 	shape := regexp.MustCompile(`<(path|circle|rect)\b`)
 	for name := range lineGlyphs {
@@ -16,7 +17,11 @@ func TestEveryLineIconDraws(t *testing.T) {
 			t.Fatalf("%s: %v", name, err)
 		}
 		out := b.String()
-		if !shape.MatchString(out) || !strings.Contains(out, `aria-hidden="true"`) || !strings.Contains(out, `stroke="currentColor"`) {
+		paint := `stroke="currentColor"`
+		if lineGlyphs[name].filled {
+			paint = `fill="currentColor"`
+		}
+		if !shape.MatchString(out) || !strings.Contains(out, `aria-hidden="true"`) || !strings.Contains(out, paint) {
 			t.Errorf("%s draws %s", name, out)
 		}
 	}

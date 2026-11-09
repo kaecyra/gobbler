@@ -63,8 +63,8 @@ func TestReviewFlagsLowConfidenceAndLLMItemsInWords(t *testing.T) {
 	if first := items(body, "line")[0]; strings.Contains(first, "Check:") {
 		t.Errorf("a confident line is flagged: %s", first)
 	}
-	if !strings.Contains(between(t, body, `<li class="item equipment llm" data-llm>`, "</li>"), "LLM") {
-		t.Error("LLM equipment is not marked in words")
+	if !strings.Contains(between(t, body, `<li class="item equipment llm" data-llm>`, "</li>"), `aria-label="Filled by the LLM"`) {
+		t.Error("LLM equipment is not marked, with a name screen readers say")
 	}
 	if strings.Contains(body, "Check this draft.") {
 		t.Error("a below-threshold draft repeats its chips in a banner")
@@ -344,13 +344,13 @@ func TestDraftPutBackAfterAFailedSaveKeepsEditsAndFlags(t *testing.T) {
 				t.Errorf("low items after the failed save = %d, want the line and the step", got)
 			}
 			line := items(body, "line")[1]
-			if !strings.Contains(line, "Check:") || !strings.Contains(line, "LLM") || !strings.Contains(line, "ingredient not matched") {
+			if !strings.Contains(line, "Check:") || !strings.Contains(line, `class="glitter"`) || !strings.Contains(line, "ingredient not matched") {
 				t.Errorf("the line lost its flags or issue: %s", line)
 			}
-			if !strings.Contains(items(body, "equipment")[2], "LLM") {
+			if !strings.Contains(items(body, "equipment")[2], `class="glitter"`) {
 				t.Error("the equipment lost its LLM mark")
 			}
-			if !strings.Contains(between(t, body, `<label for="f-name">`, "</div>"), "Check:") {
+			if !strings.Contains(body, `<div class="fl low"><label for="f-name">`) {
 				t.Error("the name lost its flag")
 			}
 		})
@@ -384,7 +384,7 @@ func TestFlagsFollowTheirRowsPastBlankRows(t *testing.T) {
 	}
 	body := f.do(http.MethodGet, "/"+token, nil).Body.String()
 	lines := items(body, "line")
-	if len(lines) != 2 || !strings.Contains(lines[1], "Check:") || !strings.Contains(lines[1], "LLM") || !strings.Contains(lines[1], "ingredient not matched") || strings.Contains(lines[0], "Check:") {
+	if len(lines) != 2 || !strings.Contains(lines[1], "Check:") || !strings.Contains(lines[1], `class="glitter"`) || !strings.Contains(lines[1], "ingredient not matched") || strings.Contains(lines[0], "Check:") {
 		t.Errorf("lines after the blank row lost their flags or took another's: %q", lines)
 	}
 	steps := items(body, "step")
@@ -392,7 +392,7 @@ func TestFlagsFollowTheirRowsPastBlankRows(t *testing.T) {
 		t.Errorf("steps after the blank row: %q", steps)
 	}
 	equip := items(body, "equipment")
-	if len(equip) != 3 || !strings.Contains(equip[2], "LLM") || strings.Contains(equip[1], "LLM") {
+	if len(equip) != 3 || !strings.Contains(equip[2], `class="glitter"`) || strings.Contains(equip[1], `class="glitter"`) {
 		t.Errorf("equipment after the blank row: %q", equip)
 	}
 }
@@ -463,19 +463,19 @@ func TestReviewShowsTheInferredStepGraph(t *testing.T) {
 	}
 }
 
-// The LLM's reading of a step's order is flagged on that step only, by the one
-// LLM pill in its pill row and no sentence under it.
-func TestReviewFlagsAnLLMSuppliedGraphWithAPill(t *testing.T) {
+// The LLM's reading of a step's order is marked on that step only, by the
+// glitter on its text, named for the order, and no sentence under it.
+func TestReviewMarksAnLLMSuppliedGraphOnItsStep(t *testing.T) {
 	f := newFixture(t)
 	f.drafter.draft = graphDraft()
 	steps := items(f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String(), "step")
-	if got := strings.Count(steps[2], `class="llm-mark"`); got != 1 {
-		t.Errorf("the LLM-read step has %d LLM pills, want 1: %s", got, steps[2])
+	if got := strings.Count(steps[2], `aria-label="Order suggested by the LLM"`); got != 1 {
+		t.Errorf("the LLM-read step has %d LLM marks, want 1: %s", got, steps[2])
 	}
 	if strings.Contains(steps[2], "suggested this step's order") {
 		t.Error("the LLM-read step still carries the sentence under it")
 	}
-	if strings.Contains(steps[1], `class="llm-mark"`) || strings.Contains(steps[0], `class="llm-mark"`) {
+	if strings.Contains(steps[1], `class="glitter"`) || strings.Contains(steps[0], `class="glitter"`) {
 		t.Error("a rule-read or default step is flagged as the LLM's")
 	}
 }

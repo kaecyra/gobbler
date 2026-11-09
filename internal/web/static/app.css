@@ -24,6 +24,13 @@
   --maple: #dd2e44;
   --maple-ink: #a51d30;
   --maple-soft: #fde8ea;
+  /* The LLM's glitter: the shimmer and sparkle colours, the sheen that sweeps
+     a field, and the white glint among the coloured ones. */
+  --spark-a: #8b7cf6;
+  --spark-b: #4fb3e8;
+  --spark-c: #f08ac2;
+  --sheen: rgba(255, 255, 255, 0.85);
+  --glint-white: #ffffff;
   --on-accent: #ffffff;
   --mascot-fx: drop-shadow(0 1px 0 rgba(43, 54, 52, 0.06));
   /* time-stage families: translucent fill, same-hue 1px border, dark same-hue text */
@@ -78,6 +85,8 @@
   --st-apricot-b: #f2a35e; --st-apricot-i: #ffdab8; --st-apricot-a: 22%;
   --st-butter-b: #e5c24a; --st-butter-i: #f7e7ad; --st-butter-a: 22%;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px -10px rgba(0, 0, 0, 0.6);
+  --spark-a: #a99cff; --spark-b: #7cc7f0; --spark-c: #f4a3d0;
+  --sheen: rgba(200, 190, 255, 0.28); --glint-white: #f4f0ff;
   color-scheme: dark;
 }
 
@@ -132,6 +141,84 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* Icons never sit on the text baseline. */
 .tab svg, .btn svg, .foot svg { display: block; flex: none; }
 .foot svg { width: 16px; height: 16px; }
+
+/* ---- the LLM's mark (docs/ui/design.md) ---- */
+
+/* The paint for the sparkles, drawn once by layout.IconDefs. */
+.icon-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.icon-defs .spark-a { stop-color: var(--spark-a); }
+.icon-defs .spark-b { stop-color: var(--spark-b); }
+.icon-defs .spark-c { stop-color: var(--spark-c); }
+
+/* The sparkles: each star twinkles out of step with the others. */
+.spk { display: inline-block; flex: none; width: 20px; height: 20px; }
+.spk svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.spk path { fill: url(#spark-grad); transform-box: fill-box; transform-origin: center; }
+.spk .s1 { animation: spk-twinkle 2.4s ease-in-out infinite; }
+.spk .s2 { animation: spk-twinkle 2.4s ease-in-out 0.8s infinite; }
+.spk .s3 { animation: spk-twinkle 2.4s ease-in-out 1.6s infinite; }
+@keyframes spk-twinkle {
+  0%, 100% { transform: scale(0.7) rotate(0); opacity: 0.55; }
+  50% { transform: scale(1.1) rotate(20deg); opacity: 1; }
+}
+
+/* A field the LLM filled: a shimmer border turning round it, a sheen across
+   it, the sparkles on its top-right corner and eleven glints flickering on
+   its border, a few drifting outward as they fade. */
+@property --ang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.glitter { position: relative; display: block; min-width: 0; }
+.glitter > input, .glitter > textarea, .glitter > select, .glitter > .pair > input {
+  border: 1.5px solid transparent !important;
+  background:
+    linear-gradient(110deg, transparent 35%, var(--sheen) 50%, transparent 65%) padding-box,
+    linear-gradient(var(--card), var(--card)) padding-box,
+    conic-gradient(from var(--ang), var(--spark-a), var(--spark-b), var(--spark-c), var(--spark-a)) border-box !important;
+  background-size: 300% 100%, auto, auto !important;
+  animation: glitter-spin 4s linear infinite, glitter-sweep 3.6s ease-in-out infinite;
+}
+@keyframes glitter-spin { to { --ang: 360deg; } }
+@keyframes glitter-sweep {
+  0% { background-position: 120% 0, 0 0, 0 0; }
+  60%, 100% { background-position: -20% 0, 0 0, 0 0; }
+}
+.glitter > .spk {
+  position: absolute; z-index: 2; top: -11px; right: -11px; width: 22px; height: 22px;
+  pointer-events: none; filter: drop-shadow(0 0 2px var(--card));
+}
+.glitter > .gl {
+  position: absolute; z-index: 1; width: var(--s); height: var(--s); pointer-events: none;
+  left: calc(var(--x) - var(--s) / 2); top: calc(var(--y) - var(--s) / 2);
+  animation: spk-twinkle 1.3s ease-in-out var(--d) infinite;
+}
+/* The star is a clip on a child, so a white glint's glow is not clipped away. */
+.glitter > .gl::before {
+  content: ""; position: absolute; inset: 0; background: var(--c);
+  clip-path: polygon(50% 0, 53.1% 21.9%, 62.5% 37.5%, 78.1% 46.9%, 100% 50%, 78.1% 53.1%, 62.5% 62.5%, 53.1% 78.1%,
+    50% 100%, 46.9% 78.1%, 37.5% 62.5%, 21.9% 53.1%, 0 50%, 21.9% 46.9%, 37.5% 37.5%, 46.9% 21.9%);
+}
+/* Walking the border clockwise from the top left: position, size, colour, delay. */
+.glitter > .gl:nth-of-type(1) { --x: 18.2%; --y: 0%; --s: 10px; --c: var(--spark-a); --d: 0s; }
+.glitter > .gl:nth-of-type(2) { --x: 54.5%; --y: 0%; --s: 6px; --c: var(--glint-white); --d: 0.37s; }
+.glitter > .gl:nth-of-type(3) { --x: 90.9%; --y: 0%; --s: 8px; --c: var(--spark-c); --d: 0.74s; --dx: 0px; --dy: -10px; }
+.glitter > .gl:nth-of-type(4) { --x: 100%; --y: 27.3%; --s: 10px; --c: var(--spark-a); --d: 1.11s; }
+.glitter > .gl:nth-of-type(5) { --x: 100%; --y: 63.6%; --s: 8px; --c: var(--spark-b); --d: 1.48s; }
+.glitter > .gl:nth-of-type(6) { --x: 100%; --y: 100%; --s: 6px; --c: var(--glint-white); --d: 0.25s; --dx: 0px; --dy: 10px; }
+.glitter > .gl:nth-of-type(7) { --x: 63.6%; --y: 100%; --s: 10px; --c: var(--spark-a); --d: 0.62s; }
+.glitter > .gl:nth-of-type(8) { --x: 27.3%; --y: 100%; --s: 6px; --c: var(--spark-b); --d: 0.99s; }
+.glitter > .gl:nth-of-type(9) { --x: 0%; --y: 90.9%; --s: 8px; --c: var(--spark-c); --d: 1.36s; --dx: -10px; --dy: 0px; }
+.glitter > .gl:nth-of-type(10) { --x: 0%; --y: 54.5%; --s: 10px; --c: var(--glint-white); --d: 0.13s; }
+.glitter > .gl:nth-of-type(11) { --x: 0%; --y: 18.2%; --s: 8px; --c: var(--spark-b); --d: 0.5s; }
+.glitter > .gl:nth-of-type(2), .glitter > .gl:nth-of-type(6), .glitter > .gl:nth-of-type(10) { filter: drop-shadow(0 0 2px var(--spark-a)); }
+.glitter > .gl:nth-of-type(3), .glitter > .gl:nth-of-type(6), .glitter > .gl:nth-of-type(9) { animation: glitter-drift 1.6s ease-out var(--d) infinite; }
+@keyframes glitter-drift {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  30% { opacity: 1; transform: translate(calc(var(--dx) * 0.3), calc(var(--dy) * 0.3)) scale(1) rotate(30deg); }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.3) rotate(90deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spk path:nth-child(n), .glitter > .gl:nth-of-type(n),
+  .glitter > input, .glitter > textarea, .glitter > select, .glitter > .pair > input { animation: none; }
+}
 
 /* ---- header ---- */
 
