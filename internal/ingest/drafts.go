@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -32,6 +33,8 @@ type DraftStore interface {
 	ProposeDraft(ctx context.Context, in store.DraftInput) (string, error)
 	GetProposal(ctx context.Context, token string) (store.Proposal, error)
 	ReplaceDraft(ctx context.Context, token string, doc []byte) error
+	ReviseDraft(ctx context.Context, token string, doc []byte, revision, reason string) error
+	PendingDraftList(ctx context.Context) ([]store.DraftSummary, error)
 	RejectProposal(ctx context.Context, token string) error
 	PendingDrafts(ctx context.Context) (int, error)
 }
@@ -98,6 +101,7 @@ func (d *Drafts) Get(ctx context.Context, token string) (Draft, error) {
 		return Draft{}, fmt.Errorf("read draft: %w", err)
 	}
 	dr.ProposalID = p.ID
+	dr.Revision, dr.Reason = store.DraftRevision(p.Document), p.Reason
 	if d.pictures != nil {
 		cs, err := d.pictures.Candidates(ctx, p.ID)
 		if err != nil {
@@ -117,6 +121,56 @@ func (d *Drafts) Replace(ctx context.Context, token string, dr Draft) error {
 	}
 	err = d.store.ReplaceDraft(ctx, token, doc)
 	return draftGone(err, "replace draft")
+}
+
+// Revise replaces the draft for token with r, an agent's revision of it made
+// from the draft at revision, and stores reason with it (ADR-00048). It is the
+// replace Replace makes, with two differences: values that differ from the held
+// draft are marked FromLLM (Revise), and a draft whose revision is no longer
+// revision is ErrDraftChanged and left as it is. It returns the draft as now
+// held, with its new Revision. It never saves the draft.
+func (d *Drafts) Revise(ctx context.Context, cat CatalogReader, token, revision string, r Revision, reason string) (Draft, error) {
+	held, err := d.Get(ctx, token)
+	if err != nil {
+		return Draft{}, err
+	}
+	if held.Revision != revision {
+		return Draft{}, fmt.Errorf("%w: it is at revision %s, not %s", ErrDraftChanged, held.Revision, revision)
+	}
+	next, err := Revise(ctx, cat, held, r)
+	if err != nil {
+		return Draft{}, err
+	}
+	was, err := EncodeDraft(held)
+	if err != nil {
+		return Draft{}, fmt.Errorf("encode held draft: %w", err)
+	}
+	doc, err := EncodeDraft(next)
+	if err != nil {
+		return Draft{}, fmt.Errorf("encode draft: %w", err)
+	}
+	if bytes.Equal(was, doc) {
+		return Draft{}, fmt.Errorf("%w: it is the same as the draft held", ErrInvalidRevision)
+	}
+	err = d.store.ReviseDraft(ctx, token, doc, revision, reason)
+	if errors.Is(err, store.ErrStaleVersion) {
+		return Draft{}, fmt.Errorf("%w: %w", ErrDraftChanged, err)
+	}
+	if err := draftGone(err, "revise draft"); err != nil {
+		return Draft{}, err
+	}
+	next.Revision, next.Reason = store.DraftRevision(doc), reason
+	return next, nil
+}
+
+// Pending lists the household's pending drafts, re-imports included, oldest
+// first.
+func (d *Drafts) Pending(ctx context.Context) ([]store.DraftSummary, error) {
+	out, err := d.store.PendingDraftList(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list pending drafts: %w", err)
+	}
+	return out, nil
 }
 
 // Discard rejects the pending draft for token. The draft is kept, as rejected,

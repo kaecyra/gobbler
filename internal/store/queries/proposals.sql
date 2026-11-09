@@ -72,8 +72,10 @@ WHERE id = sqlc.arg(id) AND household_id = sqlc.arg(household_id) AND state = 'p
 UPDATE proposals SET state = 'accepted', result_recipe_id = sqlc.arg(result_recipe_id), state_at = sqlc.arg(state_at)
 WHERE id = sqlc.arg(id) AND household_id = sqlc.arg(household_id) AND kind = 'draft' AND state = 'pending';
 
+-- reason is left as it is when NULL: a person's edit on the review screen
+-- keeps the reason an agent gave for its revision (ADR-00048).
 -- name: UpdateDraftDocument :execrows
-UPDATE proposals SET document = sqlc.arg(document)
+UPDATE proposals SET document = sqlc.arg(document), reason = COALESCE(sqlc.narg(reason), reason)
 WHERE id = sqlc.arg(id) AND household_id = sqlc.arg(household_id) AND kind = 'draft' AND state = 'pending';
 
 -- name: ListPendingProposalAges :many
@@ -92,3 +94,15 @@ DELETE FROM proposals WHERE id = ?;
 -- name: SetPendingEditSuperseded :execrows
 UPDATE proposals SET state = 'superseded', state_at = sqlc.arg(state_at)
 WHERE recipe_id = sqlc.arg(recipe_id) AND household_id = sqlc.arg(household_id) AND kind = 'edit' AND state = 'pending';
+
+-- The household's pending ingestion drafts, re-imports included, oldest first,
+-- for an agent to list (ADR-00048). The name and source address are read from
+-- the draft document, where the draft codec writes them.
+-- name: ListPendingDrafts :many
+SELECT token, CAST(COALESCE(json_extract(document, '$.name.v'), '') AS TEXT) AS name,
+    CAST(COALESCE(json_extract(document, '$.source_url'), '') AS TEXT) AS source_url,
+    CAST(json_extract(document, '$.reimport.recipe') IS NOT NULL AS INTEGER) AS reimport,
+    reason, created_at
+FROM proposals
+WHERE household_id = sqlc.arg(household_id) AND kind = 'draft' AND state = 'pending'
+ORDER BY created_at, id;

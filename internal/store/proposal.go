@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -487,6 +488,35 @@ func loadProposal(ctx context.Context, q *storedb.Queries, hid int64, token stri
 // draft as the reviewer left it, or as the LLM read it again. The source
 // snapshot does not change. A draft that is not pending is ErrNotPending.
 func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) error {
+	return s.replaceDraft(ctx, token, doc, "", sql.NullString{})
+}
+
+// ReviseDraft is ReplaceDraft for an agent's revision (ADR-00048): it stores
+// doc only while the held document's DraftRevision is still revision, and
+// stores reason on the proposal with it. A draft whose document changed since
+// the agent read it is ErrStaleVersion and is left as it is, so an agent never
+// overwrites a person's edit.
+func (s *Store) ReviseDraft(ctx context.Context, token string, doc []byte, revision, reason string) error {
+	if revision == "" {
+		return fmt.Errorf("%w: a revision needs the draft revision it was made from", ErrInvalid)
+	}
+	if strings.TrimSpace(reason) == "" {
+		return fmt.Errorf("%w: a revision needs a reason", ErrInvalid)
+	}
+	return s.replaceDraft(ctx, token, doc, revision, sql.NullString{String: reason, Valid: true})
+}
+
+// DraftRevision names the content of a held draft's document. It changes
+// whenever the document does, and nothing is stored for it (ADR-00048).
+func DraftRevision(doc []byte) string {
+	sum := sha256.Sum256(doc)
+	return hex.EncodeToString(sum[:16])
+}
+
+// replaceDraft is the one replace of a draft's document. A non-empty expect is
+// the DraftRevision the held document must still have; a valid reason replaces
+// the proposal's reason, and a null one keeps it.
+func (s *Store) replaceDraft(ctx context.Context, token string, doc []byte, expect string, reason sql.NullString) error {
 	hid, err := scope(ctx)
 	if err != nil {
 		return err
@@ -513,6 +543,9 @@ func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) erro
 		if ProposalKind(row.Kind) != ProposalDraft {
 			return fmt.Errorf("%w: proposal is not a draft", ErrInvalid)
 		}
+		if expect != "" && DraftRevision([]byte(row.Document)) != expect {
+			return fmt.Errorf("%w: the draft changed since revision %s was read", ErrStaleVersion, expect)
+		}
 		held, err := draftReimport([]byte(row.Document))
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrCorrupt, err)
@@ -520,7 +553,7 @@ func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) erro
 		if !sameReimport(held, replacing) {
 			return fmt.Errorf("%w: a draft cannot change the recipe it re-imports", ErrInvalid)
 		}
-		n, err := q.UpdateDraftDocument(ctx, storedb.UpdateDraftDocumentParams{Document: string(doc), ID: row.ID, HouseholdID: hid})
+		n, err := q.UpdateDraftDocument(ctx, storedb.UpdateDraftDocumentParams{Document: string(doc), Reason: reason, ID: row.ID, HouseholdID: hid})
 		if err != nil {
 			return fmt.Errorf("replace draft: %w", err)
 		}
@@ -535,6 +568,48 @@ func (s *Store) ReplaceDraft(ctx context.Context, token string, doc []byte) erro
 		}
 		return indexProposal(ctx, q, hid, row.ID, ids)
 	})
+}
+
+// DraftSummary is a pending draft as an agent lists it (ADR-00048).
+type DraftSummary struct {
+	Token string
+	// Name and SourceURL are the draft's name and the address it was read
+	// from; either may be empty.
+	Name, SourceURL string
+	// Reimport is set for a re-import of a saved recipe (ADR-00042).
+	Reimport bool
+	// Reason is what the agent that last revised the draft said; empty when no
+	// agent has revised it (ReviseDraft is the only write of a draft's reason).
+	Reason    string
+	CreatedAt time.Time
+}
+
+// PendingDraftList lists the household's pending ingestion drafts, re-imports
+// included, oldest first.
+func (s *Store) PendingDraftList(ctx context.Context) ([]DraftSummary, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []DraftSummary
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		rows, err := q.ListPendingDrafts(ctx, hid)
+		if err != nil {
+			return readErr("pending drafts", err)
+		}
+		for _, r := range rows {
+			at, err := parseTime(r.CreatedAt)
+			if err != nil {
+				return err
+			}
+			out = append(out, DraftSummary{Token: r.Token, Name: r.Name, SourceURL: r.SourceUrl, Reimport: r.Reimport != 0, Reason: r.Reason, CreatedAt: at})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func sameReimport(a, b *Reimport) bool {
