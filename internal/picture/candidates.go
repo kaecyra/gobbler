@@ -69,34 +69,43 @@ type Candidate struct {
 	Width, Height int
 }
 
-// find downloads urls in order, processes each and applies the filters. Every
-// candidate is downloaded and decoded before the size floor is chosen: 2x
-// (MinWidth by MinHeight) when any candidate meets it, otherwise 1x
-// (FallbackMinWidth by FallbackMinHeight) (ADR-00050). Dedupe and the cap of
-// MaxCandidates apply to what passes the floor, so a 2x picture late in the
-// list still sets it. A candidate that fails is logged and dropped, never an
-// error: it is data about the page, not a broken pipeline (error-handling rule).
+// find downloads urls in order, once each, and applies the filters. The first
+// pass keeps each candidate's bytes (capped at media.MaxUploadBytes) and its
+// size read from the header by media.Size, decoding no pixels, so memory holds
+// downloads rather than decoded images. The size floor is then chosen from
+// every candidate: 2x (MinWidth by MinHeight) when any candidate meets it,
+// otherwise 1x (FallbackMinWidth by FallbackMinHeight) (ADR-00050). Only the
+// candidates that pass the floor are decoded, deduplicated by pixels and
+// encoded, in order, until MaxCandidates are kept, so a 2x picture late in the
+// list still sets the floor. A candidate that fails, including one whose header
+// reads but whose pixels do not decode, is logged and dropped, never an error:
+// it is data about the page, not a broken pipeline (error-handling rule).
 func (s *Service) find(ctx context.Context, urls []string) []Found {
-	type decoded struct {
-		url string
-		img image.Image
+	type sized struct {
+		url  string
+		data []byte
+		w, h int
 	}
-	var all []decoded
+	var all []sized
 	twoX := false
 	for _, u := range urls {
-		img, err := s.decode(ctx, u)
+		data, err := s.download(ctx, u)
 		if err != nil {
 			s.log.InfoContext(ctx, "picture candidate dropped", "url", u, "reason", err.Error())
 			continue
 		}
-		b := img.Bounds()
-		if b.Dx() < FallbackMinWidth || b.Dy() < FallbackMinHeight {
-			s.log.InfoContext(ctx, "picture candidate dropped", "url", u,
-				"reason", fmt.Sprintf("%dx%d is smaller than %dx%d", b.Dx(), b.Dy(), FallbackMinWidth, FallbackMinHeight))
+		w, h, err := media.Size(data)
+		if err != nil {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", u, "reason", "decode: "+err.Error())
 			continue
 		}
-		twoX = twoX || (b.Dx() >= MinWidth && b.Dy() >= MinHeight)
-		all = append(all, decoded{url: u, img: img})
+		if w < FallbackMinWidth || h < FallbackMinHeight {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", u,
+				"reason", fmt.Sprintf("%dx%d is smaller than %dx%d", w, h, FallbackMinWidth, FallbackMinHeight))
+			continue
+		}
+		twoX = twoX || (w >= MinWidth && h >= MinHeight)
+		all = append(all, sized{url: u, data: data, w: w, h: h})
 	}
 	minW, minH := FallbackMinWidth, FallbackMinHeight
 	if twoX {
@@ -104,43 +113,34 @@ func (s *Service) find(ctx context.Context, urls []string) []Found {
 	}
 	var out []Found
 	seen := map[[sha256.Size]byte]bool{}
-	for _, d := range all {
+	for _, c := range all {
 		if len(out) >= MaxCandidates {
 			break
 		}
-		b := d.img.Bounds()
-		if b.Dx() < minW || b.Dy() < minH {
-			s.log.InfoContext(ctx, "picture candidate dropped", "url", d.url,
-				"reason", fmt.Sprintf("%dx%d is smaller than %dx%d, which another candidate meets", b.Dx(), b.Dy(), minW, minH))
+		if c.w < minW || c.h < minH {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url,
+				"reason", fmt.Sprintf("%dx%d is smaller than %dx%d, which another candidate meets", c.w, c.h, minW, minH))
 			continue
 		}
-		sum := pixelHash(d.img)
-		if seen[sum] {
-			s.log.InfoContext(ctx, "picture candidate dropped", "url", d.url, "reason", "same pixels as an earlier candidate")
-			continue
-		}
-		f, err := process(d.url, d.img)
+		d, err := media.Decode(c.data)
 		if err != nil {
-			s.log.InfoContext(ctx, "picture candidate dropped", "url", d.url, "reason", err.Error())
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url, "reason", "decode: "+err.Error())
+			continue
+		}
+		sum := pixelHash(d.Image)
+		if seen[sum] {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url, "reason", "same pixels as an earlier candidate")
+			continue
+		}
+		f, err := process(c.url, d.Image)
+		if err != nil {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url, "reason", err.Error())
 			continue
 		}
 		seen[sum] = true
 		out = append(out, f)
 	}
 	return out
-}
-
-// decode downloads rawURL and decodes it.
-func (s *Service) decode(ctx context.Context, rawURL string) (image.Image, error) {
-	data, err := s.download(ctx, rawURL)
-	if err != nil {
-		return nil, err
-	}
-	d, err := media.Decode(data)
-	if err != nil {
-		return nil, fmt.Errorf("decode: %w", err)
-	}
-	return d.Image, nil
 }
 
 // process turns a decoded candidate into the stored picture.

@@ -294,6 +294,28 @@ func TestDecodeAcceptsEveryAllowedFormat(t *testing.T) {
 		if _, err := Avatar(d.Image, Full); err != nil {
 			t.Errorf("%s: avatar: %v", name, err)
 		}
+		w, h, err := Size(tc.data)
+		if b := d.Image.Bounds(); err != nil || w != b.Dx() || h != b.Dy() {
+			t.Errorf("%s: Size = %dx%d, %v; want the decoded %dx%d", name, w, h, err, b.Dx(), b.Dy())
+		}
+	}
+}
+
+func TestSizeIsTheUprightSizeAndRefusesWhatDecodeRefuses(t *testing.T) {
+	// Orientation 6 turns a 40x20 picture into 20x40, as Decode does.
+	if w, h, err := Size(taggedJPEG(t, halves(40, 20), 6)); err != nil || w != 20 || h != 40 {
+		t.Errorf("Size of an orientation-6 JPEG = %dx%d, %v; want 20x40", w, h, err)
+	}
+	for name, data := range map[string][]byte{
+		"empty":    nil,
+		"not one":  []byte("not a picture"),
+		"too many": hugePNG(10000, 10000),
+	} {
+		if _, _, err := Size(data); err == nil {
+			t.Errorf("%s: Size accepted it", name)
+		} else if _, ok := RefusalText(err); !ok {
+			t.Errorf("%s: Size = %v, want a Refusal", name, err)
+		}
 	}
 }
 

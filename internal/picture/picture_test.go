@@ -301,6 +301,29 @@ func TestFetchCandidatesSizeFloor(t *testing.T) {
 	}
 }
 
+// A file whose header reads but whose pixels are cut off passes the size
+// floor's header read and is dropped when it is decoded; the rest are kept.
+func TestFetchCandidatesDropsAPictureThatFailsTheFullDecode(t *testing.T) {
+	e := newEnv(t)
+	whole := pic(t, 1200, 400, 3)
+	cut := whole[:len(whole)/2]
+	if _, _, err := media.Size(cut); err != nil {
+		t.Fatalf("the cut file's header must still read: %v", err)
+	}
+	srv := site(t, map[string][]byte{
+		"/cut.png": cut,
+		"/a.png":   pic(t, 1200, 400, 5),
+		"/b.png":   pic(t, 1200, 400, 7),
+	})
+	got, err := e.svc.FetchCandidates(e.ctx, e.draft(t), []string{srv.URL + "/a.png", srv.URL + "/cut.png", srv.URL + "/b.png"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].SourceURL != srv.URL+"/a.png" || got[1].SourceURL != srv.URL+"/b.png" {
+		t.Fatalf("candidates = %+v, want a.png then b.png", got)
+	}
+}
+
 func TestPromoteMovesTheChosenCandidateAndClearsTheDraft(t *testing.T) {
 	e := newEnv(t)
 	srv := site(t, map[string][]byte{"/a.png": pic(t, 1200, 400, 3), "/b.png": pic(t, 1200, 400, 5)})

@@ -63,25 +63,48 @@ type Decoded struct {
 	Format string
 }
 
+// Size checks an upload as Decode does and returns the width and height its
+// decoded picture will have, EXIF orientation applied, reading only the header.
+// It refuses what Decode refuses, except a file whose pixel data is damaged
+// past a sound header: only the full decode finds that.
+func Size(data []byte) (width, height int, err error) {
+	cfg, format, err := header(data)
+	if err != nil {
+		return 0, 0, err
+	}
+	if format == "jpeg" && exifOrientation(data) >= 5 {
+		return cfg.Height, cfg.Width, nil
+	}
+	return cfg.Width, cfg.Height, nil
+}
+
+// header runs the checks Decode makes before decoding any pixels.
+func header(data []byte) (image.Config, string, error) {
+	if len(data) > MaxUploadBytes {
+		return image.Config{}, "", &Refusal{"That file is over 5 MB. Choose a smaller picture."}
+	}
+	if len(data) == 0 {
+		return image.Config{}, "", &Refusal{"That file is empty. Choose a picture."}
+	}
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if errors.Is(err, image.ErrFormat) || (err == nil && !formats[format]) {
+		return image.Config{}, "", &Refusal{"That is not a JPEG, PNG, GIF, WebP, HEIC or AVIF picture. Choose one of those."}
+	}
+	if err != nil {
+		return image.Config{}, "", &Refusal{"That picture could not be read. It may be damaged; try another."}
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > maxPixels {
+		return image.Config{}, "", &Refusal{"That picture is too large to process. Choose a smaller one."}
+	}
+	return cfg, format, nil
+}
+
 // Decode checks an upload and decodes it. The format comes from the bytes
 // (ADR-00033). Too big, not a picture, not an accepted format, and a damaged
 // file are each a *Refusal.
 func Decode(data []byte) (Decoded, error) {
-	if len(data) > MaxUploadBytes {
-		return Decoded{}, &Refusal{"That file is over 5 MB. Choose a smaller picture."}
-	}
-	if len(data) == 0 {
-		return Decoded{}, &Refusal{"That file is empty. Choose a picture."}
-	}
-	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
-	if errors.Is(err, image.ErrFormat) || (err == nil && !formats[format]) {
-		return Decoded{}, &Refusal{"That is not a JPEG, PNG, GIF, WebP, HEIC or AVIF picture. Choose one of those."}
-	}
-	if err != nil {
-		return Decoded{}, &Refusal{"That picture could not be read. It may be damaged; try another."}
-	}
-	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > maxPixels {
-		return Decoded{}, &Refusal{"That picture is too large to process. Choose a smaller one."}
+	if _, _, err := header(data); err != nil {
+		return Decoded{}, err
 	}
 	img, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
