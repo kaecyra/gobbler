@@ -11,6 +11,10 @@
 // draft can be reviewed the next day. Only the confirm route saves, and only
 // through apiingest.Confirm, so no route stores an ingested recipe without the
 // review step.
+//
+// The form page lists the household's drafts waiting for review, and a
+// confirm or discard moves on to the oldest one still waiting (ADR-00049,
+// waiting.go).
 package ingest
 
 import (
@@ -70,6 +74,11 @@ type Recipes interface {
 	// Candidates are the draft's picture candidates.
 	PictureKey(ctx context.Context, c apirecipes.Caller, recipeID int64) (string, bool, error)
 	Candidates(ctx context.Context, c apirecipes.Caller, proposalID int64) ([]apirecipes.Candidate, error)
+	// PendingDrafts lists the drafts waiting for review, oldest first, for the
+	// import page and for the move to the next draft; EndedDraft names a draft
+	// just confirmed or discarded, for the message after it (ADR-00049).
+	PendingDrafts(ctx context.Context, c apirecipes.Caller) ([]apirecipes.DraftSummary, error)
+	EndedDraft(ctx context.Context, c apirecipes.Caller, token string) (apirecipes.EndedDraft, error)
 }
 
 // Deps is what the ingest routes need to build the ingestion service.
@@ -210,6 +219,11 @@ type formView struct {
 	Error     string
 	// Source is the field the page asked for with ?source=; empty is the link.
 	Source string
+	// Waiting is the household's drafts waiting for review, oldest first
+	// (ADR-00049).
+	Waiting []waitingRow
+	// Done is the message after the last draft was confirmed or discarded.
+	Done *doneView
 }
 
 // reviewView is what the review screen renders.
@@ -230,10 +244,26 @@ type reviewView struct {
 	// Reimport is set when the draft replaces a saved recipe: the review page
 	// then carries the callout saying so.
 	Reimport *apiingest.Reimport
+	// Done is the message after the previous draft was confirmed or
+	// discarded (ADR-00049).
+	Done *doneView
 }
 
 func (h *handler) form(w http.ResponseWriter, r *http.Request) {
-	layout.Render(w, r, http.StatusOK, formPage(formView{Source: r.URL.Query().Get("source")}))
+	h.renderForm(w, r, http.StatusOK, formView{Source: r.URL.Query().Get("source")})
+}
+
+// renderForm shows the import page, with the drafts waiting for review above
+// the forms (ADR-00049).
+func (h *handler) renderForm(w http.ResponseWriter, r *http.Request, status int, v formView) {
+	pending, err := h.pending(r.Context())
+	if err != nil {
+		layout.WriteError(w, r, fmt.Errorf("list the drafts waiting for review: %w", err))
+		return
+	}
+	v.Waiting = rowsOf(pending, time.Now())
+	v.Done = h.done(r, len(pending))
+	layout.Render(w, r, status, formPage(v))
 }
 
 // submit runs the pipeline and redirects to the review screen. Nothing is
@@ -256,13 +286,13 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		v.Error = "That does not look like a web address. It must start with http:// or https://."
 	}
 	if v.Error != "" {
-		layout.Render(w, r, http.StatusBadRequest, formPage(v))
+		h.renderForm(w, r, http.StatusBadRequest, v)
 		return
 	}
 
 	if h.full(w, r, func(msg string) {
 		v.Error = msg
-		layout.Render(w, r, http.StatusConflict, formPage(v))
+		h.renderForm(w, r, http.StatusConflict, v)
 	}) {
 		return
 	}
@@ -285,12 +315,12 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 		}
 		h.log.WarnContext(r.Context(), "ingest failed", "error", err.Error(), "status", status)
 		v.Error = msg
-		layout.Render(w, r, status, formPage(v))
+		h.renderForm(w, r, status, v)
 		return
 	}
 	token, ok := h.hold(w, r, draft, func(msg string) {
 		v.Error = msg
-		layout.Render(w, r, http.StatusConflict, formPage(v))
+		h.renderForm(w, r, http.StatusConflict, v)
 	})
 	if !ok {
 		return
@@ -429,7 +459,7 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 		return
 	}
 	layout.Render(w, r, status, reviewPage(reviewView{
-		Token: token, Draft: d, Form: *form, Picker: picker, Reimport: d.Reimport,
+		Token: token, Draft: d, Form: *form, Picker: picker, Reimport: d.Reimport, Done: h.doneOnReview(r),
 		CanRetry: h.retrier != nil && h.retrier.Configured(),
 		// A draft read from a photo whose photo is no longer in memory:
 		// asking the LLM again reads the recognised text alone.
@@ -542,12 +572,15 @@ func (h *handler) confirm(w http.ResponseWriter, r *http.Request) {
 	h.photoCache.Drop(token)
 	h.log.InfoContext(r.Context(), "recipe ingested", "recipe_id", saved.RecipeID,
 		"new_ingredients", len(saved.NewIngredients), "new_equipment", len(saved.NewEquipment))
+	// On to the oldest draft still waiting, or to the saved recipe when none
+	// is (ADR-00049).
+	dest := h.next(r, token, recipepath.View(saved.RecipeID, d.Name.Value))
 	if editor.FromHTMX(r) {
-		w.Header().Set("HX-Redirect", recipepath.View(saved.RecipeID, d.Name.Value))
+		w.Header().Set("HX-Redirect", dest)
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	http.Redirect(w, r, recipepath.View(saved.RecipeID, d.Name.Value), http.StatusSeeOther)
+	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
 // staleReimport is shown on the review screen when the recipe changed after the
@@ -612,18 +645,27 @@ func leaves(err error) []error {
 
 // cancel discards the draft. Nothing was saved, so there is nothing to undo.
 // Another household's token, or one already ended, is discarded as nothing: the
-// answer is the same for every caller.
+// answer is the same for every caller. A draft this request discarded moves on
+// to the oldest draft still waiting, with a message naming it (ADR-00049).
 func (h *handler) cancel(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	// A discarded re-import goes back to its recipe, not to the add form.
-	back := "/ingest"
+	// With none waiting, a discarded re-import goes back to its recipe, and
+	// any other draft to the add form, which says what was discarded.
+	back := "/ingest?" + url.Values{doneParam: {token}}.Encode()
 	if d, err := h.recipes.GetDraft(r.Context(), caller.FromContext(r.Context()), token); err == nil && d.Reimport != nil {
 		back = recipepath.View(d.Reimport.RecipeID, "")
 	}
-	if err := h.recipes.DiscardDraft(r.Context(), caller.FromContext(r.Context()), token); err != nil && !errors.Is(err, apiingest.ErrDraftGone) {
+	err := h.recipes.DiscardDraft(r.Context(), caller.FromContext(r.Context()), token)
+	switch {
+	case errors.Is(err, apiingest.ErrDraftGone):
+		// Nothing was discarded here, so no message names it.
+		h.photoCache.Drop(token)
+		http.Redirect(w, r, "/ingest", http.StatusSeeOther)
+		return
+	case err != nil:
 		layout.WriteError(w, r, err)
 		return
 	}
 	h.photoCache.Drop(token)
-	http.Redirect(w, r, back, http.StatusSeeOther)
+	http.Redirect(w, r, h.next(r, token, back), http.StatusSeeOther)
 }

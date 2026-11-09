@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { png } from './helpers';
+import { openSaved, png } from './helpers';
 
 // The picture picker on the review screen (ADR-00039, Choosing). The page is
 // fetched from a local fixture server, which also serves the page's pictures;
@@ -131,6 +131,7 @@ test('a draft confirmed with a chosen picture saves it as the recipe picture', a
   await expect(group.getByRole('radio', { name: /1024 × 576/ })).toBeChecked();
   await expect(p.getByText('Pick a picture, or No picture, before saving.')).toBeHidden();
   await p.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(p);
   await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   const id = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1];
   const res = await p.request.get(`/recipes/${id}/picture`);
@@ -142,6 +143,7 @@ test('a draft confirmed with No picture saves a recipe with no picture', async (
   await review(p, '/with-pictures');
   await picker(p).locator('.pick.none').click();
   await p.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(p);
   await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
   const id = p.url().match(/\/recipes\/(\d+)(?:-[a-z0-9-]*)?$/)![1];
   expect((await p.request.get(`/recipes/${id}/picture`)).status()).toBe(404);
@@ -180,6 +182,7 @@ test('a page with no pictures offers only No picture, and it saves', async ({ pa
   await expect(radios.first()).toBeChecked();
   await expect(p.getByText('This source had no usable pictures.')).toBeVisible();
   await p.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(p);
   await expect(p).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 });
 

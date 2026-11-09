@@ -570,14 +570,21 @@ func (s *Store) replaceDraft(ctx context.Context, token string, doc []byte, expe
 	})
 }
 
-// DraftSummary is a pending draft as an agent lists it (ADR-00048).
+// DraftSummary is a pending draft as an agent lists it (ADR-00048) and as the
+// import page lists it (ADR-00049).
 type DraftSummary struct {
 	Token string
 	// Name and SourceURL are the draft's name and the address it was read
 	// from; either may be empty.
 	Name, SourceURL string
-	// Reimport is set for a re-import of a saved recipe (ADR-00042).
-	Reimport bool
+	// SourceKind is the kind of the draft's source snapshot; empty when the
+	// snapshot is gone.
+	SourceKind SnapshotKind
+	// Reimport is set for a re-import of a saved recipe (ADR-00042);
+	// ReimportOf and ReimportName are that recipe's id and name.
+	Reimport     bool
+	ReimportOf   int64
+	ReimportName string
 	// Reason is what the agent that last revised the draft said; empty when no
 	// agent has revised it (ReviseDraft is the only write of a draft's reason).
 	Reason    string
@@ -602,12 +609,74 @@ func (s *Store) PendingDraftList(ctx context.Context) ([]DraftSummary, error) {
 			if err != nil {
 				return err
 			}
-			out = append(out, DraftSummary{Token: r.Token, Name: r.Name, SourceURL: r.SourceUrl, Reimport: r.Reimport != 0, Reason: r.Reason, CreatedAt: at})
+			out = append(out, DraftSummary{
+				Token: r.Token, Name: r.Name, SourceURL: r.SourceUrl, SourceKind: SnapshotKind(r.SourceKind),
+				Reimport: r.ReimportOf != 0, ReimportOf: r.ReimportOf, ReimportName: r.ReimportName,
+				Reason: r.Reason, CreatedAt: at,
+			})
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	return out, nil
+}
+
+// WaitingDrafts is how many ingestion drafts, re-imports included, the
+// household on ctx has waiting for review: the count the menu shows
+// (ADR-00049). PendingDrafts is the count the bound on new drafts uses.
+func (s *Store) WaitingDrafts(ctx context.Context) (int, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var n int64
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		var err error
+		n, err = q.CountWaitingDrafts(ctx, hid)
+		return err
+	})
+	if err != nil {
+		return 0, readErr("waiting drafts", err)
+	}
+	return int(n), nil
+}
+
+// EndedDraft is a draft a person has just confirmed or discarded, as the page
+// they land on names it (ADR-00049).
+type EndedDraft struct {
+	// Saved is set for a confirmed draft, and RecipeID is the recipe it saved
+	// or replaced, 0 when that recipe no longer exists; a discarded draft has
+	// neither.
+	Saved    bool
+	RecipeID int64
+	// Name is the saved recipe's name, or the discarded draft's.
+	Name string
+}
+
+// EndedDraftByToken reads the household's confirmed or discarded draft with
+// token. A token that names no such draft (pending, expired, superseded,
+// another household's or unknown) is ErrNotFound.
+func (s *Store) EndedDraftByToken(ctx context.Context, token string) (EndedDraft, error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return EndedDraft{}, err
+	}
+	var out EndedDraft
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		row, err := q.GetEndedDraft(ctx, storedb.GetEndedDraftParams{Token: token, HouseholdID: hid})
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: ended draft", ErrNotFound)
+		}
+		if err != nil {
+			return readErr("ended draft", err)
+		}
+		out = EndedDraft{Saved: ProposalState(row.State) == ProposalAccepted, RecipeID: row.ResultRecipeID, Name: row.Name}
+		return nil
+	})
+	if err != nil {
+		return EndedDraft{}, err
 	}
 	return out, nil
 }

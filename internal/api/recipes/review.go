@@ -135,6 +135,27 @@ func (s *Service) PendingDrafts(ctx context.Context, c Caller) ([]DraftSummary, 
 	return s.drafts.Pending(ctx)
 }
 
+// WaitingDrafts is how many drafts, re-imports included, wait for review in
+// the household: the count the menu shows (ADR-00049).
+func (s *Service) WaitingDrafts(ctx context.Context, c Caller) (int, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return 0, err
+	}
+	return s.recipes.WaitingDrafts(ctx)
+}
+
+// EndedDraft names the draft held under token once it has been confirmed or
+// discarded, for the message on the page the person lands on (ADR-00049). A
+// token that names no such draft of the household is ErrNotFound.
+func (s *Service) EndedDraft(ctx context.Context, c Caller, token string) (EndedDraft, error) {
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return EndedDraft{}, err
+	}
+	return s.recipes.EndedDraftByToken(ctx, token)
+}
+
 // SameSource lists the household's saved recipes and pending drafts whose
 // source address is sourceURL's, fragments ignored, for an import or preview
 // to report (ADR-00048). It reports and refuses nothing. The drafts are read

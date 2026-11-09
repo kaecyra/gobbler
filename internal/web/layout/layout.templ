@@ -85,19 +85,24 @@ templ Page(title string) {
 
 // navLink is one entry of the nav: a line icon and a label. The label hides
 // below the widths where the bar is icons only, so the accessible name is set
-// explicitly.
+// explicitly. The import entry carries the count of drafts waiting for review
+// as a badge while there are any (ADR-00049).
 templ navLink(ctx context.Context, item navItem) {
+	{{ waiting := waitingCount(ctx, item) }}
 	<a
 		class={ "tab", templ.KV("cta", item.CTA) }
 		href={ templ.SafeURL(item.Path) }
-		aria-label={ item.Label }
-		title={ item.Label }
+		aria-label={ navLabel(item, waiting) }
+		title={ navLabel(item, waiting) }
 		if isCurrent(ctx, item) {
 			aria-current="page"
 		}
 	>
 		@Icon(item.Icon)
 		<span class="lbl">{ item.Label }</span>
+		if waiting > 0 {
+			<span class="tab-count" aria-hidden="true" data-testid="waiting-drafts">{ strconv.Itoa(waiting) }</span>
+		}
 	</a>
 }
 

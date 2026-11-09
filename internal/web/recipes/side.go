@@ -6,6 +6,7 @@ import (
 
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipepath"
+	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
 // recentLimit is how many made-it entries the "recently made" panel lists.
@@ -81,9 +82,9 @@ func recentViews(entries []apirecipes.MadeEntry) []recentView {
 
 // idleFor reports a recipe last made more than idleAfterDays calendar days
 // before now. The made-it date is a plain date, so the days are counted as
-// ago() counts them: the hour and now's zone never move the boundary.
+// layout.Ago counts them: the hour and now's zone never move the boundary.
 func idleFor(c apirecipes.Card, now time.Time) bool {
-	return c.LastMade != nil && calendarDays(*c.LastMade, now) > idleAfterDays
+	return c.LastMade != nil && layout.CalendarDays(*c.LastMade, now) > idleAfterDays
 }
 
 // forgotPick is the recipe the forgot panel names: from the idle list (see
@@ -138,7 +139,7 @@ func suggestFor(ideas []apirecipes.Card, n int, now time.Time, href func(idea in
 	c := ideas[i]
 	v := suggestView{Card: cardFor(c, now), Voice: "Haven’t tried this one yet…", When: "Not made yet"}
 	if c.LastMade != nil {
-		v.Voice, v.When = "Haven’t made this in a while…", "Last made "+ago(*c.LastMade, now)
+		v.Voice, v.When = "Haven’t made this in a while…", "Last made "+layout.Ago(*c.LastMade, now)
 	}
 	if len(ideas) > 1 {
 		v.NextHref = href((i + 1) % len(ideas))

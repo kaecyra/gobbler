@@ -6,7 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { pasteText } from './helpers';
+import { openSaved, pasteText } from './helpers';
 
 // The LLM fallback (ADR-00006, ADR-00007), which fills gaps and never replaces
 // the rule-based draft (ADR-00020 decision 2). This spec starts its own gobbler
@@ -172,6 +172,7 @@ test('retry fills gaps only: the rule values are kept, unmarked, and nothing is 
   // Still on the review screen: saving needs the confirm button.
   await expect(page.getByRole('button', { name: 'Confirm and save' }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 });
 
@@ -189,6 +190,7 @@ test('a failing provider shows the error and keeps the rule-based draft saveable
   // The same draft is still pending and can be saved.
   expect((await request.get(`/ingest/${token}`)).status()).toBe(200);
   await page.getByRole('button', { name: 'Confirm and save' }).first().click();
+  await openSaved(page);
   await expect(page).toHaveURL(/\/recipes\/\d+(?:-[a-z0-9-]*)?$/);
 });
 

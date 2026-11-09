@@ -326,6 +326,14 @@ What a client can do:
 | `create_shopping_list`, `add_recipe_to_shopping_list`, `add_manual_shopping_item`, `check_shopping_item` | Change shopping lists. These **apply at once**. |
 | `get_house_style` | Read the household's house style: plain-text rules, up to 16 KiB, for how the household writes its recipes (ADR-00048). The server's instructions tell an agent to read it before it revises a draft or proposes a recipe edit. Members edit it on the household page; no tool changes it. |
 
+A person finds the drafts an agent left without its links (ADR-00049). The
+Add recipe entry in the menu shows how many drafts, re-imports included, are
+waiting for review in the household, and `/ingest` lists them above the import
+forms, oldest first, each with its name, source, age, and marks for a re-import
+and for an agent's revision. Confirming or discarding a draft opens the oldest
+one still waiting, with a message saying what was saved or discarded; with
+none left, a confirm opens the saved recipe as before.
+
 Every write is recorded in the `api_key_writes` table (for a key) or the
 `oauth_grant_writes` table (for an OAuth client, see below). Each row names the
 credential by its id and by a snapshot of it (a key's prefix, owner and creation

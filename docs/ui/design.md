@@ -50,6 +50,11 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   sections (catalog, shared, household and, for an operator, operator) sit
   behind one menu button at the end of the nav. Below 560px the nav becomes a fixed bottom
   bar. The account button ends the header (below).
+- **Drafts waiting.** While the household has drafts waiting for review, Add
+  recipe carries their count in a small `--grain` badge on its top corner, at
+  every width and in the phone bar, with the count in its accessible name
+  ([ADR-00049](../adr/00049-pending-drafts-listed-and-counted.md)). At zero
+  there is no badge.
 - **Header spacing.** Every item in the header's right-hand group, the nav
   entries, the coral action and the account button, is separated by the same
   gap, the `--nav-gap` token (8px), at every width. No item adds a margin of
@@ -209,6 +214,17 @@ equipment review was linked from nowhere.
 | Cook mode | `/recipes/{id}/cook` | `#cook` |
 | Shopping list | `/shopping` and its subpages | `#shop` |
 | Add and review | `/ingest`, `/ingest/{token}`, `/ingest/photo` | `#add` |
+
+- **Waiting for review** on `/ingest`, above the import forms and only when a
+  draft is waiting: one card-coloured row per draft, oldest first, with the
+  name, then the source host ("Pasted text" or "Photo" when there is none) and
+  the age in muted text, and two tinted marks, "Re-import of …" (`--wattle-soft`)
+  and "Revised by an agent" (`--grain-soft`). The whole row links to the
+  review page ([ADR-00049](../adr/00049-pending-drafts-listed-and-counted.md)).
+- **After a confirm or discard** the next draft's review page, or `/ingest`
+  when none is left, opens with a page-level callout: "Saved" and the recipe's
+  name as a link, or "Discarded" and the draft's name, then how many drafts are
+  still waiting.
 
 - **Search** is Google-style: a big centred box on home with a `/` focus key.
   Typing moves to `/recipes?q=`, the library's existing search, through HTMX

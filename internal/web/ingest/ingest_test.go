@@ -317,8 +317,14 @@ func newFixture(t *testing.T) *fixture {
 	st.drafts = rec
 	d := &fakeDrafter{draft: sampleDraft()}
 	rs := &testRecipes{
-		saver:  ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
-		drafts: ingestcore.NewDrafts(rec),
+		saver:     ingestcore.NewSaver(st, st).WithThumbnails(stubThumbs{}),
+		drafts:    ingestcore.NewDrafts(rec),
+		proposals: rec,
+		recipeName: func(id int64) string {
+			st.mu.Lock()
+			defer st.mu.Unlock()
+			return st.recipes[id-1].Name
+		},
 	}
 	h := &handler{
 		drafter:    d,
@@ -605,7 +611,7 @@ func TestCancelDiscardsAndSavesNothing(t *testing.T) {
 	f := newFixture(t)
 	token := f.ingestText(t)
 	rec := f.do(http.MethodPost, "/"+token+"/cancel", url.Values{})
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/ingest" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/ingest?done="+token {
 		t.Fatalf("status = %d location = %q", rec.Code, rec.Header().Get("Location"))
 	}
 	if len(f.store.recipes) != 0 || len(f.store.created) != 0 {

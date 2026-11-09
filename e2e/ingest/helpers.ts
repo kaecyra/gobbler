@@ -8,6 +8,25 @@ export async function pasteText(page: Page, text: string): Promise<void> {
   await page.getByLabel('Recipe text').fill(text);
 }
 
+// After a draft is confirmed: the saved recipe's page. When other drafts are
+// waiting, a confirm opens the oldest of them instead, with a message linking
+// the saved recipe (ADR-00049); this follows that link. Specs on a shared
+// server cannot tell whether another spec's draft is waiting, so every confirm
+// that expects the recipe page goes through here.
+export async function openSaved(page: Page): Promise<void> {
+  await page.waitForURL(
+    (u) => /^\/recipes\/\d+/.test(u.pathname) || (/^\/ingest\/[0-9a-f]+$/.test(u.pathname) && u.searchParams.has('done')),
+  );
+  if (new URL(page.url()).pathname.startsWith('/ingest/')) {
+    await page.getByTestId('draft-done').getByRole('link').click();
+    await page.waitForURL(/\/recipes\/\d+/);
+  }
+}
+
+// After a draft is discarded with no other waiting, the import page; with
+// others waiting, the oldest of them. Either says what was discarded.
+export const discardedURL = /\/ingest(\/[0-9a-f]+)?\?done=[0-9a-f]+$/;
+
 // width x height RGB PNG, banded so the thumbnail is not a flat colour. 1200 by
 // 400 clears the candidate minimum of 1066 by 300; the stored candidate is
 // scaled to 1024 wide, which is the size the picker shows.

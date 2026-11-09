@@ -75,7 +75,70 @@ templ styles() {
 		.srcbox .src-h:first-child { margin-top: 0; }
 		.srcbox div { white-space: pre-wrap; }
 		.srcbox mark { background: var(--grain-soft); color: var(--ink); border-radius: var(--r-sm); padding: 0 2px; box-shadow: inset 0 -2px 0 var(--grain); }
+		.done-note { margin: 0 0 18px; }
+		.done-note a { color: inherit; font-weight: 700; }
+		.waiting { margin: 0 0 28px; max-width: 760px; }
+		.waiting-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+		.waiting-list a {
+			display: flex; flex-direction: column; gap: 4px; min-height: var(--tap); padding: 10px 14px;
+			background: var(--card); border: 1px solid var(--line); border-radius: var(--r); color: var(--ink); text-decoration: none;
+		}
+		.waiting-list a:hover { border-color: var(--wattle); }
+		.waiting-list a:focus-visible { outline: 2px solid var(--wattle); outline-offset: 2px; }
+		.waiting-list .w-name { font-weight: 700; overflow-wrap: anywhere; }
+		.waiting-list .w-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--ink-3); font-size: 14.5px; }
+		.waiting-list .w-mark { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: var(--r-sm); font-size: 13.5px; font-weight: 600; }
+		.waiting-list .w-mark.revised { background: var(--grain-soft); color: var(--grain-ink); }
+		.waiting-list .w-mark.reimport { background: var(--wattle-soft); color: var(--wattle-ink); }
 	</style>
+}
+
+// doneNote is the page-level message after a draft was confirmed or
+// discarded (ADR-00049): what happened to it, and how many drafts are still
+// waiting.
+templ doneNote(d *doneView) {
+	if d != nil {
+		<div class="callout done-note" role="status" data-testid="draft-done">
+			if d.Saved && d.RecipePath != "" {
+				Saved <a href={ templ.SafeURL(d.RecipePath) }>{ d.Name }</a>.
+			} else if d.Saved {
+				Saved { d.Name }.
+			} else {
+				Discarded { d.Name }.
+			}
+			{ d.waitingSentence() }
+		</div>
+	}
+}
+
+// waitingList is the household's drafts waiting for review, oldest first,
+// each linking to its review page (ADR-00049). It is not drawn when none is
+// waiting.
+templ waitingList(rows []waitingRow) {
+	if len(rows) > 0 {
+		<section class="waiting" aria-labelledby="waiting-h" data-testid="waiting-drafts-list">
+			<div class="sec-h"><h2 id="waiting-h">Waiting for review</h2></div>
+			<ul class="waiting-list">
+				for _, row := range rows {
+					<li>
+						<a href={ templ.SafeURL(row.Path) } data-testid="waiting-draft">
+							<span class="w-name">{ row.Name }</span>
+							<span class="w-meta">
+								<span>{ row.Source }</span>
+								<span>{ row.Age }</span>
+								if row.ReimportOf != "" {
+									<span class="w-mark reimport" data-testid="waiting-reimport">Re-import of { row.ReimportOf }</span>
+								}
+								if row.Revised {
+									<span class="w-mark revised" data-testid="waiting-revised">Revised by an agent</span>
+								}
+							</span>
+						</a>
+					</li>
+				}
+			</ul>
+		</section>
+	}
 }
 
 // photoTab is the Photo entry of the source toggle: a link, because the
@@ -97,6 +160,8 @@ templ formPage(v formView) {
 				<p>Give a web address or paste the recipe text.</p>
 			</div>
 		</div>
+		@doneNote(v.Done)
+		@waitingList(v.Waiting)
 		if v.Error != "" {
 			<p class="error" role="alert">{ v.Error }</p>
 		}
@@ -145,6 +210,7 @@ templ reviewPage(v reviewView) {
 				</form>
 			}
 		</div>
+		@doneNote(v.Done)
 		<div class="review-body">
 			@summary(v.Draft, v.Form.NeedsLook())
 			if v.PhotoGone {

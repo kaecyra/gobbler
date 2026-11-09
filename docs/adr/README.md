@@ -63,6 +63,7 @@ index below in the same commit.
 | [00046](00046-markdown-in-steps.md) | Step text and author notes render a safe markdown subset | Accepted |
 | [00047](00047-recipe-view-urls.md) | A recipe view page lives at /recipes/{id}-{slug}; the id alone is the lookup | Accepted |
 | [00048](00048-agent-driven-import.md) | Agents preview imports, revise held drafts against a household house style, and leave one review per recipe | Accepted |
+| [00049](00049-pending-drafts-listed-and-counted.md) | Pending import drafts are listed on the import page and counted in the menu | Accepted |
 
 ## What needs one
 
