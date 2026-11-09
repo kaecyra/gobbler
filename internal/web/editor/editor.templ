@@ -886,7 +886,7 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 				for _, e := range v.equipmentFor(s.ID) {
 					<span class="pill">{ e }</span>
 				}
-				@llmBadge(s.Mark)
+				@llmBadge(mark{LLM: s.fromLLM()})
 			</div>
 			@checkHint(s.Mark.Low, nil, "the rules were not sure how to read this step.")
 			if s.Err != "" {
@@ -895,9 +895,6 @@ templ stepFields(v view, ci, si, count int, s stepDraft) {
 			if v.carries(groupStepGraph) {
 				if s.Graph.Read != "" {
 					<input type="hidden" name={ sField(ci, si, "graph") } value={ s.Graph.String() }/>
-				}
-				if s.Graph.LLM {
-					<p class="llm"><strong class="llm-mark">LLM</strong> suggested this step's order and passive flag. Check them.</p>
 				}
 			}
 			<details class="more" open?={ s.open() }>

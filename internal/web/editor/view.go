@@ -528,6 +528,10 @@ func (s stepDraft) open() bool {
 	return s.Mark.Low || s.Err != "" || strings.TrimSpace(s.Text) == ""
 }
 
+// fromLLM reports whether the LLM supplied the step's reading or its order and
+// passive flag. The step shows it as one LLM pill either way.
+func (s stepDraft) fromLLM() bool { return s.Mark.LLM || s.Graph.LLM }
+
 // open reports whether an equipment row's details start open, on the same
 // terms as a line's.
 func (e equipDraft) open() bool {
