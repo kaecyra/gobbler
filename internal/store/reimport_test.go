@@ -450,13 +450,47 @@ func TestFirstSnapshotIsTheOriginalAfterAReimport(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("FirstSnapshot = %v, found %v", err, found)
 	}
-	if string(first.Content) != "<html>first import</html>" || first.ParserVersion != "1" || first.Kind != SnapshotHTML {
-		t.Errorf("first snapshot = %q at parser %q, want the original at parser 1", first.Content, first.ParserVersion)
+	if snap := first.Snapshot; string(snap.Content) != "<html>first import</html>" || snap.ParserVersion != "1" || snap.Kind != SnapshotHTML {
+		t.Errorf("first snapshot = %q at parser %q, want the original at parser 1", snap.Content, snap.ParserVersion)
+	}
+	// It was stored with its recipe, not as a draft's source, so no draft
+	// document goes with it.
+	if first.DraftDocument != nil {
+		t.Errorf("draft document = %s, want none for a snapshot no proposal names", first.DraftDocument)
 	}
 	if _, found, err := s.FirstSnapshot(ctx, id, SnapshotOCR); err != nil || found {
 		t.Errorf("FirstSnapshot(no such kind) = found %v, %v; want not found and no error", found, err)
 	}
 	if _, _, err := s.FirstSnapshot(ctx, id+50, SnapshotHTML); !errors.Is(err, ErrNotFound) {
 		t.Errorf("FirstSnapshot(missing recipe) = %v, want ErrNotFound", err)
+	}
+}
+
+// A recipe whose first HTML snapshot came from a saved re-import gets the
+// re-import draft's document with it, which names the page's address
+// (ADR-00048, Preview).
+func TestFirstSnapshotCarriesTheDraftThatHeldIt(t *testing.T) {
+	s, d := newTestStore(t)
+	_, ids := seedCatalog(t, d)
+	ctx := authedCtx(t)
+	id := newRecipe(ctx, t, s, ids.salt)
+	in := reimportInput(ids.salt, id, 1)
+	token, err := s.ProposeDraft(ctx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cur, err := s.Get(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AcceptReimport(ctx, token, cur); err != nil {
+		t.Fatal(err)
+	}
+	first, found, err := s.FirstSnapshot(ctx, id, SnapshotHTML)
+	if err != nil || !found {
+		t.Fatalf("FirstSnapshot = %v, found %v", err, found)
+	}
+	if string(first.Snapshot.Content) != "<html>fetched again</html>" || string(first.DraftDocument) != string(in.Document) {
+		t.Errorf("first source = %q with document %s, want the re-import's page and document", first.Snapshot.Content, first.DraftDocument)
 	}
 }

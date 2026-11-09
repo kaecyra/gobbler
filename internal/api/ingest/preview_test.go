@@ -19,22 +19,22 @@ import (
 	"github.com/kaecyra/gobbler/internal/store"
 )
 
-// originals is a saved recipe's original page and first version, by id, with
-// a count of the reads.
+// originals is a saved recipe's original page with the draft that held it,
+// and its first version, by id, with a count of the reads.
 type originals struct {
-	snaps map[int64]store.Snapshot
+	snaps map[int64]store.FirstSource
 	first map[int64]recipe.Recipe
 	reads atomic.Int32
 }
 
-func (o *originals) FirstSnapshot(_ context.Context, id int64, kind store.SnapshotKind) (store.Snapshot, bool, error) {
+func (o *originals) FirstSnapshot(_ context.Context, id int64, kind store.SnapshotKind) (store.FirstSource, bool, error) {
 	o.reads.Add(1)
 	if _, ok := o.first[id]; !ok {
-		return store.Snapshot{}, false, store.ErrNotFound
+		return store.FirstSource{}, false, store.ErrNotFound
 	}
 	s, ok := o.snaps[id]
-	if !ok || s.Kind != kind {
-		return store.Snapshot{}, false, nil
+	if !ok || s.Snapshot.Kind != kind {
+		return store.FirstSource{}, false, nil
 	}
 	return s, true, nil
 }
@@ -57,8 +57,10 @@ type previewFixture struct {
 
 // newPreviewFixture is the service over the real catalog, which matches every
 // ingredient of the pancakes page, with a counting provider. Recipe 1 was
-// imported from the pancakes page by parser version 7 and has since had its
-// source address edited; recipe 2 was typed in, with only a text snapshot.
+// imported from the pancakes page by parser version 7 before drafts were
+// proposals, so no draft holds its snapshot; recipe 2 was typed in, with only
+// a text snapshot; recipe 3 was typed in, with no address, and given its first
+// page by a re-import whose draft names the page's address.
 func newPreviewFixture(t *testing.T) previewFixture {
 	t.Helper()
 	ctx := context.Background()
@@ -74,12 +76,17 @@ func newPreviewFixture(t *testing.T) previewFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	reimport, err := core.EncodeDraft(core.Draft{Source: core.Source{Kind: store.SnapshotHTML, URL: "https://example.test/reimported"}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	o := &originals{
-		snaps: map[int64]store.Snapshot{
-			1: {Kind: store.SnapshotHTML, Content: page, ParserVersion: "7"},
-			2: {Kind: store.SnapshotText, Content: []byte(recipeText)},
+		snaps: map[int64]store.FirstSource{
+			1: {Snapshot: store.Snapshot{Kind: store.SnapshotHTML, Content: page, ParserVersion: "7"}},
+			2: {Snapshot: store.Snapshot{Kind: store.SnapshotText, Content: []byte(recipeText)}},
+			3: {Snapshot: store.Snapshot{Kind: store.SnapshotHTML, Content: page, ParserVersion: "19"}, DraftDocument: reimport},
 		},
-		first: map[int64]recipe.Recipe{1: {SourceURL: "https://example.test/pancakes"}, 2: {}},
+		first: map[int64]recipe.Recipe{1: {SourceURL: "https://example.test/pancakes"}, 2: {}, 3: {}},
 	}
 	prov := &countingProvider{}
 	svc, err := ingest.New(
@@ -133,9 +140,10 @@ func TestPreviewAsksTheLLMOnlyBelowTheThreshold(t *testing.T) {
 	}
 }
 
-// ADR-00048, Preview: a saved recipe's preview drafts its original page with
-// the address of its first version, fetches nothing, and reports the parser
-// version stored with the snapshot beside the current one.
+// ADR-00048, Preview: a saved recipe's preview drafts its original page, with
+// the address of its first version when no draft held the page, fetches
+// nothing, and reports the parser version stored with the snapshot beside the
+// current one.
 func TestPreviewOfASavedRecipeReplaysItsOriginalPage(t *testing.T) {
 	f := newPreviewFixture(t)
 	p, err := f.svc.Preview(context.Background(), ann, ingest.PreviewSource{RecipeID: 1})
@@ -150,6 +158,19 @@ func TestPreviewOfASavedRecipeReplaysItsOriginalPage(t *testing.T) {
 	}
 	if p.Draft.Name.Value != "Fluffy Pancakes" {
 		t.Errorf("draft name = %q, want the page's recipe", p.Draft.Name.Value)
+	}
+}
+
+// A recipe typed in and given its first page by a later re-import is replayed
+// at the address the re-import's draft fetched, not its first version's.
+func TestPreviewOfARecipeFirstImportedByAReimportUsesThatDraftsAddress(t *testing.T) {
+	f := newPreviewFixture(t)
+	p, err := f.svc.Preview(context.Background(), ann, ingest.PreviewSource{RecipeID: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Draft.Source.URL != "https://example.test/reimported" || p.SnapshotParserVersion != "19" {
+		t.Errorf("draft source = %q at snapshot parser %q, want the re-import's address and 19", p.Draft.Source.URL, p.SnapshotParserVersion)
 	}
 }
 

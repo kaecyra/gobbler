@@ -233,6 +233,26 @@ func (q *Queries) GetSnapshotByID(ctx context.Context, arg GetSnapshotByIDParams
 	return i, err
 }
 
+const getSnapshotDraftDocument = `-- name: GetSnapshotDraftDocument :one
+SELECT document FROM proposals
+WHERE snapshot_id = ?1 AND household_id = ?2 AND kind = 'draft'
+ORDER BY id LIMIT 1
+`
+
+type GetSnapshotDraftDocumentParams struct {
+	SnapshotID  sql.NullInt64
+	HouseholdID int64
+}
+
+// The document of the draft whose source a snapshot was. A draft's snapshot
+// belongs to that one draft, and an accepted draft is never pruned (ADR-00035).
+func (q *Queries) GetSnapshotDraftDocument(ctx context.Context, arg GetSnapshotDraftDocumentParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getSnapshotDraftDocument, arg.SnapshotID, arg.HouseholdID)
+	var document string
+	err := row.Scan(&document)
+	return document, err
+}
+
 const insertProposal = `-- name: InsertProposal :one
 INSERT INTO proposals (household_id, token, kind, state, recipe_id, base_version, snapshot_id, document, reason,
     proposed_by, credential_kind, credential_id, credential_ref, credential_owner, credential_created_at, tool, created_at, state_at)

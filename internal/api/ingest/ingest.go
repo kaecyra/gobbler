@@ -213,11 +213,11 @@ type Fallback interface {
 }
 
 // Originals is what a preview reads of a saved recipe: its original source
-// snapshot, and its first version for the address that snapshot was served
-// from. *store.Store satisfies it; every call runs in the household the Caller
-// was admitted to.
+// snapshot with the draft that held it, and its first version for a snapshot
+// no draft held. *store.Store satisfies it; every call runs in the household
+// the Caller was admitted to.
 type Originals interface {
-	FirstSnapshot(ctx context.Context, id int64, kind store.SnapshotKind) (store.Snapshot, bool, error)
+	FirstSnapshot(ctx context.Context, id int64, kind store.SnapshotKind) (store.FirstSource, bool, error)
 	GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error)
 }
 
@@ -325,7 +325,7 @@ type Preview struct {
 // Preview drafts what an import would hold, and holds nothing: no proposal,
 // no snapshot, no picture candidate (ADR-00048). From a URL it is FromURL.
 // From a saved recipe it reads the recipe's first HTML snapshot, the original
-// (ADR-00042), and drafts it with the address the recipe's first version gave,
+// (ADR-00042), and drafts it with the address it was served from (sourceOf),
 // fetching nothing; a recipe with no HTML snapshot is ErrNoPageSnapshot. The
 // rule-based path runs first and the LLM only below the threshold, as for an
 // import (ADR-00006).
@@ -348,25 +348,47 @@ func (s *Service) Preview(ctx context.Context, c Caller, src PreviewSource) (Pre
 	if s.originals == nil {
 		return Preview{}, errors.New("ingest service: previewing a saved recipe needs Originals")
 	}
-	snap, found, err := s.originals.FirstSnapshot(ctx, src.RecipeID, store.SnapshotHTML)
+	first, found, err := s.originals.FirstSnapshot(ctx, src.RecipeID, store.SnapshotHTML)
 	if err != nil {
 		return Preview{}, fmt.Errorf("read the original page of recipe %d: %w", src.RecipeID, err)
 	}
 	if !found {
 		return Preview{}, fmt.Errorf("preview recipe %d: %w", src.RecipeID, ErrNoPageSnapshot)
 	}
-	// The snapshot does not record its address. The recipe's first version is
-	// what the import that stored the snapshot saved, so its source address is
-	// the page's, whatever a later edit made of it.
-	first, err := s.originals.GetVersion(ctx, src.RecipeID, 1)
-	if err != nil {
-		return Preview{}, fmt.Errorf("read the first version of recipe %d: %w", src.RecipeID, err)
-	}
-	d, err := s.pipeline.FromContent(ctx, snap.Content, first.SourceURL)
+	addr, err := s.sourceOf(ctx, src.RecipeID, first)
 	if err != nil {
 		return Preview{}, err
 	}
-	return Preview{Draft: d, SnapshotParserVersion: snap.ParserVersion}, nil
+	d, err := s.pipeline.FromContent(ctx, first.Snapshot.Content, addr)
+	if err != nil {
+		return Preview{}, err
+	}
+	return Preview{Draft: d, SnapshotParserVersion: first.Snapshot.ParserVersion}, nil
+}
+
+// sourceOf is the address recipe id's original page was served from. A
+// snapshot does not record it; the draft whose source the snapshot was does,
+// and an accepted draft is never pruned (ADR-00035). That covers a recipe
+// typed in and given its first page by a later re-import, whose first version
+// has no address or another one. A snapshot no draft held was stored before
+// drafts were proposals (migration 00027), when a snapshot was written only
+// with the recipe it was imported into, so the recipe's first version is the
+// version of that time and carries the address the import saved. A share's
+// copy of a recipe is held by no draft either, and its first version carries
+// the address the shared recipe had when it was copied.
+func (s *Service) sourceOf(ctx context.Context, id int64, first store.FirstSource) (string, error) {
+	if first.DraftDocument != nil {
+		held, err := domain.DecodeDraft(first.DraftDocument, first.Snapshot)
+		if err != nil {
+			return "", fmt.Errorf("read the draft that held the original page of recipe %d: %w", id, err)
+		}
+		return held.Source.URL, nil
+	}
+	r, err := s.originals.GetVersion(ctx, id, 1)
+	if err != nil {
+		return "", fmt.Errorf("read the first version of recipe %d: %w", id, err)
+	}
+	return r.SourceURL, nil
 }
 
 // Configured reports whether an LLM provider is available. It reads

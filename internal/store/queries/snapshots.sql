@@ -16,7 +16,7 @@ ORDER BY id DESC LIMIT 1;
 -- The original snapshot of a kind: the first stored, which a re-import never
 -- replaces (ADR-00042). A preview replays it (ADR-00048).
 -- name: GetFirstSnapshot :one
-SELECT kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
+SELECT id, kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
 WHERE recipe_id = sqlc.arg(recipe_id) AND kind = sqlc.arg(kind) AND household_id = sqlc.arg(household_id)
 ORDER BY id LIMIT 1;
 
