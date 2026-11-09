@@ -495,6 +495,9 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
   background: var(--card); color: var(--ink); font: inherit; font-weight: 400;
 }
 .pg input:focus-visible, .pg select:focus-visible, .pg textarea:focus-visible { border-color: var(--wattle); }
+/* A textarea for long text (the house style) spans its form rather than taking
+   the 28rem cap sized for a one-line input. */
+.pg textarea.wide { max-width: none; resize: vertical; }
 .pg .fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .pg .fields label { flex: 1 1 16rem; max-width: 28rem; }
 .pg .fields.find label { flex-basis: 100%; max-width: none; }
