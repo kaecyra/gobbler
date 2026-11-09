@@ -51,10 +51,94 @@ type draftSummaryOut struct {
 }
 
 type reviseDraftIn struct {
-	Token    string     `json:"token" jsonschema:"the draft's token"`
-	Revision string     `json:"revision" jsonschema:"the revision get_recipe_draft gave when you read the draft"`
-	Draft    previewOut `json:"draft" jsonschema:"the whole draft as it should be: the draft get_recipe_draft gave, with your changes. Confidences, marks and the parse details are ignored; video_id must be sent back unchanged"`
-	Reason   string     `json:"reason" jsonschema:"what you changed and why, shown to the person who reviews the draft"`
+	Token    string       `json:"token" jsonschema:"the draft's token"`
+	Revision string       `json:"revision" jsonschema:"the revision get_recipe_draft gave when you read the draft"`
+	Draft    revisedDraft `json:"draft" jsonschema:"the whole draft as it should be: the draft get_recipe_draft gave, with your changes. Confidences, marks, step numbers and the parse details may be left out and are ignored; video_id must be sent back unchanged"`
+	Reason   string       `json:"reason" jsonschema:"what you changed and why, shown to the person who reviews the draft"`
+}
+
+// revisedDraft is the draft revise_recipe_draft takes back: previewOut's
+// shape, key for key, read in the other direction. What only the encoder
+// fills in (confidences, marks, step numbers, the parse details and the
+// note) is optional and ignored, so an agent adding a line or a step need not
+// invent it. TestRevisedDraftAcceptsEveryPreviewKey keeps the two in step.
+type revisedDraft struct {
+	SourceURL    string               `json:"source_url,omitempty" jsonschema:"ignored"`
+	Name         revisedField[string] `json:"name"`
+	Author       revisedField[string] `json:"author,omitempty"`
+	Description  revisedField[string] `json:"description,omitempty"`
+	Yield        revisedField[string] `json:"yield,omitempty" jsonschema:"such as '2 loaves'"`
+	Servings     revisedField[string] `json:"servings,omitempty" jsonschema:"a number, a fraction or a range such as 4-6"`
+	Calories     revisedField[int]    `json:"calories,omitempty" jsonschema:"per serving"`
+	PrepMinutes  revisedField[int]    `json:"prep_minutes,omitempty"`
+	CookMinutes  revisedField[int]    `json:"cook_minutes,omitempty"`
+	TotalMinutes revisedField[int]    `json:"total_minutes,omitempty"`
+	MealType     string               `json:"meal_type,omitempty"`
+	MealTypeLLM  bool                 `json:"meal_type_from_llm,omitempty" jsonschema:"ignored"`
+	Cuisine      string               `json:"cuisine,omitempty"`
+	CuisineLLM   bool                 `json:"cuisine_from_llm,omitempty" jsonschema:"ignored"`
+	VideoID      string               `json:"video_id,omitempty" jsonschema:"must be the held draft's: a revision that changes it is refused"`
+	Components   []revisedComponent   `json:"components"`
+	AuthorNotes  []revisedAuthorNote  `json:"author_notes,omitempty"`
+	Equipment    []previewEquipment   `json:"equipment,omitempty" jsonschema:"give equipment_id back for equipment you keep, and leave it out for new equipment"`
+	Method       string               `json:"parse_method,omitempty" jsonschema:"ignored"`
+	ParserVer    string               `json:"parser_version,omitempty" jsonschema:"ignored"`
+	SnapshotVer  string               `json:"snapshot_parser_version,omitempty" jsonschema:"ignored"`
+	Overall      float64              `json:"overall_confidence,omitempty" jsonschema:"ignored"`
+	Threshold    float64              `json:"threshold,omitempty" jsonschema:"ignored"`
+	BelowThresh  bool                 `json:"below_threshold,omitempty" jsonschema:"ignored"`
+	LLMAsked     bool                 `json:"llm_asked,omitempty" jsonschema:"ignored"`
+	LLMError     string               `json:"llm_error,omitempty" jsonschema:"ignored"`
+	Issues       []string             `json:"issues,omitempty" jsonschema:"ignored"`
+	Note         string               `json:"note,omitempty" jsonschema:"ignored"`
+}
+
+// revisedField is previewField read back: only the value counts.
+type revisedField[T any] struct {
+	Value      T       `json:"value"`
+	Confidence float64 `json:"confidence,omitempty" jsonschema:"ignored"`
+	FromLLM    bool    `json:"from_llm,omitempty" jsonschema:"ignored"`
+}
+
+type revisedLine struct {
+	Raw          string             `json:"raw" jsonschema:"the line as written, such as '2 cups flour, sifted'; a changed line is read afresh from it"`
+	Name         string             `json:"name,omitempty" jsonschema:"ignored"`
+	IngredientID int64              `json:"ingredient_id,omitempty" jsonschema:"the catalog ingredient, when the text names none the catalog knows"`
+	Amount       string             `json:"amount,omitempty" jsonschema:"ignored"`
+	ToTaste      bool               `json:"to_taste,omitempty" jsonschema:"ignored"`
+	Optional     bool               `json:"optional,omitempty"`
+	Qualifiers   []previewQualifier `json:"qualifiers,omitempty" jsonschema:"ignored"`
+	Confidence   float64            `json:"confidence,omitempty" jsonschema:"ignored"`
+	Issues       []string           `json:"issues,omitempty" jsonschema:"ignored"`
+	FromLLM      bool               `json:"from_llm,omitempty" jsonschema:"ignored"`
+}
+
+type revisedStep struct {
+	Number       int     `json:"number,omitempty" jsonschema:"ignored: steps are numbered by their place"`
+	Title        string  `json:"title,omitempty"`
+	Text         string  `json:"text"`
+	Minutes      int     `json:"minutes,omitempty"`
+	Passive      bool    `json:"passive,omitempty" jsonschema:"true for a step that needs no attention while it runs"`
+	DependsOn    []int   `json:"depends_on,omitempty" jsonschema:"the numbers of the steps that must finish first, counting from 1 in reading order across every component"`
+	Kind         string  `json:"kind,omitempty"`
+	Confidence   float64 `json:"confidence,omitempty" jsonschema:"ignored"`
+	FromLLM      bool    `json:"from_llm,omitempty" jsonschema:"ignored"`
+	GraphFromLLM bool    `json:"graph_from_llm,omitempty" jsonschema:"ignored"`
+}
+
+type revisedComponent struct {
+	Name    string        `json:"name,omitempty"`
+	Lines   []revisedLine `json:"lines"`
+	Steps   []revisedStep `json:"steps"`
+	FromLLM bool          `json:"from_llm,omitempty" jsonschema:"ignored"`
+}
+
+type revisedAuthorNote struct {
+	Title      string   `json:"title,omitempty"`
+	Text       string   `json:"text"`
+	Confidence float64  `json:"confidence,omitempty" jsonschema:"ignored"`
+	Issues     []string `json:"issues,omitempty" jsonschema:"ignored"`
+	FromLLM    bool     `json:"from_llm,omitempty" jsonschema:"ignored"`
 }
 
 type reviseDraftOut struct {
@@ -208,7 +292,7 @@ func (t *tools) reviseRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 // to the whole minutes held shows keep held's duration, which may have seconds
 // in it. A revision cannot change the video, so a changed video_id is refused
 // rather than dropped.
-func revisionOf(held apiingest.Draft, in previewOut) (apirecipes.DraftRevision, error) {
+func revisionOf(held apiingest.Draft, in revisedDraft) (apirecipes.DraftRevision, error) {
 	if video := strings.TrimSpace(in.VideoID); video != held.VideoID {
 		return apirecipes.DraftRevision{}, refuse("a revision cannot change video_id: send back %q, the held draft's, and a person can change the video on the review screen", held.VideoID)
 	}

@@ -257,6 +257,29 @@ func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 	}
 }
 
+// A revision need not carry what only get_recipe_draft fills in: confidences,
+// marks, step numbers, the parse details and the note.
+func TestReviseRecipeDraftTakesADraftWithoutItsOutputOnlyFields(t *testing.T) {
+	s := newSiteDrafting(t, config.MCP{Rate: 100, Burst: 100}, nil, true)
+	secret, _ := s.personalKey("ann@example.com")
+	token := importForRevision(t, s, secret)
+	held := readDraft(t, s, secret, token)
+	draft := map[string]any{
+		"name": map[string]any{"value": "Plain pie"},
+		"components": []any{map[string]any{
+			"lines": []any{map[string]any{"raw": "2 cups zz mcp flour"}, map[string]any{"raw": "1 tsp salt"}},
+			"steps": []any{map[string]any{"text": "Mix the flour and salt."}, map[string]any{"text": "Bake for 30 minutes.", "minutes": 30, "depends_on": []int{1}}},
+		}},
+	}
+	if msg := call(t, s.connect(secret), "revise_recipe_draft", map[string]any{"token": token, "revision": held.Revision, "draft": draft, "reason": "minimal"}, nil); msg != "" {
+		t.Fatalf("a draft without its output-only fields = %q", msg)
+	}
+	d, _ := s.draft(s.smiths, "ann@example.com", token)
+	if d.Name.Value != "Plain pie" || !d.Name.FromLLM || d.Components[0].Lines[0].FromLLM {
+		t.Errorf("draft after a minimal revision: name %+v, first line %+v", d.Name, d.Components[0].Lines[0])
+	}
+}
+
 // A revision cannot change the video, and says so rather than dropping it.
 func TestReviseRecipeDraftRefusesAChangedVideo(t *testing.T) {
 	s := newSiteDrafting(t, config.MCP{Rate: 100, Burst: 100}, nil, true)
