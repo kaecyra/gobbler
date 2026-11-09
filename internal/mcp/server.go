@@ -81,6 +81,9 @@ type Deps struct {
 	Lists *apishop.Store
 	// Households is the membership lookup the shopping service enforces.
 	Households apishop.Members
+	// HouseStyle reads the household's house style for get_house_style
+	// (ADR-00048).
+	HouseStyle HouseStyles
 	Catalog    Catalog
 	Drafter    Drafter
 	Previewer  Previewer
@@ -99,7 +102,13 @@ type Deps struct {
 // rule-based path and a draft below the confidence threshold is flagged for the
 // reviewer, never sent to a model (ADR-00006). reads is also where a preview
 // reads a saved recipe's original page (apiingest.Originals).
-func NewDeps(rec *apirecipes.Service, reads *apirecipes.Store, lists *apishop.Store, households apishop.Members, cat *apicatalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+func NewDeps(rec *apirecipes.Service, reads *apirecipes.Store, lists *apishop.Store, households *apihouseholds.Store, cat *apicatalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+	// The household service reads the house style; get_house_style is the only
+	// tool that calls it, and it reads.
+	hs, err := apihouseholds.New(apihouseholds.Deps{Households: households})
+	if err != nil {
+		return Deps{}, fmt.Errorf("build mcp household service: %w", err)
+	}
 	ing, err := apiingest.New(cfg.Ingestion, apiingest.Deps{Catalog: cat, Members: households, Logger: log, Originals: reads})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import service: %w", err)
@@ -108,7 +117,7 @@ func NewDeps(rec *apirecipes.Service, reads *apirecipes.Store, lists *apishop.St
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp catalog service: %w", err)
 	}
-	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(credentialCaller(log)), Drafter: ing.Bind(credentialCaller(log)), Previewer: ing.Bind(credentialCaller(log)), Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, HouseStyle: hs, Catalog: svc.Bind(credentialCaller(log)), Drafter: ing.Bind(credentialCaller(log)), Previewer: ing.Bind(credentialCaller(log)), Audit: audit, Limits: cfg.MCP, Logger: log}, nil
 }
 
 // credentialCaller names the Caller of a catalog lookup or a draft from the
@@ -137,8 +146,8 @@ func credentialCaller(log *slog.Logger) func(ctx context.Context) caller.Caller 
 // MCP over Streamable HTTP. It is stateless: every request stands alone, so a
 // restart or a second request on another connection loses nothing.
 func Routes(d Deps) (http.Handler, error) {
-	if d.Recipes == nil || d.RecipeReads == nil || d.Lists == nil || d.Households == nil || d.Catalog == nil || d.Drafter == nil || d.Previewer == nil || d.Audit == nil {
-		return nil, errors.New("mcp: recipes, recipe reads, lists, households, catalog, drafter, previewer and audit are required")
+	if d.Recipes == nil || d.RecipeReads == nil || d.Lists == nil || d.Households == nil || d.HouseStyle == nil || d.Catalog == nil || d.Drafter == nil || d.Previewer == nil || d.Audit == nil {
+		return nil, errors.New("mcp: recipes, recipe reads, lists, households, house style, catalog, drafter, previewer and audit are required")
 	}
 	if d.Limits.Rate <= 0 || d.Limits.Burst < 1 {
 		return nil, fmt.Errorf("mcp: the rate limit needs a positive rate and burst, got %v and %d", d.Limits.Rate, d.Limits.Burst)
@@ -161,7 +170,7 @@ func Routes(d Deps) (http.Handler, error) {
 	}
 	t := &tools{Deps: d, log: log, shop: shop}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "gobbler", Version: version}, &mcp.ServerOptions{
-		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once.",
+		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once. Before you revise a draft or propose a change to a recipe, read the household's house style with get_house_style and follow it.",
 	})
 	t.register(srv)
 	h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.StreamableHTTPOptions{

@@ -78,6 +78,9 @@ func memberOps(f fixture) map[string]func(c households.Caller) error {
 		"Remove":  func(c households.Caller) error { return f.svc.Remove(ctx, c, joEmail) },
 		"Leave":   func(c households.Caller) error { return f.svc.Leave(ctx, c) },
 		"Delete":  func(c households.Caller) error { return f.svc.Delete(ctx, c, "Smiths") },
+		"SetHouseStyle": func(c households.Caller) error {
+			return f.svc.SetHouseStyle(ctx, c, "Weights in grams.")
+		},
 	}
 }
 

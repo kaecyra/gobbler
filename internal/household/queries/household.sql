@@ -40,3 +40,9 @@ RETURNING kind, household_id;
 UPDATE invitations SET revoked_at = sqlc.arg(now)
 WHERE code = sqlc.arg(code) AND issued_by = sqlc.arg(issued_by)
   AND accepted_at IS NULL AND revoked_at IS NULL;
+
+-- name: GetHouseStyle :one
+SELECT house_style FROM households WHERE id = ?;
+
+-- name: SetHouseStyle :execrows
+UPDATE households SET house_style = sqlc.arg(house_style) WHERE id = sqlc.arg(id);

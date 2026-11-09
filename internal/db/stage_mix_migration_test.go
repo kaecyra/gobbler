@@ -86,7 +86,9 @@ func TestStageMixMigrationChangesOnlyStageKind(t *testing.T) {
 		}
 	}
 
-	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+	// Up to 00034 and no further, so a later migration's change is not
+	// mistaken for this one's.
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00035")); err != nil {
 		t.Fatalf("up: %v", err)
 	}
 	unchanged("after Up", before)

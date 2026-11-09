@@ -34,6 +34,8 @@ type Households interface {
 	Delete(ctx context.Context, c apihouseholds.Caller, confirm string) error
 	InvitationFor(ctx context.Context, c apihouseholds.Caller, code string) (apihouseholds.Invitation, error)
 	Accept(ctx context.Context, c apihouseholds.Caller, code, name string) (apihouseholds.Household, error)
+	HouseStyle(ctx context.Context, c apihouseholds.Caller) (string, error)
+	SetHouseStyle(ctx context.Context, c apihouseholds.Caller, style string) error
 }
 
 // KeyStore is what the household keys section uses from the API key store
@@ -64,6 +66,7 @@ func MemberRoutes(d Deps) chi.Router {
 	r.Post("/members/remove", h.remove)
 	r.Post("/leave", h.leave)
 	r.Post("/delete", h.delete)
+	r.Post("/style", h.saveStyle)
 	h.keyRoutes(r)
 	return r
 }
@@ -112,10 +115,26 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
+	style, err := h.Households.HouseStyle(r.Context(), c)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
 	layout.Render(w, r, http.StatusOK, membersPage(pageView{
 		Name: c.Household.Name, Self: c.Person, Members: members, Pending: layout.NewPendingInvitations(c.Person, pending),
-		Keys: layout.NewAPIKeyRows(keys, time.Now(), true, keyRevokePath),
+		Keys: layout.NewAPIKeyRows(keys, time.Now(), true, keyRevokePath), HouseStyle: style,
 	}))
+}
+
+// saveStyle saves the house style (ADR-00048). A style over the bound is
+// refused with the store's reason, as a mistyped email is.
+func (h *handler) saveStyle(w http.ResponseWriter, r *http.Request) {
+	c, err := actor(r)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
+	done(w, r, h.Households.SetHouseStyle(r.Context(), c, r.PostFormValue("style")))
 }
 
 // done sends the browser back to the members page after a change.

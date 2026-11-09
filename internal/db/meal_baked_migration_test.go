@@ -173,7 +173,9 @@ func TestMealBakedMigrationChangesOnlyMealType(t *testing.T) {
 		}
 	}
 
-	if err := db.Migrate(ctx, d, db.Migrations()); err != nil {
+	// Up to 00033 and no further, so a later migration's change is not
+	// mistaken for this one's.
+	if err := db.Migrate(ctx, d, dbtest.MigrationsBelow("00034")); err != nil {
 		t.Fatalf("up: %v", err)
 	}
 	sameSnapshot(t, "after Up", snapshot(t, d), before)

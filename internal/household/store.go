@@ -141,12 +141,15 @@ func parseTime(v string) (time.Time, error) {
 	return t, nil
 }
 
-func toHousehold(r householddb.Household) (Household, error) {
-	created, err := parseTime(r.CreatedAt)
+// toHousehold builds a Household from the columns a lookup reads. The house
+// style is not one of them: only HouseStyle reads it, not every request's
+// membership check.
+func toHousehold(id int64, name, createdAt string) (Household, error) {
+	created, err := parseTime(createdAt)
 	if err != nil {
 		return Household{}, err
 	}
-	return Household{ID: r.ID, Name: r.Name, CreatedAt: created}, nil
+	return Household{ID: id, Name: name, CreatedAt: created}, nil
 }
 
 // ForEmail returns the household the email is a member of, or ErrNotFound. A
@@ -168,7 +171,7 @@ func lookup(ctx context.Context, q *householddb.Queries, email string) (Househol
 	if err != nil {
 		return Household{}, fmt.Errorf("find household of %s: %w", email, err)
 	}
-	return toHousehold(row)
+	return toHousehold(row.ID, row.Name, row.CreatedAt)
 }
 
 // Members returns the emails of the household's members, oldest first.
@@ -338,7 +341,7 @@ func (s *Store) Accept(ctx context.Context, code, email, householdName string) (
 		if err != nil {
 			return fmt.Errorf("load household %d of invitation %s: %w", claim.HouseholdID.Int64, code, err)
 		}
-		if h, err = toHousehold(row); err != nil {
+		if h, err = toHousehold(row.ID, row.Name, row.CreatedAt); err != nil {
 			return err
 		}
 		return s.addMember(ctx, q, h.ID, e, s.stamp())
