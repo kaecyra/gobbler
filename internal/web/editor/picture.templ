@@ -1,0 +1,112 @@
+package editor
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+// picturePicker is the edit page's picture picker (ADR-00051), drawn after
+// option 2 of the edit-page picture mockup: the review screen's tiles, with
+// searching and uploading as quiet links under them. Its radios belong to the
+// editor's form. A recipe with a picture lists it first and "No picture" last;
+// one without lists "No picture" first. The upload form carries the choice in
+// a field ahead of its file, kept current by editor.js, so a refused upload
+// keeps it whatever the file's size. Nil draws nothing.
+templ picturePicker(v *pictureView) {
+	if v != nil {
+		<div id={ pickerID } class={ v.class() } data-testid="edit-picture">
+			<span class="eyebrow">Picture</span>
+			<div class="picker-row" role="radiogroup" aria-label="Picture for this recipe">
+				if v.CurrentSrc != "" {
+					<label class="pick" data-testid="pick-keep">
+						<input class="sr" type="radio" name={ fieldPicture } value={ pictureKeep } form={ FormID } checked?={ v.Choice == pictureKeep }/>
+						<span class="th">
+							<img src={ v.CurrentSrc } alt="" loading="lazy" decoding="async"/>
+							<i class="tick">@layout.Icon(layout.IconCheck)</i>
+						</span>
+						<span class="cap"><b>Current picture</b><br/>Left as it is</span>
+					</label>
+				} else {
+					@pickNone(v)
+				}
+				for _, o := range v.Offers {
+					<label class={ "pick offer", templ.KV("found", !o.Uploaded) } data-testid="pick-offer">
+						<input class="sr" type="radio" name={ fieldPicture } value={ o.Value } form={ FormID } checked?={ v.Choice == o.Value }/>
+						<span class="th">
+							<img src={ o.Src } alt="" loading="lazy" decoding="async"/>
+							<i class="tick">@layout.Icon(layout.IconCheck)</i>
+						</span>
+						<span class="cap">
+							if o.Uploaded {
+								<b>Uploaded picture</b>
+							} else {
+								<b>Recipe image</b>
+							}
+							<br/>{ o.size() }
+						</span>
+					</label>
+				}
+				<span class="pick ghost" aria-hidden="true"><span class="th"></span><span class="cap"><i></i><i></i></span></span>
+				<span class="pick ghost" aria-hidden="true"><span class="th"></span><span class="cap"><i></i><i></i></span></span>
+				if v.CurrentSrc != "" {
+					@pickNone(v)
+				}
+			</div>
+			<div class="acts-below">
+				if v.CanSearch {
+					<form method="post" action={ templ.SafeURL(v.searchPath()) }>
+						<button class="linkbtn" type="submit" data-testid="picture-search" hx-post={ v.searchPath() } hx-target={ "#" + pickerID } hx-swap="outerHTML" hx-indicator={ "#" + pickerID } hx-include={ checkedChoice } hx-disabled-elt="this" disabled?={ v.Searching }>
+							<span class="idle">
+								@layout.Icon(layout.IconRetry)
+								Search the source page again
+							</span>
+							<span class="busy">
+								@layout.Icon(layout.IconRetry)
+								Searching the source page
+							</span>
+						</button>
+					</form>
+				}
+				<form method="post" action={ templ.SafeURL(v.uploadPath()) } enctype="multipart/form-data" hx-post={ v.uploadPath() } hx-encoding="multipart/form-data" hx-trigger="change" hx-target={ "#" + pickerID } hx-swap="outerHTML">
+					<input type="hidden" name={ fieldPicture } value={ v.Choice } data-picture-choice/>
+					<label class="linkbtn" data-testid="picture-upload">
+						@layout.Icon(layout.IconUpload)
+						Upload a picture
+						<input class="sr" type="file" name={ uploadField } accept="image/*"/>
+					</label>
+				</form>
+			</div>
+			if v.Refusal != "" {
+				<p class="pick-note" role="status">
+					@layout.Icon(layout.IconAlert)
+					{ v.Refusal }
+				</p>
+			} else if v.SearchFailed {
+				<p class="pick-note" role="status" data-testid="search-failed">
+					@layout.Icon(layout.IconAlert)
+					Could not search the source page.
+				</p>
+			} else if v.NothingFound {
+				<p class="pick-note" role="status">
+					@layout.Icon(layout.IconAlert)
+					The source page had no usable pictures.
+				</p>
+			}
+			if v.Searching {
+				<span hidden hx-post={ v.searchPath() } hx-trigger="load" hx-target={ "#" + pickerID } hx-swap="outerHTML" hx-include={ checkedChoice }></span>
+			}
+		</div>
+	}
+}
+
+templ pickNone(v *pictureView) {
+	<label class="pick none" data-testid="pick-none">
+		<input class="sr" type="radio" name={ fieldPicture } value={ pictureNone } form={ FormID } checked?={ v.Choice == pictureNone }/>
+		<span class="th">@layout.Icon(layout.IconNone)<i class="tick">@layout.Icon(layout.IconCheck)</i></span>
+		<span class="cap">
+			<b>No picture</b><br/>
+			if v.CurrentSrc != "" {
+				Removes it
+			} else {
+				Shows a coloured band
+			}
+		</span>
+	</label>
+}

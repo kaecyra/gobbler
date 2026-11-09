@@ -1,7 +1,8 @@
 // Package picture owns recipe pictures (ADR-00039): fetching candidates from a
 // page's image addresses, keeping them as media objects while a draft waits,
 // promoting the chosen one to the recipe, and the set-picture operation (upload,
-// re-find, remove). Handlers parse the request, call this package and render;
+// re-find, remove), and the pictures offered on a saved recipe's edit page until
+// it is saved (ADR-00051). Handlers parse the request, call this package and render;
 // none of this logic lives in them.
 //
 // The picture's key is a row of its own, never part of the recipe document, so
@@ -40,6 +41,9 @@ type Service struct {
 	media     media.Store
 	snapshots Snapshots
 	fetch     Fetcher
+	// pages fetches a recipe's source page live for a search (ADR-00051);
+	// nil reads the saved snapshot only.
+	pages     Pages
 	userAgent string
 	log       *slog.Logger
 	now       func() time.Time
@@ -52,7 +56,7 @@ type Service struct {
 
 // New returns a Service over a migrated database. f downloads candidate
 // images and must be a guarded client (NewFetcher); snapshots reads the saved
-// page for a re-find. log may be nil.
+// page for a re-find when the live page cannot be fetched. log may be nil.
 func New(d *sql.DB, m media.Store, snapshots Snapshots, f Fetcher, log *slog.Logger) *Service {
 	if log == nil {
 		log = slog.Default()

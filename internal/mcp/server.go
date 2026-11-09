@@ -170,7 +170,7 @@ func Routes(d Deps) (http.Handler, error) {
 	}
 	t := &tools{Deps: d, log: log, shop: shop}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "gobbler", Version: version}, &mcp.ServerOptions{
-		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once. Before you revise a draft or propose a change to a recipe, read the household's house style with get_house_style and follow it.",
+		Instructions: "Gobbler is a household recipe manager. Recipes you create or import become drafts, and a change to an existing recipe becomes a proposal, that a person reviews before anything is saved. Shopping list changes apply at once. find_recipe_pictures offers pictures from a recipe's source page on its edit page, where a person chooses one; no tool sets a picture. Before you revise a draft or propose a change to a recipe, read the household's house style with get_house_style and follow it.",
 	})
 	t.register(srv)
 	h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.StreamableHTTPOptions{

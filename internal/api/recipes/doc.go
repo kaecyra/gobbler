@@ -19,7 +19,9 @@
 //     (hold, read, replace, discard, choose the picture), the save of a
 //     confirmed draft or re-import, and starting a re-import.
 //   - The picture of a recipe as the recipe screens need it (its key and the
-//     draft's candidates).
+//     draft's candidates), and the pictures offered on its edit page: a search
+//     of its source page, an upload, and the choice applied on save
+//     (ADR-00051).
 //
 // What is not: fetching and reading a page, text or photo into a draft is the
 // ingestion pipeline (internal/ingest), which has no household data of its own
@@ -36,8 +38,8 @@
 // (internal/web/picture) go through this service (PictureKey, Candidates),
 // which admits the Caller. Rejected: a full move under internal/api/recipes,
 // for the reason above; and a separate internal/api/pictures resource, because
-// the picture service is neither a household-facing resource of its own nor
-// called by MCP.
+// the picture service is not a household-facing resource of its own: MCP
+// reaches only its search, through FindPictures here (ADR-00051).
 //
 // The package re-exports the domain types and errors its callers need as
 // aliases, so internal/web and internal/mcp import this package and neither

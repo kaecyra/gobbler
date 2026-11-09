@@ -23,6 +23,52 @@ func (q *Queries) DeleteCandidates(ctx context.Context, arg DeleteCandidatesPara
 	return err
 }
 
+const deleteExpiredFoundPictures = `-- name: DeleteExpiredFoundPictures :execrows
+DELETE FROM recipe_found_pictures WHERE recipe_id = ? AND found_at < ?
+`
+
+type DeleteExpiredFoundPicturesParams struct {
+	RecipeID int64
+	FoundAt  string
+}
+
+func (q *Queries) DeleteExpiredFoundPictures(ctx context.Context, arg DeleteExpiredFoundPicturesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteExpiredFoundPictures, arg.RecipeID, arg.FoundAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteFoundPictures = `-- name: DeleteFoundPictures :exec
+DELETE FROM recipe_found_pictures WHERE recipe_id = ? AND household_id = ?
+`
+
+type DeleteFoundPicturesParams struct {
+	RecipeID    int64
+	HouseholdID int64
+}
+
+func (q *Queries) DeleteFoundPictures(ctx context.Context, arg DeleteFoundPicturesParams) error {
+	_, err := q.db.ExecContext(ctx, deleteFoundPictures, arg.RecipeID, arg.HouseholdID)
+	return err
+}
+
+const deleteFoundPicturesOfKind = `-- name: DeleteFoundPicturesOfKind :exec
+DELETE FROM recipe_found_pictures WHERE recipe_id = ? AND household_id = ? AND kind = ?
+`
+
+type DeleteFoundPicturesOfKindParams struct {
+	RecipeID    int64
+	HouseholdID int64
+	Kind        string
+}
+
+func (q *Queries) DeleteFoundPicturesOfKind(ctx context.Context, arg DeleteFoundPicturesOfKindParams) error {
+	_, err := q.db.ExecContext(ctx, deleteFoundPicturesOfKind, arg.RecipeID, arg.HouseholdID, arg.Kind)
+	return err
+}
+
 const deletePictureKey = `-- name: DeletePictureKey :execrows
 DELETE FROM recipe_pictures WHERE recipe_id = ? AND household_id = ?
 `
@@ -123,6 +169,41 @@ func (q *Queries) InsertCandidate(ctx context.Context, arg InsertCandidateParams
 	return err
 }
 
+const insertFoundPicture = `-- name: InsertFoundPicture :exec
+
+INSERT INTO recipe_found_pictures (household_id, recipe_id, offer, kind, source_url, key, width, height, found_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertFoundPictureParams struct {
+	HouseholdID int64
+	RecipeID    int64
+	Offer       string
+	Kind        string
+	SourceUrl   string
+	Key         string
+	Width       int64
+	Height      int64
+	FoundAt     string
+}
+
+// Pictures offered for a saved recipe on its edit page (ADR-00051), each
+// named by its offer ID.
+func (q *Queries) InsertFoundPicture(ctx context.Context, arg InsertFoundPictureParams) error {
+	_, err := q.db.ExecContext(ctx, insertFoundPicture,
+		arg.HouseholdID,
+		arg.RecipeID,
+		arg.Offer,
+		arg.Kind,
+		arg.SourceUrl,
+		arg.Key,
+		arg.Width,
+		arg.Height,
+		arg.FoundAt,
+	)
+	return err
+}
+
 const listCandidates = `-- name: ListCandidates :many
 SELECT position, source_url, key, width, height FROM draft_candidates
 WHERE proposal_id = ? AND household_id = ? ORDER BY position
@@ -170,10 +251,165 @@ func (q *Queries) ListCandidates(ctx context.Context, arg ListCandidatesParams) 
 	return items, nil
 }
 
+const listExpiredFoundPictureKeys = `-- name: ListExpiredFoundPictureKeys :many
+SELECT key FROM recipe_found_pictures WHERE recipe_id = ? AND found_at < ?
+`
+
+type ListExpiredFoundPictureKeysParams struct {
+	RecipeID int64
+	FoundAt  string
+}
+
+func (q *Queries) ListExpiredFoundPictureKeys(ctx context.Context, arg ListExpiredFoundPictureKeysParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listExpiredFoundPictureKeys, arg.RecipeID, arg.FoundAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		items = append(items, key)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFoundPictureKeys = `-- name: ListFoundPictureKeys :many
+SELECT key FROM recipe_found_pictures WHERE recipe_id = ? AND household_id = ?
+`
+
+type ListFoundPictureKeysParams struct {
+	RecipeID    int64
+	HouseholdID int64
+}
+
+// ListFoundPictureKeys returns the keys of the recipe's offered pictures,
+// expired ones included.
+func (q *Queries) ListFoundPictureKeys(ctx context.Context, arg ListFoundPictureKeysParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listFoundPictureKeys, arg.RecipeID, arg.HouseholdID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		items = append(items, key)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFoundPictureKeysOfKind = `-- name: ListFoundPictureKeysOfKind :many
+SELECT key FROM recipe_found_pictures WHERE recipe_id = ? AND household_id = ? AND kind = ?
+`
+
+type ListFoundPictureKeysOfKindParams struct {
+	RecipeID    int64
+	HouseholdID int64
+	Kind        string
+}
+
+func (q *Queries) ListFoundPictureKeysOfKind(ctx context.Context, arg ListFoundPictureKeysOfKindParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listFoundPictureKeysOfKind, arg.RecipeID, arg.HouseholdID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		items = append(items, key)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFoundPictures = `-- name: ListFoundPictures :many
+SELECT offer, kind, source_url, key, width, height FROM recipe_found_pictures
+WHERE recipe_id = ?1 AND household_id = ?2 AND found_at >= ?3
+ORDER BY kind = 'upload', id
+`
+
+type ListFoundPicturesParams struct {
+	RecipeID    int64
+	HouseholdID int64
+	Cutoff      string
+}
+
+type ListFoundPicturesRow struct {
+	Offer     string
+	Kind      string
+	SourceUrl string
+	Key       string
+	Width     int64
+	Height    int64
+}
+
+// ListFoundPictures returns the recipe's offered pictures found at or after
+// the cutoff, found ones first in the order the search found them: an older
+// one has expired and waits for the sweep.
+func (q *Queries) ListFoundPictures(ctx context.Context, arg ListFoundPicturesParams) ([]ListFoundPicturesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listFoundPictures, arg.RecipeID, arg.HouseholdID, arg.Cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFoundPicturesRow
+	for rows.Next() {
+		var i ListFoundPicturesRow
+		if err := rows.Scan(
+			&i.Offer,
+			&i.Kind,
+			&i.SourceUrl,
+			&i.Key,
+			&i.Width,
+			&i.Height,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHouseholdObjectKeys = `-- name: ListHouseholdObjectKeys :many
 SELECT rp.key FROM recipe_pictures rp WHERE rp.household_id = ?1
 UNION ALL
 SELECT c.key FROM draft_candidates c WHERE c.household_id = ?1
+UNION ALL
+SELECT f.key FROM recipe_found_pictures f WHERE f.household_id = ?1
 `
 
 func (q *Queries) ListHouseholdObjectKeys(ctx context.Context, household int64) ([]string, error) {
@@ -206,6 +442,8 @@ SELECT c.key FROM draft_candidates c
 JOIN proposals p ON p.household_id = c.household_id AND p.id = c.proposal_id
 WHERE c.household_id = ?2
   AND (p.recipe_id = ?1 OR p.result_recipe_id = ?1)
+UNION ALL
+SELECT f.key FROM recipe_found_pictures f WHERE f.recipe_id = ?1 AND f.household_id = ?2
 `
 
 type ListRecipeObjectKeysParams struct {
@@ -226,6 +464,35 @@ func (q *Queries) ListRecipeObjectKeys(ctx context.Context, arg ListRecipeObject
 			return nil, err
 		}
 		items = append(items, key)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecipesWithExpiredFoundPictures = `-- name: ListRecipesWithExpiredFoundPictures :many
+SELECT DISTINCT recipe_id FROM recipe_found_pictures WHERE found_at < ? ORDER BY recipe_id
+`
+
+// The sweep (ADR-00051): every household's offered pictures found before the
+// cutoff, a recipe at a time, so the sweep can hold that recipe's lock.
+func (q *Queries) ListRecipesWithExpiredFoundPictures(ctx context.Context, foundAt string) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listRecipesWithExpiredFoundPictures, foundAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var recipe_id int64
+		if err := rows.Scan(&recipe_id); err != nil {
+			return nil, err
+		}
+		items = append(items, recipe_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

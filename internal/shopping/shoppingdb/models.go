@@ -315,6 +315,19 @@ type RecipeEquipmentStep struct {
 	StepID            int64
 }
 
+type RecipeFoundPicture struct {
+	ID          int64
+	HouseholdID int64
+	RecipeID    int64
+	Offer       string
+	Kind        string
+	SourceUrl   string
+	Key         string
+	Width       int64
+	Height      int64
+	FoundAt     string
+}
+
 type RecipeKey struct {
 	HouseholdID int64
 	RecipeID    int64

@@ -49,6 +49,7 @@ func (t *tools) register(s *mcp.Server) {
 	t.registerPreview(s)
 	t.registerEdit(s)
 	t.registerReimport(s)
+	t.registerPictures(s)
 	t.registerDrafts(s)
 	t.registerShopping(s)
 	t.registerHouseStyle(s)

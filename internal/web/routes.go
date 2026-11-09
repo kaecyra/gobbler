@@ -68,7 +68,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Get(settings.LegacyPattern, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, settings.Pattern, http.StatusMovedPermanently)
 	})
-	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
+	r.Mount(editor.Pattern, editor.Routes(editor.Deps{Recipes: d.Recipes, Catalog: d.Catalog, Pictures: d.Recipes}))
 	r.Mount(recipes.Pattern, recipes.Routes(recipes.Deps{Library: d.Recipes, Pictures: recipePictures(d)}))
 	// The home page: "/" is registered here and nowhere else.
 	r.Get("/", homeRoute(d))

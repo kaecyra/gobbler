@@ -251,6 +251,16 @@
     Array.prototype.forEach.call(same, function (el) { if (el !== name) el.value = name.value; });
   });
 
+  // The edit page's picture picker (ADR-00051): its upload form posts the
+  // chosen radio in a field ahead of the file, so a refused upload keeps the
+  // choice even when the file is too large to read past.
+  document.addEventListener('change', function (e) {
+    var radio = e.target;
+    if (!radio.matches || !radio.matches('#edit-picture input[type=radio][name=picture]')) return;
+    var field = document.querySelector('#edit-picture [data-picture-choice]');
+    if (field) field.value = radio.value;
+  });
+
   document.addEventListener('pointerup', function (e) { end(e, false); });
   document.addEventListener('pointercancel', function (e) { end(e, true); });
 })();

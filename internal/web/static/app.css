@@ -697,6 +697,42 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 /* Choosing hides the prompt without a script. */
 .picker:has(input:checked) .pick-note.unchosen { display: none; }
 
+/* ---- picture picker on the edit page (internal/web/editor, ADR-00051) ----
+   The review screen's tiles, with searching and uploading as quiet links under
+   the row. While a search runs (htmx-request on the picker, or .searching
+   before the search that starts on load answers) the found tiles give way to
+   two shimmering placeholders and the link reads "Searching the source page". */
+
+.edit-picture .acts-below { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+.edit-picture .acts-below form { margin: 0; }
+.edit-picture .linkbtn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0; border: 0; background: none;
+  color: var(--wattle-ink); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.edit-picture .linkbtn svg { width: 17px; height: 17px; flex: none; }
+.edit-picture .linkbtn:hover { text-decoration: underline; }
+.edit-picture .linkbtn:has(input:focus-visible) { outline: 2px solid var(--wattle); outline-offset: 2px; }
+.edit-picture .linkbtn:disabled { cursor: default; text-decoration: none; }
+.edit-picture .linkbtn > span { display: inline-flex; align-items: center; gap: 6px; }
+.edit-picture .linkbtn .busy { display: none; }
+.edit-picture.searching .linkbtn .busy, .edit-picture.htmx-request .linkbtn .busy { display: inline-flex; }
+.edit-picture.searching .linkbtn .idle, .edit-picture.htmx-request .linkbtn .idle { display: none; }
+.edit-picture .linkbtn .busy svg { animation: pick-spin 1s linear infinite; }
+.edit-picture .pick.ghost { display: none; pointer-events: none; cursor: default; }
+.edit-picture.searching .pick.ghost, .edit-picture.htmx-request .pick.ghost { display: flex; }
+.edit-picture.htmx-request .pick.found { display: none; }
+.edit-picture .pick.ghost .th, .edit-picture .pick.ghost .cap i {
+  background: linear-gradient(100deg, var(--sunk) 30%, var(--card) 50%, var(--sunk) 70%);
+  background-size: 300% 100%; animation: pick-shim 1.3s linear infinite;
+}
+.edit-picture .pick.ghost .cap i { display: block; height: 10px; border-radius: 3px; margin: 4px 0; }
+.edit-picture .pick.ghost .cap i + i { width: 60%; }
+@keyframes pick-shim { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes pick-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .edit-picture .linkbtn .busy svg, .edit-picture .pick.ghost .th, .edit-picture .pick.ghost .cap i { animation: none; }
+}
+
 /* Recipe pictures (ADR-00039, the "Recipe picture" item under Components in
    docs/ui/design.md). A recipe
    with no picture, or whose picture object is gone, gets a placeholder band;

@@ -17,6 +17,7 @@ templ editorPage(v view) {
 		</style>
 		<div class="screen-h"><h1>Edit recipe</h1></div>
 		<p class="edit-page"><a class="back" href={ templ.SafeURL(v.back()) }>Back to the recipe without saving</a></p>
+		@picturePicker(v.Picture)
 		@editorForm(v)
 	}
 }

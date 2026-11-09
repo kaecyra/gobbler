@@ -138,6 +138,20 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
     missing object when the picture route answers 404.
   - Cook mode, the home side panels, shopping lists, the journal and history
     show no picture.
+- **Picture picker on the edit page**
+  ([ADR-00051](../adr/00051-edit-page-picture-picker.md)). It sits between the
+  back link and the form, and uses the review screen's `.picker` and `.pick`
+  tiles. The tiles are only choices: "Current picture" first and "No picture"
+  last when the recipe has a picture, "No picture" first when it has none, with
+  found ("Recipe image") and uploaded ("Uploaded picture") pictures between.
+  "Search the source page again" (retry icon, absent without a source URL) and
+  "Upload a picture" (upload icon) are quiet `--wattle-ink` links under the
+  row. While a search runs the link reads "Searching the source page" with the
+  icon spinning, and two shimmering placeholder tiles hold the results' place.
+  A search that finds nothing, a search that fails ("Could not search the
+  source page.") or a refused upload shows a `.pick-note` under the links, and
+  the picker is back at rest. Nothing else is written in the picker.
+  An offered picture's radio value is its ID, never its place in the row.
 - **Meal type.** An icon with a label, centred on each other. The library
   groups its cards by meal.
 - **Spice.** Zero to three chilis. Nothing is shown when the spice level is

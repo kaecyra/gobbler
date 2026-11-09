@@ -1,4 +1,5 @@
-// Package picture serves recipe pictures and draft candidates (ADR-00039). The
+// Package picture serves recipe pictures, draft candidates (ADR-00039) and the
+// pictures offered on a recipe's edit page (ADR-00051). The
 // app is the only way to a picture: every byte comes from the media store
 // through these handlers, after the same admission as the page that shows it
 // (ADR-00018), the way avatars are served (ADR-00033). Nothing points the
@@ -53,6 +54,9 @@ const (
 type Pictures interface {
 	PictureKey(ctx context.Context, c apirecipes.Caller, recipeID int64) (string, bool, error)
 	Candidates(ctx context.Context, c apirecipes.Caller, proposalID int64) ([]apirecipes.Candidate, error)
+	// OfferedPictures are the pictures offered on the recipe's edit page
+	// (ADR-00051).
+	OfferedPictures(ctx context.Context, c apirecipes.Caller, recipeID int64) ([]apirecipes.Offered, error)
 }
 
 // Deps is what the routes need.
@@ -93,13 +97,21 @@ func CandidateSrc(proposalID int64, position int) string {
 	return DraftsPattern + "/" + strconv.FormatInt(proposalID, 10) + "/" + strconv.Itoa(position)
 }
 
+// OfferedSrc is the address of the picture offered under offer, its ID, on
+// recipe id's edit page (ADR-00051).
+func OfferedSrc(recipeID int64, offer string) string {
+	return recipepath.Base(recipeID) + "/picture/offered/" + url.PathEscape(offer)
+}
+
 // Routes returns the routes of a recipe's picture, relative to Pattern.
 //
-//	GET /   the picture, 404 when the recipe has none or is not the household's
+//	GET /             the picture, 404 when the recipe has none or is not the household's
+//	GET /offered/{offer}  the picture offered on its edit page under ID offer
 func Routes(d Deps) chi.Router {
 	h := newHandler(d)
 	r := chi.NewRouter()
 	r.Get("/", h.serveRecipe)
+	r.Get("/offered/{offer}", h.serveOffered)
 	return r
 }
 
@@ -181,10 +193,39 @@ func (h *handler) serveCandidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A draft's candidates are replaced under the same keys when they are
-	// found again, so the address is not immutable: the ETag is the bytes'.
+	// found again.
+	h.serveReplaceable(w, r, key, "proposal_id", proposal)
+}
+
+func (h *handler) serveOffered(w http.ResponseWriter, r *http.Request) {
+	id, err := positive(r, "id")
+	if err != nil {
+		notFound(w, r, err)
+		return
+	}
+	offer := chi.URLParam(r, "offer")
+	offers, err := h.Pictures.OfferedPictures(r.Context(), caller.FromContext(r.Context()), id)
+	if err != nil {
+		notFound(w, r, fmt.Errorf("offered pictures of recipe %d: %w", id, err))
+		return
+	}
+	o, ok := apirecipes.FindOffer(offers, offer)
+	if !ok {
+		notFound(w, r, fmt.Errorf("recipe %d offers no picture %q: %w", id, offer, layout.ErrNotFound))
+		return
+	}
+	h.serveReplaceable(w, r, o.Key, "recipe_id", id)
+}
+
+// serveReplaceable serves a picture by an address that is not versioned, with
+// the ETag of its bytes and a revalidated cache. It serves a draft's
+// candidates, whose keys a new fetch for the draft reuses, and the pictures
+// offered on a recipe's edit page, whose address names the offer's ID but is
+// not marked immutable, since the offer is deleted when the form is saved.
+func (h *handler) serveReplaceable(w http.ResponseWriter, r *http.Request, key, owner string, ownerID int64) {
 	b, err := h.Media.Get(r.Context(), key)
 	if err != nil {
-		h.missing(w, r, key, "proposal_id", proposal, err)
+		h.missing(w, r, key, owner, ownerID, err)
 		return
 	}
 	sum := sha256.Sum256(b)

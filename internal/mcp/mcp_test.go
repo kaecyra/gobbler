@@ -26,6 +26,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/mcp"
+	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/quantity"
 	"github.com/kaecyra/gobbler/internal/recipe"
@@ -52,6 +53,9 @@ type site struct {
 	flour   int64
 	smiths  household.Household
 	joneses household.Household
+	// media holds the picture objects of the recipe service's picture
+	// service.
+	media media.Store
 }
 
 type fakeDrafter struct{ ingest.Draft }
@@ -109,7 +113,10 @@ func newSiteDrafting(t *testing.T, limits config.MCP, drafter func(*catalog.Stor
 	s.flour = ing.ID
 	shop := shopping.New(d, s.rec, cat)
 	draft := ingest.Draft{Name: ingest.Field[string]{Value: "Drafted pie", Confidence: 1}, Source: ingest.Source{Kind: store.SnapshotText, Content: []byte("a page")}}
-	svc, err := apirecipes.New(apirecipes.Deps{Recipes: s.rec, Catalog: cat, Members: hs})
+	cfg := config.Config{Ingestion: config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "t", AllowLoopbackFetch: true}, MCP: limits}
+	s.media = media.NewLocal(t.TempDir())
+	pictures := apirecipes.NewPictures(d, s.media, s.rec, cfg.Ingestion, slog.New(slog.DiscardHandler))
+	svc, err := apirecipes.New(apirecipes.Deps{Recipes: s.rec, Catalog: cat, Members: hs, Pictures: pictures})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +124,6 @@ func newSiteDrafting(t *testing.T, limits config.MCP, drafter func(*catalog.Stor
 	// through the catalog service bound to the credential of its request
 	// (ADR-00043), whichever kind of credential it is (ADR-00031).
 	audit := mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}
-	cfg := config.Config{Ingestion: config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "t", AllowLoopbackFetch: true}, MCP: limits}
 	deps, err := mcp.NewDeps(svc, s.rec, shop, hs, cat, audit, cfg, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)

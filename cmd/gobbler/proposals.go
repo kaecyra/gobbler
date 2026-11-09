@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
@@ -30,23 +31,50 @@ type proposalSweeps struct {
 func (p proposalSweeps) Stop() { p.stop() }
 
 // startProposalSweeps sweeps the proposals table now, at start-up, and then
-// every proposalSweepEvery until ctx ends or Stop is called (ADR-00035). A sweep
+// every proposalSweepEvery until ctx ends or Stop is called (ADR-00035), with
+// the pictures offered on edit pages that have expired (ADR-00051). A sweep
 // that fails is logged and tried again at the next tick: it is housekeeping,
 // nothing a person is waiting on, and an expired proposal that lingers an hour
-// longer harms no one.
-func startProposalSweeps(ctx context.Context, d *sql.DB, pictures store.ObjectRemover) proposalSweeps {
-	return runProposalSweeps(ctx, pictureSweeper{store.New(d), pictures}, proposalSweepEvery)
+// longer harms no one. pictures nil leaves the picture objects and rows alone.
+func startProposalSweeps(ctx context.Context, d *sql.DB, pictures pictureReaper) proposalSweeps {
+	return runProposalSweeps(ctx, pictureSweeper{proposals: store.New(d), db: d, pictures: pictures}, proposalSweepEvery)
+}
+
+// pictureReaper is what the sweep calls on the picture package's reaper
+// (*picture.Reaper).
+type pictureReaper interface {
+	store.ObjectRemover
+	// SweepFound deletes the offered pictures older than their lifetime at
+	// now, and returns how many.
+	SweepFound(ctx context.Context, d *sql.DB, now time.Time) (int, error)
+}
+
+// proposalPictureSweeper is the store's proposal sweep (*store.Store).
+type proposalPictureSweeper interface {
+	SweepWithPictures(ctx context.Context, r store.ObjectRemover) (store.SweepResult, error)
 }
 
 // pictureSweeper is the store's sweep that also removes the picture candidates
-// of the drafts it prunes (ADR-00039).
+// of the drafts it prunes (ADR-00039), and then the expired pictures offered on
+// edit pages (ADR-00051).
 type pictureSweeper struct {
-	*store.Store
-	pictures store.ObjectRemover
+	proposals proposalPictureSweeper
+	db        *sql.DB
+	pictures  pictureReaper
 }
 
 func (p pictureSweeper) Sweep(ctx context.Context) (store.SweepResult, error) {
-	return p.SweepWithPictures(ctx, p.pictures)
+	if p.pictures == nil {
+		return p.proposals.SweepWithPictures(ctx, nil)
+	}
+	// Both run whatever the other did: a failing proposal sweep must not keep
+	// expired offered pictures, or the reverse.
+	res, proposalErr := p.proposals.SweepWithPictures(ctx, p.pictures)
+	n, foundErr := p.pictures.SweepFound(ctx, p.db, time.Now())
+	if n > 0 {
+		slog.InfoContext(ctx, "offered picture sweep", "deleted", n)
+	}
+	return res, errors.Join(proposalErr, foundErr)
 }
 
 func runProposalSweeps(ctx context.Context, s proposalSweeper, every time.Duration) proposalSweeps {
