@@ -42,6 +42,8 @@ func EditPath(recipeID int64, token string) string {
 // call, whichever kind of credential it is (ADR-00031, ADR-00043).
 type Catalog interface {
 	display.Ingredients
+	// display.Equipment names a recipe's equipment for get_recipe.
+	display.Equipment
 	MatchIngredient(ctx context.Context, term string) (apicatalog.Ingredient, bool, error)
 	MatchUnit(ctx context.Context, term string) (apicatalog.Unit, bool, error)
 	// ListIngredients and ListUnits are what the shopping service reads
@@ -59,6 +61,13 @@ type Drafter interface {
 	FromText(ctx context.Context, text string) (apiingest.Draft, error)
 }
 
+// Previewer drafts what an import would hold without holding it
+// (ADR-00048). NewDeps gives it the ingestion service bound to the credential
+// of the request (apiingest.Bound), as it does Drafter.
+type Previewer interface {
+	Preview(ctx context.Context, src apiingest.PreviewSource) (apiingest.Preview, error)
+}
+
 // Deps is everything the endpoint needs.
 type Deps struct {
 	// Recipes is the recipe service (ADR-00043): the recipe, edit, import and
@@ -74,6 +83,7 @@ type Deps struct {
 	Households apishop.Members
 	Catalog    Catalog
 	Drafter    Drafter
+	Previewer  Previewer
 	Audit      Audit
 	// Limits is the rate and burst each credential is held to.
 	Limits config.MCP
@@ -87,9 +97,10 @@ type Deps struct {
 // NewDeps builds the endpoint's collaborators over the stores the router
 // already shares. The pipeline has no LLM provider: an agent's import takes the
 // rule-based path and a draft below the confidence threshold is flagged for the
-// reviewer, never sent to a model (ADR-00006).
-func NewDeps(rec *apirecipes.Service, reads apishop.Recipes, lists *apishop.Store, households apishop.Members, cat *apicatalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
-	ing, err := apiingest.New(cfg.Ingestion, apiingest.Deps{Catalog: cat, Members: households, Logger: log})
+// reviewer, never sent to a model (ADR-00006). reads is also where a preview
+// reads a saved recipe's original page (apiingest.Originals).
+func NewDeps(rec *apirecipes.Service, reads *apirecipes.Store, lists *apishop.Store, households apishop.Members, cat *apicatalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+	ing, err := apiingest.New(cfg.Ingestion, apiingest.Deps{Catalog: cat, Members: households, Logger: log, Originals: reads})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import service: %w", err)
 	}
@@ -97,7 +108,7 @@ func NewDeps(rec *apirecipes.Service, reads apishop.Recipes, lists *apishop.Stor
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp catalog service: %w", err)
 	}
-	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(credentialCaller(log)), Drafter: ing.Bind(credentialCaller(log)), Audit: audit, Limits: cfg.MCP, Logger: log}, nil
+	return Deps{Recipes: rec, RecipeReads: reads, Lists: lists, Households: households, Catalog: svc.Bind(credentialCaller(log)), Drafter: ing.Bind(credentialCaller(log)), Previewer: ing.Bind(credentialCaller(log)), Audit: audit, Limits: cfg.MCP, Logger: log}, nil
 }
 
 // credentialCaller names the Caller of a catalog lookup or a draft from the
@@ -126,8 +137,8 @@ func credentialCaller(log *slog.Logger) func(ctx context.Context) caller.Caller 
 // MCP over Streamable HTTP. It is stateless: every request stands alone, so a
 // restart or a second request on another connection loses nothing.
 func Routes(d Deps) (http.Handler, error) {
-	if d.Recipes == nil || d.RecipeReads == nil || d.Lists == nil || d.Households == nil || d.Catalog == nil || d.Drafter == nil || d.Audit == nil {
-		return nil, errors.New("mcp: recipes, recipe reads, lists, households, catalog, drafter and audit are required")
+	if d.Recipes == nil || d.RecipeReads == nil || d.Lists == nil || d.Households == nil || d.Catalog == nil || d.Drafter == nil || d.Previewer == nil || d.Audit == nil {
+		return nil, errors.New("mcp: recipes, recipe reads, lists, households, catalog, drafter, previewer and audit are required")
 	}
 	if d.Limits.Rate <= 0 || d.Limits.Burst < 1 {
 		return nil, fmt.Errorf("mcp: the rate limit needs a positive rate and burst, got %v and %d", d.Limits.Rate, d.Limits.Burst)
