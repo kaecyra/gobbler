@@ -275,6 +275,12 @@ Options considered for several proposals against one recipe:
   reached that state, together with its source snapshot if no recipe holds
   it. An accepted proposal is never pruned (see History).
 - No read path outside proposal review and display reads the proposals table.
+
+  > Amended 2026-11-09 by [ADR-00048](00048-agent-driven-import.md) (an
+  > import's duplicate check reads pending drafts' source addresses) and
+  > [ADR-00049](00049-pending-drafts-listed-and-counted.md) (the menu counts
+  > the household's pending drafts on every signed-in page, and the page after
+  > a confirm or discard names the draft just ended).
 - The ingredient ids inside a proposal are indexed with a foreign key to the
   catalog, as revision documents are, and an ingredient merge re-points them
   with the same code that re-points revisions, generalised to both.
