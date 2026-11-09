@@ -62,3 +62,17 @@ implementation pass, which ran close to an hour.
 in it out unless the owner says so. Before showing the result, screenshot it at
 the mockup's width and list every difference from the mockup. Close each one,
 or name the owner's override or the data limit that keeps it.
+
+## Judge the owner's work only from evidence that can show it
+
+**Mistake.** Asked to learn the owner's editing style from four imported
+recipes, the agent could not see the originals or the revision history. It
+still called the recipes "lightly edited" on the strength of a few leftovers
+that slipped through.
+
+**Cost.** The owner had cleaned them a fair amount and called the comment rude.
+It was wrong, and it was a judgement nobody had asked for.
+
+**Rule.** When the evidence cannot separate what the owner did from what the
+tool did, say what cannot be seen and stop there. Report leftovers as items to
+fix, not as a verdict on how much work went in.
