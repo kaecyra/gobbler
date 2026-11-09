@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -233,6 +234,93 @@ func TestFetchCandidatesKeepsAtMostEight(t *testing.T) {
 	}
 	if len(got) != picture.MaxCandidates {
 		t.Fatalf("kept %d candidates, want %d", len(got), picture.MaxCandidates)
+	}
+}
+
+// TestFetchCandidatesSizeFloor checks the floor of ADR-00050: 2x when any
+// candidate meets it, 1x otherwise, with dedupe and the cap applied after.
+func TestFetchCandidatesSizeFloor(t *testing.T) {
+	const (
+		twoW, twoH = picture.MinWidth, picture.MinHeight
+		oneW, oneH = picture.FallbackMinWidth, picture.FallbackMinHeight
+	)
+	type img struct{ w, h, seed int }
+	tests := []struct {
+		name string
+		imgs []img // served as /1.png, /2.png, ... in this order
+		want []int // the 1-based images kept, in order
+	}{
+		{"one 2x picture keeps only the 2x ones",
+			[]img{{680, 952, 1}, {twoW, twoH, 2}, {780, 1170, 3}, {twoW + 10, twoH + 10, 4}}, []int{2, 4}},
+		{"a 2x picture late in a long list still sets the floor",
+			[]img{{700, 400, 1}, {700, 400, 2}, {700, 400, 3}, {700, 400, 4}, {700, 400, 5},
+				{700, 400, 6}, {700, 400, 7}, {700, 400, 8}, {700, 400, 9}, {twoW, twoH, 10}}, []int{10}},
+		{"none at 2x keeps every 1x-or-better",
+			[]img{{680, 952, 1}, {oneW, oneH, 2}, {oneW - 1, 952, 3}, {780, oneH - 1, 4}, {twoW - 1, twoH + 100, 5}}, []int{1, 2, 5}},
+		{"wide but short of 2x height falls back to 1x",
+			[]img{{2000, twoH - 1, 1}, {oneW, oneH, 2}}, []int{1, 2}},
+		{"all below 1x keeps none",
+			[]img{{oneW - 1, 952, 1}, {780, oneH - 1, 2}, {100, 100, 3}}, nil},
+		{"the cap applies after the 1x floor",
+			[]img{{100, 100, 1}, {700, 400, 2}, {700, 400, 3}, {700, 400, 4}, {700, 400, 5}, {700, 400, 6},
+				{700, 400, 7}, {700, 400, 8}, {700, 400, 9}, {700, 400, 10}, {700, 400, 11}}, []int{2, 3, 4, 5, 6, 7, 8, 9}},
+		{"the cap applies after the 2x floor",
+			[]img{{700, 400, 1}, {twoW, twoH, 2}, {twoW, twoH, 3}, {twoW, twoH, 4}, {twoW, twoH, 5}, {twoW, twoH, 6},
+				{twoW, twoH, 7}, {twoW, twoH, 8}, {twoW, twoH, 9}, {twoW, twoH, 10}}, []int{2, 3, 4, 5, 6, 7, 8, 9}},
+		{"identical 1x pixels collapse to one",
+			[]img{{700, 400, 1}, {700, 400, 1}, {700, 400, 2}}, []int{1, 3}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := newEnv(t)
+			files := map[string][]byte{}
+			var urls []string
+			for i, m := range tt.imgs {
+				files[fmt.Sprintf("/%d.png", i+1)] = pic(t, m.w, m.h, m.seed)
+			}
+			srv := site(t, files)
+			for i := range tt.imgs {
+				urls = append(urls, fmt.Sprintf("%s/%d.png", srv.URL, i+1))
+			}
+			got, err := e.svc.FetchCandidates(e.ctx, e.draft(t), urls)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var kept []string
+			for _, c := range got {
+				kept = append(kept, strings.TrimPrefix(c.SourceURL, srv.URL))
+			}
+			var want []string
+			for _, n := range tt.want {
+				want = append(want, fmt.Sprintf("/%d.png", n))
+			}
+			if !slices.Equal(kept, want) {
+				t.Fatalf("kept %v, want %v", kept, want)
+			}
+		})
+	}
+}
+
+// A file whose header reads but whose pixels are cut off passes the size
+// floor's header read and is dropped when it is decoded; the rest are kept.
+func TestFetchCandidatesDropsAPictureThatFailsTheFullDecode(t *testing.T) {
+	e := newEnv(t)
+	whole := pic(t, 1200, 400, 3)
+	cut := whole[:len(whole)/2]
+	if _, _, err := media.Size(cut); err != nil {
+		t.Fatalf("the cut file's header must still read: %v", err)
+	}
+	srv := site(t, map[string][]byte{
+		"/cut.png": cut,
+		"/a.png":   pic(t, 1200, 400, 5),
+		"/b.png":   pic(t, 1200, 400, 7),
+	})
+	got, err := e.svc.FetchCandidates(e.ctx, e.draft(t), []string{srv.URL + "/a.png", srv.URL + "/cut.png", srv.URL + "/b.png"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].SourceURL != srv.URL+"/a.png" || got[1].SourceURL != srv.URL+"/b.png" {
+		t.Fatalf("candidates = %+v, want a.png then b.png", got)
 	}
 }
 

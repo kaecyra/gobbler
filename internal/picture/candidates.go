@@ -26,11 +26,16 @@ import (
 const (
 	// MaxCandidates is the most candidates a draft keeps.
 	MaxCandidates = 8
-	// MinWidth and MinHeight are the smallest source picture that fills the
-	// widest card of the approved mockup (#435): 533 by 150 CSS pixels, so
-	// 1066 by 300 at 2x. A smaller picture would be upscaled and soft.
+	// MinWidth and MinHeight are the preferred floor: the widest card of the
+	// approved mockup (#435), 533 by 150 CSS pixels, at 2x. When any candidate
+	// meets it, only the candidates that meet it are kept (ADR-00050).
 	MinWidth  = 1066
 	MinHeight = 300
+	// FallbackMinWidth and FallbackMinHeight are the same card at 1x, the floor
+	// used when no candidate meets MinWidth by MinHeight. A candidate below it
+	// is always dropped (ADR-00050).
+	FallbackMinWidth  = 533
+	FallbackMinHeight = 150
 	// FetchTimeout bounds one image download.
 	FetchTimeout = 15 * time.Second
 )
@@ -64,23 +69,72 @@ type Candidate struct {
 	Width, Height int
 }
 
-// find downloads urls in order, processes each and applies the filters. A
-// candidate that fails is logged and dropped, never an error: it is data about
-// the page, not a broken pipeline (error-handling rule).
+// find downloads urls in order, once each, and applies the filters. The first
+// pass keeps each candidate's bytes (capped at media.MaxUploadBytes) and its
+// size read from the header by media.Size, decoding no pixels, so memory holds
+// downloads rather than decoded images. The size floor is then chosen from
+// every candidate: 2x (MinWidth by MinHeight) when any candidate meets it,
+// otherwise 1x (FallbackMinWidth by FallbackMinHeight) (ADR-00050). Only the
+// candidates that pass the floor are decoded, deduplicated by pixels and
+// encoded, in order, until MaxCandidates are kept, so a 2x picture late in the
+// list still sets the floor. A candidate that fails, including one whose header
+// reads but whose pixels do not decode, is logged and dropped, never an error:
+// it is data about the page, not a broken pipeline (error-handling rule).
 func (s *Service) find(ctx context.Context, urls []string) []Found {
-	var out []Found
-	seen := map[[sha256.Size]byte]bool{}
+	type sized struct {
+		url  string
+		data []byte
+		w, h int
+	}
+	var all []sized
+	twoX := false
 	for _, u := range urls {
-		if len(out) >= MaxCandidates {
-			break
-		}
-		f, sum, err := s.process(ctx, u)
+		data, err := s.download(ctx, u)
 		if err != nil {
 			s.log.InfoContext(ctx, "picture candidate dropped", "url", u, "reason", err.Error())
 			continue
 		}
+		w, h, err := media.Size(data)
+		if err != nil {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", u, "reason", "decode: "+err.Error())
+			continue
+		}
+		if w < FallbackMinWidth || h < FallbackMinHeight {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", u,
+				"reason", fmt.Sprintf("%dx%d is smaller than %dx%d", w, h, FallbackMinWidth, FallbackMinHeight))
+			continue
+		}
+		twoX = twoX || (w >= MinWidth && h >= MinHeight)
+		all = append(all, sized{url: u, data: data, w: w, h: h})
+	}
+	minW, minH := FallbackMinWidth, FallbackMinHeight
+	if twoX {
+		minW, minH = MinWidth, MinHeight
+	}
+	var out []Found
+	seen := map[[sha256.Size]byte]bool{}
+	for _, c := range all {
+		if len(out) >= MaxCandidates {
+			break
+		}
+		if c.w < minW || c.h < minH {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url,
+				"reason", fmt.Sprintf("%dx%d is smaller than %dx%d, which another candidate meets", c.w, c.h, minW, minH))
+			continue
+		}
+		d, err := media.Decode(c.data)
+		if err != nil {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url, "reason", "decode: "+err.Error())
+			continue
+		}
+		sum := pixelHash(d.Image)
 		if seen[sum] {
-			s.log.InfoContext(ctx, "picture candidate dropped", "url", u, "reason", "same pixels as an earlier candidate")
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url, "reason", "same pixels as an earlier candidate")
+			continue
+		}
+		f, err := process(c.url, d.Image)
+		if err != nil {
+			s.log.InfoContext(ctx, "picture candidate dropped", "url", c.url, "reason", err.Error())
 			continue
 		}
 		seen[sum] = true
@@ -89,29 +143,17 @@ func (s *Service) find(ctx context.Context, urls []string) []Found {
 	return out
 }
 
-func (s *Service) process(ctx context.Context, rawURL string) (Found, [sha256.Size]byte, error) {
-	var none [sha256.Size]byte
-	data, err := s.download(ctx, rawURL)
+// process turns a decoded candidate into the stored picture.
+func process(rawURL string, img image.Image) (Found, error) {
+	webp, err := media.Picture(img)
 	if err != nil {
-		return Found{}, none, err
-	}
-	d, err := media.Decode(data)
-	if err != nil {
-		return Found{}, none, fmt.Errorf("decode: %w", err)
-	}
-	b := d.Image.Bounds()
-	if b.Dx() < MinWidth || b.Dy() < MinHeight {
-		return Found{}, none, fmt.Errorf("%dx%d is smaller than %dx%d", b.Dx(), b.Dy(), MinWidth, MinHeight)
-	}
-	webp, err := media.Picture(d.Image)
-	if err != nil {
-		return Found{}, none, err
+		return Found{}, err
 	}
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(webp))
 	if err != nil {
-		return Found{}, none, fmt.Errorf("read size of processed picture: %w", err)
+		return Found{}, fmt.Errorf("read size of processed picture: %w", err)
 	}
-	return Found{SourceURL: rawURL, WebP: webp, Width: cfg.Width, Height: cfg.Height}, pixelHash(d.Image), nil
+	return Found{SourceURL: rawURL, WebP: webp, Width: cfg.Width, Height: cfg.Height}, nil
 }
 
 // pixelHash identifies a picture by its decoded pixels, so the same picture
@@ -160,8 +202,8 @@ func (s *Service) download(ctx context.Context, rawURL string) ([]byte, error) {
 
 // FetchCandidates downloads urls (in order, from the extractor) for the draft
 // proposal and keeps the survivors as its candidates under
-// drafts/<proposal_id>/<n>.webp. Failures, pictures below the minimum size and
-// repeated pixels are dropped, and at most MaxCandidates remain. Candidates
+// drafts/<proposal_id>/<n>.webp. Failures, pictures below the size floor (see
+// find) and repeated pixels are dropped, and at most MaxCandidates remain. Candidates
 // the draft already had are replaced.
 func (s *Service) FetchCandidates(ctx context.Context, proposalID int64, urls []string) ([]Candidate, error) {
 	hid, err := scope(ctx)

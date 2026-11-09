@@ -1,6 +1,6 @@
 # ADR-00039: A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header
 
-**Status:** Amended by [ADR-00040](00040-loopback-fetches-under-the-dev-bypass.md)
+**Status:** Amended by [ADR-00040](00040-loopback-fetches-under-the-dev-bypass.md), [ADR-00050](00050-picture-candidates-fall-back-to-1x.md)
 
 **Date:** 2026-11-05
 
@@ -119,6 +119,10 @@ Options considered for a recipe with no picture:
   Candidates whose decoded pixels are identical collapse to one. At most 8
   remain. Size variants that survive are kept as separate options, because
   they are different crops.
+
+  > Amended by [ADR-00050](00050-picture-candidates-fall-back-to-1x.md): the
+  > minimum is the widest card at 2x when any candidate meets it, and the card
+  > at 1x otherwise. Deduplication and the cap of 8 apply after the minimum.
 - The review screen shows the candidates as small options at the top of the
   draft. The person must choose one of them or "No picture" before confirming,
   and "No picture" is always offered. With no candidates, which is always the
