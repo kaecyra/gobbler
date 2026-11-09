@@ -54,6 +54,21 @@ type stepOut struct {
 	DependsOn []string `json:"depends_on,omitempty"`
 }
 
+// equipmentOut is a piece of equipment the recipe uses, and the steps that use
+// it when the recipe says.
+type equipmentOut struct {
+	EquipmentID int64    `json:"equipment_id"`
+	Name        string   `json:"name"`
+	Quantity    string   `json:"quantity,omitempty"`
+	Steps       []string `json:"steps,omitempty"`
+}
+
+// authorNoteOut is one of the recipe author's own notes (ADR-00041).
+type authorNoteOut struct {
+	Title string `json:"title,omitempty"`
+	Text  string `json:"text"`
+}
+
 type componentOut struct {
 	Name        string           `json:"name,omitempty"`
 	Ingredients []ingredientLine `json:"ingredients"`
@@ -64,16 +79,24 @@ type recipeOut struct {
 	ID int64 `json:"id"`
 	// Version is the recipe's version; propose_recipe_edit takes it back, so a
 	// proposal made against a recipe that has since changed is refused.
-	Version     int64          `json:"version"`
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	SourceURL   string         `json:"source_url,omitempty"`
-	Author      string         `json:"author,omitempty"`
-	Tags        []string       `json:"tags,omitempty"`
-	Rating      *int           `json:"rating,omitempty"`
-	Yield       string         `json:"yield,omitempty"`
-	Servings    string         `json:"servings,omitempty"`
-	Components  []componentOut `json:"components"`
+	Version     int64    `json:"version"`
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	SourceURL   string   `json:"source_url,omitempty"`
+	Author      string   `json:"author,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Rating      *int     `json:"rating,omitempty"`
+	Yield       string   `json:"yield,omitempty"`
+	Servings    string   `json:"servings,omitempty"`
+	MealType    string   `json:"meal_type,omitempty"`
+	Cuisine     string   `json:"cuisine,omitempty"`
+	// The times are in minutes; zero, and left out, when the recipe gives none.
+	PrepMinutes  int             `json:"prep_minutes,omitempty"`
+	CookMinutes  int             `json:"cook_minutes,omitempty"`
+	TotalMinutes int             `json:"total_minutes,omitempty"`
+	Components   []componentOut  `json:"components"`
+	Equipment    []equipmentOut  `json:"equipment,omitempty"`
+	AuthorNotes  []authorNoteOut `json:"author_notes,omitempty"`
 }
 
 func summaryOf(s apirecipes.Summary) recipeSummary {
@@ -96,7 +119,7 @@ func (t *tools) registerRecipes(s *mcp.Server) {
 	}, t.listRecipes)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_recipe",
-		Description: "Get one recipe as structured data: its version, and components with their ingredient lines and steps. Lines and steps carry keys, which propose_recipe_edit takes back.",
+		Description: "Get one recipe as structured data: its version, times, meal type, cuisine, equipment, the author's notes, and components with their ingredient lines and steps. Lines and steps carry keys, which propose_recipe_edit takes back.",
 		Annotations: readOnly,
 	}, t.getRecipe)
 }
@@ -148,6 +171,8 @@ func (t *tools) getRecipe(ctx context.Context, _ *mcp.CallToolRequest, in getRec
 	out := recipeOut{
 		ID: in.ID, Version: info.Version, Name: r.Name, Description: r.Description, SourceURL: r.SourceURL, Author: r.Author,
 		Tags: r.Tags, Rating: r.Rating, Yield: yieldText(r.Yield), Servings: r.Servings.String(),
+		MealType: string(r.MealType), Cuisine: string(r.Cuisine),
+		PrepMinutes: int(r.Times.Prep.Minutes()), CookMinutes: int(r.Times.Cook.Minutes()), TotalMinutes: int(r.Times.Total.Minutes()),
 	}
 	lines := display.NewLineBuilder(t.Catalog, display.Default())
 	for _, c := range r.Components {
@@ -167,6 +192,20 @@ func (t *tools) getRecipe(ctx context.Context, _ *mcp.CallToolRequest, in getRec
 			co.Steps = append(co.Steps, so)
 		}
 		out.Components = append(out.Components, co)
+	}
+	for _, e := range r.Equipment {
+		eq, err := display.ResolveEquipment(ctx, t.Catalog, e)
+		if err != nil {
+			return nil, recipeOut{}, t.toolError(ctx, "get_recipe", err)
+		}
+		eo := equipmentOut{EquipmentID: int64(e.Equipment), Name: eq.Name, Quantity: e.Qty.String()}
+		for _, st := range e.Steps {
+			eo.Steps = append(eo.Steps, string(st))
+		}
+		out.Equipment = append(out.Equipment, eo)
+	}
+	for _, n := range r.AuthorNotes {
+		out.AuthorNotes = append(out.AuthorNotes, authorNoteOut{Title: n.Title, Text: n.Text})
 	}
 	return nil, out, nil
 }

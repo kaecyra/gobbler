@@ -28,6 +28,45 @@ func (q *Queries) CountSnapshots(ctx context.Context, arg CountSnapshotsParams) 
 	return count, err
 }
 
+const getFirstSnapshot = `-- name: GetFirstSnapshot :one
+SELECT id, kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
+WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3
+ORDER BY id LIMIT 1
+`
+
+type GetFirstSnapshotParams struct {
+	RecipeID    sql.NullInt64
+	Kind        string
+	HouseholdID int64
+}
+
+type GetFirstSnapshotRow struct {
+	ID            int64
+	Kind          string
+	Content       []byte
+	Sha256        string
+	CreatedAt     string
+	CreatedBy     string
+	ParserVersion string
+}
+
+// The original snapshot of a kind: the first stored, which a re-import never
+// replaces (ADR-00042). A preview replays it (ADR-00048).
+func (q *Queries) GetFirstSnapshot(ctx context.Context, arg GetFirstSnapshotParams) (GetFirstSnapshotRow, error) {
+	row := q.db.QueryRowContext(ctx, getFirstSnapshot, arg.RecipeID, arg.Kind, arg.HouseholdID)
+	var i GetFirstSnapshotRow
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Content,
+		&i.Sha256,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.ParserVersion,
+	)
+	return i, err
+}
+
 const getSnapshot = `-- name: GetSnapshot :one
 SELECT kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
 WHERE recipe_id = ?1 AND kind = ?2 AND household_id = ?3

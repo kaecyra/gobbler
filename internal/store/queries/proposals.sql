@@ -21,6 +21,13 @@ DELETE FROM source_snapshots WHERE id = sqlc.arg(id) AND household_id = sqlc.arg
 SELECT kind, content, sha256, created_at, created_by, parser_version FROM source_snapshots
 WHERE id = sqlc.arg(id) AND household_id = sqlc.arg(household_id);
 
+-- The document of the draft whose source a snapshot was. A draft's snapshot
+-- belongs to that one draft, and an accepted draft is never pruned (ADR-00035).
+-- name: GetSnapshotDraftDocument :one
+SELECT document FROM proposals
+WHERE snapshot_id = sqlc.arg(snapshot_id) AND household_id = sqlc.arg(household_id) AND kind = 'draft'
+ORDER BY id LIMIT 1;
+
 -- name: InsertProposal :one
 INSERT INTO proposals (household_id, token, kind, state, recipe_id, base_version, snapshot_id, document, reason,
     proposed_by, credential_kind, credential_id, credential_ref, credential_owner, credential_created_at, tool, created_at, state_at)

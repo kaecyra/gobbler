@@ -147,6 +147,59 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 	return snap, nil
 }
 
+// FirstSource is a recipe's original snapshot of a kind and the document of
+// the ingestion draft it was the source of.
+type FirstSource struct {
+	Snapshot Snapshot
+	// DraftDocument is the document of the draft whose source Snapshot was
+	// (ADR-00035), as package ingest encoded it; nil when no proposal names
+	// the snapshot. That is a snapshot stored before drafts were proposals
+	// (migration 00027), or a copy a share made of another recipe's.
+	DraftDocument []byte
+}
+
+// FirstSnapshot returns the original snapshot of the given kind of recipe id,
+// the first stored, which a saved re-import adds to and never replaces
+// (ADR-00042), with the document of the draft that held it. found is false
+// when the recipe has no snapshot of that kind; a missing recipe is
+// ErrNotFound.
+func (s *Store) FirstSnapshot(ctx context.Context, id int64, kind SnapshotKind) (first FirstSource, found bool, err error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return FirstSource{}, false, err
+	}
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		if _, err := loadInfo(ctx, q, hid, id); err != nil {
+			return err
+		}
+		row, err := q.GetFirstSnapshot(ctx, storedb.GetFirstSnapshotParams{RecipeID: nullID(id), Kind: string(kind), HouseholdID: hid})
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("read first %s snapshot of recipe %d: %w", kind, id, err)
+		}
+		first.Snapshot = Snapshot{Kind: SnapshotKind(row.Kind), Content: row.Content, SHA256: row.Sha256, CreatedBy: row.CreatedBy, ParserVersion: row.ParserVersion}
+		if first.Snapshot.CreatedAt, err = parseTime(row.CreatedAt); err != nil {
+			return err
+		}
+		doc, err := q.GetSnapshotDraftDocument(ctx, storedb.GetSnapshotDraftDocumentParams{SnapshotID: sql.NullInt64{Int64: row.ID, Valid: true}, HouseholdID: hid})
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+		case err != nil:
+			return fmt.Errorf("read the draft of the first %s snapshot of recipe %d: %w", kind, id, err)
+		default:
+			first.DraftDocument = []byte(doc)
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return FirstSource{}, false, err
+	}
+	return first, found, nil
+}
+
 // ListSnapshotKinds returns the kinds of snapshot stored for recipe id. A
 // missing recipe is ErrNotFound.
 func (s *Store) ListSnapshotKinds(ctx context.Context, id int64) ([]SnapshotKind, error) {

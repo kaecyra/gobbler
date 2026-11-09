@@ -67,8 +67,8 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 	case (rawURL == "") == (text == ""):
 		return nil, draftOut{}, refuse("give either url or text, not both and not neither")
 	case rawURL != "":
-		if u, perr := url.Parse(rawURL); perr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return nil, draftOut{}, refuse("url must be an http or https address")
+		if err := checkPageURL(rawURL); err != nil {
+			return nil, draftOut{}, err
 		}
 		if err := t.checkRoom(ctx, callerOf(c, h), tool); err != nil {
 			return nil, draftOut{}, err
@@ -123,6 +123,16 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	}
 	d.Name = apiingest.Field[string]{Value: name, Confidence: 1}
 	return t.hold(ctx, tool, c, h, d)
+}
+
+// checkPageURL refuses an address the pipeline would not fetch a page from:
+// anything but an absolute http or https URL. import_recipe and
+// preview_import share it, so both accept the same addresses.
+func checkPageURL(rawURL string) error {
+	if u, err := url.Parse(rawURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return refuse("url must be an http or https address")
+	}
+	return nil
 }
 
 // checkRoom refuses, with the message hold gives, a household that already holds

@@ -31,12 +31,19 @@
 // Drafter, PhotoDrafter and Retrier, the MCP endpoint's Drafter and the
 // re-import's URLDrafter. Each call names the Caller from its context and goes
 // through the Service.
+//
+// Preview drafts without holding (ADR-00048): from a URL through the same
+// pipeline call an import makes, or from a saved recipe's original source
+// snapshot through the pipeline's FromContent, which is what a URL draft runs
+// after its fetch. It writes nothing.
 package ingest
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
@@ -44,6 +51,8 @@ import (
 	domain "github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/ingest/extract"
 	"github.com/kaecyra/gobbler/internal/ingest/ocr"
+	"github.com/kaecyra/gobbler/internal/recipe"
+	"github.com/kaecyra/gobbler/internal/store"
 )
 
 // Caller is who an operation is for (caller.Caller).
@@ -158,6 +167,13 @@ var (
 	ErrNotMember = caller.ErrNotMember
 )
 
+// ErrNoPageSnapshot is a preview of a saved recipe that was not imported from
+// a web page, so it holds no page to read again (ADR-00048).
+var ErrNoPageSnapshot = errors.New("this recipe was not imported from a web page, so there is no page to read again")
+
+// ErrPreviewSource is a preview given both a URL and a recipe, or neither.
+var ErrPreviewSource = errors.New("a preview reads a url or a saved recipe, not both and not neither")
+
 // Confirm turns a draft the review screen approved into a Confirmed one
 // (ingest.Confirm). It is pure and touches no household data.
 func Confirm(d Draft) (Confirmed, error) { return domain.Confirm(d) }
@@ -184,6 +200,7 @@ func SelectProvider(ctx context.Context, cfg config.LLM, log *slog.Logger, facto
 // satisfies it.
 type Pipeline interface {
 	FromURL(ctx context.Context, rawURL string) (Draft, error)
+	FromContent(ctx context.Context, page []byte, sourceURL string) (Draft, error)
 	FromText(ctx context.Context, text string) (Draft, error)
 	FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (Draft, error)
 }
@@ -193,6 +210,15 @@ type Pipeline interface {
 type Fallback interface {
 	Retry(ctx context.Context, d Draft) (Draft, error)
 	Configured() bool
+}
+
+// Originals is what a preview reads of a saved recipe: its original source
+// snapshot with the draft that held it, and its first version for a snapshot
+// no draft held. *store.Store satisfies it; every call runs in the household
+// the Caller was admitted to.
+type Originals interface {
+	FirstSnapshot(ctx context.Context, id int64, kind store.SnapshotKind) (store.FirstSource, bool, error)
+	GetVersion(ctx context.Context, id, version int64) (recipe.Recipe, error)
 }
 
 // Deps is what the service is built from.
@@ -207,13 +233,17 @@ type Deps struct {
 	Provider Provider
 	// Logger receives the fallback's warnings; nil means slog.Default().
 	Logger *slog.Logger
+	// Originals is read by a preview of a saved recipe. Optional: without it
+	// such a preview is an error, and every other operation works.
+	Originals Originals
 }
 
 // Service is the ingestion operations. It is safe for concurrent use.
 type Service struct {
-	pipeline Pipeline
-	fallback Fallback
-	members  Members
+	pipeline  Pipeline
+	fallback  Fallback
+	members   Members
+	originals Originals
 }
 
 // New returns a Service over a pipeline built from cfg and d. Catalog and
@@ -227,7 +257,7 @@ func New(cfg config.Ingestion, d Deps) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Service{pipeline: p, fallback: p.Fallback(), members: d.Members}, nil
+	return &Service{pipeline: p, fallback: p.Fallback(), members: d.Members, originals: d.Originals}, nil
 }
 
 // enter checks the Caller and returns a context that runs in its household
@@ -276,6 +306,91 @@ func (s *Service) Retry(ctx context.Context, c Caller, d Draft) (Draft, error) {
 	return s.fallback.Retry(ctx, d)
 }
 
+// PreviewSource is what a preview reads: a page's URL, or a saved recipe's id.
+// Exactly one is set.
+type PreviewSource struct {
+	URL      string
+	RecipeID int64
+}
+
+// Preview is a draft that is not held. SnapshotParserVersion is the parser
+// version stored with the snapshot a saved recipe's preview read, empty for a
+// URL and when the snapshot recorded none; Draft.ParserVersion is the current
+// one.
+type Preview struct {
+	Draft                 Draft
+	SnapshotParserVersion string
+}
+
+// Preview drafts what an import would hold, and holds nothing: no proposal,
+// no snapshot, no picture candidate (ADR-00048). From a URL it is FromURL.
+// From a saved recipe it reads the recipe's first HTML snapshot, the original
+// (ADR-00042), and drafts it with the address it was served from (sourceOf),
+// fetching nothing; a recipe with no HTML snapshot is ErrNoPageSnapshot. The
+// rule-based path runs first and the LLM only below the threshold, as for an
+// import (ADR-00006).
+func (s *Service) Preview(ctx context.Context, c Caller, src PreviewSource) (Preview, error) {
+	rawURL := strings.TrimSpace(src.URL)
+	if (rawURL == "") == (src.RecipeID == 0) {
+		return Preview{}, ErrPreviewSource
+	}
+	ctx, err := s.enter(ctx, c)
+	if err != nil {
+		return Preview{}, err
+	}
+	if rawURL != "" {
+		d, err := s.pipeline.FromURL(ctx, rawURL)
+		if err != nil {
+			return Preview{}, err
+		}
+		return Preview{Draft: d}, nil
+	}
+	if s.originals == nil {
+		return Preview{}, errors.New("ingest service: previewing a saved recipe needs Originals")
+	}
+	first, found, err := s.originals.FirstSnapshot(ctx, src.RecipeID, store.SnapshotHTML)
+	if err != nil {
+		return Preview{}, fmt.Errorf("read the original page of recipe %d: %w", src.RecipeID, err)
+	}
+	if !found {
+		return Preview{}, fmt.Errorf("preview recipe %d: %w", src.RecipeID, ErrNoPageSnapshot)
+	}
+	addr, err := s.sourceOf(ctx, src.RecipeID, first)
+	if err != nil {
+		return Preview{}, err
+	}
+	d, err := s.pipeline.FromContent(ctx, first.Snapshot.Content, addr)
+	if err != nil {
+		return Preview{}, err
+	}
+	return Preview{Draft: d, SnapshotParserVersion: first.Snapshot.ParserVersion}, nil
+}
+
+// sourceOf is the address recipe id's original page was served from. A
+// snapshot does not record it; the draft whose source the snapshot was does,
+// and an accepted draft is never pruned (ADR-00035). That covers a recipe
+// typed in and given its first page by a later re-import, whose first version
+// has no address or another one. A snapshot no draft held was stored before
+// drafts were proposals (migration 00027), when a snapshot was written only
+// with the recipe it was imported into, so the recipe's first version is the
+// version of that time and carries the address the import saved. A share's
+// copy of a recipe is held by no draft either, and its first version carries
+// the address the shared recipe had when it was copied.
+func (s *Service) sourceOf(ctx context.Context, id int64, first store.FirstSource) (string, error) {
+	if first.DraftDocument != nil {
+		held, err := domain.DecodeDraft(first.DraftDocument, first.Snapshot)
+		if err != nil {
+			return "", fmt.Errorf("read the draft that held the original page of recipe %d: %w", id, err)
+		}
+		return held.Source.URL, nil
+	}
+	r, err := s.originals.GetVersion(ctx, id, 1)
+	if err != nil {
+		return "", fmt.Errorf("read the first version of recipe %d: %w", id, err)
+	}
+	return r.SourceURL, nil
+}
+
 // Configured reports whether an LLM provider is available. It reads
 // configuration, not household data, so it takes no Caller.
 func (s *Service) Configured() bool { return s.fallback.Configured() }
@@ -319,3 +434,8 @@ func (b *Bound) Retry(ctx context.Context, d Draft) (Draft, error) {
 
 // Configured is Service.Configured.
 func (b *Bound) Configured() bool { return b.s.Configured() }
+
+// Preview is Service.Preview.
+func (b *Bound) Preview(ctx context.Context, src PreviewSource) (Preview, error) {
+	return b.s.Preview(ctx, b.who(ctx), src)
+}

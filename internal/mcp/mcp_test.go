@@ -117,7 +117,7 @@ func newSiteDrafting(t *testing.T, limits config.MCP, drafter func(*catalog.Stor
 	// through the catalog service bound to the credential of its request
 	// (ADR-00043), whichever kind of credential it is (ADR-00031).
 	audit := mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}
-	cfg := config.Config{Ingestion: config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "t"}, MCP: limits}
+	cfg := config.Config{Ingestion: config.Ingestion{ConfidenceThreshold: 0.7, FetchTimeout: time.Second, UserAgent: "t", AllowLoopbackFetch: true}, MCP: limits}
 	deps, err := mcp.NewDeps(svc, s.rec, shop, hs, cat, audit, cfg, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)

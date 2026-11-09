@@ -46,6 +46,7 @@ func recipeCaller(ctx context.Context) (apirecipes.Caller, error) {
 func (t *tools) register(s *mcp.Server) {
 	t.registerRecipes(s)
 	t.registerImport(s)
+	t.registerPreview(s)
 	t.registerEdit(s)
 	t.registerReimport(s)
 	t.registerShopping(s)
