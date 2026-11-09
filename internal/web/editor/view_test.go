@@ -43,7 +43,7 @@ func TestAfterNamesTheStepsAStepWaitsFor(t *testing.T) {
 	}
 }
 
-func TestNeedsLookCountsLowItemsAndPointsAtTheFirstShown(t *testing.T) {
+func TestNeedsLookCountsFlaggedItemsAndPointsAtTheFirstShown(t *testing.T) {
 	low := mark{Low: true}
 	for _, tc := range []struct {
 		name  string
@@ -71,6 +71,11 @@ func TestNeedsLookCountsLowItemsAndPointsAtTheFirstShown(t *testing.T) {
 				Equipment: []equipDraft{{Mark: low}},
 			},
 			3, "line-1-0",
+		},
+		{
+			"a line with an issue is flagged at any confidence",
+			draft{Components: []compDraft{{Lines: []lineDraft{{}, {Issues: []string{"not matched"}}, {Mark: low}}}}},
+			2, "line-0-1",
 		},
 		{"a step alone", draft{Components: []compDraft{{Steps: []stepDraft{{ID: "a"}, {ID: "b", Mark: low}}}}}, 1, "step-0-1"},
 		{"equipment alone", draft{Equipment: []equipDraft{{}, {Mark: low}}}, 1, "equip-1"},

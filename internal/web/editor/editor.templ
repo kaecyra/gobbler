@@ -424,7 +424,7 @@ templ llmBadge(m mark) {
 // checkHint is the line under a flagged item: what to check, with the alert
 // icon.
 templ checkHint(low bool, issues []string, fallback string) {
-	if low || len(issues) > 0 {
+	if flagged(low, issues) {
 		<p class="hint">
 			@layout.Icon(layout.IconAlert)
 			<span>

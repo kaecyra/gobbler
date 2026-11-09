@@ -365,12 +365,19 @@ var metaOrder = []struct{ field, input string }{
 	{"prep", "f-prep"}, {"cook", "f-cook"}, {"total", "f-total"}, {"author", "f-author"},
 }
 
-// needsLook counts the items marked low confidence, and gives the anchor of
-// the first in the order the form shows them, for the save bar.
+// flagged reports whether the form flags an item for a look: the rules were
+// less sure of it than the threshold, or the review found an issue with it.
+// checkHint draws the flag by this test and needsLook counts by it, so the
+// count can never disagree with the flags shown.
+func flagged(low bool, issues []string) bool { return low || len(issues) > 0 }
+
+// needsLook counts the items the form flags for a look, and gives the anchor
+// of the first in the order the form shows them, for the save bar. Each item
+// is tested with the same values its row hands checkHint.
 func (v view) needsLook() (int, string) {
 	n, first := 0, ""
-	flag := func(low bool, anchor string) {
-		if !low {
+	flag := func(look bool, anchor string) {
+		if !look {
 			return
 		}
 		if n == 0 {
@@ -379,23 +386,23 @@ func (v view) needsLook() (int, string) {
 		n++
 	}
 	for _, m := range metaOrder {
-		flag(v.D.mark(m.field).Low, m.input)
+		flag(flagged(v.D.mark(m.field).Low, nil), m.input)
 	}
 	for ci, c := range v.D.Components {
 		for li, l := range c.Lines {
-			flag(l.Mark.Low, lineAnchor(ci, li))
+			flag(flagged(l.Mark.Low, l.Issues), lineAnchor(ci, li))
 		}
 	}
 	for ci, c := range v.D.Components {
 		for si, s := range c.Steps {
-			flag(s.Mark.Low, stepAnchor(ci, si))
+			flag(flagged(s.Mark.Low, nil), stepAnchor(ci, si))
 		}
 	}
 	for ni, nt := range v.D.Notes {
-		flag(nt.Mark.Low, noteAnchor(ni))
+		flag(flagged(nt.Mark.Low, nil), noteAnchor(ni))
 	}
 	for ei, e := range v.D.Equipment {
-		flag(e.Mark.Low, equipAnchor(ei))
+		flag(flagged(e.Mark.Low, nil), equipAnchor(ei))
 	}
 	return n, first
 }
