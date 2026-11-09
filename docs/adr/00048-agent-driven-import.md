@@ -163,6 +163,10 @@ display reads the proposals table: the duplicate check reads pending drafts'
 source addresses. It is still a read of drafts awaiting review, made to keep a
 second one from being held.
 
+> Amended 2026-11-09: a preview by `recipe_id` also reads the document of the
+> draft that held the recipe's first snapshot, for its source address. It reads
+> one accepted draft and writes nothing.
+
 ADR-00034's rule that every recipe write from MCP waits for review holds:
 `revise_recipe_draft` changes only a draft that is itself waiting for review.
 
