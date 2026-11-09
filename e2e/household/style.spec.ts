@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { expectTapTargets } from '../fixtures/tap';
 import { startHousehold } from './support';
 
@@ -6,6 +6,17 @@ import { startHousehold } from './support';
 // household through the operator, so none disturbs the seeded ones.
 
 const SHOTS = new URL('../../.cc-scratch/shots/', import.meta.url).pathname;
+
+// The style rules run to 16 KiB, so the field spans its form instead of
+// stopping at the width sized for a one-line input.
+async function expectFullWidth(page: Page) {
+  const section = page.getByTestId('house-style');
+  const field = await section.getByLabel('Style rules').boundingBox();
+  const form = await section.locator('form').boundingBox();
+  expect(field).not.toBeNull();
+  expect(form).not.toBeNull();
+  expect(Math.abs(field!.width - form!.width)).toBeLessThanOrEqual(1);
+}
 
 test('a member saves the house style, which the page shows again', async ({ browser, baseURL }) => {
   const { ctx } = await startHousehold(browser, baseURL, 'Stylists');
@@ -24,7 +35,11 @@ test('a member saves the house style, which the page shows again', async ({ brow
   await expect(page.getByTestId('household-name')).toHaveText('Stylists');
   await expect(page.getByTestId('member')).toHaveCount(1);
   await expectTapTargets(page, '[data-testid="house-style"]');
+  await expectFullWidth(page);
   await page.screenshot({ path: `${SHOTS}household-house-style.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectFullWidth(page);
+  await page.screenshot({ path: `${SHOTS}household-house-style-phone.png`, fullPage: true });
   await ctx.close();
 });
 

@@ -235,14 +235,14 @@ func membersPage(v pageView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</section><section class=\"panel\" aria-labelledby=\"style-h\" data-testid=\"house-style\"><h2 id=\"style-h\">House style</h2><p>How this household writes its recipes, such as units, ingredient wording or how steps are split. Agents connected to gobbler read it before they revise a draft or propose a change to a recipe.</p><form class=\"stack\" method=\"post\" action=\"/household/style\"><label>Style rules <textarea name=\"style\" rows=\"8\" maxlength=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</section><section class=\"panel\" aria-labelledby=\"style-h\" data-testid=\"house-style\"><h2 id=\"style-h\">House style</h2><p>How this household writes its recipes, such as units, ingredient wording or how steps are split. Agents connected to gobbler read it before they revise a draft or propose a change to a recipe.</p><form class=\"stack\" method=\"post\" action=\"/household/style\"><label>Style rules <textarea class=\"wide\" name=\"style\" rows=\"20\" maxlength=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(houseStyleMax())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/household/household.templ`, Line: 66, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/household/household.templ`, Line: 66, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -255,7 +255,7 @@ func membersPage(v pageView) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(textareaText(v.HouseStyle))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/household/household.templ`, Line: 66, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/household/household.templ`, Line: 66, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
