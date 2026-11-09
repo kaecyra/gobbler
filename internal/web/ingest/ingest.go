@@ -262,7 +262,7 @@ func (h *handler) renderForm(w http.ResponseWriter, r *http.Request, status int,
 		return
 	}
 	v.Waiting = rowsOf(pending, time.Now())
-	v.Done = h.done(r, len(pending))
+	v.Done = h.done(r)
 	layout.Render(w, r, status, formPage(v))
 }
 
@@ -459,7 +459,7 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 		return
 	}
 	layout.Render(w, r, status, reviewPage(reviewView{
-		Token: token, Draft: d, Form: *form, Picker: picker, Reimport: d.Reimport, Done: h.doneOnReview(r),
+		Token: token, Draft: d, Form: *form, Picker: picker, Reimport: d.Reimport, Done: h.done(r),
 		CanRetry: h.retrier != nil && h.retrier.Configured(),
 		// A draft read from a photo whose photo is no longer in memory:
 		// asking the LLM again reads the recognised text alone.

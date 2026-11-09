@@ -54,7 +54,7 @@ type reviseDraftIn struct {
 	Token    string       `json:"token" jsonschema:"the draft's token"`
 	Revision string       `json:"revision" jsonschema:"the revision get_recipe_draft gave when you read the draft"`
 	Draft    revisedDraft `json:"draft" jsonschema:"the whole draft as it should be: the draft get_recipe_draft gave, with your changes. Confidences, marks, step numbers and the parse details may be left out and are ignored; video_id must be sent back unchanged"`
-	Reason   string       `json:"reason" jsonschema:"what you changed and why, shown to the person who reviews the draft"`
+	Reason   string       `json:"reason" jsonschema:"what you changed and why, kept with the draft and returned by get_recipe_draft"`
 }
 
 // revisedDraft is the draft revise_recipe_draft takes back: previewOut's
@@ -251,7 +251,7 @@ func (t *tools) reviseRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	case token == "" || revision == "":
 		return nil, reviseDraftOut{}, refuse("give the draft's token and the revision get_recipe_draft gave")
 	case reason == "":
-		return nil, reviseDraftOut{}, refuse("give a reason: the person reviewing the draft is shown it")
+		return nil, reviseDraftOut{}, refuse("give a reason: it is kept with the draft and returned by get_recipe_draft")
 	case utf8.RuneCountInString(reason) > maxReason:
 		return nil, reviseDraftOut{}, refuse("the reason is too long: at most %d characters", maxReason)
 	}

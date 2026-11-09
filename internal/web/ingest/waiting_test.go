@@ -135,8 +135,9 @@ func TestRowsOfNamesAnUntitledDraftAndCountsAge(t *testing.T) {
 }
 
 // ADR-00049: confirming a draft lands on the oldest draft still waiting, with
-// a message saying what was saved and how many are waiting; discarding the
-// last lands on the import page, with a message saying so.
+// a message saying what was saved; discarding the last lands on the import
+// page, with a message saying what was discarded. Neither counts the drafts
+// left (#588).
 func TestConfirmAndCancelMoveOnToTheNextDraft(t *testing.T) {
 	f := newFixture(t)
 	first, second, third := f.ingestText(t), f.ingestText(t), f.ingestText(t)
@@ -148,7 +149,7 @@ func TestConfirmAndCancelMoveOnToTheNextDraft(t *testing.T) {
 	}
 	body := f.do(http.MethodGet, local(want), nil).Body.String()
 	note := between(t, body, `data-testid="draft-done"`, "</div>")
-	if !strings.Contains(note, `Saved <a href="/recipes/1-`) || !strings.Contains(note, "2 drafts are waiting for review, and this is the oldest.") {
+	if !strings.Contains(note, `Saved <a href="/recipes/1-`) || strings.Contains(note, "waiting") {
 		t.Errorf("message = %s", note)
 	}
 
@@ -159,10 +160,6 @@ func TestConfirmAndCancelMoveOnToTheNextDraft(t *testing.T) {
 	if got := rec.Header().Get("HX-Redirect"); got != "/ingest/"+third+"?done="+second {
 		t.Errorf("htmx confirm redirects to %q, want the next draft", got)
 	}
-	body = f.do(http.MethodGet, local(rec.Header().Get("HX-Redirect")), nil).Body.String()
-	if !strings.Contains(body, "This is the last draft waiting for review.") {
-		t.Error("the last draft's page does not say it is the last")
-	}
 
 	rec = f.do(http.MethodPost, "/"+third+"/cancel", url.Values{})
 	if want := "/ingest?done=" + third; rec.Header().Get("Location") != want {
@@ -170,7 +167,7 @@ func TestConfirmAndCancelMoveOnToTheNextDraft(t *testing.T) {
 	}
 	body = f.do(http.MethodGet, local(rec.Header().Get("Location")), nil).Body.String()
 	note = between(t, body, `data-testid="draft-done"`, "</div>")
-	if !strings.Contains(note, "Discarded Apple pie.") || !strings.Contains(note, "No drafts are waiting for review.") {
+	if !strings.Contains(note, "Discarded Apple pie.") || strings.Contains(note, "waiting") {
 		t.Errorf("message = %s", note)
 	}
 }
@@ -231,25 +228,6 @@ func TestCancelOfAnotherHouseholdsDraftNamesNothing(t *testing.T) {
 	asB.ServeHTTP(rec2, unknown)
 	if rec2.Header().Get("Location") != rec.Header().Get("Location") {
 		t.Error("an unknown token and another household's are answered differently")
-	}
-}
-
-// The review page is the oldest waiting draft's, so it says so; the import
-// page, reached by a hand-typed address or a race, only counts.
-func TestWaitingSentence(t *testing.T) {
-	for _, tc := range []struct {
-		d    doneView
-		want string
-	}{
-		{doneView{Waiting: 0}, "No drafts are waiting for review."},
-		{doneView{Waiting: 1}, "1 draft is waiting for review."},
-		{doneView{Waiting: 3}, "3 drafts are waiting for review."},
-		{doneView{Waiting: 1, OnReview: true}, "This is the last draft waiting for review."},
-		{doneView{Waiting: 3, OnReview: true}, "3 drafts are waiting for review, and this is the oldest."},
-	} {
-		if got := tc.d.waitingSentence(); got != tc.want {
-			t.Errorf("%+v: %q, want %q", tc.d, got, tc.want)
-		}
 	}
 }
 

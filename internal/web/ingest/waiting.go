@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -51,28 +50,6 @@ type doneView struct {
 	Name  string
 	// RecipePath is the saved recipe's page; empty for a discarded draft.
 	RecipePath string
-	// Waiting is how many drafts are still waiting for review, the one the
-	// page shows included.
-	Waiting int
-	// OnReview is set on a waiting draft's review page, which is the oldest
-	// one; the import page lists them instead.
-	OnReview bool
-}
-
-// waitingSentence says how many drafts are still waiting, on the page the
-// person landed on: the oldest one's review page, or the import page.
-func (d doneView) waitingSentence() string {
-	switch {
-	case d.Waiting == 0:
-		return "No drafts are waiting for review."
-	case !d.OnReview && d.Waiting == 1:
-		return "1 draft is waiting for review."
-	case !d.OnReview:
-		return strconv.Itoa(d.Waiting) + " drafts are waiting for review."
-	case d.Waiting == 1:
-		return "This is the last draft waiting for review."
-	}
-	return strconv.Itoa(d.Waiting) + " drafts are waiting for review, and this is the oldest."
 }
 
 // rowsOf turns the pending drafts into the import page's list, ages counted
@@ -117,12 +94,11 @@ func (h *handler) pending(ctx context.Context) ([]apirecipes.DraftSummary, error
 	return h.recipes.PendingDrafts(ctx, caller.FromContext(ctx))
 }
 
-// done reads the message for the draft named in r's doneParam, with waiting
-// drafts still waiting. It is nil when the parameter is absent or names no
+// done reads the message for the draft named in r's doneParam. It is nil when the parameter is absent or names no
 // draft of the household that has been confirmed or discarded. The message is
 // a courtesy on a page that works without it, so a failed read is logged and
 // the page is shown without it.
-func (h *handler) done(r *http.Request, waiting int) *doneView {
+func (h *handler) done(r *http.Request) *doneView {
 	token := r.URL.Query().Get(doneParam)
 	if token == "" || len(token) > maxTokenLen {
 		return nil
@@ -135,31 +111,12 @@ func (h *handler) done(r *http.Request, waiting int) *doneView {
 		h.log.WarnContext(r.Context(), "read the ended draft for the page message", "error", err.Error())
 		return nil
 	}
-	v := &doneView{Saved: e.Saved, Name: e.Name, Waiting: waiting}
+	v := &doneView{Saved: e.Saved, Name: e.Name}
 	if v.Name == "" {
 		v.Name = "the draft"
 	}
 	if e.Saved && e.RecipeID != 0 {
 		v.RecipePath = recipepath.View(e.RecipeID, e.Name)
-	}
-	return v
-}
-
-// doneOnReview is the message on a review page a person was sent to after
-// ending another draft, or nil. The drafts are counted only when the page was
-// asked to carry one.
-func (h *handler) doneOnReview(r *http.Request) *doneView {
-	if !r.URL.Query().Has(doneParam) {
-		return nil
-	}
-	pending, err := h.pending(r.Context())
-	if err != nil {
-		h.log.WarnContext(r.Context(), "count the drafts waiting for the page message", "error", err.Error())
-		return nil
-	}
-	v := h.done(r, len(pending))
-	if v != nil {
-		v.OnReview = true
 	}
 	return v
 }

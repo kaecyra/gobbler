@@ -66,8 +66,8 @@ func TestReviewFlagsLowConfidenceAndLLMItemsInWords(t *testing.T) {
 	if !strings.Contains(between(t, body, `<li class="item equipment llm" data-llm>`, "</li>"), "LLM") {
 		t.Error("LLM equipment is not marked in words")
 	}
-	if !strings.Contains(body, "Check this draft.") {
-		t.Error("a below-threshold draft has no overall warning")
+	if strings.Contains(body, "Check this draft.") {
+		t.Error("a below-threshold draft repeats its chips in a banner")
 	}
 }
 
@@ -463,15 +463,19 @@ func TestReviewShowsTheInferredStepGraph(t *testing.T) {
 	}
 }
 
-// The LLM's reading of a step's order is flagged in words on that step only.
-func TestReviewFlagsAnLLMSuppliedGraphInWords(t *testing.T) {
+// The LLM's reading of a step's order is flagged on that step only, by the one
+// LLM pill in its pill row and no sentence under it.
+func TestReviewFlagsAnLLMSuppliedGraphWithAPill(t *testing.T) {
 	f := newFixture(t)
 	f.drafter.draft = graphDraft()
 	steps := items(f.do(http.MethodGet, "/"+f.ingestText(t), nil).Body.String(), "step")
-	if !strings.Contains(steps[2], "suggested this step's order") {
-		t.Errorf("the LLM-read step is not flagged in words: %s", steps[2])
+	if got := strings.Count(steps[2], `class="llm-mark"`); got != 1 {
+		t.Errorf("the LLM-read step has %d LLM pills, want 1: %s", got, steps[2])
 	}
-	if strings.Contains(steps[1], "suggested this step's order") || strings.Contains(steps[0], "suggested this step's order") {
+	if strings.Contains(steps[2], "suggested this step's order") {
+		t.Error("the LLM-read step still carries the sentence under it")
+	}
+	if strings.Contains(steps[1], `class="llm-mark"`) || strings.Contains(steps[0], `class="llm-mark"`) {
 		t.Error("a rule-read or default step is flagged as the LLM's")
 	}
 }

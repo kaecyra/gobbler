@@ -223,8 +223,8 @@ equipment review was linked from nowhere.
   review page ([ADR-00049](../adr/00049-pending-drafts-listed-and-counted.md)).
 - **After a confirm or discard** the next draft's review page, or `/ingest`
   when none is left, opens with a page-level callout: "Saved" and the recipe's
-  name as a link, or "Discarded" and the draft's name, then how many drafts are
-  still waiting.
+  name as a link, or "Discarded" and the draft's name. It does not count the
+  drafts left; the menu's Add recipe badge does.
 
 - **Search** is Google-style: a big centred box on home with a `/` focus key.
   Typing moves to `/recipes?q=`, the library's existing search, through HTMX

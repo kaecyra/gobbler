@@ -76,3 +76,20 @@ It was wrong, and it was a judgement nobody had asked for.
 **Rule.** When the evidence cannot separate what the owner did from what the
 tool did, say what cannot be seen and stop there. Report leftovers as items to
 fix, not as a verdict on how much work went in.
+
+## Screens get no narration
+
+**Mistake.** The review screen gained a subtitle restating that nothing saves
+until confirm, a below-threshold banner restating the confidence chip, a
+callout printing the agent's revision reason, a "N drafts are waiting, and
+this is the oldest" sentence, and a sentence under every step the LLM ordered.
+An agent added each one as helpful context.
+
+**Cost.** The owner called the page "a flea market for HTML": warnings in
+several styles, none telling them anything the page did not already show. All
+of them were removed in #589.
+
+**Rule.** Before adding a sentence, callout or banner to a screen, name the
+decision it changes for the person. If the page's controls or marks already
+say it, or it explains the system instead of the recipe, leave it out. Never
+print an agent's own explanation on a person's screen.
