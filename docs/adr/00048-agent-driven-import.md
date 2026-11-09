@@ -167,6 +167,12 @@ second one from being held.
 > draft that held the recipe's first snapshot, for its source address. It reads
 > one accepted draft and writes nothing.
 
+> Amended 2026-11-09: the reason is no longer shown on the review screen; the
+> owner found it noise beside the LLM marks, which already show what changed.
+> It is still stored with the draft and returned over MCP by
+> `get_recipe_draft`. Obligation 6's "the reason shows on the review screen" is
+> withdrawn.
+
 ADR-00034's rule that every recipe write from MCP waits for review holds:
 `revise_recipe_draft` changes only a draft that is itself waiting for review.
 

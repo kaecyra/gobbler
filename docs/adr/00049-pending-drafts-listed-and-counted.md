@@ -69,6 +69,10 @@ awaiting or just leaving review, made so that they get reviewed.
 A person who confirms one draft while others wait lands on the next draft, not
 on the recipe they saved; the message links to the recipe.
 
+> Amended 2026-11-09: the message after a confirm or discard no longer says how
+> many drafts are still waiting. It says what was saved or discarded, and the
+> menu's badge carries the count.
+
 **Obligations:**
 
 1. Tests show the import page's list carries the name, source, age, the
