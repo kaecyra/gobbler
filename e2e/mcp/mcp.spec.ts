@@ -99,22 +99,22 @@ test('an edit is a proposal: the recipe is unchanged until a person saves it, an
 
 test('an agent revises a held draft, and the review page shows its reason and marks', async () => {
   const ctx = await withKey(server.origin, server.seed.devKey);
-  const draft = await tool(ctx, 'create_recipe_draft', { name: 'Agent scones', ingredients: ['2 cups flour'], steps: ['Mix.', 'Bake.'] });
-  const token = draft.review_path.replace('/ingest/', '');
+  const created = await tool(ctx, 'create_recipe_draft', { name: 'Agent scones', ingredients: ['2 cups flour'], steps: ['Mix.', 'Bake.'] });
+  const token = created.review_path.replace('/ingest/', '');
   const listed = await tool(ctx, 'list_recipe_drafts');
   expect(listed.items.find((d: any) => d.token === token)).toMatchObject({ name: 'Agent scones', revised_by_agent: false });
 
   const held = await tool(ctx, 'get_recipe_draft', { token });
   expect(held.revision).toMatch(/^[0-9a-f]+$/);
-  const recipe = held.recipe;
-  recipe.components[0].steps[1].text = 'Bake until golden.';
-  const out = await tool(ctx, 'revise_recipe_draft', { token, revision: held.revision, recipe, reason: 'House style names the doneness cue.' });
+  const draft = held.draft;
+  draft.components[0].steps[1].text = 'Bake until golden.';
+  const out = await tool(ctx, 'revise_recipe_draft', { token, revision: held.revision, draft, reason: 'House style names the doneness cue.' });
   expect(out.revision).not.toBe(held.revision);
   // The old revision is refused now that the draft has changed.
-  expect(await toolError(ctx, 'revise_recipe_draft', { token, revision: held.revision, recipe, reason: 'again' })).toContain('changed since you read it');
+  expect(await toolError(ctx, 'revise_recipe_draft', { token, revision: held.revision, draft, reason: 'again' })).toContain('changed since you read it');
 
   const person = await withKey(server.origin);
-  const page = await person.get(draft.review_path);
+  const page = await person.get(created.review_path);
   expect(page.status()).toBe(200);
   const html = await page.text();
   expect(html).toContain('data-testid="revision-reason"');

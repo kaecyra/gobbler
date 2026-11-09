@@ -14,12 +14,11 @@ import (
 // heldDraft is get_recipe_draft's result, with the recipe kept as JSON so a
 // test sends it back as an agent would: what it read, with its changes.
 type heldDraft struct {
-	Token         string         `json:"token"`
-	Revision      string         `json:"revision"`
-	ReviewPath    string         `json:"review_path"`
-	ParserVersion string         `json:"parser_version"`
-	Reason        string         `json:"reason"`
-	Recipe        map[string]any `json:"recipe"`
+	Token      string         `json:"token"`
+	Revision   string         `json:"revision"`
+	ReviewPath string         `json:"review_path"`
+	Reason     string         `json:"reason"`
+	Recipe     map[string]any `json:"draft"`
 }
 
 const draftText = "Pie\n\nIngredients\n- 2 cups zz mcp flour\n- 1 tsp salt\n\nInstructions\n1. Mix the flour and salt.\n2. Bake for 30 minutes.\n"
@@ -65,7 +64,7 @@ func TestReviseRecipeDraftMarksWhatChangedAndKeepsTheSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	held := readDraft(t, s, secret, token)
-	if held.Revision == "" || held.ReviewPath != "/ingest/"+token || held.ParserVersion == "" || held.Reason != "" {
+	if held.Revision == "" || held.ReviewPath != "/ingest/"+token || held.Recipe["parser_version"] == "" || held.Reason != "" {
 		t.Fatalf("get_recipe_draft = %+v", held)
 	}
 
@@ -76,7 +75,7 @@ func TestReviseRecipeDraftMarksWhatChangedAndKeepsTheSnapshot(t *testing.T) {
 	r["meal_type"] = "dessert"
 	c := component(r)
 	lines := c["lines"].([]any)
-	lines[1].(map[string]any)["text"] = "2 tsp salt"
+	lines[1].(map[string]any)["raw"] = "2 tsp salt"
 	steps := c["steps"].([]any)
 	steps[1].(map[string]any)["passive"] = !boolOf(steps[1].(map[string]any)["passive"])
 	c["steps"] = append(steps, map[string]any{"text": "Cool on a rack.", "depends_on": []int{2}})
@@ -84,7 +83,7 @@ func TestReviseRecipeDraftMarksWhatChangedAndKeepsTheSnapshot(t *testing.T) {
 		Revision string `json:"revision"`
 	}
 	if msg := call(t, s.connect(secret), "revise_recipe_draft", map[string]any{
-		"token": token, "revision": held.Revision, "recipe": r, "reason": "house style: salt by the teaspoon",
+		"token": token, "revision": held.Revision, "draft": r, "reason": "house style: salt by the teaspoon",
 	}, &out); msg != "" {
 		t.Fatal(msg)
 	}
@@ -107,7 +106,7 @@ func TestReviseRecipeDraftMarksWhatChangedAndKeepsTheSnapshot(t *testing.T) {
 	if !ok {
 		t.Fatal("the revised draft is gone")
 	}
-	if d.ParserVersion != held.ParserVersion || d.Source.SHA256 != before.Snapshot.SHA256 {
+	if d.ParserVersion != held.Recipe["parser_version"] || d.Source.SHA256 != before.Snapshot.SHA256 {
 		t.Errorf("parser version %q or source %s changed", d.ParserVersion, d.Source.SHA256)
 	}
 	if d.Name.Value != "Salted pie" || !d.Name.FromLLM {
@@ -144,7 +143,7 @@ func TestReviseRecipeDraftMarksWhatChangedAndKeepsTheSnapshot(t *testing.T) {
 	if err != nil || len(w) != 2 || w[1].Tool != "revise_recipe_draft" || w[1].HouseholdID != s.smiths.ID {
 		t.Errorf("recorded writes = %+v, %v; want the import and the revision", w, err)
 	}
-	if got := readDraft(t, s, secret, token); got.Reason != "house style: salt by the teaspoon" || got.Revision != out.Revision {
+	if got := readDraft(t, s, secret, token); got.Reason != "house style: salt by the teaspoon" || got.Revision != out.Revision || got.Recipe["meal_type_from_llm"] != true {
 		t.Errorf("get_recipe_draft after revising = reason %q, revision %q", got.Reason, got.Revision)
 	}
 }
@@ -173,7 +172,7 @@ func TestReviseRecipeDraftIsRefusedAfterAPersonsEdit(t *testing.T) {
 	r := held.Recipe
 	r["name"] = map[string]any{"value": "Agent pie"}
 	msg := call(t, s.connect(secret), "revise_recipe_draft", map[string]any{
-		"token": token, "revision": held.Revision, "recipe": r, "reason": "rename",
+		"token": token, "revision": held.Revision, "draft": r, "reason": "rename",
 	}, nil)
 	if !strings.Contains(msg, "changed since you read it") {
 		t.Errorf("revising from an old revision = %q, want a refusal saying the draft changed", msg)
@@ -210,7 +209,7 @@ func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 
 	held := readDraft(t, s, secret, token)
 	held.Recipe["name"] = map[string]any{"value": "Better pie"}
-	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": token, "revision": held.Revision, "recipe": held.Recipe, "reason": "name"}, nil); msg != "" {
+	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": token, "revision": held.Revision, "draft": held.Recipe, "reason": "name"}, nil); msg != "" {
 		t.Fatal(msg)
 	}
 	if msg := call(t, cs, "list_recipe_drafts", nil, &page); msg != "" {
@@ -226,10 +225,10 @@ func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 
 	// The same recipe sent back is nothing to revise.
 	again := readDraft(t, s, secret, token)
-	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": token, "revision": again.Revision, "recipe": again.Recipe, "reason": "none"}, nil); !strings.Contains(msg, "same") {
+	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": token, "revision": again.Revision, "draft": again.Recipe, "reason": "none"}, nil); !strings.Contains(msg, "same") {
 		t.Errorf("an unchanged revision = %q", msg)
 	}
-	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": token, "revision": again.Revision, "recipe": again.Recipe}, nil); !strings.Contains(msg, "reason") {
+	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": token, "revision": again.Revision, "draft": again.Recipe}, nil); !strings.Contains(msg, "reason") {
 		t.Errorf("a revision with no reason = %q", msg)
 	}
 
@@ -241,7 +240,7 @@ func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 	if msg := call(t, cs, "get_recipe_draft", map[string]any{"token": edit}, nil); !strings.Contains(msg, "edit proposal") {
 		t.Errorf("reading an edit proposal as a draft = %q", msg)
 	}
-	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": edit, "revision": "x", "recipe": again.Recipe, "reason": "r"}, nil); !strings.Contains(msg, "edit proposal") {
+	if msg := call(t, cs, "revise_recipe_draft", map[string]any{"token": edit, "revision": "x", "draft": again.Recipe, "reason": "r"}, nil); !strings.Contains(msg, "edit proposal") {
 		t.Errorf("revising an edit proposal = %q", msg)
 	}
 
@@ -266,7 +265,7 @@ func TestReviseRecipeDraftRefusesADependencyOnNoStep(t *testing.T) {
 	held := readDraft(t, s, secret, token)
 	steps := component(held.Recipe)["steps"].([]any)
 	steps[0].(map[string]any)["depends_on"] = []int{9}
-	msg := call(t, s.connect(secret), "revise_recipe_draft", map[string]any{"token": token, "revision": held.Revision, "recipe": held.Recipe, "reason": "graph"}, nil)
+	msg := call(t, s.connect(secret), "revise_recipe_draft", map[string]any{"token": token, "revision": held.Revision, "draft": held.Recipe, "reason": "graph"}, nil)
 	if !strings.Contains(msg, "step 9") {
 		t.Errorf("a dependency on no step = %q", msg)
 	}

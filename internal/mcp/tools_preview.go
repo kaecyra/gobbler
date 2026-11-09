@@ -21,8 +21,8 @@ type previewIn struct {
 // with, 0 to 1, and whether the LLM supplied it.
 type previewField[T any] struct {
 	Value      T       `json:"value"`
-	Confidence float64 `json:"confidence"`
-	FromLLM    bool    `json:"from_llm,omitempty"`
+	Confidence float64 `json:"confidence,omitempty" jsonschema:"0 to 1; ignored by revise_recipe_draft"`
+	FromLLM    bool    `json:"from_llm,omitempty" jsonschema:"an LLM or an agent supplied the value; ignored by revise_recipe_draft"`
 }
 
 type previewQualifier struct {
@@ -31,14 +31,14 @@ type previewQualifier struct {
 }
 
 type previewLine struct {
-	Raw          string             `json:"raw"`
+	Raw          string             `json:"raw" jsonschema:"the line as written, such as '2 cups flour, sifted'; revise_recipe_draft reads a changed line afresh from it"`
 	Name         string             `json:"name,omitempty"`
-	IngredientID int64              `json:"ingredient_id,omitempty"`
+	IngredientID int64              `json:"ingredient_id,omitempty" jsonschema:"the catalog ingredient, when the text names none the catalog knows"`
 	Amount       string             `json:"amount,omitempty"`
 	ToTaste      bool               `json:"to_taste,omitempty"`
 	Optional     bool               `json:"optional,omitempty"`
 	Qualifiers   []previewQualifier `json:"qualifiers,omitempty"`
-	Confidence   float64            `json:"confidence"`
+	Confidence   float64            `json:"confidence,omitempty"`
 	Issues       []string           `json:"issues,omitempty"`
 	FromLLM      bool               `json:"from_llm,omitempty"`
 }
@@ -46,14 +46,14 @@ type previewLine struct {
 type previewStep struct {
 	// Number counts steps from 1 in reading order through every component;
 	// DependsOn names steps by it.
-	Number       int     `json:"number"`
+	Number       int     `json:"number,omitempty" jsonschema:"the step's number, from 1 in reading order across every component; depends_on names steps by it"`
 	Title        string  `json:"title,omitempty"`
 	Text         string  `json:"text"`
 	Minutes      int     `json:"minutes,omitempty"`
 	Passive      bool    `json:"passive,omitempty"`
 	DependsOn    []int   `json:"depends_on,omitempty"`
 	Kind         string  `json:"kind,omitempty"`
-	Confidence   float64 `json:"confidence"`
+	Confidence   float64 `json:"confidence,omitempty"`
 	FromLLM      bool    `json:"from_llm,omitempty"`
 	GraphFromLLM bool    `json:"graph_from_llm,omitempty"`
 }
@@ -68,8 +68,9 @@ type previewComponent struct {
 type previewAuthorNote struct {
 	Title      string   `json:"title,omitempty"`
 	Text       string   `json:"text"`
-	Confidence float64  `json:"confidence"`
+	Confidence float64  `json:"confidence,omitempty"`
 	Issues     []string `json:"issues,omitempty"`
+	FromLLM    bool     `json:"from_llm,omitempty"`
 }
 
 type previewEquipment struct {
@@ -78,8 +79,9 @@ type previewEquipment struct {
 	FromLLM     bool   `json:"from_llm,omitempty"`
 }
 
-// previewOut is a draft as the review screen would receive it. Nothing of it
-// is held.
+// previewOut is a draft as the review screen would receive it: what
+// preview_import returns, and the draft get_recipe_draft returns and
+// revise_recipe_draft takes back (ADR-00048).
 type previewOut struct {
 	SourceURL   string               `json:"source_url,omitempty"`
 	Name        previewField[string] `json:"name"`
@@ -93,8 +95,10 @@ type previewOut struct {
 	// TotalMinutes is the time the source states; zero when it states none.
 	TotalMinutes previewField[int]   `json:"total_minutes"`
 	MealType     string              `json:"meal_type,omitempty"`
+	MealTypeLLM  bool                `json:"meal_type_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the meal type"`
 	Cuisine      string              `json:"cuisine,omitempty"`
-	VideoID      string              `json:"video_id,omitempty"`
+	CuisineLLM   bool                `json:"cuisine_from_llm,omitempty" jsonschema:"an LLM or an agent supplied the cuisine"`
+	VideoID      string              `json:"video_id,omitempty" jsonschema:"ignored by revise_recipe_draft"`
 	Components   []previewComponent  `json:"components"`
 	AuthorNotes  []previewAuthorNote `json:"author_notes,omitempty"`
 	Equipment    []previewEquipment  `json:"equipment,omitempty"`
@@ -166,6 +170,7 @@ func previewOf(d apiingest.Draft) previewOut {
 		CookMinutes:  field(d.Cook, int(d.Cook.Value.Minutes())),
 		TotalMinutes: field(d.Total, int(d.Total.Value.Minutes())),
 		MealType:     string(d.MealType), Cuisine: string(d.Cuisine), VideoID: d.VideoID,
+		MealTypeLLM: d.MealTypeFromLLM, CuisineLLM: d.CuisineFromLLM,
 		Components: []previewComponent{},
 		Method:     string(d.Method), ParserVersion: d.ParserVersion,
 		Overall: d.Overall, Threshold: d.Threshold, BelowThreshold: d.BelowThreshold,
@@ -198,7 +203,7 @@ func previewOf(d apiingest.Draft) previewOut {
 		out.Components = append(out.Components, co)
 	}
 	for _, an := range d.AuthorNotes {
-		out.AuthorNotes = append(out.AuthorNotes, previewAuthorNote{Title: an.Title, Text: an.Text, Confidence: an.Confidence, Issues: an.Issues})
+		out.AuthorNotes = append(out.AuthorNotes, previewAuthorNote{Title: an.Title, Text: an.Text, Confidence: an.Confidence, Issues: an.Issues, FromLLM: an.FromLLM})
 	}
 	for _, e := range d.Equipment {
 		out.Equipment = append(out.Equipment, previewEquipment{Name: e.Name, EquipmentID: int64(e.Equipment), FromLLM: e.FromLLM})
