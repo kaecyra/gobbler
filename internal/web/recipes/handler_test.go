@@ -300,13 +300,6 @@ func TestFormatting(t *testing.T) {
 		{shortDate(d(2025, 3, 4), today), "Mar 2025"},
 		{monthName(d(2026, 3, 4), today), "March"},
 		{monthName(d(2025, 3, 4), today), "March 2025"},
-		{ago(today, today), "today"},
-		{ago(d(2026, 10, 16), today), "yesterday"},
-		{ago(d(2026, 10, 10), today), "7 days ago"},
-		{ago(d(2026, 9, 1), today), "6 weeks ago"},
-		{ago(d(2026, 3, 2), today), "7 months ago"},
-		{ago(d(2025, 8, 1), today), "a year ago"},
-		{ago(d(2023, 1, 1), today), "3 years ago"},
 		{headingFor(1, ""), "1 recipe"},
 		{headingFor(2, "lemon"), "2 recipes for “lemon”"},
 		{listHref("a b", groupTime), "/recipes?group=time&q=a+b"},
@@ -315,37 +308,6 @@ func TestFormatting(t *testing.T) {
 		if tc.got != tc.want {
 			t.Errorf("got %q, want %q", tc.got, tc.want)
 		}
-	}
-}
-
-// A made-it date is a plain calendar date (stored and parsed as UTC midnight);
-// "today" is the calendar date in now's own zone. The difference must not
-// depend on the hour or on how far now's zone sits from UTC.
-func TestAgoCountsCalendarDays(t *testing.T) {
-	toronto := time.FixedZone("EDT", -4*3600)
-	tokyo := time.FixedZone("JST", 9*3600)
-	made := time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)
-	for _, tc := range []struct {
-		name string
-		now  time.Time
-	}{
-		{"toronto 00:30", time.Date(2026, 10, 18, 0, 30, 0, 0, toronto)},
-		{"toronto 12:00", time.Date(2026, 10, 18, 12, 0, 0, 0, toronto)},
-		{"toronto 23:30 (already the 19th in UTC)", time.Date(2026, 10, 18, 23, 30, 0, 0, toronto)},
-		{"utc 00:30", time.Date(2026, 10, 18, 0, 30, 0, 0, time.UTC)},
-		{"utc 23:30", time.Date(2026, 10, 18, 23, 30, 0, 0, time.UTC)},
-		{"tokyo 00:30 (still the 17th in UTC)", time.Date(2026, 10, 18, 0, 30, 0, 0, tokyo)},
-		{"tokyo 23:30", time.Date(2026, 10, 18, 23, 30, 0, 0, tokyo)},
-	} {
-		if got := ago(made, tc.now); got != "2 days ago" {
-			t.Errorf("%s: ago = %q, want %q", tc.name, got, "2 days ago")
-		}
-	}
-	if got := ago(made, time.Date(2026, 10, 16, 23, 59, 0, 0, toronto)); got != "today" {
-		t.Errorf("same calendar day late evening: %q, want today", got)
-	}
-	if got := ago(made, time.Date(2026, 10, 17, 0, 1, 0, 0, tokyo)); got != "yesterday" {
-		t.Errorf("just past midnight: %q, want yesterday", got)
 	}
 }
 

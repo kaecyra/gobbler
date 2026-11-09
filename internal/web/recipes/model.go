@@ -255,38 +255,6 @@ func monthName(t, now time.Time) string {
 	return t.Format("January 2006")
 }
 
-// calendarDays counts the calendar days from t to now. t is a made-it date
-// (a plain calendar date); today is now's date in now's own zone. Both are
-// reduced to a date before subtracting, so the hour and the distance of now's
-// zone from UTC never change the answer.
-func calendarDays(t, now time.Time) int {
-	date := func(t time.Time) time.Time {
-		y, m, d := t.Date()
-		return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
-	}
-	return int(date(now).Sub(date(t)).Hours() / 24)
-}
-
-// ago says how long before now a date was, in the largest whole unit.
-func ago(t, now time.Time) string {
-	days := calendarDays(t, now)
-	switch {
-	case days < 1:
-		return "today"
-	case days == 1:
-		return "yesterday"
-	case days < 14:
-		return strconv.Itoa(days) + " days ago"
-	case days < 60:
-		return strconv.Itoa(days/7) + " weeks ago"
-	case days < 365:
-		return strconv.Itoa(days/30) + " months ago"
-	case days < 2*365:
-		return "a year ago"
-	}
-	return strconv.Itoa(days/365) + " years ago"
-}
-
 func itoa(n int) string { return strconv.Itoa(n) }
 
 // join is the key ingredients after the first, as a sentence tail.
