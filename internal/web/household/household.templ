@@ -63,7 +63,7 @@ templ membersPage(v pageView) {
 				<form class="stack" method="post" action="/household/style">
 					<label>
 						Style rules
-						<textarea name="style" rows="8" maxlength={ houseStyleMax() }>{ v.HouseStyle }</textarea>
+						<textarea name="style" rows="8" maxlength={ houseStyleMax() }>{ textareaText(v.HouseStyle) }</textarea>
 						<span class="hint">Plain text, up to 16 KiB.</span>
 					</label>
 					<button type="submit" class="btn accent">Save house style</button>

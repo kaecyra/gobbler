@@ -305,7 +305,7 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   await ok(dev, 'POST', `/shares/new/${recipe}`, { email: shareTo });
   await ok(dev, 'POST', '/household/keys', { name: KEY_NAME, lifetime: '30d' });
   await ok(dev, 'POST', '/household/style', { style: HOUSE_STYLE });
-  const key =lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
+  const key = lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
   return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key, profile: '', personalKey: 0, otherProfile: '' };
 }
 

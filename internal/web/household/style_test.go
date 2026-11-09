@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	xhtml "golang.org/x/net/html"
 )
 
 // The house style field on the household page (ADR-00048).
@@ -42,6 +44,59 @@ func TestAMemberSavesTheHouseStyleOnTheHouseholdPage(t *testing.T) {
 	}
 }
 
+// textareaValue is the value a browser gives the style field of page: the
+// HTML parser drops a line break straight after <textarea>.
+func textareaValue(t *testing.T, page string) string {
+	t.Helper()
+	doc, err := xhtml.Parse(strings.NewReader(page))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var find func(*xhtml.Node) (string, bool)
+	find = func(n *xhtml.Node) (string, bool) {
+		if n.Type == xhtml.ElementNode && n.Data == "textarea" {
+			for _, a := range n.Attr {
+				if a.Key == "name" && a.Val == "style" {
+					var b strings.Builder
+					for c := n.FirstChild; c != nil; c = c.NextSibling {
+						b.WriteString(c.Data)
+					}
+					return b.String(), true
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if v, ok := find(c); ok {
+				return v, true
+			}
+		}
+		return "", false
+	}
+	v, ok := find(doc)
+	if !ok {
+		t.Fatalf("no style field on the page:\n%s", page)
+	}
+	return v
+}
+
+func TestAHouseStyleThatStartsWithABlankLineKeepsItWhenSavedAgain(t *testing.T) {
+	s := newSite(t)
+	s.household(t, "Alpha", "ann@example.com")
+	const style = "\nWeights in grams."
+	// Each round saves what the field showed after the last, as a person who
+	// presses Save without editing does.
+	value := style
+	for round := range 2 {
+		if rec := s.do(http.MethodPost, "/household/style", "ann@example.com", url.Values{"style": {value}}); rec.Code != http.StatusSeeOther {
+			t.Fatalf("save %d = %d", round, rec.Code)
+		}
+		page := s.do(http.MethodGet, "/household", "ann@example.com", nil)
+		if value = textareaValue(t, page.Body.String()); value != style {
+			t.Fatalf("round %d: field shows %q, want %q", round, value, style)
+		}
+	}
+}
+
 func TestAHouseStyleOver16KiBIsRefusedOnTheHouseholdPage(t *testing.T) {
 	s := newSite(t)
 	s.household(t, "Alpha", "ann@example.com")
@@ -56,8 +111,8 @@ func TestAHouseStyleOver16KiBIsRefusedOnTheHouseholdPage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := s.hs.HouseStyle(context.Background(), h.ID); got != "Keep this." {
-		t.Fatalf("style after a refused save = %q", got)
+	if got, err := s.hs.HouseStyle(context.Background(), h.ID); err != nil || got != "Keep this." {
+		t.Fatalf("style after a refused save = %q, %v", got, err)
 	}
 }
 
@@ -72,7 +127,7 @@ func TestANonMemberCannotSaveAHouseStyle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := s.hs.HouseStyle(context.Background(), h.ID); got != "" {
-		t.Fatalf("style after a non-member's save = %q", got)
+	if got, err := s.hs.HouseStyle(context.Background(), h.ID); err != nil || got != "" {
+		t.Fatalf("style after a non-member's save = %q, %v", got, err)
 	}
 }
