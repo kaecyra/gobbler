@@ -147,6 +147,39 @@ func (s *Store) GetSnapshot(ctx context.Context, id int64, kind SnapshotKind) (S
 	return snap, nil
 }
 
+// FirstSnapshot returns the original snapshot of the given kind of recipe id:
+// the first stored, which a saved re-import adds to and never replaces
+// (ADR-00042). found is false when the recipe has no snapshot of that kind; a
+// missing recipe is ErrNotFound.
+func (s *Store) FirstSnapshot(ctx context.Context, id int64, kind SnapshotKind) (snap Snapshot, found bool, err error) {
+	hid, err := scope(ctx)
+	if err != nil {
+		return Snapshot{}, false, err
+	}
+	err = s.read(ctx, func(q *storedb.Queries) error {
+		if _, err := loadInfo(ctx, q, hid, id); err != nil {
+			return err
+		}
+		row, err := q.GetFirstSnapshot(ctx, storedb.GetFirstSnapshotParams{RecipeID: nullID(id), Kind: string(kind), HouseholdID: hid})
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("read first %s snapshot of recipe %d: %w", kind, id, err)
+		}
+		snap = Snapshot{Kind: SnapshotKind(row.Kind), Content: row.Content, SHA256: row.Sha256, CreatedBy: row.CreatedBy, ParserVersion: row.ParserVersion}
+		if snap.CreatedAt, err = parseTime(row.CreatedAt); err != nil {
+			return err
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return Snapshot{}, false, err
+	}
+	return snap, found, nil
+}
+
 // ListSnapshotKinds returns the kinds of snapshot stored for recipe id. A
 // missing recipe is ErrNotFound.
 func (s *Store) ListSnapshotKinds(ctx context.Context, id int64) ([]SnapshotKind, error) {

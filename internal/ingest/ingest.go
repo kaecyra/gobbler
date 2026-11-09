@@ -103,11 +103,20 @@ func (p *Pipeline) FromURL(ctx context.Context, rawURL string) (Draft, error) {
 	if err != nil {
 		return Draft{}, err
 	}
-	res, err := extract.Extract(page, finalURL)
+	return p.FromContent(ctx, page, finalURL)
+}
+
+// FromContent drafts the recipe on a page already in hand: page is its content
+// and sourceURL the address it was served from. FromURL is a fetch followed by
+// this call, so a draft made from a fetched page and one made from the same
+// bytes held elsewhere (a saved recipe's source snapshot, ADR-00048) cannot
+// differ. It fetches nothing; the draft's Source is page, as given.
+func (p *Pipeline) FromContent(ctx context.Context, page []byte, sourceURL string) (Draft, error) {
+	res, err := extract.Extract(page, sourceURL)
 	if err != nil {
-		return Draft{}, fmt.Errorf("extract recipe from %s: %w", finalURL, err)
+		return Draft{}, fmt.Errorf("extract recipe from %s: %w", sourceURL, err)
 	}
-	return p.draftWithFallback(ctx, newSource(store.SnapshotHTML, finalURL, page), res)
+	return p.draftWithFallback(ctx, newSource(store.SnapshotHTML, sourceURL, page), res)
 }
 
 // FromText drafts a recipe from pasted text, which is taken as given.

@@ -234,6 +234,11 @@ type Draft struct {
 	Proposed []ProposedIngredient
 }
 
+// AskedLLM reports whether the provider was asked about d: it filled gaps
+// (UsedLLM), or it was asked and failed (LLMError). A draft the rules read at
+// or above the threshold was never sent (ADR-00006).
+func (d Draft) AskedLLM() bool { return d.UsedLLM || d.LLMError != "" }
+
 // ProposedEquipment lists what confirming d would add to the catalog: the
 // equipment the catalog lacks, in order.
 func (d Draft) ProposedEquipment() []ProposedEquipment {
