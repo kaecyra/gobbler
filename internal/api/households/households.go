@@ -30,7 +30,8 @@
 // The household acted in comes from the membership check, never from the
 // Caller or the context, and every member action is made as a person: a
 // household credential (Caller.HouseholdKey) has no person to invite, remove or
-// delete as, and is refused.
+// delete as, and is refused. The one read it may make is HouseStyle, which an
+// agent reads over MCP (ADR-00048).
 package households
 
 import (
@@ -104,6 +105,9 @@ var (
 	ErrNotMember = caller.ErrNotMember
 )
 
+// MaxHouseStyleBytes is the longest house style (household.MaxHouseStyleBytes).
+const MaxHouseStyleBytes = domain.MaxHouseStyleBytes
+
 // WithContext returns ctx carrying h, the household the membership middleware
 // admitted the request to (household.WithContext). Only an adapter that has
 // verified the membership calls it.
@@ -142,6 +146,8 @@ type Households interface {
 	Delete(ctx context.Context, householdID int64, by, confirm string) error
 	InvitationFor(ctx context.Context, code, email string) (Invitation, error)
 	Accept(ctx context.Context, code, email, householdName string) (Household, error)
+	HouseStyle(ctx context.Context, householdID int64) (string, error)
+	SetHouseStyle(ctx context.Context, householdID int64, style string) error
 }
 
 // Operators says who the operators are. config.Operator satisfies it.
@@ -256,6 +262,35 @@ func (s *Service) Delete(ctx context.Context, c Caller, confirm string) error {
 		return err
 	}
 	return s.store.Delete(ctx, h.ID, c.Person, confirm)
+}
+
+// HouseStyle returns the house style of the Caller's household (ADR-00048),
+// empty when none has been written. Unlike the member operations it admits a
+// household credential (caller.Enter): reading the house style is a read of
+// the household, which an agent on a household key needs before it revises a
+// draft, and it acts as no person.
+func (s *Service) HouseStyle(ctx context.Context, c Caller) (string, error) {
+	ctx, err := caller.Enter(ctx, s.store, c)
+	if err != nil {
+		return "", err
+	}
+	h, ok := domain.FromContext(ctx)
+	if !ok {
+		return "", fmt.Errorf("membership check left no household: %w", ErrNotMember)
+	}
+	return s.store.HouseStyle(ctx, h.ID)
+}
+
+// SetHouseStyle replaces the house style of the Caller's household and changes
+// nothing else (ADR-00048). Any member may; a style over MaxHouseStyleBytes is
+// ErrInvalid. It is made as a person, so a household credential is refused: no
+// agent writes the rules that steer its own edits.
+func (s *Service) SetHouseStyle(ctx context.Context, c Caller, style string) error {
+	ctx, h, err := s.member(ctx, c)
+	if err != nil {
+		return err
+	}
+	return s.store.SetHouseStyle(ctx, h.ID, style)
 }
 
 // person checks that c names a verified person. It does not look the person up:

@@ -323,6 +323,7 @@ What a client can do:
 | `propose_recipe_edit`, `get_recipe_proposal` | Propose a change to an existing recipe: the whole recipe as it should be, the version read with `get_recipe`, and a reason. The recipe is **unchanged** until a person opens `review_path` (the recipe's editor, with the proposal filled in) and saves it. The proposal shows on the recipe page with its reason and the credential that made it, and the accepted edit records both in the recipe's history. A recipe has one pending proposal; a newer one replaces it. If the recipe is saved first, the proposal is stale: `get_recipe_proposal` says so with the recipe's current version, and the agent proposes again. A line whose ingredient the catalog does not have is refused rather than added. |
 | `list_shopping_lists`, `get_shopping_list`, `get_pantry` | Read shopping lists and the pantry. |
 | `create_shopping_list`, `add_recipe_to_shopping_list`, `add_manual_shopping_item`, `check_shopping_item` | Change shopping lists. These **apply at once**. |
+| `get_house_style` | Read the household's house style: plain-text rules, up to 16 KiB, for how the household writes its recipes (ADR-00048). The server's instructions tell an agent to read it before it revises a draft or proposes a recipe edit. Members edit it on the household page; no tool changes it. |
 
 Every write is recorded in the `api_key_writes` table (for a key) or the
 `oauth_grant_writes` table (for an OAuth client, see below). Each row names the

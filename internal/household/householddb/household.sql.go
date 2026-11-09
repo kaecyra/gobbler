@@ -39,13 +39,30 @@ func (q *Queries) ClaimInvitation(ctx context.Context, arg ClaimInvitationParams
 	return i, err
 }
 
+const getHouseStyle = `-- name: GetHouseStyle :one
+SELECT house_style FROM households WHERE id = ?
+`
+
+func (q *Queries) GetHouseStyle(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, getHouseStyle, id)
+	var house_style string
+	err := row.Scan(&house_style)
+	return house_style, err
+}
+
 const getHouseholdByID = `-- name: GetHouseholdByID :one
 SELECT id, name, created_at FROM households WHERE id = ?
 `
 
-func (q *Queries) GetHouseholdByID(ctx context.Context, id int64) (Household, error) {
+type GetHouseholdByIDRow struct {
+	ID        int64
+	Name      string
+	CreatedAt string
+}
+
+func (q *Queries) GetHouseholdByID(ctx context.Context, id int64) (GetHouseholdByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getHouseholdByID, id)
-	var i Household
+	var i GetHouseholdByIDRow
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
 }
@@ -57,9 +74,15 @@ JOIN household_members m ON m.household_id = h.id
 WHERE m.email = ?
 `
 
-func (q *Queries) GetHouseholdByMemberEmail(ctx context.Context, email string) (Household, error) {
+type GetHouseholdByMemberEmailRow struct {
+	ID        int64
+	Name      string
+	CreatedAt string
+}
+
+func (q *Queries) GetHouseholdByMemberEmail(ctx context.Context, email string) (GetHouseholdByMemberEmailRow, error) {
 	row := q.db.QueryRowContext(ctx, getHouseholdByMemberEmail, email)
-	var i Household
+	var i GetHouseholdByMemberEmailRow
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
 }
@@ -202,6 +225,23 @@ type RevokeInvitationParams struct {
 // accepted.
 func (q *Queries) RevokeInvitation(ctx context.Context, arg RevokeInvitationParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeInvitation, arg.Now, arg.Code, arg.IssuedBy)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setHouseStyle = `-- name: SetHouseStyle :execrows
+UPDATE households SET house_style = ?1 WHERE id = ?2
+`
+
+type SetHouseStyleParams struct {
+	HouseStyle string
+	ID         int64
+}
+
+func (q *Queries) SetHouseStyle(ctx context.Context, arg SetHouseStyleParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setHouseStyle, arg.HouseStyle, arg.ID)
 	if err != nil {
 		return 0, err
 	}

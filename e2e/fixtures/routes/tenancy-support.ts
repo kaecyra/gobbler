@@ -33,6 +33,9 @@ MARKERS.push(KEY_NAME);
 /** The name of DEV's personal API key, which only DEV may see (ADR-00031). */
 export const PERSONAL_KEY_NAME = 'tenancy personal key';
 MARKERS.push(PERSONAL_KEY_NAME);
+/** DEV's household's house style, which only its members may read (ADR-00048). */
+export const HOUSE_STYLE = 'tenancy house style rule';
+MARKERS.push(HOUSE_STYLE);
 
 /** An invitation code as ADR-00028 shapes it: eight base62 characters. */
 const INVITATION_CODE = '[0-9A-Za-z]{8}';
@@ -301,7 +304,8 @@ export async function populate(dev: APIRequestContext, op: APIRequestContext, re
   await ok(dev, 'POST', `/recipes/${recipe}/journal/rating`, { rating: '4' });
   await ok(dev, 'POST', `/shares/new/${recipe}`, { email: shareTo });
   await ok(dev, 'POST', '/household/keys', { name: KEY_NAME, lifetime: '30d' });
-  const key = lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
+  await ok(dev, 'POST', '/household/style', { style: HOUSE_STYLE });
+  const key =lastId(await page(dev, '/household'), /\/household\/keys\/(\d+)\/revoke/g, 'household key');
   return { recipe, list, entry, manual, ingredient, token, joinInvitation, operatorInvitation, promotion, share: 0, key, profile: '', personalKey: 0, otherProfile: '' };
 }
 
@@ -364,6 +368,7 @@ export async function expectUntouched(ids: Ids, who: { dev: APIRequestContext; o
   expect(household).toContain(INVITEE);
   expect(household).toContain(DEV);
   expect(household).toContain(`/household/keys/${ids.key}/revoke`);
+  expect(household).toContain(HOUSE_STYLE);
   // DEV's personal key is still on DEV's profile, and nobody made another there.
   const keys = await page(dev, `/profile/${ids.profile}/keys`);
   expect(keys).toContain(PERSONAL_KEY_NAME);

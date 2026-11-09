@@ -50,6 +50,7 @@ func (t *tools) register(s *mcp.Server) {
 	t.registerEdit(s)
 	t.registerReimport(s)
 	t.registerShopping(s)
+	t.registerHouseStyle(s)
 }
 
 var (

@@ -251,6 +251,9 @@ const PROBES: Probe[] = [
   // a key of its own household and cannot revoke DEV's, which is 404 as for any unknown id.
   { ...hidden('POST', () => '/household/keys', () => ({ name: 'other bot', lifetime: '30d' })), other: 200 },
   hidden('POST', (i) => `/household/keys/${i.key}/revoke`),
+  // House style (ADR-00048): another household's member saves its own household's, and DEV's
+  // is untouched (expectUntouched).
+  { ...hidden('POST', () => '/household/style', () => ({ style: 'Other house style.' })), other: 303, otherLocation: '/household' },
 
   // Profiles (ADR-00032): every signed-in person has one, so a non-member is admitted
   // where it is refused the rest. /profile sends each to their own profile. A page is

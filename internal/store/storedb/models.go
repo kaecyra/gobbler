@@ -78,9 +78,10 @@ type EquipmentAlias struct {
 }
 
 type Household struct {
-	ID        int64
-	Name      string
-	CreatedAt string
+	ID         int64
+	Name       string
+	CreatedAt  string
+	HouseStyle string
 }
 
 type HouseholdMember struct {
