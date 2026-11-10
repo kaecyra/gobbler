@@ -13,3 +13,9 @@ docs/plan/board-data.js
 
 # Local database from `go run ./cmd/gobbler serve` (GOBBLER_DATA_DIR default)
 /data/
+
+# macOS Finder metadata
+.DS_Store
+
+# Local review material: screenshots and saved pages, not source
+/feedback/
