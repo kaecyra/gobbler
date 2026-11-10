@@ -4772,7 +4772,8 @@
       "adrs": [
         "00053"
       ],
-      "note": "Owner ruling 2026-11-10: vision transcribes the photo, the rule parser structures the transcript, tesseract flags numbers it did not read. A two-call vision-then-text design was rejected (issue #606)."
+      "note": "Owner ruling 2026-11-10: vision transcribes the photo, the rule parser structures the transcript, tesseract flags numbers it did not read. A two-call vision-then-text design was rejected (issue #606).",
+      "blocked": "owner to decide whether the tesseract text is stored beside the vision transcript (new snapshot kind + migration) or not (ask ib-c4bf3def1d1e, 2026-11-10)"
     },
     {
       "id": "y-youtube-description",
