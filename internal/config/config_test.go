@@ -459,3 +459,25 @@ func TestOIDCAllowsHTTPUnderDevBypass(t *testing.T) {
 		t.Errorf("oidc under bypass: %+v", c.OIDC)
 	}
 }
+
+// The encryption key is read as text and never validated here: a missing or
+// malformed key must not stop the app (ADR-00057), and printing the config
+// never reveals it.
+func TestEncryptionKey(t *testing.T) {
+	c, err := loadFrom(env(with()))
+	if err != nil || c.Settings.EncryptionKey.IsSet() {
+		t.Fatalf("unset: err = %v, set = %v", err, c.Settings.EncryptionKey.IsSet())
+	}
+	for _, v := range []string{"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", "not a key"} {
+		c, err := loadFrom(env(with(EnvEncryptionKey, v)))
+		if err != nil {
+			t.Fatalf("%q: %v", v, err)
+		}
+		if c.Settings.EncryptionKey.Reveal() != v {
+			t.Errorf("Reveal = %q, want %q", c.Settings.EncryptionKey.Reveal(), v)
+		}
+		if strings.Contains(fmt.Sprintf("%v %+v", c, c), v) {
+			t.Errorf("the config prints the key %q", v)
+		}
+	}
+}

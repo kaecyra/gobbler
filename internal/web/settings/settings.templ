@@ -4,11 +4,16 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-templ settingsPage(v backupView) {
+templ settingsPage(v backupView, iv integrationsView) {
 	@layout.OperatorPage("Deployment", layout.OperatorDeployment, "") {
+		<style>
+			.integration .secret + .secret { margin-top: 16px; }
+			.integration .secret form + form { margin-top: 8px; }
+		</style>
 		<div class="pg">
 			<div class="screen-h"><h1>Deployment</h1></div>
 			@backupSection(v)
+			@integrationsSection(iv)
 		</div>
 	}
 }
@@ -38,4 +43,44 @@ templ backupSection(v backupView) {
 			<button type="submit" class="btn primary">Back up now</button>
 		</form>
 	</section>
+}
+
+// integrationsSection is the swap target of the secret controls. It renders
+// nothing while no integration has registered a secret, and never a value.
+templ integrationsSection(v integrationsView) {
+	if len(v.Sections) > 0 {
+		<div id="integrations" data-testid="integrations">
+			if v.Problem != "" {
+				<p class="alert" role="alert" data-testid="integrations-problem">{ v.Problem }</p>
+			}
+			for _, s := range v.Sections {
+				<section class="panel integration" aria-labelledby={ "integration-" + s.Integration + "-h" } data-testid={ "integration-" + s.Integration }>
+					<h2 id={ "integration-" + s.Integration + "-h" }>{ s.Title }</h2>
+					for _, f := range s.Secrets {
+						<div class="secret" data-testid={ "secret-" + s.Integration + "-" + f.Name }>
+							<form class="fields" method="post" action={ templ.SafeURL(f.Action) } hx-post={ f.Action } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button">
+								<label>
+									{ f.Label }
+									<input type="password" name="value" required autocomplete="new-password" spellcheck="false" maxlength="4096" data-testid="secret-input"/>
+								</label>
+								<span class="muted" data-testid="secret-state">{ f.State }</span>
+								<button type="submit" class="btn accent">
+									if f.Stored {
+										Replace
+									} else {
+										Save
+									}
+								</button>
+							</form>
+							if f.Stored {
+								<form method="post" action={ templ.SafeURL(f.ClearAction) } hx-post={ f.ClearAction } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button">
+									<button type="submit" class="btn ghost danger" aria-label={ "Clear " + f.Label }>Clear</button>
+								</form>
+							}
+						</div>
+					}
+				</section>
+			}
+		</div>
+	}
 }

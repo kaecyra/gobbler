@@ -71,6 +71,9 @@ type Deps struct {
 	// BackupSecrets are the credential values redacted from the backup error
 	// the settings page shows.
 	BackupSecrets []string
+	// Integrations are the integration secrets the deployment page lists
+	// and edits (ADR-00057). The zero value shows none.
+	Integrations settings.Integrations
 	// Avatars runs avatar uploads (ADR-00033). It is required: the server
 	// builds it over the configured media store and resumes interrupted jobs
 	// before mounting the pages, and a nil one would mean a store chosen here,

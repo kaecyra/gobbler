@@ -31,6 +31,9 @@ feature to constrain the response to the schema.
 - Which provider is used, and which model for text and for vision, is
   configuration. Model identifiers are never hard-coded.
 - API keys come only from the environment.
+  *Amended by [ADR-00057](00057-integration-settings-in-the-database.md): the
+  LLM API keys are integration secrets, stored encrypted in the database and
+  entered on the operator's Deployment page.*
 - Every call has a timeout. A failed or invalid response leaves the rule-based
   draft in place on the review screen with the error shown; it never blocks
   saving that draft.

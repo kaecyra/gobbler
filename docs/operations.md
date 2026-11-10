@@ -232,6 +232,7 @@ the container runs in UTC.
 | `GOBBLER_OAUTH_TOKEN_BURST` | `20` | no | Requests one address (an IPv6 address by its /64) may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
+| `GOBBLER_ENCRYPTION_KEY` | none | yes | 32 random bytes, base64 ([ADR-00057](./adr/00057-integration-settings-in-the-database.md)). The key integration secrets saved on the operator's Deployment page are encrypted under. Optional: without it, or with a malformed one, gobbler still starts, a stored secret reads as unreadable, and saving a secret is refused. See [Integration secrets](#integration-secrets). |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |
 | `GOBBLER_BACKUP_LOCAL_RETENTION` | `7` | no | Snapshots kept locally; minimum 1. |
 | `GOBBLER_BACKUP_REMOTE_RETENTION` | `30` | no | Snapshots kept in S3; minimum 1. |
@@ -434,6 +435,33 @@ GOBBLER_TRUSTED_PROXIES=172.18.0.1
 Check it after setting: sign in through the tunnel and confirm the Sessions
 list shows your own address, not the gateway's. List only the proxy: any
 address in the list can set the client address of its requests to any value.
+
+## Integration secrets
+
+Design and reasoning: [ADR-00057](./adr/00057-integration-settings-in-the-database.md).
+
+Integration settings are edited on the operator's Deployment page,
+`/operator/settings`, and kept in the database. Their secrets (a password, an
+API key) are encrypted with a key taken from `GOBBLER_ENCRYPTION_KEY`; a saved
+secret is never shown again, only replaced or cleared.
+
+- Generate the key once and put it in `.env`:
+
+  ```sh
+  openssl rand -base64 32
+  ```
+
+- Losing the key, or changing it, means re-entering every integration secret on
+  the Deployment page. There is no rotation command: a new key and re-entered
+  secrets are the rotation.
+- Snapshots carry the secrets encrypted. A snapshot or a copy of the database
+  file is useless without the key, so keep the key where a restore can find it
+  but not in the same place as the snapshots. Anyone with access to the VM can
+  read both.
+- With a missing, malformed or wrong key, gobbler still starts. The log has an
+  error line per secret it cannot open, naming the integration and field, never
+  the value; the Deployment page marks each as unreadable, and the integration
+  it belongs to stays off until the secret is entered again.
 
 ## Backups
 
