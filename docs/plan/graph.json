@@ -4822,7 +4822,8 @@
         "internal/db/*_test.go",
         "internal/web/editor/cuisine_test.go",
         "e2e/editor/editor.spec.ts",
-        "VERSION"
+        "VERSION",
+        "internal/store/recipe_fields_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
