@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00035",
+      "last_used": "00037",
       "contiguous": true
     }
   },
@@ -4677,6 +4677,63 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Owner 2026-11-07: cook mode is ugly. Target docs/ui/mockup.html #cook. Also renders step and author-note text through the ADR-00046 markdown renderer m-markdown-steps adds."
+    },
+    {
+      "id": "e-flake-avatar-crop",
+      "title": "avatar crop-failure e2e spec flakes in CI",
+      "wave": 13,
+      "track": null,
+      "issue": 567,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "e2e/profile/avatar.spec.ts",
+        "internal/web/profile/avatar.templ",
+        "internal/web/static/profile.js"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "e-flake-ingest-cancel",
+      "title": "ingest cancel e2e spec flakes in CI",
+      "wave": 13,
+      "track": null,
+      "issue": 581,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "e2e/ingest/ingest.spec.ts",
+        "internal/web/ingest/**"
+      ],
+      "needs_migration": null,
+      "adrs": []
+    },
+    {
+      "id": "d-reimport-reason",
+      "title": "tell an agent's draft revision apart from a re-import's reason",
+      "wave": 13,
+      "track": null,
+      "issue": 586,
+      "status": "todo",
+      "depends_on": [
+        "e-flake-ingest-cancel"
+      ],
+      "owns": [
+        "internal/ingest/reimport.go",
+        "internal/ingest/drafts.go",
+        "internal/store/**",
+        "internal/mcp/tools_drafts.go",
+        "internal/mcp/tools_edit.go",
+        "internal/web/ingest/**",
+        "internal/api/recipes/review.go",
+        "internal/api/recipes/types.go",
+        "e2e/ingest/**",
+        "internal/db/*_test.go"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "blocked": "needs a decision: a flag ReviseDraft alone sets, or the revision reason in its own column; either is a schema change (#586)"
     }
   ],
   "shared_files": [
