@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00038",
+      "last_used": "00039",
       "contiguous": true
     }
   },
@@ -4750,7 +4750,9 @@
       "track": null,
       "issue": 606,
       "status": "todo",
-      "depends_on": [],
+      "depends_on": [
+        "c-cuisine-asian-bbq"
+      ],
       "owns": [
         "internal/ingest/**",
         "internal/llm/**",
@@ -4801,6 +4803,30 @@
       ],
       "blocked": "owner to choose how the description is fetched: YouTube Data API (key) or the watch page's player JSON (#607)",
       "note": "Owner ruling 2026-11-10: description text or a linked blog Recipe only; no transcript or VLM. Instagram paste-only, TikTok out."
+    },
+    {
+      "id": "c-cuisine-asian-bbq",
+      "title": "Asian and BBQ cuisines; specific beats broad at ingest",
+      "wave": 13,
+      "track": null,
+      "issue": 609,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/recipe/model_fields.go",
+        "internal/recipe/model_fields_test.go",
+        "internal/ingest/assemble.go",
+        "internal/ingest/assemble_*_test.go",
+        "internal/ingest/ingest.go",
+        "internal/db/migrations/**",
+        "internal/db/*_test.go",
+        "internal/web/editor/cuisine_test.go",
+        "e2e/editor/editor.spec.ts",
+        "VERSION"
+      ],
+      "needs_migration": "schema",
+      "adrs": [],
+      "note": "Owner ruling 2026-11-10: labels Asian and BBQ; a specific cuisine wins over Asian, BBQ wins over American. Covered by ADR-00025 decision 1."
     }
   ],
   "shared_files": [
