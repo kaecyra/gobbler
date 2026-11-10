@@ -4736,7 +4736,8 @@
         "internal/api/ingest/**",
         "internal/web/editor/review_revision_test.go",
         "internal/web/recipeview/reimport_test.go",
-        "internal/ingest/draft.go"
+        "internal/ingest/draft.go",
+        "internal/ingest/reimport_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
