@@ -1,8 +1,49 @@
-# Overseer handoff: 2026-11-10, caught up after round 28, nothing in flight
+# Overseer handoff: 2026-11-10, wave 13 decided, nothing in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Wave 13 decisions and landings (2026-11-10, late)
+
+**Merged** since `d893933` (read VERSION on main; it was 0.142.1 at this writing):
+
+| What | PR | SHA |
+|---|---|---|
+| chore(plan): nodes p-photo-vision-ocr (#606), y-youtube-description (#607) | #608 | 8edbc50 |
+| chore(plan): node c-cuisine-asian-bbq (#609) | #610 | 7da8cd0 |
+| fix(editor): labels for scaling rules and qualifier kinds (#611) | #612 | 851650a |
+| feat(layout): centred error pages with a mascot, explained invitation 404 | #614 | 7885b21 |
+| chore(plan): blocked nodes e-invite-email (#615), l-llm-provider-config (#616) | #617 | 6f3720f |
+| chore(web): ship every mascot drawing, keep their source art; ignore .DS_Store, /feedback/ | #621 | 387ad30 |
+| docs(adr): ADR-00055 to ADR-00058, nodes s-settings-store and u-llm-usage-cost | #620 | c3caf06 |
+
+**In flight:** nothing. No open PRs, no worktrees, no workers.
+
+**Owner decisions this session (via /overseer:decide on #615 and #616; don't re-ask):**
+- **ADR-00055, invitation email:** SMTP submission; TLS mandatory (port 465 implicit, any other port must offer STARTTLS, certificate always verified, no off switch); HTML plus a plain-text part, no image of any kind; tracking off at the provider as a written deploy step; send status stored per invitation with a Resend button on every pending invitation; per-sender leaky bucket shared by invite and Resend, rate and burst from the environment.
+- **ADR-00056, LLM providers:** text and vision each pick provider and model; models chosen from the provider's listing API (Claude filtered by `active`, `structured_outputs` as a stand-in for tool use, plus `image_input` for vision; Gemini by content generation); set on the Deployment page, live without restart. Failover lists rejected.
+- **ADR-00057, integration settings:** mail and LLM settings live in the database; secrets AES-256-GCM under an HKDF-derived key from one environment variable, field names as associated data; write-only on the page; a missing or wrong key starts the app with those integrations off. `GOBBLER_LLM_*` and the provider key variables are removed, not imported. Per deployment, not per household. Amends ADR-00007 and the AGENTS.md secrets boundary (the rewording is #618's obligation 1). Modelled on pennyroyal's `packages/crypto/src/local_key_manager.ts`.
+- **ADR-00058, usage and cost:** every LLM call recorded with cost (integer millionths of a dollar, at the price in force); prices from a daily OpenRouter sync (exact `anthropic/<id>` / `google/<id>` match only) with operator overrides; its own operator page. Modelled on trellis `packages/ai/src/pricing/` and `apps/web/src/routes/_app/admin.ai-costs.tsx`.
+- **Mascots:** every drawing ships in `internal/web/static/img/`, used or not. Source sheets are `docs/ui/mascots/source-{heads,bodies}.jpeg` (six heads, three bodies; header `gob` is not on them).
+
+**Graph (wave 13), dispatch order:**
+1. Ready now, in parallel: **c-cuisine-asian-bbq (#609)** and **s-settings-store (#618**, ADR-00057, needs a schema migration number).
+2. **p-photo-vision-ocr (#606)** after #609. It writes ADR-00053 (reserved), which must settle what a failed vision call does.
+3. **e-invite-email (#615)** after #618. Needs a migration number.
+4. **l-llm-provider-config (#616)** after #606 and #618.
+5. **u-llm-usage-cost (#619)** after #616. Needs a migration number. Token counts do not cross `ingest.Provider` today, so this node changes both providers and the `llmtest` contract.
+- `e-invite-email` and `l-llm-provider-config` both own `internal/settings/**`, `internal/web/settings/**` and `e2e/operator/**`; validate.ts warns. Sequence them.
+
+**Waiting on the owner:** y-youtube-description (#607): YouTube Data API (key) or the watch page's player JSON. It also waits on #606.
+
+**Still parked:** l-meal-planning (#38), i-site-extractors (#193), o-demo-reseed (#432), unchanged.
+
+**ADR sequence:** last used 00058 (00053 reserved for #606, 00054 for #607).
+
+**Lessons:**
+- **Pre-push hooks did not run on the host** (#621 pushed in 1.6s). CI's `check` job is the only gate on a push from this setup; wait for it before merging.
+- **`gh pr checks` right after a push reports "no checks reported"** until the run registers. Sleep, then `--watch`.
 
 ## After round 28 (2026-11-07 to 2026-11-10): landed without a handoff update
 
