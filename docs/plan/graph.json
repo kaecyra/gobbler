@@ -4704,7 +4704,8 @@
       "depends_on": [],
       "owns": [
         "e2e/ingest/ingest.spec.ts",
-        "internal/web/ingest/**"
+        "internal/web/ingest/**",
+        "e2e/ingest/helpers.ts"
       ],
       "needs_migration": null,
       "adrs": []
