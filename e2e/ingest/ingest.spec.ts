@@ -449,9 +449,17 @@ test('cancel discards the draft and saves nothing', async ({ page, request }) =>
   const reviewURL = page.url();
   const token = reviewURL.split('/').pop();
 
+  // Cancel moves on to the household's oldest waiting draft (ADR-00049), which
+  // on this shared server may be another test's, discarded by its teardown
+  // before the redirect is followed. The page landed on is therefore not this
+  // test's to assert; the answer to the cancel is. The page message is covered
+  // on an isolated server in waiting.spec.ts.
+  const cancelled = page.waitForResponse((r) => r.url().endsWith(`/ingest/${token}/cancel`));
   await page.getByRole('button', { name: 'Cancel' }).first().click();
-  await expect(page).toHaveURL(discardedURL);
-  await expect(page.getByTestId('draft-done')).toContainText('Discarded');
+  const res = await cancelled;
+  expect(res.status()).toBe(303);
+  expect(res.headers()['location']).toMatch(discardedURL);
+  expect(res.headers()['location']).toContain(`done=${token}`);
 
   // The draft is gone, so it can be neither reviewed nor confirmed.
   expect((await request.get(`/ingest/${token}`)).status()).toBe(404);
