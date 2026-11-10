@@ -42,14 +42,14 @@ These merged after round 28 closed, but this file was not updated as they landed
 
 **In flight:** nothing. No PRs are open.
 
-**Open issues with no graph node** (memory: feedback-graph-holds-all-work):
-- #586: a re-import draft reads as revised by an agent.
-- #581: flaky e2e, ingest cancel discards the draft and saves nothing.
-- #567: flaky e2e, avatar "crop link that fails" spec.
+**New nodes** (#598, 971e543), which also moved the schema migration mark from 00035 to 00037:
+- e-flake-avatar-crop (#567): dispatchable.
+- e-flake-ingest-cancel (#581): dispatchable.
+- d-reimport-reason (#586): blocked on a schema decision. It depends on e-flake-ingest-cancel, since both own `internal/web/ingest/**` and the ingest e2e spec.
 
-**Blocked nodes:** l-meal-planning (#38), i-site-extractors (#193) and o-demo-reseed (#432), unchanged from round 28.
+**Blocked nodes:** l-meal-planning (#38), i-site-extractors (#193) and o-demo-reseed (#432), unchanged from round 28, plus d-reimport-reason.
 
-**Leftover worktrees** under `.claude/worktrees/`: six of them, every HEAD already merged. Two are locked (`agent-a5e74843fc53b5d80`, `agent-ac6e6457ba99d1002`). Check that no agent still holds them before removing them.
+**Cleanup (2026-11-10):** all agent worktrees and merged local branches are removed, along with the stray `refs/remotes/pr/593`. `origin/pr-assets` is kept because PR bodies link to its screenshots.
 
 ## Round 28 (2026-11-07): notes apart, baked, library search, the API split
 
