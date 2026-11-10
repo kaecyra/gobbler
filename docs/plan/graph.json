@@ -4742,6 +4742,65 @@
       "needs_migration": "schema",
       "adrs": [],
       "note": "Owner ruling 2026-11-10 (ADR-00048 and ADR-00049 amended, ADR-00035 already defines it): reason is only ever an agent's own words. Re-import stops writing 'Re-imported from <host>'; History builds that line from the re-import marker and the saved version's source address. The /ingest 'Revised by an agent' mark and list_recipe_drafts' revised flag are removed. import_recipe and create_recipe_draft take an optional reason. One data migration clears the stored re-import sentence from existing rows."
+    },
+    {
+      "id": "p-photo-vision-ocr",
+      "title": "photo ingest: vision reads the page, tesseract checks the numbers",
+      "wave": 13,
+      "track": null,
+      "issue": 606,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/ingest/**",
+        "internal/llm/**",
+        "internal/api/ingest/**",
+        "internal/web/ingest/**",
+        "e2e/ingest/**",
+        "cmd/gobbler/**",
+        "internal/config/**",
+        "docs/adr/00053-*.md",
+        "docs/adr/00006-rule-first-ingestion.md",
+        "docs/adr/README.md",
+        "docs/design.md",
+        "AGENTS.md",
+        "VERSION"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00053"
+      ],
+      "note": "Owner ruling 2026-11-10: vision transcribes the photo, the rule parser structures the transcript, tesseract flags numbers it did not read. A two-call vision-then-text design was rejected (issue #606)."
+    },
+    {
+      "id": "y-youtube-description",
+      "title": "YouTube ingest reads the description or the recipe it links",
+      "wave": 13,
+      "track": null,
+      "issue": 607,
+      "status": "todo",
+      "depends_on": [
+        "p-photo-vision-ocr"
+      ],
+      "owns": [
+        "internal/ingest/**",
+        "internal/video/**",
+        "internal/api/ingest/**",
+        "internal/web/ingest/**",
+        "e2e/ingest/**",
+        "cmd/gobbler/**",
+        "internal/config/**",
+        "docs/adr/00054-*.md",
+        "docs/adr/README.md",
+        "docs/design.md",
+        "VERSION"
+      ],
+      "needs_migration": null,
+      "adrs": [
+        "00054"
+      ],
+      "blocked": "owner to choose how the description is fetched: YouTube Data API (key) or the watch page's player JSON (#607)",
+      "note": "Owner ruling 2026-11-10: description text or a linked blog Recipe only; no transcript or VLM. Instagram paste-only, TikTok out."
     }
   ],
   "shared_files": [
@@ -6245,7 +6304,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00052",
+    "last_used": "00054",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
