@@ -1,8 +1,21 @@
-# Overseer handoff: 2026-11-10, wave 13 decided, nothing in flight
+# Overseer handoff: 2026-11-10, wave 13 round 1 in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Wave 13 round 1 (2026-11-10, evening)
+
+**In flight** (workers dispatched, no PRs yet):
+
+| Node | Issue | Worktree | Branch | Migration |
+|---|---|---|---|---|
+| c-cuisine-asian-bbq | #609 | .claude/worktrees/wt-609 | feat/609-cuisine-asian-bbq | schema 00039 (drawn earlier in #610) |
+| s-settings-store | #618 | .claude/worktrees/wt-618 | feat/618-settings-store | file `99999_s-settings-store.sql`; numbered at merge (00040 if #609 lands first) |
+
+**Scope move (dispatcher):** removing `GOBBLER_LLM_*`, `GOBBLER_ANTHROPIC_API_KEY` and `GOBBLER_GEMINI_API_KEY` (ADR-00057 obligation 6, LLM half of 7) moved from #618 to #616. Their readers (`internal/web/ingest`, `e2e/ingest/retry.spec.ts`, `compose.yaml`) are outside #618's lane, and removing them early would switch LLM ingestion off until #616 lands. Comments are on both issues, and notes are on both nodes. **Before dispatching #616, widen its lane with `internal/web/ingest/**` and `e2e/ingest/**`** (a dispatcher PR).
+
+**Next three:** p-photo-vision-ocr (#606) after #609 merges; e-invite-email (#615) after #618 merges; then l-llm-provider-config (#616) after both, with the lane widening above.
 
 ## Wave 13 decisions and landings (2026-11-10, late)
 
@@ -18,7 +31,7 @@ This file holds the volatile state the graph does not. The durable record is `do
 | chore(web): ship every mascot drawing, keep their source art; ignore .DS_Store, /feedback/ | #621 | 387ad30 |
 | docs(adr): ADR-00055 to ADR-00058, nodes s-settings-store and u-llm-usage-cost | #620 | c3caf06 |
 
-**In flight:** nothing. No open PRs, no worktrees, no workers.
+**In flight:** see round 1 above.
 
 **Owner decisions this session (via /overseer:decide on #615 and #616; don't re-ask):**
 - **ADR-00055, invitation email:** SMTP submission; TLS mandatory (port 465 implicit, any other port must offer STARTTLS, certificate always verified, no off switch); HTML plus a plain-text part, no image of any kind; tracking off at the provider as a written deploy step; send status stored per invitation with a Resend button on every pending invitation; per-sender leaky bucket shared by invite and Resend, rate and burst from the environment.
