@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00039",
+      "last_used": "00040",
       "contiguous": true
     }
   },
