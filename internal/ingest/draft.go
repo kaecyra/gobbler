@@ -214,8 +214,9 @@ type Draft struct {
 	Candidates []string
 	ProposalID int64
 	// Revision names the held document's content (store.DraftRevision) and
-	// Reason is what the agent that last revised the draft said, empty when
-	// none has (ADR-00048). Drafts.Get sets both; they are not in the document.
+	// Reason is what an agent said about the draft, when it made it or last
+	// revised it, empty when none gave one (ADR-00048). Drafts.Get sets both;
+	// they are not in the document.
 	Revision string
 	Reason   string
 

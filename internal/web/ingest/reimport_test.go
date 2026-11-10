@@ -51,7 +51,7 @@ func (f *fixture) holdReimport(t *testing.T, id int64) string {
 	d.Proposed = nil
 	d.Reimport = &ingestcore.Reimport{RecipeID: id, BaseVersion: 1}
 	d.Picture = ingestcore.PictureKeep
-	token, err := f.rs.drafts.Add(f.ctx(t), d, store.Provenance{Person: "dev@localhost", Reason: "Re-imported from example.test"})
+	token, err := f.rs.drafts.Add(f.ctx(t), d, store.Provenance{Person: "dev@localhost"})
 	if err != nil {
 		t.Fatal(err)
 	}

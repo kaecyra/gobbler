@@ -24,7 +24,6 @@ func reimportInput(ing, id, base int64) DraftInput {
 	in.Document = reimportDoc(ing, id, base)
 	in.Source.Content = []byte("<html>fetched again</html>")
 	in.Source.Kind = SnapshotHTML
-	in.Reason = "Re-imported from example.test"
 	return in
 }
 
@@ -152,7 +151,7 @@ func TestAcceptReimportReplacesTheRecipeInPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 	last := revs[len(revs)-1]
-	if last.Proposal == nil || last.Proposal.Reason != "Re-imported from example.test" || last.Author != "dev@localhost" {
+	if last.Proposal == nil || !last.Proposal.Reimport || last.Proposal.Reason != "" || last.Author != "dev@localhost" {
 		t.Errorf("revision = %+v, want the re-import's provenance and the saving person", last)
 	}
 	if p, _ := s.GetProposal(ctx, token); p.State != ProposalAccepted || p.ResultRecipeID != id {

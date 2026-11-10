@@ -36,8 +36,6 @@ type waitingRow struct {
 	Source string
 	// Age is how long ago the draft was made.
 	Age string
-	// Revised is set when an agent revised the draft (ADR-00048).
-	Revised bool
 	// ReimportOf names the recipe a re-import replaces; empty for a draft of
 	// a new recipe.
 	ReimportOf string
@@ -63,7 +61,7 @@ func rowsOf(pending []apirecipes.DraftSummary, now time.Time) []waitingRow {
 		}
 		row := waitingRow{
 			Path: "/ingest/" + p.Token, Name: name, Source: sourceLabel(p),
-			Age: layout.Ago(p.CreatedAt.In(now.Location()), now), Revised: p.Reason != "",
+			Age: layout.Ago(p.CreatedAt.In(now.Location()), now),
 		}
 		if p.Reimport {
 			row.ReimportOf = p.ReimportName

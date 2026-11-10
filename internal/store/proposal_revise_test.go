@@ -56,7 +56,7 @@ func TestReviseDraftChecksTheRevisionAndStoresTheReason(t *testing.T) {
 }
 
 // The pending draft list holds the household's pending drafts with their
-// name, source address and whether an agent has revised them.
+// name, source address and the reason an agent gave, if one did.
 func TestPendingDraftList(t *testing.T) {
 	s, _ := newTestStore(t)
 	ctx := authedCtx(t)

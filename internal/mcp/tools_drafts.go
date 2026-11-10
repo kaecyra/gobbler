@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -35,7 +34,8 @@ type getDraftOut struct {
 	ReviewPath string `json:"review_path"`
 	// ReimportOf is the recipe a re-import draft replaces when it is saved.
 	ReimportOf int64 `json:"reimport_of,omitempty"`
-	// Reason is what the agent that last revised the draft said.
+	// Reason is what an agent said about the draft: when it made it, or when it
+	// last revised it.
 	Reason string     `json:"reason,omitempty"`
 	Draft  previewOut `json:"draft"`
 }
@@ -46,7 +46,6 @@ type draftSummaryOut struct {
 	SourceURL  string `json:"source_url,omitempty"`
 	CreatedAt  string `json:"created_at"`
 	Reimport   bool   `json:"reimport,omitempty"`
-	Revised    bool   `json:"revised_by_agent"`
 	ReviewPath string `json:"review_path"`
 }
 
@@ -229,7 +228,7 @@ func (t *tools) listRecipeDrafts(ctx context.Context, _ *mcp.CallToolRequest, in
 	for i, f := range found {
 		all[i] = draftSummaryOut{
 			Token: f.Token, Name: f.Name, SourceURL: f.SourceURL, CreatedAt: f.CreatedAt.UTC().Format(time.RFC3339),
-			Reimport: f.Reimport, Revised: f.Reason != "", ReviewPath: ReviewPath + f.Token,
+			Reimport: f.Reimport, ReviewPath: ReviewPath + f.Token,
 		}
 	}
 	p, err := paginate(all, in.Cursor, in.Limit)
@@ -246,14 +245,16 @@ func (t *tools) reviseRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 		return nil, reviseDraftOut{}, t.toolError(ctx, tool, err)
 	}
 	rc := callerOf(c, h)
-	token, revision, reason := strings.TrimSpace(in.Token), strings.TrimSpace(in.Revision), oneLine(in.Reason)
+	token, revision := strings.TrimSpace(in.Token), strings.TrimSpace(in.Revision)
+	reason, err := reasonOf(in.Reason)
+	if err != nil {
+		return nil, reviseDraftOut{}, err
+	}
 	switch {
 	case token == "" || revision == "":
 		return nil, reviseDraftOut{}, refuse("give the draft's token and the revision get_recipe_draft gave")
 	case reason == "":
 		return nil, reviseDraftOut{}, refuse("give a reason: it is kept with the draft and returned by get_recipe_draft")
-	case utf8.RuneCountInString(reason) > maxReason:
-		return nil, reviseDraftOut{}, refuse("the reason is too long: at most %d characters", maxReason)
 	}
 	if size, err := json.Marshal(in.Draft); err != nil || len(size) > maxDraftText {
 		return nil, reviseDraftOut{}, refuse("the recipe is too long: at most %d bytes", maxDraftText)

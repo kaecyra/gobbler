@@ -100,7 +100,8 @@ type Provenance struct {
 	Credential *Credential
 	// Tool is the MCP tool that made it; empty when a person did.
 	Tool string
-	// Reason is what an agent said about it; empty if it said nothing.
+	// Reason is what an agent said about it, in its own words; empty if it
+	// said nothing, and always empty for a person or a re-import.
 	Reason string
 }
 
@@ -585,8 +586,8 @@ type DraftSummary struct {
 	Reimport     bool
 	ReimportOf   int64
 	ReimportName string
-	// Reason is what the agent that last revised the draft said; empty when no
-	// agent has revised it (ReviseDraft is the only write of a draft's reason).
+	// Reason is what an agent said about the draft: when it made it, or when it
+	// last revised it; empty when none gave one.
 	Reason    string
 	CreatedAt time.Time
 }

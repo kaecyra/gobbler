@@ -24,6 +24,17 @@ import (
 // page and the history page show.
 const maxReason = 500
 
+// reasonOf is a reason an agent gave, as one line, refused when it is longer
+// than maxReason. Empty is returned as empty: a tool that requires a reason
+// refuses that itself.
+func reasonOf(raw string) (string, error) {
+	reason := oneLine(raw)
+	if utf8.RuneCountInString(reason) > maxReason {
+		return "", refuse("the reason is too long: at most %d characters", maxReason)
+	}
+	return reason, nil
+}
+
 // editLine is one ingredient line of a proposed recipe. It has the shape
 // get_recipe gives a line, so an agent can send back what it read.
 type editLine struct {
@@ -116,14 +127,15 @@ func (t *tools) proposeEdit(ctx context.Context, _ *mcp.CallToolRequest, in prop
 		return nil, proposalOut{}, t.toolError(ctx, tool, err)
 	}
 	rc := callerOf(c, h)
-	reason := oneLine(in.Reason)
+	reason, err := reasonOf(in.Reason)
+	if err != nil {
+		return nil, proposalOut{}, err
+	}
 	switch {
 	case in.ID <= 0 || in.Version <= 0:
 		return nil, proposalOut{}, refuse("give the recipe's id and the version you read it at")
 	case reason == "":
 		return nil, proposalOut{}, refuse("give a reason: the person reviewing the change is shown it")
-	case utf8.RuneCountInString(reason) > maxReason:
-		return nil, proposalOut{}, refuse("the reason is too long: at most %d characters", maxReason)
 	case editSize(in.Recipe) > maxDraftText:
 		return nil, proposalOut{}, refuse("the recipe is too long: at most %d bytes", maxDraftText)
 	}

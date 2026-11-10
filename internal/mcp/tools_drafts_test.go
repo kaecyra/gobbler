@@ -183,8 +183,8 @@ func TestReviseRecipeDraftIsRefusedAfterAPersonsEdit(t *testing.T) {
 	}
 }
 
-// list_recipe_drafts gives each pending draft with whether an agent has
-// revised it; an edit proposal is not a draft and cannot be read or revised
+// list_recipe_drafts gives each pending draft, with no mark of whether an
+// agent has revised it; an edit proposal is not a draft and cannot be read or revised
 // as one; another household's draft is unknown.
 func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 	s := newSiteDrafting(t, config.MCP{Rate: 100, Burst: 100}, nil, true)
@@ -197,13 +197,12 @@ func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 		Token      string `json:"token"`
 		Name       string `json:"name"`
 		CreatedAt  string `json:"created_at"`
-		Revised    bool   `json:"revised_by_agent"`
 		ReviewPath string `json:"review_path"`
 	}]
 	if msg := call(t, cs, "list_recipe_drafts", map[string]any{"limit": 1}, &page); msg != "" {
 		t.Fatal(msg)
 	}
-	if len(page.Items) != 1 || page.NextCursor == "" || page.Items[0].Token != token || page.Items[0].Name != "Pie" || page.Items[0].Revised || page.Items[0].CreatedAt == "" {
+	if len(page.Items) != 1 || page.NextCursor == "" || page.Items[0].Token != token || page.Items[0].Name != "Pie" || page.Items[0].CreatedAt == "" {
 		t.Fatalf("first page = %+v", page)
 	}
 
@@ -215,11 +214,7 @@ func TestListAndRefusalsOfRecipeDrafts(t *testing.T) {
 	if msg := call(t, cs, "list_recipe_drafts", nil, &page); msg != "" {
 		t.Fatal(msg)
 	}
-	revised := map[string]bool{}
-	for _, it := range page.Items {
-		revised[it.Token] = it.Revised
-	}
-	if len(page.Items) != 2 || !revised[token] || revised[other] {
+	if len(page.Items) != 2 || page.Items[0].Token != token || page.Items[1].Token != other {
 		t.Errorf("list after revising = %+v", page.Items)
 	}
 
@@ -308,5 +303,46 @@ func TestReviseRecipeDraftRefusesADependencyOnNoStep(t *testing.T) {
 	msg := call(t, s.connect(secret), "revise_recipe_draft", map[string]any{"token": token, "revision": held.Revision, "draft": held.Recipe, "reason": "graph"}, nil)
 	if !strings.Contains(msg, "step 9") {
 		t.Errorf("a dependency on no step = %q", msg)
+	}
+}
+
+// import_recipe and create_recipe_draft take an optional reason, kept with the
+// draft and returned by get_recipe_draft; without one the draft has none, and
+// a reason over the limit is refused as revise_recipe_draft refuses it.
+func TestImportAndCreateDraftKeepTheAgentsOptionalReason(t *testing.T) {
+	s := newSiteDrafting(t, config.MCP{Rate: 100, Burst: 100}, nil, true)
+	secret, _ := s.personalKey("ann@example.com")
+	cs := s.connect(secret)
+	var out struct {
+		ReviewPath string `json:"review_path"`
+	}
+	tokenOf := func() string { return strings.TrimPrefix(out.ReviewPath, "/ingest/") }
+
+	if msg := call(t, cs, "import_recipe", map[string]any{"text": draftText, "reason": "  Ann asked\nfor a pie "}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if got := readDraft(t, s, secret, tokenOf()).Reason; got != "Ann asked for a pie" {
+		t.Errorf("import_recipe reason = %q", got)
+	}
+	if msg := call(t, cs, "import_recipe", map[string]any{"text": draftText}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if got := readDraft(t, s, secret, tokenOf()).Reason; got != "" {
+		t.Errorf("import_recipe with no reason has %q", got)
+	}
+
+	create := map[string]any{"name": "Toast", "ingredients": []string{"2 slices zz mcp flour bread"}, "steps": []string{"Toast it."}, "reason": "from the chat"}
+	if msg := call(t, cs, "create_recipe_draft", create, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if got := readDraft(t, s, secret, tokenOf()).Reason; got != "from the chat" {
+		t.Errorf("create_recipe_draft reason = %q", got)
+	}
+	create["reason"] = strings.Repeat("x", 501)
+	if msg := call(t, cs, "create_recipe_draft", create, nil); !strings.Contains(msg, "too long") {
+		t.Errorf("an over-long reason = %q", msg)
+	}
+	if msg := call(t, cs, "import_recipe", map[string]any{"text": draftText, "reason": strings.Repeat("x", 501)}, nil); !strings.Contains(msg, "too long") {
+		t.Errorf("an over-long import reason = %q", msg)
 	}
 }

@@ -220,7 +220,7 @@ test('saving a re-import with the default replaces the recipe, keeps its picture
 
   // The earlier edit is in History, and History says where this version came from.
   await p.goto(`/recipes/${recipeId}/history`);
-  await expect(p.getByTestId('current-proposal')).toHaveText(/^Re-imported from 127\.0\.0\.1\.$/);
+  await expect(p.getByTestId('current-proposal')).toHaveText('Re-imported from 127.0.0.1.');
   await expect(p.getByTestId('revision')).toHaveCount(2);
   await p.getByTestId('revision').first().getByRole('link', { name: /Version/ }).click();
   await expect(p.getByRole('heading', { name: 'Edited Toast' })).toBeVisible();

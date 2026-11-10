@@ -102,7 +102,8 @@ test('an agent revises a held draft, and the review page shows its marks but not
   const created = await tool(ctx, 'create_recipe_draft', { name: 'Agent scones', ingredients: ['2 cups flour'], steps: ['Mix.', 'Bake.'] });
   const token = created.review_path.replace('/ingest/', '');
   const listed = await tool(ctx, 'list_recipe_drafts');
-  expect(listed.items.find((d: any) => d.token === token)).toMatchObject({ name: 'Agent scones', revised_by_agent: false });
+  expect(listed.items.find((d: any) => d.token === token)).toMatchObject({ name: 'Agent scones' });
+  expect(listed.items.find((d: any) => d.token === token)).not.toHaveProperty('revised_by_agent');
 
   const held = await tool(ctx, 'get_recipe_draft', { token });
   expect(held.revision).toMatch(/^[0-9a-f]+$/);
