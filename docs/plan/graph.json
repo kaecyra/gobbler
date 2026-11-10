@@ -4810,7 +4810,7 @@
       "wave": 13,
       "track": null,
       "issue": 609,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [],
       "owns": [
         "internal/recipe/model_fields.go",
@@ -4892,7 +4892,8 @@
       "needs_migration": null,
       "adrs": [
         "00056"
-      ]
+      ],
+      "note": "Takes ADR-00057 obligation 6 and the LLM half of 7 from s-settings-store (#616 comment, 2026-11-10). Before dispatch, widen the lane with internal/web/ingest/** and e2e/ingest/**."
     },
     {
       "id": "s-settings-store",
@@ -4900,7 +4901,7 @@
       "wave": 13,
       "track": null,
       "issue": 618,
-      "status": "todo",
+      "status": "in_flight",
       "depends_on": [],
       "owns": [
         "internal/settings/**",
@@ -4920,7 +4921,8 @@
       "needs_migration": "schema",
       "adrs": [
         "00057"
-      ]
+      ],
+      "note": "Removing GOBBLER_LLM_* and the provider key variables (ADR-00057 obligation 6, LLM half of 7) moved to l-llm-provider-config (#618 comment, 2026-11-10): their readers are outside this lane and removal would switch LLM ingestion off until #616."
     },
     {
       "id": "u-llm-usage-cost",
