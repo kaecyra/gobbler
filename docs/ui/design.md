@@ -213,6 +213,20 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   `prefers-reduced-motion: reduce` nothing moves. The owner chose this look
   from the "H++" option of a glitter mockup.
 
+- **Error pages.** Every error a person sees is one full page, centred with
+  no card ([`errors-mockup.html`](errors-mockup.html), approved 2026-11-10).
+  From the top: the mascot whole on a baseline hairline, a small label
+  ("Error 404", or "Invitation" on an invitation's page), the heading, one
+  line of text, an optional `.callout` detail panel, then the ways out as
+  buttons. `layout.ErrorView` holds the parts and `layout.ErrorViewFor` gives
+  each status its heading and mascot: `gob-tasting` for not found,
+  `gob-herbs` for a link that no longer works, `gob-wink` for everything else,
+  5xx included. A missing recipe (`gob-full-mixing-bowl`), a gone invitation
+  and an invitation sent to another address have their own copy. Any other
+  4xx shows its sentinel's text made into a sentence, and a 5xx shows fixed
+  text, never the wrapped error. There is no retry button, since reloading
+  is the retry.
+
 ## Operator area
 
 Every operator page sits under `/operator`, and the header's menu has one

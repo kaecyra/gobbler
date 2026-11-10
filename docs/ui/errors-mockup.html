@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Error pages mockup (approved 2026-11-10, #613)</title>
+<link rel="stylesheet" href="../../internal/web/static/app.css">
+<style>
+/* Proposed: one error page that every user-facing error customises. */
+.oops {
+  max-width: 560px;
+  min-height: 62vh;
+  margin: 0 auto;
+  padding: 48px 0 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.oops-art {
+  display: flex;
+  justify-content: center;
+  padding: 0 28px 10px;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 22px;
+}
+.oops-art img { width: 150px; height: auto; display: block; }
+.oops-head .eyebrow { display: block; margin-bottom: 8px; }
+.oops-head h1 { font-size: 32px; }
+.oops-body p { margin: 10px auto 0; color: var(--ink-2); max-width: 44ch; }
+.oops-body .callout { margin: 18px auto 0; max-width: 46ch; font-size: 15.5px; color: var(--ink-2); }
+.oops-body .callout b { color: var(--ink); font-weight: 650; }
+.oops-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 26px; }
+@media (max-width: 560px) {
+  .oops { padding: 32px 0 40px; }
+  .oops-art img { width: 120px; }
+  .oops-head h1 { font-size: 27px; }
+}
+
+/* Mockup chrome only: each variant stands for a whole page. */
+.mock-label { max-width: 560px; margin: 0 auto; padding-top: 18px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--ink-3); font-family: ui-monospace, monospace; text-align: center; }
+.mock-label:first-of-type { border-top: 0; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="brand" href="#"><img class="standing" src="../../internal/web/static/img/gob.svg" alt="" width="46" height="60"> <span class="brand-text"><b>gobbler</b> <small>Find it. Cook it. Gobble it.</small></span></a><nav class="tabs" aria-label="Primary"></nav></div></header>
+<main id="content">
+
+<p class="mock-label">404, any unknown address</p>
+<section class="oops">
+  <div class="oops-art"><img src="../../internal/web/static/img/gob-tasting.svg" alt=""></div>
+  <div class="oops-head"><span class="eyebrow">Error 404</span><h1>We couldn't find that page</h1></div>
+  <div class="oops-body"><p>The address may be mistyped, or the page may have moved.</p></div>
+  <div class="oops-actions"><a class="btn primary" href="#">Go to your recipes</a><a class="btn ghost" href="#">Home</a></div>
+</section>
+
+<p class="mock-label">404, a recipe that is gone or not in your household</p>
+<section class="oops">
+  <div class="oops-art"><img src="../../internal/web/static/img/gob-full-mixing-bowl.svg" alt=""></div>
+  <div class="oops-head"><span class="eyebrow">Error 404</span><h1>That recipe isn't in your household</h1></div>
+  <div class="oops-body"><p>It may have been deleted. A recipe from another household opens only once it's shared with you.</p></div>
+  <div class="oops-actions"><a class="btn primary" href="#">Go to your recipes</a></div>
+</section>
+
+<p class="mock-label">404, invitation not for this email (or no such code; same page, per ADR-00028)</p>
+<section class="oops">
+  <div class="oops-art"><img src="../../internal/web/static/img/gob-wink.svg" alt=""></div>
+  <div class="oops-head"><span class="eyebrow">Invitation</span><h1>This invitation didn't open for you</h1></div>
+  <div class="oops-body">
+    <p>An invitation opens only for the email address it was sent to.</p>
+    <div class="callout">You're signed in as <b>tim@example.com</b>. If the invitation went to another address, sign out and sign in with that one.</div>
+  </div>
+  <div class="oops-actions"><a class="btn primary" href="#">Sign out</a><a class="btn ghost" href="#">Go to your household</a></div>
+</section>
+
+<p class="mock-label">410, invitation expired (used and withdrawn swap the heading)</p>
+<section class="oops">
+  <div class="oops-art"><img src="../../internal/web/static/img/gob-herbs.svg" alt=""></div>
+  <div class="oops-head"><span class="eyebrow">Invitation</span><h1>This invitation has expired</h1></div>
+  <div class="oops-body"><p>Ask the person who invited you to send a new link.</p></div>
+  <div class="oops-actions"><a class="btn primary" href="#">Home</a></div>
+</section>
+
+<p class="mock-label">500, anything unmapped</p>
+<section class="oops">
+  <div class="oops-art"><img src="../../internal/web/static/img/gob-wink.svg" alt=""></div>
+  <div class="oops-head"><span class="eyebrow">Error 500</span><h1>Something went wrong on our side</h1></div>
+  <div class="oops-body"><p>It's been logged. Reload the page in a moment, and if it keeps happening, tell whoever runs this site what you were doing.</p></div>
+  <div class="oops-actions"><a class="btn primary" href="#">Home</a></div>
+</section>
+
+</main>
+</body>
+</html>

@@ -107,11 +107,42 @@ templ navLink(ctx context.Context, item navItem) {
 	</a>
 }
 
-// ErrorPage renders a failed request inside the shared layout.
+// ErrorPage renders a failed request inside the shared layout, with the
+// status's own heading and mascot and message as its text (ErrorViewFor).
 templ ErrorPage(status int, message string) {
-	@Page(strconv.Itoa(status)) {
-		<h1>{ strconv.Itoa(status) } { statusText(status) }</h1>
-		<p class="muted">{ message }</p>
+	@ErrorPageView(ErrorViewFor(status, message))
+}
+
+// ErrorPageView renders v as a full page, centred, with no card around it
+// (docs/ui/design.md, Error pages).
+templ ErrorPageView(v ErrorView) {
+	@Page(strconv.Itoa(v.Status)) {
+		<section class="oops" data-testid="error-page">
+			<div class="oops-art"><img src={ v.Mascot } alt="" width="150" height="150"/></div>
+			<span class="eyebrow">{ v.LabelText() }</span>
+			<h1>{ v.Heading }</h1>
+			if v.Body != "" {
+				<p>{ v.Body }</p>
+			}
+			if v.Detail != nil {
+				<div class="callout">
+					@v.Detail
+				</div>
+			}
+			if len(v.Actions) > 0 {
+				<div class="oops-actions">
+					for _, a := range v.Actions {
+						if a.SignOut {
+							<form method="post" action={ templ.SafeURL(SignOutPath) }>
+								<button type="submit" class={ "btn", templ.KV("primary", a.Primary), templ.KV("ghost", !a.Primary) }>{ a.Label }</button>
+							</form>
+						} else {
+							<a href={ templ.SafeURL(a.Href) } class={ "btn", templ.KV("primary", a.Primary), templ.KV("ghost", !a.Primary) }>{ a.Label }</a>
+						}
+					}
+				</div>
+			}
+		</section>
 	}
 }
 

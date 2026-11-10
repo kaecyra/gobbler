@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -73,15 +74,15 @@ func TestWriteErrorMapsStatusAndHidesInternals(t *testing.T) {
 		wantBody   string
 		hideBody   string
 	}{
-		{"not found", ErrNotFound, http.StatusNotFound, "not found", ""},
+		{"not found", ErrNotFound, http.StatusNotFound, "couldn't find that page", ""},
 		{"invalid", ErrInvalid, http.StatusBadRequest, "invalid request", ""},
 		{"conflict", ErrConflict, http.StatusConflict, "conflict", ""},
-		{"catalog not found", catalog.ErrNotFound, http.StatusNotFound, "catalog entry not found", ""},
+		{"catalog not found", catalog.ErrNotFound, http.StatusNotFound, "couldn't find that page", ""},
 		{"catalog invalid", catalog.ErrInvalid, http.StatusBadRequest, "invalid catalog entry", ""},
 		{"catalog conflict", catalog.ErrConflict, http.StatusConflict, "already in use", ""},
-		{"wrapped keeps sentinel text only", fmt.Errorf("recipe 7: %w", ErrNotFound), http.StatusNotFound, "not found", "recipe 7"},
+		{"wrapped keeps sentinel text only", fmt.Errorf("recipe 7: %w", ErrNotFound), http.StatusNotFound, "couldn't find that page", "recipe 7"},
 		{"driver text under a conflict", fmt.Errorf("insert ingredient: %w: constraint failed: UNIQUE constraint failed: ingredient.name (2067)", catalog.ErrConflict), http.StatusConflict, "catalog name or alias already in use", "UNIQUE constraint"},
-		{"household not found", fmt.Errorf("invitation aZ09bY18: %w", household.ErrNotFound), http.StatusNotFound, "not found", "aZ09bY18"},
+		{"household not found", fmt.Errorf("invitation aZ09bY18: %w", household.ErrNotFound), http.StatusNotFound, "couldn't find that page", "aZ09bY18"},
 		{"household invalid", household.ErrInvalid, http.StatusBadRequest, "invalid input", ""},
 		{"wrong confirmation", household.ErrConfirmation, http.StatusBadRequest, "does not match", ""},
 		{"already a member", household.ErrAlreadyMember, http.StatusConflict, "leave the current household first", ""},
@@ -89,7 +90,7 @@ func TestWriteErrorMapsStatusAndHidesInternals(t *testing.T) {
 		{"not the last member", household.ErrNotLastMember, http.StatusConflict, "only the last member", ""},
 		{"expired invitation", household.ErrExpired, http.StatusGone, "expired", ""},
 		{"used invitation", household.ErrUsed, http.StatusGone, "already been used", ""},
-		{"revoked invitation", household.ErrRevoked, http.StatusGone, "revoked", ""},
+		{"revoked invitation", household.ErrRevoked, http.StatusGone, "withdrawn", ""},
 		{"unknown", errors.New("db password is hunter2"), http.StatusInternalServerError, "Something went wrong", "hunter2"},
 	}
 	for _, tc := range cases {
@@ -99,11 +100,13 @@ func TestWriteErrorMapsStatusAndHidesInternals(t *testing.T) {
 			if rec.Code != tc.wantStatus {
 				t.Errorf("status = %d, want %d", rec.Code, tc.wantStatus)
 			}
-			body := rec.Body.String()
-			if !strings.Contains(body, tc.wantBody) {
+			// The page sentence-cases a sentinel's text (#613), so compare
+			// without case.
+			body := strings.ToLower(html.UnescapeString(rec.Body.String()))
+			if !strings.Contains(body, strings.ToLower(tc.wantBody)) {
 				t.Errorf("body missing %q:\n%s", tc.wantBody, body)
 			}
-			if tc.hideBody != "" && strings.Contains(body, tc.hideBody) {
+			if tc.hideBody != "" && strings.Contains(body, strings.ToLower(tc.hideBody)) {
 				t.Errorf("body leaks %q:\n%s", tc.hideBody, body)
 			}
 		})

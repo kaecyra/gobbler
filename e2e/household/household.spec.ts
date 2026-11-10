@@ -68,8 +68,27 @@ test('an invitation can be accepted only by the addressed email', async ({ brows
     const other = await as(browser, baseURL, who);
     expect((await other.request.get(link)).status(), `${who} opens`).toBe(404);
     expect((await other.request.post(`${link}/accept`)).status(), `${who} accepts`).toBe(404);
+    // The page says whose sign-in it is and offers to switch (#613).
+    const otherPage = await other.newPage();
+    await otherPage.goto(link);
+    const oops = otherPage.getByTestId('error-page');
+    await expect(oops.getByRole('heading', { name: "This invitation didn't open for you" })).toBeVisible();
+    await expect(oops.getByTestId('invitation-email')).toHaveText(who);
+    await expect(oops.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    // A member is pointed at their household, anyone else at home.
+    const away = who === OTHER ? { name: 'Go to your household', href: '/household' } : { name: 'Home', href: '/' };
+    await expect(oops.getByRole('link', { name: away.name })).toHaveAttribute('href', away.href);
+    // Accepting gets the same page.
+    const accepted = await other.request.post(`${link}/accept`);
+    expect(await accepted.text()).toContain('This invitation didn&#39;t open for you');
     await other.close();
   }
+  // A code that does not exist gets the same page (ADR-00028).
+  const stranger = await as(browser, baseURL, STRANGER);
+  const unknown = await stranger.newPage();
+  expect((await unknown.goto('/invitations/zZ9zZ9zZ'))?.status()).toBe(404);
+  await expect(unknown.getByTestId('error-page').getByRole('heading', { name: "This invitation didn't open for you" })).toBeVisible();
+  await stranger.close();
   await ctx.close();
 });
 
