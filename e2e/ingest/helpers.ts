@@ -10,11 +10,11 @@ export async function pasteText(page: Page, text: string): Promise<void> {
 
 // After a draft is confirmed: the saved recipe's page. When other drafts are
 // waiting, a confirm opens the oldest of them instead, with ?done= naming the
-// draft that was saved (ADR-00049). On a shared server that draft is another
-// spec's, and its teardown may discard it before it is read, leaving a 404 with
-// no message to follow. The saved recipe is therefore read from the import
-// page, which carries the same message and depends on no other draft. Every
-// confirm that expects the recipe page goes through here.
+// draft that was saved (ADR-00049). On a shared server the draft opened is
+// often another spec's, and its teardown may discard it before the page loads,
+// leaving a 404 with no message to follow. The saved recipe is therefore read
+// from the import page, which carries the same message and depends on no other
+// draft. Every confirm that expects the recipe page goes through here.
 export async function openSaved(page: Page): Promise<void> {
   await page.waitForURL(
     (u) => /^\/recipes\/\d+/.test(u.pathname) || (/^\/ingest\/[0-9a-f]+$/.test(u.pathname) && u.searchParams.has('done')),
