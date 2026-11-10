@@ -4684,7 +4684,7 @@
       "wave": 13,
       "track": null,
       "issue": 567,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "e2e/profile/avatar.spec.ts",
@@ -4700,7 +4700,7 @@
       "wave": 13,
       "track": null,
       "issue": 581,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "e2e/ingest/ingest.spec.ts",
@@ -6224,6 +6224,16 @@
       "title": "cook mode matches the mockup",
       "merged": "15c8753",
       "note": "Owner 2026-11-07: cook mode is ugly. Target docs/ui/mockup.html #cook. Also renders step and author-note text through the ADR-00046 markdown renderer m-markdown-steps adds."
+    },
+    {
+      "id": "e-flake-avatar-crop",
+      "title": "avatar crop-failure e2e spec flakes in CI",
+      "merged": "f1b52b7"
+    },
+    {
+      "id": "e-flake-ingest-cancel",
+      "title": "ingest cancel e2e spec flakes in CI",
+      "merged": "6b0d983"
     }
   ],
   "adr_sequence": {
