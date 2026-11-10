@@ -33,7 +33,7 @@ func newReimportEnv(t *testing.T) *reimportEnv {
 		t.Fatal(err)
 	}
 	token, held := e.hold(t, d)
-	if err := e.drafts.ChoosePicture(e.ctx, token, held.first()); err != nil {
+	if err := e.drafts.ChoosePicture(e.ctx, token, choice(held, 0)); err != nil {
 		t.Fatal(err)
 	}
 	held, _ = e.drafts.Get(e.ctx, token)
@@ -134,7 +134,7 @@ func TestSavingWithACandidateReplacesThePictureAndDeletesThePreviousObject(t *te
 	e := newReimportEnv(t)
 	before := e.picture(t)
 	token, held := e.start(t)
-	if err := e.drafts.ChoosePicture(e.ctx, token, PictureChoice(held.Candidates[1])); err != nil {
+	if err := e.drafts.ChoosePicture(e.ctx, token, choice(held, 1)); err != nil {
 		t.Fatal(err)
 	}
 	held, _ = e.drafts.Get(e.ctx, token)

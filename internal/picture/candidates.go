@@ -207,9 +207,10 @@ func (s *Service) download(ctx context.Context, rawURL string) ([]byte, error) {
 
 // FetchCandidates downloads urls (in order, from the extractor) for the draft
 // proposal and keeps the survivors as its candidates under
-// drafts/<proposal_id>/<offer>.webp, each with a new offer ID. Failures, pictures below the size floor (see
-// find) and repeated pixels are dropped, and at most MaxCandidates remain. Candidates
-// the draft already had are replaced.
+// drafts/<proposal_id>/<offer>.webp, each with a new offer ID. Failures,
+// pictures below the size floor (see find) and repeated pixels are dropped,
+// and at most MaxCandidates remain. Candidates the draft already had are
+// replaced.
 func (s *Service) FetchCandidates(ctx context.Context, proposalID int64, urls []string) ([]Candidate, error) {
 	hid, err := scope(ctx)
 	if err != nil {
@@ -314,8 +315,7 @@ func (s *Service) deleteCandidates(ctx context.Context, hid, proposalID int64) e
 }
 
 // FindCandidate returns the candidate of cs whose offer ID is offer, and
-// whether there is one. Promote and the candidate route both look a choice up
-// through it.
+// whether there is one.
 func FindCandidate(cs []Candidate, offer string) (Candidate, bool) {
 	for _, c := range cs {
 		if c.Offer == offer {

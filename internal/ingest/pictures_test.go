@@ -119,8 +119,8 @@ func (e *pictureEnv) hold(t *testing.T, d Draft) (string, Draft) {
 	return token, held
 }
 
-// first is the choice of d's first picture candidate.
-func (d Draft) first() PictureChoice { return PictureChoice(d.Candidates[0]) }
+// choice is the choice of d's picture candidate i.
+func choice(d Draft, i int) PictureChoice { return PictureChoice(d.Candidates[i]) }
 
 func TestURLDraftFetchesCandidatesAndConfirmWaitsForAChoice(t *testing.T) {
 	e := newPictureEnv(t)
@@ -129,7 +129,7 @@ func TestURLDraftFetchesCandidatesAndConfirmWaitsForAChoice(t *testing.T) {
 	if len(held.Candidates) != 2 || held.Picture != PictureUnchosen {
 		t.Fatalf("candidates = %q, picture = %q; want 2 candidates and no choice", held.Candidates, held.Picture)
 	}
-	second := PictureChoice(held.Candidates[1])
+	second := choice(held, 1)
 	if _, err := Confirm(held); !errors.Is(err, ErrIncompleteDraft) || !strings.Contains(err.Error(), "choose a picture") {
 		t.Fatalf("Confirm without a choice = %v, want ErrIncompleteDraft asking for one", err)
 	}
@@ -166,7 +166,7 @@ func TestCandidatesFetchedAgainRefuseAnEarlierChoice(t *testing.T) {
 	srv := imageSite(t)
 	urls := []string{srv.URL + "/a.png", srv.URL + "/b.png"}
 	token, held := e.hold(t, e.urlDraft(t, urls...))
-	first := PictureChoice(held.Candidates[0])
+	first := choice(held, 0)
 	if err := e.drafts.ChoosePicture(e.ctx, token, first); err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestCandidatesFetchedAgainRefuseAnEarlierChoice(t *testing.T) {
 	if err := e.drafts.ChoosePicture(e.ctx, token, first); !errors.Is(err, ErrBadPictureChoice) {
 		t.Errorf("choosing an ID from before the fetch = %v, want ErrBadPictureChoice", err)
 	}
-	if err := e.drafts.ChoosePicture(e.ctx, token, PictureChoice(held.Candidates[1])); err != nil {
+	if err := e.drafts.ChoosePicture(e.ctx, token, choice(held, 1)); err != nil {
 		t.Fatal(err)
 	}
 	held, _ = e.drafts.Get(e.ctx, token)
@@ -200,7 +200,7 @@ func TestConfirmKeepsOnlyTheChosenObjectUnderRecipes(t *testing.T) {
 	e := newPictureEnv(t)
 	srv := imageSite(t)
 	token, held := e.hold(t, e.urlDraft(t, srv.URL+"/a.png", srv.URL+"/b.png"))
-	if err := e.drafts.ChoosePicture(e.ctx, token, held.first()); err != nil {
+	if err := e.drafts.ChoosePicture(e.ctx, token, choice(held, 0)); err != nil {
 		t.Fatal(err)
 	}
 	held, _ = e.drafts.Get(e.ctx, token)
@@ -325,7 +325,7 @@ func TestSavedPictureErrReportsAPictureThatCouldNotBeKept(t *testing.T) {
 	e := newPictureEnv(t)
 	srv := imageSite(t)
 	token, held := e.hold(t, e.urlDraft(t, srv.URL+"/a.png"))
-	if err := e.drafts.ChoosePicture(e.ctx, token, held.first()); err != nil {
+	if err := e.drafts.ChoosePicture(e.ctx, token, choice(held, 0)); err != nil {
 		t.Fatal(err)
 	}
 	held, _ = e.drafts.Get(e.ctx, token)
