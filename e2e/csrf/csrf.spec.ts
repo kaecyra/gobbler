@@ -22,6 +22,12 @@ test('a same-origin POST reaches the handler', async ({ request }) => {
     maxRedirects: 0,
   });
   expect(res.status()).not.toBe(403);
+  // It holds a draft on the shared server; discard it so it does not take a
+  // place under the household's draft limit (#596).
+  const to = res.headers()['location'];
+  if (to?.startsWith('/ingest/')) {
+    expect((await request.post(`${to}/cancel`, { maxRedirects: 0 })).status()).toBe(303);
+  }
 });
 
 test('a cross-site GET and the health check are allowed', async ({ request }) => {

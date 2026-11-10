@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/drafts';
 import { openSaved, pasteText } from '../ingest/helpers';
 
 // The save bar on the ingest review screen (ADR-00020: the review screen is the
