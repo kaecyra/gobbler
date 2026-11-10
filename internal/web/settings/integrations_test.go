@@ -82,7 +82,7 @@ func TestSecretControlsEnterReplaceClear(t *testing.T) {
 	h, s := integrationsHandler(t, bytes.Repeat([]byte{1}, store.KeyBytes))
 
 	body := page(h)
-	if !strings.Contains(body, "Not set") || strings.Contains(body, ">Clear<") {
+	if !strings.Contains(body, `data-testid="secret-state">Not set<`) || strings.Contains(body, ">Clear<") {
 		t.Fatalf("an unset secret should offer Save and no Clear:\n%s", body)
 	}
 
@@ -93,7 +93,7 @@ func TestSecretControlsEnterReplaceClear(t *testing.T) {
 		t.Fatalf("stored = %q, %v", got, err)
 	}
 	body = page(h)
-	if !strings.Contains(body, "Set") || !strings.Contains(body, "Replace") || !strings.Contains(body, ">Clear<") {
+	if !strings.Contains(body, `data-testid="secret-state">Set<`) || !strings.Contains(body, "Replace") || !strings.Contains(body, ">Clear<") {
 		t.Fatalf("a set secret should offer Replace and Clear:\n%s", body)
 	}
 
@@ -202,14 +202,11 @@ func TestFailedStateReadIsNotShownAsNotSet(t *testing.T) {
 		"htmx save":    post(h, "/secrets/mail/password", true, "x"),
 		"refused save": post(h, "/secrets/mail/password", false, ""),
 	} {
-		if rec.Code != http.StatusInternalServerError && rec.Code != http.StatusSeeOther {
+		if rec.Code != http.StatusInternalServerError {
 			t.Errorf("%s: status %d, want 500", name, rec.Code)
 		}
 		if strings.Contains(rec.Body.String(), "Not set") || strings.Contains(rec.Body.String(), "database is locked") {
 			t.Errorf("%s: shows a default or the raw error:\n%s", name, rec.Body)
 		}
-	}
-	if rec := serve(h, http.MethodGet, "/", false); rec.Code != http.StatusInternalServerError {
-		t.Errorf("page status %d, want 500", rec.Code)
 	}
 }

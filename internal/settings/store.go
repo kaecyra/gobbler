@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/settings/settingsdb"
 )
@@ -118,7 +119,7 @@ func (s *Store) SetSecret(ctx context.Context, f Field, v string) error {
 		return err
 	}
 	if s.aead == nil {
-		return fmt.Errorf("save %s %s: %w: set GOBBLER_ENCRYPTION_KEY", f.Integration, f.Name, ErrNoKey)
+		return fmt.Errorf("save %s %s: %w: set %s", f.Integration, f.Name, ErrNoKey, config.EnvEncryptionKey)
 	}
 	nonce := make([]byte, s.aead.NonceSize())
 	if _, err := io.ReadFull(s.rand, nonce); err != nil {
