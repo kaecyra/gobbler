@@ -557,31 +557,37 @@ var cuisineSynonyms = map[string]recipe.Cuisine{
 	"barbecue": recipe.CuisineBBQ, "barbeque": recipe.CuisineBBQ, "bar-b-q": recipe.CuisineBBQ,
 }
 
-// broadCuisines are the cuisines a more specific one overrides when a source
-// lists both: "Asian, Chinese" is Chinese and "American, BBQ" is BBQ.
-var broadCuisines = map[recipe.Cuisine]bool{recipe.CuisineAsian: true, recipe.CuisineAmerican: true}
+// cuisineBeats reports whether k replaces held, the cuisine read so far from
+// a source's values. Otherwise the first match stands. Asian yields to any
+// other cuisine except Other, which is not a specific one, so "Asian, Chinese"
+// and "Chinese, Asian" both read as Chinese. American yields only to BBQ, so
+// "American, BBQ" reads as BBQ but "American, Italian" stays American.
+func cuisineBeats(k, held recipe.Cuisine) bool {
+	switch held {
+	case recipe.CuisineAsian:
+		return k != recipe.CuisineOther
+	case recipe.CuisineAmerican:
+		return k == recipe.CuisineBBQ
+	}
+	return false
+}
 
 // cuisineFor reads schema.org recipeCuisine values (each may list several,
 // comma separated) as a cuisine: a value that is a cuisine's name, compared
-// case-insensitively, or a synonym of one. A specific cuisine beats a broad one
-// (broadCuisines) wherever it sits in the list; among equals the first wins.
-// Values that match nothing are skipped, and when none matches the cuisine is
-// empty, not an error.
+// case-insensitively, or a synonym of one. The first match stands unless a
+// later one beats it (cuisineBeats). Values that match nothing are skipped,
+// and when none matches the cuisine is empty, not an error.
 func cuisineFor(cuisines []string) recipe.Cuisine {
-	var broad recipe.Cuisine
+	var held recipe.Cuisine
 	for _, c := range cuisines {
 		for _, part := range strings.Split(c, ",") {
 			k := cuisineNamed(normalizeName(part))
-			switch {
-			case k == "":
-			case !broadCuisines[k]:
-				return k
-			case broad == "":
-				broad = k
+			if k != "" && (held == "" || cuisineBeats(k, held)) {
+				held = k
 			}
 		}
 	}
-	return broad
+	return held
 }
 
 // cuisineNamed is the cuisine a normalised value names, by label or synonym,
