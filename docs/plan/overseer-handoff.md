@@ -1,8 +1,55 @@
-# Overseer handoff: 2026-11-07, round 28 closed, nothing in flight
+# Overseer handoff: 2026-11-10, caught up after round 28, nothing in flight
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## After round 28 (2026-11-07 to 2026-11-10): landed without a handoff update
+
+These merged after round 28 closed, but this file was not updated as they landed. This section was rebuilt on 2026-11-10 from `git log d2bf9e05..origin/main`.
+
+| What | PR | SHA |
+|---|---|---|
+| chore(plan): o-demo-reseed deferred to the owner | none | 80a47dca |
+| chore(plan): nodes for #554, #555, #557, #558, #559, #561 | #562 | 1fee3823 |
+| feat(web): show how many recipes use each ingredient on /catalog | #556 | 8dcc4c74 |
+| feat(web): operator page to edit central catalog ingredients | #560 | fcfe07f8 |
+| feat(web): comma between qualifiers in the recipe ingredient list | #563 | 53bcc98f |
+| feat(recipe): add mix as a step stage kind | #564 | 51a6efac |
+| feat(web): render step and author-note text as a safe markdown subset | #565 | 03c8f4dd |
+| feat(web): cook mode drawn after the approved mockup | #566 | 15c87534 |
+| chore(plan): record #556, #560, #563, #564, #565 and #566 merged | none | d88ae468 |
+| Operator area: one menu entry, an overview and a section rail | #569 | c936f839 |
+| feat(web): wording and layout tweaks across home, library, recipe and operator pages | #572 | 95786326 |
+| feat(web): show the winking mouse in the suggestion block | #575 | 4f98532d |
+| feat(web): recipe view pages at /recipes/{id}-{slug} | #574 | fdd5c1a4 |
+| docs(adr): ADR-00048 agent-driven import | #577 | bddb54d6 |
+| feat(mcp): preview_import and fuller get_recipe (ADR-00048) | #578 | a2de6a48 |
+| feat(household): house style for agents (ADR-00048) | #579 | 4a2f2014 |
+| chore(plan): record migration 00035 used by #579 | none | 01089051 |
+| feat(mcp): revise held recipe drafts (ADR-00048) | #580 | f665b60b |
+| feat(mcp): report duplicate source addresses on import and preview (ADR-00048) | #582 | 207e25a1 |
+| fix(web): let the house style textarea span its panel | #584 | b9637cce |
+| feat(web): list pending drafts on /ingest and count them in the menu (ADR-00049) | #587 | dd034002 |
+| fix(web): drop the review page's narration and count every flagged item | #589 | fa5f3553 |
+| fix(picture): fall back to a 1x size floor when no candidate meets 2x (ADR-00050) | #590 | 240df56d |
+| feat(web): mark the LLM's values with glitter instead of a text chip | #592 | 09213b95 |
+| feat(web): choose a saved recipe's picture on its edit page (ADR-00051) | #593 | 7034dab0 |
+| fix(e2e): discard the drafts each test leaves on the shared server | #597 | 7cd45e8e |
+| fix(ingest): pick a draft's picture candidate by ID, not position (ADR-00052) | #595 | a50b3549 |
+
+**Graph:** `adr_sequence.last_used` had stayed at 00046 while ADRs 00047 to 00052 landed. It was moved to 00052 through `graph-node adr-sequence set`.
+
+**In flight:** nothing. No PRs are open.
+
+**Open issues with no graph node** (memory: feedback-graph-holds-all-work):
+- #586: a re-import draft reads as revised by an agent.
+- #581: flaky e2e, ingest cancel discards the draft and saves nothing.
+- #567: flaky e2e, avatar "crop link that fails" spec.
+
+**Blocked nodes:** l-meal-planning (#38), i-site-extractors (#193) and o-demo-reseed (#432), unchanged from round 28.
+
+**Leftover worktrees** under `.claude/worktrees/`: six of them, every HEAD already merged. Two are locked (`agent-a5e74843fc53b5d80`, `agent-ac6e6457ba99d1002`). Check that no agent still holds them before removing them.
 
 ## Round 28 (2026-11-07): notes apart, baked, library search, the API split
 
