@@ -177,9 +177,9 @@ const PROBES: Probe[] = [
   hidden('POST', (i) => `/recipes/${i.recipe}/proposal/reject`, () => ({ proposal: 'a-token-nobody-holds' })),
   // This recipe has no video, so DEV gets 404 here too; the video suite below proves it with a stored thumbnail.
   hidden('GET', (i) => `/recipes/${i.recipe}/video/thumbnail`),
-  // A recipe's picture and a draft's candidate (ADR-00039): the bytes are checked in internal/web/picture; the routes here must still refuse a non-member and find nothing for another household.
+  // A recipe's picture and a draft's candidate by its ID (ADR-00039, ADR-00052): the bytes are checked in internal/web/picture; the routes here must still refuse a non-member and find nothing for another household.
   hidden('GET', (i) => `/recipes/${i.recipe}/picture`),
-  hidden('GET', () => `/pictures/drafts/1/1`),
+  hidden('GET', () => `/pictures/drafts/1/AAAAAAAAAAAAAAAAAAAAAA`),
   // The edit page's picture picker (ADR-00051): searching, uploading and an offered picture.
   hidden('POST', (i) => `/recipes/${i.recipe}/edit/picture/search`),
   hidden('POST', (i) => `/recipes/${i.recipe}/edit/picture/upload`),

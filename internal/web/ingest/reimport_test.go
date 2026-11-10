@@ -140,16 +140,16 @@ func TestChoosingKeepOnAReimportIsAcceptedAndOnAnImportRefused(t *testing.T) {
 	f.rs.pictures = twoCandidates{}
 	f.rs.drafts = f.rs.drafts.WithPictures(twoCandidates{})
 	re := f.holdReimport(t, f.savedRecipe(t))
-	if err := f.rs.drafts.ChoosePicture(f.ctx(t), re, 2); err != nil {
+	if err := f.rs.drafts.ChoosePicture(f.ctx(t), re, offerB); err != nil {
 		t.Fatal(err)
 	}
 	d, _ := f.rs.drafts.Get(f.ctx(t), re)
 	if err := f.h.choosePicture(f.ctx(t), re, pictureKeep, &d); err != nil || d.Picture != ingestcore.PictureKeep {
-		t.Fatalf("choosing keep = %v, picture %d; want Keep current", err, d.Picture)
+		t.Fatalf("choosing keep = %v, picture %q; want Keep current", err, d.Picture)
 	}
 	held, _ := f.rs.drafts.Get(f.ctx(t), re)
 	if held.Picture != ingestcore.PictureKeep {
-		t.Errorf("held choice = %d, want Keep current kept", held.Picture)
+		t.Errorf("held choice = %q, want Keep current kept", held.Picture)
 	}
 	imp := f.ingestText(t)
 	d2, _ := f.rs.drafts.Get(f.ctx(t), imp)

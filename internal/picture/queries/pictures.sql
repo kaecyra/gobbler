@@ -17,11 +17,11 @@ ON CONFLICT (recipe_id) DO UPDATE SET key = excluded.key, updated_at = excluded.
 DELETE FROM recipe_pictures WHERE recipe_id = ? AND household_id = ?;
 
 -- name: InsertCandidate :exec
-INSERT INTO draft_candidates (household_id, proposal_id, position, source_url, key, width, height)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO draft_candidates (household_id, proposal_id, offer, position, source_url, key, width, height)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: ListCandidates :many
-SELECT position, source_url, key, width, height FROM draft_candidates
+SELECT offer, position, source_url, key, width, height FROM draft_candidates
 WHERE proposal_id = ? AND household_id = ? ORDER BY position;
 
 -- name: DeleteCandidates :exec

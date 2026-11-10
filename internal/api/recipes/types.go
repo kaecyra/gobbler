@@ -197,10 +197,16 @@ var (
 	ErrPictureNotApplied = picture.ErrNotApplied
 )
 
-// ValidOfferID reports whether s has the shape of an offered picture's ID
-// (picture.ValidOfferID).
+// ValidOfferID reports whether s has the shape of an offered picture's or a
+// draft candidate's ID (picture.ValidOfferID).
 func ValidOfferID(s string) bool { return picture.ValidOfferID(s) }
 
 // FindOffer returns the picture of offers whose ID is id, and whether there
 // is one (picture.FindOffer).
 func FindOffer(offers []Offered, id string) (Offered, bool) { return picture.FindOffer(offers, id) }
+
+// FindCandidate returns the candidate of cs whose offer ID is offer, and
+// whether there is one (picture.FindCandidate).
+func FindCandidate(cs []Candidate, offer string) (Candidate, bool) {
+	return picture.FindCandidate(cs, offer)
+}

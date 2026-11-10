@@ -142,13 +142,14 @@ func (q *Queries) GetRecipeSource(ctx context.Context, arg GetRecipeSourceParams
 }
 
 const insertCandidate = `-- name: InsertCandidate :exec
-INSERT INTO draft_candidates (household_id, proposal_id, position, source_url, key, width, height)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO draft_candidates (household_id, proposal_id, offer, position, source_url, key, width, height)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertCandidateParams struct {
 	HouseholdID int64
 	ProposalID  int64
+	Offer       string
 	Position    int64
 	SourceUrl   string
 	Key         string
@@ -160,6 +161,7 @@ func (q *Queries) InsertCandidate(ctx context.Context, arg InsertCandidateParams
 	_, err := q.db.ExecContext(ctx, insertCandidate,
 		arg.HouseholdID,
 		arg.ProposalID,
+		arg.Offer,
 		arg.Position,
 		arg.SourceUrl,
 		arg.Key,
@@ -205,7 +207,7 @@ func (q *Queries) InsertFoundPicture(ctx context.Context, arg InsertFoundPicture
 }
 
 const listCandidates = `-- name: ListCandidates :many
-SELECT position, source_url, key, width, height FROM draft_candidates
+SELECT offer, position, source_url, key, width, height FROM draft_candidates
 WHERE proposal_id = ? AND household_id = ? ORDER BY position
 `
 
@@ -215,6 +217,7 @@ type ListCandidatesParams struct {
 }
 
 type ListCandidatesRow struct {
+	Offer     string
 	Position  int64
 	SourceUrl string
 	Key       string
@@ -232,6 +235,7 @@ func (q *Queries) ListCandidates(ctx context.Context, arg ListCandidatesParams) 
 	for rows.Next() {
 		var i ListCandidatesRow
 		if err := rows.Scan(
+			&i.Offer,
 			&i.Position,
 			&i.SourceUrl,
 			&i.Key,

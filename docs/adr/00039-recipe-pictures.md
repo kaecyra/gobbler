@@ -1,6 +1,6 @@
 # ADR-00039: A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header
 
-**Status:** Amended by [ADR-00040](00040-loopback-fetches-under-the-dev-bypass.md), [ADR-00050](00050-picture-candidates-fall-back-to-1x.md), [ADR-00051](00051-edit-page-picture-picker.md)
+**Status:** Amended by [ADR-00040](00040-loopback-fetches-under-the-dev-bypass.md), [ADR-00050](00050-picture-candidates-fall-back-to-1x.md), [ADR-00051](00051-edit-page-picture-picker.md), [ADR-00052](00052-draft-candidates-chosen-by-id.md)
 
 **Date:** 2026-11-05
 
@@ -108,6 +108,10 @@ Options considered for a recipe with no picture:
 
 ### Choosing
 
+> Amended by [ADR-00052](00052-draft-candidates-chosen-by-id.md): each
+> candidate has an opaque ID that no later fetch reuses, and the choice names
+> the candidate by that ID, never by its position.
+
 - A URL import collects candidates in this order: the page's `og:image`; every
   entry of the recipe's own structured-data `image` (JSON-LD or microdata); and
   the page's primary `ImageObject` where the structured data names one. Other
@@ -143,7 +147,7 @@ Options considered for a recipe with no picture:
 
   ```
   recipes/<recipe_id>/<version>.webp
-  drafts/<proposal_id>/<n>.webp
+  drafts/<proposal_id>/<n>.webp                  (amended by ADR-00052: <offer>.webp)
   people/<person_id>/avatar/<version>.webp
   people/<person_id>/uploads/<token>.orig        (and .preview.jpg)
   ```

@@ -208,10 +208,10 @@ type Draft struct {
 	// one (ADR-00042): the recipe and the version the re-import started from.
 	// It is part of the draft document, where the store reads it.
 	Reimport *Reimport
-	// Candidates is how many picture candidates the held draft has and
-	// ProposalID the proposal that holds them. Drafts.Get sets both from the
-	// held draft; they are not in the document.
-	Candidates int
+	// Candidates are the offer IDs of the held draft's picture candidates, in
+	// order, and ProposalID the proposal that holds them. Drafts.Get sets both
+	// from the held draft; they are not in the document.
+	Candidates []string
 	ProposalID int64
 	// Revision names the held document's content (store.DraftRevision) and
 	// Reason is what the agent that last revised the draft said, empty when

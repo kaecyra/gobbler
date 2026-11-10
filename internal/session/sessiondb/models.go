@@ -58,6 +58,7 @@ type DraftCandidate struct {
 	ID          int64
 	HouseholdID int64
 	ProposalID  int64
+	Offer       string
 	Position    int64
 	SourceUrl   string
 	Key         string

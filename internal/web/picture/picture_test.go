@@ -262,14 +262,18 @@ func TestMissingObjectIsNotFoundAndLogged(t *testing.T) {
 func TestCandidateIsServedToItsHouseholdOnly(t *testing.T) {
 	e := newEnv(t)
 	proposal := e.draftWithCandidate(t)
-	path := picture.CandidateSrc(proposal, 1)
+	cs, err := e.svc.Candidates(e.own, proposal)
+	if err != nil || len(cs) != 1 {
+		t.Fatal(cs, err)
+	}
+	path := picture.CandidateSrc(proposal, cs[0].Offer)
 
 	w := e.get(e.own, path)
 	if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "image/webp" {
 		t.Fatalf("own candidate = %d %q, want 200 image/webp", w.Code, w.Header().Get("Content-Type"))
 	}
 	if cc := w.Header().Get("Cache-Control"); strings.Contains(cc, "immutable") {
-		t.Errorf("Cache-Control = %q: a candidate is replaced under its key when found again", cc)
+		t.Errorf("Cache-Control = %q: a candidate is deleted when its draft is confirmed", cc)
 	}
 	if again := e.get(e.own, path, "If-None-Match", w.Header().Get("ETag")); again.Code != http.StatusNotModified {
 		t.Errorf("matching If-None-Match = %d, want 304", again.Code)
@@ -277,8 +281,10 @@ func TestCandidateIsServedToItsHouseholdOnly(t *testing.T) {
 	if w := e.get(e.foreign, path); w.Code != http.StatusNotFound {
 		t.Errorf("another household's candidate fetch = %d, want 404", w.Code)
 	}
-	if w := e.get(e.own, picture.CandidateSrc(proposal, 2)); w.Code != http.StatusNotFound {
-		t.Errorf("a position the draft has no candidate for = %d, want 404", w.Code)
+	for _, offer := range []string{"1", "unknownCandidateID0000"} {
+		if w := e.get(e.own, picture.CandidateSrc(proposal, offer)); w.Code != http.StatusNotFound {
+			t.Errorf("candidate %q, which the draft does not have = %d, want 404", offer, w.Code)
+		}
 	}
 }
 
@@ -292,7 +298,7 @@ func TestMissingCandidateObjectIsNotFoundAndLogged(t *testing.T) {
 	if err := e.m.Delete(e.own, cs[0].Key); err != nil {
 		t.Fatal(err)
 	}
-	if w := e.get(e.own, picture.CandidateSrc(proposal, 1)); w.Code != http.StatusNotFound {
+	if w := e.get(e.own, picture.CandidateSrc(proposal, cs[0].Offer)); w.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", w.Code)
 	}
 	if !strings.Contains(e.logs.String(), cs[0].Key) {
