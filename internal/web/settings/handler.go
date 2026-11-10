@@ -40,6 +40,9 @@ type Deps struct {
 	// before the page shows it, so the page does not depend on the job's
 	// error text being clean.
 	Secrets []string
+	// Integrations are the integration secrets the page lists (ADR-00057).
+	// The zero value shows none.
+	Integrations Integrations
 }
 
 // Routes returns the routes of the settings page, relative to Pattern.
@@ -48,6 +51,8 @@ func Routes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.show)
 	r.Post("/backup", h.backupNow)
+	r.Post("/secrets/{integration}/{field}", h.saveSecret)
+	r.Post("/secrets/{integration}/{field}/clear", h.clearSecret)
 	return r
 }
 
@@ -74,7 +79,12 @@ type handler struct {
 }
 
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
-	layout.Render(w, r, http.StatusOK, settingsPage(h.view(outcomeNone)))
+	iv, err := h.integrationsView(r.Context(), "")
+	if err != nil {
+		layout.WriteError(w, r, err)
+		return
+	}
+	layout.Render(w, r, http.StatusOK, settingsPage(h.view(outcomeNone), iv))
 }
 
 func (h *handler) backupNow(w http.ResponseWriter, r *http.Request) {

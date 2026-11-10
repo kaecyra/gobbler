@@ -76,3 +76,11 @@ sql:
       go:
         package: picturedb
         out: internal/picture/picturedb
+  - name: settings
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/settings/queries
+    gen:
+      go:
+        package: settingsdb
+        out: internal/settings/settingsdb

@@ -133,6 +133,14 @@ Secrets are never in the repository.
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
 | LLM | provider, text model, vision model, per-provider API key, timeout |
 | Backup | schedule, local retention, S3 endpoint, region, bucket, prefix, credentials, remote retention |
+| Encryption | the key integration secrets are sealed under: 32 random bytes, base64 ([ADR-00057](adr/00057-integration-settings-in-the-database.md)) |
+
+Integration settings (mail, LLM) are not in this table. They live in the
+database, in `internal/settings`, and an operator edits them on the Deployment
+page; their secrets are encrypted there under the key above
+([ADR-00057](adr/00057-integration-settings-in-the-database.md)). The LLM row
+still lists its environment settings until the LLM provider settings move
+([ADR-00056](adr/00056-llm-provider-per-task.md)).
 
 ## Testing
 

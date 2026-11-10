@@ -57,7 +57,7 @@ func (f *fakeBackup) Run(context.Context) (backup.Result, error) {
 func render(t *testing.T, v backupView) string {
 	t.Helper()
 	var b bytes.Buffer
-	if err := settingsPage(v).Render(context.Background(), &b); err != nil {
+	if err := settingsPage(v, integrationsView{}).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()

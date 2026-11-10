@@ -133,6 +133,14 @@ type IngredientLine struct {
 	LineKey       string
 }
 
+type IntegrationSetting struct {
+	Integration string
+	Field       string
+	Secret      int64
+	Value       []byte
+	UpdatedAt   string
+}
+
 type Invitation struct {
 	ID          int64
 	Code        string

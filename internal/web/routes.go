@@ -63,7 +63,7 @@ func mountFeatures(r chi.Router, d Deps) {
 	r.Mount(cook.Pattern, cook.Routes(cook.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
 	r.Mount(history.Pattern, history.Routes(history.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
 	r.Mount(history.ClonePattern, history.CloneRoutes(history.Deps{Recipes: d.Recipes, Catalog: d.Catalog}))
-	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets}))
+	r.Mount(settings.Pattern, settings.Routes(settings.Deps{Backup: d.Backup, Secrets: d.BackupSecrets, Integrations: d.Integrations}))
 	// The deployment page moved under the operator area; old bookmarks follow.
 	r.Get(settings.LegacyPattern, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, settings.Pattern, http.StatusMovedPermanently)

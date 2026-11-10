@@ -76,7 +76,15 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	// backups.Runner is the live job: hand it to anything that triggers a
 	// backup or reads its status, never build a second Runner.
 
+	// No integration reads the store yet; the Deployment page lists the
+	// secret fields integrations register (none so far).
+	integrationSettings, err := openSettings(ctx, cfg, d, slog.Default())
+	if err != nil {
+		return err
+	}
+
 	deps := web.Deps{Config: cfg, DB: d, Media: pictureMedia, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)}
+	deps.Integrations = settings.Integrations{Store: integrationSettings}
 	var authOpts []auth.Option
 	if cfg.OIDC.Configured() {
 		if deps.Sessions, deps.SignIn, err = newSignIn(cfg, d); err != nil {

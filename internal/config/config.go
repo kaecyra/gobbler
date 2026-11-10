@@ -57,6 +57,7 @@ const (
 	EnvOAuthRegisterBurst  = "GOBBLER_OAUTH_REGISTER_BURST"
 	EnvOAuthTokenRate      = "GOBBLER_OAUTH_TOKEN_RATE"
 	EnvOAuthTokenBurst     = "GOBBLER_OAUTH_TOKEN_BURST"
+	EnvEncryptionKey       = "GOBBLER_ENCRYPTION_KEY"
 )
 
 // LLM provider names accepted by EnvLLMProvider.
@@ -105,6 +106,7 @@ type Config struct {
 	Backup    Backup
 	MCP       MCP
 	OAuth     OAuth
+	Settings  Settings
 }
 
 // Server holds listener, storage and logging settings.
@@ -224,6 +226,16 @@ type Bucket struct {
 	Burst int
 }
 
+// Settings holds what the integration settings store needs from the
+// environment (ADR-00057).
+type Settings struct {
+	// EncryptionKey is the base64 text of the 32-byte key integration secrets
+	// are sealed under. It is not validated here: a missing or malformed key
+	// does not stop the app, which starts with secrets unreadable and says so
+	// in the log (settings.ParseKey checks it).
+	EncryptionKey Secret
+}
+
 // Backup holds backup settings (ADR-00010).
 type Backup struct {
 	// Schedule is the daily run time as "HH:MM".
@@ -307,6 +319,8 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.OAuth.Register.Burst = r.integer(EnvOAuthRegisterBurst, defaultOAuthRegisterBurst, 1)
 	c.OAuth.Token.Rate = r.float(EnvOAuthTokenRate, defaultOAuthTokenRate, 0.001, 1000)
 	c.OAuth.Token.Burst = r.integer(EnvOAuthTokenBurst, defaultOAuthTokenBurst, 1)
+
+	c.Settings.EncryptionKey = Secret{r.str(EnvEncryptionKey, "")}
 
 	if err := errors.Join(r.errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
