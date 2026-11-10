@@ -21,7 +21,7 @@ index below in the same commit.
 | [00004](00004-recipe-data-model.md) | Recipe data model: components, ingredient lines, step graph, revisions | Amended by [00022](00022-adopt-the-mockup-design.md), [00025](00025-one-cuisine-per-recipe.md), [00035](00035-reviewing-agent-recipe-edits.md), [00041](00041-author-notes.md) |
 | [00005](00005-quantities-and-units.md) | Exact quantities, unit dimensions, density conversion, scaling rules | Accepted |
 | [00006](00006-rule-first-ingestion.md) | Rule-first ingestion with confidence-gated LLM fallback and mandatory review | Amended by [00020](00020-ingest-step-graph-gap-fill-review.md), [00034](00034-mcp-server.md) |
-| [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Accepted |
+| [00007](00007-llm-provider-interface.md) | LLM provider interface with Claude and Gemini | Amended by [00056](00056-llm-provider-per-task.md), [00057](00057-integration-settings-in-the-database.md) |
 | [00008](00008-ingredient-catalog.md) | Canonical ingredient catalog: curated seed plus USDA FoodData Central | Accepted |
 | [00009](00009-shopping-list.md) | Shopping list aggregation, pantry, live view, Todoist push | Amended by [00018](00018-households-as-tenants.md) |
 | [00010](00010-backups.md) | Nightly SQLite snapshot to S3-compatible storage | Amended by [00033](00033-media-object-storage.md) |
@@ -67,6 +67,10 @@ index below in the same commit.
 | [00050](00050-picture-candidates-fall-back-to-1x.md) | Picture candidates prefer 2x and fall back to 1x when none meets it | Accepted |
 | [00051](00051-edit-page-picture-picker.md) | A saved recipe's picture is chosen on its edit page, from a search of its source page or an upload | Accepted |
 | [00052](00052-draft-candidates-chosen-by-id.md) | A draft's picture candidates are chosen by an ID of their own | Accepted |
+| [00055](00055-invitation-email.md) | Invitations are emailed over SMTP with TLS, as HTML with a plain-text part | Accepted |
+| [00056](00056-llm-provider-per-task.md) | Text and vision each name their own LLM provider, set on the operator's page and stored in the database | Accepted |
+| [00057](00057-integration-settings-in-the-database.md) | Integration settings live in the database, and their secrets are encrypted there under a key from the environment | Accepted |
+| [00058](00058-llm-usage-and-cost.md) | Every LLM call is recorded with its cost, priced from a daily OpenRouter sync with operator overrides, and shown on an operator page | Accepted |
 
 ## What needs one
 
