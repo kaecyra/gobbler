@@ -71,8 +71,10 @@ func SourceHost(sourceURL string) string {
 // review, returning its token. A fetch or pipeline failure is returned and
 // nothing is held. The draft keeps the recipe's spice level, which no source
 // carries, and starts with "Keep current picture". It supersedes the recipe's
-// pending edit proposal or re-import. by.Reason is set to say where the
-// re-import came from.
+// pending edit proposal or re-import. A re-import's reason is left as
+// the caller gave it: a reason is only ever an agent's own words, and History
+// builds the "Re-imported from" line from the re-import marker and the saved
+// source address instead (ADR-00048).
 func (r *Reimporter) Start(ctx context.Context, id int64, by store.Provenance) (string, error) {
 	// The version is read before the recipe: an edit between the two leaves the
 	// draft older than the recipe, which the store refuses at save.
@@ -96,7 +98,6 @@ func (r *Reimporter) Start(ctx context.Context, id int64, by store.Provenance) (
 	if d.SpiceLevel == nil {
 		d.SpiceLevel = rec.SpiceLevel
 	}
-	by.Reason = "Re-imported from " + SourceHost(rec.SourceURL)
 	// Adding the draft supersedes the recipe's pending edit or re-import in the
 	// same transaction; the store deletes a superseded re-import's picture
 	// candidates when it was given a remover (store.WithObjects).

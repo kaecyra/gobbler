@@ -57,8 +57,8 @@ func TestReimportRecipeHoldsADraftForAPersonAndChangesNothing(t *testing.T) {
 	if err != nil || p.State != store.ProposalPending || p.Reimport == nil || p.Reimport.RecipeID != id || p.Reimport.BaseVersion != 1 {
 		t.Fatalf("proposal = %+v (%v), want a pending re-import of recipe %d at version 1", p, err, id)
 	}
-	if p.Tool != "reimport_recipe" || p.Reason != "Re-imported from example.test" || p.Credential == nil {
-		t.Errorf("provenance = %+v, want the tool, the reason and the credential", p.Provenance)
+	if p.Tool != "reimport_recipe" || p.Reason != "" || p.Credential == nil {
+		t.Errorf("provenance = %+v, want the tool and the credential, and no reason: a re-import says nothing in an agent's words", p.Provenance)
 	}
 	info, _ := s.rec.Info(ctx, id)
 	cur, _ := s.rec.Get(ctx, id)

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/recipe"
 	"github.com/kaecyra/gobbler/internal/recipe/display"
@@ -37,15 +38,25 @@ type currentRow struct {
 type proposalNote struct {
 	By, Reason string
 	// Reimport says the version came from saving a re-import (ADR-00042): the
-	// reason is then the whole note, "Re-imported from <source host>".
+	// note then opens with "Re-imported from <Host>", and the reason, when an
+	// agent revised the draft, follows it.
 	Reimport bool
+	// Host is the host of the source address in the saved version's document;
+	// set only when Reimport is.
+	Host string
 }
 
-func noteOf(p *apirecipes.ProposalRef) *proposalNote {
+// noteOf reads a proposal's note. source is the source address in the document
+// of the version the proposal wrote.
+func noteOf(p *apirecipes.ProposalRef, source string) *proposalNote {
 	if p == nil {
 		return nil
 	}
-	return &proposalNote{By: p.Describe(), Reason: p.Reason, Reimport: p.Reimport}
+	n := &proposalNote{By: p.Describe(), Reason: p.Reason, Reimport: p.Reimport}
+	if p.Reimport {
+		n.Host = apiingest.SourceHost(source)
+	}
+	return n
 }
 
 type revisionRow struct {
@@ -67,16 +78,16 @@ type originView struct {
 	Version  int64
 }
 
-func buildList(id int64, name string, info apirecipes.Info, revs []apirecipes.Revision, from *apirecipes.ProposalRef) listView {
+func buildList(id int64, name string, info apirecipes.Info, revs []apirecipes.Revision, from *apirecipes.ProposalRef, sources map[int64]string) listView {
 	v := listView{
 		ID: id, Name: name,
-		Current: currentRow{Version: info.Version, When: info.UpdatedAt.UTC().Format(timeLayout), Who: info.UpdatedBy, Proposal: noteOf(from)},
+		Current: currentRow{Version: info.Version, When: info.UpdatedAt.UTC().Format(timeLayout), Who: info.UpdatedBy, Proposal: noteOf(from, sources[info.Version])},
 	}
 	if info.ClonedFrom != nil {
 		v.Origin = &originView{RecipeID: info.ClonedFrom.RecipeID, Version: info.ClonedFrom.Version}
 	}
 	for _, r := range revs {
-		row := revisionRow{Version: r.Version, When: r.CreatedAt.UTC().Format(timeLayout), Who: r.Author, Proposal: noteOf(r.Proposal)}
+		row := revisionRow{Version: r.Version, When: r.CreatedAt.UTC().Format(timeLayout), Who: r.Author, Proposal: noteOf(r.Proposal, sources[r.Version+1])}
 		if r.Restored != nil {
 			row.Restored = *r.Restored
 		}

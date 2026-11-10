@@ -19,7 +19,9 @@ import (
 type ProposalRef struct {
 	Token string
 	// Reimport says the version was written by saving a re-import of the
-	// recipe's source (ADR-00042); Reason then reads "Re-imported from <host>".
+	// recipe's source (ADR-00042). Reason stays an agent's own words, empty for a
+	// re-import nobody revised; the "Re-imported from <host>" line is built by
+	// History from the saved document's source address.
 	Reimport bool
 	Provenance
 	CreatedAt time.Time

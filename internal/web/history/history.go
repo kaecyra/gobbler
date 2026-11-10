@@ -151,9 +151,23 @@ func list(d Deps) http.HandlerFunc {
 				from = rev.Proposal
 			}
 		}
+		// A re-import's line names the host of the source address in the document
+		// of the version its save wrote, which is the one after the revision.
+		sources := map[int64]string{info.Version: doc.SourceURL}
+		for _, rev := range revs {
+			if rev.Proposal == nil || !rev.Proposal.Reimport || rev.Version+1 == info.Version {
+				continue
+			}
+			saved, err := d.Recipes.GetVersion(r.Context(), caller.FromContext(r.Context()), id, rev.Version+1)
+			if err != nil {
+				layout.WriteError(w, r, fmt.Errorf("load version %d of recipe %d: %w", rev.Version+1, id, err))
+				return
+			}
+			sources[rev.Version+1] = saved.SourceURL
+		}
 		// The store lists oldest first; the page shows newest first.
 		slices.Reverse(revs)
-		layout.Render(w, r, http.StatusOK, listPage(buildList(id, doc.Name, info, revs, from)))
+		layout.Render(w, r, http.StatusOK, listPage(buildList(id, doc.Name, info, revs, from, sources)))
 	}
 }
 

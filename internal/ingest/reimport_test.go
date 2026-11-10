@@ -268,3 +268,13 @@ func TestReimportMarkerSurvivesAnEditOfTheDraft(t *testing.T) {
 		t.Errorf("dropping the marker = %v, want a refusal", err)
 	}
 }
+
+// A reason is only an agent's own words (ADR-00048): a re-import started with
+// none holds a draft with none.
+func TestStartLeavesTheReasonEmpty(t *testing.T) {
+	e := newReimportEnv(t)
+	_, held := e.start(t)
+	if held.Reason != "" {
+		t.Errorf("Reason = %q, want empty", held.Reason)
+	}
+}

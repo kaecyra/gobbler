@@ -216,7 +216,7 @@ func TestAFailedWriteIsReportedWhereverItLands(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		lv := buildList(id, doc.Name, info, revs, nil)
+		lv := buildList(id, doc.Name, info, revs, nil, nil)
 		lv.Origin = &originView{RecipeID: 3, Version: 2}
 		for _, page := range map[string]func() templ.Component{
 			"list":    func() templ.Component { return listPage(lv) },

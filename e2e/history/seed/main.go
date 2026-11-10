@@ -76,7 +76,7 @@ func reimport(ctx context.Context, s *store.Store, r recipe.Recipe) (int64, erro
 	token, err := s.ProposeDraft(ctx, store.DraftInput{
 		Document:   []byte(fmt.Sprintf(`{"reimport":{"recipe":%d,"base_version":1},"components":[]}`, id)),
 		Source:     store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>again</html>")},
-		Provenance: store.Provenance{Person: "dev@localhost", Reason: "Re-imported from recipes.example.test"},
+		Provenance: store.Provenance{Person: "dev@localhost"},
 	})
 	if err != nil {
 		return 0, err

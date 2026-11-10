@@ -42,7 +42,7 @@ func (f *reimportFixture) hold(t *testing.T, base int64) string {
 	token, err := f.rs.ProposeDraft(f.ctx, store.DraftInput{
 		Document:   []byte(fmt.Sprintf(`{"name":"Fresh","reimport":{"recipe":%d,"base_version":%d},"components":[]}`, f.id, base)),
 		Source:     store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>again</html>")},
-		Provenance: store.Provenance{Person: "dev@localhost", Reason: "Re-imported from example.test"},
+		Provenance: store.Provenance{Person: "dev@localhost"},
 	})
 	if err != nil {
 		t.Fatal(err)

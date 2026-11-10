@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -22,12 +23,15 @@ const maxDraftText = 1 << 20
 type importIn struct {
 	URL  string `json:"url,omitempty" jsonschema:"the web address of a page with a recipe on it; give this or text"`
 	Text string `json:"text,omitempty" jsonschema:"a recipe pasted as text; give this or url"`
+	// Reason is optional here; revise_recipe_draft and propose_recipe_edit require one.
+	Reason string `json:"reason,omitempty" jsonschema:"why you are importing it, kept with the draft and returned by get_recipe_draft"`
 }
 
 type createDraftIn struct {
 	Name        string   `json:"name" jsonschema:"the recipe's title"`
 	Ingredients []string `json:"ingredients" jsonschema:"one ingredient line per item, as written in a recipe, such as '2 cups flour'"`
 	Steps       []string `json:"steps" jsonschema:"the instructions, one step per item, in order"`
+	Reason      string   `json:"reason,omitempty" jsonschema:"why you wrote it, kept with the draft and returned by get_recipe_draft"`
 }
 
 type draftOut struct {
@@ -66,6 +70,10 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	rawURL, text := strings.TrimSpace(in.URL), strings.TrimSpace(in.Text)
+	reason, err := checkedReason(in.Reason)
+	if err != nil {
+		return nil, draftOut{}, err
+	}
 	var d apiingest.Draft
 	var same sameSourceOut
 	switch {
@@ -95,7 +103,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 	if err != nil {
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
-	return t.hold(ctx, tool, c, h, d, same)
+	return t.hold(ctx, tool, c, h, d, same, reason)
 }
 
 func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, in createDraftIn) (*mcp.CallToolResult, draftOut, error) {
@@ -106,6 +114,10 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	}
 	name := strings.TrimSpace(in.Name)
 	name = oneLine(name)
+	reason, err := checkedReason(in.Reason)
+	if err != nil {
+		return nil, draftOut{}, err
+	}
 	if name == "" || len(in.Ingredients) == 0 || len(in.Steps) == 0 {
 		return nil, draftOut{}, refuse("a recipe draft needs a name, at least one ingredient and at least one step")
 	}
@@ -131,7 +143,7 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	d.Name = apiingest.Field[string]{Value: name, Confidence: 1}
-	return t.hold(ctx, tool, c, h, d, sameSourceOut{})
+	return t.hold(ctx, tool, c, h, d, sameSourceOut{}, reason)
 }
 
 // checkPageURL refuses an address the pipeline would not fetch a page from:
@@ -160,9 +172,12 @@ func (t *tools) checkRoom(ctx context.Context, rc apirecipes.Caller, tool string
 }
 
 // hold puts the draft where the review screen finds it and records the write.
-// same is reported with it.
-func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseholds.Household, d apiingest.Draft, same sameSourceOut) (*mcp.CallToolResult, draftOut, error) {
-	token, err := t.Recipes.AddDraft(ctx, callerOf(c, h), d, provenance(c, h.ID, tool))
+// same is reported with it, and reason, the agent's own words or empty, is kept
+// with the draft.
+func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseholds.Household, d apiingest.Draft, same sameSourceOut, reason string) (*mcp.CallToolResult, draftOut, error) {
+	by := provenance(c, h.ID, tool)
+	by.Reason = reason
+	token, err := t.Recipes.AddDraft(ctx, callerOf(c, h), d, by)
 	if errors.Is(err, apirecipes.ErrDraftLimit) {
 		// Say so as it is: the agent can tell its user to review the drafts.
 		return nil, draftOut{}, refuse("%s", apirecipes.ErrDraftLimit)
@@ -182,6 +197,16 @@ func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseh
 		}
 	}
 	return nil, draftOut{ReviewPath: ReviewPath + token, Name: d.Name.Value, LowConfidence: low, Note: draftNote, sameSourceOut: same}, nil
+}
+
+// checkedReason is an optional reason as one line, refused when it is longer
+// than revise_recipe_draft and propose_recipe_edit allow. Empty is no reason.
+func checkedReason(raw string) (string, error) {
+	reason := oneLine(raw)
+	if utf8.RuneCountInString(reason) > maxReason {
+		return "", refuse("the reason is too long: at most %d characters", maxReason)
+	}
+	return reason, nil
 }
 
 // oneLine collapses every run of whitespace, newlines included, to one space,

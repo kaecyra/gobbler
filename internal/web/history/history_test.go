@@ -650,3 +650,73 @@ func TestVersionPageShowsTheMealSpiceRatingAndStepTitlesOfThatVersion(t *testing
 		t.Errorf("version 2 shows version 1's fields:\n%s", body)
 	}
 }
+
+// ADR-00042, ADR-00048: a saved re-import reads "Re-imported from <host>.",
+// the host being that of the source address in the saved version's document,
+// not a stored reason; an agent's own words about the draft follow as its
+// reason, and a re-import nobody revised shows no reason.
+func TestHistoryNamesAReimportByTheHostOfItsSavedSourceAndAnAgentsReason(t *testing.T) {
+	e := newEnv(t)
+	saveReimport := func(name, reason string) int64 {
+		t.Helper()
+		r := e.doc(name, "3")
+		r.SourceURL = "https://recipes.example.test/loaf"
+		id, err := e.store.CreateWithSnapshots(e.ctx, r, store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>first</html>")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc := []byte(`{"reimport":{"recipe":` + itoa(id) + `,"base_version":1},"components":[]}`)
+		token, err := e.store.ProposeDraft(e.ctx, store.DraftInput{
+			Document:   doc,
+			Source:     store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>again</html>")},
+			Provenance: store.Provenance{Person: "dev@localhost"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reason != "" {
+			revised := []byte(`{"name":"Revised","reimport":{"recipe":` + itoa(id) + `,"base_version":1},"components":[]}`)
+			if err := e.store.ReviseDraft(e.ctx, token, revised, store.DraftRevision(doc), reason); err != nil {
+				t.Fatal(err)
+			}
+		}
+		r.Name += ", read again"
+		if _, err := e.store.AcceptReimport(e.ctx, token, r); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+
+	plain := saveReimport("Plain Reimport", "")
+	_, body := e.get("/recipes/" + itoa(plain) + "/history")
+	for _, id := range []string{"current-proposal", "revision-proposal"} {
+		line := between(t, body, `data-testid="`+id+`"`, "</span>")
+		if !strings.Contains(line, "Re-imported from recipes.example.test.") || strings.Contains(line, "Reason") {
+			t.Errorf("%s = %q, want the re-import line alone", id, line)
+		}
+	}
+
+	revised := saveReimport("Revised Reimport", "Fixed the yield")
+	_, body = e.get("/recipes/" + itoa(revised) + "/history")
+	for _, id := range []string{"current-proposal", "revision-proposal"} {
+		line := between(t, body, `data-testid="`+id+`"`, "</span>")
+		if !strings.Contains(line, "Re-imported from recipes.example.test.") || !strings.Contains(line, "Reason: Fixed the yield") {
+			t.Errorf("%s = %q, want the re-import line and the agent's reason", id, line)
+		}
+	}
+}
+
+// between is the text after the first start in s up to the next end.
+func between(t *testing.T, s, start, end string) string {
+	t.Helper()
+	i := strings.Index(s, start)
+	if i < 0 {
+		t.Fatalf("no %q in:\n%s", start, s)
+	}
+	rest := s[i:]
+	j := strings.Index(rest, end)
+	if j < 0 {
+		t.Fatalf("no %q after %q", end, start)
+	}
+	return rest[:j]
+}

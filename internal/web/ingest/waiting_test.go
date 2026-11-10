@@ -56,7 +56,7 @@ func TestImportPageListsTheDraftsWaiting(t *testing.T) {
 	theirs.Name.Value = "Their secret pie"
 	f.hold(t, householdB, theirs)
 
-	// An agent revises the pasted draft (ADR-00048).
+	// An agent revises the pasted draft (ADR-00048); the list does not mark it.
 	p, err := f.rs.proposals.GetProposal(f.ctx(t), pastedToken)
 	if err != nil {
 		t.Fatal(err)
@@ -80,16 +80,14 @@ func TestImportPageListsTheDraftsWaiting(t *testing.T) {
 	for _, want := range []string{
 		`href="/ingest/` + page + `"`, "example.test", "today",
 		"Pasted text", "Photo", "Photo pie",
-		`data-testid="waiting-revised"`, "Revised by an agent",
 		`href="/ingest/` + reimport + `"`, "Re-import of Old pie",
 	} {
 		if !strings.Contains(list, want) {
 			t.Errorf("list has no %q", want)
 		}
 	}
-	row := func(name string) string { return between(t, list, name, "</a>") }
-	if !strings.Contains(row("Pasted pie"), "Revised by an agent") || strings.Contains(row("Photo pie"), "Revised by an agent") {
-		t.Error("the revised mark is not on the revised draft alone")
+	if strings.Contains(list, "evised") || strings.Contains(list, "tidied") {
+		t.Error("the list marks a draft an agent revised, or prints its reason")
 	}
 	if strings.Count(list, "Re-import of") != 1 {
 		t.Error("the re-import mark is on a draft that is not a re-import")

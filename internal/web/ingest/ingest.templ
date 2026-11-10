@@ -84,7 +84,6 @@ templ styles() {
 		.waiting-list .w-name { font-weight: 700; overflow-wrap: anywhere; }
 		.waiting-list .w-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--ink-3); font-size: 14.5px; }
 		.waiting-list .w-mark { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: var(--r-sm); font-size: 13.5px; font-weight: 600; }
-		.waiting-list .w-mark.revised { background: var(--grain-soft); color: var(--grain-ink); }
 		.waiting-list .w-mark.reimport { background: var(--wattle-soft); color: var(--wattle-ink); }
 	</style>
 }
@@ -122,9 +121,6 @@ templ waitingList(rows []waitingRow) {
 								<span>{ row.Age }</span>
 								if row.ReimportOf != "" {
 									<span class="w-mark reimport" data-testid="waiting-reimport">Re-import of { row.ReimportOf }</span>
-								}
-								if row.Revised {
-									<span class="w-mark revised" data-testid="waiting-revised">Revised by an agent</span>
 								}
 							</span>
 						</a>
