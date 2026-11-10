@@ -112,8 +112,9 @@ committed to the repository either way.
    failure.
 5. A web test shows no response from the Deployment page contains a saved
    secret's value.
-6. A config test shows a set `GOBBLER_LLM_PROVIDER` or provider API key
-   variable is logged as ignored at startup.
+6. A config test shows that each removed variable (every `GOBBLER_LLM_*`
+   variable and both provider API key variables), when set, is logged as
+   ignored at startup.
 7. `docs/design.md`'s configuration table drops the LLM row's environment
    settings, gains the encryption key, and says where integration settings
    live. `.env.example` drops the LLM variables and gains the encryption key,

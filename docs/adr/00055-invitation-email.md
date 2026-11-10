@@ -39,6 +39,8 @@ Options considered for the message body:
   ([ADR-00057](00057-integration-settings-in-the-database.md)).
 - **Every connection is encrypted before anything else is sent.** Either
   implicit TLS from the first byte, or STARTTLS that the client insists on.
+  The port decides which: port 465 is implicit TLS, and any other port
+  requires STARTTLS. There is no separate setting for the mode.
   A server that does not offer STARTTLS gets no message and no credentials:
   the send fails. The server's certificate is verified against the configured
   host. There is no setting that turns encryption or verification off.

@@ -55,7 +55,12 @@ with its source (`openrouter` or `manual`) and when it was last synced.
 
 Once a day, and on demand from the page, gobbler fetches OpenRouter's public
 model listing (`https://openrouter.ai/api/v1/models`) without credentials and
-updates the price of every model a task has used or is set to use. A price
+updates the price of every model a task has used or is set to use. A model
+matches only the OpenRouter entry whose id is exactly the provider's prefix
+(`anthropic/` for Claude, `google/` for Gemini) followed by the model id
+gobbler uses; there is no other normalisation, so a price is never taken from
+a different model. A model with no exact match is left unpriced until the
+operator sets its price. A price
 the operator has set is never overwritten by the sync. A failed sync is
 logged and leaves every price as it was; the page shows when the last sync
 succeeded and the last failure.
@@ -88,8 +93,9 @@ ADR-00007's per-call log line stays; the record is in addition to it.
    model's call has no cost rather than zero, and that changing a price later
    leaves recorded costs unchanged.
 4. Tests against a recorded OpenRouter listing show the sync updates a synced
-   price, leaves a manual one alone, and on a failed fetch changes nothing and
-   records the failure.
+   price, leaves a manual one alone, on a failed fetch changes nothing and
+   records the failure, and leaves unpriced a model whose id matches an entry
+   only after a change beyond adding the provider prefix.
 5. An e2e test reaches the usage page as an operator, and a test shows a
    non-operator is refused.
 6. `docs/operations.md` names OpenRouter as an outbound destination and says

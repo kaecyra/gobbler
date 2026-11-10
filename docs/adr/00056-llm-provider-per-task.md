@@ -11,7 +11,7 @@ and vision models configuration, and in practice that configuration is the
 environment: one provider for every task, with changes needing an edit to the
 server's environment and a restart. Text and vision cannot come from different
 providers, and nothing in the app shows what is in use. Photo ingest is
-becoming a vision transcription (#606, ADR-00053), which makes the vision
+becoming a vision transcription (#606), which makes the vision
 model's choice matter on its own.
 
 Options considered for how many providers:
@@ -21,8 +21,9 @@ Options considered for how many providers:
 - **One provider per task.** Chosen. ADR-00007 already keeps provider
   implementations interchangeable, so mixing them needs no change to either.
 - **An ordered list per task, tried in turn on failure.** Rejected. A failed
-  LLM call already leaves the rule-based draft with a retry (ADR-00007), and a
-  failed vision call leaves the OCR path (ADR-00053). Failing over costs a full
+  LLM call already leaves the rule-based draft with its error shown
+  (ADR-00007) and a manual retry with the LLM
+  ([ADR-00020](00020-ingest-step-graph-gap-fill-review.md)). Failing over costs a full
   timeout before the second provider starts, makes a draft's style depend on
   vendor uptime, and needs rules for which failures count and a mark on the
   review screen naming who answered. Per-task settings can grow into a list
@@ -59,8 +60,11 @@ API keys, the encryption that protects them and the removal of the
 The operator picks each task's model from a list the chosen provider's
 model-listing API returns, called with the stored key. There is no free-text
 entry. The list is narrowed to what the task can use, from what each provider
-reports: for Claude, active models that accept structured output, and for
-vision also image input; for Gemini, models that support content generation,
+reports: for Claude, active models whose listing marks structured output as
+supported, and for vision also image input. gobbler's Claude provider
+constrains its answer with a tool call, and the listing reports nothing about
+tool use, so structured output is the nearest capability it does report and
+stands in for it; for Gemini, models that support content generation,
 since Gemini reports no separate image-input flag. If the list cannot be
 fetched, the page says why and the saved model stays as it is. A saved model
 the provider no longer lists is shown as such, so it can be replaced.

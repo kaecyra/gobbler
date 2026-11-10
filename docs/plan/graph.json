@@ -4851,7 +4851,11 @@
         "internal/household/**",
         "internal/db/migrations/**",
         "docs/operations.md",
-        "internal/web/settings/**"
+        "internal/web/settings/**",
+        "internal/mail/**",
+        "internal/settings/**",
+        "e2e/operator/**",
+        "e2e/household/**"
       ],
       "needs_migration": "schema",
       "adrs": [
@@ -4881,7 +4885,9 @@
         "VERSION",
         "internal/web/settings/**",
         "internal/ingest/**",
-        "internal/api/ingest/**"
+        "internal/api/ingest/**",
+        "internal/settings/**",
+        "e2e/operator/**"
       ],
       "needs_migration": null,
       "adrs": [
@@ -4908,7 +4914,8 @@
         "VERSION",
         "internal/web/settings/**",
         "AGENTS.md",
-        "docs/adr/00007-llm-provider-interface.md"
+        "docs/adr/00007-llm-provider-interface.md",
+        "e2e/operator/**"
       ],
       "needs_migration": "schema",
       "adrs": [
@@ -4936,7 +4943,11 @@
         "docs/design.md",
         "docs/operations.md",
         "docs/adr/README.md",
-        "VERSION"
+        "VERSION",
+        "internal/llm/**",
+        "internal/web/ingest/**",
+        "internal/api/ingest/**",
+        "internal/web/layout/operator_rail.go"
       ],
       "needs_migration": "schema",
       "adrs": [
