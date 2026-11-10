@@ -4835,7 +4835,9 @@
       "track": null,
       "issue": 615,
       "status": "todo",
-      "depends_on": [],
+      "depends_on": [
+        "s-settings-store"
+      ],
       "owns": [
         "internal/web/household/**",
         "internal/web/operator/**",
@@ -4845,11 +4847,16 @@
         "docs/design.md",
         ".env.example",
         "docs/adr/README.md",
-        "VERSION"
+        "VERSION",
+        "internal/household/**",
+        "internal/db/migrations/**",
+        "docs/operations.md",
+        "internal/web/settings/**"
       ],
-      "needs_migration": null,
-      "adrs": [],
-      "blocked": "owner to decide transport, tracking, failure and rate limits; needs an ADR (#615)"
+      "needs_migration": "schema",
+      "adrs": [
+        "00055"
+      ]
     },
     {
       "id": "l-llm-provider-config",
@@ -4859,7 +4866,8 @@
       "issue": 616,
       "status": "todo",
       "depends_on": [
-        "p-photo-vision-ocr"
+        "p-photo-vision-ocr",
+        "s-settings-store"
       ],
       "owns": [
         "internal/config/**",
@@ -4870,11 +4878,70 @@
         ".env.example",
         "docs/adr/00007-llm-provider-interface.md",
         "docs/adr/README.md",
-        "VERSION"
+        "VERSION",
+        "internal/web/settings/**",
+        "internal/ingest/**",
+        "internal/api/ingest/**"
       ],
       "needs_migration": null,
-      "adrs": [],
-      "blocked": "owner to decide one-or-several providers, where settings live, and visibility; needs an ADR amending ADR-00007 (#616)"
+      "adrs": [
+        "00056"
+      ]
+    },
+    {
+      "id": "s-settings-store",
+      "title": "operator settings and encrypted integration credentials in the database",
+      "wave": 13,
+      "track": null,
+      "issue": 618,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/settings/**",
+        "internal/db/migrations/**",
+        "internal/config/**",
+        "cmd/gobbler/**",
+        "docs/design.md",
+        "docs/operations.md",
+        ".env.example",
+        "docs/adr/README.md",
+        "VERSION",
+        "internal/web/settings/**",
+        "AGENTS.md",
+        "docs/adr/00007-llm-provider-interface.md"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00057"
+      ]
+    },
+    {
+      "id": "u-llm-usage-cost",
+      "title": "LLM usage and cost page with synced model pricing",
+      "wave": 13,
+      "track": null,
+      "issue": 619,
+      "status": "todo",
+      "depends_on": [
+        "l-llm-provider-config"
+      ],
+      "owns": [
+        "internal/llmusage/**",
+        "internal/web/operator/**",
+        "internal/web/layout/operator.templ",
+        "internal/db/migrations/**",
+        "internal/ingest/**",
+        "cmd/gobbler/**",
+        "e2e/operator/**",
+        "docs/design.md",
+        "docs/operations.md",
+        "docs/adr/README.md",
+        "VERSION"
+      ],
+      "needs_migration": "schema",
+      "adrs": [
+        "00058"
+      ]
     }
   ],
   "shared_files": [
@@ -6378,7 +6445,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00054",
+    "last_used": "00058",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
