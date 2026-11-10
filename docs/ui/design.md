@@ -88,7 +88,10 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
 - **Mascots.** Each drawing is its own embedded SVG file, served cached:
   `gob` in the header, plus `gob-full-rolling-pin`, `gob-full-mixing-bowl`,
   `gob-whisk`, `gob-herbs`, `gob-full-pie`, `gob-tasting` and `gob-wink` for
-  the panels, timers and empty states. A mascot is never clipped. In a box he
+  the panels, timers and empty states. `gob-dough` and
+  `gob-rolling-pin-bandana` ship too, though no screen uses them yet: every
+  drawing is shipped, used or not. The source art for all nine drawings
+  besides `gob`, six heads and three full bodies, is in `docs/ui/mascots/`. A mascot is never clipped. In a box he
   is shown whole, standing on a baseline.
 
 ## Components
