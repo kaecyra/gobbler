@@ -94,6 +94,8 @@ type Cuisine string
 // The cuisines.
 const (
 	CuisineAmerican      Cuisine = "american"
+	CuisineAsian         Cuisine = "asian"
+	CuisineBBQ           Cuisine = "bbq"
 	CuisineBritish       Cuisine = "british"
 	CuisineCaribbean     Cuisine = "caribbean"
 	CuisineChinese       Cuisine = "chinese"
@@ -118,7 +120,8 @@ var cuisineLabels = []struct {
 	Cuisine Cuisine
 	Label   string
 }{
-	{CuisineAmerican, "American"}, {CuisineBritish, "British"}, {CuisineCaribbean, "Caribbean"},
+	{CuisineAmerican, "American"}, {CuisineAsian, "Asian"}, {CuisineBBQ, "BBQ"},
+	{CuisineBritish, "British"}, {CuisineCaribbean, "Caribbean"},
 	{CuisineChinese, "Chinese"}, {CuisineFrench, "French"}, {CuisineGerman, "German"},
 	{CuisineGreek, "Greek"}, {CuisineIndian, "Indian"}, {CuisineItalian, "Italian"},
 	{CuisineJapanese, "Japanese"}, {CuisineKorean, "Korean"}, {CuisineMediterranean, "Mediterranean"},

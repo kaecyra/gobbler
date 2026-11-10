@@ -16,6 +16,23 @@ func (e *env) postCuisine(cuisine string) result {
 	return e.post(f)
 }
 
+// The select offers Asian and BBQ (ADR-00025).
+func TestTheEditorOffersAsianAndBBQ(t *testing.T) {
+	e := newEnv(t)
+	body := e.get().body()
+	for _, want := range []string{`<option value="asian"`, `>Asian</option>`, `<option value="bbq"`, `>BBQ</option>`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("editor page lacks %s", want)
+		}
+	}
+	if res := e.postCuisine("bbq"); res.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d: %s", res.Code, res.body())
+	}
+	if got, _ := e.stored(); got.Cuisine != recipe.CuisineBBQ {
+		t.Errorf("stored cuisine = %q, want bbq", got.Cuisine)
+	}
+}
+
 // ADR-00025: the editor sets and clears the cuisine, and offers the closed list.
 func TestTheEditorSetsAndClearsTheCuisine(t *testing.T) {
 	e := newEnv(t)
@@ -42,7 +59,7 @@ func TestTheEditorSetsAndClearsTheCuisine(t *testing.T) {
 func TestACuisineOutsideTheListIsRefusedAndSavesNothing(t *testing.T) {
 	e := newEnv(t)
 	_, before := e.stored()
-	res := e.postCuisine("asian")
+	res := e.postCuisine("martian")
 	if res.Code != http.StatusBadRequest || !strings.Contains(res.body(), `is not a cuisine`) {
 		t.Fatalf("status = %d, want 400 with a message:\n%s", res.Code, res.body())
 	}

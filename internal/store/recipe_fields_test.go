@@ -256,7 +256,7 @@ func TestInvalidCuisineWritesNothingAndTheColumnRefusesIt(t *testing.T) {
 	s, d := newTestStore(t)
 	a := authedCtx(t)
 	bad := simpleRecipe("A")
-	bad.Cuisine = "asian"
+	bad.Cuisine = "martian"
 	if _, err := s.Create(a, bad); !errors.Is(err, recipe.ErrInvalidCuisine) {
 		t.Errorf("Create with a bad cuisine = %v", err)
 	}
@@ -266,7 +266,7 @@ func TestInvalidCuisineWritesNothingAndTheColumnRefusesIt(t *testing.T) {
 	if _, err := s.Create(a, simpleRecipe("B")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Exec(`UPDATE recipes SET cuisine = 'asian'`); err == nil {
+	if _, err := d.Exec(`UPDATE recipes SET cuisine = 'martian'`); err == nil {
 		t.Error("the column accepted a cuisine outside the list")
 	}
 }

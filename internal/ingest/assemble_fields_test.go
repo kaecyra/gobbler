@@ -52,7 +52,9 @@ func TestMealTypeFromRecipeCategory(t *testing.T) {
 }
 
 // A cuisine maps by name or by an explicit synonym; a value that names no one
-// cuisine leaves it empty and never vetoes a later one (ADR-00025).
+// cuisine leaves it empty and never vetoes a later one, and a specific cuisine
+// beats Asian, and BBQ beats American, whatever order the source lists them in
+// (ADR-00025).
 func TestCuisineFromRecipeCuisine(t *testing.T) {
 	cases := []struct {
 		in   []string
@@ -66,7 +68,19 @@ func TestCuisineFromRecipeCuisine(t *testing.T) {
 		{[]string{"Italian, French"}, recipe.CuisineItalian},
 		{[]string{"Asian", "Thai"}, recipe.CuisineThai},
 		{[]string{"Mexican", "Tex Mex"}, recipe.CuisineMexican},
-		{[]string{"Asian"}, ""},
+		{[]string{"Asian"}, recipe.CuisineAsian},
+		{[]string{"Asian, Chinese"}, recipe.CuisineChinese},
+		{[]string{"Chinese", "Asian"}, recipe.CuisineChinese},
+		{[]string{"American, BBQ"}, recipe.CuisineBBQ},
+		{[]string{"BBQ", "American"}, recipe.CuisineBBQ},
+		{[]string{"Barbecue"}, recipe.CuisineBBQ},
+		{[]string{"barbeque"}, recipe.CuisineBBQ},
+		{[]string{"Bar-B-Q"}, recipe.CuisineBBQ},
+		{[]string{"American"}, recipe.CuisineAmerican},
+		{[]string{"American, Italian"}, recipe.CuisineAmerican},
+		{[]string{"Italian, American"}, recipe.CuisineItalian},
+		{[]string{"Asian, Other"}, recipe.CuisineAsian},
+		{[]string{"European"}, ""},
 		{[]string{"Asian-inspired"}, ""},
 		{[]string{""}, ""},
 		{nil, ""},

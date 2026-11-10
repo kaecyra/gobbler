@@ -73,13 +73,21 @@ func TestCuisineIsAClosedSetEndingInOther(t *testing.T) {
 			t.Errorf("cuisine %q: Valid=%v Label=%q", c, c.Valid(), c.Label())
 		}
 	}
-	if Cuisine("").Valid() || Cuisine("asian").Valid() {
+	if Cuisine("").Valid() || Cuisine("martian").Valid() {
 		t.Error("unset and unlisted cuisines must not be valid")
 	}
 	if got := CuisineMiddleEastern.Label(); got != "Middle Eastern" {
 		t.Errorf("Label() = %q", got)
 	}
-	r := Recipe{Cuisine: "asian", Components: []Component{{Steps: []Step{{ID: "a", Title: "x"}}}}}
+	if CuisineAsian.Label() != "Asian" || CuisineBBQ.Label() != "BBQ" {
+		t.Errorf("labels = %q, %q", CuisineAsian.Label(), CuisineBBQ.Label())
+	}
+	for i := 1; i < len(all)-1; i++ {
+		if all[i-1].Label() >= all[i].Label() {
+			t.Errorf("%q is listed before %q, want alphabetical by label with Other last", all[i-1].Label(), all[i].Label())
+		}
+	}
+	r := Recipe{Cuisine: "martian", Components: []Component{{Steps: []Step{{ID: "a", Title: "x"}}}}}
 	if err := r.Validate(); !errors.Is(err, ErrInvalidCuisine) {
 		t.Errorf("Validate() = %v, want ErrInvalidCuisine", err)
 	}
