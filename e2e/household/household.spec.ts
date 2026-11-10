@@ -68,6 +68,13 @@ test('an invitation can be accepted only by the addressed email', async ({ brows
     const other = await as(browser, baseURL, who);
     expect((await other.request.get(link)).status(), `${who} opens`).toBe(404);
     expect((await other.request.post(`${link}/accept`)).status(), `${who} accepts`).toBe(404);
+    // The page says whose sign-in it is and offers to switch (#613).
+    const otherPage = await other.newPage();
+    await otherPage.goto(link);
+    const oops = otherPage.getByTestId('error-page');
+    await expect(oops.getByRole('heading', { name: "This invitation didn't open for you" })).toBeVisible();
+    await expect(oops.getByTestId('invitation-email')).toHaveText(who);
+    await expect(oops.getByRole('button', { name: 'Sign out' })).toBeVisible();
     await other.close();
   }
   await ctx.close();

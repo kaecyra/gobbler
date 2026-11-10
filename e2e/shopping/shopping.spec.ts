@@ -355,7 +355,7 @@ test('answers an unknown list with 404 on every route, and an event stream with 
   expect(bad.status()).toBe(404);
   const res = await page.goto('/shopping/999999');
   expect(res?.status()).toBe(404);
-  await expect(page.getByRole('heading', { name: '404 Not Found' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "We couldn't find that page" })).toBeVisible();
 
   // The stream of a real list is an event stream that opens with the list.
   const stream = await page.evaluate(async (url) => {

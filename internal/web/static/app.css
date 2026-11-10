@@ -572,6 +572,41 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .empty h3 { font-size: 18px; }
 .empty p { margin: 0; max-width: 40ch; font-size: 14px; }
 
+/* Error page: centred on the page with no card, the mascot whole on a
+   baseline above the label, heading, text and the ways out
+   (docs/ui/design.md, Error pages; docs/ui/errors-mockup.html). */
+.oops {
+  max-width: 560px;
+  min-height: 62vh;
+  margin: 0 auto;
+  padding: 48px 0 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.oops-art {
+  display: flex;
+  justify-content: center;
+  padding: 0 28px 10px;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 22px;
+}
+.oops-art img { width: 150px; height: auto; display: block; }
+.oops .eyebrow { display: block; margin-bottom: 8px; }
+.oops h1 { font-size: 32px; }
+.oops p { margin: 10px auto 0; color: var(--ink-2); max-width: 44ch; }
+.oops .callout { margin: 18px auto 0; max-width: 46ch; font-size: 15.5px; color: var(--ink-2); }
+.oops .callout b { color: var(--ink); font-weight: 650; }
+.oops-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 26px; }
+.oops-actions form { margin: 0; }
+@media (max-width: 560px) {
+  .oops { padding: 32px 0 40px; }
+  .oops-art img { width: 120px; }
+  .oops h1 { font-size: 27px; }
+}
+
 /* ---- form-and-list pages (docs/ui/design.md, Screens: pages with no mockup) ----
    Household, invitations, sharing, settings, the operator's pages, the catalogs
    and the not-a-member page wrap their content in class "pg". Linked on every

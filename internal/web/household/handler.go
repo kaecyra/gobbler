@@ -2,6 +2,7 @@ package household
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -219,7 +220,7 @@ func (h *handler) showInvitation(w http.ResponseWriter, r *http.Request) {
 	}
 	inv, err := h.Households.InvitationFor(r.Context(), apihouseholds.Caller{Person: email}, code)
 	if err != nil {
-		layout.Fail(w, r, err)
+		h.invitationFailed(w, r, email, err)
 		return
 	}
 	_, member := apihouseholds.FromContext(r.Context())
@@ -241,8 +242,31 @@ func (h *handler) accept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.Households.Accept(r.Context(), apihouseholds.Caller{Person: email}, code, r.PostFormValue("name")); err != nil {
-		layout.Fail(w, r, err)
+		h.invitationFailed(w, r, email, err)
 		return
 	}
 	http.Redirect(w, r, Pattern, http.StatusSeeOther)
+}
+
+// invitationFailed answers an invitation the signed-in person cannot open. A
+// code that does not exist and one sent to another address get the same page
+// (ADR-00028), which says whose sign-in it is so the person can switch to the
+// address the invitation went to. Any other failure is an ordinary error page.
+func (h *handler) invitationFailed(w http.ResponseWriter, r *http.Request, email string, err error) {
+	if !errors.Is(err, apihouseholds.ErrNotFound) {
+		layout.Fail(w, r, err)
+		return
+	}
+	layout.WarnRejected(r, err, http.StatusNotFound)
+	away := layout.ErrorAction{Label: "Home", Href: "/"}
+	if _, member := apihouseholds.FromContext(r.Context()); member {
+		away = layout.ErrorAction{Label: "Go to your household", Href: Pattern}
+	}
+	layout.Render(w, r, http.StatusNotFound, layout.ErrorPageView(layout.ErrorView{
+		Status: http.StatusNotFound, Mascot: layout.MascotWink, Label: "Invitation",
+		Heading: "This invitation didn't open for you",
+		Body:    "An invitation opens only for the email address it was sent to.",
+		Detail:  wrongInvitationDetail(email),
+		Actions: []layout.ErrorAction{{Label: "Sign out", Primary: true, SignOut: true}, away},
+	}))
 }

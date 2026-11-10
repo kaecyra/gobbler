@@ -43,7 +43,7 @@ test.describe('the operator', () => {
     const invitee = await as(browser, baseURL, email);
     const res = await invitee.request.get(link);
     expect(res.status()).toBe(410);
-    expect(await res.text()).toContain('revoked');
+    expect(await res.text()).toContain('This invitation was withdrawn');
     await invitee.close();
   });
 });

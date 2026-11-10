@@ -97,28 +97,35 @@ func StatusFor(err error) int {
 }
 
 // WriteError writes err as an error page with the status StatusFor gives it.
-// The page shows only the text of the matched sentinel for a 4xx and a fixed
-// message for a 500, never the wrapped chain: a store may wrap a raw driver
+// The page shows its own copy for the errors errorView knows, the matched
+// sentinel's text for any other 4xx and fixed text for a 500, never the
+// wrapped chain: a store may wrap a raw driver
 // error under a sentinel, and its text must not reach the page. The full error
 // is always logged.
 func WriteError(w http.ResponseWriter, r *http.Request, err error) {
-	status := http.StatusInternalServerError
-	message := "Something went wrong. Try again."
+	view := ErrorViewFor(http.StatusInternalServerError, "")
 	if row, ok := classify(err); ok {
-		status, message = row.status, row.target.Error()
-		slog.WarnContext(r.Context(), "request rejected",
-			"error", err.Error(), "status", status, "method", r.Method, "path", r.URL.Path)
+		status := row.status
+		view = errorView(r, err, status, row.target.Error())
+		WarnRejected(r, err, status)
 	} else {
 		slog.ErrorContext(r.Context(), "request failed",
 			"error", err.Error(), "method", r.Method, "path", r.URL.Path)
 	}
-	body, rerr := renderToBytes(r.Context(), ErrorPage(status, message))
+	body, rerr := renderToBytes(r.Context(), ErrorPageView(view))
 	if rerr != nil {
 		slog.ErrorContext(r.Context(), "render error page", "error", rerr.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	writeHTML(r.Context(), w, status, body)
+	writeHTML(r.Context(), w, view.Status, body)
+}
+
+// WarnRejected logs a request refused with a 4xx, for a handler that writes
+// its own error page rather than going through WriteError.
+func WarnRejected(r *http.Request, err error, status int) {
+	slog.WarnContext(r.Context(), "request rejected",
+		"error", err.Error(), "status", status, "method", r.Method, "path", r.URL.Path)
 }
 
 // Render renders c into a buffer and only then writes status and body, so a
@@ -150,8 +157,6 @@ func writeHTML(ctx context.Context, w http.ResponseWriter, status int, body []by
 		slog.WarnContext(ctx, "write response body", "error", err.Error())
 	}
 }
-
-func statusText(status int) string { return http.StatusText(status) }
 
 // Fail writes err as an error page for the household and operator pages. Input
 // the household store refused shows its own reason, so a mistyped email says

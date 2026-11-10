@@ -28,3 +28,9 @@ templ acceptPage(v acceptView) {
 		</div>
 	}
 }
+
+// wrongInvitationDetail names who is signed in, so a person holding a link
+// sent to another of their addresses knows which one to sign in with.
+templ wrongInvitationDetail(email string) {
+	You're signed in as <b data-testid="invitation-email">{ email }</b>. If the invitation went to another address, sign out and sign in with that one.
+}
