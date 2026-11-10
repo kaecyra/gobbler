@@ -720,3 +720,36 @@ func between(t *testing.T, s, start, end string) string {
 	}
 	return rest[:j]
 }
+
+// The re-import line names the host in the document of the version the
+// re-import wrote, so a later edit that changes the source address does not
+// change what History says about the older re-import.
+func TestHistoryKeepsAReimportsHostWhenTheSourceChangesLater(t *testing.T) {
+	e := newEnv(t)
+	r := e.doc("Moved Source", "3")
+	r.SourceURL = "https://recipes.example.test/loaf"
+	id, err := e.store.CreateWithSnapshots(e.ctx, r, store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>first</html>")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := e.store.ProposeDraft(e.ctx, store.DraftInput{
+		Document:   []byte(`{"reimport":{"recipe":` + itoa(id) + `,"base_version":1},"components":[]}`),
+		Source:     store.SnapshotInput{Kind: store.SnapshotHTML, Content: []byte("<html>again</html>")},
+		Provenance: store.Provenance{Person: "dev@localhost"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.store.AcceptReimport(e.ctx, token, r); err != nil {
+		t.Fatal(err)
+	}
+	later := e.current(id)
+	later.SourceURL = "https://elsewhere.example.test/loaf"
+	e.update(id, later)
+
+	_, body := e.get("/recipes/" + itoa(id) + "/history")
+	line := between(t, body, `data-testid="revision-proposal"`, "</span>")
+	if !strings.Contains(line, "Re-imported from recipes.example.test.") || strings.Contains(line, "elsewhere") {
+		t.Errorf("revision-proposal = %q, want the host of the re-imported version's source", line)
+	}
+}
