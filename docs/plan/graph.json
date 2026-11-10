@@ -4810,7 +4810,7 @@
       "wave": 13,
       "track": null,
       "issue": 609,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/recipe/model_fields.go",
@@ -6456,6 +6456,12 @@
       "title": "a proposal's reason is only an agent's words; drop the agent-revised mark",
       "merged": "1960be7",
       "note": "Owner ruling 2026-11-10 (ADR-00048 and ADR-00049 amended, ADR-00035 already defines it): reason is only ever an agent's own words. Re-import stops writing 'Re-imported from <host>'; History builds that line from the re-import marker and the saved version's source address. The /ingest 'Revised by an agent' mark and list_recipe_drafts' revised flag are removed. import_recipe and create_recipe_draft take an optional reason. One data migration clears the stored re-import sentence from existing rows."
+    },
+    {
+      "id": "c-cuisine-asian-bbq",
+      "title": "Asian and BBQ cuisines; specific beats broad at ingest",
+      "merged": "ae72d3dda8cc2101c6f2c931ee7f07740fefc089",
+      "note": "Owner ruling 2026-11-10: labels Asian and BBQ; a specific cuisine wins over Asian, BBQ wins over American. Covered by ADR-00025 decision 1."
     }
   ],
   "adr_sequence": {
