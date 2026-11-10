@@ -36,8 +36,8 @@ const (
 	// Pattern is where the router mounts Routes: a recipe's picture.
 	Pattern = "/recipes/{id}/picture"
 	// DraftsPattern is where the router mounts DraftRoutes: a draft's
-	// candidates, addressed by the draft's proposal and the candidate's
-	// position.
+	// candidates, addressed by the draft's proposal and the candidate's offer
+	// ID (ADR-00052).
 	DraftsPattern = "/pictures/drafts"
 
 	// immutable is for a picture asked for by its own version: the version is
@@ -92,9 +92,10 @@ func Src(recipeID int64, key string) string {
 	return recipepath.Base(recipeID) + "/picture?v=" + url.QueryEscape(v)
 }
 
-// CandidateSrc is the address of candidate position of the draft proposal.
-func CandidateSrc(proposalID int64, position int) string {
-	return DraftsPattern + "/" + strconv.FormatInt(proposalID, 10) + "/" + strconv.Itoa(position)
+// CandidateSrc is the address of the draft proposal's candidate whose offer
+// ID is offer (ADR-00052).
+func CandidateSrc(proposalID int64, offer string) string {
+	return DraftsPattern + "/" + strconv.FormatInt(proposalID, 10) + "/" + url.PathEscape(offer)
 }
 
 // OfferedSrc is the address of the picture offered under offer, its ID, on
@@ -118,11 +119,11 @@ func Routes(d Deps) chi.Router {
 // DraftRoutes returns the routes of a draft's candidates, relative to
 // DraftsPattern.
 //
-//	GET /{proposal}/{n}   candidate n of the draft proposal
+//	GET /{proposal}/{offer}   the draft proposal's candidate under ID offer
 func DraftRoutes(d Deps) chi.Router {
 	h := newHandler(d)
 	r := chi.NewRouter()
-	r.Get("/{proposal}/{n}", h.serveCandidate)
+	r.Get("/{proposal}/{offer}", h.serveCandidate)
 	return r
 }
 
@@ -172,29 +173,18 @@ func (h *handler) serveCandidate(w http.ResponseWriter, r *http.Request) {
 		notFound(w, r, err)
 		return
 	}
-	n, err := positive(r, "n")
-	if err != nil {
-		notFound(w, r, err)
-		return
-	}
+	offer := chi.URLParam(r, "offer")
 	cs, err := h.Pictures.Candidates(r.Context(), caller.FromContext(r.Context()), proposal)
 	if err != nil {
 		notFound(w, r, fmt.Errorf("candidates of proposal %d: %w", proposal, err))
 		return
 	}
-	var key string
-	for _, c := range cs {
-		if int64(c.Position) == n {
-			key = c.Key
-		}
-	}
-	if key == "" {
-		notFound(w, r, fmt.Errorf("proposal %d has no candidate %d: %w", proposal, n, layout.ErrNotFound))
+	c, ok := apirecipes.FindCandidate(cs, offer)
+	if !ok {
+		notFound(w, r, fmt.Errorf("proposal %d has no candidate %q: %w", proposal, offer, layout.ErrNotFound))
 		return
 	}
-	// A draft's candidates are replaced under the same keys when they are
-	// found again.
-	h.serveReplaceable(w, r, key, "proposal_id", proposal)
+	h.serveReplaceable(w, r, c.Key, "proposal_id", proposal)
 }
 
 func (h *handler) serveOffered(w http.ResponseWriter, r *http.Request) {
@@ -219,9 +209,9 @@ func (h *handler) serveOffered(w http.ResponseWriter, r *http.Request) {
 
 // serveReplaceable serves a picture by an address that is not versioned, with
 // the ETag of its bytes and a revalidated cache. It serves a draft's
-// candidates, whose keys a new fetch for the draft reuses, and the pictures
-// offered on a recipe's edit page, whose address names the offer's ID but is
-// not marked immutable, since the offer is deleted when the form is saved.
+// candidates and the pictures offered on a recipe's edit page. Their addresses
+// name an offer ID that is never reused, but are not marked immutable, since
+// the picture is deleted when the draft is confirmed or the form is saved.
 func (h *handler) serveReplaceable(w http.ResponseWriter, r *http.Request, key, owner string, ownerID int64) {
 	b, err := h.Media.Get(r.Context(), key)
 	if err != nil {

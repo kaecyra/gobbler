@@ -47,11 +47,13 @@ var ErrOfferGone = errors.New("that picture is no longer offered")
 // Apply was given has succeeded: the recipe is written, its picture is not.
 var ErrNotApplied = errors.New("the recipe was saved, but its picture was not changed")
 
-// offerID matches an offered picture's ID: what newVersion draws.
+// offerID matches an offered picture's ID, and a draft candidate's (ADR-00052):
+// what newVersion draws.
 var offerID = regexp.MustCompile(`^[A-Za-z0-9_-]{22}$`)
 
-// ValidOfferID reports whether s has the shape of an offered picture's ID, so
-// a caller can refuse a malformed one as bad input before asking.
+// ValidOfferID reports whether s has the shape of an offered picture's or a
+// draft candidate's ID, so a caller can refuse a malformed one as bad input
+// before asking.
 func ValidOfferID(s string) bool { return offerID.MatchString(s) }
 
 // recipeLocks serialises the replacing, choosing and sweeping of one recipe's

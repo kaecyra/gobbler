@@ -48,9 +48,10 @@ type Service struct {
 	log       *slog.Logger
 	now       func() time.Time
 	rand      io.Reader
-	// proposals serialises the candidate operations on one proposal: their
-	// object keys are fixed (drafts/<proposal_id>/<n>.webp), so two runs on
-	// one proposal would otherwise delete each other's committed objects.
+	// proposals serialises the candidate operations on one proposal. A fetch
+	// deletes the set it replaces, so without it two fetches would interleave
+	// their deletes and inserts, and a Promote could read a candidate whose
+	// object a fetch is deleting.
 	proposals keyedLock
 }
 
@@ -87,8 +88,8 @@ func recipeKey(recipeID int64, version string) string {
 	return "recipes/" + strconv.FormatInt(recipeID, 10) + "/" + version + ".webp"
 }
 
-func candidateKey(proposalID int64, n int) string {
-	return "drafts/" + strconv.FormatInt(proposalID, 10) + "/" + strconv.Itoa(n) + ".webp"
+func candidateKey(proposalID int64, offer string) string {
+	return "drafts/" + strconv.FormatInt(proposalID, 10) + "/" + offer + ".webp"
 }
 
 func (s *Service) newVersion() (string, error) {

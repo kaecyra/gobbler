@@ -63,6 +63,11 @@ type Found struct {
 
 // Candidate is a stored draft candidate.
 type Candidate struct {
+	// Offer names the candidate for a choice (ADR-00052). It is drawn when the
+	// candidate is fetched and never reused, so a choice made before a later
+	// fetch cannot land on a different picture.
+	Offer string
+	// Position orders the draft's candidates, from 1.
 	Position      int
 	SourceURL     string
 	Key           string
@@ -202,7 +207,7 @@ func (s *Service) download(ctx context.Context, rawURL string) ([]byte, error) {
 
 // FetchCandidates downloads urls (in order, from the extractor) for the draft
 // proposal and keeps the survivors as its candidates under
-// drafts/<proposal_id>/<n>.webp. Failures, pictures below the size floor (see
+// drafts/<proposal_id>/<offer>.webp, each with a new offer ID. Failures, pictures below the size floor (see
 // find) and repeated pixels are dropped, and at most MaxCandidates remain. Candidates
 // the draft already had are replaced.
 func (s *Service) FetchCandidates(ctx context.Context, proposalID int64, urls []string) ([]Candidate, error) {
@@ -210,8 +215,8 @@ func (s *Service) FetchCandidates(ctx context.Context, proposalID int64, urls []
 	if err != nil {
 		return nil, err
 	}
-	// Prove the draft is the household's before any Put: the keys are fixed,
-	// so a foreign id would overwrite that household's objects.
+	// Prove the draft is the household's before any Put, so nothing is stored
+	// under another household's draft.
 	if _, err := s.q.GetDraftProposal(ctx, picturedb.GetDraftProposalParams{ID: proposalID, HouseholdID: hid}); errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("%w: draft %d", store.ErrNotFound, proposalID)
 	} else if err != nil {
@@ -224,7 +229,12 @@ func (s *Service) FetchCandidates(ctx context.Context, proposalID int64, urls []
 	found := s.find(ctx, urls)
 	var out []Candidate
 	for i, f := range found {
-		c := Candidate{Position: i + 1, SourceURL: f.SourceURL, Key: candidateKey(proposalID, i+1), Width: f.Width, Height: f.Height}
+		offer, err := s.newVersion()
+		if err != nil {
+			s.removeObjects(ctx, out)
+			return nil, fmt.Errorf("draw candidate id: %w", err)
+		}
+		c := Candidate{Offer: offer, Position: i + 1, SourceURL: f.SourceURL, Key: candidateKey(proposalID, offer), Width: f.Width, Height: f.Height}
 		if err := s.media.Put(ctx, c.Key, f.WebP, "image/webp"); err != nil {
 			s.removeObjects(ctx, out)
 			return nil, fmt.Errorf("store candidate %d of proposal %d: %w", c.Position, proposalID, err)
@@ -234,7 +244,7 @@ func (s *Service) FetchCandidates(ctx context.Context, proposalID int64, urls []
 	err = db.WithTx(ctx, s.db, s.q, func(q *picturedb.Queries, _ *sql.Tx) error {
 		for _, c := range out {
 			if err := q.InsertCandidate(ctx, picturedb.InsertCandidateParams{
-				HouseholdID: hid, ProposalID: proposalID, Position: int64(c.Position), SourceUrl: c.SourceURL,
+				HouseholdID: hid, ProposalID: proposalID, Offer: c.Offer, Position: int64(c.Position), SourceUrl: c.SourceURL,
 				Key: c.Key, Width: int64(c.Width), Height: int64(c.Height),
 			}); err != nil {
 				return err
@@ -267,7 +277,7 @@ func (s *Service) Candidates(ctx context.Context, proposalID int64) ([]Candidate
 	}
 	out := make([]Candidate, len(rows))
 	for i, r := range rows {
-		out[i] = Candidate{Position: int(r.Position), SourceURL: r.SourceUrl, Key: r.Key, Width: int(r.Width), Height: int(r.Height)}
+		out[i] = Candidate{Offer: r.Offer, Position: int(r.Position), SourceURL: r.SourceUrl, Key: r.Key, Width: int(r.Width), Height: int(r.Height)}
 	}
 	return out, nil
 }
@@ -303,34 +313,41 @@ func (s *Service) deleteCandidates(ctx context.Context, hid, proposalID int64) e
 	return nil
 }
 
-// Promote makes candidate position of the draft proposal the picture of
-// recipe id, copying it to recipes/<recipe_id>/<version>.webp, and then deletes
-// all of the draft's candidates. A position the draft has no candidate for is
-// store.ErrNotFound.
-func (s *Service) Promote(ctx context.Context, proposalID int64, position int, id int64) (string, error) {
+// FindCandidate returns the candidate of cs whose offer ID is offer, and
+// whether there is one. Promote and the candidate route both look a choice up
+// through it.
+func FindCandidate(cs []Candidate, offer string) (Candidate, bool) {
+	for _, c := range cs {
+		if c.Offer == offer {
+			return c, true
+		}
+	}
+	return Candidate{}, false
+}
+
+// Promote makes the candidate of the draft proposal named by offer the picture
+// of recipe id, copying it to recipes/<recipe_id>/<version>.webp, and then
+// deletes all of the draft's candidates. An offer the draft has no candidate
+// for is store.ErrNotFound.
+func (s *Service) Promote(ctx context.Context, proposalID int64, offer string, id int64) (string, error) {
 	hid, err := scope(ctx)
 	if err != nil {
 		return "", err
 	}
 	// Held from reading the rows to deleting them, so a FetchCandidates on the
-	// proposal cannot replace the object at the fixed key in between.
+	// proposal cannot delete the chosen object in between.
 	defer s.proposals.lock(proposalID)()
 	cs, err := s.Candidates(ctx, proposalID)
 	if err != nil {
 		return "", err
 	}
-	var chosen *Candidate
-	for i := range cs {
-		if cs[i].Position == position {
-			chosen = &cs[i]
-		}
-	}
-	if chosen == nil {
-		return "", fmt.Errorf("%w: candidate %d of proposal %d", store.ErrNotFound, position, proposalID)
+	chosen, ok := FindCandidate(cs, offer)
+	if !ok {
+		return "", fmt.Errorf("%w: candidate %q of proposal %d", store.ErrNotFound, offer, proposalID)
 	}
 	data, err := s.media.Get(ctx, chosen.Key)
 	if err != nil {
-		return "", fmt.Errorf("read candidate %d of proposal %d: %w", position, proposalID, err)
+		return "", fmt.Errorf("read candidate %q of proposal %d: %w", offer, proposalID, err)
 	}
 	key, err := s.setProcessed(ctx, id, data)
 	if err != nil {

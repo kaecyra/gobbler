@@ -55,8 +55,8 @@ func (f *fakeRemover) Remove(_ context.Context, keys []string) {
 
 func addCandidate(t *testing.T, d *sql.DB, token, key string) {
 	t.Helper()
-	_, err := d.Exec(`INSERT INTO draft_candidates (household_id, proposal_id, position, source_url, key, width, height)
-		SELECT household_id, id, 1, 'https://img.test/a.jpg', ?, 1066, 300 FROM proposals WHERE token = ?`, key, token)
+	_, err := d.Exec(`INSERT INTO draft_candidates (household_id, proposal_id, offer, position, source_url, key, width, height)
+		SELECT household_id, id, lower(hex(randomblob(11))), 1, 'https://img.test/a.jpg', ?, 1066, 300 FROM proposals WHERE token = ?`, key, token)
 	if err != nil {
 		t.Fatal(err)
 	}

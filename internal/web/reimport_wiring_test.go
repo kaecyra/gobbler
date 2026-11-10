@@ -76,8 +76,8 @@ func TestAnMCPEditProposalSupersedingAReimportLeavesNoCandidates(t *testing.T) {
 	if err := m.Put(ctx, key, []byte("candidate"), "image/webp"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Exec(`INSERT INTO draft_candidates (household_id, proposal_id, position, source_url, key, width, height)
-		SELECT household_id, id, 1, 'https://img.test/a.jpg', ?, 1066, 300 FROM proposals WHERE token = ?`, key, token); err != nil {
+	if _, err := d.Exec(`INSERT INTO draft_candidates (household_id, proposal_id, offer, position, source_url, key, width, height)
+		SELECT household_id, id, lower(hex(randomblob(11))), 1, 'https://img.test/a.jpg', ?, 1066, 300 FROM proposals WHERE token = ?`, key, token); err != nil {
 		t.Fatal(err)
 	}
 

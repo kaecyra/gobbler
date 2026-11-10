@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
+	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 	webpicture "github.com/kaecyra/gobbler/internal/web/picture"
 )
@@ -25,7 +25,7 @@ const (
 
 // pickOption is one candidate in the picker.
 type pickOption struct {
-	// Value is the radio's value: the candidate's position.
+	// Value is the radio's value: the candidate's offer ID (ADR-00052).
 	Value         string
 	Src           string
 	Width, Height int
@@ -52,7 +52,7 @@ type pickerView struct {
 // picker builds the picker for d. A draft with candidates starts with no
 // choice, and confirm refuses until one is made.
 func (h *handler) picker(ctx context.Context, d apiingest.Draft) (pickerView, error) {
-	v := pickerView{NoneChecked: d.Picture == apiingest.PictureNone || (d.Candidates == 0 && d.Reimport == nil)}
+	v := pickerView{NoneChecked: d.Picture == apiingest.PictureNone || (len(d.Candidates) == 0 && d.Reimport == nil)}
 	if d.Reimport != nil {
 		// Keeping the picture is the default, so no choice is ever missing.
 		v.Keep = true
@@ -66,7 +66,7 @@ func (h *handler) picker(ctx context.Context, d apiingest.Draft) (pickerView, er
 		}
 	}
 	v.Chosen = v.NoneChecked || v.KeepChecked
-	if d.Candidates == 0 {
+	if len(d.Candidates) == 0 {
 		return v, nil
 	}
 	cs, err := h.recipes.Candidates(ctx, caller.FromContext(ctx), d.ProposalID)
@@ -74,10 +74,10 @@ func (h *handler) picker(ctx context.Context, d apiingest.Draft) (pickerView, er
 		return pickerView{}, fmt.Errorf("read picture candidates: %w", err)
 	}
 	for _, c := range cs {
-		checked := d.Picture == apiingest.PictureChoice(c.Position)
+		checked := d.Picture == apiingest.PictureChoice(c.Offer)
 		v.Chosen = v.Chosen || checked
 		v.Options = append(v.Options, pickOption{
-			Value: strconv.Itoa(c.Position), Src: webpicture.CandidateSrc(d.ProposalID, c.Position),
+			Value: c.Offer, Src: webpicture.CandidateSrc(d.ProposalID, c.Offer),
 			Width: c.Width, Height: c.Height, Checked: checked,
 		})
 	}
@@ -85,8 +85,9 @@ func (h *handler) picker(ctx context.Context, d apiingest.Draft) (pickerView, er
 }
 
 // choosePicture keeps the choice posted with the review form on the draft, and
-// on base. No value leaves the draft as it is. A value that is not "none" or a
-// whole position, or a position the draft has no candidate for, is a bad request.
+// on base. No value leaves the draft as it is. A value that is not "none",
+// "keep" or the shape of an offer ID, or an ID the draft has no candidate for,
+// is a bad request.
 func (h *handler) choosePicture(ctx context.Context, token, value string, base *apiingest.Draft) error {
 	if value == "" {
 		return nil
@@ -95,11 +96,10 @@ func (h *handler) choosePicture(ctx context.Context, token, value string, base *
 	if value == pictureKeep {
 		choice = apiingest.PictureKeep
 	} else if value != pictureNone {
-		n, err := strconv.Atoi(value)
-		if err != nil || n < 1 {
+		if !apirecipes.ValidOfferID(value) {
 			return fmt.Errorf("picture %q: %w", value, layout.ErrInvalid)
 		}
-		choice = apiingest.PictureChoice(n)
+		choice = apiingest.PictureChoice(value)
 	}
 	if choice == base.Picture || (choice == apiingest.PictureKeep && base.Picture == apiingest.PictureUnchosen && base.Reimport != nil) {
 		return nil

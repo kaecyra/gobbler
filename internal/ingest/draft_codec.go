@@ -124,7 +124,7 @@ type docDraft struct {
 	Total       docField[int64]    `json:"total"`
 
 	VideoID  string       `json:"video_id,omitempty"`
-	Picture  int          `json:"picture,omitempty"`
+	Picture  string       `json:"picture,omitempty"`
 	Reimport *docReimport `json:"reimport,omitempty"`
 	MealType string       `json:"meal_type,omitempty"`
 	// MealTypeLLM and CuisineLLM mark an agent's revision of them (ADR-00048);
@@ -197,7 +197,7 @@ func EncodeDraft(d Draft) ([]byte, error) {
 		Prep:        docField[int64]{int64(d.Prep.Value), d.Prep.Confidence, d.Prep.FromLLM},
 		Cook:        docField[int64]{int64(d.Cook.Value), d.Cook.Confidence, d.Cook.FromLLM},
 		Total:       docField[int64]{int64(d.Total.Value), d.Total.Confidence, d.Total.FromLLM},
-		VideoID:     d.VideoID, Picture: int(d.Picture), MealType: string(d.MealType), SpiceLevel: d.SpiceLevel, Cuisine: string(d.Cuisine),
+		VideoID:     d.VideoID, Picture: string(d.Picture), MealType: string(d.MealType), SpiceLevel: d.SpiceLevel, Cuisine: string(d.Cuisine),
 		MealTypeLLM: d.MealTypeFromLLM, CuisineLLM: d.CuisineFromLLM,
 		Overall: d.Overall, Threshold: d.Threshold, BelowThreshold: d.BelowThreshold,
 		UsedLLM: d.UsedLLM, LLMError: d.LLMError, Issues: d.Issues, Proposed: d.Proposed,

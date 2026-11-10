@@ -201,8 +201,8 @@ func TestFetchCandidatesDropsFailuresAndKeepsTheRest(t *testing.T) {
 		t.Fatalf("candidates = %+v, want a.png then b.png", got)
 	}
 	for i, c := range got {
-		if want := fmt.Sprintf("drafts/%d/%d.webp", id, i+1); c.Key != want || c.Position != i+1 {
-			t.Errorf("candidate %d = %+v, want key %s", i, c, want)
+		if want := fmt.Sprintf("drafts/%d/%s.webp", id, c.Offer); !picture.ValidOfferID(c.Offer) || c.Key != want || c.Position != i+1 {
+			t.Errorf("candidate %d = %+v, want an offer ID, key %s and position %d", i, c, want, i+1)
 		}
 		if !e.has(t, c.Key) {
 			t.Errorf("object %s is not stored", c.Key)
@@ -212,8 +212,19 @@ func TestFetchCandidatesDropsFailuresAndKeepsTheRest(t *testing.T) {
 		}
 	}
 	listed, err := e.svc.Candidates(e.ctx, id)
-	if err != nil || len(listed) != 2 {
-		t.Fatalf("Candidates = %v, %v; want the two stored", listed, err)
+	if err != nil || len(listed) != 2 || listed[0].Offer != got[0].Offer || listed[1].Offer != got[1].Offer {
+		t.Fatalf("Candidates = %v, %v; want the two stored, with their IDs", listed, err)
+	}
+	// A second fetch draws new IDs, so no choice made before it names one of
+	// its candidates (ADR-00052).
+	again, err := e.svc.FetchCandidates(e.ctx, id, []string{srv.URL + "/b.png", srv.URL + "/a.png"})
+	if err != nil || len(again) != 2 {
+		t.Fatalf("second FetchCandidates = %v, %v", again, err)
+	}
+	for _, c := range again {
+		if _, reused := picture.FindCandidate(got, c.Offer); reused {
+			t.Errorf("second fetch reused ID %q", c.Offer)
+		}
 	}
 }
 
@@ -337,7 +348,10 @@ func TestPromoteMovesTheChosenCandidateAndClearsTheDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := e.svc.Promote(e.ctx, pid, 2, rid)
+	if _, err := e.svc.Promote(e.ctx, pid, "AAAAAAAAAAAAAAAAAAAAAA", rid); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("Promote of an ID that is not a candidate = %v, want ErrNotFound", err)
+	}
+	key, err := e.svc.Promote(e.ctx, pid, cs[1].Offer, rid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -650,7 +664,10 @@ func TestChooseRefusesBytesThatAreNotAnImage(t *testing.T) {
 	}
 }
 
-func TestPromoteWaitsForAFetchOnTheSameDraft(t *testing.T) {
+// A choice names its candidate by ID (ADR-00052), so a Promote that waits out
+// a fetch replacing the draft's candidates finds its choice gone and refuses,
+// rather than promoting whatever the fetch put in the same place.
+func TestPromoteWaitsForAFetchAndRefusesTheCandidateItReplaced(t *testing.T) {
 	e := newEnv(t)
 	a, b := pic(t, 1200, 400, 3), pic(t, 1200, 400, 5)
 	var slow sync.Once
@@ -664,52 +681,35 @@ func TestPromoteWaitsForAFetchOnTheSameDraft(t *testing.T) {
 	}))
 	defer srv.Close()
 	pid := e.draft(t)
-	if cs, err := e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/a.png"}); err != nil || len(cs) != 1 {
-		t.Fatalf("setup: %v, %v", cs, err)
+	old, err := e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/a.png"})
+	if err != nil || len(old) != 1 {
+		t.Fatalf("setup: %v, %v", old, err)
 	}
 	rid := e.recipe(t, "")
-	done := make(chan []picture.Candidate)
+	type result struct {
+		cs  []picture.Candidate
+		err error
+	}
+	done := make(chan result)
 	go func() {
-		cs, _ := e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/b.png"}) // replaces the candidates with b
-		done <- cs
+		cs, err := e.svc.FetchCandidates(e.ctx, pid, []string{srv.URL + "/b.png"}) // replaces the candidates with b
+		done <- result{cs, err}
 	}()
 	time.Sleep(100 * time.Millisecond) // the fetch is now downloading b
-	key, err := e.svc.Promote(e.ctx, pid, 1, rid)
+	_, err = e.svc.Promote(e.ctx, pid, old[0].Offer, rid)
 	fetched := <-done
-	if err != nil {
-		t.Fatalf("Promote during a fetch = %v; it must wait for the fetch and promote its result", err)
+	if fetched.err != nil || len(fetched.cs) != 1 {
+		t.Fatalf("fetch = %v, %v", fetched.cs, fetched.err)
 	}
-	if len(fetched) != 1 {
-		t.Fatalf("fetch = %v", fetched)
+	if !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("Promote of a candidate the fetch replaced = %v, want ErrNotFound", err)
 	}
-	got, err := e.media.Get(context.Background(), key)
-	if err != nil {
-		t.Fatal(err)
+	if _, ok, _ := e.svc.Key(e.ctx, rid); ok {
+		t.Error("the recipe has a picture; the refused Promote must set none")
 	}
-	d, err := media.Decode(got)
-	if err != nil {
-		t.Fatal(err)
+	if fetched.cs[0].Offer == old[0].Offer || !e.has(t, fetched.cs[0].Key) {
+		t.Errorf("fetched candidate = %+v; want a new ID and its object kept", fetched.cs[0])
 	}
-	want, _ := media.Decode(b)
-	wp, _ := media.Picture(want.Image)
-	wd, _ := media.Decode(wp)
-	if pixelsDiffer(d.Image, wd.Image) {
-		t.Error("the promoted picture is not the one the fetch stored")
-	}
-}
-
-func pixelsDiffer(a, b image.Image) bool {
-	if a.Bounds() != b.Bounds() {
-		return true
-	}
-	for y := a.Bounds().Min.Y; y < a.Bounds().Max.Y; y += 17 {
-		for x := a.Bounds().Min.X; x < a.Bounds().Max.X; x += 17 {
-			if a.At(x, y) != b.At(x, y) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // agentFetcher records the User-Agent of each request and answers with a

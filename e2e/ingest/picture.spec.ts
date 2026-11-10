@@ -164,16 +164,20 @@ test('the choice survives the form being shown again', async ({ page: p }) => {
   await expect(picker(p).getByRole('radio', { name: /1024 × 341/ })).toBeChecked();
 });
 
-test('a picture position the draft does not have is refused as a bad request', async ({ page: p }) => {
-  await review(p, '/with-pictures');
-  await picker(p).locator('.pick').first().click();
-  await picker(p).getByRole('radio').first().evaluate((r: HTMLInputElement) => (r.value = '99'));
-  const [res] = await Promise.all([
-    p.waitForResponse((r) => r.url().endsWith('/confirm')),
-    p.getByRole('button', { name: 'Confirm and save' }).first().click(),
-  ]);
-  expect(res.status()).toBe(400);
-});
+// A candidate is named by its ID, never its position (ADR-00052): a position,
+// or an ID the draft does not have, is refused.
+for (const value of ['1', 'AAAAAAAAAAAAAAAAAAAAAA']) {
+  test(`a picture value the draft has no candidate for (${value}) is refused as a bad request`, async ({ page: p }) => {
+    await review(p, '/with-pictures');
+    await picker(p).locator('.pick').first().click();
+    await picker(p).getByRole('radio').first().evaluate((r: HTMLInputElement, v: string) => (r.value = v), value);
+    const [res] = await Promise.all([
+      p.waitForResponse((r) => r.url().endsWith('/confirm')),
+      p.getByRole('button', { name: 'Confirm and save' }).first().click(),
+    ]);
+    expect(res.status()).toBe(400);
+  });
+}
 
 test('a page with no pictures offers only No picture, and it saves', async ({ page: p }) => {
   await review(p, '/without-pictures');

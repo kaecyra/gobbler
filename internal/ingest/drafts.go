@@ -107,7 +107,9 @@ func (d *Drafts) Get(ctx context.Context, token string) (Draft, error) {
 		if err != nil {
 			return Draft{}, fmt.Errorf("read draft's picture candidates: %w", err)
 		}
-		dr.Candidates = len(cs)
+		for _, c := range cs {
+			dr.Candidates = append(dr.Candidates, c.Offer)
+		}
 	}
 	return dr, nil
 }

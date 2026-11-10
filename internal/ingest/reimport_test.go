@@ -32,11 +32,11 @@ func newReimportEnv(t *testing.T) *reimportEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, _ := e.hold(t, d)
-	if err := e.drafts.ChoosePicture(e.ctx, token, 1); err != nil {
+	token, held := e.hold(t, d)
+	if err := e.drafts.ChoosePicture(e.ctx, token, held.first()); err != nil {
 		t.Fatal(err)
 	}
-	held, _ := e.drafts.Get(e.ctx, token)
+	held, _ = e.drafts.Get(e.ctx, token)
 	saved, err := e.keeper.SaveProposed(e.ctx, token, confirm(t, held))
 	if err != nil || saved.PictureErr != nil {
 		t.Fatalf("first import = %v, picture %v", err, saved.PictureErr)
@@ -90,8 +90,8 @@ func TestStartHoldsTheWholeDraftWithoutTheLLMAndKeepsThePicture(t *testing.T) {
 	if held.Reimport == nil || held.Reimport.RecipeID != e.recipeID || held.Reimport.BaseVersion != 1 {
 		t.Errorf("Reimport = %+v, want recipe %d at version 1", held.Reimport, e.recipeID)
 	}
-	if held.Picture != PictureKeep || held.Candidates != 2 {
-		t.Errorf("picture %d, candidates %d; want Keep current and 2 candidates", held.Picture, held.Candidates)
+	if held.Picture != PictureKeep || len(held.Candidates) != 2 {
+		t.Errorf("picture %q, candidates %q; want Keep current and 2 candidates", held.Picture, held.Candidates)
 	}
 	if _, err := Confirm(held); err != nil {
 		t.Errorf("a re-import that chose nothing must confirm on Keep current: %v", err)
@@ -133,11 +133,11 @@ func TestSavingWithTheDefaultLeavesThePictureAndReplacesTheRecipe(t *testing.T) 
 func TestSavingWithACandidateReplacesThePictureAndDeletesThePreviousObject(t *testing.T) {
 	e := newReimportEnv(t)
 	before := e.picture(t)
-	token, _ := e.start(t)
-	if err := e.drafts.ChoosePicture(e.ctx, token, 2); err != nil {
+	token, held := e.start(t)
+	if err := e.drafts.ChoosePicture(e.ctx, token, PictureChoice(held.Candidates[1])); err != nil {
 		t.Fatal(err)
 	}
-	held, _ := e.drafts.Get(e.ctx, token)
+	held, _ = e.drafts.Get(e.ctx, token)
 	if saved, err := e.keeper.SaveProposed(e.ctx, token, confirm(t, held)); err != nil || saved.PictureErr != nil {
 		t.Fatalf("SaveProposed = %v, picture %v", err, saved.PictureErr)
 	}

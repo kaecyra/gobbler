@@ -701,8 +701,8 @@ func TestSweepWithPicturesRemovesPrunedDraftsCandidates(t *testing.T) {
 			t.Fatal(err)
 		}
 		key := fmt.Sprintf("drafts/%d/1.webp", p.ID)
-		if _, err := d.Exec(`INSERT INTO draft_candidates (household_id, proposal_id, position, source_url, key, width, height)
-			SELECT household_id, id, 1, 'https://example.test/a.jpg', ?, 1200, 400 FROM proposals WHERE token = ?`, key, token); err != nil {
+		if _, err := d.Exec(`INSERT INTO draft_candidates (household_id, proposal_id, offer, position, source_url, key, width, height)
+			SELECT household_id, id, lower(hex(randomblob(11))), 1, 'https://example.test/a.jpg', ?, 1200, 400 FROM proposals WHERE token = ?`, key, token); err != nil {
 			t.Fatal(err)
 		}
 		return key
