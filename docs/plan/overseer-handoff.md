@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-10, wave 13 round 1 in flight
+# Overseer handoff: 2026-11-10, wave 13 round 1: #615 in flight, #606 awaiting the owner
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -6,16 +6,23 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 ## Wave 13 round 1 (2026-11-10, evening)
 
-**In flight** (workers dispatched, no PRs yet):
+**Merged this round** (standing authority, each review-clean):
 
-| Node | Issue | Worktree | Branch | Migration |
-|---|---|---|---|---|
-| c-cuisine-asian-bbq | #609 | .claude/worktrees/wt-609 | feat/609-cuisine-asian-bbq | schema 00039 (drawn earlier in #610) |
-| s-settings-store | #618 | .claude/worktrees/wt-618 | feat/618-settings-store | file `99999_s-settings-store.sql`; numbered at merge (00040 if #609 lands first) |
+| What | PR | SHA |
+|---|---|---|
+| chore(plan): c-cuisine-asian-bbq owns internal/store/recipe_fields_test.go | #622 | 71f4a36 |
+| feat(recipe): Asian and BBQ cuisines (c-cuisine-asian-bbq, migration 00039) | #623 | ae72d3d |
+| feat(settings): integration settings store (s-settings-store, migration 00040) | #624 | ce5a56e |
 
-**Scope move (dispatcher):** removing `GOBBLER_LLM_*`, `GOBBLER_ANTHROPIC_API_KEY` and `GOBBLER_GEMINI_API_KEY` (ADR-00057 obligation 6, LLM half of 7) moved from #618 to #616. Their readers (`internal/web/ingest`, `e2e/ingest/retry.spec.ts`, `compose.yaml`) are outside #618's lane, and removing them early would switch LLM ingestion off until #616 lands. Comments are on both issues, and notes are on both nodes. **Before dispatching #616, widen its lane with `internal/web/ingest/**` and `e2e/ingest/**`** (a dispatcher PR).
+**In flight:** e-invite-email (#615), worktree `.claude/worktrees/wt-615`, branch `feat/615-invite-email`, migration placeholder `99999_e-invite-email.sql` (numbered at merge; 00041 if nothing else lands first), VERSION 0.145.0.
 
-**Next three:** p-photo-vision-ocr (#606) after #609 merges; e-invite-email (#615) after #618 merges; then l-llm-provider-config (#616) after both, with the lane widening above.
+**Blocked on the owner:** p-photo-vision-ocr (#606). Question: is the tesseract text stored beside the vision transcript (a new snapshot kind, so a migration) or not? Asked as odette inbox item `ib-c4bf3def1d1e`, recommendation: store. The other two ADR-00053 points are settled as the issue proposes: a transcription failure is logged and drafts from tesseract; a photo over 7.5 MB gets tesseract alone. Record the answer, `node.ts unblock`, and add `needs-migration schema` if it is store.
+
+**Scope move (dispatcher):** removing `GOBBLER_LLM_*`, `GOBBLER_ANTHROPIC_API_KEY` and `GOBBLER_GEMINI_API_KEY` (ADR-00057 obligation 6, LLM half of 7) moved from #618 to #616. Comments are on both issues and notes are on both nodes. **Before dispatching #616, widen its lane with `internal/web/ingest/**` and `e2e/ingest/**`** (a dispatcher PR).
+
+**Next three:** p-photo-vision-ocr (#606) once answered; then l-llm-provider-config (#616) after #606 and the lane PR (it shares `internal/settings/**`, `internal/web/settings/**` and `e2e/operator/**` with #615, so it goes after #615); then u-llm-usage-cost (#619).
+
+**Notes:** PR bodies carry no AI attribution (git-workflow rule), and the review prompt template is at `.cc-scratch/review-prompt-template.md` (fill `{{PR_NUMBER}}`). `gh pr merge --delete-branch` run host-side also removes the local worktree.
 
 ## Wave 13 decisions and landings (2026-11-10, late)
 
