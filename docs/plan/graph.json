@@ -4716,7 +4716,7 @@
       "wave": 13,
       "track": null,
       "issue": 586,
-      "status": "todo",
+      "status": "merged",
       "depends_on": [
         "e-flake-ingest-cancel"
       ],
@@ -6236,6 +6236,12 @@
       "id": "e-flake-ingest-cancel",
       "title": "ingest cancel e2e spec flakes in CI",
       "merged": "6b0d983"
+    },
+    {
+      "id": "d-reimport-reason",
+      "title": "a proposal's reason is only an agent's words; drop the agent-revised mark",
+      "merged": "1960be7",
+      "note": "Owner ruling 2026-11-10 (ADR-00048 and ADR-00049 amended, ADR-00035 already defines it): reason is only ever an agent's own words. Re-import stops writing 'Re-imported from <host>'; History builds that line from the re-import marker and the saved version's source address. The /ingest 'Revised by an agent' mark and list_recipe_drafts' revised flag are removed. import_recipe and create_recipe_draft take an optional reason. One data migration clears the stored re-import sentence from existing rows."
     }
   ],
   "adr_sequence": {

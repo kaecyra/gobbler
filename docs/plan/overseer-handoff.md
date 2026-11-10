@@ -49,7 +49,7 @@ These merged after round 28 closed, but this file was not updated as they landed
 
 **Merged later on 2026-11-10:** e-flake-avatar-crop (#600, f1b52b7, 0.141.3) and e-flake-ingest-cancel (#601, 6b0d983, 0.141.4). #601 also fixed the same race in `openSaved`, after a lane widening (#602).
 
-**#586 ruled** (#599): a proposal's reason is only ever an agent's own words. ADR-00048 and ADR-00049 are amended. d-reimport-reason is unblocked and dispatched next.
+**#586 ruled** (#599): a proposal's reason is only ever an agent's own words. ADR-00048 and ADR-00049 are amended. d-reimport-reason merged as #603 (1960be7, 0.141.5), after two review rounds: the migration's filter now matches only the exact sentence the app wrote, and a test pins History's host to the saved version. Lane corrections #604 and #605 (the latter: I left reimport_test.go out when writing the lane). Nothing in flight.
 
 **Known test weakness, no issue yet:** "a proposed new ingredient is offered as new…" (`e2e/ingest/ingest.spec.ts:335`) fails under `--repeat-each`, because its first run creates the catalog ingredient. A single run passes.
 
