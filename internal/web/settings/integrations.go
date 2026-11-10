@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -70,37 +69,37 @@ func (i Integrations) field(integration, name string) (store.Field, SecretField,
 const maxFormBytes = store.MaxValueBytes*3 + 1024
 
 func (h *handler) saveSecret(w http.ResponseWriter, r *http.Request) {
-	f, label, ok := h.Integrations.field(chi.URLParam(r, "integration"), chi.URLParam(r, "field"))
+	f, field, ok := h.Integrations.field(chi.URLParam(r, "integration"), chi.URLParam(r, "field"))
 	if !ok {
 		layout.WriteError(w, r, layout.ErrNotFound)
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 	if err := r.ParseForm(); err != nil {
-		h.secretOutcome(w, r, http.StatusBadRequest, f, label, "That value could not be read.")
+		h.secretOutcome(w, r, http.StatusBadRequest, "That value could not be read.")
 		return
 	}
 	value := r.PostForm.Get("value")
 	err := h.Integrations.Store.SetSecret(r.Context(), f, value)
 	switch {
 	case err == nil:
-		h.secretOutcome(w, r, http.StatusOK, f, label, "")
+		h.secretOutcome(w, r, http.StatusOK, "")
 	case errors.Is(err, store.ErrNoKey):
-		h.secretOutcome(w, r, http.StatusUnprocessableEntity, f, label,
-			label.Label+" was not saved: the encryption key is missing. Set the encryption key in the environment and restart.")
+		h.secretOutcome(w, r, http.StatusUnprocessableEntity,
+			field.Label+" was not saved: the encryption key is missing. Set the encryption key in the environment and restart.")
 	case errors.Is(err, store.ErrInvalid):
 		msg := "Enter a value first."
 		if value != "" {
 			msg = "That value is too long."
 		}
-		h.secretOutcome(w, r, http.StatusUnprocessableEntity, f, label, msg)
+		h.secretOutcome(w, r, http.StatusUnprocessableEntity, msg)
 	default:
 		layout.WriteError(w, r, fmt.Errorf("save %s %s: %w", f.Integration, f.Name, err))
 	}
 }
 
 func (h *handler) clearSecret(w http.ResponseWriter, r *http.Request) {
-	f, label, ok := h.Integrations.field(chi.URLParam(r, "integration"), chi.URLParam(r, "field"))
+	f, _, ok := h.Integrations.field(chi.URLParam(r, "integration"), chi.URLParam(r, "field"))
 	if !ok {
 		layout.WriteError(w, r, layout.ErrNotFound)
 		return
@@ -109,20 +108,24 @@ func (h *handler) clearSecret(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
-	h.secretOutcome(w, r, http.StatusOK, f, label, "")
+	h.secretOutcome(w, r, http.StatusOK, "")
 }
 
 // secretOutcome answers a secret request. A browser without script gets the
 // whole page back (or a redirect after a success); HTMX gets the integrations
 // section. A refusal is a 200 for HTMX, which does not swap a 4xx, and carries
 // the message in the section.
-func (h *handler) secretOutcome(w http.ResponseWriter, r *http.Request, status int, _ store.Field, _ SecretField, problem string) {
+func (h *handler) secretOutcome(w http.ResponseWriter, r *http.Request, status int, problem string) {
 	htmx := r.Header.Get("HX-Request") == "true"
 	if problem == "" && !htmx {
 		http.Redirect(w, r, Pattern, http.StatusSeeOther)
 		return
 	}
-	v := h.integrationsView(r.Context(), problem)
+	v, err := h.integrationsView(r.Context(), problem)
+	if err != nil {
+		layout.WriteError(w, r, err)
+		return
+	}
 	if htmx {
 		layout.Render(w, r, http.StatusOK, integrationsSection(v))
 		return
@@ -159,19 +162,19 @@ type secretView struct {
 	Action, ClearAction string
 }
 
-func (h *handler) integrationsView(ctx context.Context, problem string) integrationsView {
+func (h *handler) integrationsView(ctx context.Context, problem string) (integrationsView, error) {
 	v := integrationsView{Problem: problem}
 	if h.Integrations.Store == nil {
-		return v
+		return v, nil
 	}
 	for _, s := range h.Integrations.Sections {
 		sv := sectionView{Integration: s.Integration, Title: s.Title}
 		for _, f := range s.Secrets {
 			st, err := h.Integrations.Store.SecretState(ctx, store.Field{Integration: s.Integration, Name: f.Name})
 			if err != nil {
-				// The page still renders; the field shows as not set and
-				// the failure is in the log.
-				slog.ErrorContext(ctx, "read integration secret state", "integration", s.Integration, "field", f.Name, "error", err.Error())
+				// A failed read is not an unset secret: showing "Not set" would
+				// invite overwriting one that may be stored.
+				return integrationsView{}, fmt.Errorf("read state of %s %s: %w", s.Integration, f.Name, err)
 			}
 			sec := secretView{
 				Name: f.Name, Label: f.Label, State: stateUnset,
@@ -188,5 +191,5 @@ func (h *handler) integrationsView(ctx context.Context, problem string) integrat
 		}
 		v.Sections = append(v.Sections, sv)
 	}
-	return v
+	return v, nil
 }

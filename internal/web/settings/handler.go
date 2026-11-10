@@ -79,7 +79,12 @@ type handler struct {
 }
 
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
-	layout.Render(w, r, http.StatusOK, settingsPage(h.view(outcomeNone), h.integrationsView(r.Context(), "")))
+	iv, err := h.integrationsView(r.Context(), "")
+	if err != nil {
+		layout.WriteError(w, r, err)
+		return
+	}
+	layout.Render(w, r, http.StatusOK, settingsPage(h.view(outcomeNone), iv))
 }
 
 func (h *handler) backupNow(w http.ResponseWriter, r *http.Request) {

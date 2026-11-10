@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -181,5 +182,34 @@ func TestUnregisteredFieldIs404(t *testing.T) {
 		if rec := post(h, target, false, "x"); rec.Code != http.StatusNotFound {
 			t.Errorf("%s = %d, want 404", target, rec.Code)
 		}
+	}
+}
+
+// failingStore cannot read a secret's state.
+type failingStore struct{ SecretStore }
+
+func (failingStore) SecretState(context.Context, store.Field) (store.State, error) {
+	return store.StateUnset, errors.New("database is locked")
+}
+
+// A failed read is not an unset secret: the page answers 500 and never shows
+// "Not set", which would invite overwriting a secret that may be stored.
+func TestFailedStateReadIsNotShownAsNotSet(t *testing.T) {
+	_, s := integrationsHandler(t, bytes.Repeat([]byte{1}, store.KeyBytes))
+	h := Routes(Deps{Backup: &fakeBackup{}, Integrations: Integrations{Store: failingStore{s}, Sections: []Section{testSection}}})
+	for name, rec := range map[string]*httptest.ResponseRecorder{
+		"page":         serve(h, http.MethodGet, "/", false),
+		"htmx save":    post(h, "/secrets/mail/password", true, "x"),
+		"refused save": post(h, "/secrets/mail/password", false, ""),
+	} {
+		if rec.Code != http.StatusInternalServerError && rec.Code != http.StatusSeeOther {
+			t.Errorf("%s: status %d, want 500", name, rec.Code)
+		}
+		if strings.Contains(rec.Body.String(), "Not set") || strings.Contains(rec.Body.String(), "database is locked") {
+			t.Errorf("%s: shows a default or the raw error:\n%s", name, rec.Body)
+		}
+	}
+	if rec := serve(h, http.MethodGet, "/", false); rec.Code != http.StatusInternalServerError {
+		t.Errorf("page status %d, want 500", rec.Code)
 	}
 }
