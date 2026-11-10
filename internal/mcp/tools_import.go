@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -70,7 +69,7 @@ func (t *tools) importRecipe(ctx context.Context, _ *mcp.CallToolRequest, in imp
 		return nil, draftOut{}, t.toolError(ctx, tool, err)
 	}
 	rawURL, text := strings.TrimSpace(in.URL), strings.TrimSpace(in.Text)
-	reason, err := checkedReason(in.Reason)
+	reason, err := reasonOf(in.Reason)
 	if err != nil {
 		return nil, draftOut{}, err
 	}
@@ -114,7 +113,7 @@ func (t *tools) createRecipeDraft(ctx context.Context, _ *mcp.CallToolRequest, i
 	}
 	name := strings.TrimSpace(in.Name)
 	name = oneLine(name)
-	reason, err := checkedReason(in.Reason)
+	reason, err := reasonOf(in.Reason)
 	if err != nil {
 		return nil, draftOut{}, err
 	}
@@ -197,16 +196,6 @@ func (t *tools) hold(ctx context.Context, tool string, c Credential, h apihouseh
 		}
 	}
 	return nil, draftOut{ReviewPath: ReviewPath + token, Name: d.Name.Value, LowConfidence: low, Note: draftNote, sameSourceOut: same}, nil
-}
-
-// checkedReason is an optional reason as one line, refused when it is longer
-// than revise_recipe_draft and propose_recipe_edit allow. Empty is no reason.
-func checkedReason(raw string) (string, error) {
-	reason := oneLine(raw)
-	if utf8.RuneCountInString(reason) > maxReason {
-		return "", refuse("the reason is too long: at most %d characters", maxReason)
-	}
-	return reason, nil
 }
 
 // oneLine collapses every run of whitespace, newlines included, to one space,
