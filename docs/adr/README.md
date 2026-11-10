@@ -53,7 +53,7 @@ index below in the same commit.
 | [00036](00036-rate-limits-on-public-oauth-endpoints.md) | The public OAuth endpoints are rate-limited per client address, and unused client registrations have a ceiling | Accepted |
 | [00037](00037-notes-are-editable.md) | A note is a household scratchpad: its body is edited in place and it can be deleted | Accepted |
 | [00038](00038-editor-morphs-the-server-rendered-form.md) | The recipe editor morphs the server-rendered form in place | Accepted |
-| [00039](00039-recipe-pictures.md) | A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header | Amended by [00040](00040-loopback-fetches-under-the-dev-bypass.md), [00042](00042-reimport.md), [00050](00050-picture-candidates-fall-back-to-1x.md), [00051](00051-edit-page-picture-picker.md) |
+| [00039](00039-recipe-pictures.md) | A recipe's picture is chosen from its source page, kept as media, and shown on cards and the recipe header | Amended by [00040](00040-loopback-fetches-under-the-dev-bypass.md), [00042](00042-reimport.md), [00050](00050-picture-candidates-fall-back-to-1x.md), [00051](00051-edit-page-picture-picker.md), [00052](00052-draft-candidates-chosen-by-id.md) |
 | [00040](00040-loopback-fetches-under-the-dev-bypass.md) | The fetch guard admits loopback only while the dev auth bypass is on | Accepted |
 | [00041](00041-author-notes.md) | A recipe keeps its author's notes as a short list that follows the steps | Amended by [00044](00044-author-note-length-flagged.md), [00045](00045-author-notes-apart-from-steps.md) |
 | [00042](00042-reimport.md) | A saved recipe with a source URL is re-imported through ingestion's review screen, and saving writes a new revision | Accepted |
@@ -66,6 +66,7 @@ index below in the same commit.
 | [00049](00049-pending-drafts-listed-and-counted.md) | Pending import drafts are listed on the import page and counted in the menu | Accepted |
 | [00050](00050-picture-candidates-fall-back-to-1x.md) | Picture candidates prefer 2x and fall back to 1x when none meets it | Accepted |
 | [00051](00051-edit-page-picture-picker.md) | A saved recipe's picture is chosen on its edit page, from a search of its source page or an upload | Accepted |
+| [00052](00052-draft-candidates-chosen-by-id.md) | A draft's picture candidates are chosen by an ID of their own | Accepted |
 
 ## What needs one
 
