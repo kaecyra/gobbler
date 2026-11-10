@@ -66,3 +66,13 @@ func TestQualifierKindValid(t *testing.T) {
 		t.Error("empty kind should be invalid")
 	}
 }
+
+func TestQualifierKindLabel(t *testing.T) {
+	for k, want := range map[QualifierKind]string{
+		QualPreparation: "Preparation", QualState: "State", QualForm: "Form", QualNote: "Note", "": "", "colour": "",
+	} {
+		if got := k.Label(); got != want {
+			t.Errorf("QualifierKind(%q).Label() = %q, want %q", k, got, want)
+		}
+	}
+}

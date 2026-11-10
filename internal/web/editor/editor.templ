@@ -814,7 +814,7 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 						<label for={ lField(ci, li, "rule") }>Scaling</label>
 						<select id={ lField(ci, li, "rule") } name={ lField(ci, li, "rule") }>
 							for _, r := range ruleOptions() {
-								<option value={ r } selected?={ l.ruleIs(r) }>{ r }</option>
+								<option value={ string(r) } selected?={ l.ruleIs(r) }>{ r.Label() }</option>
 							}
 						</select>
 					</div>
@@ -840,7 +840,7 @@ templ lineFields(v view, ci, li, count int, l lineDraft) {
 								<label class="sr" for={ qField(ci, li, qi, "kind") }>Qualifier { n1(qi) } kind</label>
 								<select id={ qField(ci, li, qi, "kind") } name={ qField(ci, li, qi, "kind") }>
 									for _, k := range qualKinds() {
-										<option value={ k } selected?={ q.Kind == k }>{ k }</option>
+										<option value={ string(k) } selected?={ q.Kind == string(k) }>{ k.Label() }</option>
 									}
 								</select>
 								<label class="sr" for={ qField(ci, li, qi, "text") }>Qualifier { n1(qi) } text</label>

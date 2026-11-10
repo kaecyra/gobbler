@@ -59,6 +59,21 @@ const (
 	QualNote QualifierKind = "note"
 )
 
+// Label is the name a page shows for k, empty for an unknown kind.
+func (k QualifierKind) Label() string {
+	switch k {
+	case QualPreparation:
+		return "Preparation"
+	case QualState:
+		return "State"
+	case QualForm:
+		return "Form"
+	case QualNote:
+		return "Note"
+	}
+	return ""
+}
+
 // Valid reports whether k is one of the four defined kinds.
 func (k QualifierKind) Valid() bool {
 	switch k {

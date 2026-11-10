@@ -26,6 +26,19 @@ const (
 	RuleToTaste Rule = "to_taste"
 )
 
+// Label is the name a page shows for r, empty for an unknown rule.
+func (r Rule) Label() string {
+	switch r {
+	case RuleLinear:
+		return "Scales"
+	case RuleFixed:
+		return "Fixed"
+	case RuleToTaste:
+		return "To taste"
+	}
+	return ""
+}
+
 // ParseRule validates a rule name and is the entry point for stored or
 // user-supplied text: only here does the empty string mean RuleLinear.
 func ParseRule(s string) (Rule, error) {
