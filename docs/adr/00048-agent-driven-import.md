@@ -173,6 +173,12 @@ second one from being held.
 > `get_recipe_draft`. Obligation 6's "the reason shows on the review screen" is
 > withdrawn.
 
+> Amended 2026-11-10 (#586): a proposal's reason is only ever an agent's own
+> words, as ADR-00035 defines it. `import_recipe` and `create_recipe_draft`
+> take an optional reason, stored with the draft; `revise_recipe_draft`
+> replaces it. `list_recipe_drafts` no longer reports whether an agent revised
+> a draft: the review screen's LLM marks show what an agent changed.
+
 ADR-00034's rule that every recipe write from MCP waits for review holds:
 `revise_recipe_draft` changes only a draft that is itself waiting for review.
 

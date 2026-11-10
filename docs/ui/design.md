@@ -251,8 +251,8 @@ equipment review was linked from nowhere.
 - **Waiting for review** on `/ingest`, above the import forms and only when a
   draft is waiting: one card-coloured row per draft, oldest first, with the
   name, then the source host ("Pasted text" or "Photo" when there is none) and
-  the age in muted text, and two tinted marks, "Re-import of …" (`--wattle-soft`)
-  and "Revised by an agent" (`--grain-soft`). The whole row links to the
+  the age in muted text, and a tinted "Re-import of …" mark
+  (`--wattle-soft`). The whole row links to the
   review page ([ADR-00049](../adr/00049-pending-drafts-listed-and-counted.md)).
 - **After a confirm or discard** the next draft's review page, or `/ingest`
   when none is left, opens with a page-level callout: "Saved" and the recipe's

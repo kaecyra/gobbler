@@ -4711,7 +4711,7 @@
     },
     {
       "id": "d-reimport-reason",
-      "title": "tell an agent's draft revision apart from a re-import's reason",
+      "title": "a proposal's reason is only an agent's words; drop the agent-revised mark",
       "wave": 13,
       "track": null,
       "issue": 586,
@@ -4723,17 +4723,22 @@
         "internal/ingest/reimport.go",
         "internal/ingest/drafts.go",
         "internal/store/**",
-        "internal/mcp/tools_drafts.go",
-        "internal/mcp/tools_edit.go",
         "internal/web/ingest/**",
         "internal/api/recipes/review.go",
         "internal/api/recipes/types.go",
         "e2e/ingest/**",
-        "internal/db/*_test.go"
+        "internal/db/*_test.go",
+        "internal/mcp/**",
+        "e2e/mcp/**",
+        "internal/web/history/**",
+        "e2e/history/**",
+        "internal/api/ingest/**",
+        "internal/web/editor/review_revision_test.go",
+        "internal/web/recipeview/reimport_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [],
-      "blocked": "needs a decision: a flag ReviseDraft alone sets, or the revision reason in its own column; either is a schema change (#586)"
+      "note": "Owner ruling 2026-11-10 (ADR-00048 and ADR-00049 amended, ADR-00035 already defines it): reason is only ever an agent's own words. Re-import stops writing 'Re-imported from <host>'; History builds that line from the re-import marker and the saved version's source address. The /ingest 'Revised by an agent' mark and list_recipe_drafts' revised flag are removed. import_recipe and create_recipe_draft take an optional reason. One data migration clears the stored re-import sentence from existing rows."
     }
   ],
   "shared_files": [
