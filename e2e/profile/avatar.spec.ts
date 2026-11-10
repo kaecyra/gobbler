@@ -45,6 +45,21 @@ async function waitForCrop(page: Page) {
   await expect(dialogOf(page).locator('.cropper-container')).toBeVisible();
 }
 
+/**
+ * Clicks the status line's link to the crop step once htmx has wired it. htmx
+ * processes a swapped-in link only when the swap settles, and tags the swapped
+ * element htmx-added until then. A click in between follows the link's href as
+ * a plain navigation (the no-script fallback), which replaces the page and
+ * takes the dialog with it (#567).
+ */
+async function clickResume(page: Page) {
+  const status = page.getByTestId('avatar-status');
+  const resume = status.getByRole('link', { name: 'Choose the square to keep' });
+  await expect(resume).toBeVisible();
+  await expect(status).not.toHaveClass(/htmx-added/);
+  await resume.click();
+}
+
 const dialogOf = (page: Page) => page.getByTestId('profile-avatar-form');
 
 test.describe('uploading an avatar', () => {
@@ -190,7 +205,7 @@ test.describe('the picture dialog', () => {
     await expect(dialogOf(page).getByTestId('crop-save')).toHaveCount(0);
 
     // Cancel in the crop step closes it the same way.
-    await page.getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' }).click();
+    await clickResume(page);
     await waitForCrop(page);
     // Only the step arrives, not a whole page nested in the dialog.
     await expect(dialogOf(page).locator('header, main, h1')).toHaveCount(0);
@@ -408,7 +423,7 @@ test.describe('the picture dialog and the page around it', () => {
     await expect(resume).toBeVisible();
 
     await page.route(/\/avatar\/crop$/, (route) => (route.request().method() === 'GET' ? route.fulfill({ status: 500, body: 'boom' }) : route.continue()));
-    await resume.click();
+    await clickResume(page);
     await expect(dialogOf(page)).toBeVisible();
     await expect(dialogOf(page).getByTestId('avatar-error')).toContainText('went wrong on our side');
   });
@@ -507,7 +522,7 @@ test.describe('screenshots', () => {
     // The crop step is in the dialog, which a reload closes: each shot opens it
     // again from the status line on the page.
     const resumeCrop = async () => {
-      await page.getByTestId('avatar-status').getByRole('link', { name: 'Choose the square to keep' }).click();
+      await clickResume(page);
       await waitForCrop(page);
     };
     await shoot('crop', resumeCrop);
