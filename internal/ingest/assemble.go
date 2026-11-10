@@ -536,9 +536,9 @@ func mealTypeFor(categories []string) recipe.MealType {
 }
 
 // cuisineSynonyms maps a normalised recipeCuisine value to the cuisine it
-// names when it is not the cuisine's own name. It is small on purpose: a broad
-// value ("asian", "european") fits no single cuisine and is left out, because
-// an empty cuisine is unknown and a guessed one is wrong (ADR-00025).
+// names when it is not the cuisine's own name. It is small on purpose: a value
+// that fits no single cuisine ("european") is left out, because an empty
+// cuisine is unknown and a guessed one is wrong (ADR-00025).
 var cuisineSynonyms = map[string]recipe.Cuisine{
 	"japanese food": recipe.CuisineJapanese, "japan": recipe.CuisineJapanese,
 	"mexican food": recipe.CuisineMexican, "tex mex": recipe.CuisineMexican, "tex-mex": recipe.CuisineMexican,
@@ -554,25 +554,43 @@ var cuisineSynonyms = map[string]recipe.Cuisine{
 	"american food": recipe.CuisineAmerican, "southern": recipe.CuisineAmerican, "usa": recipe.CuisineAmerican,
 	"middle-eastern": recipe.CuisineMiddleEastern, "middle east": recipe.CuisineMiddleEastern,
 	"caribbean food": recipe.CuisineCaribbean, "jamaican": recipe.CuisineCaribbean,
+	"barbecue": recipe.CuisineBBQ, "barbeque": recipe.CuisineBBQ, "bar-b-q": recipe.CuisineBBQ,
 }
 
+// broadCuisines are the cuisines a more specific one overrides when a source
+// lists both: "Asian, Chinese" is Chinese and "American, BBQ" is BBQ.
+var broadCuisines = map[recipe.Cuisine]bool{recipe.CuisineAsian: true, recipe.CuisineAmerican: true}
+
 // cuisineFor reads schema.org recipeCuisine values (each may list several,
-// comma separated) as a cuisine: the first value that is a cuisine's name,
-// compared case-insensitively, or a synonym of one. Values that match nothing
-// are skipped, and when none matches the cuisine is empty, not an error.
+// comma separated) as a cuisine: a value that is a cuisine's name, compared
+// case-insensitively, or a synonym of one. A specific cuisine beats a broad one
+// (broadCuisines) wherever it sits in the list; among equals the first wins.
+// Values that match nothing are skipped, and when none matches the cuisine is
+// empty, not an error.
 func cuisineFor(cuisines []string) recipe.Cuisine {
+	var broad recipe.Cuisine
 	for _, c := range cuisines {
 		for _, part := range strings.Split(c, ",") {
-			name := normalizeName(part)
-			for _, k := range recipe.Cuisines() {
-				if normalizeName(k.Label()) == name {
-					return k
-				}
-			}
-			if k, ok := cuisineSynonyms[name]; ok {
+			k := cuisineNamed(normalizeName(part))
+			switch {
+			case k == "":
+			case !broadCuisines[k]:
 				return k
+			case broad == "":
+				broad = k
 			}
 		}
 	}
-	return ""
+	return broad
+}
+
+// cuisineNamed is the cuisine a normalised value names, by label or synonym,
+// or empty.
+func cuisineNamed(name string) recipe.Cuisine {
+	for _, k := range recipe.Cuisines() {
+		if normalizeName(k.Label()) == name {
+			return k
+		}
+	}
+	return cuisineSynonyms[name]
 }

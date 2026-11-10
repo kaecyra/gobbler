@@ -288,8 +288,8 @@ type Recipe struct {
 	UpdatedBy          string
 	VideoID            string
 	SpiceLevel         sql.NullInt64
-	Cuisine            string
 	MealType           string
+	Cuisine            string
 }
 
 type RecipeAuthorNote struct {

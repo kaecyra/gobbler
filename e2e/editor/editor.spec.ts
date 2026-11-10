@@ -426,6 +426,8 @@ test('the cuisine is set from the fixed list in the editor, shown on the recipe 
   const select = page.locator('[name="cuisine"]');
   await expect(select).toHaveValue('');
   await expect(select.locator('option').last()).toHaveText('Other');
+  await expect(select.locator('option', { hasText: /^Asian$/ })).toHaveCount(1);
+  await expect(select.locator('option', { hasText: /^BBQ$/ })).toHaveCount(1);
   await select.selectOption('middle_eastern');
   await save(page);
   await expect(page).toHaveURL(new RegExp(`/recipes/${id}(?:-[a-z0-9-]*)?$`));
