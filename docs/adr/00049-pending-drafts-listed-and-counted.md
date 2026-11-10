@@ -73,6 +73,11 @@ on the recipe they saved; the message links to the recipe.
 > many drafts are still waiting. It says what was saved or discarded, and the
 > menu's badge carries the count.
 
+> Amended 2026-11-10 (#586): the rows carry no agent-revised mark. A
+> non-empty reason never meant an agent revised a draft (a re-import carried
+> one from creation), and the review screen's LLM marks already show what an
+> agent changed. Obligation 1's "the agent-revised mark" is withdrawn.
+
 **Obligations:**
 
 1. Tests show the import page's list carries the name, source, age, the
