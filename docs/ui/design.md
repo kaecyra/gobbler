@@ -221,9 +221,11 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   buttons. `layout.ErrorView` holds the parts and `layout.ErrorViewFor` gives
   each status its heading and mascot: `gob-tasting` for not found,
   `gob-herbs` for a link that no longer works, `gob-wink` for everything else,
-  5xx included. A missing recipe, a gone invitation and an invitation sent to
-  another address have their own copy. The page never shows a sentinel's raw
-  text, and has no retry button, since reloading is the retry.
+  5xx included. A missing recipe (`gob-full-mixing-bowl`), a gone invitation
+  and an invitation sent to another address have their own copy. Any other
+  4xx shows its sentinel's text made into a sentence, and a 5xx shows fixed
+  text, never the wrapped error. There is no retry button, since reloading
+  is the retry.
 
 ## Operator area
 

@@ -75,6 +75,12 @@ test('an invitation can be accepted only by the addressed email', async ({ brows
     await expect(oops.getByRole('heading', { name: "This invitation didn't open for you" })).toBeVisible();
     await expect(oops.getByTestId('invitation-email')).toHaveText(who);
     await expect(oops.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    // A member is pointed at their household, anyone else at home.
+    const away = who === OTHER ? { name: 'Go to your household', href: '/household' } : { name: 'Home', href: '/' };
+    await expect(oops.getByRole('link', { name: away.name })).toHaveAttribute('href', away.href);
+    // Accepting gets the same page.
+    const accepted = await other.request.post(`${link}/accept`);
+    expect(await accepted.text()).toContain('This invitation didn&#39;t open for you');
     await other.close();
   }
   await ctx.close();

@@ -106,7 +106,7 @@ func TestWriteErrorMapsStatusAndHidesInternals(t *testing.T) {
 			if !strings.Contains(body, strings.ToLower(tc.wantBody)) {
 				t.Errorf("body missing %q:\n%s", tc.wantBody, body)
 			}
-			if tc.hideBody != "" && strings.Contains(body, tc.hideBody) {
+			if tc.hideBody != "" && strings.Contains(body, strings.ToLower(tc.hideBody)) {
 				t.Errorf("body leaks %q:\n%s", tc.hideBody, body)
 			}
 		})
