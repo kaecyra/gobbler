@@ -4903,7 +4903,7 @@
       "wave": 13,
       "track": null,
       "issue": 618,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [],
       "owns": [
         "internal/settings/**",
@@ -6463,6 +6463,15 @@
       "title": "Asian and BBQ cuisines; specific beats broad at ingest",
       "merged": "ae72d3dda8cc2101c6f2c931ee7f07740fefc089",
       "note": "Owner ruling 2026-11-10: labels Asian and BBQ; a specific cuisine wins over Asian, BBQ wins over American. Covered by ADR-00025 decision 1."
+    },
+    {
+      "id": "s-settings-store",
+      "title": "operator settings and encrypted integration credentials in the database",
+      "merged": "ce5a56e0fc75ada3bbb72539c3268126c6dbca75",
+      "adrs": [
+        "00057"
+      ],
+      "note": "Removing GOBBLER_LLM_* and the provider key variables (ADR-00057 obligation 6, LLM half of 7) moved to l-llm-provider-config (#618 comment, 2026-11-10): their readers are outside this lane and removal would switch LLM ingestion off until #616."
     }
   ],
   "adr_sequence": {
