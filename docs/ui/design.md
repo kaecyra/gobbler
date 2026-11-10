@@ -90,7 +90,9 @@ Copy these from the `:root` block of [`mockup.html`](mockup.html), including its
   `gob-whisk`, `gob-herbs`, `gob-full-pie`, `gob-tasting` and `gob-wink` for
   the panels, timers and empty states. `gob-dough` and
   `gob-rolling-pin-bandana` ship too, though no screen uses them yet: every
-  drawing is shipped, used or not. A mascot is never clipped. In a box he
+  drawing is shipped, used or not. Their source art,
+  six heads and three full bodies, is in `docs/ui/mascots/`; `gob` in the
+  header is not on those sheets. A mascot is never clipped. In a box he
   is shown whole, standing on a baseline.
 
 ## Components
