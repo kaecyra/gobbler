@@ -111,7 +111,7 @@ func errorView(r *http.Request, err error, status int, text string) ErrorView {
 			}
 		}
 	}
-	if errors.Is(err, apirecipes.ErrNotFound) && strings.HasPrefix(r.URL.Path, "/recipes/") {
+	if errors.Is(err, apirecipes.ErrNotFound) && isRecipePath(r.URL.Path) {
 		return ErrorView{
 			Status: status, Mascot: MascotMixingBowl, Heading: "That recipe isn't in your household",
 			Body:    "It may have been deleted. A recipe from another household opens only once it's shared with you.",
@@ -119,6 +119,15 @@ func errorView(r *http.Request, err error, status int, text string) ErrorView {
 		}
 	}
 	return ErrorViewFor(status, sentence(text))
+}
+
+// isRecipePath reports whether path names a recipe itself or one of its
+// pages (/recipes/7, /recipes/7/history), where a missing row is the recipe.
+// Deeper paths name something inside a recipe, a version or a note, which can
+// be missing while the recipe is there.
+func isRecipePath(path string) bool {
+	segs := strings.Split(strings.Trim(path, "/"), "/")
+	return segs[0] == "recipes" && (len(segs) == 2 || len(segs) == 3)
 }
 
 // sentence turns a sentinel's text ("invitation has expired") into a sentence

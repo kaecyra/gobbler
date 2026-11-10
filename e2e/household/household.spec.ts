@@ -83,6 +83,12 @@ test('an invitation can be accepted only by the addressed email', async ({ brows
     expect(await accepted.text()).toContain('This invitation didn&#39;t open for you');
     await other.close();
   }
+  // A code that does not exist gets the same page (ADR-00028).
+  const stranger = await as(browser, baseURL, STRANGER);
+  const unknown = await stranger.newPage();
+  expect((await unknown.goto('/invitations/zZ9zZ9zZ'))?.status()).toBe(404);
+  await expect(unknown.getByTestId('error-page').getByRole('heading', { name: "This invitation didn't open for you" })).toBeVisible();
+  await stranger.close();
   await ctx.close();
 });
 
