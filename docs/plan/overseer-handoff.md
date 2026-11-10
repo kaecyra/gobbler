@@ -47,7 +47,13 @@ These merged after round 28 closed, but this file was not updated as they landed
 - e-flake-ingest-cancel (#581): dispatchable.
 - d-reimport-reason (#586): blocked on a schema decision. It depends on e-flake-ingest-cancel, since both own `internal/web/ingest/**` and the ingest e2e spec.
 
-**Blocked nodes:** l-meal-planning (#38), i-site-extractors (#193) and o-demo-reseed (#432), unchanged from round 28, plus d-reimport-reason.
+**Merged later on 2026-11-10:** e-flake-avatar-crop (#600, f1b52b7, 0.141.3) and e-flake-ingest-cancel (#601, 6b0d983, 0.141.4). #601 also fixed the same race in `openSaved`, after a lane widening (#602).
+
+**#586 ruled** (#599): a proposal's reason is only ever an agent's own words. ADR-00048 and ADR-00049 are amended. d-reimport-reason is unblocked and dispatched next.
+
+**Known test weakness, no issue yet:** "a proposed new ingredient is offered as new…" (`e2e/ingest/ingest.spec.ts:335`) fails under `--repeat-each`, because its first run creates the catalog ingredient. A single run passes.
+
+**Blocked nodes:** l-meal-planning (#38), i-site-extractors (#193) and o-demo-reseed (#432), unchanged from round 28.
 
 **Cleanup (2026-11-10):** all agent worktrees and merged local branches are removed, along with the stray `refs/remotes/pr/593`. `origin/pr-assets` is kept because PR bodies link to its screenshots.
 
