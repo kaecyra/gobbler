@@ -547,21 +547,19 @@ func (e equipDraft) open() bool {
 	return e.Mark.Low || e.Err != "" || e.OfferProposal || e.Propose || strings.TrimSpace(e.Name) == ""
 }
 
-func ruleOptions() []string {
-	return []string{string(quantity.RuleLinear), string(quantity.RuleFixed), string(quantity.RuleToTaste)}
+func ruleOptions() []quantity.Rule {
+	return []quantity.Rule{quantity.RuleLinear, quantity.RuleFixed, quantity.RuleToTaste}
 }
 
-func qualKinds() []string {
-	return []string{
-		string(recipe.QualPreparation), string(recipe.QualState), string(recipe.QualForm), string(recipe.QualNote),
-	}
+func qualKinds() []recipe.QualifierKind {
+	return []recipe.QualifierKind{recipe.QualPreparation, recipe.QualState, recipe.QualForm, recipe.QualNote}
 }
 
-func (l lineDraft) ruleIs(r string) bool {
+func (l lineDraft) ruleIs(r quantity.Rule) bool {
 	if l.Rule == "" {
-		return r == string(quantity.RuleLinear)
+		return r == quantity.RuleLinear
 	}
-	return l.Rule == r
+	return l.Rule == string(r)
 }
 
 func (l lineDraft) hasPackage() bool { return l.PkgQty != "" || l.PkgUnit != "" }

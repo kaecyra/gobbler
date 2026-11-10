@@ -186,3 +186,11 @@ func TestScaleDoesNotShareStateWithInput(t *testing.T) {
 		t.Error("writing to the result's package changed the input")
 	}
 }
+
+func TestRuleLabel(t *testing.T) {
+	for r, want := range map[Rule]string{RuleLinear: "Scales", RuleFixed: "Fixed", RuleToTaste: "To taste", "": "", "halved": ""} {
+		if got := r.Label(); got != want {
+			t.Errorf("Rule(%q).Label() = %q, want %q", r, got, want)
+		}
+	}
+}
