@@ -4785,7 +4785,8 @@
       "status": "todo",
       "depends_on": [
         "p-photo-vision-ocr",
-        "l-llm-provider-config"
+        "l-llm-provider-config",
+        "u-llm-usage-cost"
       ],
       "owns": [
         "internal/ingest/**",
@@ -4798,13 +4799,15 @@
         "docs/adr/00054-*.md",
         "docs/adr/README.md",
         "docs/design.md",
-        "VERSION"
+        "VERSION",
+        "internal/web/settings/**",
+        "e2e/operator/**"
       ],
       "needs_migration": null,
       "adrs": [
         "00054"
       ],
-      "note": "Owner ruling 2026-11-10: description text or a linked blog Recipe only; no transcript or VLM. Instagram paste-only, TikTok out."
+      "note": "Owner ruling 2026-11-10: description text or a linked blog Recipe only; no transcript or VLM. Instagram paste-only, TikTok out. Owner ruling 2026-11-11: the description is fetched with the YouTube Data API; its key is an integration secret, stored encrypted and set on the Deployment page (ADR-00057), not an environment variable. No key saved means the description fetch is off."
     },
     {
       "id": "c-cuisine-asian-bbq",
