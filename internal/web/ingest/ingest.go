@@ -366,13 +366,10 @@ func sentence(msg string) string {
 // status comes from layout's table. ok is false for an error that is not about
 // the input.
 func inputFailure(err error) (msg string, ok bool) {
+	var po apiingest.PasteOnlyError
 	switch {
-	case errors.Is(err, apiingest.ErrPasteOnly):
-		var po apiingest.PasteOnlyError
-		if errors.As(err, &po) {
-			return po.Advice + ".", true
-		}
-		return "That link cannot be read. Paste the text instead.", true
+	case errors.As(err, &po):
+		return po.Advice + ".", true
 	case errors.Is(err, apiingest.ErrFetch):
 		return "Could not fetch that page: " + err.Error(), true
 	case errors.Is(err, parse.ErrEmptyText), errors.Is(err, apiingest.ErrEmptyInput):
