@@ -148,12 +148,32 @@ func (h *handler) setPrice(w http.ResponseWriter, r *http.Request) {
 	backToUsage(w, r, win.Key)
 }
 
+// isManual reports whether the model's price is one the operator set.
+func (h *handler) isManual(ctx context.Context, provider, model string) (bool, error) {
+	rows, err := h.Usage.Prices(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, r := range rows {
+		if r.Provider == provider && r.Model == model {
+			return r.Price != nil && r.Price.Source == llmusage.SourceManual, nil
+		}
+	}
+	return false, nil
+}
+
 func (h *handler) clearPrice(w http.ResponseWriter, r *http.Request) {
 	if _, ok := operatorEmail(w, r); !ok {
 		return
 	}
 	win := formWindow(r)
-	err := h.Usage.ClearPrice(r.Context(), r.PostFormValue("provider"), r.PostFormValue("model"))
+	provider, model := r.PostFormValue("provider"), r.PostFormValue("model")
+	wasManual, err := h.isManual(r.Context(), provider, model)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
+	err = h.Usage.ClearPrice(r.Context(), provider, model)
 	if errors.Is(err, llmusage.ErrInvalid) {
 		h.renderUsage(w, r, http.StatusUnprocessableEntity, win, err.Error())
 		return
@@ -161,6 +181,16 @@ func (h *handler) clearPrice(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		layout.Fail(w, r, err)
 		return
+	}
+	// "Use synced price" gives the price back at once: left to the daily sync,
+	// the model would stay unpriced for up to a day, and every call in that
+	// gap would be recorded with no cost for good (ADR-00058). A failed sync is
+	// shown on the page as the last failure, as for Sync now.
+	if wasManual {
+		if err := h.PriceSync.Sync(r.Context()); err != nil && !errors.Is(err, llmusage.ErrSyncFailed) {
+			layout.Fail(w, r, err)
+			return
+		}
 	}
 	backToUsage(w, r, win.Key)
 }

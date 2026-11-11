@@ -102,11 +102,11 @@ func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.St
 		slog.String("model", model),
 		slog.Int64("latency_ms", time.Since(start).Milliseconds()),
 	}
+	llm.ReportUsage(ctx, llm.Usage{Input: usage.InputTokens, Output: usage.OutputTokens})
 	if err != nil {
 		p.log.LogAttrs(ctx, slog.LevelWarn, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return ingest.Structured{}, err
 	}
-	llm.ReportUsage(ctx, llm.Usage{Input: usage.InputTokens, Output: usage.OutputTokens})
 	attrs = append(attrs,
 		slog.Int64("input_tokens", usage.InputTokens),
 		slog.Int64("output_tokens", usage.OutputTokens))
@@ -132,11 +132,11 @@ func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest)
 		slog.String("task", "transcribe"),
 		slog.Int64("latency_ms", time.Since(start).Milliseconds()),
 	}
+	llm.ReportUsage(ctx, llm.Usage{Input: usage.InputTokens, Output: usage.OutputTokens})
 	if err != nil {
 		p.log.LogAttrs(ctx, slog.LevelWarn, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return "", err
 	}
-	llm.ReportUsage(ctx, llm.Usage{Input: usage.InputTokens, Output: usage.OutputTokens})
 	attrs = append(attrs,
 		slog.Int64("input_tokens", usage.InputTokens),
 		slog.Int64("output_tokens", usage.OutputTokens))
@@ -157,9 +157,11 @@ func (p *Provider) transcribe(ctx context.Context, model string, req ingest.Tran
 		}
 		return "", anthropic.Usage{}, fmt.Errorf("claude call to %s: %w", model, err)
 	}
+	// A response came back, so its tokens were billed whatever follows
+	// (ADR-00058).
 	text, err := transcript(resp)
 	if err != nil {
-		return "", anthropic.Usage{}, fmt.Errorf("claude response from %s: %w", model, err)
+		return "", resp.Usage, fmt.Errorf("claude response from %s: %w", model, err)
 	}
 	return text, resp.Usage, nil
 }
@@ -206,9 +208,11 @@ func (p *Provider) call(ctx context.Context, model string, req ingest.Request) (
 		}
 		return ingest.Structured{}, anthropic.Usage{}, fmt.Errorf("claude call to %s: %w", model, err)
 	}
+	// A response came back, so its tokens were billed whatever follows
+	// (ADR-00058).
 	s, err := decode(resp)
 	if err != nil {
-		return ingest.Structured{}, anthropic.Usage{}, fmt.Errorf("claude response from %s: %w", model, err)
+		return ingest.Structured{}, resp.Usage, fmt.Errorf("claude response from %s: %w", model, err)
 	}
 	return s, resp.Usage, nil
 }

@@ -4,7 +4,7 @@
 -- llm_calls holds one row per call made to a provider, successful or not.
 -- Timestamps are RFC 3339 UTC text. household_id is the household the call ran
 -- for, NULL when it ran for none. Deleting a household deletes its calls with
--- the rest of its data (ADR-00018, Members). Tokens are as the provider reports them (0 on a failed
+-- the rest of its data (ADR-00018, Members; ADR-00059). Tokens are as the provider reports them (0 on a failed
 -- call, which reports none). cost_micros is millionths of a US dollar, computed
 -- when the call was recorded from the price then in force; NULL means the model
 -- had no price, which is not a cost of zero. A later price change never

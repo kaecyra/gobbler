@@ -5,7 +5,7 @@ import { OTHER, STRANGER, asIdentity } from '../fixtures/identity';
 // ADR-00058). The usage page reads no household's data as a household and is an
 // operator's alone, so a verified email with no household (STRANGER) and a
 // member of a household (OTHER) are both refused. They run against the shared
-// dev-auth server, where OPERATOR is the only operator.
+// dev-auth server, where OPERATOR and DEV are the operators.
 //
 // The route-coverage gate reads this file: each probe is one line holding the
 // method and the path, and no other path literal may appear here.

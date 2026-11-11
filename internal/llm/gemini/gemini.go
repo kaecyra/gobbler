@@ -94,16 +94,24 @@ func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.St
 		slog.String("model", model),
 		slog.Int64("latency_ms", time.Since(start).Milliseconds()),
 	}
+	llm.ReportUsage(ctx, geminiUsage(usage))
 	if err != nil {
 		p.log.ErrorContext(ctx, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return ingest.Structured{}, err
 	}
-	llm.ReportUsage(ctx, geminiUsage(usage))
 	p.log.InfoContext(ctx, "llm call", append(attrs,
 		slog.Int("input_tokens", int(usage.PromptTokenCount)),
 		// Thinking tokens are billed as output, so they are counted in it.
 		slog.Int("output_tokens", int(usage.CandidatesTokenCount+usage.ThoughtsTokenCount)))...)
 	return out, nil
+}
+
+// usageOf is the usage a response reports, zero when it carries none.
+func usageOf(resp *genai.GenerateContentResponse) genai.GenerateContentResponseUsageMetadata {
+	if resp.UsageMetadata == nil {
+		return genai.GenerateContentResponseUsageMetadata{}
+	}
+	return *resp.UsageMetadata
 }
 
 // geminiUsage is the usage a call reports: thinking tokens are billed as
@@ -135,11 +143,11 @@ func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest)
 		slog.String("task", "transcribe"),
 		slog.Int64("latency_ms", time.Since(start).Milliseconds()),
 	}
+	llm.ReportUsage(ctx, geminiUsage(usage))
 	if err != nil {
 		p.log.ErrorContext(ctx, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return "", err
 	}
-	llm.ReportUsage(ctx, geminiUsage(usage))
 	p.log.InfoContext(ctx, "llm call", append(attrs,
 		slog.Int("input_tokens", int(usage.PromptTokenCount)),
 		slog.Int("output_tokens", int(usage.CandidatesTokenCount+usage.ThoughtsTokenCount)))...)
@@ -162,17 +170,16 @@ func (p *Provider) transcribe(ctx context.Context, model string, req ingest.Tran
 		}
 		return "", genai.GenerateContentResponseUsageMetadata{}, fmt.Errorf("gemini call to %s: %w", model, err)
 	}
+	// From here a response came back, and its tokens were billed whatever
+	// follows, so every return carries them (ADR-00058).
+	usage := usageOf(resp)
 	text, err := answerText(resp)
 	if err != nil {
-		return "", genai.GenerateContentResponseUsageMetadata{}, err
+		return "", usage, err
 	}
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return "", genai.GenerateContentResponseUsageMetadata{}, fmt.Errorf("gemini response: %w: no text", ErrInvalidResponse)
-	}
-	var usage genai.GenerateContentResponseUsageMetadata
-	if resp.UsageMetadata != nil {
-		usage = *resp.UsageMetadata
+		return "", usage, fmt.Errorf("gemini response: %w: no text", ErrInvalidResponse)
 	}
 	return text, usage, nil
 }
@@ -195,17 +202,16 @@ func (p *Provider) call(ctx context.Context, model string, req ingest.Request) (
 		}
 		return ingest.Structured{}, genai.GenerateContentResponseUsageMetadata{}, fmt.Errorf("gemini call to %s: %w", model, err)
 	}
+	// From here a response came back, and its tokens were billed whatever
+	// follows, so every return carries them (ADR-00058).
+	usage := usageOf(resp)
 	text, err := answerText(resp)
 	if err != nil {
-		return ingest.Structured{}, genai.GenerateContentResponseUsageMetadata{}, err
+		return ingest.Structured{}, usage, err
 	}
 	out, err := decode(text)
 	if err != nil {
-		return ingest.Structured{}, genai.GenerateContentResponseUsageMetadata{}, err
-	}
-	var usage genai.GenerateContentResponseUsageMetadata
-	if resp.UsageMetadata != nil {
-		usage = *resp.UsageMetadata
+		return ingest.Structured{}, usage, err
 	}
 	return out, usage, nil
 }

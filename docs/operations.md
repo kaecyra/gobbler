@@ -563,7 +563,9 @@ used or a task is set to use. A model matches only the entry whose id is exactly
 `anthropic/` (Claude) or `google/` (Gemini) followed by the model id gobbler
 uses; a model with no such entry stays unpriced until the operator sets its price
 on the page. A price the operator sets is never overwritten by the sync; **Use
-synced price** gives it back. If the fetch fails, every price is left as it was,
+synced price** removes it and runs a sync at once, so the model is priced again
+without waiting for the daily one (if that sync fails, the model stays unpriced
+and the page shows the failure). If the fetch fails, every price is left as it was,
 the failure is logged, and the page shows when the last sync succeeded and the
 last failure. The check runs hourly and fetches only when no sync has succeeded
 in the last 24 hours, so a failed day is retried within the hour and a restart

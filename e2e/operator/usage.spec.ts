@@ -257,9 +257,9 @@ test('a price the operator sets survives a sync, and can be given back to the sy
   const cleared = page.waitForResponse((r) => r.url().endsWith('/operator/usage/prices/clear') && r.request().method() === 'POST');
   await priceRow(page, 'e2e-text').getByRole('button', { name: 'Use synced price' }).click();
   await cleared;
-  await expect(priceRow(page, 'e2e-text').getByTestId('price-input')).toHaveText('Unpriced');
-  await syncNow(page);
+  // The synced price is back at once; the model is never left unpriced.
   await expect(priceRow(page, 'e2e-text').getByTestId('price-input')).toHaveText('$2.00');
+  await expect(priceRow(page, 'e2e-text').getByTestId('price-source')).toContainText('OpenRouter');
 });
 
 test('a price that is not a number is explained on the page and nothing is saved', async ({ page }) => {

@@ -215,3 +215,67 @@ func TestACancelledCallIsStillRecorded(t *testing.T) {
 		t.Errorf("records = %+v, want one failed record", got)
 	}
 }
+
+// A response that came back and then failed to decode was still billed: the
+// record carries the tokens the provider reported and a cost from the price
+// (ADR-00058). Each case is one way a billed call fails.
+func TestABilledCallThatFailsIsRecordedWithItsTokensAndCost(t *testing.T) {
+	cutOff := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"id":"msg_x","type":"message","role":"assistant","model":"m","content":[{"type":"text","text":"partial"}],"stop_reason":"max_tokens","stop_sequence":null,"usage":{"input_tokens":7,"output_tokens":9}}`)
+	}))
+	defer cutOff.Close()
+	notJSON := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"candidates":[{"content":{"role":"model","parts":[{"text":"this is not json"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":11,"candidatesTokenCount":13}}`)
+	}))
+	defer notJSON.Close()
+
+	for name, c := range map[string]struct {
+		claudeURL, geminiURL string
+		call                 func(*router.Router) error
+		provider, model      string
+		in, out, cost        int64
+	}{
+		"claude cut off at the token limit": {
+			claudeURL: cutOff.URL, geminiURL: fakeGemini(t).srv.URL, provider: llm.ProviderClaude, model: claudeModel, in: 7, out: 9, cost: 25,
+			call: func(r *router.Router) error {
+				_, err := r.Structure(context.Background(), ingest.Request{Text: "Toast"})
+				return err
+			},
+		},
+		"claude transcription cut off": {
+			claudeURL: cutOff.URL, geminiURL: fakeGemini(t).srv.URL, provider: llm.ProviderClaude, model: claudeModel, in: 7, out: 9, cost: 25,
+			call: func(r *router.Router) error {
+				_, err := r.Transcribe(context.Background(), ingest.TranscribeRequest{Image: photo.Image, ImageMIME: "image/png"})
+				return err
+			},
+		},
+		"gemini answer that does not decode": {
+			claudeURL: fakeClaude(t).srv.URL, geminiURL: notJSON.URL, provider: llm.ProviderGemini, model: geminiModel, in: 11, out: 13, cost: 37,
+			call: func(r *router.Router) error { _, err := r.Structure(context.Background(), photo); return err },
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := newUsageEnv(t, c.claudeURL, c.geminiURL, realRecorder)
+			if name == "claude transcription cut off" {
+				// Transcribe is the vision task, which the fixture puts on Gemini.
+				setValue(t, e.store, llm.FieldVisionProvider, llm.ProviderClaude)
+				setValue(t, e.store, llm.FieldVisionModel, claudeModel)
+			}
+			if err := e.usage.SetPrice(context.Background(), c.provider, c.model, "1", "2"); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.call(e.rt); err == nil {
+				t.Fatal("the call succeeded")
+			}
+			got := e.calls(t)
+			if len(got) != 1 || got[0].outcome != "error" || got[0].in != c.in || got[0].out != c.out {
+				t.Fatalf("records = %+v, want one error record with %d and %d tokens", got, c.in, c.out)
+			}
+			if !got[0].cost.Valid || got[0].cost.Int64 != c.cost {
+				t.Errorf("cost = %v, want %d millionths of a dollar", got[0].cost, c.cost)
+			}
+		})
+	}
+}

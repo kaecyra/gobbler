@@ -242,8 +242,8 @@ equipment review was linked from nowhere.
 - **Rail.** Every operator page is drawn in `layout.OperatorPage`, with a rail
   of the sections beside it: Overview, Invitations (`/operator/invitations`),
   Suggested ingredients (`/operator/promotions`), Central ingredients
-  (`/operator/ingredients`), Equipment (`/operator/equipment`) and Deployment
-  (`/operator/settings`). The section of the page is marked current, subpages
+  (`/operator/ingredients`), Equipment (`/operator/equipment`), Deployment
+  (`/operator/settings`) and LLM usage (`/operator/usage`). The section of the page is marked current, subpages
   included. Below 768px the rail becomes a strip above the page that scrolls
   sideways, since a rail beside the tables would leave them too little width.
 - **Breadcrumb.** Every page but the overview opens with the same `.crumbs`

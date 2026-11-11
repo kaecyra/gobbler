@@ -122,6 +122,8 @@ func TestChangingAPriceLaterLeavesRecordedCostsUnchanged(t *testing.T) {
 	}
 }
 
+// Deleting a household deletes its calls with the rest of its data (ADR-00018,
+// Members; ADR-00059 amends ADR-00058's "kept indefinitely").
 func TestAHouseholdIsRecordedAndDeletingItDeletesItsCalls(t *testing.T) {
 	ctx := context.Background()
 	s, d := newStore(t)
@@ -169,25 +171,5 @@ func TestALongErrorIsCutAtACharacterBoundary(t *testing.T) {
 	e := rawCalls(t, d)[0].err.String
 	if len(e) > llmusage.MaxErrorBytes+len("…") || !strings.HasSuffix(e, "…") || !isValidUTF8(e) {
 		t.Errorf("stored error is %d bytes, valid=%v", len(e), isValidUTF8(e))
-	}
-}
-
-func TestDeletingAHouseholdDeletesItsCalls(t *testing.T) {
-	ctx := context.Background()
-	s, d := newStore(t)
-	for _, id := range []int{1, 2} {
-		if _, err := d.Exec(`INSERT INTO households (id, name, created_at) VALUES (?, ?, '2026-01-01T00:00:00Z')`, id, "H"); err != nil {
-			t.Fatalf("seed household: %v", err)
-		}
-		c := okCall(claudeModel)
-		c.HouseholdID = int64(id)
-		must(t, s.Record(ctx, c))
-	}
-	if _, err := d.Exec(`DELETE FROM households WHERE id = 1`); err != nil {
-		t.Fatalf("delete household: %v", err)
-	}
-	got := rawCalls(t, d)
-	if len(got) != 1 || got[0].hh.Int64 != 2 {
-		t.Errorf("calls left = %+v, want only household 2's", got)
 	}
 }

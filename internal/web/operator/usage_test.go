@@ -240,3 +240,29 @@ func TestAWindowOfOnlyUnpricedCallsReadsUnpricedNotZeroDollars(t *testing.T) {
 		t.Errorf("cost stat = %+v, want Unpriced with no note", v.Stats[0])
 	}
 }
+
+func TestUseSyncedPriceSyncsAtOnceOnlyForAManualPrice(t *testing.T) {
+	e := newUsageEnv(t)
+	ctx := context.Background()
+	form := url.Values{"provider": {"claude"}, "model": {usageModel}}
+	if err := e.store.SetPrice(ctx, llm.ProviderClaude, usageModel, "1", "2"); err != nil {
+		t.Fatal(err)
+	}
+	if rec := e.do(t, true, http.MethodPost, "/usage/prices/clear", form); rec.Code != http.StatusSeeOther || e.sync.calls != 1 {
+		t.Fatalf("clearing a manual price = %d with %d syncs, want 303 and 1", rec.Code, e.sync.calls)
+	}
+	// A failed sync is shown on the page, not a 500.
+	if err := e.store.SetPrice(ctx, llm.ProviderClaude, usageModel, "1", "2"); err != nil {
+		t.Fatal(err)
+	}
+	e.sync.err = errors.Join(llmusage.ErrSyncFailed, errors.New("offline"))
+	if rec := e.do(t, true, http.MethodPost, "/usage/prices/clear", form); rec.Code != http.StatusSeeOther {
+		t.Errorf("clearing with a failed sync = %d, want 303", rec.Code)
+	}
+	// Removing a price the sync set needs no sync: the next one sets it again.
+	e.sync.err, e.sync.calls = nil, 0
+	e.record(t, llmusage.Call{Task: llm.TaskText, Provider: llm.ProviderClaude, Model: usageModel})
+	if rec := e.do(t, true, http.MethodPost, "/usage/prices/clear", form); rec.Code != http.StatusSeeOther || e.sync.calls != 0 {
+		t.Errorf("clearing an unpriced model = %d with %d syncs, want 303 and none", rec.Code, e.sync.calls)
+	}
+}
