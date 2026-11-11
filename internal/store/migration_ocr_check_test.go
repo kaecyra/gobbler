@@ -9,6 +9,10 @@ import (
 	"github.com/kaecyra/gobbler/internal/db"
 )
 
+// ocrCheckMigration is the version of the migration under test; renumber it
+// here when the placeholder 99999 gets its sequence number.
+const ocrCheckMigration = 99999
+
 // Migration 99999 (ADR-00053) rebuilds source_snapshots to admit the
 // ocr_check kind. Up accepts the kind and still refuses an unknown one; Down
 // drops the rows the old CHECK cannot hold and keeps every other snapshot and
@@ -46,7 +50,7 @@ func TestOCRCheckKindMigrationRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.DownTo(ctx, 40); err != nil {
+	if _, err := p.DownTo(ctx, ocrCheckMigration-1); err != nil {
 		t.Fatalf("down: %v", err)
 	}
 	if n := count(t, d, `SELECT COUNT(*) FROM source_snapshots WHERE kind = 'ocr_check'`); n != 0 {
@@ -58,7 +62,7 @@ func TestOCRCheckKindMigrationRoundTrips(t *testing.T) {
 	if _, err := d.Exec(`INSERT INTO source_snapshots (household_id, recipe_id, kind, content, sha256, created_at, created_by) VALUES (1, ?, 'ocr_check', 'x', 'x', 'x', 'x')`, id); err == nil {
 		t.Error("ocr_check accepted after Down, want the old CHECK back")
 	}
-	if _, err := p.UpTo(ctx, 99999); err != nil {
+	if _, err := p.UpTo(ctx, ocrCheckMigration); err != nil {
 		t.Fatalf("up again: %v", err)
 	}
 	if snaps() != 2 || links() != 1 {
@@ -125,5 +129,28 @@ func TestCreateFromDraftWithoutCheckTextWritesNoCheckSnapshot(t *testing.T) {
 	}
 	if _, err := s.GetSnapshot(ctx, id, SnapshotOCRCheck); err == nil {
 		t.Error("an ocr_check snapshot was written for a draft with no check text")
+	}
+}
+
+// A share copies every snapshot of the recipe, so a photo recipe's ocr_check
+// reaches the copy beside its transcript (ADR-00053).
+func TestSharedPhotoRecipeCarriesTheOCRCheckSnapshot(t *testing.T) {
+	f := newShareFixture(t)
+	if err := f.s.AddSnapshot(f.a, f.recipe, SnapshotOCR, []byte("transcript")); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.AddSnapshot(f.a, f.recipe, SnapshotOCRCheck, []byte("tesseract text")); err != nil {
+		t.Fatal(err)
+	}
+	id := f.send(t)
+	copyID, err := f.s.AcceptShare(f.b, id, fixed(map[string]int64{ownName: f.bFruit(t)}))
+	if err != nil {
+		t.Fatalf("AcceptShare: %v", err)
+	}
+	for kind, want := range map[SnapshotKind]string{SnapshotOCR: "transcript", SnapshotOCRCheck: "tesseract text"} {
+		got, err := f.s.GetSnapshot(f.b, copyID, kind)
+		if err != nil || string(got.Content) != want {
+			t.Errorf("%s snapshot on the copy = %q (%v), want %q", kind, got.Content, err, want)
+		}
 	}
 }

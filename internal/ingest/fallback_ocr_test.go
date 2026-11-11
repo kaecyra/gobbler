@@ -14,9 +14,14 @@ var photoBytes = []byte("\x89PNG-not-really-a-photo")
 
 const goodOCRText = "Fluffy Pancakes\n\nIngredients:\n- 2 cups all-purpose flour\n- 2 tbsp sugar\n- 2 eggs\n\nInstructions:\nWhisk the dry ingredients together in a large bowl.\n\nCook on a hot greased griddle until golden on both sides.\n"
 
-func TestFromOCRBelowThresholdPassesTheImageToTheProvider(t *testing.T) {
+// errNoTranscript makes a fake provider's transcription fail on purpose, so
+// these tests exercise the gap-fill over the tesseract text (ADR-00053
+// decision 5).
+var errNoTranscript = errors.New("transcription unavailable")
+
+func TestFromOCRWhenTranscriptionFailsTheBelowThresholdImageGoesToTheProvider(t *testing.T) {
 	e := newEnv(t)
-	fp := &fakeProvider{resp: llmAnswer()}
+	fp := &fakeProvider{resp: llmAnswer(), transcribeErr: errNoTranscript}
 	d, err := e.pipelineWith(t, testConfig(), fp).FromOCR(e.ctx, messyText, photoBytes, "image/png")
 	if err != nil {
 		t.Fatal(err)
@@ -36,25 +41,28 @@ func TestFromOCRBelowThresholdPassesTheImageToTheProvider(t *testing.T) {
 	}
 }
 
-func TestFromOCRHighConfidenceMakesNoProviderCall(t *testing.T) {
+func TestFromOCRHighConfidenceMakesNoGapFillCall(t *testing.T) {
 	e := newEnv(t)
-	fp := &fakeProvider{resp: llmAnswer()}
+	fp := &fakeProvider{resp: llmAnswer(), transcribeErr: errNoTranscript}
 	d, err := e.pipelineWith(t, testConfig(), fp).FromOCR(e.ctx, goodOCRText, photoBytes, "image/png")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if d.BelowThreshold || fp.count() != 0 || d.UsedLLM {
-		t.Errorf("below = %v, provider calls = %d, used LLM = %v; want a rule-based draft and no call", d.BelowThreshold, fp.count(), d.UsedLLM)
+		t.Errorf("below = %v, gap-fill calls = %d, used LLM = %v; want a rule-based draft and no gap-fill", d.BelowThreshold, fp.count(), d.UsedLLM)
+	}
+	if len(fp.transcribed) != 1 {
+		t.Errorf("transcriptions = %d, want the one that failed", len(fp.transcribed))
 	}
 }
 
-func TestFromOCRVisionFailureLeavesTheOCRDraftIntact(t *testing.T) {
+func TestFromOCRGapFillFailureLeavesTheOCRDraftIntact(t *testing.T) {
 	e := newEnv(t)
 	rule, err := e.pipelineWith(t, testConfig(), nil).FromOCR(e.ctx, messyText, photoBytes, "image/png")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := e.pipelineWith(t, testConfig(), &fakeProvider{err: context.DeadlineExceeded}).FromOCR(e.ctx, messyText, photoBytes, "image/png")
+	got, err := e.pipelineWith(t, testConfig(), &fakeProvider{err: context.DeadlineExceeded, transcribeErr: errNoTranscript}).FromOCR(e.ctx, messyText, photoBytes, "image/png")
 	if err != nil {
 		t.Fatalf("a provider failure must not fail the ingest: %v", err)
 	}
@@ -119,7 +127,7 @@ func TestFromOCREmptyTextIsAnInputError(t *testing.T) {
 	}
 }
 
-func TestVisionImageIsAttachedOnlyWithinTheProviderSizeLimit(t *testing.T) {
+func TestGapFillImageIsAttachedOnlyWithinTheProviderSizeLimit(t *testing.T) {
 	cases := []struct {
 		name      string
 		size      int
@@ -131,7 +139,7 @@ func TestVisionImageIsAttachedOnlyWithinTheProviderSizeLimit(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEnv(t)
-			fp := &fakeProvider{resp: llmAnswer()}
+			fp := &fakeProvider{resp: llmAnswer(), transcribeErr: errNoTranscript}
 			big := bytes.Repeat([]byte{1}, tc.size)
 			if _, err := e.pipelineWith(t, testConfig(), fp).FromOCR(e.ctx, messyText, big, "image/png"); err != nil {
 				t.Fatal(err)

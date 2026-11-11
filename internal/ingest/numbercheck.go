@@ -33,8 +33,8 @@ func numbersIn(text string) map[string]bool {
 	return set
 }
 
-// missingNumbers lists the numbers line states that are not in read, in the
-// order line states them and once each.
+// missingNumbers lists the numbers line states that are not in read, as the
+// line writes them, in order and once each by value.
 func missingNumbers(line string, read map[string]bool) []string {
 	var out []string
 	seen := map[string]bool{}
@@ -44,7 +44,7 @@ func missingNumbers(line string, read map[string]bool) []string {
 			continue
 		}
 		seen[k] = true
-		out = append(out, k)
+		out = append(out, strings.TrimSpace(m))
 	}
 	return out
 }
@@ -63,9 +63,13 @@ func numberKey(m string) (string, bool) {
 
 // applyNumberCheck lowers the confidence of every ingredient line that states
 // a number the tesseract text does not, below threshold, and says so in the
-// line's issues. It is a pure function of the draft and the text, so replaying
-// the same transcript and tesseract text gives the same flags (ADR-00053).
-func applyNumberCheck(d *Draft, tesseract string, threshold float64) {
+// line's issues. It reports whether it flagged any line: the caller then holds
+// the draft below the threshold whatever its overall score, because the score
+// averages the lines and one flagged line among many clean ones could leave a
+// low threshold unmet, and the fallback runs only for a draft below it. It is a
+// pure function of the draft and the text, so replaying the same transcript and
+// tesseract text gives the same flags (ADR-00053).
+func applyNumberCheck(d *Draft, tesseract string, threshold float64) (flagged bool) {
 	read := numbersIn(tesseract)
 	for ci := range d.Components {
 		for li := range d.Components[ci].Lines {
@@ -76,6 +80,8 @@ func applyNumberCheck(d *Draft, tesseract string, threshold float64) {
 			}
 			l.Confidence = min(l.Confidence, threshold*numberCheckFactor)
 			l.Issues = append(append([]string(nil), l.Issues...), fmt.Sprintf("number %s not found in the OCR text", strings.Join(missing, ", ")))
+			flagged = true
 		}
 	}
+	return flagged
 }

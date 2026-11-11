@@ -114,7 +114,7 @@ func TestFromOCRNumberFlagLowersTheLineBelowTheThreshold(t *testing.T) {
 	if sugar.Confidence >= d.Threshold {
 		t.Errorf("confidence = %v, want below the %v threshold", sugar.Confidence, d.Threshold)
 	}
-	if len(sugar.Issues) == 0 || !strings.Contains(sugar.Issues[len(sugar.Issues)-1], "1/2") {
+	if len(sugar.Issues) == 0 || !strings.Contains(sugar.Issues[len(sugar.Issues)-1], "number ½ ") {
 		t.Errorf("issues = %v, want the number named", sugar.Issues)
 	}
 	if flour := lineNamed(t, d, "2 cups all-purpose flour"); flour.Confidence < d.Threshold {
@@ -220,8 +220,8 @@ func TestSavePhotoDraftStoresBothSnapshots(t *testing.T) {
 // tesseract text, as with no provider.
 func TestFromOCRTranscriptionFailureDraftsFromTesseract(t *testing.T) {
 	for name, fp := range map[string]*fakeProvider{
-		"error":   {transcribeErr: context.DeadlineExceeded},
-		"timeout": {transcribeErr: errors.New("claude call: context deadline exceeded")},
+		"timeout": {transcribeErr: context.DeadlineExceeded},
+		"error":   {transcribeErr: errors.New("claude call: 503 overloaded")},
 		"blank":   {transcript: "  \n"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -278,5 +278,27 @@ func TestFromOCRWithNoProviderMakesNoCall(t *testing.T) {
 	}
 	if string(d.Source.Content) != goodOCRText || d.Source.CheckText != "" || d.UsedLLM {
 		t.Errorf("draft source %q check %q used LLM %v", d.Source.Content, d.Source.CheckText, d.UsedLLM)
+	}
+}
+
+// A flagged number sends its line to gap-fill even when the average over a long
+// ingredient list stays above a low threshold (ADR-00053 decision 3).
+func TestFromOCRFlaggedNumberReachesGapFillAtALowThreshold(t *testing.T) {
+	e := newEnv(t)
+	const lines = "- 2 cups all-purpose flour\n- 2 eggs\n- 2 tbsp sugar\n- 2 tbsp butter\n- 2 tsp salt\n- 2 cups milk\n- 2 tbsp honey\n- 2 cups water\n"
+	transcript := "Big Pancakes\n\nIngredients:\n" + lines + "- ½ cup walnuts\n\nInstructions:\nWhisk the dry ingredients together in a large bowl.\n\nCook on a hot greased griddle until golden on both sides.\n"
+	tess := strings.Replace(transcript, "½ cup walnuts", "4 cup walnuts", 1)
+	cfg := testConfig()
+	cfg.ConfidenceThreshold = 0.55
+	fp := &fakeProvider{transcript: transcript, resp: Structured{Name: "x", Components: []StructuredComponent{{Ingredients: []string{"½ cup walnuts"}}}}}
+	d, err := e.pipelineWith(t, cfg, fp).FromOCR(e.ctx, tess, photoBytes, "image/png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fp.count() != 1 || len(fp.calls[0].Gaps.Lines) != 1 || fp.calls[0].Gaps.Lines[0].Raw != "½ cup walnuts" {
+		t.Fatalf("gap-fill calls = %d (%+v), want one for the walnut line", fp.count(), fp.calls)
+	}
+	if !lineNamed(t, d, "½ cup walnuts").FromLLM {
+		t.Error("the flagged line was not filled")
 	}
 }

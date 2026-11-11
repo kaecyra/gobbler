@@ -87,11 +87,13 @@ func (p *Pipeline) assemble(ctx context.Context, src Source, res extract.Result)
 		return Draft{}, fmt.Errorf("read catalog while drafting: %w", rs.err)
 	}
 
-	if src.CheckText != "" {
-		applyNumberCheck(&d, src.CheckText, p.cfg.ConfidenceThreshold)
-	}
+	flagged := src.CheckText != "" && applyNumberCheck(&d, src.CheckText, p.cfg.ConfidenceThreshold)
 	d.Proposed = ProposedFor(d.Components, nil)
 	d.score(structure)
+	if flagged {
+		// A flagged number is a gap whatever the average says (ADR-00053).
+		d.BelowThreshold = true
+	}
 	return d, nil
 }
 

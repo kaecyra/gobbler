@@ -16,9 +16,10 @@ func TestMissingNumbers(t *testing.T) {
 		{"unicode fraction against slash", "½ cup sugar", "1/2 cup sugar", nil},
 		{"slash against unicode fraction", "1/2 cup sugar", "½ cup sugar", nil},
 		{"fraction against decimal", "½ cup sugar", "0.5 cup sugar", nil},
-		{"fraction misread as a digit", "½ cup sugar", "4 cup sugar", []string{"1/2"}},
+		{"fraction misread as a digit", "½ cup sugar", "4 cup sugar", []string{"½"}},
 		{"mixed number joined", "1½ cups milk", "1 1/2 cups milk", nil},
 		{"mixed number misjoined", "1 1/2 cups milk", "11/2 cups milk", []string{"1", "1/2"}},
+		{"decimal printed as written", "0.5 cup sugar", "4 cup sugar", []string{"0.5"}},
 		{"range both ends", "2-3 cloves garlic", "2-3 cloves garlic", nil},
 		{"range with an en dash", "2–3 cloves garlic", "2 to 3 cloves garlic", nil},
 		{"range end misread", "2-3 cloves garlic", "2-8 cloves garlic", []string{"3"}},
@@ -27,7 +28,7 @@ func TestMissingNumbers(t *testing.T) {
 		{"thousands separator", "1,000 g flour", "1000 g flour", nil},
 		{"number elsewhere in the text counts", "1 tsp salt", "salt\n1 tsp pepper", nil},
 		{"no numbers", "salt to taste", "pepper", nil},
-		{"order and repeats", "3 eggs, 3 yolks, ¼ tsp", "9 eggs 9 yolks", []string{"3", "1/4"}},
+		{"order and repeats", "3 eggs, 3 yolks, ¼ tsp", "9 eggs 9 yolks", []string{"3", "¼"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

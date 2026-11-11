@@ -25,7 +25,8 @@ type TextReader interface {
 }
 
 // photoTypes are the image types accepted, by sniffed media type. The same
-// bytes go to tesseract and, on fallback, to the vision provider, so this is
+// bytes go to tesseract and, when a provider is configured, to it for
+// transcription and again on fallback, so this is
 // the intersection of what tesseract, Anthropic (JPEG, PNG, GIF, WebP:
 // https://platform.claude.com/docs/en/build-with-claude/vision) and Gemini
 // (PNG, JPEG, WebP, HEIC, HEIF: https://ai.google.dev/gemini-api/docs/image-understanding)

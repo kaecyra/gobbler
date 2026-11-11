@@ -169,11 +169,12 @@ func (p *Pipeline) fromPhotoSource(ctx context.Context, content, check string, i
 	return p.draftWithFallback(ctx, src, res)
 }
 
-// transcribe asks the provider for the photo's text. It reports false, having
-// logged why, when there is no provider, nothing to send, or the provider could
-// not read the page: the degraded draft from the tesseract text is still
-// reviewable, so this is not an error (error-handling: fall back only when the
-// degraded result is useful).
+// transcribe asks the provider for the photo's text. It reports false when
+// there is no provider or nothing to send, which is the normal no-LLM path and
+// needs no log, and when the photo is too large or the provider could not read
+// the page, which it logs. The degraded draft from the tesseract text is still
+// reviewable, so none of these is an error (error-handling: fall back only when
+// the degraded result is useful).
 func (p *Pipeline) transcribe(ctx context.Context, image []byte, imageMIME string) (string, bool) {
 	if p.deps.Provider == nil || len(image) == 0 {
 		return "", false

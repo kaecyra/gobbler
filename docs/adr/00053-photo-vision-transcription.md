@@ -34,9 +34,11 @@ Options considered:
 Options considered for what is stored:
 
 - **The transcript alone.** Rejected by the owner: a replay of the snapshot
-  (preview, re-import, reparse, [ADR-00048](00048-agent-driven-import.md))
+  ([ADR-00048](00048-agent-driven-import.md))
   would reproduce the parse but not the number-check flags, so the same input
-  and parser version would give a different draft.
+  and parser version would give a different draft. (Preview and re-import do
+  not replay photos today: preview reads a page snapshot and re-import fetches a
+  URL. This rules on what any photo replay needs.)
 - **The transcript and the `tesseract` text.** Chosen by the owner.
 
 ## Decision
@@ -57,13 +59,16 @@ states: `tesseract` alone, and no provider call.
    number in a transcribed ingredient line that appears nowhere in the
    `tesseract` text lowers that line's confidence below the threshold. Numbers
    are compared by value, so `½`, `1/2` and `0.5` agree, a range is its two
-   ends, and a temperature is its digits. Gap-fill then treats the line as a
-   gap and sends it with the photo to the vision model, as ADR-00020 describes.
-   Gap-fill is unchanged.
+   ends, and a temperature is its digits. A flagged line holds the draft below
+   the threshold whatever its overall score, because the score averages the
+   lines and a low threshold could otherwise leave one flagged line unsent.
+   Gap-fill then treats the line as a gap and sends it with the photo to the
+   vision model, as ADR-00020 describes. Gap-fill is unchanged.
 4. **The `tesseract` text is stored as a snapshot kind of its own,
    `ocr_check`,** beside the transcript, on the same terms as every other
-   snapshot: added with the recipe, never modified. Draft, preview, re-import
-   and reparse replay the pair, and the same pair gives the same flags.
+   snapshot: added with the recipe, never modified. A replay of the pair gives
+   the same flags, and any photo replay goes through the one entry that builds
+   a photo draft from the pair. Preview and re-import do not replay photos yet.
 5. **A transcription that fails or times out is logged, and the draft is built
    from the `tesseract` text**, with no `ocr_check` snapshot. The draft is still
    reviewable, so the degraded path is useful to the person. A transcript with
@@ -88,8 +93,8 @@ number check needs its text.
 
 A draft holds one snapshot slot, so a held photo draft carries the `tesseract`
 text inside its draft document, and confirming it writes the `ocr_check`
-snapshot with the recipe. A share of a recipe copies one snapshot and does not
-carry the `ocr_check`.
+snapshot with the recipe. A share copies every snapshot of a recipe, so it
+carries the `ocr_check` with the transcript.
 
 **Obligations:**
 
@@ -103,14 +108,16 @@ carry the `ocr_check`.
 3. A test with a stub provider proves a photo draft's snapshot is the provider's
    transcript and that the rule parser built the draft from it.
 4. A table test proves a transcribed line whose number `tesseract` did not read
-   is below the threshold, for `½` against `1/2`, unicode fractions, ranges and
-   temperatures.
+   is flagged, for `½` against `1/2`, unicode fractions, ranges and
+   temperatures, and a test at a low threshold with a long ingredient list
+   proves the flagged line reaches gap-fill.
 5. Tests prove that with no provider the photo path makes no provider call, that
    a transcription failure is logged and the draft is built from the `tesseract`
-   text, and that a photo over `maxVisionImageBytes` is not transcribed.
+   text, and that a photo over the size the provider accepts for gap-fill is not
+   transcribed.
 6. A test proves replaying the stored transcript and `tesseract` text gives the
-   same line confidences, and that saving a photo draft, held or direct, stores
-   both snapshots.
+   same line confidences, that saving a photo draft, held or direct, stores both
+   snapshots, and that a share of a photo recipe carries the `ocr_check`.
 7. ADR-00006's status line gains "Amended by" this ADR, and its Pipeline steps
    1 and 5, its rejection of vision-first for photos and its obligation 2 carry
    an amendment note pointing here.
