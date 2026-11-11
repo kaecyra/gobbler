@@ -1,6 +1,6 @@
 # ADR-00057: Integration settings live in the database, and their secrets are encrypted there under a key from the environment
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00054](00054-youtube-description-ingest.md)
 
 **Date:** 2026-11-10
 
@@ -42,6 +42,11 @@ Options considered:
 Integration settings live in the database and are edited by an operator on
 the operator's Deployment page: the mail settings of ADR-00055 and the LLM
 settings of ADR-00056. This is per deployment, not per household.
+
+> Amended by [ADR-00054](00054-youtube-description-ingest.md): the integration
+> settings that live in the database also include the YouTube Data API key
+> (integration `youtube`, secret field `api_key`). The key is a secret, edited
+> on the Deployment page and sealed like the mail and LLM secrets.
 
 What the binary needs to start, to sign people in and to protect the data
 stays in the environment: the OIDC client secret, the S3 credentials, the
