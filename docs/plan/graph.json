@@ -4897,7 +4897,8 @@
         "e2e/operator/**",
         "internal/web/ingest/**",
         "e2e/ingest/**",
-        "internal/web/server.go"
+        "internal/web/server.go",
+        "internal/web/server_test.go"
       ],
       "needs_migration": null,
       "adrs": [
