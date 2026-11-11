@@ -4804,7 +4804,6 @@
       "adrs": [
         "00054"
       ],
-      "blocked": "owner to choose how the description is fetched: YouTube Data API (key) or the watch page's player JSON (#607)",
       "note": "Owner ruling 2026-11-10: description text or a linked blog Recipe only; no transcript or VLM. Instagram paste-only, TikTok out."
     },
     {
