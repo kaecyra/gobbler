@@ -1,8 +1,38 @@
-# Overseer handoff: 2026-11-11, wave 13 landed; only y-youtube-description (#607) left to dispatch
+# Overseer handoff: 2026-11-11, wave 13 done; nothing dispatchable without owner input
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Wave 13 round 3 (2026-11-11): #629 and #607 landed, then handed off
+
+The owner asked to land everything and hand off for a restart. Nothing is in flight, no worktrees are on disk, and no PRs are open. Read `VERSION` on main; it was 0.149.0 at this writing.
+
+**Merged this round:**
+
+| What | PR | SHA |
+|---|---|---|
+| chore(plan): add f-db-dsn-escape for bug #629 | #638 | 7a093f73 |
+| chore(plan): y-youtube-description owns the web wiring, the status table and ADR-00057 | #640 | 3c8ed3e8 |
+| fix(db): escape the data directory in the SQLite DSN (f-db-dsn-escape, closes #629) | #639 | 64fc54da |
+| feat(ingest): YouTube description or linked recipe page via the YouTube Data API, Instagram refused as paste-only (y-youtube-description, ADR-00054, amends ADR-00057, closes #607) | #641 | 3c4d96c8 |
+
+**All four merged over a red CI `check` job, on the owner's explicit say-so (2026-11-11).** GitHub's hosted runners (`ubuntu-latest`) could not resolve `azure.archive.ubuntu.com`, so `npx playwright install --with-deps chromium` failed in "install e2e dependencies" before any test ran. That was every rerun from about 14:40Z to 16:25Z. The `image` job passed on all four. Each branch's `make check` (lint, unit, e2e) was green locally in the container, and #641's was re-run after its rebase onto #639. Review was clean on all four: every MUST, SHOULD and NIT was fixed, and every thread was resolved. **First job for the next dispatcher: confirm CI on main (`3c4d96c8` or later) is green. If it is red for a reason other than the apt outage, treat it as a regression from these four.** The standing merge authority still requires green CI; this exception was for that outage only.
+
+**Owner decisions (don't re-ask):** see round 2 below. #607 is built to them. The owner's YouTube key goes into the Deployment page's YouTube section now that #641 is deployed.
+
+**Follow-ups opened:** #642, MCP `import_recipe` does not use the YouTube description lookup (ADR-00054 decision 10). It is not a graph node yet. Add one if the owner wants it.
+
+**Numbers:** schema migrations last used 00043 (none this round). ADRs last used 00059. 00054 was written by #641.
+
+**Blocked or parked:** l-meal-planning (#38), i-site-extractors (#193), o-demo-reseed (#432), unchanged. Those are the only nodes not merged.
+
+**Next three:** nothing is dispatchable. The parked nodes need owner input first, and #642 needs a node if wanted.
+
+**Notes for the next dispatcher:**
+- A lane-widening PR found during review is quick to land, and widening the lane beat accepting a workaround. #607's worker first threaded the YouTube lookup through the LLM provider because `web.Deps` was outside its lane. #640 fixed the lane instead.
+- The review subagent's `unresolvedThreads` count was 0 on reviews that had just posted inline findings. Read the comments; don't trust that count.
+- The bridge's `gh pr checks --watch` stalls after a push restarts CI. Poll with a background `sleep` and a single `gh pr checks`.
 
 ## Wave 13 round 2 (2026-11-11): everything in flight landed, then handed off
 
