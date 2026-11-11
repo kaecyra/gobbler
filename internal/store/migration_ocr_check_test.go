@@ -10,10 +10,10 @@ import (
 )
 
 // ocrCheckMigration is the version of the migration under test; renumber it
-// here when the placeholder 99999 gets its sequence number.
-const ocrCheckMigration = 99999
+// here if the migration is ever renumbered.
+const ocrCheckMigration = 42
 
-// Migration 99999 (ADR-00053) rebuilds source_snapshots to admit the
+// Migration 00042 (ADR-00053) rebuilds source_snapshots to admit the
 // ocr_check kind. Up accepts the kind and still refuses an unknown one; Down
 // drops the rows the old CHECK cannot hold and keeps every other snapshot and
 // every waiting draft's link; Up again restores the CHECK without losing rows.
