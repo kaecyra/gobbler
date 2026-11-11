@@ -4784,7 +4784,8 @@
       "issue": 607,
       "status": "todo",
       "depends_on": [
-        "p-photo-vision-ocr"
+        "p-photo-vision-ocr",
+        "l-llm-provider-config"
       ],
       "owns": [
         "internal/ingest/**",
@@ -4892,13 +4893,14 @@
         "internal/settings/**",
         "e2e/operator/**",
         "internal/web/ingest/**",
-        "e2e/ingest/**"
+        "e2e/ingest/**",
+        "internal/web/server.go"
       ],
       "needs_migration": null,
       "adrs": [
         "00056"
       ],
-      "note": "Takes ADR-00057 obligation 6 and the LLM half of 7 from s-settings-store (#616 comment, 2026-11-10). Before dispatch, widen the lane with internal/web/ingest/** and e2e/ingest/**."
+      "note": "Takes ADR-00057 obligation 6 and the LLM half of 7 from s-settings-store (#616 comment, 2026-11-10). Owns internal/web/server.go because its writeTimeout is sized against the LLM call timeout, which moves to an operator setting (ADR-00056)."
     },
     {
       "id": "s-settings-store",
