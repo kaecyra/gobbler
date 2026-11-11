@@ -1,8 +1,49 @@
-# Overseer handoff: 2026-11-11, wave 13: #615 and #606 in flight, plan PR #625 in review
+# Overseer handoff: 2026-11-11, wave 13 landed; only y-youtube-description (#607) left to dispatch
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
+
+## Wave 13 round 2 (2026-11-11): everything in flight landed, then handed off
+
+The owner asked to land everything in flight and hand off. Nothing is in flight, no worktrees are on disk, and no PRs are open. Read `VERSION` on main; it was 0.148.0 at this writing.
+
+**Merged this round** (standing authority, each review-clean: CI green, every MUST and SHOULD fixed or ruled on by the owner, zero unresolved threads):
+
+| What | PR | SHA |
+|---|---|---|
+| feat(ingest): photos transcribed by a vision model, numbers checked against tesseract (p-photo-vision-ocr, migration 00042, ADR-00053) | #627 | 76e2c238 |
+| chore(plan): l-llm-provider-config owns internal/web/server_test.go | #630 | 2f8db888 |
+| feat(llm): text and vision each name their own provider and model on the Deployment page (l-llm-provider-config, ADR-00056/00057 LLM half) | #631 | 90556224 |
+| chore(plan): y-youtube-description owns the Deployment page section, after u-llm-usage-cost | #632 | a229112a |
+| chore(plan): settingsdb is a shared file; u-llm-usage-cost owns docs/ui/design.md | #633 | 1cda17af |
+| docs(adr): ADR-00059, a household's LLM call records are deleted with it | #635 | ee07d564 |
+| chore(plan): u-llm-usage-cost owns e2e/ingest/** | #636 | 333bf3be |
+| feat(llmusage): every LLM call recorded with its cost, OpenRouter price sync, operator usage page (u-llm-usage-cost, migration 00043, ADR-00058) | #634 | c10d6ee0 |
+
+**Owner decisions this round (don't re-ask):**
+- **#607, how the YouTube description is fetched:** the YouTube Data API. The key is stored encrypted and set on the Deployment page like the mail and LLM secrets, not as an environment variable (the issue body still says environment; the 2026-11-11 issue comment and the node note supersede it). No key saved means the fetch is off. ADR-00057 names only mail and LLM, so #607's ADR-00054 must amend ADR-00057's scope and AGENTS.md's secrets boundary (both are in its lane now). The owner created the key in Google Cloud project `ok-perfect` (account tim@kaizenize.com, gcloud configuration `gobbler`), restricted to `youtube.googleapis.com`; it goes into the Deployment page once #607 ships. Never read or paste the key string.
+- **#619, a deleted household's LLM call records:** deleted with the household (ADR-00059, amends ADR-00058's "kept indefinitely"). Accepted cost: usage totals then understate what was billed.
+
+**Blocked or parked (reasons are in the graph):** l-meal-planning (#38), i-site-extractors (#193), o-demo-reseed (#432), unchanged.
+
+**Worktrees on disk:** none.
+
+**Numbers:** schema migrations last used 00043 (00042 p-photo-vision-ocr, 00043 u-llm-usage-cost). ADRs last used 00059 (00054 reserved for y-youtube-description).
+
+**PRs waiting on the owner:** none. No escalated questions are open.
+
+**Next three:**
+1. **y-youtube-description (#607).** Its only remaining node. Dependencies all merged, lane widened (#632) to include `internal/web/settings/**`, `e2e/operator/**`, `AGENTS.md` and `docs/operations.md`. It needs no migration. Brief the worker with the issue, its two comments, the node note, ADR-00021, ADR-00042, ADR-00006 and ADR-00057, and the "Settle in the ADR" points in the issue. The Deployment page key section should follow the mail and LLM sections in `internal/web/settings`. Fixtures only, no live YouTube calls.
+2. **#629 (open bug, not a graph node):** `db.Open` builds its DSN without escaping, so a `#` in a path truncates it. `TestAssembleSplitsNumberedStepsInPastedText`'s duplicate subtest name `1._#01` leaves `/tmp/TestAssembleSplitsNumberedStepsInPastedText1._` behind. Any later run under a different migration number then fails with a stale-migration error until the file is deleted from the container's `/tmp`. Two workers hit it this round. Worth a node or a direct fix.
+3. Nothing else is dispatchable. The parked nodes need owner input first.
+
+**Notes for the next dispatcher:**
+- Workers' `cd` into a worktree can move the dispatcher's own cwd. Use `git -C` and absolute paths, and check `pwd` if a command acts on the wrong tree.
+- Before writing a worker brief that names files as in-lane, check them against the node's `owns`. This round a brief wrongly called `e2e/ingest/**` in-lane for u-llm-usage-cost, which cost an extra lane PR (#636).
+- A reviewer's suggestion to fix a class of problem in `shared_files` (#633, settingsdb) beat widening one node's lane. Prefer that when the cause is the shared list.
+- `validate.ts` once hung past 120s; rerun it under `timeout 60`.
+
 
 ## Wave 13 round 1 (2026-11-10, evening)
 
