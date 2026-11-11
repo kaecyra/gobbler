@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -229,4 +230,66 @@ func TestVersionWithNoMigrationsIsZero(t *testing.T) {
 	if err != nil || v != 0 {
 		t.Fatalf("version = %d, err = %v, want 0", v, err)
 	}
+}
+
+// A data directory holding URI metacharacters must reach SQLite as a path.
+// Unescaped, "#" or "?" cut the file name short and SQLite opened a different
+// file (#629). Relative directories (config's default is "data") must work too:
+// a DSN written as "file://data/..." makes SQLite read "data" as an authority.
+func TestOpenDataDirWithURIMetacharacters(t *testing.T) {
+	for _, name := range []string{"has#hash", "has?query", "has%41percent", "a#b?c%d", "has:colon"} {
+		for _, relative := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/relative=%t", name, relative), func(t *testing.T) {
+				root := t.TempDir()
+				rel := filepath.Join(name, "data")
+				dir := filepath.Join(root, rel)
+				if relative {
+					t.Chdir(root)
+					dir = rel
+				}
+				d, err := Open(context.Background(), config.Config{Server: config.Server{DataDir: dir}})
+				if err != nil {
+					t.Fatalf("Open: %v", err)
+				}
+				if err := d.Close(); err != nil {
+					t.Fatalf("Close: %v", err)
+				}
+				want := filepath.Join(root, rel)
+				if _, err := os.Stat(filepath.Join(want, FileName)); err != nil {
+					t.Fatalf("database not created in data directory: %v", err)
+				}
+				// Nothing may appear at a truncated or percent-decoded path.
+				var stray []string
+				err = filepath.WalkDir(root, func(p string, e os.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if !e.IsDir() && !strings.HasPrefix(p, want+string(filepath.Separator)) {
+						stray = append(stray, p)
+					}
+					return nil
+				})
+				if err != nil {
+					t.Fatalf("walk %s: %v", root, err)
+				}
+				if len(stray) > 0 {
+					t.Fatalf("files created outside the data directory: %v", stray)
+				}
+			})
+		}
+	}
+	t.Run("plain relative data", func(t *testing.T) {
+		root := t.TempDir()
+		t.Chdir(root)
+		d, err := Open(context.Background(), config.Config{Server: config.Server{DataDir: "data"}})
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if err := d.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(root, "data", FileName)); err != nil {
+			t.Fatalf("database not created: %v", err)
+		}
+	})
 }

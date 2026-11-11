@@ -196,11 +196,9 @@ func TestCreateWithSnapshotsRejectsInvalidRecipeAndNoIdentity(t *testing.T) {
 // fails fast instead of the test waiting seconds for it.
 func openShortBusy(t *testing.T, dir string) *sql.DB {
 	t.Helper()
-	dsn := (&url.URL{
-		Scheme:   "file",
-		Opaque:   filepath.ToSlash(filepath.Join(dir, db.FileName)),
-		RawQuery: url.Values{"_pragma": {"journal_mode(wal)", "foreign_keys(1)", "busy_timeout(100)"}}.Encode(),
-	}).String()
+	dsn := db.DSN(filepath.Join(dir, db.FileName), url.Values{
+		"_pragma": {"journal_mode(wal)", "foreign_keys(1)", "busy_timeout(100)"},
+	})
 	d, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatal(err)
