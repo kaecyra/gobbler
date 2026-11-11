@@ -24,8 +24,9 @@ Options considered:
 
 ## Decision
 
-Deleting a household deletes every LLM call record made for it. "Kept
-indefinitely" in ADR-00058 means no record is removed for its age. It does
+Deleting a household deletes every LLM call record made for it. A call
+that ran for no household has none, and household deletion does not touch
+it. "Kept indefinitely" in ADR-00058 means no record is removed for its age. It does
 not exempt records from household deletion.
 
 After a household is deleted, the usage page's totals, all-time included, no

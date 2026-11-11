@@ -1,6 +1,6 @@
 # ADR-00007: LLM provider interface with Claude and Gemini
 
-**Status:** Accepted
+**Status:** Amended by [ADR-00056](00056-llm-provider-per-task.md), [ADR-00057](00057-integration-settings-in-the-database.md)
 
 **Date:** 2026-10-06
 
