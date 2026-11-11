@@ -81,6 +81,10 @@ export function png(width: number, height: number, rgb: [number, number, number]
 // configureClaude, which saves the settings the way an operator does.
 export const ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
 export const DEV_OPERATOR = 'dev@localhost';
+// Where a spec that saves an LLM model points the daily price sync: a loopback
+// port nothing listens on, so no spec reaches openrouter.ai. A failed sync is
+// logged and harmless; the specs that test the sync use their own fake.
+export const NO_OPENROUTER = 'http://127.0.0.1:1';
 
 const listed = (id: string, name: string) => ({
   type: 'model',

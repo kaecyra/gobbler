@@ -177,10 +177,10 @@ test('an operator opens the usage page from the rail; with no calls it shows not
   for (const model of ['e2e-text', 'e2e-vision']) {
     await expect(priceRow(page, model).getByTestId('price-input')).toHaveText('Unpriced');
   }
-  // The daily job synced once at start-up, before any model was chosen, so it
-  // priced nothing.
-  await expect(page.getByTestId('sync-success')).toContainText('Last sync:');
-  expect(openRouterHits).toBe(1);
+  // The daily job ran at start-up, before any model was chosen: with nothing
+  // to price it fetched nothing and recorded nothing.
+  await expect(page.getByTestId('sync-success')).toContainText('No sync has succeeded yet');
+  expect(openRouterHits).toBe(0);
 });
 
 test('a successful and a failed call are both counted, the failure shows its error, and no key reaches the page', async ({ page }) => {

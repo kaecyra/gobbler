@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { configureClaude, DEV_OPERATOR, ENCRYPTION_KEY, MODELS_LISTING, openSaved } from './helpers';
+import { configureClaude, DEV_OPERATOR, ENCRYPTION_KEY, NO_OPENROUTER, MODELS_LISTING, openSaved } from './helpers';
 
 // Photo ingestion with a vision model (ADR-00053). A stub `tesseract` misreads
 // the half cup of sugar as "4 cup"; a local fake Messages API plays the vision
@@ -107,6 +107,7 @@ test.beforeAll(async () => {
       GOBBLER_DEV_AUTH_BYPASS: 'true',
       GOBBLER_ENCRYPTION_KEY: ENCRYPTION_KEY,
       GOBBLER_OPERATOR_EMAILS: DEV_OPERATOR,
+      GOBBLER_OPENROUTER_URL: NO_OPENROUTER,
       ANTHROPIC_BASE_URL: fakeURL,
     },
     stdio: 'inherit',

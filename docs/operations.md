@@ -559,7 +559,7 @@ operator presses **Sync now** on the page, gobbler fetches OpenRouter's public
 model listing, `https://openrouter.ai/api/v1/models`, with a plain `GET` and no
 credentials, and sends nothing about gobbler or its users. It reads each model's
 id and its input and output price per token, and prices every model a call has
-used or a task is set to use. A model matches only the entry whose id is exactly
+used or a task is set to use. With none of either, it fetches nothing. A model matches only the entry whose id is exactly
 `anthropic/` (Claude) or `google/` (Gemini) followed by the model id gobbler
 uses; a model with no such entry stays unpriced until the operator sets its price
 on the page. A price the operator sets is never overwritten by the sync; **Use

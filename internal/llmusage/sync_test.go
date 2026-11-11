@@ -195,3 +195,29 @@ func TestDueWhenNothingSucceededInADay(t *testing.T) {
 		t.Errorf("Due just after a sync = %v, %v, want false", due, err)
 	}
 }
+
+func TestWithNoModelUsedOrChosenTheSyncFetchesNothingAndRecordsNothing(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newStore(t)
+	srv, hits := listing(t)
+
+	must(t, llmusage.NewSyncer(s, srv.URL, quiet()).Sync(ctx))
+
+	if *hits != 0 {
+		t.Errorf("the listing was fetched %d times, want none: there is nothing to price", *hits)
+	}
+	st, err := s.SyncStatus(ctx)
+	must(t, err)
+	if st != (llmusage.SyncStatus{}) {
+		t.Errorf("status = %+v, want nothing recorded: no success, and no failure", st)
+	}
+	if due, err := s.Due(ctx); err != nil || !due {
+		t.Errorf("Due = %v, %v, want true so the first model chosen is priced at the next check", due, err)
+	}
+	// Once a model is in use the same syncer fetches.
+	must(t, s.Record(ctx, okCall(claudeModel)))
+	must(t, llmusage.NewSyncer(s, srv.URL, quiet()).Sync(ctx))
+	if *hits != 1 {
+		t.Errorf("after a call, the listing was fetched %d times, want 1", *hits)
+	}
+}

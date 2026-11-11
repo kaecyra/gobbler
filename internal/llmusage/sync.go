@@ -108,6 +108,13 @@ func (s *Syncer) sync(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if len(wanted) == 0 {
+		// Nothing has been used and no task is set to use a model, so there is
+		// nothing to price: no fetch, and no success or failure recorded, so
+		// the first model chosen is priced by the next check (ADR-00058).
+		s.log.DebugContext(ctx, "llm price sync: no model used or chosen; nothing fetched")
+		return nil
+	}
 	l, err := s.fetch(ctx)
 	if err != nil {
 		return err
