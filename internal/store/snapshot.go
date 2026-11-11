@@ -27,12 +27,16 @@ const (
 	SnapshotText        SnapshotKind = "text"
 	SnapshotOCR         SnapshotKind = "ocr"
 	SnapshotLLMResponse SnapshotKind = "llm_response"
+	// SnapshotOCRCheck is the tesseract text of a photo whose SnapshotOCR is a
+	// vision model's transcript (ADR-00053). It is the second half of that
+	// photo's source: replaying the pair reproduces the number-check flags.
+	SnapshotOCRCheck SnapshotKind = "ocr_check"
 )
 
 // Valid reports whether k is one of the defined kinds.
 func (k SnapshotKind) Valid() bool {
 	switch k {
-	case SnapshotHTML, SnapshotText, SnapshotOCR, SnapshotLLMResponse:
+	case SnapshotHTML, SnapshotText, SnapshotOCR, SnapshotLLMResponse, SnapshotOCRCheck:
 		return true
 	}
 	return false

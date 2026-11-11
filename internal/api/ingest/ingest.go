@@ -285,8 +285,10 @@ func (s *Service) FromText(ctx context.Context, c Caller, text string) (Draft, e
 	return s.pipeline.FromText(ctx, text)
 }
 
-// FromOCR drafts a recipe from the text OCR read off a photograph. The image
-// is held on the draft in memory only, for the vision fallback.
+// FromOCR drafts a recipe from a photograph and the text tesseract read off it.
+// With a provider configured a vision model transcribes the photo and the
+// transcript is the source (ADR-00053). The image is held on the draft in memory
+// only, for the vision fallback.
 func (s *Service) FromOCR(ctx context.Context, c Caller, text string, image []byte, imageMIME string) (Draft, error) {
 	ctx, err := s.enter(ctx, c)
 	if err != nil {

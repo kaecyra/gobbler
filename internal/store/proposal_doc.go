@@ -15,6 +15,11 @@ import (
 // the document, so its whitespace and key order may change).
 // TestDraftDocumentIngredientsSurviveMerge in package ingest holds the other
 // end of the contract.
+//
+// The store reads one more field: a top-level string "check_text", the
+// tesseract text of a photo whose draft snapshot is a vision transcript. A
+// proposal holds one snapshot, so the check text waits in the document and
+// confirming writes it as the recipe's ocr_check snapshot (ADR-00053).
 
 type rawObject = map[string]json.RawMessage
 
@@ -114,4 +119,15 @@ func lineIngredient(line rawObject) (int64, error) {
 		return 0, fmt.Errorf("draft document line ingredient %s: %w", raw, err)
 	}
 	return id, nil
+}
+
+// draftCheckText is the document's "check_text", empty when it has none.
+func draftCheckText(doc []byte) (string, error) {
+	var top struct {
+		CheckText string `json:"check_text"`
+	}
+	if err := json.Unmarshal(doc, &top); err != nil {
+		return "", fmt.Errorf("decode draft document: %w", err)
+	}
+	return top.CheckText, nil
 }

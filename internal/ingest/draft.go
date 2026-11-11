@@ -24,10 +24,16 @@ type Source struct {
 	// Image is the uploaded photo behind an OCR source, kept in memory only so
 	// a vision-capable provider can be shown the page itself (ADR-00006). It is
 	// never part of the snapshot or of a held draft's document: Content is the
-	// OCR text, and nothing here is stored; Photos keeps it beside a held draft
+	// photo's text, and nothing here is stored; Photos keeps it beside a held draft
 	// for as long as the process has it (ADR-00035). ImageMIME is its media type.
 	Image     []byte
 	ImageMIME string
+	// CheckText is the tesseract text of a photo whose Content is a vision
+	// model's transcript (ADR-00053). It is empty when Content is itself the
+	// tesseract text, and for every other source. It is stored as the recipe's
+	// ocr_check snapshot, and the number check reads it; it is not part of
+	// SHA256, which covers Content alone.
+	CheckText string
 }
 
 func newSource(kind store.SnapshotKind, url string, content []byte) Source {

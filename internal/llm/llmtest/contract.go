@@ -7,6 +7,10 @@
 // cancelled call, an unavailable backend) is an error and never a partial
 // Structured (ADR-00006: an error is not a quietly low-scored draft).
 //
+// RunTranscribeContract does the same for ingest.Provider.Transcribe
+// (ADR-00053): an answer is the page's text, and a blank answer, a timeout, a
+// cancellation or an unavailable backend is an error with no text.
+//
 // The suite never calls a live API and holds no model identifier.
 //
 // # What the suite checks

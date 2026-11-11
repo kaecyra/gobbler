@@ -6,8 +6,9 @@ import (
 )
 
 // Photos holds, in memory only, the photos behind drafts read from a picture
-// (ADR-00006, ADR-00035). A durable draft stores the OCR text, which is its
-// source; the photo itself is only kept so that asking the LLM again can show
+// (ADR-00006, ADR-00035). A durable draft stores the photo's text, which is its
+// source (a vision transcript beside the tesseract text, or the tesseract text
+// alone, ADR-00053); the photo itself is only kept so that asking the LLM again can show
 // it the page, and it is never written to disk. A photo expires after an hour,
 // is dropped when the draft ends, and is lost to a restart. A draft whose photo
 // is gone is still whole: asking the LLM again then reads the OCR text alone,

@@ -68,6 +68,11 @@ func (p *countingProvider) Structure(context.Context, core.Request) (core.Struct
 	return core.Structured{}, errors.New("provider stub")
 }
 
+func (p *countingProvider) Transcribe(context.Context, core.TranscribeRequest) (string, error) {
+	p.asked.Add(1)
+	return "", errors.New("provider stub")
+}
+
 type fixture struct {
 	svc      *ingest.Service
 	cat      *countingCatalog

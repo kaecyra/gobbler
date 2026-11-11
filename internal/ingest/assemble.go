@@ -87,6 +87,9 @@ func (p *Pipeline) assemble(ctx context.Context, src Source, res extract.Result)
 		return Draft{}, fmt.Errorf("read catalog while drafting: %w", rs.err)
 	}
 
+	if src.CheckText != "" {
+		applyNumberCheck(&d, src.CheckText, p.cfg.ConfidenceThreshold)
+	}
 	d.Proposed = ProposedFor(d.Components, nil)
 	d.score(structure)
 	return d, nil

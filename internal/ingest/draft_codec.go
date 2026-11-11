@@ -111,7 +111,11 @@ type docReimport struct {
 type docDraft struct {
 	ParserVersion string `json:"parser_version,omitempty"`
 	SourceURL     string `json:"source_url,omitempty"`
-	Method        string `json:"method,omitempty"`
+	// CheckText is the tesseract text of a photo draft whose snapshot is a
+	// transcript. The store reads this field to write it as the recipe's
+	// ocr_check snapshot when the draft is confirmed (store/proposal_doc.go).
+	CheckText string `json:"check_text,omitempty"`
+	Method    string `json:"method,omitempty"`
 
 	Name        docField[string]   `json:"name"`
 	Author      docField[string]   `json:"author"`
@@ -189,7 +193,7 @@ func decodeUnit(d *docUnit) (quantity.Unit, error) {
 // source's content and photo are not in it.
 func EncodeDraft(d Draft) ([]byte, error) {
 	out := docDraft{
-		ParserVersion: d.ParserVersion, SourceURL: d.Source.URL, Method: string(d.Method),
+		ParserVersion: d.ParserVersion, SourceURL: d.Source.URL, CheckText: d.Source.CheckText, Method: string(d.Method),
 		Name:        docField[string]{d.Name.Value, d.Name.Confidence, d.Name.FromLLM},
 		Author:      docField[string]{d.Author.Value, d.Author.Confidence, d.Author.FromLLM},
 		Description: docField[string]{d.Description.Value, d.Description.Confidence, d.Description.FromLLM},
@@ -277,7 +281,7 @@ func DecodeDraft(doc []byte, snap store.Snapshot) (Draft, error) {
 	}
 	d := Draft{
 		ParserVersion: in.ParserVersion, Method: extract.Method(in.Method),
-		Source: Source{Kind: snap.Kind, URL: in.SourceURL, Content: snap.Content, SHA256: snap.SHA256},
+		Source: Source{Kind: snap.Kind, URL: in.SourceURL, Content: snap.Content, SHA256: snap.SHA256, CheckText: in.CheckText},
 		Name:   Field[string]{in.Name.V, in.Name.C, in.Name.LLM}, Author: Field[string]{in.Author.V, in.Author.C, in.Author.LLM},
 		Description: Field[string]{in.Description.V, in.Description.C, in.Description.LLM},
 		Calories:    Field[int]{in.Calories.V, in.Calories.C, in.Calories.LLM},

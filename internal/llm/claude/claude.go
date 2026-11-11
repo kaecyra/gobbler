@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -116,6 +117,77 @@ func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.St
 		slog.Int64("output_tokens", usage.OutputTokens))
 	p.log.LogAttrs(ctx, slog.LevelInfo, "llm call", attrs...)
 	return s, nil
+}
+
+// Transcribe asks Claude to read the photo in req into text, with the vision
+// model. Timeouts and cancellation wrap the context errors as Structure's do.
+func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest) (string, error) {
+	if len(req.Image) == 0 {
+		return "", errors.New("claude: no image to transcribe")
+	}
+	model := p.visionModel
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	start := time.Now()
+	text, usage, err := p.transcribe(ctx, model, req)
+	attrs := []slog.Attr{
+		slog.String("provider", providerName),
+		slog.String("model", model),
+		slog.String("task", "transcribe"),
+		slog.Int64("latency_ms", time.Since(start).Milliseconds()),
+	}
+	if err != nil {
+		p.log.LogAttrs(ctx, slog.LevelWarn, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
+		return "", err
+	}
+	attrs = append(attrs,
+		slog.Int64("input_tokens", usage.InputTokens),
+		slog.Int64("output_tokens", usage.OutputTokens))
+	p.log.LogAttrs(ctx, slog.LevelInfo, "llm call", attrs...)
+	return text, nil
+}
+
+func (p *Provider) transcribe(ctx context.Context, model string, req ingest.TranscribeRequest) (string, anthropic.Usage, error) {
+	resp, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
+		Model:     anthropic.Model(model),
+		MaxTokens: maxOutputTokens,
+		System:    []anthropic.TextBlockParam{{Text: transcribePrompt}},
+		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(transcribeBlocks(req)...)},
+	})
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return "", anthropic.Usage{}, fmt.Errorf("claude call to %s: %w", model, ctxErr)
+		}
+		return "", anthropic.Usage{}, fmt.Errorf("claude call to %s: %w", model, err)
+	}
+	text, err := transcript(resp)
+	if err != nil {
+		return "", anthropic.Usage{}, fmt.Errorf("claude response from %s: %w", model, err)
+	}
+	return text, resp.Usage, nil
+}
+
+// transcript is the text of a Messages response, or an error when the model
+// declined, was cut off, or said nothing.
+func transcript(resp *anthropic.Message) (string, error) {
+	switch resp.StopReason {
+	case anthropic.StopReasonMaxTokens:
+		return "", errors.New("output cut off at the token limit")
+	case anthropic.StopReasonRefusal:
+		return "", errors.New("the model declined the request")
+	}
+	var b strings.Builder
+	for _, block := range resp.Content {
+		if tb, ok := block.AsAny().(anthropic.TextBlock); ok {
+			b.WriteString(tb.Text)
+		}
+	}
+	text := strings.TrimSpace(b.String())
+	if text == "" {
+		return "", errors.New("the model returned no text")
+	}
+	return text, nil
 }
 
 func (p *Provider) call(ctx context.Context, model string, req ingest.Request) (ingest.Structured, anthropic.Usage, error) {

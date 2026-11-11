@@ -23,6 +23,25 @@ Rules:
 - A rule-based reading of the source may be supplied. It can be wrong or incomplete; the source is authoritative.
 - Instead of a reading you may be given a list of gaps. Answer only for those gaps, exactly as the list asks; everything else is already settled and is ignored.`
 
+// transcribePrompt asks for the page as text and nothing else: structuring it is
+// the rule parser's job, so the model must not do it (ADR-00053).
+const transcribePrompt = `You transcribe a photograph of a recipe page into plain text.
+
+Rules:
+- Copy every word and number on the page exactly as printed, in reading order. Untangle columns: finish one column before the next, and keep a heading with the text under it.
+- Keep headings, ingredient lines and steps on their own lines. Keep fractions (½, 1/2), ranges, temperatures and units exactly as printed.
+- Do not interpret, convert, correct, reword, summarise or structure anything. Do not add labels, notes or commentary.
+- Answer with the transcription alone.`
+
+// transcribeBlocks is the user turn of a transcription: the photo and one line
+// asking for it.
+func transcribeBlocks(req ingest.TranscribeRequest) []anthropic.ContentBlockParamUnion {
+	return []anthropic.ContentBlockParamUnion{
+		anthropic.NewImageBlockBase64(req.ImageMIME, base64.StdEncoding.EncodeToString(req.Image)),
+		anthropic.NewTextBlock("Transcribe the recipe page in the attached image."),
+	}
+}
+
 // userBlocks builds the user turn: the image when there is one, then the source
 // text and, as context, the rule-based draft or the gaps to fill.
 func userBlocks(req ingest.Request) []anthropic.ContentBlockParamUnion {

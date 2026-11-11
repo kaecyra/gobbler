@@ -21,6 +21,25 @@ type fakeProvider struct {
 	err   error
 	// onCall runs inside Structure, to break the world mid-call.
 	onCall func()
+	// transcript and transcribeErr answer Transcribe; with neither set the
+	// provider cannot read photos and Transcribe fails. transcribed records
+	// every transcription request.
+	transcript    string
+	transcribeErr error
+	transcribed   []TranscribeRequest
+}
+
+func (f *fakeProvider) Transcribe(_ context.Context, req TranscribeRequest) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.transcribed = append(f.transcribed, req)
+	if f.transcribeErr != nil {
+		return "", f.transcribeErr
+	}
+	if f.transcript == "" {
+		return "", errors.New("fake provider: no transcript set")
+	}
+	return f.transcript, nil
 }
 
 func (f *fakeProvider) Structure(_ context.Context, req Request) (Structured, error) {

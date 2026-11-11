@@ -34,8 +34,10 @@ browser ──► cloudflared ──► gobbler (Go binary) ──► SQLite fil
                                  │
                                  ├──► OpenID Connect issuer (sign-in)
                                  ├──► recipe sites (URL ingest)
-                                 ├──► tesseract (local OCR)
-                                 ├──► Claude / Gemini APIs (fallback only)
+                                 ├──► tesseract (local OCR: the text, or the
+                                 │    check on a vision transcript's numbers)
+                                 ├──► Claude / Gemini APIs (photo transcription,
+                                 │    and the fallback)
                                  └──► S3-compatible storage (backups)
 ```
 
@@ -166,7 +168,7 @@ breaks each wave into nodes.
 | **W2 Rule ingestion** | `parse` with golden corpus, JSON-LD and microdata extraction, text sectioning, confidence scoring, review screen, save |
 | **W3 Recipe UI** | List and search (FTS5, tags), recipe view with scaling and unit modes, editor for components, lines, qualifiers, equipment and step dependencies, revisions and restore, clone, notes, ratings, made-it log, catalog cleanup page |
 | **W4 Shopping** | List building from recipes and manual items, pantry, merge and aisle grouping, live view over SSE, text export |
-| **W5 LLM and photo** | LLM interface, Claude and Gemini providers, automatic and manual fallback, `tesseract` OCR, vision fallback, USDA import (can run in parallel with W3–W4 after W2) |
+| **W5 LLM and photo** | LLM interface, Claude and Gemini providers, automatic and manual fallback, photo ingest by vision transcription with `tesseract` OCR as the check on its numbers ([ADR-00053](adr/00053-photo-vision-transcription.md)), vision fallback, USDA import (can run in parallel with W3–W4 after W2) |
 | **W6 Cooking** | "Meanwhile" guidance in the recipe view, cook mode with step timers and screen wake lock |
 | **W7 Operations and integrations** | Nightly backups to S3 with retention, settings page with backup status, operations doc with deploy and restore steps |
 | **W8 Households** | Household membership and admission, `household_id` scoping of recipe and shopping data, the catalog's central layer and per-household overlay, invitations and the operator's pages, recipe sharing by copy, cross-household route tests ([ADR-00018](adr/00018-households-as-tenants.md)) |

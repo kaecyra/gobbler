@@ -113,6 +113,70 @@ func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.St
 	return out, nil
 }
 
+// transcribePrompt asks for the page as text and nothing else: structuring it is
+// the rule parser's job, so the model must not do it (ADR-00053).
+const transcribePrompt = `You transcribe a photograph of a recipe page into plain text.
+Copy every word and number on the page exactly as printed, in reading order. Untangle columns: finish one column before the next, and keep a heading with the text under it.
+Keep headings, ingredient lines and steps on their own lines. Keep fractions (½, 1/2), ranges, temperatures and units exactly as printed.
+Do not interpret, convert, correct, reword, summarise or structure anything. Do not add labels, notes or commentary.
+Answer with the transcription alone.`
+
+// Transcribe asks Gemini to read the photo in req into text, with the vision
+// model. Timeouts and cancellation wrap the context errors as Structure's do.
+func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest) (string, error) {
+	if len(req.Image) == 0 {
+		return "", errors.New("gemini: no image to transcribe")
+	}
+	model := p.visionModel
+	start := time.Now()
+	text, usage, err := p.transcribe(ctx, model, req)
+	attrs := []any{
+		slog.String("provider", providerName),
+		slog.String("model", model),
+		slog.String("task", "transcribe"),
+		slog.Int64("latency_ms", time.Since(start).Milliseconds()),
+	}
+	if err != nil {
+		p.log.ErrorContext(ctx, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
+		return "", err
+	}
+	p.log.InfoContext(ctx, "llm call", append(attrs,
+		slog.Int("input_tokens", int(usage.PromptTokenCount)),
+		slog.Int("output_tokens", int(usage.CandidatesTokenCount+usage.ThoughtsTokenCount)))...)
+	return text, nil
+}
+
+func (p *Provider) transcribe(ctx context.Context, model string, req ingest.TranscribeRequest) (string, genai.GenerateContentResponseUsageMetadata, error) {
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	cfg := &genai.GenerateContentConfig{SystemInstruction: genai.NewContentFromText(transcribePrompt, genai.RoleUser)}
+	content := genai.NewContentFromParts([]*genai.Part{
+		genai.NewPartFromBytes(req.Image, req.ImageMIME),
+		genai.NewPartFromText("Transcribe the recipe page in the attached image."),
+	}, genai.RoleUser)
+	resp, err := p.client.Models.GenerateContent(ctx, model, []*genai.Content{content}, cfg)
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return "", genai.GenerateContentResponseUsageMetadata{}, fmt.Errorf("gemini call to %s: %w", model, ctxErr)
+		}
+		return "", genai.GenerateContentResponseUsageMetadata{}, fmt.Errorf("gemini call to %s: %w", model, err)
+	}
+	text, err := answerText(resp)
+	if err != nil {
+		return "", genai.GenerateContentResponseUsageMetadata{}, err
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", genai.GenerateContentResponseUsageMetadata{}, fmt.Errorf("gemini response: %w: no text", ErrInvalidResponse)
+	}
+	var usage genai.GenerateContentResponseUsageMetadata
+	if resp.UsageMetadata != nil {
+		usage = *resp.UsageMetadata
+	}
+	return text, usage, nil
+}
+
 func (p *Provider) call(ctx context.Context, model string, req ingest.Request) (ingest.Structured, genai.GenerateContentResponseUsageMetadata, error) {
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()

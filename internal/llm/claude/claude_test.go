@@ -119,6 +119,14 @@ func TestContract(t *testing.T) {
 	})
 }
 
+func TestTranscribeContract(t *testing.T) {
+	llmtest.RunTranscribeContract(t, func(t *testing.T, env llmtest.Env) ingest.Provider {
+		srv := httptest.NewServer(wire(env.Scenario, &captured{}))
+		t.Cleanup(srv.Close)
+		return newProvider(t, srv, env.APIKey, env.Timeout, env.Logger)
+	})
+}
+
 const minimalPayload = `{"name":"Toast","components":[{"ingredients":["2 slices bread"]}]}`
 
 func serve(t *testing.T, h http.HandlerFunc) *httptest.Server {
@@ -168,6 +176,32 @@ func TestRequestShape(t *testing.T) {
 				t.Errorf("source text missing from the request: %s", raw)
 			}
 		})
+	}
+}
+
+// ADR-00053: a transcription goes to the vision model with the photo, asks for
+// text, and offers no tool and no schema, so the model cannot structure the page.
+func TestTranscribeRequestShape(t *testing.T) {
+	seen := &captured{}
+	srv := serve(t, wire(llmtest.Scenario{Behavior: llmtest.Respond, Payload: []byte("Toast\n2 slices bread")}, seen).ServeHTTP)
+	p := newProvider(t, srv, "key-123", time.Second, slog.New(slog.DiscardHandler))
+	got, err := p.Transcribe(context.Background(), ingest.TranscribeRequest{Image: []byte{0x89, 'P', 'N', 'G'}, ImageMIME: "image/png"})
+	if err != nil || got != "Toast\n2 slices bread" {
+		t.Fatalf("Transcribe = %q, %v", got, err)
+	}
+	_, body := seen.get()
+	if body["model"] != visionModel {
+		t.Errorf("model = %v, want the vision model %s", body["model"], visionModel)
+	}
+	if _, ok := body["tools"]; ok {
+		t.Errorf("tools sent with a transcription: %v", body["tools"])
+	}
+	raw, _ := json.Marshal(body["messages"])
+	if !strings.Contains(string(raw), `"type":"image"`) {
+		t.Errorf("no image block in the request: %s", raw)
+	}
+	if sys, _ := json.Marshal(body["system"]); !strings.Contains(string(sys), "Do not interpret") {
+		t.Errorf("system prompt does not forbid interpretation: %s", sys)
 	}
 }
 

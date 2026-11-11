@@ -1,0 +1,18 @@
+#!/bin/sh
+# Stand-in for tesseract in the photo vision e2e spec: reads and discards the
+# image on stdin and prints text in which the half cup of sugar was misread as
+# "4 cup", a line that still parses cleanly (ADR-00053).
+cat >/dev/null
+cat <<'TEXT'
+Photo Pancakes
+
+Ingredients:
+- 2 cups all-purpose flour
+- 4 cup sugar
+- 2 eggs
+
+Instructions:
+Whisk the dry ingredients together in a large bowl.
+
+Cook on a hot greased griddle until golden on both sides.
+TEXT
