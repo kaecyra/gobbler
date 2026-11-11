@@ -133,6 +133,10 @@ const (
 	IssueNoteMealPlan    = domain.IssueNoteMealPlan
 )
 
+// PasteOnlyError is the refusal of a paste-only link, carrying the sentence
+// for the person (ingest.PasteOnlyError).
+type PasteOnlyError = domain.PasteOnlyError
+
 // The errors a service method returns, and the ones the callers of the drafts
 // branch on, for errors.Is. They are the domain's own values, so errors.Is
 // matches either name.

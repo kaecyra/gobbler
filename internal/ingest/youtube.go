@@ -35,10 +35,13 @@ type DescriptionSource interface {
 // failed fetch reports it, and the message tells the person what to do.
 var ErrPasteOnly = errors.New("this site cannot be read from a link")
 
-type pasteOnlyError struct{ msg string }
+// PasteOnlyError is the refusal of a paste-only link. Advice is the sentence
+// for the person, without a final full stop, the one copy of that wording;
+// the form shows it (errors.As).
+type PasteOnlyError struct{ Advice string }
 
-func (e pasteOnlyError) Error() string   { return ErrFetch.Error() + ": " + e.msg }
-func (e pasteOnlyError) Unwrap() []error { return []error{ErrFetch, ErrPasteOnly} }
+func (e PasteOnlyError) Error() string   { return ErrFetch.Error() + ": " + e.Advice }
+func (e PasteOnlyError) Unwrap() []error { return []error{ErrFetch, ErrPasteOnly} }
 
 // checkPasteOnly refuses an Instagram link (instagram.com and every subdomain,
 // www. and m. included) before anything is fetched.
@@ -49,7 +52,7 @@ func checkPasteOnly(rawURL string) error {
 	}
 	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
 	if host == "instagram.com" || strings.HasSuffix(host, ".instagram.com") {
-		return pasteOnlyError{msg: "Instagram links cannot be read. Paste the caption as text instead"}
+		return PasteOnlyError{Advice: "Instagram links cannot be read. Paste the caption as text instead"}
 	}
 	return nil
 }

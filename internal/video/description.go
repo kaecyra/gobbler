@@ -160,8 +160,8 @@ func redact(s, key string) string {
 // error.details[] is as google.aip.dev/193 gives it, and the classic reasons
 // quotaExceeded, keyInvalid, accessNotConfigured and videoNotFound are on
 // developers.google.com/youtube/v3/docs/core_errors. The three UPPER_SNAKE
-// reasons are in neither page and rest on the reviewer's report of live
-// answers; an unlisted reason falls to ErrLookup, never to a silent success.
+// reasons are in neither page and have not been checked against a live
+// answer; an unlisted reason falls to ErrLookup, never to a silent success.
 // rateLimitExceeded and userRateLimitExceeded are short-window limits, not the
 // day's quota, so they are ErrLookup and the person is not told to wait a day.
 func apiError(status int, body []byte, id string) error {
