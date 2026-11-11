@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { openSaved } from './helpers';
+import { configureClaude, DEV_OPERATOR, ENCRYPTION_KEY, MODELS_LISTING, openSaved } from './helpers';
 
 // Photo ingestion with a vision model (ADR-00053). A stub `tesseract` misreads
 // the half cup of sugar as "4 cup"; a local fake Messages API plays the vision
@@ -64,6 +64,11 @@ test.beforeAll(async () => {
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
+      if (req.method === 'GET' && req.url?.startsWith('/v1/models')) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(MODELS_LISTING);
+        return;
+      }
       const isGapFill = JSON.parse(raw || '{}').tools !== undefined;
       (isGapFill ? gapFills : transcriptions).push(raw);
       if (!isGapFill && transcribeFails) {
@@ -100,11 +105,8 @@ test.beforeAll(async () => {
       GOBBLER_DATA_DIR: dataDir,
       GOBBLER_LOG_LEVEL: 'warn',
       GOBBLER_DEV_AUTH_BYPASS: 'true',
-      GOBBLER_LLM_PROVIDER: 'claude',
-      GOBBLER_LLM_TEXT_MODEL: 'e2e-text',
-      GOBBLER_LLM_VISION_MODEL: 'e2e-vision',
-      GOBBLER_LLM_TIMEOUT: '5s',
-      GOBBLER_ANTHROPIC_API_KEY: 'e2e-fake-key',
+      GOBBLER_ENCRYPTION_KEY: ENCRYPTION_KEY,
+      GOBBLER_OPERATOR_EMAILS: DEV_OPERATOR,
       ANTHROPIC_BASE_URL: fakeURL,
     },
     stdio: 'inherit',
@@ -119,6 +121,7 @@ test.beforeAll(async () => {
     if (Date.now() > deadline) throw new Error('the photo vision server did not start');
     await new Promise((r) => setTimeout(r, 100));
   }
+  await configureClaude(origin);
 });
 
 test.afterAll(async () => {

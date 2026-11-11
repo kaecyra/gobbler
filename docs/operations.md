@@ -218,10 +218,6 @@ the container runs in UTC.
 | `GOBBLER_INGEST_CONFIDENCE_THRESHOLD` | `0.7` | no | 0 to 1. Drafts below it fall back to the LLM ([ADR-00006](./adr/00006-rule-first-ingestion.md)). |
 | `GOBBLER_INGEST_FETCH_TIMEOUT` | `15s` | no | Go duration, positive. |
 | `GOBBLER_INGEST_USER_AGENT` | `gobbler (self-hosted recipe manager)` | no | |
-| `GOBBLER_LLM_PROVIDER` | empty (LLM off) | no | `claude` or `gemini` ([ADR-00007](./adr/00007-llm-provider-interface.md)). |
-| `GOBBLER_LLM_TEXT_MODEL` | none | no | Required with a provider; set in configuration only. |
-| `GOBBLER_LLM_VISION_MODEL` | none | no | Required with a provider. |
-| `GOBBLER_LLM_TIMEOUT` | `60s` | no | Go duration, positive. |
 | `GOBBLER_VIDEO_THUMBNAIL_HOST` | `https://i.ytimg.com` | no | Origin a recipe video's thumbnail is downloaded from when a recipe with that video is saved ([ADR-00021](./adr/00021-youtube-video-on-a-recipe.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fixture so no test reaches YouTube. |
 | `GOBBLER_MCP_RATE` | `5` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
 | `GOBBLER_MCP_BURST` | `50` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
@@ -232,8 +228,6 @@ the container runs in UTC.
 | `GOBBLER_OAUTH_TOKEN_BURST` | `20` | no | Requests one address (an IPv6 address by its /64) may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_MAIL_RATE` | `0.05` | no | Invitation emails per second each sender (by verified email) may sustain, invites and resends together, 0.001 to 1000 ([ADR-00055](./adr/00055-invitation-email.md)). See [Mail](#mail). |
 | `GOBBLER_MAIL_BURST` | `10` | no | Emails one sender may send at once before being held to the rate; minimum 1. |
-| `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
-| `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
 | `GOBBLER_ENCRYPTION_KEY` | none | yes | 32 random bytes, base64 ([ADR-00057](./adr/00057-integration-settings-in-the-database.md)). The key integration secrets saved on the operator's Deployment page are encrypted under. Optional: without it, or with a malformed one, gobbler still starts, a stored secret reads as unreadable, and saving a secret is refused. See [Integration secrets](#integration-secrets). |
 | `GOBBLER_BACKUP_SCHEDULE` | `03:00` | no | Daily run time, 24-hour `HH:MM`, in the container's time zone. |
 | `GOBBLER_BACKUP_LOCAL_RETENTION` | `7` | no | Snapshots kept locally; minimum 1. |
@@ -507,6 +501,37 @@ address when the invitation is made, and again when someone presses **Resend**.
   send. An invitation past the limit is still created, and shows the refusal.
 - Clearing the password, or losing the encryption key, turns mail off without
   touching the other fields.
+
+## LLM
+
+The LLM is optional. Ingestion tries the rules first and asks a model only for
+what they could not read, and to read a photographed page into text
+([ADR-00006](./adr/00006-rule-first-ingestion.md),
+[ADR-00053](./adr/00053-photo-vision-transcription.md)). The settings are on the
+operator's Deployment page, `/operator/settings`, and a change is used by the
+next call, with no restart ([ADR-00056](./adr/00056-llm-provider-per-task.md)).
+
+1. Set `GOBBLER_ENCRYPTION_KEY` ([Integration secrets](#integration-secrets)).
+2. Save the API key of each provider you will use, Claude or Gemini.
+3. For **text** and for **vision**, choose a provider and save. The page then
+   lists that provider's models, narrowed to what the task can use; choose one
+   and save. The two tasks are independent, so text can use Claude and vision
+   Gemini. A task with no provider or no model has no LLM.
+4. Leave the timeout blank for 60 seconds, or set one up to 2 minutes. It bounds
+   each call. A photo upload makes two, so the web server's write timeout is
+   sized from the 2-minute maximum.
+
+- Changing a task's provider clears its model, because the old model belongs to
+  the old provider.
+- If the page cannot list a provider's models, it says why and shows the saved
+  model as text; saving the rest of the form leaves it as it is. A saved model
+  the provider no longer lists is marked "no longer offered" so it can be
+  replaced.
+- `GOBBLER_LLM_PROVIDER`, `GOBBLER_LLM_TEXT_MODEL`, `GOBBLER_LLM_VISION_MODEL`,
+  `GOBBLER_LLM_TIMEOUT`, `GOBBLER_ANTHROPIC_API_KEY` and `GOBBLER_GEMINI_API_KEY`
+  are no longer read. They are not imported either: after upgrading, enter the
+  settings on the Deployment page. Startup logs a warning naming each of them
+  that is still set.
 
 ## Backups
 

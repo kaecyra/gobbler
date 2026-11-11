@@ -1,6 +1,10 @@
 package settings
 
-import "github.com/kaecyra/gobbler/internal/mail"
+import (
+	"context"
+
+	"github.com/kaecyra/gobbler/internal/mail"
+)
 
 // MailSection is the mail integration's part of the page (ADR-00055): the SMTP
 // server's host, port, user and from address, the password as a secret, and
@@ -20,7 +24,7 @@ func MailSection() Section {
 			{Name: mail.FieldTimeout, Label: "Timeout", Placeholder: mail.DefaultTimeout.String(), Hint: "How long one send may take. Optional."},
 		},
 		Secrets: []SecretField{{Name: mail.FieldPassword, Label: "Password"}},
-		Validate: func(values map[string]string, secretSet map[string]bool) string {
+		Validate: func(_ context.Context, values map[string]string, secretSet map[string]bool) string {
 			return mail.Validate(values, secretSet[mail.FieldPassword])
 		},
 	}

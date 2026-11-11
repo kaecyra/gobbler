@@ -13,6 +13,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/llm/router"
 	"github.com/kaecyra/gobbler/internal/mail"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/picture"
@@ -44,6 +45,7 @@ var serveCommand = command{
 			return err
 		}
 		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.Server.LogLevel})))
+		cfg.LogIgnored(ctx, slog.Default())
 		return serve(ctx, cfg, db.Migrations(), tcpListen)
 	},
 }
@@ -79,15 +81,22 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	// backups.Runner is the live job: hand it to anything that triggers a
 	// backup or reads its status, never build a second Runner.
 
-	// The Deployment page lists the settings integrations register; mail is
-	// the first (ADR-00055).
+	// The Deployment page lists the settings integrations register: the LLM
+	// (ADR-00056) and mail (ADR-00055).
 	integrationSettings, err := openSettings(ctx, cfg, d, slog.Default())
 	if err != nil {
 		return err
 	}
 
 	deps := web.Deps{Config: cfg, DB: d, Media: pictureMedia, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)}
-	deps.Integrations = settings.Integrations{Store: integrationSettings, Sections: []settings.Section{settings.MailSection()}}
+	// The LLM is read from the same settings on every call, so a change on the
+	// Deployment page is in force on the next one (ADR-00056).
+	llmRouter := router.New(integrationSettings, slog.Default())
+	deps.LLM = llmRouter
+	deps.Integrations = settings.Integrations{Store: integrationSettings, Sections: []settings.Section{
+		settings.LLMSection(settings.LLMDeps{Values: integrationSettings, Models: llmRouter}),
+		settings.MailSection(),
+	}}
 	deps.Mail = mail.NewMailer(integrationSettings, ratelimit.New(cfg.Mail.Rate, cfg.Mail.Burst, time.Now), cfg.OIDC.PublicBaseURL, slog.Default())
 	var authOpts []auth.Option
 	if cfg.OIDC.Configured() {

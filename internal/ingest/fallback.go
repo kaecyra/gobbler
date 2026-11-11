@@ -24,9 +24,6 @@ var (
 	// error from Fallback.Retry is the pipeline breaking (the catalog could not
 	// be read) and is not an LLM failure.
 	ErrLLMFailed = errors.New("LLM provider failed")
-	// ErrUnknownProvider is returned by SelectProvider for a configured
-	// provider name it has no factory for.
-	ErrUnknownProvider = errors.New("unknown LLM provider")
 )
 
 // llmFieldConfidence is the confidence given to a field the LLM supplied. The
@@ -39,30 +36,6 @@ const llmFieldConfidence = 1.0
 // no readable main text and the HTML itself is the only source.
 const maxLLMSourceBytes = 256 << 10
 
-// ProviderFactory builds a provider from configuration.
-type ProviderFactory func(ctx context.Context, cfg config.LLM, log *slog.Logger) (Provider, error)
-
-// SelectProvider builds the provider cfg names from factories, keyed by
-// provider name. Which provider and which models is configuration alone
-// (ADR-00007 obligation 3); this package knows no SDK, so the caller passes
-// the factories. It returns a nil Provider and no error when no provider is
-// configured, and an error wrapping ErrUnknownProvider for a name with no
-// factory.
-func SelectProvider(ctx context.Context, cfg config.LLM, log *slog.Logger, factories map[string]ProviderFactory) (Provider, error) {
-	if !cfg.Configured() {
-		return nil, nil
-	}
-	f, ok := factories[cfg.Provider]
-	if !ok {
-		return nil, fmt.Errorf("%w %q", ErrUnknownProvider, cfg.Provider)
-	}
-	p, err := f(ctx, cfg, log)
-	if err != nil {
-		return nil, fmt.Errorf("build LLM provider %q: %w", cfg.Provider, err)
-	}
-	return p, nil
-}
-
 // autoFallback asks the provider to improve a draft that scored below the
 // threshold. The rule-based draft is the safe state: when the provider fails,
 // d comes back unchanged except for LLMError, which says why, and the failure
@@ -72,7 +45,7 @@ func SelectProvider(ctx context.Context, cfg config.LLM, log *slog.Logger, facto
 // A pipeline failure (the catalog could not be read) is returned as an error,
 // as it is on the rule-based path; only ErrLLMFailed keeps the rule draft.
 func (f *Fallback) autoFallback(ctx context.Context, d Draft) (Draft, error) {
-	if !d.BelowThreshold || f.deps.Provider == nil {
+	if !d.BelowThreshold || !f.available(ctx, TaskText) {
 		return d, nil
 	}
 	out, err := f.Retry(ctx, d)
@@ -108,8 +81,17 @@ type Fallback struct {
 // ErrNoProvider.
 func (p *Pipeline) Fallback() *Fallback { return &Fallback{cfg: p.cfg, deps: p.deps} }
 
-// Configured reports whether a provider is available.
-func (f *Fallback) Configured() bool { return f.deps.Provider != nil }
+// Configured reports whether a provider is available for any task, so the
+// review screen offers the retry. The provider is asked on every call: its
+// settings can change while the server runs (ADR-00056).
+func (f *Fallback) Configured(ctx context.Context) bool {
+	return f.available(ctx, TaskText) || f.available(ctx, TaskVision)
+}
+
+// available reports whether the provider can make a call for task now.
+func (f *Fallback) available(ctx context.Context, task Task) bool {
+	return providerAvailable(ctx, f.deps.Provider, task)
+}
 
 // Retry asks the provider to fill the gaps in d's rule-based reading, whatever
 // d scored (the user asked): the lines and fields below the confidence
@@ -121,7 +103,7 @@ func (f *Fallback) Configured() bool { return f.deps.Provider != nil }
 // Provider and schema failures wrap ErrLLMFailed; a catalog read failure does
 // not. Nothing is saved.
 func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
-	if f.deps.Provider == nil {
+	if !f.Configured(ctx) {
 		return Draft{}, ErrNoProvider
 	}
 	gaps := findGaps(d, f.cfg.ConfidenceThreshold)
@@ -134,7 +116,11 @@ func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 		return Draft{}, err
 	}
 	image, imageMIME := f.visionImage(ctx, d.Source)
-	s, err := f.deps.Provider.Structure(ctx, Request{Text: text, Image: image, ImageMIME: imageMIME, Gaps: gaps})
+	req := Request{Text: text, Image: image, ImageMIME: imageMIME, Gaps: gaps}
+	if !f.available(ctx, req.Task()) {
+		return Draft{}, ErrNoProvider
+	}
+	s, err := f.deps.Provider.Structure(ctx, req)
 	if err != nil {
 		return Draft{}, fmt.Errorf("%w: %w", ErrLLMFailed, err)
 	}

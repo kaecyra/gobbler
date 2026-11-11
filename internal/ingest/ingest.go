@@ -54,7 +54,8 @@ type Deps struct {
 	Catalog CatalogReader
 	// Provider is the LLM provider for the fallback. Nil means none is
 	// configured: a draft below the threshold is then only flagged, and
-	// Fallback.Retry returns ErrNoProvider.
+	// Fallback.Retry returns ErrNoProvider. A provider may also report, per
+	// task, that it has nothing configured (Availability).
 	Provider Provider
 	// Logger receives the fallback's warnings; nil means slog.Default().
 	Logger *slog.Logger
@@ -176,7 +177,7 @@ func (p *Pipeline) fromPhotoSource(ctx context.Context, content, check string, i
 // reviewable, so none of these is an error (error-handling: fall back only when
 // the degraded result is useful).
 func (p *Pipeline) transcribe(ctx context.Context, image []byte, imageMIME string) (string, bool) {
-	if p.deps.Provider == nil || len(image) == 0 {
+	if len(image) == 0 || !providerAvailable(ctx, p.deps.Provider, TaskVision) {
 		return "", false
 	}
 	log := p.Fallback().log()

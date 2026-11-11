@@ -87,12 +87,9 @@ type Deps struct {
 	// reached through Recipes.
 	DB        *sql.DB
 	Ingestion config.Ingestion
-	// LLM selects the fallback provider and models (ADR-00007). Empty means
-	// no provider: drafts below the threshold are flagged and the retry
-	// action is not offered.
-	LLM config.LLM
-	// Provider, when set, is used instead of building one from LLM; tests
-	// substitute a fake here.
+	// Provider is the LLM provider (ADR-00007): the router over the saved
+	// settings in production, a fake in tests. Nil means none: drafts below
+	// the threshold are flagged and the retry action is not offered.
 	Provider apiingest.Provider
 	// Catalog is the catalog service the review screen reads ingredient and
 	// equipment names from, speaking for the Caller of each request
@@ -118,10 +115,7 @@ type handler struct {
 	// photos drafts from a photo's OCR text, and ocr reads the photo.
 	photos PhotoDrafter
 	ocr    TextReader
-	// llmInitErr is why the configured provider could not be built. The rule
-	// based path still works; only the retry action reports it.
-	llmInitErr error
-	log        *slog.Logger
+	log    *slog.Logger
 	// initErr is why the pipeline could not be built. Every route still exists
 	// and answers 500 with it (see requireReady), so a bad configuration is a
 	// loud failure rather than a missing page.
@@ -130,25 +124,15 @@ type handler struct {
 
 // Routes returns the ingest routes, to be mounted at /ingest. The ingestion
 // service is built over d.DB, and the review screen reads names through
-// d.Catalog; drafts and saved recipes are d.Recipes. The LLM provider comes from
-// d.Provider or is selected from d.LLM; a provider that cannot be built does
-// not take the rule-based path down (see handler.llmInitErr).
+// d.Catalog; drafts and saved recipes are d.Recipes. The LLM provider is
+// d.Provider; one that fails a call does not take the rule-based path down.
 func Routes(d Deps) http.Handler {
 	h := &handler{recipes: d.Recipes, photoCache: apiingest.NewPhotos(time.Now), log: d.Logger}
 	if h.log == nil {
 		h.log = slog.Default()
 	}
-	provider := d.Provider
-	if provider == nil {
-		var perr error
-		provider, perr = apiingest.SelectProvider(context.Background(), d.LLM, h.log, providerFactories())
-		if perr != nil {
-			h.llmInitErr = perr
-			h.log.Error("llm provider unavailable", "error", perr.Error())
-		}
-	}
 	svc, err := apiingest.New(d.Ingestion, apiingest.Deps{
-		Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB), Provider: provider, Logger: h.log,
+		Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB), Provider: d.Provider, Logger: h.log,
 	})
 	switch {
 	case err == nil && d.Recipes == nil:
@@ -460,7 +444,7 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 	}
 	layout.Render(w, r, status, reviewPage(reviewView{
 		Token: token, Draft: d, Form: *form, Picker: picker, Reimport: d.Reimport, Done: h.done(r),
-		CanRetry: h.retrier != nil && h.retrier.Configured(),
+		CanRetry: h.retrier != nil && h.retrier.Configured(r.Context()),
 		// A draft read from a photo whose photo is no longer in memory:
 		// asking the LLM again reads the recognised text alone.
 		PhotoGone: d.Source.Kind == apirecipes.SnapshotOCR && len(d.Source.Image) == 0,

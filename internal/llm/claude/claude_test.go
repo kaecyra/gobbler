@@ -16,14 +16,15 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/llm"
 	"github.com/kaecyra/gobbler/internal/llm/claude"
 	"github.com/kaecyra/gobbler/internal/llm/llmtest"
 )
 
 // Placeholder model names: model identifiers live only in configuration.
 const (
-	textModel   = "test-text-model"
-	visionModel = "test-vision-model"
+	// model is the one model the provider is built with; every call names it.
+	model = "test-model"
 )
 
 // captured is what the fake Messages API saw on its last request.
@@ -82,24 +83,14 @@ func message(payload []byte, stop string, in, out int) string {
 	}
 	return fmt.Sprintf(`{"id":"msg_test","type":"message","role":"assistant","model":%q,"content":[%s],`+
 		`"stop_reason":%q,"stop_sequence":null,"usage":{"input_tokens":%d,"output_tokens":%d}}`,
-		textModel, content, stop, in, out)
+		model, content, stop, in, out)
 }
 
-// llmConfig loads the LLM settings the way production does, from the
-// environment, so the API key arrives as a config.Secret.
-func llmConfig(t *testing.T, key string, timeout time.Duration) config.LLM {
+// llmConfig is the settings one task is built from (llm.Load reads them from
+// the store in production), with the API key as a config.Secret.
+func llmConfig(t *testing.T, key string, timeout time.Duration) llm.Settings {
 	t.Helper()
-	t.Setenv(config.EnvDevAuthBypass, "true")
-	t.Setenv(config.EnvLLMProvider, config.ProviderClaude)
-	t.Setenv(config.EnvLLMTextModel, textModel)
-	t.Setenv(config.EnvLLMVisionModel, visionModel)
-	t.Setenv(config.EnvLLMTimeout, timeout.String())
-	t.Setenv(config.EnvAnthropicAPIKey, key)
-	c, err := config.Load()
-	if err != nil {
-		t.Fatalf("config.Load: %v", err)
-	}
-	return c.LLM
+	return llm.Settings{Provider: llm.ProviderClaude, Model: model, APIKey: config.NewSecret(key), Timeout: timeout}
 }
 
 func newProvider(t *testing.T, srv *httptest.Server, key string, timeout time.Duration, logger *slog.Logger) ingest.Provider {
@@ -143,8 +134,8 @@ func TestRequestShape(t *testing.T) {
 		wantModel string
 		wantImage bool
 	}{
-		{"text uses the text model", ingest.Request{Text: "Toast. 2 slices bread."}, textModel, false},
-		{"image uses the vision model", ingest.Request{Image: []byte{0x89, 'P', 'N', 'G'}, ImageMIME: "image/png"}, visionModel, true},
+		{"text uses the model", ingest.Request{Text: "Toast. 2 slices bread."}, model, false},
+		{"image uses the same model", ingest.Request{Image: []byte{0x89, 'P', 'N', 'G'}, ImageMIME: "image/png"}, model, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -179,7 +170,7 @@ func TestRequestShape(t *testing.T) {
 	}
 }
 
-// ADR-00053: a transcription goes to the vision model with the photo, asks for
+// ADR-00053: a transcription goes to the model with the photo, asks for
 // text, and offers no tool and no schema, so the model cannot structure the page.
 func TestTranscribeRequestShape(t *testing.T) {
 	seen := &captured{}
@@ -190,8 +181,8 @@ func TestTranscribeRequestShape(t *testing.T) {
 		t.Fatalf("Transcribe = %q, %v", got, err)
 	}
 	_, body := seen.get()
-	if body["model"] != visionModel {
-		t.Errorf("model = %v, want the vision model %s", body["model"], visionModel)
+	if body["model"] != model {
+		t.Errorf("model = %v, want the model %s", body["model"], model)
 	}
 	if _, ok := body["tools"]; ok {
 		t.Errorf("tools sent with a transcription: %v", body["tools"])
@@ -331,17 +322,15 @@ func TestBackendFailureIsNotATimeout(t *testing.T) {
 func TestNewRejectsIncompleteConfig(t *testing.T) {
 	good := llmConfig(t, "k", time.Second)
 	noKey := good
-	noKey.APIKey = config.LLM{}.APIKey
-	noText := good
-	noText.TextModel = ""
-	noVision := good
-	noVision.VisionModel = ""
+	noKey.APIKey = config.Secret{}
+	noModel := good
+	noModel.Model = ""
 	noTimeout := good
 	noTimeout.Timeout = 0
 	wrongProvider := good
-	wrongProvider.Provider = config.ProviderGemini
-	for name, cfg := range map[string]config.LLM{
-		"no key": noKey, "no text model": noText, "no vision model": noVision,
+	wrongProvider.Provider = llm.ProviderGemini
+	for name, cfg := range map[string]llm.Settings{
+		"no key": noKey, "no model": noModel,
 		"no timeout": noTimeout, "wrong provider": wrongProvider,
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -101,8 +101,6 @@ type (
 	URLDrafter = domain.URLDrafter
 	// Provider is the LLM provider interface (ingest.Provider, ADR-00007).
 	Provider = domain.Provider
-	// ProviderFactory builds one provider (ingest.ProviderFactory).
-	ProviderFactory = domain.ProviderFactory
 	// OCRRunner reads the text out of a photograph by running tesseract
 	// (ocr.Runner). The zero value uses the defaults.
 	OCRRunner = ocr.Runner
@@ -190,12 +188,6 @@ func SourceHost(sourceURL string) string { return domain.SourceHost(sourceURL) }
 // NewPhotos returns an empty photo cache (ingest.NewPhotos).
 func NewPhotos(now func() time.Time) *Photos { return domain.NewPhotos(now) }
 
-// SelectProvider builds the provider cfg names from factories, or none when
-// cfg names none (ingest.SelectProvider).
-func SelectProvider(ctx context.Context, cfg config.LLM, log *slog.Logger, factories map[string]ProviderFactory) (Provider, error) {
-	return domain.SelectProvider(ctx, cfg, log, factories)
-}
-
 // Pipeline is what the service calls to draft a recipe. *ingest.Pipeline
 // satisfies it.
 type Pipeline interface {
@@ -209,7 +201,7 @@ type Pipeline interface {
 // *ingest.Fallback satisfies it.
 type Fallback interface {
 	Retry(ctx context.Context, d Draft) (Draft, error)
-	Configured() bool
+	Configured(ctx context.Context) bool
 }
 
 // Originals is what a preview reads of a saved recipe: its original source
@@ -393,9 +385,9 @@ func (s *Service) sourceOf(ctx context.Context, id int64, first store.FirstSourc
 	return r.SourceURL, nil
 }
 
-// Configured reports whether an LLM provider is available. It reads
-// configuration, not household data, so it takes no Caller.
-func (s *Service) Configured() bool { return s.fallback.Configured() }
+// Configured reports whether an LLM provider is available for any task. It
+// reads configuration, not household data, so it takes no Caller.
+func (s *Service) Configured(ctx context.Context) bool { return s.fallback.Configured(ctx) }
 
 // Bound is the Service for callers whose seams carry a context and no Caller.
 // Each call asks who for the Caller of its context and goes through the
@@ -435,7 +427,7 @@ func (b *Bound) Retry(ctx context.Context, d Draft) (Draft, error) {
 }
 
 // Configured is Service.Configured.
-func (b *Bound) Configured() bool { return b.s.Configured() }
+func (b *Bound) Configured(ctx context.Context) bool { return b.s.Configured(ctx) }
 
 // Preview is Service.Preview.
 func (b *Bound) Preview(ctx context.Context, src PreviewSource) (Preview, error) {

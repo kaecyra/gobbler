@@ -3,7 +3,6 @@ package ingest
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -307,46 +306,83 @@ func TestEmptyLLMFieldsKeepRuleValues(t *testing.T) {
 	}
 }
 
-func TestSelectProviderBuildsTheConfiguredChoice(t *testing.T) {
-	claudeFake, geminiFake := &fakeProvider{}, &fakeProvider{}
-	var gotCfg config.LLM
-	factories := map[string]ProviderFactory{
-		config.ProviderClaude: func(_ context.Context, cfg config.LLM, _ *slog.Logger) (Provider, error) {
-			gotCfg = cfg
-			return claudeFake, nil
-		},
-		config.ProviderGemini: func(_ context.Context, cfg config.LLM, _ *slog.Logger) (Provider, error) {
-			gotCfg = cfg
-			return geminiFake, nil
-		},
-		"broken": func(context.Context, config.LLM, *slog.Logger) (Provider, error) {
-			return nil, errors.New("missing key")
-		},
+// taskProvider is a fakeProvider whose tasks can each be switched off, as a
+// provider reading its settings on every call does (ADR-00056).
+type taskProvider struct {
+	*fakeProvider
+	mu  sync.Mutex
+	off map[Task]bool
+}
+
+func (p *taskProvider) Available(_ context.Context, task Task) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return !p.off[task]
+}
+
+func (p *taskProvider) switchOff(task Task) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.off == nil {
+		p.off = map[Task]bool{}
 	}
-	ctx := context.Background()
-	for _, tc := range []struct {
-		cfg  config.LLM
-		want Provider
-	}{
-		{config.LLM{Provider: config.ProviderClaude, TextModel: "m1"}, claudeFake},
-		{config.LLM{Provider: config.ProviderGemini, TextModel: "m2"}, geminiFake},
-	} {
-		got, err := SelectProvider(ctx, tc.cfg, nil, factories)
-		if err != nil || got != tc.want {
-			t.Errorf("%s: got %v, %v", tc.cfg.Provider, got, err)
-		}
-		if gotCfg.TextModel != tc.cfg.TextModel {
-			t.Errorf("%s: factory got model %q, want %q", tc.cfg.Provider, gotCfg.TextModel, tc.cfg.TextModel)
-		}
+	p.off[task] = true
+}
+
+// A task with no LLM is skipped, not failed: the rule draft stays as it is and
+// carries no error, and only the other task still makes calls.
+func TestUnavailableTaskIsSkippedNotFailed(t *testing.T) {
+	e := newEnv(t)
+	cfg := testConfig()
+
+	textOff := &taskProvider{fakeProvider: &fakeProvider{resp: llmAnswer()}}
+	textOff.switchOff(TaskText)
+	d, err := e.pipelineWith(t, cfg, textOff).FromText(e.ctx, messyText)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if p, err := SelectProvider(ctx, config.LLM{}, nil, factories); p != nil || err != nil {
-		t.Errorf("unconfigured: got %v, %v; want nil, nil", p, err)
+	if textOff.count() != 0 || d.UsedLLM || d.LLMError != "" {
+		t.Errorf("text task off: calls=%d usedLLM=%v err=%q, want no call and no error", textOff.count(), d.UsedLLM, d.LLMError)
 	}
-	if _, err := SelectProvider(ctx, config.LLM{Provider: "gpt"}, nil, factories); !errors.Is(err, ErrUnknownProvider) {
-		t.Errorf("unknown: err = %v", err)
+
+	visionOff := &taskProvider{fakeProvider: &fakeProvider{transcript: visionTranscript, resp: llmAnswer()}}
+	visionOff.switchOff(TaskVision)
+	if _, err := e.pipelineWith(t, cfg, visionOff).FromOCR(e.ctx, tesseractMisread, photoBytes, "image/png"); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := SelectProvider(ctx, config.LLM{Provider: "broken"}, nil, factories); err == nil {
-		t.Error("a factory error must surface")
+	if len(visionOff.transcribed) != 0 {
+		t.Errorf("vision task off: %d transcriptions, want none", len(visionOff.transcribed))
+	}
+}
+
+// Retry needs the task its request names. An image request is a vision call,
+// so a text-only configuration reports ErrNoProvider rather than calling.
+func TestRetryNeedsTheRequestsTask(t *testing.T) {
+	e := newEnv(t)
+	rule, err := e.pipelineWith(t, testConfig(), nil).FromText(e.ctx, messyText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bothOff := &taskProvider{fakeProvider: &fakeProvider{resp: llmAnswer()}}
+	bothOff.switchOff(TaskText)
+	bothOff.switchOff(TaskVision)
+	f := e.pipelineWith(t, testConfig(), bothOff).Fallback()
+	if f.Configured(e.ctx) {
+		t.Error("Configured with every task off")
+	}
+	if _, err := f.Retry(e.ctx, rule); !errors.Is(err, ErrNoProvider) {
+		t.Errorf("err = %v, want ErrNoProvider", err)
+	}
+	visionOnly := &taskProvider{fakeProvider: &fakeProvider{resp: llmAnswer()}}
+	visionOnly.switchOff(TaskText)
+	if f := e.pipelineWith(t, testConfig(), visionOnly).Fallback(); !f.Configured(e.ctx) {
+		t.Error("Configured is false with the vision task on")
+	}
+	if got := (Request{Image: []byte{1}}).Task(); got != TaskVision {
+		t.Errorf("image request task = %s", got)
+	}
+	if got := (Request{Text: "x"}).Task(); got != TaskText {
+		t.Errorf("text request task = %s", got)
 	}
 }
 

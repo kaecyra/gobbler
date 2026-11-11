@@ -56,7 +56,7 @@ func admitOnce(next http.Handler) http.Handler {
 //
 // The router has already applied authentication by the time r is passed here.
 func mountFeatures(r chi.Router, d Deps) {
-	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Recipes: d.Recipes, Catalog: d.Catalog, Ingestion: d.Config.Ingestion, LLM: d.Config.LLM, Logger: d.Logger}))
+	r.Mount("/ingest", webingest.Routes(webingest.Deps{DB: d.DB, Recipes: d.Recipes, Catalog: d.Catalog, Ingestion: d.Config.Ingestion, Provider: d.LLM, Logger: d.Logger}))
 	r.Mount(recipeview.Pattern, recipeview.Routes(recipeview.Deps{Recipes: d.Recipes, Catalog: d.Catalog, Pictures: recipePictures(d)}))
 	r.Mount(recipeview.DeletePattern, recipeview.DeleteRoutes(recipeview.DeleteDeps{Recipes: d.Recipes}))
 	mountJournal(r, d)

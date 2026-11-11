@@ -4,16 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
-	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/llm/claude"
-	"github.com/kaecyra/gobbler/internal/llm/gemini"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -21,29 +17,7 @@ import (
 // satisfies it.
 type Retrier interface {
 	Retry(ctx context.Context, d apiingest.Draft) (apiingest.Draft, error)
-	Configured() bool
-}
-
-// providerFactories maps each configured provider name to its constructor. It
-// is the one place that knows the provider packages; selecting a provider or a
-// model is configuration only (ADR-00007).
-func providerFactories() map[string]apiingest.ProviderFactory {
-	return map[string]apiingest.ProviderFactory{
-		config.ProviderClaude: func(ctx context.Context, cfg config.LLM, log *slog.Logger) (apiingest.Provider, error) {
-			p, err := claude.New(ctx, cfg, log)
-			if err != nil {
-				return nil, err
-			}
-			return p, nil
-		},
-		config.ProviderGemini: func(ctx context.Context, cfg config.LLM, log *slog.Logger) (apiingest.Provider, error) {
-			p, err := gemini.New(ctx, cfg, log)
-			if err != nil {
-				return nil, err
-			}
-			return p, nil
-		},
-	}
+	Configured(ctx context.Context) bool
 }
 
 // retry asks the LLM to read the pending draft's source, whatever the draft
@@ -62,11 +36,6 @@ func (h *handler) retry(w http.ResponseWriter, r *http.Request) {
 	fail := func(status int, msg string) {
 		d.LLMError = msg
 		h.renderReview(w, r, status, token, d, nil)
-	}
-	if h.llmInitErr != nil {
-		h.log.ErrorContext(r.Context(), "llm provider unavailable", "error", h.llmInitErr.Error())
-		fail(http.StatusServiceUnavailable, "The LLM provider could not be set up: "+h.llmInitErr.Error())
-		return
 	}
 	out, err := h.retrier.Retry(r.Context(), d)
 	switch {

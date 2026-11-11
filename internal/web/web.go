@@ -20,6 +20,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	apicatalog "github.com/kaecyra/gobbler/internal/api/catalog"
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	apiprofile "github.com/kaecyra/gobbler/internal/api/profile"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
@@ -77,6 +78,9 @@ type Deps struct {
 	// Mail emails invitations (ADR-00055). Nil means invitations are only
 	// created.
 	Mail apihouseholds.Mailer
+	// LLM is the LLM provider photo and text ingestion call (ADR-00007,
+	// ADR-00056). Nil means none: drafts below the threshold are only flagged.
+	LLM apiingest.Provider
 	// Avatars runs avatar uploads (ADR-00033). It is required: the server
 	// builds it over the configured media store and resumes interrupted jobs
 	// before mounting the pages, and a nil one would mean a store chosen here,

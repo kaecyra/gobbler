@@ -23,6 +23,39 @@ type Provider interface {
 	Transcribe(ctx context.Context, req TranscribeRequest) (string, error)
 }
 
+// Task is the kind of LLM work a call is. Each task has its own provider and
+// model, set on the Deployment page (ADR-00056).
+type Task string
+
+const (
+	// TaskText is structuring text.
+	TaskText Task = "text"
+	// TaskVision is anything that sends an image: reading a photo's page into
+	// text, or structuring from an image.
+	TaskVision Task = "vision"
+)
+
+// Availability is implemented by a Provider whose settings can change while the
+// server runs, so whether it can make a call is a question to ask each time. A
+// Provider without it is always available.
+type Availability interface {
+	// Available reports whether a call for task can be made now: the task has
+	// a provider, a model and a key that opens.
+	Available(ctx context.Context, task Task) bool
+}
+
+// providerAvailable reports whether p, which may be nil, can make a call for
+// task now.
+func providerAvailable(ctx context.Context, p Provider, task Task) bool {
+	if p == nil {
+		return false
+	}
+	if a, ok := p.(Availability); ok {
+		return a.Available(ctx, task)
+	}
+	return true
+}
+
 // TranscribeRequest is a photo to read into text.
 type TranscribeRequest struct {
 	Image     []byte
@@ -44,6 +77,14 @@ type Request struct {
 	// the request is a gap-fill: the provider answers only for the gaps, and
 	// the answer replaces exactly those and nothing else.
 	Gaps Gaps
+}
+
+// Task is the task r is: vision when it carries an image, text otherwise.
+func (r Request) Task() Task {
+	if len(r.Image) > 0 {
+		return TaskVision
+	}
+	return TaskText
 }
 
 // Gaps names the parts of a rule-based draft that fell below the confidence

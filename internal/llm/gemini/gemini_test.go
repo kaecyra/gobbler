@@ -15,14 +15,15 @@ import (
 
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/llm"
 	"github.com/kaecyra/gobbler/internal/llm/gemini"
 	"github.com/kaecyra/gobbler/internal/llm/llmtest"
 )
 
 // Placeholder model names: real identifiers live only in configuration.
 const (
-	textModel   = "test-text-model"
-	visionModel = "test-vision-model"
+	// model is the one model the provider is built with; every call names it.
+	model = "test-model"
 )
 
 // recorded is what the fake backend saw for one request.
@@ -75,21 +76,11 @@ func fakeBackend(t *testing.T, sc llmtest.Scenario, seen chan<- recorded) *httpt
 	return srv
 }
 
-// llmConfig loads the LLM settings the way production does, from the
-// environment, so the API key arrives as a config.Secret.
-func llmConfig(t *testing.T, key string, timeout time.Duration) config.LLM {
+// llmConfig is the settings one task is built from (llm.Load reads them from
+// the store in production), with the API key as a config.Secret.
+func llmConfig(t *testing.T, key string, timeout time.Duration) llm.Settings {
 	t.Helper()
-	t.Setenv(config.EnvDevAuthBypass, "true")
-	t.Setenv(config.EnvLLMProvider, config.ProviderGemini)
-	t.Setenv(config.EnvLLMTextModel, textModel)
-	t.Setenv(config.EnvLLMVisionModel, visionModel)
-	t.Setenv(config.EnvLLMTimeout, timeout.String())
-	t.Setenv(config.EnvGeminiAPIKey, key)
-	c, err := config.Load()
-	if err != nil {
-		t.Fatalf("config.Load: %v", err)
-	}
-	return c.LLM
+	return llm.Settings{Provider: llm.ProviderGemini, Model: model, APIKey: config.NewSecret(key), Timeout: timeout}
 }
 
 func newProvider(t *testing.T, env llmtest.Env, srv *httptest.Server) ingest.Provider {
@@ -113,7 +104,7 @@ func TestTranscribeContract(t *testing.T) {
 	})
 }
 
-// ADR-00053: a transcription goes to the vision model with the photo inline, asks
+// ADR-00053: a transcription goes to the model with the photo inline, asks
 // for text, and sets no response schema, so the model cannot structure the page.
 func TestTranscribeRequestShape(t *testing.T) {
 	seen := make(chan recorded, 1)
@@ -125,8 +116,8 @@ func TestTranscribeRequestShape(t *testing.T) {
 		t.Fatalf("Transcribe = %q, %v", got, err)
 	}
 	rec := <-seen
-	if !strings.Contains(rec.path, visionModel+":generateContent") {
-		t.Errorf("path %q does not name the vision model", rec.path)
+	if !strings.Contains(rec.path, model+":generateContent") {
+		t.Errorf("path %q does not name the model", rec.path)
 	}
 	body := mustJSON(t, rec.body)
 	if !strings.Contains(body, `"inlineData"`) {
@@ -154,10 +145,10 @@ func structure(t *testing.T, req ingest.Request) recorded {
 }
 
 func TestRequestShape(t *testing.T) {
-	t.Run("text uses the text model and constrains the response to a JSON schema", func(t *testing.T) {
+	t.Run("text uses the model and constrains the response to a JSON schema", func(t *testing.T) {
 		got := structure(t, ingest.Request{Text: "Toast. 2 slices bread."})
-		if !strings.Contains(got.path, textModel+":generateContent") {
-			t.Errorf("path %q does not name the text model", got.path)
+		if !strings.Contains(got.path, model+":generateContent") {
+			t.Errorf("path %q does not name the model", got.path)
 		}
 		if got.apiKey != llmtest.SentinelAPIKey {
 			t.Errorf("API key header = %q, want the configured key", got.apiKey)
@@ -175,10 +166,10 @@ func TestRequestShape(t *testing.T) {
 			t.Errorf("schema marks no field required: %v", schema)
 		}
 	})
-	t.Run("image uses the vision model and sends the bytes inline", func(t *testing.T) {
+	t.Run("image uses the same model and sends the bytes inline", func(t *testing.T) {
 		got := structure(t, ingest.Request{Image: []byte{1, 2, 3}, ImageMIME: "image/png"})
-		if !strings.Contains(got.path, visionModel+":generateContent") {
-			t.Errorf("path %q does not name the vision model", got.path)
+		if !strings.Contains(got.path, model+":generateContent") {
+			t.Errorf("path %q does not name the model", got.path)
 		}
 		if !strings.Contains(mustJSON(t, got.body), `"inlineData"`) {
 			t.Errorf("request carries no inlineData image part: %s", mustJSON(t, got.body))
@@ -250,17 +241,15 @@ func TestRequestShape(t *testing.T) {
 func TestNewRejectsIncompleteConfig(t *testing.T) {
 	good := llmConfig(t, "k", time.Second)
 	noKey := good
-	noKey.APIKey = config.LLM{}.APIKey
-	noText := good
-	noText.TextModel = ""
-	noVision := good
-	noVision.VisionModel = ""
+	noKey.APIKey = config.Secret{}
+	noModel := good
+	noModel.Model = ""
 	noTimeout := good
 	noTimeout.Timeout = 0
 	wrongProvider := good
-	wrongProvider.Provider = config.ProviderClaude
-	for name, cfg := range map[string]config.LLM{
-		"no key": noKey, "no text model": noText, "no vision model": noVision,
+	wrongProvider.Provider = llm.ProviderClaude
+	for name, cfg := range map[string]llm.Settings{
+		"no key": noKey, "no model": noModel,
 		"no timeout": noTimeout, "wrong provider": wrongProvider,
 	} {
 		t.Run(name, func(t *testing.T) {

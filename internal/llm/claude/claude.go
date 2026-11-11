@@ -4,8 +4,9 @@
 // schema is that schema; it uses no other provider feature, so it stays
 // interchangeable with the Gemini provider.
 //
-// The model names, the API key and the timeout come from configuration
-// (config.LLM) passed to New; nothing here names a model. A response that is
+// The model, the API key and the timeout are the llm.Settings passed to New,
+// read from the saved settings on each call (package router); nothing here
+// names a model. A response that is
 // not exactly the schema is an error, never a partial draft (ADR-00006).
 package claude
 
@@ -20,8 +21,8 @@ import (
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 
-	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/llm"
 )
 
 const (
@@ -42,30 +43,27 @@ func WithBaseURL(baseURL string) Option {
 
 // Provider implements ingest.Provider over the Anthropic Messages API.
 type Provider struct {
-	client      anthropic.Client
-	textModel   string
-	visionModel string
-	timeout     time.Duration
-	log         *slog.Logger
+	client  anthropic.Client
+	model   string
+	timeout time.Duration
+	log     *slog.Logger
 }
 
 var _ ingest.Provider = (*Provider)(nil)
 
 // New builds a Provider from the configured settings, the same shape as
 // gemini.New. It fails when the key, a model or the timeout is missing, so a
-// misconfiguration surfaces at startup rather than on the first ingest. It
+// misconfiguration surfaces when the call is made, with the reason. It
 // never reads the environment; ctx is unused and exists so every provider
 // constructor has one signature.
-func New(_ context.Context, cfg config.LLM, log *slog.Logger, opts ...Option) (*Provider, error) {
+func New(_ context.Context, cfg llm.Settings, log *slog.Logger, opts ...Option) (*Provider, error) {
 	switch {
-	case cfg.Provider != config.ProviderClaude:
+	case cfg.Provider != llm.ProviderClaude:
 		return nil, fmt.Errorf("claude: configured provider is %q", cfg.Provider)
 	case !cfg.APIKey.IsSet():
 		return nil, errors.New("claude: API key is required")
-	case cfg.TextModel == "":
-		return nil, errors.New("claude: text model is required")
-	case cfg.VisionModel == "":
-		return nil, errors.New("claude: vision model is required")
+	case cfg.Model == "":
+		return nil, errors.New("claude: model is required")
 	case cfg.Timeout <= 0:
 		return nil, errors.New("claude: timeout must be positive")
 	}
@@ -82,11 +80,10 @@ func New(_ context.Context, cfg config.LLM, log *slog.Logger, opts ...Option) (*
 		log = slog.Default()
 	}
 	return &Provider{
-		client:      anthropic.NewClient(reqOpts...),
-		textModel:   cfg.TextModel,
-		visionModel: cfg.VisionModel,
-		timeout:     cfg.Timeout,
-		log:         log,
+		client:  anthropic.NewClient(reqOpts...),
+		model:   cfg.Model,
+		timeout: cfg.Timeout,
+		log:     log,
 	}, nil
 }
 
@@ -94,10 +91,7 @@ func New(_ context.Context, cfg config.LLM, log *slog.Logger, opts ...Option) (*
 // timeout and cancellation errors wrap context.DeadlineExceeded and
 // context.Canceled; a backend failure wraps neither.
 func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.Structured, error) {
-	model := p.textModel
-	if len(req.Image) > 0 {
-		model = p.visionModel
-	}
+	model := p.model
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
@@ -125,7 +119,7 @@ func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest)
 	if len(req.Image) == 0 {
 		return "", errors.New("claude: no image to transcribe")
 	}
-	model := p.visionModel
+	model := p.model
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 

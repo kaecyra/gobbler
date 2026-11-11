@@ -62,13 +62,35 @@ templ integrationsSection(v integrationsView) {
 					if len(s.Fields) > 0 {
 						<form class="stack values" method="post" action={ templ.SafeURL(s.ValuesAction) } hx-post={ s.ValuesAction } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button" data-testid={ "values-" + s.Integration }>
 							for _, f := range s.Fields {
-								<label>
-									{ f.Label }
-									<input type="text" name={ f.Name } value={ f.Value } placeholder={ f.Placeholder } autocomplete="off" spellcheck="false" maxlength="4096" data-testid={ "value-" + f.Name }/>
-									if f.Hint != "" {
-										<span class="hint">{ f.Hint }</span>
-									}
-								</label>
+								if f.Select && f.Problem != "" {
+									<div data-testid={ "value-" + f.Name }>
+										<span>{ f.Label }</span>
+										if f.Value != "" {
+											<span class="muted" data-testid={ "saved-" + f.Name }>{ f.Value }</span>
+										}
+										<span class="hint" data-testid={ "problem-" + f.Name }>{ f.Problem }</span>
+									</div>
+								} else if f.Select {
+									<label>
+										{ f.Label }
+										<select name={ f.Name } data-testid={ "value-" + f.Name }>
+											for _, o := range f.Options {
+												<option value={ o.Value } selected?={ o.Selected }>{ o.Label }</option>
+											}
+										</select>
+										if f.Hint != "" {
+											<span class="hint">{ f.Hint }</span>
+										}
+									</label>
+								} else {
+									<label>
+										{ f.Label }
+										<input type="text" name={ f.Name } value={ f.Value } placeholder={ f.Placeholder } autocomplete="off" spellcheck="false" maxlength="4096" data-testid={ "value-" + f.Name }/>
+										if f.Hint != "" {
+											<span class="hint">{ f.Hint }</span>
+										}
+									</label>
+								}
 							}
 							<button type="submit" class="btn accent">Save</button>
 						</form>

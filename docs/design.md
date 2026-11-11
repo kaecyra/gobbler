@@ -77,6 +77,7 @@ dependencies.
 | `parse` | Ingredient-line parser, duration parser, text sectioning (pure) | `quantity`, `catalog` (matching interface) |
 | `ingest` | Acquire → extract → parse → score → fallback pipeline; JSON-LD, microdata, site extractors, OCR | `parse`, `recipe`, LLM interface |
 | `llm/claude`, `llm/gemini` | Provider implementations ([ADR-00007](adr/00007-llm-provider-interface.md)) | provider SDKs |
+| `llm`, `llm/router` | The LLM settings saved per task, text and vision, and the `ingest.Provider` that reads them on each call and calls the provider the task names; it also lists a provider's models for the Deployment page ([ADR-00056](adr/00056-llm-provider-per-task.md)) | `settings`, `llm/claude`, `llm/gemini`, `ingest` |
 | `shopping` | List generation, merging, pantry, check state, text export | `quantity`, `recipe`, `catalog` |
 | `sharing` | Sending a copy of a recipe to another household and accepting or declining the offers received ([ADR-00018](adr/00018-households-as-tenants.md)) | `household`, `catalog`, `shopping`, `store` |
 | `backup` | Nightly `VACUUM INTO`, S3 upload, retention ([ADR-00010](adr/00010-backups.md)) | `db`, `config` |
@@ -134,7 +135,7 @@ Secrets are never in the repository.
 | Mail | requests per second and burst of invitation emails each sender may send, invites and resends together ([ADR-00055](adr/00055-invitation-email.md)). The SMTP settings (host, port, user, password, from address, timeout) live on the Deployment page |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
-| LLM | provider, text model, vision model, per-provider API key, timeout |
+| LLM | none in the environment. Each task, text and vision, has its own provider and model, and there are one timeout and a key per provider; all live on the Deployment page ([ADR-00056](adr/00056-llm-provider-per-task.md)) |
 | Backup | schedule, local retention, S3 endpoint, region, bucket, prefix, credentials, remote retention |
 | Encryption | the key integration secrets are sealed under: 32 random bytes, base64 ([ADR-00057](adr/00057-integration-settings-in-the-database.md)) |
 
@@ -142,9 +143,11 @@ Integration settings (mail, LLM) are not in this table, except the mail row's
 send rate, which is environment. They live in the
 database, in `internal/settings`, and an operator edits them on the Deployment
 page; their secrets are encrypted there under the key above
-([ADR-00057](adr/00057-integration-settings-in-the-database.md)). The LLM row
-still lists its environment settings until the LLM provider settings move
-([ADR-00056](adr/00056-llm-provider-per-task.md)).
+([ADR-00057](adr/00057-integration-settings-in-the-database.md)). The LLM
+settings are per task, text and vision, and a change is used by the next LLM
+call without a restart ([ADR-00056](adr/00056-llm-provider-per-task.md)). The
+former `GOBBLER_LLM_*` and provider key variables are ignored, and startup logs
+each one that is still set.
 
 ## Testing
 
