@@ -129,13 +129,15 @@ Secrets are never in the repository.
 | Session | session lifetime, fixed from sign-in ([ADR-00030](adr/00030-google-sign-in.md)) |
 | MCP | requests per second and burst allowed each credential at `/mcp` ([ADR-00034](adr/00034-mcp-server.md)) |
 | OAuth | requests per second and burst allowed each client address (an IPv6 one by its /64) at `/oauth/register` and at `/oauth/token` ([ADR-00036](adr/00036-rate-limits-on-public-oauth-endpoints.md)) |
+| Mail | requests per second and burst of invitation emails each sender may send, invites and resends together ([ADR-00055](adr/00055-invitation-email.md)). The SMTP settings (host, port, user, password, from address, timeout) live on the Deployment page |
 | Ingestion | confidence threshold, fetch timeout, user agent |
 | Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
 | LLM | provider, text model, vision model, per-provider API key, timeout |
 | Backup | schedule, local retention, S3 endpoint, region, bucket, prefix, credentials, remote retention |
 | Encryption | the key integration secrets are sealed under: 32 random bytes, base64 ([ADR-00057](adr/00057-integration-settings-in-the-database.md)) |
 
-Integration settings (mail, LLM) are not in this table. They live in the
+Integration settings (mail, LLM) are not in this table, except the mail row's
+send rate, which is environment. They live in the
 database, in `internal/settings`, and an operator edits them on the Deployment
 page; their secrets are encrypted there under the key above
 ([ADR-00057](adr/00057-integration-settings-in-the-database.md)). The LLM row

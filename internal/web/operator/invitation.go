@@ -11,3 +11,7 @@ type invitationsView struct {
 func revokePath(code string) string {
 	return InvitationsPath + "/" + code + "/revoke"
 }
+
+func resendPath(code string) string {
+	return InvitationsPath + "/" + code + "/resend"
+}

@@ -46,19 +46,46 @@ type PendingInvitation struct {
 	Path string
 	// Mine reports whether the reader issued it, and so may revoke it.
 	Mine bool
+	// EmailStatus says when the invitation's email went out or why it did not
+	// (ADR-00055); EmailFailed marks a latest attempt that failed.
+	EmailStatus string
+	EmailFailed bool
 }
 
 // NewPendingInvitations builds the list view of in for the reader self.
 func NewPendingInvitations(self string, in []apihouseholds.Invitation) []PendingInvitation {
 	out := make([]PendingInvitation, 0, len(in))
 	for _, i := range in {
+		sent := ""
+		if !i.EmailedAt.IsZero() {
+			sent = FormatTime(i.EmailedAt)
+		}
+		status, failed := StatusLine(sent, i.EmailError)
 		out = append(out, PendingInvitation{
-			Code:    i.Code,
-			Email:   i.Email,
-			Expires: FormatTime(i.ExpiresAt),
-			Path:    InvitationsPath + "/" + i.Code,
-			Mine:    i.IssuedBy == self,
+			Code:        i.Code,
+			Email:       i.Email,
+			Expires:     FormatTime(i.ExpiresAt),
+			Path:        InvitationsPath + "/" + i.Code,
+			Mine:        i.IssuedBy == self,
+			EmailStatus: status,
+			EmailFailed: failed,
 		})
 	}
 	return out
+}
+
+// StatusLine says what became of an invitation's email, for the household and
+// operator pages: sent is the time it last went out, already formatted, and
+// empty when it never has; errText is the latest send error. failed is true
+// when the latest attempt failed.
+func StatusLine(sent, errText string) (line string, failed bool) {
+	switch {
+	case errText != "" && sent != "":
+		return "Email failed: " + errText + " (last sent " + sent + ")", true
+	case errText != "":
+		return "Email failed: " + errText, true
+	case sent != "":
+		return "Emailed " + sent, false
+	}
+	return "Not emailed", false
 }

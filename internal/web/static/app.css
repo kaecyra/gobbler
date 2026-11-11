@@ -623,7 +623,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 26px 16px 0; }
 .pg p { margin: 0 0 12px; max-width: 62ch; }
 .pg p:last-child { margin-bottom: 0; }
 .pg label { display: block; font-weight: 600; font-size: 15px; color: var(--ink-2); }
-.pg input[type=text], .pg input[type=email], .pg input[type=search], .pg textarea, .pg select {
+.pg input[type=text], .pg input[type=email], .pg input[type=search], .pg input[type=password], .pg textarea, .pg select {
   display: block; width: 100%; max-width: 28rem; min-height: var(--tap); margin-top: 4px;
   padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r);
   background: var(--card); color: var(--ink); font: inherit; font-weight: 400;

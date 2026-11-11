@@ -8,12 +8,15 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/auth"
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
+	"github.com/kaecyra/gobbler/internal/mail"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/picture"
+	"github.com/kaecyra/gobbler/internal/ratelimit"
 	"github.com/kaecyra/gobbler/internal/session"
 	"github.com/kaecyra/gobbler/internal/web"
 	"github.com/kaecyra/gobbler/internal/web/layout"
@@ -76,15 +79,16 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	// backups.Runner is the live job: hand it to anything that triggers a
 	// backup or reads its status, never build a second Runner.
 
-	// No integration reads the store yet; the Deployment page lists the
-	// secret fields integrations register (none so far).
+	// The Deployment page lists the settings integrations register; mail is
+	// the first (ADR-00055).
 	integrationSettings, err := openSettings(ctx, cfg, d, slog.Default())
 	if err != nil {
 		return err
 	}
 
 	deps := web.Deps{Config: cfg, DB: d, Media: pictureMedia, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)}
-	deps.Integrations = settings.Integrations{Store: integrationSettings}
+	deps.Integrations = settings.Integrations{Store: integrationSettings, Sections: []settings.Section{settings.MailSection()}}
+	deps.Mail = mail.NewMailer(integrationSettings, ratelimit.New(cfg.Mail.Rate, cfg.Mail.Burst, time.Now), cfg.OIDC.PublicBaseURL, slog.Default())
 	var authOpts []auth.Option
 	if cfg.OIDC.Configured() {
 		if deps.Sessions, deps.SignIn, err = newSignIn(cfg, d); err != nil {

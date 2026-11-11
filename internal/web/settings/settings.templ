@@ -10,6 +10,7 @@ templ settingsPage(v backupView, iv integrationsView) {
 			/* .pg > .panel + .panel (app.css) skips panels inside #integrations. */
 			#integrations > .panel { margin-top: 16px; }
 			.integration .secret + .secret { margin-top: 16px; }
+			.integration .values + .secret { margin-top: 16px; }
 			.integration .secret form + form { margin-top: 8px; }
 		</style>
 		<div class="pg">
@@ -58,6 +59,20 @@ templ integrationsSection(v integrationsView) {
 			for _, s := range v.Sections {
 				<section class="panel integration" aria-labelledby={ "integration-" + s.Integration + "-h" } data-testid={ "integration-" + s.Integration }>
 					<h2 id={ "integration-" + s.Integration + "-h" }>{ s.Title }</h2>
+					if len(s.Fields) > 0 {
+						<form class="stack values" method="post" action={ templ.SafeURL(s.ValuesAction) } hx-post={ s.ValuesAction } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button" data-testid={ "values-" + s.Integration }>
+							for _, f := range s.Fields {
+								<label>
+									{ f.Label }
+									<input type="text" name={ f.Name } value={ f.Value } placeholder={ f.Placeholder } autocomplete="off" spellcheck="false" maxlength="4096" data-testid={ "value-" + f.Name }/>
+									if f.Hint != "" {
+										<span class="hint">{ f.Hint }</span>
+									}
+								</label>
+							}
+							<button type="submit" class="btn accent">Save</button>
+						</form>
+					}
 					for _, f := range s.Secrets {
 						<div class="secret" data-testid={ "secret-" + s.Integration + "-" + f.Name }>
 							<form class="fields" method="post" action={ templ.SafeURL(f.Action) } hx-post={ f.Action } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button">

@@ -57,6 +57,8 @@ const (
 	EnvOAuthRegisterBurst  = "GOBBLER_OAUTH_REGISTER_BURST"
 	EnvOAuthTokenRate      = "GOBBLER_OAUTH_TOKEN_RATE"
 	EnvOAuthTokenBurst     = "GOBBLER_OAUTH_TOKEN_BURST"
+	EnvMailRate            = "GOBBLER_MAIL_RATE"
+	EnvMailBurst           = "GOBBLER_MAIL_BURST"
 	EnvEncryptionKey       = "GOBBLER_ENCRYPTION_KEY"
 )
 
@@ -90,6 +92,11 @@ const (
 	defaultOAuthRegisterBurst = 10
 	defaultOAuthTokenRate     = 1.0
 	defaultOAuthTokenBurst    = 20
+
+	// One sender, a household inviting a few people: ten emails at once, then
+	// one every twenty seconds (ADR-00055).
+	defaultMailRate  = 0.05
+	defaultMailBurst = 10
 )
 
 // Config is the validated application configuration. Load returns it by value
@@ -106,6 +113,7 @@ type Config struct {
 	Backup    Backup
 	MCP       MCP
 	OAuth     OAuth
+	Mail      Mail
 	Settings  Settings
 }
 
@@ -220,6 +228,17 @@ type OAuth struct {
 	Token    Bucket
 }
 
+// Mail holds the limit on invitation emails (ADR-00055). The SMTP settings are
+// not here: they live on the Deployment page (ADR-00057). Each sender, by
+// verified email, has one leaky bucket for invites and resends together.
+type Mail struct {
+	// Rate is how many emails per second a sender may sustain.
+	Rate float64
+	// Burst is how many emails a sender may send at once before being held to
+	// Rate.
+	Burst int
+}
+
 // Bucket is a leaky bucket's rate in requests per second and its burst.
 type Bucket struct {
 	Rate  float64
@@ -319,6 +338,9 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.OAuth.Register.Burst = r.integer(EnvOAuthRegisterBurst, defaultOAuthRegisterBurst, 1)
 	c.OAuth.Token.Rate = r.float(EnvOAuthTokenRate, defaultOAuthTokenRate, 0.001, 1000)
 	c.OAuth.Token.Burst = r.integer(EnvOAuthTokenBurst, defaultOAuthTokenBurst, 1)
+
+	c.Mail.Rate = r.float(EnvMailRate, defaultMailRate, 0.001, 1000)
+	c.Mail.Burst = r.integer(EnvMailBurst, defaultMailBurst, 1)
 
 	c.Settings.EncryptionKey = Secret{r.str(EnvEncryptionKey, "")}
 

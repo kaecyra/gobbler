@@ -38,6 +38,10 @@ func revokePath(code string) string {
 	return Pattern + "/invitations/" + code + "/revoke"
 }
 
+func resendPath(code string) string {
+	return Pattern + "/invitations/" + code + "/resend"
+}
+
 // acceptView is the page an invitee opens.
 type acceptView struct {
 	Code      string

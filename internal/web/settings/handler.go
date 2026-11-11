@@ -53,6 +53,7 @@ func Routes(d Deps) chi.Router {
 	r.Post("/backup", h.backupNow)
 	r.Post("/secrets/{integration}/{field}", h.saveSecret)
 	r.Post("/secrets/{integration}/{field}/clear", h.clearSecret)
+	r.Post("/values/{integration}", h.saveValues)
 	return r
 }
 
@@ -79,7 +80,7 @@ type handler struct {
 }
 
 func (h *handler) show(w http.ResponseWriter, r *http.Request) {
-	iv, err := h.integrationsView(r.Context(), "")
+	iv, err := h.integrationsView(r.Context(), "", entered{})
 	if err != nil {
 		layout.WriteError(w, r, err)
 		return

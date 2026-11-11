@@ -23,12 +23,12 @@ func TestFormatTimeIsUTC(t *testing.T) {
 func TestNewPendingInvitationsViewsEachInvitation(t *testing.T) {
 	exp := time.Date(2026, 3, 4, 8, 5, 0, 0, time.UTC)
 	got := NewPendingInvitations("me@example.com", []household.Invitation{
-		{Code: "aZ09bY18", Email: "a@example.com", IssuedBy: "me@example.com", ExpiresAt: exp},
-		{Code: "Zz000000", Email: "b@example.com", IssuedBy: "other@example.com", ExpiresAt: exp},
+		{Code: "aZ09bY18", Email: "a@example.com", IssuedBy: "me@example.com", ExpiresAt: exp, EmailedAt: exp.Add(time.Hour)},
+		{Code: "Zz000000", Email: "b@example.com", IssuedBy: "other@example.com", ExpiresAt: exp, EmailError: "refused"},
 	})
 	want := []PendingInvitation{
-		{Code: "aZ09bY18", Email: "a@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/aZ09bY18", Mine: true},
-		{Code: "Zz000000", Email: "b@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/Zz000000", Mine: false},
+		{Code: "aZ09bY18", Email: "a@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/aZ09bY18", Mine: true, EmailStatus: "Emailed 2026-03-04 09:05 UTC"},
+		{Code: "Zz000000", Email: "b@example.com", Expires: "2026-03-04 08:05 UTC", Path: "/invitations/Zz000000", Mine: false, EmailStatus: "Email failed: refused", EmailFailed: true},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d views, want %d", len(got), len(want))
@@ -64,5 +64,21 @@ func TestFailShowsTheStoresReasonOnlyForRefusedInput(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "secret detail") {
 		t.Error("body leaks the error chain")
+	}
+}
+
+func TestStatusLine(t *testing.T) {
+	for _, tc := range []struct {
+		sent, err, want string
+		failed          bool
+	}{
+		{"", "", "Not emailed", false},
+		{"2026-11-10 09:00 UTC", "", "Emailed 2026-11-10 09:00 UTC", false},
+		{"", "refused", "Email failed: refused", true},
+		{"2026-11-10 09:00 UTC", "refused", "Email failed: refused (last sent 2026-11-10 09:00 UTC)", true},
+	} {
+		if got, failed := StatusLine(tc.sent, tc.err); got != tc.want || failed != tc.failed {
+			t.Errorf("StatusLine(%q, %q) = %q, %v; want %q, %v", tc.sent, tc.err, got, failed, tc.want, tc.failed)
+		}
 	}
 }

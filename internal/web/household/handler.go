@@ -30,6 +30,7 @@ type Households interface {
 	Pending(ctx context.Context, c apihouseholds.Caller) ([]apihouseholds.Invitation, error)
 	Invite(ctx context.Context, c apihouseholds.Caller, email string) (string, error)
 	Revoke(ctx context.Context, c apihouseholds.Caller, code string) error
+	Resend(ctx context.Context, c apihouseholds.Caller, code string) error
 	Remove(ctx context.Context, c apihouseholds.Caller, target string) error
 	Leave(ctx context.Context, c apihouseholds.Caller) error
 	Delete(ctx context.Context, c apihouseholds.Caller, confirm string) error
@@ -64,6 +65,7 @@ func MemberRoutes(d Deps) chi.Router {
 	r.Get("/", h.show)
 	r.Post("/invitations", h.invite)
 	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/revoke", h.revoke)
+	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/resend", h.resend)
 	r.Post("/members/remove", h.remove)
 	r.Post("/leave", h.leave)
 	r.Post("/delete", h.delete)
@@ -169,6 +171,22 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	done(w, r, h.Households.Revoke(r.Context(), c, code))
+}
+
+// resend emails a pending invitation again (ADR-00055). Any member may, so
+// unlike revoke it is offered on every row.
+func (h *handler) resend(w http.ResponseWriter, r *http.Request) {
+	c, err := actor(r)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
+	code, err := layout.InvitationCode(r)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
+	done(w, r, h.Households.Resend(r.Context(), c, code))
 }
 
 func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
