@@ -140,6 +140,9 @@ Options for how many links are tried:
     but is not given the lookup, so an agent's YouTube link keeps the old path
     (the watch page) until the lookup is wired there. That is deliberate and
     unfinished, not a ruling that agents should not get descriptions.
+
+    > Done in #642: the MCP import and preview are given the same lookup, so
+    > an agent's YouTube link is read as the web import's is.
 11. **An Instagram link is refused before any fetch.** URL ingest, from the
     form, an agent or a re-import, refuses a link on instagram.com or any
     subdomain of it (`www.`, `m.` and the rest) with a form error telling the
@@ -198,3 +201,8 @@ snapshot is what makes it reproducible afterwards.
    routes and service, and `cmd/gobbler` sets it. The MCP import is not given
    it (decision 10); wiring it there is tracked as a follow-up issue naming
    `internal/mcp`.
+
+   > Done in #642: the router passes `web.Deps.Descriptions` to the MCP
+   > endpoint, whose ingestion service gets it as `ingest.Deps.Descriptions`;
+   > MCP tests over a fake lookup show an import and a preview of a YouTube
+   > link read from the description.

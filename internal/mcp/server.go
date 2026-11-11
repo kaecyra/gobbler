@@ -101,15 +101,18 @@ type Deps struct {
 // already shares. The pipeline has no LLM provider: an agent's import takes the
 // rule-based path and a draft below the confidence threshold is flagged for the
 // reviewer, never sent to a model (ADR-00006). reads is also where a preview
-// reads a saved recipe's original page (apiingest.Originals).
-func NewDeps(rec *apirecipes.Service, reads *apirecipes.Store, lists *apishop.Store, households *apihouseholds.Store, cat *apicatalog.Store, audit Audit, cfg config.Config, log *slog.Logger) (Deps, error) {
+// reads a saved recipe's original page (apiingest.Originals). descriptions is
+// the YouTube description lookup the web import uses, so an agent's YouTube
+// link is drafted from the video's description or the recipe page it links
+// (ADR-00054); nil leaves the lookup off, and the link is fetched as any page.
+func NewDeps(rec *apirecipes.Service, reads *apirecipes.Store, lists *apishop.Store, households *apihouseholds.Store, cat *apicatalog.Store, audit Audit, descriptions apiingest.DescriptionSource, cfg config.Config, log *slog.Logger) (Deps, error) {
 	// The household service reads the house style; get_house_style is the only
 	// tool that calls it, and it reads.
 	hs, err := apihouseholds.New(apihouseholds.Deps{Households: households})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp household service: %w", err)
 	}
-	ing, err := apiingest.New(cfg.Ingestion, apiingest.Deps{Catalog: cat, Members: households, Logger: log, Originals: reads})
+	ing, err := apiingest.New(cfg.Ingestion, apiingest.Deps{Catalog: cat, Members: households, Descriptions: descriptions, Logger: log, Originals: reads})
 	if err != nil {
 		return Deps{}, fmt.Errorf("build mcp import service: %w", err)
 	}

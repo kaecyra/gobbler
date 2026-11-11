@@ -17,6 +17,7 @@ import (
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	apiingest "github.com/kaecyra/gobbler/internal/api/ingest"
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/auth"
@@ -87,6 +88,14 @@ func newSiteWith(t *testing.T, limits config.MCP, drafter func(*catalog.Store) m
 // instead of the fake, so a test drives the real service.
 func newSiteDrafting(t *testing.T, limits config.MCP, drafter func(*catalog.Store) mcp.Drafter, service bool) *site {
 	t.Helper()
+	return newSiteDescribing(t, limits, drafter, service, nil)
+}
+
+// newSiteDescribing is newSiteDrafting with descriptions as the YouTube
+// description lookup NewDeps gives the ingestion service (ADR-00054); nil
+// leaves it off, so a YouTube link is fetched as any page.
+func newSiteDescribing(t *testing.T, limits config.MCP, drafter func(*catalog.Store) mcp.Drafter, service bool, descriptions apiingest.DescriptionSource) *site {
+	t.Helper()
 	ctx := context.Background()
 	d, err := db.Open(ctx, config.Config{Server: config.Server{DataDir: t.TempDir()}})
 	if err != nil {
@@ -124,7 +133,7 @@ func newSiteDrafting(t *testing.T, limits config.MCP, drafter func(*catalog.Stor
 	// through the catalog service bound to the credential of its request
 	// (ADR-00043), whichever kind of credential it is (ADR-00031).
 	audit := mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: s.keys}, mcp.KindOAuth: mcp.GrantAudit{Grants: s.oauth}}
-	deps, err := mcp.NewDeps(svc, s.rec, shop, hs, cat, audit, cfg, slog.New(slog.DiscardHandler))
+	deps, err := mcp.NewDeps(svc, s.rec, shop, hs, cat, audit, descriptions, cfg, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
 	}
