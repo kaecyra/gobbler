@@ -302,7 +302,7 @@ test('a listing that cannot be fetched is explained and leaves the saved model a
   await expect(llm(page).getByTestId('value-text_model')).toHaveValue('e2e-gemini-flash');
 });
 
-test('a saved key is cleared from its label line, and the rest of the form is kept', async ({ page }) => {
+test('a saved key is cleared from its label line, and the other saved settings stay', async ({ page }) => {
   await page.goto('/operator/settings');
   const key = llm(page).getByTestId('secret-llm-anthropic_key');
   await expect(key.getByTestId('secret-state')).toHaveText('Saved');
