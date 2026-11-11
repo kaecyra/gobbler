@@ -68,9 +68,10 @@ index below in the same commit.
 | [00051](00051-edit-page-picture-picker.md) | A saved recipe's picture is chosen on its edit page, from a search of its source page or an upload | Accepted |
 | [00052](00052-draft-candidates-chosen-by-id.md) | A draft's picture candidates are chosen by an ID of their own | Accepted |
 | [00053](00053-photo-vision-transcription.md) | A photo is transcribed by a vision model, structured by the rules, and checked for numbers against tesseract | Accepted |
+| [00054](00054-youtube-description-ingest.md) | A YouTube link is read from the video's description, or from the recipe page it links, through the YouTube Data API | Accepted |
 | [00055](00055-invitation-email.md) | Invitations are emailed over SMTP with TLS, as HTML with a plain-text part | Accepted |
 | [00056](00056-llm-provider-per-task.md) | Text and vision each name their own LLM provider, set on the operator's page and stored in the database | Accepted |
-| [00057](00057-integration-settings-in-the-database.md) | Integration settings live in the database, and their secrets are encrypted there under a key from the environment | Accepted |
+| [00057](00057-integration-settings-in-the-database.md) | Integration settings live in the database, and their secrets are encrypted there under a key from the environment | Amended by [00054](00054-youtube-description-ingest.md) |
 | [00058](00058-llm-usage-and-cost.md) | Every LLM call is recorded with its cost, priced from a daily OpenRouter sync with operator overrides, and shown on an operator page | Amended by [00059](00059-llm-call-records-deleted-with-household.md) |
 | [00059](00059-llm-call-records-deleted-with-household.md) | A household's LLM call records are deleted with the household | Accepted |
 

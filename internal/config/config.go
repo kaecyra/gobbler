@@ -35,6 +35,7 @@ const (
 	EnvFetchTimeout        = "GOBBLER_INGEST_FETCH_TIMEOUT"
 	EnvUserAgent           = "GOBBLER_INGEST_USER_AGENT"
 	EnvVideoThumbnailHost  = "GOBBLER_VIDEO_THUMBNAIL_HOST"
+	EnvVideoAPIHost        = "GOBBLER_VIDEO_API_HOST"
 	EnvBackupSchedule      = "GOBBLER_BACKUP_SCHEDULE"
 	EnvBackupLocalKeep     = "GOBBLER_BACKUP_LOCAL_RETENTION"
 	EnvBackupRemoteKeep    = "GOBBLER_BACKUP_REMOTE_RETENTION"
@@ -200,6 +201,11 @@ type Video struct {
 	// no trailing slash. Empty means YouTube's image host (video.NewFetcherAt
 	// knows it); only the e2e suite sets it.
 	ThumbnailHost string
+	// APIHost is the origin of the YouTube Data API a video's description is
+	// read from, with no trailing slash (ADR-00054). Empty means Google's
+	// (video.DefaultAPIHost); only the e2e suite sets it. The API key is not
+	// here: it is an integration secret in the database (ADR-00057).
+	APIHost string
 }
 
 // LLMUsage holds where the daily model-price sync reads from (ADR-00058).
@@ -326,6 +332,7 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Ingestion.AllowLoopbackFetch = c.Server.DevAuthBypass
 
 	c.Video.ThumbnailHost = r.httpOrigin(EnvVideoThumbnailHost)
+	c.Video.APIHost = r.httpOrigin(EnvVideoAPIHost)
 	c.LLMUsage.OpenRouterURL = r.httpOrigin(EnvOpenRouterURL)
 
 	r.backup(&c.Backup)

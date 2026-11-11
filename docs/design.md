@@ -17,6 +17,7 @@ and this document is wrong.
   and a note may be pinned as a tip
   ([ADR-00022](adr/00022-adopt-the-mockup-design.md)); the cuisine is one value
   from a fixed list ([ADR-00025](adr/00025-one-cuisine-per-recipe.md)).
+- **Import** a YouTube link: the recipe is read from the video's description, or from the recipe page the description links, when an operator has saved a Data API key ([ADR-00054](adr/00054-youtube-description-ingest.md)).
 - **Watch** it, optionally: a recipe may carry a YouTube video that plays at the
   top of the steps column only when someone presses Play; the thumbnail is
   downloaded at save and kept in SQLite ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)).
@@ -69,7 +70,7 @@ dependencies.
 | `oauth` | The OAuth 2.1 authorization server for MCP clients ([ADR-00034](adr/00034-mcp-server.md)): client registration and Client ID Metadata Document fetching (HTTPS only, never a private address), authorization codes with PKCE, per-person grants, rotating refresh tokens stored as hashes, and the access-token verifier `/mcp` uses; served by `web/oauth`, with grants listed on the profile by `web/profile`; queries in `queries/`, sqlc-generated `oauthdb` | `db` |
 | `quantity` | Rationals, ranges, units, dimensions, conversion, scaling (pure) | — |
 | `recipe` | Domain types (with the closed sets of meal types, cuisines and stage kinds), step-graph validation, "meanwhile" derivation (pure) | `quantity`, `video` |
-| `video` | Reading a pasted YouTube link into the video ID a recipe stores, the thumbnail and embed addresses, and the thumbnail download ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)) | — |
+| `video` | Reading a pasted YouTube link into the video ID a recipe stores, the thumbnail and embed addresses, the thumbnail download ([ADR-00021](adr/00021-youtube-video-on-a-recipe.md)) and the description lookup through the YouTube Data API ([ADR-00054](adr/00054-youtube-description-ingest.md)) | — |
 | `recipepath` | The recipe view page's URL, `/recipes/{id}-{slug}` ([ADR-00047](adr/00047-recipe-view-urls.md)): the one builder of view and sub-page base paths, the reader of the `{id}-{slug}` segment, and the slug function (pure) | — |
 | `recipe/display` | What pages show of a recipe: scale, servings and unit-mode options, formatted ingredient and equipment lines, step numbers, durations, meanwhile items; shared by the recipe view and cook mode, which may not import each other (pure apart from catalog lookups) | `quantity`, `recipe`, `catalog` |
 | `store` | Persistence for recipes, revisions, notes, snapshots, video thumbnails, FTS index; queries in `queries/`, sqlc-generated `storedb` ([ADR-00014](adr/00014-sqlc-for-data-access.md)) | `db`, `recipe`, `video` |
@@ -135,13 +136,13 @@ Secrets are never in the repository.
 | OAuth | requests per second and burst allowed each client address (an IPv6 one by its /64) at `/oauth/register` and at `/oauth/token` ([ADR-00036](adr/00036-rate-limits-on-public-oauth-endpoints.md)) |
 | Mail | requests per second and burst of invitation emails each sender may send, invites and resends together ([ADR-00055](adr/00055-invitation-email.md)). The SMTP settings (host, port, user, password, from address, timeout) live on the Deployment page |
 | Ingestion | confidence threshold, fetch timeout, user agent |
-| Video | thumbnail host (YouTube's image host unless overridden; the e2e suite points it at a fixture) |
+| Video | thumbnail host (YouTube's image host unless overridden) and YouTube Data API host (Google's unless overridden); the e2e suite points both at fixtures. The Data API key is an integration secret, not here ([ADR-00054](adr/00054-youtube-description-ingest.md)) |
 | LLM usage | the origin the daily model-price sync reads from (OpenRouter's unless overridden; the e2e suite points it at a fake) ([ADR-00058](adr/00058-llm-usage-and-cost.md)) |
 | LLM | none in the environment. Each task, text and vision, has its own provider and model, and there are one timeout and a key per provider; all live on the Deployment page ([ADR-00056](adr/00056-llm-provider-per-task.md)) |
 | Backup | schedule, local retention, S3 endpoint, region, bucket, prefix, credentials, remote retention |
 | Encryption | the key integration secrets are sealed under: 32 random bytes, base64 ([ADR-00057](adr/00057-integration-settings-in-the-database.md)) |
 
-Integration settings (mail, LLM) are not in this table, except the mail row's
+Integration settings (mail, LLM, the YouTube Data API key) are not in this table, except the mail row's
 send rate, which is environment. They live in the
 database, in `internal/settings`, and an operator edits them on the Deployment
 page; their secrets are encrypted there under the key above
@@ -149,7 +150,9 @@ page; their secrets are encrypted there under the key above
 settings are per task, text and vision, and a change is used by the next LLM
 call without a restart ([ADR-00056](adr/00056-llm-provider-per-task.md)). The
 former `GOBBLER_LLM_*` and provider key variables are ignored, and startup logs
-each one that is still set.
+each one that is still set. The YouTube Data API key is one more secret of the
+same kind: with none saved, a YouTube link is ingested as any page
+([ADR-00054](adr/00054-youtube-description-ingest.md)).
 
 ## Testing
 

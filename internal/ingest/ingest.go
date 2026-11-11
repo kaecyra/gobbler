@@ -57,6 +57,11 @@ type Deps struct {
 	// Fallback.Retry returns ErrNoProvider. A provider may also report, per
 	// task, that it has nothing configured (Availability).
 	Provider Provider
+	// Descriptions reads a YouTube video's description (ADR-00054). Nil means
+	// the lookup is off, as does an error wrapping video.ErrNoKey; a YouTube
+	// link is then ingested as any page. When nil and Provider implements
+	// DescriptionAware, the provider's is used.
+	Descriptions DescriptionSource
 	// Logger receives the fallback's warnings; nil means slog.Default().
 	Logger *slog.Logger
 }
@@ -68,6 +73,8 @@ type Pipeline struct {
 	deps Deps
 	// guarded is the client used when Deps.HTTP is nil.
 	guarded *http.Client
+	// descriptions is Deps.Descriptions, or the provider's; nil when off.
+	descriptions DescriptionSource
 }
 
 // New returns a Pipeline. It rejects configuration the pipeline cannot work
@@ -85,7 +92,11 @@ func New(cfg config.Ingestion, d Deps) (*Pipeline, error) {
 	if cfg.ConfidenceThreshold < 0 || cfg.ConfidenceThreshold > 1 {
 		return nil, fmt.Errorf("ingest: confidence threshold must be in [0, 1], got %v", cfg.ConfidenceThreshold)
 	}
-	return &Pipeline{cfg: cfg, deps: d, guarded: netguard.NewClient(netguard.Options{Redirects: netguard.MaxRedirects, AllowLoopback: cfg.AllowLoopbackFetch})}, nil
+	desc := d.Descriptions
+	if aware, ok := d.Provider.(DescriptionAware); ok && desc == nil {
+		desc = aware.Descriptions()
+	}
+	return &Pipeline{cfg: cfg, deps: d, descriptions: desc, guarded: netguard.NewClient(netguard.Options{Redirects: netguard.MaxRedirects, AllowLoopback: cfg.AllowLoopbackFetch})}, nil
 }
 
 // draftWithFallback assembles the rule-based draft and, only when it scored
@@ -101,7 +112,16 @@ func (p *Pipeline) draftWithFallback(ctx context.Context, src Source, res extrac
 
 // FromURL fetches the page at rawURL and drafts the recipe on it. A failed or
 // timed-out fetch is an error wrapping ErrFetch.
+//
+// A YouTube video link, with a Data API key saved, is drafted from the video's
+// description or the recipe page it links (ADR-00054); with none saved it is
+// fetched as any page.
 func (p *Pipeline) FromURL(ctx context.Context, rawURL string) (Draft, error) {
+	if id, ok := youTubeVideoID(rawURL); ok && p.descriptions != nil {
+		if d, handled, err := p.fromYouTube(ctx, rawURL, id); handled {
+			return d, err
+		}
+	}
 	page, finalURL, err := p.fetch(ctx, rawURL)
 	if err != nil {
 		return Draft{}, err

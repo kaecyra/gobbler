@@ -220,6 +220,7 @@ the container runs in UTC.
 | `GOBBLER_INGEST_FETCH_TIMEOUT` | `15s` | no | Go duration, positive. |
 | `GOBBLER_INGEST_USER_AGENT` | `gobbler (self-hosted recipe manager)` | no | |
 | `GOBBLER_VIDEO_THUMBNAIL_HOST` | `https://i.ytimg.com` | no | Origin a recipe video's thumbnail is downloaded from when a recipe with that video is saved ([ADR-00021](./adr/00021-youtube-video-on-a-recipe.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fixture so no test reaches YouTube. |
+| `GOBBLER_VIDEO_API_HOST` | `https://www.googleapis.com` | no | Origin the YouTube Data API is called at to read a video's description ([ADR-00054](./adr/00054-youtube-description-ingest.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fake. The API key is not here: see [YouTube descriptions](#youtube-descriptions). |
 | `GOBBLER_OPENROUTER_URL` | `https://openrouter.ai` | no | Origin the daily model-price sync reads OpenRouter's public model listing from ([ADR-00058](./adr/00058-llm-usage-and-cost.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fake so no test reaches OpenRouter. |
 | `GOBBLER_MCP_RATE` | `5` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
 | `GOBBLER_MCP_BURST` | `50` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
@@ -460,6 +461,35 @@ secret is never shown again, only replaced or cleared.
   error line per secret it cannot open, naming the integration and field, never
   the value; the Deployment page marks each as unreadable, and the integration
   it belongs to stays off until the secret is entered again.
+
+## YouTube descriptions
+
+Optional. With a YouTube Data API key saved, a YouTube link on the Add a recipe
+page is read from the video's description, or from a recipe page the
+description links to; without one, a YouTube link is ingested as any page and
+nothing is an error ([ADR-00054](./adr/00054-youtube-description-ingest.md)).
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a
+   project, or pick one.
+2. Under APIs and services, enable **YouTube Data API v3** for that project.
+3. Under Credentials, create an **API key**. Restrict it: under API
+   restrictions choose "Restrict key" and tick only YouTube Data API v3. Leave
+   application restrictions off; the calls come from the server, so a referrer
+   restriction would refuse them.
+4. Set `GOBBLER_ENCRYPTION_KEY` ([Integration secrets](#integration-secrets)).
+5. On the Deployment page, `/operator/settings`, paste the key into the
+   **YouTube** section and save. It takes effect on the next import. Clear it
+   there to turn the lookup off.
+
+- One lookup costs 1 unit of the default 10,000 units a day. When the day's
+  quota is used up, an import of a YouTube link says so on the form and the
+  log has a warning naming the video, never the key; pasting the recipe text
+  still works.
+- A key YouTube rejects (wrong, restricted away from the API, or a project
+  without the API enabled) is reported the same way, on the form and in the log.
+- Mismatched or missing `GOBBLER_ENCRYPTION_KEY`: the saved key reads as
+  unreadable, the lookup is off, and the log has an error line each time an
+  import finds it.
 
 ## Mail
 

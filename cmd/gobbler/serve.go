@@ -97,7 +97,9 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	// daily from OpenRouter (ADR-00058).
 	usage := llmusage.New(d, llmusage.Configured{Values: integrationSettings})
 	llmRouter := router.New(integrationSettings, slog.Default(), router.WithRecorder(usage))
-	deps.LLM = llmRouter
+	// A YouTube link's description is read through the Data API with the key an
+	// operator saves on the same page (ADR-00054); with none the lookup is off.
+	deps.LLM = llmWithDescriptions{Router: llmRouter, src: newDescriptions(cfg, integrationSettings, slog.Default())}
 	priceSyncer := llmusage.NewSyncer(usage, cfg.LLMUsage.OpenRouterURL, slog.Default())
 	deps.LLMUsage, deps.PriceSync = usage, priceSyncer
 	priceSync := startPriceSync(ctx, dueSyncer{store: usage, syncer: priceSyncer}, priceSyncCheckEvery)
@@ -105,6 +107,7 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	deps.Integrations = settings.Integrations{Store: integrationSettings, Sections: []settings.Section{
 		settings.LLMSection(settings.LLMDeps{Values: integrationSettings, Models: llmRouter}),
 		settings.MailSection(),
+		settings.YouTubeSection(),
 	}}
 	deps.Mail = mail.NewMailer(integrationSettings, ratelimit.New(cfg.Mail.Rate, cfg.Mail.Burst, time.Now), cfg.OIDC.PublicBaseURL, slog.Default())
 	var authOpts []auth.Option

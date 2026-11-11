@@ -98,6 +98,11 @@ func (r *Reimporter) Start(ctx context.Context, id int64, by store.Provenance) (
 	if d.SpiceLevel == nil {
 		d.SpiceLevel = rec.SpiceLevel
 	}
+	// A recipe made from a YouTube link whose description led to a blog keeps
+	// the video, though the blog's source address no longer names it (ADR-00054).
+	if d.VideoID == "" {
+		d.VideoID = rec.VideoID
+	}
 	// Adding the draft supersedes the recipe's pending edit or re-import in the
 	// same transaction; the store deletes a superseded re-import's picture
 	// candidates when it was given a remover (store.WithObjects).
