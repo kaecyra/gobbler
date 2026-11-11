@@ -4986,7 +4986,8 @@
         "internal/db/db.go",
         "internal/db/db_test.go",
         "VERSION",
-        "internal/store/recipe_atomic_test.go"
+        "internal/store/recipe_atomic_test.go",
+        "internal/backup/backup_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
