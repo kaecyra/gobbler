@@ -4,6 +4,35 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **Keep this file current.** Update it at every task start and stop, and commit it straight to `main` as bookkeeping. Every session ends on a handoff.
 
+## Wave 13 round 4 (2026-11-11): #642 and #645 landed
+
+Nothing is in flight, no worktrees are on disk, and no PRs are open. `VERSION` on main was 0.151.0 at this writing. GitHub CI is green again: the apt DNS outage from round 3 is over, and all four PRs this round passed `check` and `image`.
+
+**Merged this round:**
+
+| What | PR | SHA |
+|---|---|---|
+| chore(plan): add y-mcp-youtube-description for #642 | #643 | 0066a206 |
+| feat(mcp): MCP `import_recipe`/`preview_import` read a YouTube link through the description lookup (closes #642) | #644 | 00e315dc |
+| chore(plan): add s-secret-fields-one-save for #645 | #646 | 81065189 |
+| feat(settings): one Save per integration panel, secrets inside the panel's form (closes #645) | #647 | 45f42a56 |
+
+**Owner decisions (don't re-ask):** #645's layout came from an owner-approved mockup: secrets are fields in their panel's one form, a blank secret keeps what is stored, the state is a tag beside the label, Clear is a link at the end of the label line.
+
+**Open owner question:** whether agent imports over MCP also get the LLM fallback provider (#642 left it out; it has its own cost under ADR-00058). Not a node or an issue yet.
+
+**Review notes:**
+- #647's last `/sdlc-review-pr` ran at `20b4dd67`; the merged head `7fa763f8` added only a rebase and the VERSION bump. The owner said merge without re-review.
+- #647 deleted a probe of the removed per-secret save route from `e2e/tenancy/tenancy.tenancy.spec.ts`, an `append_only` shared file. The deletion was needed because the route is gone.
+
+**Notes for the next dispatcher:**
+- The graph-node tool writes to the main checkout's `docs/plan/graph.json` even when run from a worker's worktree. Workers must point it at their own graph (an `OVERSEER_CONFIG` override worked) or restore the main checkout's file afterwards.
+- `pkill -f` with a pattern that matches the calling shell's own command line kills that shell (exit 144). Stop a server by PID.
+
+**Numbers:** schema migrations last used 00043, ADRs last used 00059, both unchanged.
+
+**Blocked or parked:** l-meal-planning (#38), i-site-extractors (#193), o-demo-reseed (#432), unchanged.
+
 ## Wave 13 round 3 (2026-11-11): #629 and #607 landed, then handed off
 
 The owner asked to land everything and hand off for a restart. Nothing is in flight, no worktrees are on disk, and no PRs are open. Read `VERSION` on main; it was 0.149.0 at this writing.
