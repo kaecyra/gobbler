@@ -122,11 +122,11 @@ var Labels = map[string]string{
 }
 
 // Validate checks the plain mail fields as the Deployment page received them
-// (keyed by the Field names; blank is absent) and whether a password is saved.
-// It returns the problem to show, or "" when they can be saved. With no host
-// there is nothing to check: mail is off. With a host, the port, user, from
-// address and password are required (ADR-00055), and the first one missing is
-// named.
+// (keyed by the Field names; blank is absent) and whether a password is set:
+// saved, or typed in the same submit. It returns the problem to show, or ""
+// when they can be saved. With no host there is nothing to check: mail is off.
+// With a host, the port, user, from address and password are required
+// (ADR-00055), and the first one missing is named.
 func Validate(v map[string]string, passwordSet bool) string {
 	host := strings.TrimSpace(v[FieldHost])
 	if host == "" {
@@ -141,7 +141,7 @@ func Validate(v map[string]string, passwordSet bool) string {
 		}
 	}
 	if !passwordSet {
-		return "Password is required when a host is set. Save the password first."
+		return "Password is required when a host is set."
 	}
 	if p, err := strconv.Atoi(strings.TrimSpace(v[FieldPort])); err != nil || p < 1 || p > 65535 {
 		return "Port must be a number from 1 to 65535."

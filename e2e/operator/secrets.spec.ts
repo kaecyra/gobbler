@@ -60,7 +60,7 @@ test.describe('mail settings', () => {
     await mail.getByTestId('value-user').fill('mailer');
     await mail.getByTestId('value-from').fill('Gobbler <invites@example.com>');
     await mail.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByTestId('integrations-problem')).toContainText('Password is required when a host is set');
+    await expect(page.getByTestId('integrations-problem')).toHaveText('Password is required when a host is set.');
   });
 
   test('saving a password with no encryption key says why and stores nothing', async ({ page }) => {
