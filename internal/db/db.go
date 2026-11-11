@@ -51,9 +51,16 @@ func Open(ctx context.Context, cfg config.Config) (*sql.DB, error) {
 	// stale read snapshot (SQLITE_BUSY_SNAPSHOT ignores the timeout). The
 	// driver keeps a plain BEGIN for read-only transactions.
 	q.Add("_txlock", "immediate")
-	dsn := (&url.URL{Scheme: "file", Opaque: filepath.ToSlash(path), RawQuery: q.Encode()}).String()
+	return connect(ctx, DSN(path, q), path)
+}
 
-	return connect(ctx, dsn, path)
+// DSN returns the SQLite DSN for the database file at path with the given
+// driver parameters. It sets Path, not Opaque: url.URL escapes Path, so "#",
+// "?" and "%" in the path reach SQLite as file name characters. The driver
+// splits the DSN at the first "?" and SQLite decodes %HH in a file: URI, so the
+// escaped form is read back as the original path (#629).
+func DSN(path string, q url.Values) string {
+	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: q.Encode()}).String()
 }
 
 // connect opens dsn and refuses a database that is not in WAL mode: SQLite

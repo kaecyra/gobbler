@@ -230,3 +230,42 @@ func TestVersionWithNoMigrationsIsZero(t *testing.T) {
 		t.Fatalf("version = %d, err = %v, want 0", v, err)
 	}
 }
+
+// A data directory holding URI metacharacters must reach SQLite as a path.
+// Unescaped, "#" or "?" cut the file name short and SQLite opened a different
+// file (#629).
+func TestOpenDataDirWithURIMetacharacters(t *testing.T) {
+	for _, name := range []string{"has#hash", "has?query", "has%41percent", "a#b?c%d"} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, name, "data")
+			d, err := Open(context.Background(), config.Config{Server: config.Server{DataDir: dir}})
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			if err := d.Close(); err != nil {
+				t.Fatalf("Close: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(dir, FileName)); err != nil {
+				t.Fatalf("database not created in data directory: %v", err)
+			}
+			// Nothing may appear at a truncated or percent-decoded path.
+			var stray []string
+			err = filepath.WalkDir(root, func(p string, e os.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if !e.IsDir() && !strings.HasPrefix(p, dir+string(filepath.Separator)) {
+					stray = append(stray, p)
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatalf("walk %s: %v", root, err)
+			}
+			if len(stray) > 0 {
+				t.Fatalf("files created outside the data directory: %v", stray)
+			}
+		})
+	}
+}
