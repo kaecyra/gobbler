@@ -4766,9 +4766,11 @@
         "docs/adr/README.md",
         "docs/design.md",
         "AGENTS.md",
-        "VERSION"
+        "VERSION",
+        "internal/store/**",
+        "internal/api/recipes/types.go"
       ],
-      "needs_migration": null,
+      "needs_migration": "schema",
       "adrs": [
         "00053"
       ],
@@ -4888,7 +4890,9 @@
         "internal/ingest/**",
         "internal/api/ingest/**",
         "internal/settings/**",
-        "e2e/operator/**"
+        "e2e/operator/**",
+        "internal/web/ingest/**",
+        "e2e/ingest/**"
       ],
       "needs_migration": null,
       "adrs": [
