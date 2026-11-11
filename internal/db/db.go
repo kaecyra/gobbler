@@ -55,12 +55,15 @@ func Open(ctx context.Context, cfg config.Config) (*sql.DB, error) {
 }
 
 // DSN returns the SQLite DSN for the database file at path with the given
-// driver parameters. It sets Path, not Opaque: url.URL escapes Path, so "#",
-// "?" and "%" in the path reach SQLite as file name characters. The driver
-// splits the DSN at the first "?" and SQLite decodes %HH in a file: URI, so the
-// escaped form is read back as the original path (#629).
+// driver parameters. The path is percent-escaped so "#", "?" and "%" reach
+// SQLite as file name characters: the driver splits the DSN at the first "?"
+// and SQLite decodes %HH in a file: URI (#629). The escaped path goes in
+// Opaque, giving "file:/abs/x" or "file:rel/x"; setting Path instead would
+// write "file://" and SQLite would read the first segment of a relative path
+// as a URI authority.
 func DSN(path string, q url.Values) string {
-	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: q.Encode()}).String()
+	p := (&url.URL{Path: filepath.ToSlash(path)}).EscapedPath()
+	return (&url.URL{Scheme: "file", Opaque: p, RawQuery: q.Encode()}).String()
 }
 
 // connect opens dsn and refuses a database that is not in WAL mode: SQLite
