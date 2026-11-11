@@ -12,6 +12,9 @@ The owner asked to land everything in flight and hand off. Nothing is in flight,
 
 | What | PR | SHA |
 |---|---|---|
+| chore(plan): lanes for p-photo-vision-ocr's tesseract snapshot and l-llm-provider-config's env removal | #625 | dbd39947 |
+| chore(plan): e-invite-email owns the pending-invitation layout row and app.css | #626 | 732a5ce3 |
+| feat(mail): email invitations over SMTP with TLS (e-invite-email, migration 00041, ADR-00055) | #628 | dff1081b |
 | feat(ingest): photos transcribed by a vision model, numbers checked against tesseract (p-photo-vision-ocr, migration 00042, ADR-00053) | #627 | 76e2c238 |
 | chore(plan): l-llm-provider-config owns internal/web/server_test.go | #630 | 2f8db888 |
 | feat(llm): text and vision each name their own provider and model on the Deployment page (l-llm-provider-config, ADR-00056/00057 LLM half) | #631 | 90556224 |
@@ -22,7 +25,7 @@ The owner asked to land everything in flight and hand off. Nothing is in flight,
 | feat(llmusage): every LLM call recorded with its cost, OpenRouter price sync, operator usage page (u-llm-usage-cost, migration 00043, ADR-00058) | #634 | c10d6ee0 |
 
 **Owner decisions this round (don't re-ask):**
-- **#607, how the YouTube description is fetched:** the YouTube Data API. The key is stored encrypted and set on the Deployment page like the mail and LLM secrets, not as an environment variable (the issue body still says environment; the 2026-11-11 issue comment and the node note supersede it). No key saved means the fetch is off. ADR-00057 names only mail and LLM, so #607's ADR-00054 must amend ADR-00057's scope and AGENTS.md's secrets boundary (both are in its lane now). The owner created the key in Google Cloud project `ok-perfect` (account tim@kaizenize.com, gcloud configuration `gobbler`), restricted to `youtube.googleapis.com`; it goes into the Deployment page once #607 ships. Never read or paste the key string.
+- **#607, how the YouTube description is fetched:** the YouTube Data API. The key is stored encrypted and set on the Deployment page like the mail and LLM secrets, not as an environment variable (the issue body still says environment; the 2026-11-11 issue comment and the node note supersede it). No key saved means the fetch is off. ADR-00057 names only mail and LLM, so #607's ADR-00054 must amend ADR-00057's scope and AGENTS.md's secrets boundary (both are in its lane now). The owner has created the key in their own Google Cloud project, restricted to `youtube.googleapis.com`; it goes into the Deployment page once #607 ships. Never read or paste the key string.
 - **#619, a deleted household's LLM call records:** deleted with the household (ADR-00059, amends ADR-00058's "kept indefinitely"). Accepted cost: usage totals then understate what was billed.
 
 **Blocked or parked (reasons are in the graph):** l-meal-planning (#38), i-site-extractors (#193), o-demo-reseed (#432), unchanged.
@@ -34,8 +37,8 @@ The owner asked to land everything in flight and hand off. Nothing is in flight,
 **PRs waiting on the owner:** none. No escalated questions are open.
 
 **Next three:**
-1. **y-youtube-description (#607).** Its only remaining node. Dependencies all merged, lane widened (#632) to include `internal/web/settings/**`, `e2e/operator/**`, `AGENTS.md` and `docs/operations.md`. It needs no migration. Brief the worker with the issue, its two comments, the node note, ADR-00021, ADR-00042, ADR-00006 and ADR-00057, and the "Settle in the ADR" points in the issue. The Deployment page key section should follow the mail and LLM sections in `internal/web/settings`. Fixtures only, no live YouTube calls.
-2. **#629 (open bug, not a graph node):** `db.Open` builds its DSN without escaping, so a `#` in a path truncates it. `TestAssembleSplitsNumberedStepsInPastedText`'s duplicate subtest name `1._#01` leaves `/tmp/TestAssembleSplitsNumberedStepsInPastedText1._` behind. Any later run under a different migration number then fails with a stale-migration error until the file is deleted from the container's `/tmp`. Two workers hit it this round. Worth a node or a direct fix.
+1. **#629 (open bug, not a graph node). Recommended: add a node and dispatch it before #607.** `db.Open` builds its SQLite DSN without escaping, so a `#` in a path truncates it. `TestAssembleSplitsNumberedStepsInPastedText` runs the subtest name `"1. "` twice; Go names the second run `1._#01`, so its `t.TempDir` path holds a `#` and the database lands at the truncated `/tmp/TestAssembleSplitsNumberedStepsInPastedText1._`. That file outlives the run. A later run under a different migration number fails with a stale-migration error until it is deleted from the container's `/tmp`. Concurrent worktree runs also share that one file. Two workers hit it this round, and #607's worker will run `make check` too. Add the node with `graph-node`, its lane covering `internal/db/db.go` and its tests (run `validate.ts` to see the current owners), as a `fix` with a patch bump.
+2. **y-youtube-description (#607).** The only dispatchable node left. Dependencies all merged, lane widened (#632) to include `internal/web/settings/**`, `e2e/operator/**`, `AGENTS.md` and `docs/operations.md`. It needs no migration. Brief the worker with the issue, its comment (the 2026-11-11 ruling), the node note, ADR-00021, ADR-00042, ADR-00006 and ADR-00057, and the "Settle in the ADR" points in the issue. The Deployment page key section should follow the mail and LLM sections in `internal/web/settings`. Fixtures only, no live YouTube calls.
 3. Nothing else is dispatchable. The parked nodes need owner input first.
 
 **Notes for the next dispatcher:**
@@ -43,7 +46,6 @@ The owner asked to land everything in flight and hand off. Nothing is in flight,
 - Before writing a worker brief that names files as in-lane, check them against the node's `owns`. This round a brief wrongly called `e2e/ingest/**` in-lane for u-llm-usage-cost, which cost an extra lane PR (#636).
 - A reviewer's suggestion to fix a class of problem in `shared_files` (#633, settingsdb) beat widening one node's lane. Prefer that when the cause is the shared list.
 - `validate.ts` once hung past 120s; rerun it under `timeout 60`.
-
 
 ## Wave 13 round 1 (2026-11-10, evening)
 
