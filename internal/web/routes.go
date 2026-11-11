@@ -349,7 +349,7 @@ func mountMCP(r chi.Router, d Deps) {
 	if log == nil {
 		log = slog.Default()
 	}
-	deps, err := mcp.NewDeps(d.Recipes, rec, shop, apihouseholds.NewStore(d.DB), cat, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Config, log)
+	deps, err := mcp.NewDeps(d.Recipes, rec, shop, apihouseholds.NewStore(d.DB), cat, mcp.AuditByKind{mcp.KindAPIKey: mcp.KeyAudit{Keys: apikey.New(d.DB)}, mcp.KindOAuth: mcp.GrantAudit{Grants: oauth.New(d.DB)}}, d.Descriptions, d.Config, log)
 	if err == nil {
 		var h http.Handler
 		if h, err = mcp.Routes(deps); err == nil {
