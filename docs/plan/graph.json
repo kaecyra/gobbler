@@ -4997,6 +4997,28 @@
       "needs_migration": null,
       "adrs": [],
       "note": "Bug #629: a '#' or '?' in the data directory truncates the DSN, so SQLite opens another file. Tests already hit it: a duplicate subtest name gives t.TempDir a '#', and the database lands at one fixed /tmp file shared by every run and worktree. Fix the escaping in db.go, export the fixed builder from internal/db taking the caller's query parameters, and add a db.Open test with '#' and '?' in the directory. Two test files hand-build the same unescaped DSN and move to the exported builder: internal/store/recipe_atomic_test.go (openShortBusy, a pragma set) and internal/backup/backup_test.go (two copies, one with mode=ro). The duplicate subtest name in internal/ingest/steps_split_test.go is cosmetic once escaping is fixed and belongs to y-youtube-description's lane; leave it."
+    },
+    {
+      "id": "y-mcp-youtube-description",
+      "title": "MCP imports read a YouTube link through the description lookup",
+      "wave": 13,
+      "track": null,
+      "issue": 642,
+      "status": "todo",
+      "depends_on": [
+        "y-youtube-description"
+      ],
+      "owns": [
+        "internal/mcp/**",
+        "internal/web/routes.go",
+        "cmd/gobbler/serve.go",
+        "docs/adr/00054-*.md",
+        "VERSION",
+        "internal/web/mcp_descriptions_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "ADR-00054 decision 10 follow-up: mcp.NewDeps takes the description lookup and sets apiingest.Deps.Descriptions, as the web ingest routes do; routes.go mountMCP passes web.Deps.Descriptions. MCP test with a fake lookup, no live YouTube. Out of scope: giving MCP imports the LLM fallback provider, an uncovered cost decision (ADR-00058) left for the owner."
     }
   ],
   "shared_files": [
