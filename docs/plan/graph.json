@@ -4803,7 +4803,12 @@
         "internal/web/settings/**",
         "e2e/operator/**",
         "AGENTS.md",
-        "docs/operations.md"
+        "docs/operations.md",
+        "internal/web/web.go",
+        "internal/web/routes.go",
+        "docs/adr/00057-*.md",
+        "internal/web/layout/httperr.go",
+        "internal/web/layout/httperr_test.go"
       ],
       "needs_migration": null,
       "adrs": [
