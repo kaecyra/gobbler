@@ -5013,7 +5013,8 @@
         "internal/web/routes.go",
         "cmd/gobbler/serve.go",
         "docs/adr/00054-*.md",
-        "VERSION"
+        "VERSION",
+        "internal/web/mcp_descriptions_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
