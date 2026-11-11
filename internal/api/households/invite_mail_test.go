@@ -1,10 +1,13 @@
 package households_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -88,14 +91,14 @@ func TestInviteEmailsTheLinkAndRecordsWhenItWentOut(t *testing.T) {
 func TestAFailedSendLeavesTheInvitationWithItsErrorAndResendSendsAgain(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
-	m := &fakeMailer{err: errors.New("550 mailbox unavailable")}
+	m := &fakeMailer{err: fmt.Errorf("recipient cy@example.com: %w: 550 mailbox unavailable", mail.ErrRejected)}
 	svc := withMailer(t, f, m)
 	code, err := svc.Invite(ctx, f.ann, newEmail)
 	if err != nil || code == "" {
 		t.Fatalf("a failed send failed the invite: %q, %v", code, err)
 	}
 	p := pendingOf(t, svc, f.ann)
-	if len(p) != 1 || p[0].EmailError != "550 mailbox unavailable" || !p[0].EmailedAt.IsZero() {
+	if len(p) != 1 || p[0].EmailError != mail.Reason(mail.ErrRejected) || !p[0].EmailedAt.IsZero() {
 		t.Fatalf("pending = %+v, want the error stored", p)
 	}
 
@@ -155,7 +158,7 @@ func TestResendWithMailOffSaysSoOnTheInvitation(t *testing.T) {
 func TestOperatorInviteAndResend(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
-	m := &fakeMailer{err: errors.New("timeout")}
+	m := &fakeMailer{err: fmt.Errorf("connect: %w: i/o timeout", mail.ErrConnect)}
 	svc := withMailer(t, f, m)
 	code, err := svc.OperatorInvite(ctx, f.root, newEmail)
 	if err != nil {
@@ -165,7 +168,7 @@ func TestOperatorInviteAndResend(t *testing.T) {
 		t.Fatalf("sends = %+v, want one with no household from the operator", m.calls)
 	}
 	p, _ := svc.OperatorPending(ctx, f.root)
-	if len(p) != 1 || p[0].EmailError != "timeout" {
+	if len(p) != 1 || p[0].EmailError != mail.Reason(mail.ErrConnect) {
 		t.Fatalf("pending = %+v", p)
 	}
 	m.err = nil
@@ -255,7 +258,7 @@ func TestPastTheBurstTheInvitationIsCreatedWithTheRefusalAndNoConnection(t *test
 			refused = p
 		}
 	}
-	if refused.Code == "" || refused.EmailError != mail.ErrRateLimited.Error() {
+	if refused.Code == "" || refused.EmailError != mail.Reason(mail.ErrRateLimited) {
 		t.Errorf("refused invitation = %+v, want the rate refusal stored", refused)
 	}
 	if err := svc.Resend(ctx, f.ann, code); err != nil || conns.Load() != 2 {
@@ -268,5 +271,73 @@ func TestPastTheBurstTheInvitationIsCreatedWithTheRefusalAndNoConnection(t *test
 	}
 	if conns.Load() != 3 {
 		t.Errorf("%d connections after another sender's invite, want 3", conns.Load())
+	}
+}
+
+// Every member of the household sees the stored error, so it holds a fixed
+// sentence for the kind of failure and nothing of the raw error, which can
+// carry the SMTP user, a server name or the provider's reply.
+func TestTheStoredErrorNeverHoldsTheRawErrorText(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	raw := fmt.Errorf("sign in to smtp.secret-provider.example:587: %w: 535 5.7.8 user mailer-prod@corp rejected", mail.ErrAuth)
+	svc := withMailer(t, f, &fakeMailer{err: raw})
+	if _, err := svc.Invite(ctx, f.ann, newEmail); err != nil {
+		t.Fatal(err)
+	}
+	p := pendingOf(t, svc, f.ann)
+	if len(p) != 1 || p[0].EmailError != mail.Reason(mail.ErrAuth) {
+		t.Fatalf("stored = %+v, want the fixed sign-in sentence", p)
+	}
+	for _, leak := range []string{"secret-provider", "mailer-prod", "535", "587"} {
+		if strings.Contains(p[0].EmailError, leak) {
+			t.Errorf("stored error %q contains raw text %q", p[0].EmailError, leak)
+		}
+	}
+	// An error of no known kind is stored as the generic sentence, not its text.
+	svc = withMailer(t, f, &fakeMailer{err: errors.New("panic: secret-provider exploded")})
+	code, err := svc.Invite(ctx, f.ann, "other@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, inv := range pendingOf(t, svc, f.ann) {
+		if inv.Code == code && (strings.Contains(inv.EmailError, "secret-provider") || inv.EmailError != mail.Reason(errors.New("x"))) {
+			t.Errorf("unclassified error stored as %q", inv.EmailError)
+		}
+	}
+}
+
+// An invitation code is the credential that admits someone to a household
+// (ADR-00028) and never reaches a log line.
+func TestNoLogLineHoldsAnInvitationCode(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	var buf bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buf, nil))
+	svc, err := households.New(households.Deps{
+		Households: f.store, Operators: config.Operator{Emails: []string{rootEmail}}, Logger: log,
+		Mailer: &fakeMailer{err: fmt.Errorf("x: %w", mail.ErrConnect)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := svc.Invite(ctx, f.ann, newEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Resend(ctx, f.ann, code); err != nil {
+		t.Fatal(err)
+	}
+	opCode, err := svc.OperatorInvite(ctx, f.root, "founder@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if buf.Len() == 0 {
+		t.Fatal("nothing was logged; the test would pass vacuously")
+	}
+	for _, c := range []string{code, opCode} {
+		if strings.Contains(buf.String(), c) {
+			t.Errorf("a log line holds invitation code %s:\n%s", c, buf.String())
+		}
 	}
 }

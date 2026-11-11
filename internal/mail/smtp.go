@@ -43,14 +43,14 @@ func deliver(ctx context.Context, s Settings, implicit bool, roots *x509.CertPoo
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
-		return fmt.Errorf("connect to %s: %w", addr, err)
+		return fmt.Errorf("connect to %s: %w: %w", addr, ErrConnect, err)
 	}
 	// One deadline for the whole exchange, and a closed connection when the
 	// caller gives up, so no step waits on a silent server.
 	deadline, _ := ctx.Deadline()
 	if err := conn.SetDeadline(deadline); err != nil {
 		_ = conn.Close()
-		return fmt.Errorf("set deadline on %s: %w", addr, err)
+		return fmt.Errorf("set deadline on %s: %w: %w", addr, ErrConnect, err)
 	}
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
@@ -58,45 +58,45 @@ func deliver(ctx context.Context, s Settings, implicit bool, roots *x509.CertPoo
 		tc := tls.Client(conn, tlsCfg)
 		if err := tc.HandshakeContext(ctx); err != nil {
 			_ = conn.Close()
-			return fmt.Errorf("TLS to %s: %w", addr, err)
+			return fmt.Errorf("TLS to %s: %w: %w", addr, ErrTLS, err)
 		}
 		conn = tc
 	}
 	c, err := smtp.NewClient(conn, s.Host)
 	if err != nil {
 		_ = conn.Close()
-		return fmt.Errorf("greeting from %s: %w", addr, err)
+		return fmt.Errorf("greeting from %s: %w: %w", addr, ErrConnect, err)
 	}
 	defer func() { _ = c.Close() }()
 	if !implicit {
 		if ok, _ := c.Extension("STARTTLS"); !ok {
-			return ErrNoSTARTTLS
+			return fmt.Errorf("%w: %w", ErrNoSTARTTLS, ErrTLS)
 		}
 		if err := c.StartTLS(tlsCfg); err != nil {
-			return fmt.Errorf("STARTTLS with %s: %w", addr, err)
+			return fmt.Errorf("STARTTLS with %s: %w: %w", addr, ErrTLS, err)
 		}
 	}
 	// PlainAuth itself refuses an unencrypted connection to any host but
 	// localhost; the connection is encrypted by here in every case.
 	if err := c.Auth(smtp.PlainAuth("", s.User, s.Password, s.Host)); err != nil {
-		return fmt.Errorf("sign in to %s: %w", addr, err)
+		return fmt.Errorf("sign in to %s: %w: %w", addr, ErrAuth, err)
 	}
 	if err := c.Mail(from.Address); err != nil {
-		return fmt.Errorf("sender %s: %w", from.Address, err)
+		return fmt.Errorf("sender %s: %w: %w", from.Address, ErrRejected, err)
 	}
 	if err := c.Rcpt(to); err != nil {
-		return fmt.Errorf("recipient %s: %w", to, err)
+		return fmt.Errorf("recipient %s: %w: %w", to, ErrRejected, err)
 	}
 	w, err := c.Data()
 	if err != nil {
-		return fmt.Errorf("start message: %w", err)
+		return fmt.Errorf("start message: %w: %w", ErrRejected, err)
 	}
 	if _, err := w.Write(data); err != nil {
 		_ = w.Close()
-		return fmt.Errorf("write message: %w", err)
+		return fmt.Errorf("write message: %w: %w", ErrConnect, err)
 	}
 	if err := w.Close(); err != nil {
-		return fmt.Errorf("finish message: %w", err)
+		return fmt.Errorf("finish message: %w: %w", ErrRejected, err)
 	}
 	// The server has accepted the message. A failed QUIT cannot undo that, and
 	// reporting it would make a resend send the message twice; the deferred

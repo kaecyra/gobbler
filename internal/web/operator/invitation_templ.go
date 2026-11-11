@@ -116,15 +116,15 @@ func invitationsPage(v invitationsView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if p.Failed {
+					if p.EmailFailed {
 						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<strong data-testid=\"email-status\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var7 string
-						templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.Status)
+						templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.EmailStatus)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 35, Col: 55}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 35, Col: 60}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 						if templ_7745c5c3_Err != nil {
@@ -140,9 +140,9 @@ func invitationsPage(v invitationsView) templ.Component {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var8 string
-						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(p.Status)
+						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(p.EmailStatus)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 37, Col: 67}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/operator/invitation.templ`, Line: 37, Col: 72}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 						if templ_7745c5c3_Err != nil {

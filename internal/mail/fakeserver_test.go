@@ -35,7 +35,10 @@ type fakeServer struct {
 	data     []byte
 	// silent makes the server accept connections and say nothing.
 	silent bool
-	wg     sync.WaitGroup
+	// rejectAuth and rejectRcpt make the server refuse the sign-in or the
+	// recipient with text a leak would show.
+	rejectAuth, rejectRcpt bool
+	wg                     sync.WaitGroup
 }
 
 // pki issues a certificate valid for the given names under a fresh CA, and
@@ -175,7 +178,13 @@ func (s *fakeServer) serve(raw net.Conn) {
 			r = bufio.NewReader(conn)
 			encrypted = true
 		case strings.HasPrefix(cmd, "AUTH PLAIN"):
+			if s.rejectAuth {
+				say("535 bad user mailer-prod")
+				continue
+			}
 			say("235 ok")
+		case strings.HasPrefix(cmd, "RCPT TO") && s.rejectRcpt:
+			say("550 mailbox-secret does not exist")
 		case strings.HasPrefix(cmd, "MAIL FROM"), strings.HasPrefix(cmd, "RCPT TO"):
 			say("250 ok")
 		case cmd == "DATA":

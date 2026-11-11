@@ -67,7 +67,7 @@ func (m *Mailer) SendInvitation(ctx context.Context, in InvitationEmail) error {
 		return ErrRateLimited
 	}
 	if m.baseURL == "" {
-		return errors.New("the public base URL is not set, so the invitation link cannot be written")
+		return fmt.Errorf("invitation link cannot be written: %w", ErrNoBaseURL)
 	}
 	msg, err := Invitation{
 		To: in.To, InvitedBy: in.InvitedBy, Household: in.Household,

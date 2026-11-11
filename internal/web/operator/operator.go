@@ -117,7 +117,7 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	layout.Render(w, r, http.StatusOK, invitationsPage(invitationsView{Pending: newPendingRows(c.Person, pending)}))
+	layout.Render(w, r, http.StatusOK, invitationsPage(invitationsView{Pending: layout.NewPendingInvitations(c.Person, pending)}))
 }
 
 func (h *handler) invite(w http.ResponseWriter, r *http.Request) {

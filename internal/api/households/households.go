@@ -40,6 +40,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	domain "github.com/kaecyra/gobbler/internal/household"
@@ -253,7 +254,8 @@ func (s *Service) Invite(ctx context.Context, c Caller, email string) (string, e
 		return "", err
 	}
 	if inv, err := s.store.PendingJoinForSend(ctx, h.ID, code); err != nil {
-		s.log.ErrorContext(ctx, "invitation created but not read back to email", "code", code, "error", err.Error())
+		s.log.ErrorContext(ctx, "invitation created but not read back to email",
+			"household_id", h.ID, "invited_domain", emailDomain(email), "error", err.Error())
 	} else {
 		s.deliver(ctx, c.Person, inv, false)
 	}
@@ -277,14 +279,26 @@ func (s *Service) Resend(ctx context.Context, c Caller, code string) error {
 	return nil
 }
 
-// errMailOff is what a resend records when mail is not configured, so the
-// person who pressed Resend sees why nothing went out.
-var errMailOff = errors.New("email is not set up on this deployment")
+// emailDomain is the part of an address after the @, for a log line: it says
+// where an invitation went without naming the person, and an invitation code is
+// the credential that admits them, so it is never logged (ADR-00028).
+func emailDomain(email string) string {
+	if i := strings.LastIndex(email, "@"); i >= 0 {
+		return email[i+1:]
+	}
+	return ""
+}
 
 // deliver emails inv as sender and records the outcome on it. Mail being off
 // is not a failure of an invite and records nothing; for a resend it records
-// errMailOff, because the person asked for an email and should be told. No
-// failure is returned: the invitation exists either way.
+// that email is not set up, because the person asked for an email and should be
+// told. No failure is returned: the invitation exists either way.
+//
+// The stored error is mail.Reason, a fixed sentence chosen by the kind of
+// failure: every member of the household sees it, and the raw error can carry
+// the operator's SMTP user, server names or the provider's reply. The raw error
+// goes to the log, with the household and the invited address's domain and
+// never the invitation code.
 func (s *Service) deliver(ctx context.Context, sender string, inv Invitation, resend bool) {
 	var err error
 	if s.mailer == nil {
@@ -295,17 +309,18 @@ func (s *Service) deliver(ctx context.Context, sender string, inv Invitation, re
 			Code: inv.Code, Expires: inv.ExpiresAt,
 		})
 	}
-	if errors.Is(err, mail.ErrNotConfigured) {
-		if !resend {
-			return
-		}
-		err = errMailOff
+	if errors.Is(err, mail.ErrNotConfigured) && !resend {
+		return
 	}
+	var stored error
 	if err != nil {
-		s.log.WarnContext(ctx, "invitation email not sent", "code", inv.Code, "error", err.Error())
+		s.log.WarnContext(ctx, "invitation email not sent",
+			"household_id", inv.HouseholdID, "invited_domain", emailDomain(inv.Email), "error", err.Error())
+		stored = errors.New(mail.Reason(err))
 	}
-	if rerr := s.store.RecordEmail(ctx, inv.Code, err); rerr != nil {
-		s.log.ErrorContext(ctx, "could not record the outcome of an invitation email", "code", inv.Code, "error", rerr.Error())
+	if rerr := s.store.RecordEmail(ctx, inv.Code, stored); rerr != nil {
+		s.log.ErrorContext(ctx, "could not record the outcome of an invitation email",
+			"household_id", inv.HouseholdID, "invited_domain", emailDomain(inv.Email), "error", rerr.Error())
 	}
 }
 
@@ -436,7 +451,8 @@ func (s *Service) OperatorInvite(ctx context.Context, c Caller, email string) (s
 		return "", err
 	}
 	if inv, err := s.store.PendingHouseholdForSend(ctx, c.Person, code); err != nil {
-		s.log.ErrorContext(ctx, "invitation created but not read back to email", "code", code, "error", err.Error())
+		s.log.ErrorContext(ctx, "invitation created but not read back to email",
+			"invited_domain", emailDomain(email), "error", err.Error())
 	} else {
 		s.deliver(ctx, c.Person, inv, false)
 	}

@@ -25,9 +25,9 @@ func TestInvitationsPageLinksToPromotions(t *testing.T) {
 // Each pending invitation shows what became of its email and offers Resend
 // (ADR-00055), whatever the status.
 func TestInvitationsPageShowsEmailStatusAndResend(t *testing.T) {
-	rows := []pendingRow{
-		{PendingInvitation: layout.PendingInvitation{Code: "Aaaaaaaa", Email: "a@example.com", Path: "/invitations/Aaaaaaaa", Mine: true}, Status: "Not emailed"},
-		{PendingInvitation: layout.PendingInvitation{Code: "Bbbbbbbb", Email: "b@example.com", Path: "/invitations/Bbbbbbbb", Mine: true}, Status: "Email failed: refused", Failed: true},
+	rows := []layout.PendingInvitation{
+		{Code: "Aaaaaaaa", Email: "a@example.com", Path: "/invitations/Aaaaaaaa", Mine: true, EmailStatus: "Not emailed"},
+		{Code: "Bbbbbbbb", Email: "b@example.com", Path: "/invitations/Bbbbbbbb", Mine: true, EmailStatus: "Email failed: refused", EmailFailed: true},
 	}
 	var b bytes.Buffer
 	if err := invitationsPage(invitationsView{Pending: rows}).Render(context.Background(), &b); err != nil {

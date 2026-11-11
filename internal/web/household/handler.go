@@ -124,7 +124,7 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	layout.Render(w, r, http.StatusOK, membersPage(pageView{
-		Name: c.Household.Name, Self: c.Person, Members: members, Pending: newPendingRows(c.Person, pending),
+		Name: c.Household.Name, Self: c.Person, Members: members, Pending: layout.NewPendingInvitations(c.Person, pending),
 		Keys: layout.NewAPIKeyRows(keys, time.Now(), true, keyRevokePath), HouseStyle: style,
 	}))
 }

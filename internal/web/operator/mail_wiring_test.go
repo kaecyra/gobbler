@@ -3,6 +3,7 @@ package operator_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -61,7 +62,7 @@ func TestOperatorInviteIsEmailedAndResendable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := &recordingMailer{err: errors.New("550 no such user")}
+	m := &recordingMailer{err: fmt.Errorf("recipient: %w: 550 no such user", mail.ErrRejected)}
 	router, err := web.New(web.Deps{Config: cfg, DB: d, Auth: a, Mail: m, Backup: idleBackup{}, Avatars: profile.NewAvatars(ctx, profile.New(d), media.NewLocal(t.TempDir()), nil)})
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +82,7 @@ func TestOperatorInviteIsEmailedAndResendable(t *testing.T) {
 		t.Fatalf("sends = %+v, want one to new@example.com from the operator", m.calls)
 	}
 	body := do(http.MethodGet, "/operator/invitations", nil).Body.String()
-	if !strings.Contains(body, "Email failed: 550 no such user") {
+	if !strings.Contains(body, "Email failed: "+mail.Reason(mail.ErrRejected)) {
 		t.Fatalf("page does not show the failure:\n%s", body)
 	}
 	form := regexp.MustCompile(`action="(/operator/invitations/[A-Za-z0-9]+/resend)"`).FindStringSubmatch(body)

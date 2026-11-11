@@ -11,14 +11,6 @@ templ settingsPage(v backupView, iv integrationsView) {
 			#integrations > .panel { margin-top: 16px; }
 			.integration .secret + .secret { margin-top: 16px; }
 			.integration .values + .secret { margin-top: 16px; }
-			/* app.css styles text, email and search inputs but not password ones, so a
-			   secret's input was 21px tall. Same rule, kept here until app.css lists it. */
-			.integration input[type=password] {
-				display: block; width: 100%; max-width: 28rem; min-height: var(--tap); margin-top: 4px;
-				padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r);
-				background: var(--card); color: var(--ink); font: inherit; font-weight: 400;
-			}
-			.integration input[type=password]:focus-visible { border-color: var(--wattle); }
 			.integration .secret form + form { margin-top: 8px; }
 		</style>
 		<div class="pg">
