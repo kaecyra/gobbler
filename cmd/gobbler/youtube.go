@@ -7,8 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/kaecyra/gobbler/internal/config"
-	"github.com/kaecyra/gobbler/internal/ingest"
-	"github.com/kaecyra/gobbler/internal/llm/router"
 	"github.com/kaecyra/gobbler/internal/settings"
 	"github.com/kaecyra/gobbler/internal/video"
 )
@@ -44,17 +42,6 @@ func (k youtubeKey) APIKey(ctx context.Context) (string, error) {
 	}
 	return "", fmt.Errorf("read the YouTube Data API key: %w", err)
 }
-
-// llmWithDescriptions is the LLM router that also carries the YouTube
-// description lookup. The ingest wiring passes the provider down to the
-// pipeline, which takes the lookup from it (ingest.DescriptionAware); it embeds
-// the concrete router so the provider's optional interfaces stay visible.
-type llmWithDescriptions struct {
-	*router.Router
-	src ingest.DescriptionSource
-}
-
-func (l llmWithDescriptions) Descriptions() ingest.DescriptionSource { return l.src }
 
 // newDescriptions builds the YouTube description lookup over the saved key.
 func newDescriptions(cfg config.Config, st secretReader, log *slog.Logger) *video.Descriptions {

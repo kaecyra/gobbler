@@ -29,13 +29,6 @@ type DescriptionSource interface {
 	Fetch(ctx context.Context, id string) (video.Description, error)
 }
 
-// DescriptionAware is implemented by an LLM provider wrapper that also carries
-// the YouTube description lookup, so the lookup reaches the pipeline through
-// the wiring that already passes the provider. Deps.Descriptions wins when set.
-type DescriptionAware interface {
-	Descriptions() DescriptionSource
-}
-
 // youTubeVideoID returns the video ID of rawURL when it is a YouTube video
 // link (not a bare ID).
 func youTubeVideoID(rawURL string) (string, bool) {
@@ -51,7 +44,7 @@ func youTubeVideoID(rawURL string) (string, bool) {
 // description lookup is off (no key saved), and the caller then ingests the
 // link as any page.
 func (p *Pipeline) fromYouTube(ctx context.Context, rawURL, id string) (d Draft, handled bool, err error) {
-	desc, err := p.descriptions.Fetch(ctx, id)
+	desc, err := p.deps.Descriptions.Fetch(ctx, id)
 	switch {
 	case errors.Is(err, video.ErrNoKey):
 		return Draft{}, false, nil

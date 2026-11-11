@@ -233,25 +233,6 @@ func TestAVideoWithNoDescriptionIsAnError(t *testing.T) {
 	}
 }
 
-type awareProvider struct {
-	*providerSpy
-	src DescriptionSource
-}
-
-func (a awareProvider) Descriptions() DescriptionSource { return a.src }
-
-func TestAProviderCanCarryTheLookup(t *testing.T) {
-	e := newEnv(t)
-	src := &stubDescriptions{desc: spaghettiDescription}
-	p, err := New(testConfig(), Deps{HTTP: &pages{}, Catalog: e.catalog, Provider: awareProvider{e.spy, src}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.FromURL(e.ctx, youTubeURL); err != nil || len(src.asked) != 1 {
-		t.Fatalf("err %v, asked %v", err, src.asked)
-	}
-}
-
 // A recipe whose blog source does not name the video keeps it on re-import
 // (ADR-00054); the blog is now its source address.
 func TestReimportKeepsTheVideoTheBlogDoesNotName(t *testing.T) {

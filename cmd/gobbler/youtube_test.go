@@ -10,15 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/settings"
 	"github.com/kaecyra/gobbler/internal/video"
-)
-
-// The router wrapper is a provider the pipeline can take the lookup from.
-var (
-	_ ingest.Provider         = llmWithDescriptions{}
-	_ ingest.DescriptionAware = llmWithDescriptions{}
 )
 
 // The lookup reads the key saved on the Deployment page at the moment of each

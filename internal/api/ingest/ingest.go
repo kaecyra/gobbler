@@ -101,6 +101,9 @@ type (
 	URLDrafter = domain.URLDrafter
 	// Provider is the LLM provider interface (ingest.Provider, ADR-00007).
 	Provider = domain.Provider
+	// DescriptionSource reads a YouTube video's description
+	// (ingest.DescriptionSource, ADR-00054).
+	DescriptionSource = domain.DescriptionSource
 	// OCRRunner reads the text out of a photograph by running tesseract
 	// (ocr.Runner). The zero value uses the defaults.
 	OCRRunner = ocr.Runner
@@ -223,6 +226,9 @@ type Deps struct {
 	// Provider is the LLM provider of the fallback. Optional: without one a
 	// draft below the threshold is only flagged, and Retry is ErrNoProvider.
 	Provider Provider
+	// Descriptions reads a YouTube video's description (ADR-00054). Optional:
+	// without it a YouTube link is ingested as any page.
+	Descriptions DescriptionSource
 	// Logger receives the fallback's warnings; nil means slog.Default().
 	Logger *slog.Logger
 	// Originals is read by a preview of a saved recipe. Optional: without it
@@ -245,7 +251,7 @@ func New(cfg config.Ingestion, d Deps) (*Service, error) {
 	if d.Members == nil {
 		return nil, errors.New("ingest service: members are required")
 	}
-	p, err := domain.New(cfg, domain.Deps{Catalog: d.Catalog, Provider: d.Provider, Logger: d.Logger})
+	p, err := domain.New(cfg, domain.Deps{Catalog: d.Catalog, Provider: d.Provider, Descriptions: d.Descriptions, Logger: d.Logger})
 	if err != nil {
 		return nil, err
 	}

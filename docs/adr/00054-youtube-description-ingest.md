@@ -106,9 +106,10 @@ Options for the linked page:
    any error text is scrubbed of the key before it is wrapped. No fallback to
    the watch page, which would produce the empty draft this record exists to
    avoid.
-10. **The agent endpoint is unchanged for now.** The MCP import shares the
-    pipeline but is not given the lookup, so an agent's YouTube link keeps the
-    old path until the lookup is wired there.
+10. **The agent endpoint is a follow-up.** The MCP import shares the pipeline
+    but is not given the lookup, so an agent's YouTube link keeps the old path
+    (the watch page) until the lookup is wired there. That is deliberate and
+    unfinished, not a ruling that agents should not get descriptions.
 
 ## Consequences
 
@@ -148,7 +149,8 @@ snapshot is what makes it reproducible afterwards.
    `docs/operations.md` explains how to get and save the key and gains
    `GOBBLER_VIDEO_API_HOST`; `docs/design.md`'s configuration table and
    `video` package row describe the lookup.
-8. The MCP import is not given the lookup (decision 10); wiring it is tracked as
-   an issue naming `internal/web/web.go`, `internal/web/routes.go` and
-   `internal/mcp/server.go`, which carry the lookup beside the LLM provider
-   today only through the provider wrapper in `cmd/gobbler`.
+8. The lookup is its own dependency, not part of the LLM provider:
+   `web.Deps.Descriptions` reaches `ingest.Deps.Descriptions` through the ingest
+   routes and service, and `cmd/gobbler` sets it. The MCP import is not given
+   it (decision 10); wiring it there is tracked as a follow-up issue naming
+   `internal/mcp`.
