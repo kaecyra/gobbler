@@ -1,0 +1,50 @@
+{
+ "models": [
+  {
+   "name": "models/fixture-flash",
+   "version": "1",
+   "displayName": "Fixture Flash",
+   "description": "fixture",
+   "inputTokenLimit": 1048576,
+   "outputTokenLimit": 8192,
+   "supportedGenerationMethods": [
+    "generateContent",
+    "countTokens"
+   ]
+  },
+  {
+   "name": "models/fixture-embedding",
+   "version": "1",
+   "displayName": "Fixture Embedding",
+   "description": "fixture",
+   "inputTokenLimit": 1048576,
+   "outputTokenLimit": 8192,
+   "supportedGenerationMethods": [
+    "embedContent"
+   ]
+  },
+  {
+   "name": "models/fixture-pro",
+   "version": "1",
+   "displayName": "Fixture Pro",
+   "description": "fixture",
+   "inputTokenLimit": 1048576,
+   "outputTokenLimit": 8192,
+   "supportedGenerationMethods": [
+    "generateContent",
+    "countTokens"
+   ]
+  },
+  {
+   "name": "models/fixture-aqa",
+   "version": "1",
+   "displayName": "Fixture Aqa",
+   "description": "fixture",
+   "inputTokenLimit": 1048576,
+   "outputTokenLimit": 8192,
+   "supportedGenerationMethods": [
+    "generateAnswer"
+   ]
+  }
+ ]
+}

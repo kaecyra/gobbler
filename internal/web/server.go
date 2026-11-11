@@ -9,16 +9,20 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/llm"
 )
 
-// Server timeouts. WriteTimeout is fixed, not derived from configuration: it
-// is sized for the slowest expected handler (an LLM call, whose timeout
-// config.LLM.Timeout sets and defaults to 60s). If that setting is raised
-// above this value, such a response is cut off, so raise this constant too.
+// Server timeouts. WriteTimeout is sized for the slowest expected handler, a
+// photo upload: it makes two LLM calls one after the other, a transcription and
+// then a gap-fill, each bounded by the LLM timeout an operator saves on the
+// Deployment page. That setting is refused above llm.MaxTimeout, so the write
+// timeout is twice that plus a margin for the rest of the request, and no
+// saved setting can make the server cut such a response off.
 const (
 	readHeaderTimeout = 10 * time.Second
 	readTimeout       = 30 * time.Second
-	writeTimeout      = 2 * time.Minute
+	writeTimeout      = 2*llm.MaxTimeout + 30*time.Second
 	idleTimeout       = 2 * time.Minute
 	shutdownTimeout   = 15 * time.Second
 )

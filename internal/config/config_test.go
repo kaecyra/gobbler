@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -71,11 +72,8 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Video.ThumbnailHost != "" {
 		t.Errorf("thumbnail host default = %q, want empty (YouTube's, chosen by the fetcher)", c.Video.ThumbnailHost)
 	}
-	if c.LLM.Configured() || c.Backup.S3.Configured() {
+	if c.Backup.S3.Configured() {
 		t.Error("optional groups must default to unconfigured")
-	}
-	if c.LLM.TextModel != "" || c.LLM.VisionModel != "" {
-		t.Error("no model identifier may be defaulted")
 	}
 	if c.Backup.Schedule != "03:00" || c.Backup.LocalRetention != 7 || c.Backup.RemoteRetention != 30 {
 		t.Errorf("backup defaults: %+v", c.Backup)
@@ -91,8 +89,6 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 		EnvOIDCIssuer: "https://issuer.example.com", EnvOIDCClientID: "cid", EnvOIDCClientSecret: "cs",
 		EnvPublicBaseURL: "https://gobbler.example.com/", EnvSessionLifetime: "168h",
 		EnvConfidenceThreshold: "0.55", EnvFetchTimeout: "20s", EnvUserAgent: "ua",
-		EnvLLMProvider: "gemini", EnvLLMTextModel: "tm", EnvLLMVisionModel: "vm", EnvLLMTimeout: "90s",
-		EnvGeminiAPIKey: "gk", EnvAnthropicAPIKey: "ak",
 		EnvBackupSchedule: "04:30", EnvBackupLocalKeep: "3", EnvBackupRemoteKeep: "10",
 		EnvS3Endpoint: "https://s3.example.com", EnvS3Region: "r", EnvS3Bucket: "b", EnvS3Prefix: "p/",
 		EnvS3AccessKeyID: "id", EnvS3SecretAccessKey: "sk",
@@ -113,10 +109,6 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 	if c.Ingestion.ConfidenceThreshold != 0.55 || c.Ingestion.FetchTimeout != 20*time.Second || c.Ingestion.UserAgent != "ua" {
 		t.Errorf("ingestion: %+v", c.Ingestion)
 	}
-	if c.LLM.Provider != ProviderGemini || c.LLM.TextModel != "tm" || c.LLM.VisionModel != "vm" ||
-		c.LLM.Timeout != 90*time.Second || c.LLM.APIKey.Reveal() != "gk" {
-		t.Errorf("llm: %+v", c.LLM)
-	}
 	b := c.Backup
 	if b.Schedule != "04:30" || b.LocalRetention != 3 || b.RemoteRetention != 10 || !b.S3.Configured() ||
 		b.S3.Prefix != "p/" || b.S3.AccessKeyID.Reveal() != "id" || b.S3.SecretAccessKey.Reveal() != "sk" {
@@ -124,19 +116,42 @@ func TestLoadCompleteEnvironment(t *testing.T) {
 	}
 }
 
-func TestClaudeProviderSelectsAnthropicKey(t *testing.T) {
-	c, err := loadFrom(env(with(EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v",
-		EnvAnthropicAPIKey, "ak", EnvGeminiAPIKey, "gk")))
-	if err != nil {
-		t.Fatal(err)
+// The LLM settings moved to the Deployment page (ADR-00056, ADR-00057). Each
+// removed variable, when set, loads without error, changes nothing and is
+// reported by name so startup can log that it is ignored.
+func TestRemovedLLMVariablesAreReportedAsIgnored(t *testing.T) {
+	removed := []string{
+		"GOBBLER_LLM_PROVIDER", "GOBBLER_LLM_TEXT_MODEL", "GOBBLER_LLM_VISION_MODEL", "GOBBLER_LLM_TIMEOUT",
+		"GOBBLER_ANTHROPIC_API_KEY", "GOBBLER_GEMINI_API_KEY",
 	}
-	if c.LLM.APIKey.Reveal() != "ak" {
-		t.Errorf("key = %q", c.LLM.APIKey.Reveal())
+	for _, name := range removed {
+		t.Run(name, func(t *testing.T) {
+			c, err := loadFrom(env(with(name, "sk-LEAK-CHECK")))
+			if err != nil {
+				t.Fatalf("a removed variable must not stop startup: %v", err)
+			}
+			if len(c.IgnoredEnv) != 1 || c.IgnoredEnv[0] != name {
+				t.Fatalf("IgnoredEnv = %v, want [%s]", c.IgnoredEnv, name)
+			}
+			var buf bytes.Buffer
+			c.LogIgnored(context.Background(), slog.New(slog.NewJSONHandler(&buf, nil)))
+			if !strings.Contains(buf.String(), name) || !strings.Contains(buf.String(), "ignored") {
+				t.Errorf("startup log does not say %s is ignored: %s", name, buf.String())
+			}
+			if strings.Contains(buf.String(), "sk-LEAK-CHECK") {
+				t.Errorf("the log carries the value: %s", buf.String())
+			}
+		})
+	}
+	// Set but empty (a compose file passing an unset variable through) is not
+	// worth a line.
+	c, err := loadFrom(env(with("GOBBLER_LLM_PROVIDER", "")))
+	if err != nil || len(c.IgnoredEnv) != 0 {
+		t.Errorf("empty value: err=%v ignored=%v", err, c.IgnoredEnv)
 	}
 }
 
 func TestValidationErrorsNameVariable(t *testing.T) {
-	llm := []string{EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v"}
 	tests := []struct {
 		name string
 		env  map[string]string
@@ -146,18 +161,10 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"bad bool", with(EnvDevAuthBypass, "maybe"), EnvDevAuthBypass},
 		{"bad fetch duration", with(EnvFetchTimeout, "soon"), EnvFetchTimeout},
 		{"zero fetch duration", with(EnvFetchTimeout, "0s"), EnvFetchTimeout},
-		{"negative llm timeout", with(EnvLLMTimeout, "-5s"), EnvLLMTimeout},
 		{"threshold not a number", with(EnvConfidenceThreshold, "high"), EnvConfidenceThreshold},
 		{"threshold NaN", with(EnvConfidenceThreshold, "NaN"), EnvConfidenceThreshold},
 		{"threshold above range", with(EnvConfidenceThreshold, "1.1"), EnvConfidenceThreshold},
 		{"threshold below range", with(EnvConfidenceThreshold, "-0.1"), EnvConfidenceThreshold},
-		{"unknown provider", with(EnvLLMProvider, "gpt"), EnvLLMProvider},
-		{"claude without key", with(llm...), EnvAnthropicAPIKey},
-		{"gemini without key", with(EnvLLMProvider, "gemini", EnvLLMTextModel, "t", EnvLLMVisionModel, "v", EnvAnthropicAPIKey, "x"), EnvGeminiAPIKey},
-		{"provider without text model", with(EnvLLMProvider, "claude", EnvLLMVisionModel, "v", EnvAnthropicAPIKey, "k"), EnvLLMTextModel},
-		{"provider without vision model", with(EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvAnthropicAPIKey, "k"), EnvLLMVisionModel},
-		{"key without provider", with(EnvAnthropicAPIKey, "k"), EnvAnthropicAPIKey},
-		{"model without provider", with(EnvLLMTextModel, "m"), EnvLLMTextModel},
 		{"thumbnail host not a url", with(EnvVideoThumbnailHost, "not a url"), EnvVideoThumbnailHost},
 		{"thumbnail host bare host", with(EnvVideoThumbnailHost, "i.ytimg.com"), EnvVideoThumbnailHost},
 		{"thumbnail host wrong scheme", with(EnvVideoThumbnailHost, "ftp://i.ytimg.com"), EnvVideoThumbnailHost},
@@ -274,7 +281,6 @@ func TestIsLoopbackAddr(t *testing.T) {
 }
 
 const (
-	secretLLM  = "sk-ant-LLMSECRET"
 	secretID   = "S3IDSECRET"
 	secretKey  = "S3KEYSECRET"
 	secretOIDC = "OIDCCLIENTSECRET"
@@ -283,7 +289,6 @@ const (
 func secretConfig(t *testing.T) Config {
 	t.Helper()
 	c, err := loadFrom(env(with(
-		EnvLLMProvider, "claude", EnvLLMTextModel, "t", EnvLLMVisionModel, "v", EnvAnthropicAPIKey, secretLLM,
 		EnvS3Endpoint, "e", EnvS3Region, "r", EnvS3Bucket, "b", EnvS3AccessKeyID, secretID, EnvS3SecretAccessKey, secretKey,
 		EnvOIDCClientSecret, secretOIDC,
 	)))
@@ -295,7 +300,7 @@ func secretConfig(t *testing.T) Config {
 
 func assertNoSecrets(t *testing.T, how, out string) {
 	t.Helper()
-	for _, s := range []string{secretLLM, secretID, secretKey, secretOIDC} {
+	for _, s := range []string{secretID, secretKey, secretOIDC} {
 		if strings.Contains(out, s) {
 			t.Errorf("%s leaks %q: %s", how, s, out)
 		}
@@ -313,9 +318,9 @@ func TestSecretsRedacted(t *testing.T) {
 		if verb == "%T" || verb == "%p" {
 			continue
 		}
-		for _, v := range []any{c, &c, c.LLM, c.Backup.S3, c.OIDC, c.LLM.APIKey, &c.LLM.APIKey, c.OIDC.ClientSecret} {
+		for _, v := range []any{c, &c, c.Backup.S3, c.OIDC, c.OIDC.ClientSecret} {
 			out := fmt.Sprintf(verb, v)
-			for _, s := range []string{secretLLM, secretID, secretKey, secretOIDC} {
+			for _, s := range []string{secretID, secretKey, secretOIDC} {
 				if strings.Contains(out, s) {
 					t.Errorf("%s of %T leaks %q: %s", verb, v, s, out)
 				}
@@ -328,7 +333,7 @@ func TestSecretsRedacted(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	slog.New(slog.NewJSONHandler(&buf, nil)).Info("cfg", "config", c, "key", c.LLM.APIKey)
+	slog.New(slog.NewJSONHandler(&buf, nil)).Info("cfg", "config", c, "key", c.OIDC.ClientSecret)
 	assertNoSecrets(t, "slog json", buf.String())
 	buf.Reset()
 	slog.New(slog.NewTextHandler(&buf, nil)).Info("cfg", "config", c)
@@ -351,11 +356,11 @@ func TestSecretRevealAndEmpty(t *testing.T) {
 }
 
 func TestErrorsDoNotContainSecrets(t *testing.T) {
-	_, err := loadFrom(env(with(EnvLLMProvider, "bogus", EnvAnthropicAPIKey, secretLLM)))
+	_, err := loadFrom(env(with(EnvLogLevel, "bogus", EnvS3SecretAccessKey, secretKey)))
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if strings.Contains(err.Error(), secretLLM) {
+	if strings.Contains(err.Error(), secretKey) {
 		t.Errorf("error leaks secret: %v", err)
 	}
 }
@@ -375,11 +380,11 @@ func TestLoadReadsProcessEnvironment(t *testing.T) {
 }
 
 func TestBlankValuesTreatedAsUnset(t *testing.T) {
-	c, err := loadFrom(env(with(EnvDataDir, "  ", EnvLLMProvider, "")))
+	c, err := loadFrom(env(with(EnvDataDir, "  ", EnvUserAgent, "")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Server.DataDir != "data" || c.LLM.Configured() {
+	if c.Server.DataDir != "data" || c.Ingestion.UserAgent != defaultUserAgent {
 		t.Errorf("blank not treated as unset: %+v", c)
 	}
 }

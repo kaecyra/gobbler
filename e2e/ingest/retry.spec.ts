@@ -6,11 +6,11 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { openSaved, pasteText } from './helpers';
+import { configureClaude, DEV_OPERATOR, ENCRYPTION_KEY, MODELS_LISTING, openSaved, pasteText } from './helpers';
 
 // The LLM fallback (ADR-00006, ADR-00007), which fills gaps and never replaces
 // the rule-based draft (ADR-00020 decision 2). This spec starts its own gobbler
-// configured for the Claude provider and points the provider at a local fake
+// with Claude saved on the Deployment page and points the provider at a local fake
 // Messages API through the SDK's base-URL variable, so no real API is called
 // and no real key is used. Loopback only, throwaway data.
 const bin = process.env.GOBBLER_E2E_BIN;
@@ -75,6 +75,11 @@ test.beforeAll(async () => {
   fake = createServer((req, res) => {
     req.resume();
     req.on('end', () => {
+      if (req.method === 'GET' && req.url?.startsWith('/v1/models')) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(MODELS_LISTING);
+        return;
+      }
       calls++;
       if (mode === 'fail') {
         res.writeHead(503, { 'content-type': 'application/json' });
@@ -107,11 +112,8 @@ test.beforeAll(async () => {
       GOBBLER_DATA_DIR: dataDir,
       GOBBLER_LOG_LEVEL: 'warn',
       GOBBLER_DEV_AUTH_BYPASS: 'true',
-      GOBBLER_LLM_PROVIDER: 'claude',
-      GOBBLER_LLM_TEXT_MODEL: 'e2e-text',
-      GOBBLER_LLM_VISION_MODEL: 'e2e-vision',
-      GOBBLER_LLM_TIMEOUT: '5s',
-      GOBBLER_ANTHROPIC_API_KEY: 'e2e-fake-key',
+      GOBBLER_ENCRYPTION_KEY: ENCRYPTION_KEY,
+      GOBBLER_OPERATOR_EMAILS: DEV_OPERATOR,
       ANTHROPIC_BASE_URL: fakeURL,
     },
     stdio: 'inherit',
@@ -126,6 +128,7 @@ test.beforeAll(async () => {
     if (Date.now() > deadline) throw new Error('the retry server did not start');
     await new Promise((r) => setTimeout(r, 100));
   }
+  await configureClaude(origin);
 });
 
 test.afterAll(async () => {

@@ -13,6 +13,11 @@ const redacted = "[REDACTED]"
 // is reachable only through Reveal, so a logged Config cannot leak a key.
 type Secret struct{ value string }
 
+// NewSecret wraps a credential that did not come from the environment, such
+// as one read from the settings store (ADR-00057), so it is redacted like any
+// other.
+func NewSecret(v string) Secret { return Secret{v} }
+
 // Reveal returns the credential. Call it only at the point of use.
 func (s Secret) Reveal() string { return s.value }
 

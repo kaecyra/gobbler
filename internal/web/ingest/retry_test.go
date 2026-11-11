@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kaecyra/gobbler/internal/config"
 	ingestcore "github.com/kaecyra/gobbler/internal/ingest"
 )
 
@@ -26,7 +25,7 @@ func (f *fakeRetrier) Retry(_ context.Context, d ingestcore.Draft) (ingestcore.D
 	return f.out, f.err
 }
 
-func (f *fakeRetrier) Configured() bool { return f.configured }
+func (f *fakeRetrier) Configured(context.Context, ingestcore.Draft) bool { return f.configured }
 
 func llmDraft() ingestcore.Draft {
 	d := sampleDraft()
@@ -137,19 +136,6 @@ func TestRetryUnknownTokenIs404(t *testing.T) {
 	}
 }
 
-func TestProviderSetupFailureIsReportedOnRetryNotAsOutage(t *testing.T) {
-	r := &fakeRetrier{configured: false}
-	f, token := withRetrier(t, r)
-	f.h.llmInitErr = errors.New("claude: API key is required")
-	rec := f.do(http.MethodPost, "/"+token+"/retry", nil)
-	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "API key is required") {
-		t.Errorf("status %d body %s", rec.Code, rec.Body)
-	}
-	if rec := f.do(http.MethodGet, "/"+token, nil); rec.Code != http.StatusOK {
-		t.Errorf("review must still work: %d", rec.Code)
-	}
-}
-
 func TestReviewMarksLLMSuppliedValues(t *testing.T) { // ADR-00006 obligation 4
 	f := newFixture(t)
 	f.drafter.draft = llmDraft()
@@ -183,21 +169,6 @@ func TestReviewShowsAutomaticFallbackFailure(t *testing.T) {
 	}
 	if rec2 := f.do(http.MethodPost, "/"+f.ingestText(t)+"/confirm", reviewForm()); rec2.Code != http.StatusSeeOther {
 		t.Errorf("a draft with an LLM error must stay saveable: %d", rec2.Code)
-	}
-}
-
-func TestProviderFactoriesCoverEveryConfiguredProvider(t *testing.T) {
-	for _, name := range []string{config.ProviderClaude, config.ProviderGemini} {
-		f, ok := providerFactories()[name]
-		if !ok {
-			t.Fatalf("no factory for %q", name)
-		}
-		// An incomplete configuration fails loudly instead of yielding a
-		// nil-wrapping provider.
-		p, err := f(context.Background(), config.LLM{Provider: name}, nil)
-		if err == nil || p != nil {
-			t.Errorf("%s: got %v, %v; want an error and a nil provider", name, p, err)
-		}
 	}
 }
 

@@ -6,12 +6,24 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/llm"
 )
 
 func TestHTTPServerHasTimeouts(t *testing.T) {
 	s := newHTTPServer(http.NotFoundHandler())
 	if s.ReadHeaderTimeout <= 0 || s.ReadTimeout <= 0 || s.WriteTimeout <= 0 || s.IdleTimeout <= 0 {
 		t.Errorf("timeouts must all be set: %+v", s)
+	}
+}
+
+// A photo upload makes two LLM calls in one request, each bounded by the saved
+// LLM timeout, which the Deployment page refuses above llm.MaxTimeout. The
+// write timeout must outlast both at that bound, or a setting the page accepts
+// would cut the response off.
+func TestWriteTimeoutOutlastsTwoLLMCallsAtTheLargestSavedTimeout(t *testing.T) {
+	if got := newHTTPServer(http.NotFoundHandler()).WriteTimeout; got <= 2*llm.MaxTimeout {
+		t.Errorf("write timeout %s does not outlast two calls of %s", got, llm.MaxTimeout)
 	}
 }
 

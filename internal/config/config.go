@@ -4,6 +4,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -33,12 +34,6 @@ const (
 	EnvConfidenceThreshold = "GOBBLER_INGEST_CONFIDENCE_THRESHOLD"
 	EnvFetchTimeout        = "GOBBLER_INGEST_FETCH_TIMEOUT"
 	EnvUserAgent           = "GOBBLER_INGEST_USER_AGENT"
-	EnvLLMProvider         = "GOBBLER_LLM_PROVIDER"
-	EnvLLMTextModel        = "GOBBLER_LLM_TEXT_MODEL"
-	EnvLLMVisionModel      = "GOBBLER_LLM_VISION_MODEL"
-	EnvLLMTimeout          = "GOBBLER_LLM_TIMEOUT"
-	EnvAnthropicAPIKey     = "GOBBLER_ANTHROPIC_API_KEY"
-	EnvGeminiAPIKey        = "GOBBLER_GEMINI_API_KEY"
 	EnvVideoThumbnailHost  = "GOBBLER_VIDEO_THUMBNAIL_HOST"
 	EnvBackupSchedule      = "GOBBLER_BACKUP_SCHEDULE"
 	EnvBackupLocalKeep     = "GOBBLER_BACKUP_LOCAL_RETENTION"
@@ -62,11 +57,19 @@ const (
 	EnvEncryptionKey       = "GOBBLER_ENCRYPTION_KEY"
 )
 
-// LLM provider names accepted by EnvLLMProvider.
-const (
-	ProviderClaude = "claude"
-	ProviderGemini = "gemini"
-)
+// removedEnv are the environment variables the LLM settings used before they
+// moved to the Deployment page (ADR-00056, ADR-00057). They are not read:
+// Load reports each one that is set in Config.IgnoredEnv, so a deployment that
+// still sets one is told at startup, by name, that it has no effect. Values
+// are read only to test for blank and are never kept, so none can reach a log.
+var removedEnv = []string{
+	"GOBBLER_LLM_PROVIDER",
+	"GOBBLER_LLM_TEXT_MODEL",
+	"GOBBLER_LLM_VISION_MODEL",
+	"GOBBLER_LLM_TIMEOUT",
+	"GOBBLER_ANTHROPIC_API_KEY",
+	"GOBBLER_GEMINI_API_KEY",
+}
 
 const (
 	defaultListenAddr = "127.0.0.1:8080"
@@ -79,7 +82,6 @@ const (
 const (
 	defaultConfidenceThreshold = 0.7
 	defaultFetchTimeout        = 15 * time.Second
-	defaultLLMTimeout          = 60 * time.Second
 	defaultLocalRetention      = 7
 	defaultRemoteRetention     = 30
 	defaultSessionLifetime     = 30 * 24 * time.Hour
@@ -108,13 +110,15 @@ type Config struct {
 	Session   Session
 	Operator  Operator
 	Ingestion Ingestion
-	LLM       LLM
 	Video     Video
 	Backup    Backup
 	MCP       MCP
 	OAuth     OAuth
 	Mail      Mail
 	Settings  Settings
+	// IgnoredEnv names each removed environment variable that is set
+	// (removedEnv). It is for the startup log (LogIgnored) and nothing else.
+	IgnoredEnv []string
 }
 
 // Server holds listener, storage and logging settings.
@@ -187,20 +191,6 @@ type Ingestion struct {
 	// (ADR-00040).
 	AllowLoopbackFetch bool
 }
-
-// LLM holds provider settings (ADR-00007). Provider is empty when the LLM is
-// not configured.
-type LLM struct {
-	Provider    string
-	TextModel   string
-	VisionModel string
-	Timeout     time.Duration
-	// APIKey is the key of the selected Provider.
-	APIKey Secret
-}
-
-// Configured reports whether an LLM provider is selected.
-func (l LLM) Configured() bool { return l.Provider != "" }
 
 // Video holds recipe video settings (ADR-00021).
 type Video struct {
@@ -325,8 +315,6 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Ingestion.UserAgent = r.str(EnvUserAgent, defaultUserAgent)
 	c.Ingestion.AllowLoopbackFetch = c.Server.DevAuthBypass
 
-	r.llm(&c.LLM)
-
 	c.Video.ThumbnailHost = r.httpOrigin(EnvVideoThumbnailHost)
 
 	r.backup(&c.Backup)
@@ -343,6 +331,12 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Mail.Burst = r.integer(EnvMailBurst, defaultMailBurst, 1)
 
 	c.Settings.EncryptionKey = Secret{r.str(EnvEncryptionKey, "")}
+
+	for _, name := range removedEnv {
+		if v, _ := lookup(name); strings.TrimSpace(v) != "" {
+			c.IgnoredEnv = append(c.IgnoredEnv, name)
+		}
+	}
 
 	if err := errors.Join(r.errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
@@ -393,40 +387,14 @@ func (r *reader) oidc(o *OIDC, devBypass bool) {
 	}
 }
 
-func (r *reader) llm(l *LLM) {
-	l.Provider = strings.ToLower(r.str(EnvLLMProvider, ""))
-	l.TextModel = r.str(EnvLLMTextModel, "")
-	l.VisionModel = r.str(EnvLLMVisionModel, "")
-	l.Timeout = r.duration(EnvLLMTimeout, defaultLLMTimeout)
-	anthropicKey := r.str(EnvAnthropicAPIKey, "")
-	geminiKey := r.str(EnvGeminiAPIKey, "")
-
-	var keyEnv, key string
-	switch l.Provider {
-	case "":
-		// Unconfigured is not an error, but settings that would be silently
-		// ignored are.
-		for _, s := range []struct{ env, v string }{
-			{EnvLLMTextModel, l.TextModel}, {EnvLLMVisionModel, l.VisionModel},
-			{EnvAnthropicAPIKey, anthropicKey}, {EnvGeminiAPIKey, geminiKey},
-		} {
-			if s.v != "" {
-				r.fail(s.env, "set but %s is not; select a provider or unset it", EnvLLMProvider)
-			}
-		}
-		return
-	case ProviderClaude:
-		keyEnv, key = EnvAnthropicAPIKey, anthropicKey
-	case ProviderGemini:
-		keyEnv, key = EnvGeminiAPIKey, geminiKey
-	default:
-		r.fail(EnvLLMProvider, "unknown provider %q (want %s or %s)", l.Provider, ProviderClaude, ProviderGemini)
-		return
+// LogIgnored logs, at warn level, each removed environment variable that is
+// set. It names the variable and says where the setting lives now; the value
+// is not read.
+func (c Config) LogIgnored(ctx context.Context, log *slog.Logger) {
+	for _, name := range c.IgnoredEnv {
+		log.WarnContext(ctx, "environment variable ignored: it was removed, and the LLM settings are entered on the Deployment page now (ADR-00056)",
+			"env", name)
 	}
-	r.require(keyEnv, key, "required for provider "+l.Provider)
-	r.require(EnvLLMTextModel, l.TextModel, "required when "+EnvLLMProvider+" is set")
-	r.require(EnvLLMVisionModel, l.VisionModel, "required when "+EnvLLMProvider+" is set")
-	l.APIKey = Secret{key}
 }
 
 func (r *reader) backup(b *Backup) {

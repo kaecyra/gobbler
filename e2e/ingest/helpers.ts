@@ -73,3 +73,47 @@ export function png(width: number, height: number, rgb: [number, number, number]
     chunk('IEND', Buffer.alloc(0)),
   ]);
 }
+
+// The LLM settings live on the Deployment page, not in the environment
+// (ADR-00056, ADR-00057). A spec that runs its own gobbler against a fake
+// Messages API starts it with ENCRYPTION_KEY and GOBBLER_OPERATOR_EMAILS set to
+// DEV_OPERATOR, answers MODELS_LISTING on GET /v1/models, and then calls
+// configureClaude, which saves the settings the way an operator does.
+export const ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
+export const DEV_OPERATOR = 'dev@localhost';
+
+const listed = (id: string, name: string) => ({
+  type: 'model',
+  id,
+  display_name: name,
+  lifecycle: 'active',
+  capabilities: { structured_outputs: { supported: true }, image_input: { supported: true } },
+});
+
+// The models the fake lists: the text and vision models the specs save.
+export const MODELS_LISTING = JSON.stringify({
+  data: [listed('e2e-text', 'E2E Text'), listed('e2e-vision', 'E2E Vision')],
+  has_more: false,
+  first_id: 'e2e-text',
+  last_id: 'e2e-vision',
+});
+
+async function postForm(origin: string, path: string, form: Record<string, string>): Promise<void> {
+  const res = await fetch(`${origin}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' },
+    body: new URLSearchParams(form),
+    redirect: 'manual',
+  });
+  // A save is a 303 back to the page; a refusal is a 422 with the reason.
+  if (res.status !== 303) throw new Error(`POST ${path}: ${res.status} ${(await res.text()).slice(0, 300)}`);
+}
+
+// Saves Claude for both tasks on the Deployment page: the key, then the
+// providers, then the models, which the page offers only once it can list them.
+export async function configureClaude(origin: string, timeout = '5s'): Promise<void> {
+  await postForm(origin, '/operator/settings/secrets/llm/anthropic_key', { value: 'e2e-fake-key' });
+  const providers = { text_provider: 'claude', vision_provider: 'claude', timeout };
+  await postForm(origin, '/operator/settings/values/llm', providers);
+  await postForm(origin, '/operator/settings/values/llm', { ...providers, text_model: 'e2e-text', vision_model: 'e2e-vision' });
+}

@@ -63,6 +63,27 @@ type PlainField struct {
 	Hint string
 	// Placeholder is shown while the input is empty, optional.
 	Placeholder string
+	// Select makes the field a select instead of a text input (the LLM's
+	// provider and model); its options come from the section's Choices.
+	Select bool
+}
+
+// Choice is one option of a select field.
+type Choice struct {
+	// Value is what is saved; empty is the option that clears the field.
+	Value string
+	// Label is what the page shows.
+	Label string
+}
+
+// Choices are the options of a select field.
+type Choices struct {
+	// Options are what may be chosen, including the empty one.
+	Options []Choice
+	// Problem, when set, is why the options could not be had. The page then
+	// shows the saved value as text with the problem, offers no input, and a
+	// save leaves the field as it is.
+	Problem string
 }
 
 // Section is one integration's settings on the page. An integration registers
@@ -74,13 +95,24 @@ type Section struct {
 	// Title is the section heading.
 	Title string
 	// Fields are the plain settings, saved together by one form.
-	Fields  []PlainField
+	Fields []PlainField
+	// Choices, when set, is called once for each render of the section and
+	// returns the options of its Select fields by field name. It reads what is
+	// current, and it is where a section does slow work (listing a provider's
+	// models) once, and concurrently, instead of once per field.
+	Choices func(ctx context.Context) map[string]Choices
 	Secrets []SecretField
 	// Validate checks the plain values as submitted (keyed by field name,
 	// trimmed, blank when absent) before any is saved, given which of the
 	// section's secrets are set. It returns the problem to show, or "" when
 	// they can be saved. Nil accepts anything.
-	Validate func(values map[string]string, secretSet map[string]bool) string
+	//
+	// A select field the page offered no input for (Choices.Problem) is not in
+	// values and is not saved. Validate may change values to say what is saved
+	// instead: setting a field to "" clears it, so a section can drop a field
+	// that no longer applies, as the LLM does with a model when its provider
+	// changes. It runs only when nothing is refused.
+	Validate func(ctx context.Context, values map[string]string, secretSet map[string]bool) string
 }
 
 // Integrations is the integration settings the page shows and edits. With no
@@ -222,6 +254,43 @@ type sectionView struct {
 type fieldView struct {
 	Name, Label, Hint, Placeholder string
 	Value                          string
+	// Select is true for a field with Choices; Options are its options, with
+	// the one matching Value selected.
+	Select  bool
+	Options []optionView
+	// Problem is why a select has no options to offer; the field then shows
+	// Value as text and posts nothing.
+	Problem string
+}
+
+type optionView struct {
+	Value, Label string
+	Selected     bool
+}
+
+// noLongerOffered marks a saved choice the list no longer has, so it can be
+// replaced.
+const noLongerOffered = " (no longer offered)"
+
+// selectView fills fv for a select field with the options c offers. A saved
+// value among them is selected; one that is not is added, marked, and
+// selected, so it is neither hidden nor lost.
+func selectView(fv fieldView, c Choices) fieldView {
+	fv.Select = true
+	if c.Problem != "" {
+		fv.Problem = c.Problem
+		return fv
+	}
+	found := false
+	for _, o := range c.Options {
+		sel := o.Value == fv.Value
+		found = found || sel
+		fv.Options = append(fv.Options, optionView{Value: o.Value, Label: o.Label, Selected: sel})
+	}
+	if !found && fv.Value != "" {
+		fv.Options = append(fv.Options, optionView{Value: fv.Value, Label: fv.Value + noLongerOffered, Selected: true})
+	}
+	return fv
 }
 
 type secretView struct {
@@ -244,10 +313,15 @@ func (h *handler) integrationsView(ctx context.Context, problem string, in enter
 		if len(s.Fields) > 0 {
 			sv.ValuesAction = valuesPath + "/" + s.Integration
 		}
+		var choices map[string]Choices
+		if s.Choices != nil {
+			choices = s.Choices(ctx)
+		}
 		for _, f := range s.Fields {
 			fv := fieldView{Name: f.Name, Label: f.Label, Hint: f.Hint, Placeholder: f.Placeholder}
-			if in.Integration == s.Integration {
-				fv.Value = in.Values[f.Name]
+			typed, wasTyped := in.Values[f.Name]
+			if in.Integration == s.Integration && wasTyped {
+				fv.Value = typed
 			} else {
 				val, err := h.Integrations.Store.Value(ctx, store.Field{Integration: s.Integration, Name: f.Name})
 				if err != nil && !errors.Is(err, store.ErrUnset) {
@@ -255,6 +329,9 @@ func (h *handler) integrationsView(ctx context.Context, problem string, in enter
 					return integrationsView{}, fmt.Errorf("read %s %s: %w", s.Integration, f.Name, err)
 				}
 				fv.Value = val
+			}
+			if f.Select {
+				fv = selectView(fv, choices[f.Name])
 			}
 			sv.Fields = append(sv.Fields, fv)
 		}
@@ -299,6 +376,10 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 	}
 	values := make(map[string]string, len(sec.Fields))
 	for _, f := range sec.Fields {
+		if _, posted := r.PostForm[f.Name]; !posted && f.Select {
+			// The page offered no input for it (its options could not be had).
+			continue
+		}
 		values[f.Name] = strings.TrimSpace(r.PostForm.Get(f.Name))
 	}
 	refuse := func(msg string) {
@@ -320,7 +401,7 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 			}
 			set[sf.Name] = st == store.StateSet
 		}
-		if msg := sec.Validate(values, set); msg != "" {
+		if msg := sec.Validate(r.Context(), values, set); msg != "" {
 			refuse(msg)
 			return
 		}
@@ -333,9 +414,13 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 		order = append(order[1:], order[0])
 	}
 	for _, f := range order {
+		v, present := values[f.Name]
+		if !present {
+			continue
+		}
 		field := store.Field{Integration: integration, Name: f.Name}
 		var err error
-		if v := values[f.Name]; v == "" {
+		if v == "" {
 			err = h.Integrations.Store.Clear(r.Context(), field)
 		} else {
 			err = h.Integrations.Store.SetValue(r.Context(), field, v)

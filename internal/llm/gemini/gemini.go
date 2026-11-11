@@ -17,8 +17,8 @@ import (
 
 	"google.golang.org/genai"
 
-	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/ingest"
+	"github.com/kaecyra/gobbler/internal/llm"
 )
 
 // providerName is the value logged under the provider key.
@@ -39,11 +39,10 @@ Instead of a draft you may be given a list of gaps. Answer only for those gaps, 
 
 // Provider calls the Gemini API. It is safe for concurrent use.
 type Provider struct {
-	client      *genai.Client
-	textModel   string
-	visionModel string
-	timeout     time.Duration
-	log         *slog.Logger
+	client  *genai.Client
+	model   string
+	timeout time.Duration
+	log     *slog.Logger
 }
 
 // Option adjusts a Provider; tests use it to point the SDK at a fake backend.
@@ -56,18 +55,16 @@ func WithBaseURL(baseURL string) Option {
 
 // New builds a Provider from the configured settings, the same shape as
 // claude.New. It fails when the key, a model or the timeout is
-// missing, so a misconfiguration surfaces at startup rather than on the first
-// ingest.
-func New(ctx context.Context, cfg config.LLM, log *slog.Logger, opts ...Option) (*Provider, error) {
+// missing, so a misconfiguration surfaces when the call is made, with the
+// reason.
+func New(ctx context.Context, cfg llm.Settings, log *slog.Logger, opts ...Option) (*Provider, error) {
 	switch {
-	case cfg.Provider != config.ProviderGemini:
+	case cfg.Provider != llm.ProviderGemini:
 		return nil, fmt.Errorf("gemini: configured provider is %q", cfg.Provider)
 	case !cfg.APIKey.IsSet():
 		return nil, errors.New("gemini: API key is required")
-	case cfg.TextModel == "":
-		return nil, errors.New("gemini: text model is required")
-	case cfg.VisionModel == "":
-		return nil, errors.New("gemini: vision model is required")
+	case cfg.Model == "":
+		return nil, errors.New("gemini: model is required")
 	case cfg.Timeout <= 0:
 		return nil, errors.New("gemini: timeout must be positive")
 	}
@@ -80,21 +77,16 @@ func New(ctx context.Context, cfg config.LLM, log *slog.Logger, opts ...Option) 
 		return nil, fmt.Errorf("gemini: build client: %w", err)
 	}
 	return &Provider{
-		client:      client,
-		textModel:   cfg.TextModel,
-		visionModel: cfg.VisionModel,
-		timeout:     cfg.Timeout,
-		log:         log,
+		client:  client,
+		model:   cfg.Model,
+		timeout: cfg.Timeout,
+		log:     log,
 	}, nil
 }
 
-// Structure asks Gemini for the recipe in req. A request with an image uses the
-// vision model, any other the text model.
+// Structure asks Gemini for the recipe in req, with the model it was built with.
 func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.Structured, error) {
-	model := p.textModel
-	if len(req.Image) > 0 {
-		model = p.visionModel
-	}
+	model := p.model
 	start := time.Now()
 	out, usage, err := p.call(ctx, model, req)
 	attrs := []any{
@@ -127,7 +119,7 @@ func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest)
 	if len(req.Image) == 0 {
 		return "", errors.New("gemini: no image to transcribe")
 	}
-	model := p.visionModel
+	model := p.model
 	start := time.Now()
 	text, usage, err := p.transcribe(ctx, model, req)
 	attrs := []any{

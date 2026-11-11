@@ -30,6 +30,9 @@ feature to constrain the response to the schema.
 - Providers at launch: Claude (Anthropic API) and Gemini (Google Gen AI API).
 - Which provider is used, and which model for text and for vision, is
   configuration. Model identifiers are never hard-coded.
+  *Amended by [ADR-00056](00056-llm-provider-per-task.md): provider and model
+  are chosen per task, text and vision, on the operator's Deployment page and
+  kept in the database; the configuration is no longer the environment.*
 - API keys come only from the environment.
   *Amended by [ADR-00057](00057-integration-settings-in-the-database.md): the
   LLM API keys are integration secrets, stored encrypted in the database and
