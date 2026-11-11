@@ -341,3 +341,104 @@ func TestNoLogLineHoldsAnInvitationCode(t *testing.T) {
 		}
 	}
 }
+
+// brokenSendStore runs the store's three send-path methods with a context
+// that is already cancelled, so each fails inside the store with the store's
+// own error, which is what reaches the log.
+type brokenSendStore struct{ *households.Store }
+
+func cancelled() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
+}
+
+func (b brokenSendStore) PendingJoinForSend(_ context.Context, id int64, code string) (households.Invitation, error) {
+	return b.Store.PendingJoinForSend(cancelled(), id, code)
+}
+
+func (b brokenSendStore) PendingHouseholdForSend(_ context.Context, issuer, code string) (households.Invitation, error) {
+	return b.Store.PendingHouseholdForSend(cancelled(), issuer, code)
+}
+
+func (b brokenSendStore) RecordEmail(_ context.Context, code string, e error) error {
+	return b.Store.RecordEmail(cancelled(), code, e)
+}
+
+// The store errors that reach the log when reading back or recording fails
+// do not hold the code either.
+func TestNoLogLineHoldsACodeWhenTheStoreFailsAroundASend(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	codes := map[string]bool{}
+	run := func(name string, hs households.Households, mailer households.Mailer, act func(svc *households.Service) (string, error)) {
+		var buf bytes.Buffer
+		svc, err := households.New(households.Deps{Households: hs, Operators: config.Operator{Emails: []string{rootEmail}}, Mailer: mailer, Logger: slog.New(slog.NewJSONHandler(&buf, nil))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		code, _ := act(svc)
+		if buf.Len() == 0 {
+			t.Fatalf("%s: nothing was logged; the test would pass vacuously", name)
+		}
+		if code != "" {
+			codes[code] = true
+		}
+		for c := range codes {
+			if strings.Contains(buf.String(), c) {
+				t.Errorf("%s: a log line holds invitation code %s:\n%s", name, c, buf.String())
+			}
+		}
+	}
+	broken := brokenSendStore{f.store}
+	invite := func(svc *households.Service) (string, error) { return svc.Invite(ctx, f.ann, newEmail) }
+	operatorInvite := func(svc *households.Service) (string, error) { return svc.OperatorInvite(ctx, f.root, newEmail) }
+
+	// Reading the invitation back fails (member and operator invites).
+	run("read back, join", broken, &fakeMailer{}, invite)
+	run("read back, household", broken, &fakeMailer{}, operatorInvite)
+
+	// Recording fails after a good send: the invitation and its pending read
+	// are real, only RecordEmail is broken.
+	run("record, join", recordOnly{f.store, broken}, &fakeMailer{err: fmt.Errorf("x: %w", mail.ErrConnect)}, invite)
+	run("record, resend", recordOnly{f.store, broken}, &fakeMailer{}, func(svc *households.Service) (string, error) {
+		code, err := svc.Invite(ctx, f.ann, "again@example.com")
+		if err != nil {
+			return "", err
+		}
+		return code, svc.Resend(ctx, f.ann, code)
+	})
+}
+
+// recordOnly is a store whose only broken method is RecordEmail.
+type recordOnly struct {
+	*households.Store
+	b brokenSendStore
+}
+
+func (r recordOnly) RecordEmail(ctx context.Context, code string, e error) error {
+	return r.b.RecordEmail(ctx, code, e)
+}
+
+// A closed tab cancels the request, but a message the server accepted is still
+// recorded as sent.
+func TestTheOutcomeIsRecordedEvenIfTheRequestIsCancelledAfterTheSend(t *testing.T) {
+	f := newFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	svc := withMailer(t, f, cancelAfterSend{cancel: cancel})
+	code, err := svc.Invite(ctx, f.ann, newEmail)
+	if err != nil || code == "" {
+		t.Fatalf("Invite = %q, %v", code, err)
+	}
+	p := pendingOf(t, svc, f.ann)
+	if len(p) != 1 || p[0].EmailedAt.IsZero() || p[0].EmailError != "" {
+		t.Errorf("pending = %+v, want the successful send recorded after the request was cancelled", p)
+	}
+}
+
+type cancelAfterSend struct{ cancel context.CancelFunc }
+
+func (c cancelAfterSend) SendInvitation(context.Context, mail.InvitationEmail) error {
+	c.cancel()
+	return nil
+}

@@ -309,15 +309,19 @@ func InvalidReason(err error) (string, bool) {
 // can still be accepted, with the household's name, for the service to email
 // (ADR-00055). Any other invitation, including one into another household, is
 // ErrNotFound.
+//
+// Its errors never hold the code: the caller has it, and the code is the
+// credential that admits the invitee (ADR-00028), so an error that is logged
+// must not carry it.
 func (s *Store) PendingJoinForSend(ctx context.Context, householdID int64, code string) (Invitation, error) {
 	r, err := s.q.GetPendingJoinForSend(ctx, householddb.GetPendingJoinForSendParams{
 		Code: code, HouseholdID: sql.NullInt64{Int64: householdID, Valid: true}, Now: s.stamp(),
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return Invitation{}, fmt.Errorf("%w: pending invitation %s", ErrNotFound, code)
+		return Invitation{}, fmt.Errorf("%w: pending invitation", ErrNotFound)
 	}
 	if err != nil {
-		return Invitation{}, fmt.Errorf("load invitation %s: %w", code, err)
+		return Invitation{}, fmt.Errorf("load pending invitation: %w", err)
 	}
 	inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt, r.EmailedAt, r.EmailError)
 	if err != nil {
@@ -336,10 +340,10 @@ func (s *Store) PendingHouseholdForSend(ctx context.Context, issuer, code string
 	}
 	r, err := s.q.GetPendingHouseholdForSend(ctx, householddb.GetPendingHouseholdForSendParams{Code: code, IssuedBy: e, Now: s.stamp()})
 	if errors.Is(err, sql.ErrNoRows) {
-		return Invitation{}, fmt.Errorf("%w: pending invitation %s", ErrNotFound, code)
+		return Invitation{}, fmt.Errorf("%w: pending invitation", ErrNotFound)
 	}
 	if err != nil {
-		return Invitation{}, fmt.Errorf("load invitation %s: %w", code, err)
+		return Invitation{}, fmt.Errorf("load pending invitation: %w", err)
 	}
 	return toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt, r.EmailedAt, r.EmailError)
 }
@@ -367,10 +371,10 @@ func (s *Store) RecordEmail(ctx context.Context, code string, sendErr error) err
 		return err
 	})
 	if err != nil {
-		return fmt.Errorf("record email of invitation %s: %w", code, err)
+		return fmt.Errorf("record email of invitation: %w", err)
 	}
 	if n == 0 {
-		return fmt.Errorf("%w: invitation %s", ErrNotFound, code)
+		return fmt.Errorf("%w: invitation", ErrNotFound)
 	}
 	return nil
 }

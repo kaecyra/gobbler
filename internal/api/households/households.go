@@ -41,6 +41,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	domain "github.com/kaecyra/gobbler/internal/household"
@@ -279,6 +280,9 @@ func (s *Service) Resend(ctx context.Context, c Caller, code string) error {
 	return nil
 }
 
+// recordTimeout bounds recording the outcome of a send.
+const recordTimeout = 5 * time.Second
+
 // emailDomain is the part of an address after the @, for a log line: it says
 // where an invitation went without naming the person, and an invitation code is
 // the credential that admits them, so it is never logged (ADR-00028).
@@ -318,7 +322,13 @@ func (s *Service) deliver(ctx context.Context, sender string, inv Invitation, re
 			"household_id", inv.HouseholdID, "invited_domain", emailDomain(inv.Email), "error", err.Error())
 		stored = errors.New(mail.Reason(err))
 	}
-	if rerr := s.store.RecordEmail(ctx, inv.Code, stored); rerr != nil {
+	// The send is done and its outcome is a fact about the invitation, so it is
+	// recorded even if the request that began it has been cancelled (a closed
+	// tab must not leave "Not emailed" on a message that went out), under a
+	// short timeout of its own.
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordTimeout)
+	defer cancel()
+	if rerr := s.store.RecordEmail(rctx, inv.Code, stored); rerr != nil {
 		s.log.ErrorContext(ctx, "could not record the outcome of an invitation email",
 			"household_id", inv.HouseholdID, "invited_domain", emailDomain(inv.Email), "error", rerr.Error())
 	}

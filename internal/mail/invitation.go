@@ -95,19 +95,3 @@ func (i Invitation) Message(from string, now time.Time) (Message, error) {
 	}
 	return Message{From: from, To: i.To, Subject: i.Subject(), Text: i.Text(), HTML: html, Date: now}, nil
 }
-
-// StatusLine says what became of an invitation's email, for the household and
-// operator pages: sent is the time it last went out, already formatted, and
-// empty when it never has; errText is the latest send error. failed is true
-// when the latest attempt failed.
-func StatusLine(sent, errText string) (line string, failed bool) {
-	switch {
-	case errText != "" && sent != "":
-		return "Email failed: " + errText + " (last sent " + sent + ")", true
-	case errText != "":
-		return "Email failed: " + errText, true
-	case sent != "":
-		return "Emailed " + sent, false
-	}
-	return "Not emailed", false
-}

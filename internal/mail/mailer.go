@@ -62,12 +62,14 @@ func (m *Mailer) SendInvitation(ctx context.Context, in InvitationEmail) error {
 	if err != nil {
 		return err
 	}
+	// Before the rate token: with no base URL no send can happen, and each
+	// attempt would otherwise use up the sender's bucket.
+	if m.baseURL == "" {
+		return fmt.Errorf("invitation link cannot be written: %w", ErrNoBaseURL)
+	}
 	if ok, _ := m.limiter.Allow(in.Sender); !ok {
 		m.log.WarnContext(ctx, "invitation email refused: sender over the mail rate", "sender", in.Sender)
 		return ErrRateLimited
-	}
-	if m.baseURL == "" {
-		return fmt.Errorf("invitation link cannot be written: %w", ErrNoBaseURL)
 	}
 	msg, err := Invitation{
 		To: in.To, InvitedBy: in.InvitedBy, Household: in.Household,

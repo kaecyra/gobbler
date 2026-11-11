@@ -85,7 +85,7 @@ func deliver(ctx context.Context, s Settings, implicit bool, roots *x509.CertPoo
 		return fmt.Errorf("sender %s: %w: %w", from.Address, ErrRejected, err)
 	}
 	if err := c.Rcpt(to); err != nil {
-		return fmt.Errorf("recipient %s: %w: %w", to, ErrRejected, err)
+		return fmt.Errorf("recipient: %w: %w", ErrRejected, err)
 	}
 	w, err := c.Data()
 	if err != nil {

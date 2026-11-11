@@ -55,10 +55,17 @@ func TestRealFailuresAreClassifiedAndTheirTextNeverReachesTheReason(t *testing.T
 		s := startServer(t, tc.s)
 		cfg := testSettings(s, "127.0.0.1")
 		cfg.Timeout = 300 * time.Millisecond
+		cfg.User = "mailer-user-secret"
 		err := deliver(context.Background(), cfg, false, tc.roots, "cy@example.com", []byte("x"))
 		if !errors.Is(err, tc.want) {
 			t.Errorf("%s: err = %v, want kind %v", tc.name, err, tc.want)
 			continue
+		}
+		// The raw error, which is logged, names neither the invitee nor the user.
+		for _, leak := range []string{"cy@example.com", "mailer-user-secret"} {
+			if strings.Contains(err.Error(), leak) {
+				t.Errorf("%s: the raw error %q names %q", tc.name, err, leak)
+			}
 		}
 		reason := Reason(err)
 		if reason != tc.reason {

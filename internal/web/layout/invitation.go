@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
-	"github.com/kaecyra/gobbler/internal/mail"
 )
 
 // InvitationsPath is where an invitee opens an invitation, by its code
@@ -61,7 +60,7 @@ func NewPendingInvitations(self string, in []apihouseholds.Invitation) []Pending
 		if !i.EmailedAt.IsZero() {
 			sent = FormatTime(i.EmailedAt)
 		}
-		status, failed := mail.StatusLine(sent, i.EmailError)
+		status, failed := StatusLine(sent, i.EmailError)
 		out = append(out, PendingInvitation{
 			Code:        i.Code,
 			Email:       i.Email,
@@ -73,4 +72,20 @@ func NewPendingInvitations(self string, in []apihouseholds.Invitation) []Pending
 		})
 	}
 	return out
+}
+
+// StatusLine says what became of an invitation's email, for the household and
+// operator pages: sent is the time it last went out, already formatted, and
+// empty when it never has; errText is the latest send error. failed is true
+// when the latest attempt failed.
+func StatusLine(sent, errText string) (line string, failed bool) {
+	switch {
+	case errText != "" && sent != "":
+		return "Email failed: " + errText + " (last sent " + sent + ")", true
+	case errText != "":
+		return "Email failed: " + errText, true
+	case sent != "":
+		return "Emailed " + sent, false
+	}
+	return "Not emailed", false
 }

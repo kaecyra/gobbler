@@ -98,3 +98,21 @@ func TestMessageHeadersCannotBeInjected(t *testing.T) {
 		t.Errorf("a household name started a header:\n%s", head)
 	}
 }
+
+// With no base URL no send can happen, so no attempt uses up the sender's
+// bucket: once it is set, the sender's whole burst is still there.
+func TestMissingBaseURLDoesNotSpendTheSendersBucket(t *testing.T) {
+	var calls atomic.Int32
+	m := testMailer(full(), 1, &calls, nil)
+	good := m.baseURL
+	m.baseURL = ""
+	for range 3 {
+		if err := m.SendInvitation(context.Background(), email("ann@example.com")); !errors.Is(err, ErrNoBaseURL) {
+			t.Fatalf("err = %v, want ErrNoBaseURL", err)
+		}
+	}
+	m.baseURL = good
+	if err := m.SendInvitation(context.Background(), email("ann@example.com")); err != nil {
+		t.Errorf("after the base URL was set: %v, want sent (the bucket was spent)", err)
+	}
+}

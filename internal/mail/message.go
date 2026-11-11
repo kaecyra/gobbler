@@ -36,7 +36,7 @@ func (m Message) Bytes() ([]byte, error) {
 	}
 	to, err := mail.ParseAddress(m.To)
 	if err != nil {
-		return nil, fmt.Errorf("recipient %q: %w", m.To, err)
+		return nil, fmt.Errorf("recipient address: %w", err)
 	}
 	id, err := randomHex(16)
 	if err != nil {
