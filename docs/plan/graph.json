@@ -4985,11 +4985,12 @@
       "owns": [
         "internal/db/db.go",
         "internal/db/db_test.go",
-        "VERSION"
+        "VERSION",
+        "internal/store/recipe_atomic_test.go"
       ],
       "needs_migration": null,
       "adrs": [],
-      "note": "Bug #629: a '#' or '?' in the data directory truncates the DSN, so SQLite opens another file. Tests already hit it: a duplicate subtest name gives t.TempDir a '#', and the database lands at one fixed /tmp file shared by every run and worktree. Fix the escaping in db.go and add a db.Open test with '#' and '?' in the directory. The duplicate subtest name in internal/ingest/steps_split_test.go is cosmetic once escaping is fixed and belongs to y-youtube-description's lane; leave it."
+      "note": "Bug #629: a '#' or '?' in the data directory truncates the DSN, so SQLite opens another file. Tests already hit it: a duplicate subtest name gives t.TempDir a '#', and the database lands at one fixed /tmp file shared by every run and worktree. Fix the escaping in db.go and add a db.Open test with '#' and '?' in the directory. internal/store/recipe_atomic_test.go's openShortBusy builds the same unescaped DSN; export the fixed builder from internal/db and have it reuse that rather than keep a second copy. The duplicate subtest name in internal/ingest/steps_split_test.go is cosmetic once escaping is fixed and belongs to y-youtube-description's lane; leave it."
     }
   ],
   "shared_files": [
