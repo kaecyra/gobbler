@@ -4965,7 +4965,8 @@
         "internal/web/ingest/**",
         "internal/api/ingest/**",
         "internal/web/layout/operator_rail.go",
-        "docs/ui/design.md"
+        "docs/ui/design.md",
+        "e2e/ingest/**"
       ],
       "needs_migration": "schema",
       "adrs": [
