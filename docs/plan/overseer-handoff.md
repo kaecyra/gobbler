@@ -1,4 +1,4 @@
-# Overseer handoff: 2026-11-10, wave 13 round 1: #615 in flight, #606 awaiting the owner
+# Overseer handoff: 2026-11-11, wave 13: #615 and #606 in flight, plan PR #625 in review
 
 This file holds the volatile state the graph does not. The durable record is `docs/plan/graph.json`. Read `VERSION` on main for the current version; do not trust a number written here.
 
@@ -16,9 +16,9 @@ This file holds the volatile state the graph does not. The durable record is `do
 
 **In flight:** e-invite-email (#615), worktree `.claude/worktrees/wt-615`, branch `feat/615-invite-email`, migration placeholder `99999_e-invite-email.sql` (numbered at merge; 00041 if nothing else lands first), VERSION 0.145.0.
 
-**Blocked on the owner:** p-photo-vision-ocr (#606). Question: is the tesseract text stored beside the vision transcript (a new snapshot kind, so a migration) or not? Asked as odette inbox item `ib-c4bf3def1d1e`, recommendation: store. The other two ADR-00053 points are settled as the issue proposes: a transcription failure is logged and drafts from tesseract; a photo over 7.5 MB gets tesseract alone. Record the answer, `node.ts unblock`, and add `needs-migration schema` if it is store.
+**Also in flight:** p-photo-vision-ocr (#606), worktree `.claude/worktrees/wt-606`, branch `feat/606-photo-vision-ocr`, migration placeholder `99999_p-photo-vision-ocr.sql`, writes ADR-00053. The owner answered on 2026-11-10: store the tesseract text as its own snapshot kind (comment on #606). Its lane widening (`internal/store/**`, `internal/api/recipes/types.go`, needs_migration schema) and #616's (`internal/web/ingest/**`, `e2e/ingest/**`) are in dispatcher PR #625. Run ownership checks for #606 only after #625 merges.
 
-**Scope move (dispatcher):** removing `GOBBLER_LLM_*`, `GOBBLER_ANTHROPIC_API_KEY` and `GOBBLER_GEMINI_API_KEY` (ADR-00057 obligation 6, LLM half of 7) moved from #618 to #616. Comments are on both issues and notes are on both nodes. **Before dispatching #616, widen its lane with `internal/web/ingest/**` and `e2e/ingest/**`** (a dispatcher PR).
+**Scope move (dispatcher):** removing `GOBBLER_LLM_*`, `GOBBLER_ANTHROPIC_API_KEY` and `GOBBLER_GEMINI_API_KEY` (ADR-00057 obligation 6, LLM half of 7) moved from #618 to #616. Comments are on both issues and notes are on both nodes. #616's lane widening is in PR #625.
 
 **Next three:** p-photo-vision-ocr (#606) once answered; then l-llm-provider-config (#616) after #606 and the lane PR (it shares `internal/settings/**`, `internal/web/settings/**` and `e2e/operator/**` with #615, so it goes after #615); then u-llm-usage-cost (#619).
 
