@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,6 +16,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/kaecyra/gobbler/internal/db"
 
 	_ "modernc.org/sqlite"
 )
@@ -93,7 +96,7 @@ func TestNextRun(t *testing.T) {
 
 func openSource(t *testing.T) *sql.DB {
 	t.Helper()
-	d, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "src.db")+"?_pragma=journal_mode(wal)&_pragma=busy_timeout(5000)")
+	d, err := sql.Open("sqlite", db.DSN(filepath.Join(t.TempDir(), "src.db"), url.Values{"_pragma": {"journal_mode(wal)", "busy_timeout(5000)"}}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +166,7 @@ func TestSnapshotIsConsistentUnderWrites(t *testing.T) {
 		t.Fatalf("snapshot path %q", path)
 	}
 
-	snap, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+	snap, err := sql.Open("sqlite", db.DSN(path, url.Values{"mode": {"ro"}}))
 	if err != nil {
 		t.Fatal(err)
 	}
