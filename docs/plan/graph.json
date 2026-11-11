@@ -4801,13 +4801,15 @@
         "docs/design.md",
         "VERSION",
         "internal/web/settings/**",
-        "e2e/operator/**"
+        "e2e/operator/**",
+        "AGENTS.md",
+        "docs/operations.md"
       ],
       "needs_migration": null,
       "adrs": [
         "00054"
       ],
-      "note": "Owner ruling 2026-11-10: description text or a linked blog Recipe only; no transcript or VLM. Instagram paste-only, TikTok out. Owner ruling 2026-11-11: the description is fetched with the YouTube Data API; its key is an integration secret, stored encrypted and set on the Deployment page (ADR-00057), not an environment variable. No key saved means the description fetch is off."
+      "note": "Owner ruling 2026-11-10: description text or a linked blog Recipe only; no transcript or VLM. Instagram paste-only, TikTok out. Owner ruling 2026-11-11: the description is fetched with the YouTube Data API; its key is stored encrypted and set on the Deployment page like the mail and LLM secrets, not an environment variable. No key saved means the description fetch is off. ADR-00057 names only the mail and LLM settings, so ADR-00054 amends its scope to add the YouTube Data API key, and AGENTS.md's secrets boundary and docs/operations.md (how to get and save the key) are updated to match."
     },
     {
       "id": "c-cuisine-asian-bbq",
