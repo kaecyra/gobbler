@@ -4973,6 +4973,25 @@
         "00058",
         "00059"
       ]
+    },
+    {
+      "id": "f-db-dsn-escape",
+      "title": "db.Open escapes the data directory in its SQLite DSN",
+      "wave": 13,
+      "track": null,
+      "issue": 629,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/db/db.go",
+        "internal/db/db_test.go",
+        "VERSION",
+        "internal/store/recipe_atomic_test.go",
+        "internal/backup/backup_test.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Bug #629: a '#' or '?' in the data directory truncates the DSN, so SQLite opens another file. Tests already hit it: a duplicate subtest name gives t.TempDir a '#', and the database lands at one fixed /tmp file shared by every run and worktree. Fix the escaping in db.go, export the fixed builder from internal/db taking the caller's query parameters, and add a db.Open test with '#' and '?' in the directory. Two test files hand-build the same unescaped DSN and move to the exported builder: internal/store/recipe_atomic_test.go (openShortBusy, a pragma set) and internal/backup/backup_test.go (two copies, one with mode=ro). The duplicate subtest name in internal/ingest/steps_split_test.go is cosmetic once escaping is fixed and belongs to y-youtube-description's lane; leave it."
     }
   ],
   "shared_files": [
