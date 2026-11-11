@@ -93,7 +93,7 @@ func newSiteDrafting(t *testing.T, limits config.MCP, drafter func(*catalog.Stor
 
 // newSiteDescribing is newSiteDrafting with descriptions as the YouTube
 // description lookup NewDeps gives the ingestion service (ADR-00054); nil
-// leaves it off, as the router does with no key saved.
+// leaves it off, so a YouTube link is fetched as any page.
 func newSiteDescribing(t *testing.T, limits config.MCP, drafter func(*catalog.Store) mcp.Drafter, service bool, descriptions apiingest.DescriptionSource) *site {
 	t.Helper()
 	ctx := context.Background()
