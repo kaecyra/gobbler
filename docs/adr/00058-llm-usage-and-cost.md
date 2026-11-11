@@ -47,6 +47,8 @@ from the price in force then, and stored in integer millionths of a US
 dollar; a later price change does not rewrite past calls. A call with no
 price for its model is recorded with no cost, not a cost of zero. Records are
 kept indefinitely.
+*Amended by [ADR-00059](00059-llm-call-records-deleted-with-household.md): a
+household's call records are deleted with the household.*
 
 ### Prices
 

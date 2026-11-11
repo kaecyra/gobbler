@@ -4968,7 +4968,8 @@
       ],
       "needs_migration": "schema",
       "adrs": [
-        "00058"
+        "00058",
+        "00059"
       ]
     }
   ],
@@ -6514,7 +6515,7 @@
     }
   ],
   "adr_sequence": {
-    "last_used": "00058",
+    "last_used": "00059",
     "note": "00017 (cloudflared on the guest, #127) was written without drawing from the sequence; corrected 2026-10-12. 00037 and 00038 were numbered by hand in their PRs (#390, #388) and recorded here 2026-11-05."
   }
 }
