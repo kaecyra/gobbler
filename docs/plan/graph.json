@@ -4964,7 +4964,8 @@
         "internal/llm/**",
         "internal/web/ingest/**",
         "internal/api/ingest/**",
-        "internal/web/layout/operator_rail.go"
+        "internal/web/layout/operator_rail.go",
+        "docs/ui/design.md"
       ],
       "needs_migration": "schema",
       "adrs": [
@@ -5143,6 +5144,10 @@
       "path": ".golangci.yml",
       "mode": "open",
       "note": "ADR-00043 fences: each a-api-* node edits only its own depguard rule (if it adds one) and the exception lines naming files in its own lane; never another node's rule or exceptions. Rebase on conflict."
+    },
+    {
+      "path": "internal/settings/settingsdb/**",
+      "mode": "open"
     }
   ],
   "done": [
