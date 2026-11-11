@@ -5019,6 +5019,26 @@
       "needs_migration": null,
       "adrs": [],
       "note": "ADR-00054 decision 10 follow-up: mcp.NewDeps takes the description lookup and sets apiingest.Deps.Descriptions, as the web ingest routes do; routes.go mountMCP passes web.Deps.Descriptions. MCP test with a fake lookup, no live YouTube. Out of scope: giving MCP imports the LLM fallback provider, an uncovered cost decision (ADR-00058) left for the owner."
+    },
+    {
+      "id": "s-secret-fields-one-save",
+      "title": "Deployment page: secrets join their panel's form, one Save per integration",
+      "wave": 13,
+      "track": null,
+      "issue": 645,
+      "status": "todo",
+      "depends_on": [],
+      "owns": [
+        "internal/web/settings/**",
+        "e2e/operator/secrets.spec.ts",
+        "e2e/operator/llm.spec.ts",
+        "e2e/ingest/helpers.ts",
+        "e2e/ingest/youtube.spec.ts",
+        "internal/mail/settings.go"
+      ],
+      "needs_migration": null,
+      "adrs": [],
+      "note": "Owner-approved mockup 2026-11-11: each secret is a field in its panel's one form (mail password after User, LLM keys after Timeout, YouTube key alone), blank keeps what is stored, a typed secret counts as set for Validate, state tag beside the label, Clear its own POST. The per-secret save route goes. e2e/ingest/helpers.ts and youtube.spec.ts post to that route to configure the LLM and YouTube keys, so they move with it. internal/mail/settings.go's host refusal told the operator to save the password first, a step that no longer exists, so its message moves too. docs/operations.md is shared; its Mail steps describe saving the password first and are corrected here."
     }
   ],
   "shared_files": [
