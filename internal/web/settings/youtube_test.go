@@ -18,7 +18,7 @@ func youtubeHandler(t *testing.T) (h http.Handler, s *store.Store) {
 }
 
 // ADR-00054: the YouTube section is the Data API key and nothing else; it is
-// saved, replaced and cleared like any secret, and never shown again.
+// saved by the section's form, cleared like any secret, and never shown again.
 func TestYouTubeSectionKeepsTheKeyAsASecret(t *testing.T) {
 	h, s := youtubeHandler(t)
 	body := page(h)
@@ -27,20 +27,20 @@ func TestYouTubeSectionKeepsTheKeyAsASecret(t *testing.T) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
-	if strings.Contains(body, `data-testid="values-youtube"`) {
-		t.Error("the section has a plain-values form; it holds only the key")
+	if strings.Count(body, `<input`) != 1 {
+		t.Error("the section has inputs besides the key")
 	}
-	if rec := post(h, "/secrets/youtube/api_key", true, "AIza-sekrit"); rec.Code != 200 {
+	if rec := postForm(h, "/values/youtube", true, video.FieldAPIKey, "AIza-sekrit"); rec.Code != 200 {
 		t.Fatalf("save = %d", rec.Code)
 	}
 	got, err := s.Secret(context.Background(), store.Field{Integration: video.Integration, Name: video.FieldAPIKey})
 	if err != nil || got != "AIza-sekrit" {
 		t.Fatalf("stored = %q, %v", got, err)
 	}
-	if body := page(h); strings.Contains(body, "AIza-sekrit") || !strings.Contains(body, "Set") {
+	if body := page(h); strings.Contains(body, "AIza-sekrit") || !strings.Contains(body, " Saved</span>") {
 		t.Error("the saved key reached the page, or the page does not say it is set")
 	}
-	post(h, "/secrets/youtube/api_key/clear", false, "")
+	postForm(h, "/secrets/youtube/api_key/clear", false)
 	if _, err := s.Secret(context.Background(), store.Field{Integration: video.Integration, Name: video.FieldAPIKey}); err == nil {
 		t.Error("the key is still stored after clearing")
 	}

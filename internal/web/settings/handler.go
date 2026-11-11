@@ -51,7 +51,6 @@ func Routes(d Deps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.show)
 	r.Post("/backup", h.backupNow)
-	r.Post("/secrets/{integration}/{field}", h.saveSecret)
 	r.Post("/secrets/{integration}/{field}/clear", h.clearSecret)
 	r.Post("/values/{integration}", h.saveValues)
 	return r

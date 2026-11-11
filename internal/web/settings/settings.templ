@@ -9,9 +9,20 @@ templ settingsPage(v backupView, iv integrationsView) {
 		<style>
 			/* .pg > .panel + .panel (app.css) skips panels inside #integrations. */
 			#integrations > .panel { margin-top: 16px; }
-			.integration .secret + .secret { margin-top: 16px; }
-			.integration .values + .secret { margin-top: 16px; }
-			.integration .secret form + form { margin-top: 8px; }
+			/* A secret's label line: the label, its state tag, and Clear at the end. */
+			.integration .secret-h { display: flex; align-items: center; gap: 10px; max-width: 28rem; }
+			.integration .tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600; }
+			.integration .tag svg { width: 13px; height: 13px; flex: none; }
+			.integration .tag.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+			.integration .tag.unset { color: var(--ink-3); background: var(--sunk); }
+			.integration .tag.unreadable { color: var(--grain-ink); background: var(--grain-soft); }
+			/* Link-style, with a full tap target that does not heighten the line. */
+			.integration .clear {
+				min-height: var(--tap); margin: -12px 0 -12px auto; padding: 0; border: 0; background: none;
+				color: var(--wattle-ink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+			}
+			.integration .clear:hover { text-decoration: underline; }
+			.integration .secret input::placeholder { letter-spacing: 2px; }
 		</style>
 		<div class="pg">
 			<div class="screen-h"><h1>Deployment</h1></div>
@@ -48,8 +59,11 @@ templ backupSection(v backupView) {
 	</section>
 }
 
-// integrationsSection is the swap target of the secret controls. It renders
-// nothing while no integration has registered a secret, and never a value.
+// integrationsSection is the swap target of the integration forms. It renders
+// nothing while no integration has registered, and never a secret's value.
+// Each section is one form; a secret's Clear button sits in it, on the
+// secret's label line, and submits a clear form after it through its form
+// attribute, since a form cannot hold another.
 templ integrationsSection(v integrationsView) {
 	if len(v.Sections) > 0 {
 		<div id="integrations" data-testid="integrations">
@@ -59,67 +73,86 @@ templ integrationsSection(v integrationsView) {
 			for _, s := range v.Sections {
 				<section class="panel integration" aria-labelledby={ "integration-" + s.Integration + "-h" } data-testid={ "integration-" + s.Integration }>
 					<h2 id={ "integration-" + s.Integration + "-h" }>{ s.Title }</h2>
-					if len(s.Fields) > 0 {
-						<form class="stack values" method="post" action={ templ.SafeURL(s.ValuesAction) } hx-post={ s.ValuesAction } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button" data-testid={ "values-" + s.Integration }>
-							for _, f := range s.Fields {
-								if f.Select && f.Problem != "" {
-									<div data-testid={ "value-" + f.Name }>
-										<span>{ f.Label }</span>
-										if f.Value != "" {
-											<span class="muted" data-testid={ "saved-" + f.Name }>{ f.Value }</span>
-										}
-										<span class="hint" data-testid={ "problem-" + f.Name }>{ f.Problem }</span>
-									</div>
-								} else if f.Select {
-									<label>
-										{ f.Label }
-										<select name={ f.Name } data-testid={ "value-" + f.Name }>
-											for _, o := range f.Options {
-												<option value={ o.Value } selected?={ o.Selected }>{ o.Label }</option>
-											}
-										</select>
-										if f.Hint != "" {
-											<span class="hint">{ f.Hint }</span>
-										}
-									</label>
-								} else {
-									<label>
-										{ f.Label }
-										<input type="text" name={ f.Name } value={ f.Value } placeholder={ f.Placeholder } autocomplete="off" spellcheck="false" maxlength="4096" data-testid={ "value-" + f.Name }/>
-										if f.Hint != "" {
-											<span class="hint">{ f.Hint }</span>
-										}
-									</label>
-								}
+					<form class="stack" method="post" action={ templ.SafeURL(s.Action) } hx-post={ s.Action } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button" data-testid={ "values-" + s.Integration }>
+						for _, row := range s.Rows {
+							if row.Secret != nil {
+								@secretField(s.Integration, *row.Secret)
+							} else {
+								@plainField(*row.Field)
 							}
-							<button type="submit" class="btn accent">Save</button>
-						</form>
-					}
-					for _, f := range s.Secrets {
-						<div class="secret" data-testid={ "secret-" + s.Integration + "-" + f.Name }>
-							<form class="fields" method="post" action={ templ.SafeURL(f.Action) } hx-post={ f.Action } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button">
-								<label>
-									{ f.Label }
-									<input type="password" name="value" required autocomplete="new-password" spellcheck="false" maxlength="4096" data-testid="secret-input"/>
-								</label>
-								<span class="muted" data-testid="secret-state">{ f.State }</span>
-								<button type="submit" class="btn accent">
-									if f.Stored {
-										Replace
-									} else {
-										Save
-									}
-								</button>
-							</form>
-							if f.Stored {
-								<form method="post" action={ templ.SafeURL(f.ClearAction) } hx-post={ f.ClearAction } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt="find button">
-									<button type="submit" class="btn ghost danger" aria-label={ "Clear " + f.Label }>Clear</button>
-								</form>
-							}
-						</div>
+						}
+						<button type="submit" class="btn accent">Save</button>
+					</form>
+					for _, row := range s.Rows {
+						if row.Secret != nil && row.Secret.Stored {
+							<form id={ row.Secret.ClearForm } method="post" action={ templ.SafeURL(row.Secret.ClearAction) } hx-post={ row.Secret.ClearAction } hx-target="#integrations" hx-swap="outerHTML" hx-disabled-elt={ "[form=" + row.Secret.ClearForm + "]" }></form>
+						}
 					}
 				</section>
 			}
 		</div>
 	}
+}
+
+templ plainField(f fieldView) {
+	if f.Select && f.Problem != "" {
+		<div data-testid={ "value-" + f.Name }>
+			<span>{ f.Label }</span>
+			if f.Value != "" {
+				<span class="muted" data-testid={ "saved-" + f.Name }>{ f.Value }</span>
+			}
+			<span class="hint" data-testid={ "problem-" + f.Name }>{ f.Problem }</span>
+		</div>
+	} else if f.Select {
+		<label>
+			{ f.Label }
+			<select name={ f.Name } data-testid={ "value-" + f.Name }>
+				for _, o := range f.Options {
+					<option value={ o.Value } selected?={ o.Selected }>{ o.Label }</option>
+				}
+			</select>
+			if f.Hint != "" {
+				<span class="hint">{ f.Hint }</span>
+			}
+		</label>
+	} else {
+		<label>
+			{ f.Label }
+			<input type="text" name={ f.Name } value={ f.Value } placeholder={ f.Placeholder } autocomplete="off" spellcheck="false" maxlength="4096" data-testid={ "value-" + f.Name }/>
+			if f.Hint != "" {
+				<span class="hint">{ f.Hint }</span>
+			}
+		</label>
+	}
+}
+
+// secretField is one secret in its section's form. The input is always empty:
+// a saved value never reaches the page (ADR-00057), so a blank submit keeps it.
+templ secretField(integration string, f secretView) {
+	<div class="secret" data-testid={ "secret-" + integration + "-" + f.Name }>
+		<div class="secret-h">
+			<label for={ "secret-" + integration + "-" + f.Name + "-input" }>{ f.Label }</label>
+			<span class={ "tag", f.Tag } data-testid="secret-state">
+				if f.Saved {
+					@layout.Icon(layout.IconCheck)
+				}
+				{ f.State }
+			</span>
+			if f.Stored {
+				<button type="submit" form={ f.ClearForm } class="clear" aria-label={ "Clear " + f.Label }>Clear</button>
+			}
+		</div>
+		<input
+			id={ "secret-" + integration + "-" + f.Name + "-input" }
+			type="password"
+			name={ f.Name }
+			if f.Saved {
+				placeholder={ savedPlaceholder }
+			}
+			autocomplete="new-password"
+			spellcheck="false"
+			maxlength="4096"
+			data-testid="secret-input"
+		/>
+	</div>
 }

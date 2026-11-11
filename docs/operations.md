@@ -442,7 +442,9 @@ Design and reasoning: [ADR-00057](./adr/00057-integration-settings-in-the-databa
 Integration settings are edited on the operator's Deployment page,
 `/operator/settings`, and kept in the database. Their secrets (a password, an
 API key) are encrypted with a key taken from `GOBBLER_ENCRYPTION_KEY`; a saved
-secret is never shown again, only replaced or cleared.
+secret is never shown again, only replaced or cleared. Each secret is a field
+of its integration's form: leave it blank to keep what is saved, or type a new
+value to replace it.
 
 - Generate the key once and put it in `.env`:
 
@@ -505,21 +507,23 @@ address when the invitation is made, and again when someone presses **Resend**.
    third-party trackers, which gobbler does not allow, and gobbler cannot see
    what the provider does after the hand-off. Check the provider's settings for
    the account or the sending domain, and for the SMTP credentials you will use.
-2. Save the password under **Mail** on the operator's Deployment page
-   (`/operator/settings`). It is an integration secret, so
-   `GOBBLER_ENCRYPTION_KEY` must be set ([Integration secrets](#integration-secrets)).
-3. Fill the other fields and save:
+2. Set `GOBBLER_ENCRYPTION_KEY`: the password is an integration secret
+   ([Integration secrets](#integration-secrets)).
+3. Fill the fields under **Mail** on the operator's Deployment page
+   (`/operator/settings`) and save:
 
    | Field | Meaning |
    |---|---|
    | SMTP host | The provider's submission host. Leave blank to turn mail off. |
    | Port | `465` connects with TLS from the first byte. Any other port, usually `587`, must offer STARTTLS. |
    | User | The SMTP user name. |
+   | Password | The SMTP password. Blank keeps the saved one. |
    | From address | The sender, such as `Gobbler <invites@example.com>`. It must be one the provider allows. |
    | Timeout | How long one send may take, such as `20s`. Optional; up to 2 minutes. |
 
-   A host needs the port, user, from address and a saved password. The page
-   refuses to save otherwise and says which field is missing.
+   A host needs the port, user, from address and a password, saved or typed
+   in the same save. The page refuses to save otherwise, says which field is
+   missing, and saves nothing.
 
 - Every connection is encrypted and the server's certificate is checked against
   the host. A server that does not offer STARTTLS on a non-465 port gets no
@@ -544,8 +548,9 @@ operator's Deployment page, `/operator/settings`, and a change is used by the
 next call, with no restart ([ADR-00056](./adr/00056-llm-provider-per-task.md)).
 
 1. Set `GOBBLER_ENCRYPTION_KEY` ([Integration secrets](#integration-secrets)).
-2. Save the API key of each provider you will use, Claude or Gemini.
-3. For **text** and for **vision**, choose a provider and save. The page then
+2. Enter the API key of each provider you will use, Claude or Gemini.
+3. For **text** and for **vision**, choose a provider and save; the keys save
+   with them. The page then
    lists that provider's models, narrowed to what the task can use; choose one
    and save. The two tasks are independent, so text can use Claude and vision
    Gemini. A task with no provider or no model has no LLM.

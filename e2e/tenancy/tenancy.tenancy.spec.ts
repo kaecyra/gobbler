@@ -148,7 +148,6 @@ const PROBES: Probe[] = [
   // The deployment page's old address, which redirects an operator alone.
   refusedToBoth('GET', () => '/settings'),
   refusedToBoth('POST', () => '/operator/settings/backup'),
-  refusedToBoth('POST', () => '/operator/settings/secrets/mail/password'),
   refusedToBoth('POST', () => '/operator/settings/secrets/mail/password/clear'),
   refusedToBoth('POST', () => '/operator/settings/values/mail'),
   refusedToBoth('GET', () => '/operator'),
