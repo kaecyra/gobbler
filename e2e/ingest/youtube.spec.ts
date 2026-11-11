@@ -117,10 +117,10 @@ test.beforeAll(async () => {
     if (Date.now() > deadline) throw new Error('the youtube server did not start');
     await new Promise((r) => setTimeout(r, 100));
   }
-  const res = await fetch(`${origin}/operator/settings/secrets/youtube/api_key`, {
+  const res = await fetch(`${origin}/operator/settings/values/youtube`, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' },
-    body: new URLSearchParams({ value: API_KEY }),
+    body: new URLSearchParams({ api_key: API_KEY }),
     redirect: 'manual',
   });
   if (res.status !== 303) throw new Error(`saving the YouTube key: ${res.status}`);
@@ -150,7 +150,7 @@ test('the Deployment page shows the saved key as set and never shows its value',
   await page.goto('/operator/settings');
   const section = page.getByTestId('integration-youtube');
   await expect(section.getByRole('heading', { name: 'YouTube' })).toBeVisible();
-  await expect(section.getByTestId('secret-state')).toHaveText('Set');
+  await expect(section.getByTestId('secret-state')).toHaveText('Saved');
   expect(await page.content()).not.toContain(API_KEY);
 });
 

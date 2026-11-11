@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -54,16 +53,7 @@ func llmHandler(t *testing.T, lister ModelLister) (http.Handler, *store.Store) {
 }
 
 func postLLM(h http.Handler, kv ...string) *httptest.ResponseRecorder {
-	form := url.Values{}
-	for i := 0; i < len(kv); i += 2 {
-		form.Set(kv[i], kv[i+1])
-	}
-	req := httptest.NewRequest(http.MethodPost, "/values/llm", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("HX-Request", "true")
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	return rec
+	return postForm(h, "/values/llm", true, kv...)
 }
 
 func saved(t *testing.T, s *store.Store, name string) string {
@@ -260,7 +250,7 @@ func TestNoResponseContainsASavedLLMKey(t *testing.T) {
 	h, _ := llmHandler(t, &fakeLister{models: map[string][]llm.Model{llm.ProviderClaude: listing("m-one")}})
 	for name, key := range map[string]string{"anthropic_key": anthropicKey, "gemini_key": geminiKey} {
 		for _, htmx := range []bool{false, true} {
-			if rec := post(h, "/secrets/llm/"+name, htmx, key); rec.Code >= 400 {
+			if rec := postForm(h, "/values/llm", htmx, name, key); rec.Code >= 400 {
 				t.Fatalf("save %s: %d %s", name, rec.Code, rec.Body)
 			}
 		}
@@ -278,8 +268,8 @@ func TestNoResponseContainsASavedLLMKey(t *testing.T) {
 			}
 		}
 	}
-	if body := responses["page"].Body.String(); strings.Count(body, ">Set<") != 2 {
-		t.Errorf("both keys should read Set: %s", body)
+	if body := responses["page"].Body.String(); strings.Count(body, " Saved</span>") != 2 {
+		t.Errorf("both keys should read Saved: %s", body)
 	}
 }
 

@@ -23,7 +23,7 @@ func MailSection() Section {
 			{Name: mail.FieldFrom, Label: "From address", Placeholder: "Gobbler <invites@example.com>"},
 			{Name: mail.FieldTimeout, Label: "Timeout", Placeholder: mail.DefaultTimeout.String(), Hint: "How long one send may take. Optional."},
 		},
-		Secrets: []SecretField{{Name: mail.FieldPassword, Label: "Password"}},
+		Secrets: []SecretField{{Name: mail.FieldPassword, Label: "Password", After: mail.FieldUser}},
 		Validate: func(_ context.Context, values map[string]string, secretSet map[string]bool) string {
 			return mail.Validate(values, secretSet[mail.FieldPassword])
 		},

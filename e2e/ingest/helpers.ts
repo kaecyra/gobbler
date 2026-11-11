@@ -113,11 +113,10 @@ async function postForm(origin: string, path: string, form: Record<string, strin
   if (res.status !== 303) throw new Error(`POST ${path}: ${res.status} ${(await res.text()).slice(0, 300)}`);
 }
 
-// Saves Claude for both tasks on the Deployment page: the key, then the
+// Saves Claude for both tasks on the Deployment page: the key with the
 // providers, then the models, which the page offers only once it can list them.
 export async function configureClaude(origin: string, timeout = '5s'): Promise<void> {
-  await postForm(origin, '/operator/settings/secrets/llm/anthropic_key', { value: 'e2e-fake-key' });
   const providers = { text_provider: 'claude', vision_provider: 'claude', timeout };
-  await postForm(origin, '/operator/settings/values/llm', providers);
+  await postForm(origin, '/operator/settings/values/llm', { ...providers, anthropic_key: 'e2e-fake-key' });
   await postForm(origin, '/operator/settings/values/llm', { ...providers, text_model: 'e2e-text', vision_model: 'e2e-vision' });
 }

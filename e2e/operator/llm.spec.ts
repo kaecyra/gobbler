@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
 import { DEV_OPERATOR, ENCRYPTION_KEY, NO_OPENROUTER, pasteText } from '../ingest/helpers';
+import { expectTapTargets } from '../fixtures/tap';
 
 // The LLM section of the Deployment page (ADR-00056, ADR-00057). This spec
 // starts its own gobbler with an encryption key, and points the Claude and
@@ -186,12 +187,9 @@ const optionValues = (page: Page, field: string) =>
 const expectOptions = (page: Page, field: string, want: string[]) =>
   expect(async () => expect(await optionValues(page, field)).toEqual(want)).toPass();
 
-async function saveKey(page: Page, field: string, value: string) {
-  const box = llm(page).getByTestId(`secret-llm-${field}`);
-  await box.getByTestId('secret-input').fill(value);
-  await box.getByRole('button', { name: /Save|Replace/ }).click();
-  await expect(box.getByTestId('secret-state')).toHaveText('Set');
-}
+// Types a key into its field; the section's Save sends it with the rest.
+const typeKey = (page: Page, field: string, value: string) =>
+  llm(page).getByTestId(`secret-llm-${field}`).getByTestId('secret-input').fill(value);
 
 test('the LLM section lists a provider and a model per task, a timeout and both keys', async ({ page }) => {
   const res = await page.goto('/operator/settings');
@@ -208,11 +206,13 @@ test('the LLM section lists a provider and a model per task, a timeout and both 
 
 test('a model is chosen from the provider\'s narrowed listing, per task, and never typed', async ({ page }) => {
   await page.goto('/operator/settings');
-  await saveKey(page, 'anthropic_key', CLAUDE_KEY);
+  // The key and the providers go in one save; the page then lists the models.
+  await typeKey(page, 'anthropic_key', CLAUDE_KEY);
   await llm(page).getByTestId('value-text_provider').selectOption('claude');
   await llm(page).getByTestId('value-vision_provider').selectOption('claude');
   await save(page);
   await expect(page.getByTestId('integrations-problem')).toHaveCount(0);
+  await expect(llm(page).getByTestId('secret-llm-anthropic_key').getByTestId('secret-state')).toHaveText('Saved');
 
   // Active models with structured output for text; also image input for vision.
   await expectOptions(page, 'text_model', ['', 'e2e-claude-large', 'e2e-claude-text']);
@@ -226,8 +226,9 @@ test('a model is chosen from the provider\'s narrowed listing, per task, and nev
   await expect(llm(page).getByTestId('value-text_model')).toHaveValue('e2e-claude-text');
   await expect(llm(page).getByTestId('value-vision_model')).toHaveValue('e2e-claude-large');
   expect(claudeKeySeen).toBe(CLAUDE_KEY);
-  // The key shows only that it is set.
-  await expect(llm(page).getByTestId('secret-llm-anthropic_key').getByTestId('secret-state')).toHaveText('Set');
+  // The key shows only that it is saved, and a save that left it blank kept it.
+  await expect(llm(page).getByTestId('secret-llm-anthropic_key').getByTestId('secret-state')).toHaveText('Saved');
+  await expect(llm(page).getByTestId('secret-llm-anthropic_key').getByTestId('secret-input')).toHaveValue('');
   await expect(page.locator('body')).not.toContainText(CLAUDE_KEY);
 });
 
@@ -252,7 +253,7 @@ test('a setting saved on the page is used by the next ingest, with no restart', 
 
   // Move the text task to Gemini; the very next ingest reaches Gemini.
   await page.goto('/operator/settings');
-  await saveKey(page, 'gemini_key', GEMINI_KEY);
+  await typeKey(page, 'gemini_key', GEMINI_KEY);
   await llm(page).getByTestId('value-text_provider').selectOption('gemini');
   await save(page);
   await expectOptions(page, 'text_model', ['', 'e2e-gemini-flash']);
@@ -299,6 +300,19 @@ test('a listing that cannot be fetched is explained and leaves the saved model a
   // The listing is back: the model that was never cleared is the selected one.
   await page.reload();
   await expect(llm(page).getByTestId('value-text_model')).toHaveValue('e2e-gemini-flash');
+});
+
+test('a saved key is cleared from its label line, and the rest of the form is kept', async ({ page }) => {
+  await page.goto('/operator/settings');
+  const key = llm(page).getByTestId('secret-llm-anthropic_key');
+  await expect(key.getByTestId('secret-state')).toHaveText('Saved');
+  // Clear sits on the label line, a full tap target although it reads as a link.
+  await expectTapTargets(page);
+  await key.getByRole('button', { name: 'Clear Claude API key' }).click();
+  await expect(llm(page).getByTestId('secret-llm-anthropic_key').getByTestId('secret-state')).toHaveText('Not set');
+  await expect(llm(page).getByTestId('secret-llm-anthropic_key').getByRole('button', { name: /Clear/ })).toHaveCount(0);
+  await expect(llm(page).getByTestId('secret-llm-gemini_key').getByTestId('secret-state')).toHaveText('Saved');
+  await expect(llm(page).getByTestId('value-timeout')).toHaveValue('45s');
 });
 
 test('the values route answers 404 for an integration nothing registered', async ({ request }) => {

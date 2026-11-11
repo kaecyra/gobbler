@@ -14,8 +14,8 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
-// secretsPath and valuesPath are where the secret controls and an
-// integration's plain-value form post, below Pattern.
+// secretsPath is where a secret's Clear posts, and valuesPath where an
+// integration's one form posts, below Pattern.
 const (
 	secretsPath = Pattern + "/secrets"
 	valuesPath  = Pattern + "/values"
@@ -36,6 +36,9 @@ type SecretField struct {
 	Name string
 	// Label is what the page calls it.
 	Label string
+	// After is the name of the plain field it follows in the section's form;
+	// empty puts it after them all.
+	After string
 }
 
 // ValueStore is what the page uses for an integration's plain settings.
@@ -94,7 +97,8 @@ type Section struct {
 	Integration string
 	// Title is the section heading.
 	Title string
-	// Fields are the plain settings, saved together by one form.
+	// Fields are the plain settings. They and Secrets are saved together by
+	// the section's one form.
 	Fields []PlainField
 	// Choices, when set, is called once for each render of the section and
 	// returns the options of its Select fields by field name. It reads what is
@@ -104,8 +108,9 @@ type Section struct {
 	Secrets []SecretField
 	// Validate checks the plain values as submitted (keyed by field name,
 	// trimmed, blank when absent) before any is saved, given which of the
-	// section's secrets are set. It returns the problem to show, or "" when
-	// they can be saved. Nil accepts anything.
+	// section's secrets are set: saved and readable, or typed in the same
+	// submit. It returns the problem to show, or "" when they can be saved.
+	// Nil accepts anything.
 	//
 	// A select field the page offered no input for (Choices.Problem) is not in
 	// values and is not saved. Validate may change values to say what is saved
@@ -131,56 +136,25 @@ func (i Integrations) section(integration string) (Section, bool) {
 	return Section{}, false
 }
 
-func (i Integrations) field(integration, name string) (store.Field, SecretField, bool) {
-	for _, s := range i.Sections {
-		if s.Integration != integration {
-			continue
-		}
-		for _, f := range s.Secrets {
-			if f.Name == name {
-				return store.Field{Integration: integration, Name: name}, f, true
-			}
+func (i Integrations) secret(integration, name string) (store.Field, bool) {
+	sec, ok := i.section(integration)
+	if !ok {
+		return store.Field{}, false
+	}
+	for _, f := range sec.Secrets {
+		if f.Name == name {
+			return store.Field{Integration: integration, Name: name}, true
 		}
 	}
-	return store.Field{}, SecretField{}, false
+	return store.Field{}, false
 }
 
-// maxFormBytes bounds a posted secret form: the longest value, with room for
-// the field name and encoding.
+// maxFormBytes bounds one posted field: the longest value, with room for the
+// field name and encoding.
 const maxFormBytes = store.MaxValueBytes*3 + 1024
 
-func (h *handler) saveSecret(w http.ResponseWriter, r *http.Request) {
-	f, field, ok := h.Integrations.field(chi.URLParam(r, "integration"), chi.URLParam(r, "field"))
-	if !ok {
-		layout.WriteError(w, r, layout.ErrNotFound)
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
-	if err := r.ParseForm(); err != nil {
-		h.secretOutcome(w, r, http.StatusBadRequest, "That value could not be read.")
-		return
-	}
-	value := r.PostForm.Get("value")
-	err := h.Integrations.Store.SetSecret(r.Context(), f, value)
-	switch {
-	case err == nil:
-		h.secretOutcome(w, r, http.StatusOK, "")
-	case errors.Is(err, store.ErrNoKey):
-		h.secretOutcome(w, r, http.StatusUnprocessableEntity,
-			field.Label+" was not saved: the encryption key is missing. Set the encryption key in the environment and restart.")
-	case errors.Is(err, store.ErrInvalid):
-		msg := "Enter a value first."
-		if value != "" {
-			msg = "That value is too long."
-		}
-		h.secretOutcome(w, r, http.StatusUnprocessableEntity, msg)
-	default:
-		layout.WriteError(w, r, fmt.Errorf("save %s %s: %w", f.Integration, f.Name, err))
-	}
-}
-
 func (h *handler) clearSecret(w http.ResponseWriter, r *http.Request) {
-	f, _, ok := h.Integrations.field(chi.URLParam(r, "integration"), chi.URLParam(r, "field"))
+	f, ok := h.Integrations.secret(chi.URLParam(r, "integration"), chi.URLParam(r, "field"))
 	if !ok {
 		layout.WriteError(w, r, layout.ErrNotFound)
 		return
@@ -189,20 +163,17 @@ func (h *handler) clearSecret(w http.ResponseWriter, r *http.Request) {
 		layout.WriteError(w, r, err)
 		return
 	}
-	h.secretOutcome(w, r, http.StatusOK, "")
+	h.savedOutcome(w, r)
 }
 
-// secretOutcome answers a secret request. A browser without script gets the
-// whole page back (or a redirect after a success); HTMX gets the integrations
-// section. A refusal is a 200 for HTMX, which does not swap a 4xx, and carries
-// the message in the section.
-func (h *handler) secretOutcome(w http.ResponseWriter, r *http.Request, status int, problem string) {
-	htmx := r.Header.Get("HX-Request") == "true"
-	if problem == "" && !htmx {
+// savedOutcome answers a save or a clear that succeeded: a redirect back to
+// the page for a browser without script, the integrations section for HTMX.
+func (h *handler) savedOutcome(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("HX-Request") != "true" {
 		http.Redirect(w, r, Pattern, http.StatusSeeOther)
 		return
 	}
-	h.renderIntegrations(w, r, status, problem, entered{})
+	h.renderIntegrations(w, r, http.StatusOK, "", entered{})
 }
 
 // renderIntegrations answers with the integrations section for HTMX and with
@@ -224,13 +195,14 @@ func (h *handler) renderIntegrations(w http.ResponseWriter, r *http.Request, sta
 
 // Secret states as the page words them.
 const (
-	stateSet        = "Set"
+	stateSet        = "Saved"
 	stateUnset      = "Not set"
 	stateUnreadable = "Unreadable. Enter it again."
 )
 
 // entered is the values the person submitted for one integration's plain
-// fields, shown again when the save is refused.
+// fields, shown again when the save is refused. A typed secret is never among
+// them: it is not sent back to the browser (ADR-00057).
 type entered struct {
 	Integration string
 	Values      map[string]string
@@ -245,10 +217,18 @@ type integrationsView struct {
 type sectionView struct {
 	Integration string
 	Title       string
-	Fields      []fieldView
-	// ValuesAction is where the plain fields post.
-	ValuesAction string
-	Secrets      []secretView
+	// Action is where the section's one form posts.
+	Action string
+	// Rows are the form's fields in page order: each is a plain field or a
+	// secret.
+	Rows []rowView
+}
+
+// rowView is one field of a section's form; exactly one of Field and Secret
+// is set.
+type rowView struct {
+	Field  *fieldView
+	Secret *secretView
 }
 
 type fieldView struct {
@@ -296,12 +276,22 @@ func selectView(fv fieldView, c Choices) fieldView {
 type secretView struct {
 	Name  string
 	Label string
-	State string
-	// Stored is true when there is something to clear: set or unreadable.
+	// State is the tag beside the label and Tag its tint: "ok", "unset" or
+	// "unreadable".
+	State, Tag string
+	// Saved is true when a readable value is stored; the input then shows
+	// dots as its placeholder.
+	Saved bool
+	// Stored is true when there is something to clear: saved or unreadable.
 	Stored bool
-	// Action is where the value posts; ClearAction where clearing posts.
-	Action, ClearAction string
+	// ClearAction is where clearing posts, from the form ClearForm names,
+	// which sits outside the section's form.
+	ClearAction, ClearForm string
 }
+
+// savedPlaceholder stands in a saved secret's empty input. It is not the
+// secret, nor its length.
+const savedPlaceholder = "••••••••••••"
 
 func (h *handler) integrationsView(ctx context.Context, problem string, in entered) (integrationsView, error) {
 	v := integrationsView{Problem: problem}
@@ -309,13 +299,23 @@ func (h *handler) integrationsView(ctx context.Context, problem string, in enter
 		return v, nil
 	}
 	for _, s := range h.Integrations.Sections {
-		sv := sectionView{Integration: s.Integration, Title: s.Title}
-		if len(s.Fields) > 0 {
-			sv.ValuesAction = valuesPath + "/" + s.Integration
-		}
+		sv := sectionView{Integration: s.Integration, Title: s.Title, Action: valuesPath + "/" + s.Integration}
 		var choices map[string]Choices
 		if s.Choices != nil {
 			choices = s.Choices(ctx)
+		}
+		// secrets are the section's secret rows keyed by the field each
+		// follows, "" for after them all.
+		secrets := make(map[string][]rowView, len(s.Secrets))
+		for _, f := range s.Secrets {
+			if f.After != "" && !slices.ContainsFunc(s.Fields, func(p PlainField) bool { return p.Name == f.After }) {
+				return integrationsView{}, fmt.Errorf("%s secret %s follows %q, which is not one of its fields", s.Integration, f.Name, f.After)
+			}
+			sec, err := h.secretView(ctx, s.Integration, f)
+			if err != nil {
+				return integrationsView{}, err
+			}
+			secrets[f.After] = append(secrets[f.After], rowView{Secret: &sec})
 		}
 		for _, f := range s.Fields {
 			fv := fieldView{Name: f.Name, Label: f.Label, Hint: f.Hint, Placeholder: f.Placeholder}
@@ -333,43 +333,48 @@ func (h *handler) integrationsView(ctx context.Context, problem string, in enter
 			if f.Select {
 				fv = selectView(fv, choices[f.Name])
 			}
-			sv.Fields = append(sv.Fields, fv)
+			sv.Rows = append(sv.Rows, rowView{Field: &fv})
+			sv.Rows = append(sv.Rows, secrets[f.Name]...)
 		}
-		for _, f := range s.Secrets {
-			st, err := h.Integrations.Store.SecretState(ctx, store.Field{Integration: s.Integration, Name: f.Name})
-			if err != nil {
-				// A failed read is not an unset secret: showing "Not set" would
-				// invite overwriting one that may be stored.
-				return integrationsView{}, fmt.Errorf("read state of %s %s: %w", s.Integration, f.Name, err)
-			}
-			sec := secretView{
-				Name: f.Name, Label: f.Label, State: stateUnset,
-				Action:      secretsPath + "/" + s.Integration + "/" + f.Name,
-				ClearAction: secretsPath + "/" + s.Integration + "/" + f.Name + "/clear",
-			}
-			switch st {
-			case store.StateSet:
-				sec.State, sec.Stored = stateSet, true
-			case store.StateUnreadable:
-				sec.State, sec.Stored = stateUnreadable, true
-			}
-			sv.Secrets = append(sv.Secrets, sec)
-		}
+		sv.Rows = append(sv.Rows, secrets[""]...)
 		v.Sections = append(v.Sections, sv)
 	}
 	return v, nil
 }
 
-// saveValues saves an integration's plain fields together. The section's
-// Validate runs first and a refusal saves nothing; a blank field is cleared.
+func (h *handler) secretView(ctx context.Context, integration string, f SecretField) (secretView, error) {
+	st, err := h.Integrations.Store.SecretState(ctx, store.Field{Integration: integration, Name: f.Name})
+	if err != nil {
+		// A failed read is not an unset secret: showing "Not set" would
+		// invite overwriting one that may be stored.
+		return secretView{}, fmt.Errorf("read state of %s %s: %w", integration, f.Name, err)
+	}
+	sec := secretView{
+		Name: f.Name, Label: f.Label, State: stateUnset, Tag: "unset",
+		ClearAction: secretsPath + "/" + integration + "/" + f.Name + "/clear",
+		ClearForm:   "clear-" + integration + "-" + f.Name,
+	}
+	switch st {
+	case store.StateSet:
+		sec.State, sec.Tag, sec.Saved, sec.Stored = stateSet, "ok", true, true
+	case store.StateUnreadable:
+		sec.State, sec.Tag, sec.Stored = stateUnreadable, "unreadable", true
+	}
+	return sec, nil
+}
+
+// saveValues saves an integration's form: its plain fields and its secrets,
+// together. A blank plain field is cleared; a blank secret keeps what is
+// stored, and a typed one replaces it. The section's Validate runs first,
+// counting a typed secret as set, and a refusal saves nothing.
 func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 	integration := chi.URLParam(r, "integration")
 	sec, ok := h.Integrations.section(integration)
-	if !ok || len(sec.Fields) == 0 {
+	if !ok {
 		layout.WriteError(w, r, layout.ErrNotFound)
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, int64(len(sec.Fields))*maxFormBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, int64(len(sec.Fields)+len(sec.Secrets))*maxFormBytes)
 	if err := r.ParseForm(); err != nil {
 		h.renderIntegrations(w, r, http.StatusBadRequest, "That form could not be read.", entered{})
 		return
@@ -382,6 +387,16 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 		}
 		values[f.Name] = strings.TrimSpace(r.PostForm.Get(f.Name))
 	}
+	// typed are the secrets given a value, in the section's order. A blank
+	// one is not among them and keeps what is stored.
+	var typed []SecretField
+	secrets := make(map[string]string, len(sec.Secrets))
+	for _, f := range sec.Secrets {
+		if v := r.PostForm.Get(f.Name); v != "" {
+			typed = append(typed, f)
+			secrets[f.Name] = v
+		}
+	}
 	refuse := func(msg string) {
 		h.renderIntegrations(w, r, http.StatusUnprocessableEntity, msg, entered{Integration: integration, Values: values})
 	}
@@ -391,9 +406,19 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	for _, f := range typed {
+		if len(secrets[f.Name]) > store.MaxValueBytes {
+			refuse(f.Label + " is too long.")
+			return
+		}
+	}
 	if sec.Validate != nil {
 		set := make(map[string]bool, len(sec.Secrets))
 		for _, sf := range sec.Secrets {
+			if _, ok := secrets[sf.Name]; ok {
+				set[sf.Name] = true
+				continue
+			}
 			st, err := h.Integrations.Store.SecretState(r.Context(), store.Field{Integration: integration, Name: sf.Name})
 			if err != nil {
 				layout.WriteError(w, r, fmt.Errorf("read state of %s %s: %w", integration, sf.Name, err))
@@ -406,11 +431,26 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// The first field is the one that turns the integration on (mail's host):
-	// clear it first and set it last, so a failure part way never leaves it on
-	// with the rest missing.
+	// The secrets are written before any plain field. The first plain field
+	// is the one that turns the integration on (mail's host): it is set last,
+	// so a failure part way never leaves it on with the rest missing. The
+	// encryption key is the same for every secret, so a missing one refuses
+	// the first and nothing has been written.
+	for _, f := range typed {
+		err := h.Integrations.Store.SetSecret(r.Context(), store.Field{Integration: integration, Name: f.Name}, secrets[f.Name])
+		switch {
+		case errors.Is(err, store.ErrNoKey):
+			refuse(f.Label + " was not saved: the encryption key is missing. Set the encryption key in the environment and restart.")
+			return
+		case err != nil:
+			layout.WriteError(w, r, fmt.Errorf("save %s %s: %w", integration, f.Name, err))
+			return
+		}
+	}
+	// A blank first field is cleared first, turning the integration off
+	// before the rest change.
 	order := slices.Clone(sec.Fields)
-	if values[order[0].Name] != "" {
+	if len(order) > 0 && values[order[0].Name] != "" {
 		order = append(order[1:], order[0])
 	}
 	for _, f := range order {
@@ -430,5 +470,5 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	h.secretOutcome(w, r, http.StatusOK, "")
+	h.savedOutcome(w, r)
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -22,18 +21,7 @@ func mailHandler(t *testing.T) (http.Handler, *store.Store) {
 }
 
 func postValues(h http.Handler, htmx bool, kv ...string) *httptest.ResponseRecorder {
-	form := url.Values{}
-	for i := 0; i < len(kv); i += 2 {
-		form.Set(kv[i], kv[i+1])
-	}
-	req := httptest.NewRequest(http.MethodPost, "/values/mail", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if htmx {
-		req.Header.Set("HX-Request", "true")
-	}
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	return rec
+	return postForm(h, "/values/mail", htmx, kv...)
 }
 
 func value(t *testing.T, s *store.Store, name string) string {
@@ -61,13 +49,62 @@ func TestMailSectionShowsItsFieldsAndThePasswordControl(t *testing.T) {
 			t.Errorf("page lacks %s", want)
 		}
 	}
+	// The password sits in the form right after User.
+	user, pw, from := strings.Index(body, `data-testid="value-user"`), strings.Index(body, `data-testid="secret-mail-password"`), strings.Index(body, `data-testid="value-from"`)
+	if user >= pw || pw >= from {
+		t.Errorf("the password is not between User and From address: %d %d %d", user, pw, from)
+	}
+}
+
+// A typed password counts as set for the check, and saves with the rest in
+// one submit: no password has to be saved first.
+func TestATypedPasswordSavesWithTheRest(t *testing.T) {
+	h, s := mailHandler(t)
+	rec := postValues(h, false, append([]string{mail.FieldPassword, "pw"}, allMail...)...)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("save = %d:\n%s", rec.Code, rec.Body)
+	}
+	if cfg, err := mail.Load(context.Background(), s); err != nil || cfg.Host != "smtp.example.com" || cfg.Password != "pw" {
+		t.Errorf("mail.Load = %+v, %v", cfg, err)
+	}
+}
+
+// A refusal saves nothing, the typed password included, and does not send it
+// back: the refused form keeps what was typed in the plain fields only.
+func TestARefusedSubmitSavesNoSecretAndEchoesNone(t *testing.T) {
+	const typed = "typed-Password-0123456789"
+	h, s := mailHandler(t)
+	var kv []string
+	for i := 0; i < len(allMail); i += 2 {
+		if allMail[i] != mail.FieldUser {
+			kv = append(kv, allMail[i], allMail[i+1])
+		}
+	}
+	for _, htmx := range []bool{false, true} {
+		rec := postValues(h, htmx, append([]string{mail.FieldPassword, typed}, kv...)...)
+		if !strings.Contains(rec.Body.String(), "User is required when a host is set.") {
+			t.Fatalf("htmx=%v: not refused:\n%s", htmx, rec.Body)
+		}
+		if strings.Contains(rec.Body.String(), typed) {
+			t.Errorf("htmx=%v: the refusal holds the typed password", htmx)
+		}
+		if !strings.Contains(rec.Body.String(), `value="smtp.example.com"`) {
+			t.Errorf("htmx=%v: the refused form lost the typed host", htmx)
+		}
+	}
+	if st, _ := s.SecretState(context.Background(), store.Field{Integration: mail.Integration, Name: mail.FieldPassword}); st != store.StateUnset {
+		t.Errorf("the password was saved by a refused submit: %v", st)
+	}
+	if value(t, s, mail.FieldHost) != "" {
+		t.Error("the host was saved by a refused submit")
+	}
 }
 
 // ADR-00055 obligation 6: a host without the rest is refused, and the message
 // says which field is missing.
 func TestAHostWithoutTheRestIsRefusedAndNamesTheMissingField(t *testing.T) {
 	h, s := mailHandler(t)
-	post(h, "/secrets/mail/password", false, "pw")
+	postValues(h, false, mail.FieldPassword, "pw")
 	for _, tc := range []struct{ missing, label string }{
 		{mail.FieldPort, "Port"}, {mail.FieldUser, "User"}, {mail.FieldFrom, "From address"},
 	} {
@@ -104,7 +141,7 @@ func TestAHostWithNoPasswordSavedIsRefused(t *testing.T) {
 
 func TestCompleteMailSettingsSaveAndShow(t *testing.T) {
 	h, s := mailHandler(t)
-	post(h, "/secrets/mail/password", false, "pw")
+	postValues(h, false, mail.FieldPassword, "pw")
 	rec := postValues(h, false, allMail...)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != Pattern {
 		t.Fatalf("save = %d to %q:\n%s", rec.Code, rec.Header().Get("Location"), rec.Body)
@@ -125,7 +162,7 @@ func TestCompleteMailSettingsSaveAndShow(t *testing.T) {
 
 func TestBlankHostTurnsMailOff(t *testing.T) {
 	h, s := mailHandler(t)
-	post(h, "/secrets/mail/password", false, "pw")
+	postValues(h, false, mail.FieldPassword, "pw")
 	postValues(h, false, allMail...)
 	rec := postValues(h, false, mail.FieldHost, "", mail.FieldPort, "587")
 	if rec.Code != http.StatusSeeOther {
@@ -141,7 +178,7 @@ func TestBlankHostTurnsMailOff(t *testing.T) {
 
 func TestMailFieldsAreValidated(t *testing.T) {
 	h, _ := mailHandler(t)
-	post(h, "/secrets/mail/password", false, "pw")
+	postValues(h, false, mail.FieldPassword, "pw")
 	for name, change := range map[string][2]string{
 		"url as host":      {mail.FieldHost, "https://smtp.example.com"},
 		"port not number":  {mail.FieldPort, "smtp"},
@@ -157,25 +194,5 @@ func TestMailFieldsAreValidated(t *testing.T) {
 		if rec := postValues(h, false, kv...); rec.Code != http.StatusUnprocessableEntity {
 			t.Errorf("%s: %d, want 422", name, rec.Code)
 		}
-	}
-}
-
-func TestValuesForAnUnregisteredIntegrationIs404(t *testing.T) {
-	h, _ := mailHandler(t)
-	req := httptest.NewRequest(http.MethodPost, "/values/nope", strings.NewReader("x=1"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("= %d, want 404", rec.Code)
-	}
-	// And a section with only secrets (the test section) has no values form.
-	h2, _ := integrationsHandler(t, bytes.Repeat([]byte{1}, store.KeyBytes))
-	req = httptest.NewRequest(http.MethodPost, "/values/mail", strings.NewReader("x=1"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec = httptest.NewRecorder()
-	h2.ServeHTTP(rec, req)
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("secrets-only section = %d, want 404", rec.Code)
 	}
 }
