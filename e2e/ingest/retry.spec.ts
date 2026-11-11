@@ -6,7 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { configureClaude, DEV_OPERATOR, ENCRYPTION_KEY, MODELS_LISTING, openSaved, pasteText } from './helpers';
+import { configureClaude, DEV_OPERATOR, ENCRYPTION_KEY, NO_OPENROUTER, MODELS_LISTING, openSaved, pasteText } from './helpers';
 
 // The LLM fallback (ADR-00006, ADR-00007), which fills gaps and never replaces
 // the rule-based draft (ADR-00020 decision 2). This spec starts its own gobbler
@@ -114,6 +114,7 @@ test.beforeAll(async () => {
       GOBBLER_DEV_AUTH_BYPASS: 'true',
       GOBBLER_ENCRYPTION_KEY: ENCRYPTION_KEY,
       GOBBLER_OPERATOR_EMAILS: DEV_OPERATOR,
+      GOBBLER_OPENROUTER_URL: NO_OPENROUTER,
       ANTHROPIC_BASE_URL: fakeURL,
     },
     stdio: 'inherit',

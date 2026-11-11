@@ -6,7 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { portFromEnv } from '../fixtures/ports.mjs';
-import { DEV_OPERATOR, ENCRYPTION_KEY, pasteText } from '../ingest/helpers';
+import { DEV_OPERATOR, ENCRYPTION_KEY, NO_OPENROUTER, pasteText } from '../ingest/helpers';
 
 // The LLM section of the Deployment page (ADR-00056, ADR-00057). This spec
 // starts its own gobbler with an encryption key, and points the Claude and
@@ -143,6 +143,7 @@ test.beforeAll(async () => {
       GOBBLER_DEV_AUTH_BYPASS: 'true',
       GOBBLER_ENCRYPTION_KEY: ENCRYPTION_KEY,
       GOBBLER_OPERATOR_EMAILS: DEV_OPERATOR,
+      GOBBLER_OPENROUTER_URL: NO_OPENROUTER,
       ANTHROPIC_BASE_URL: claudeURL,
       GOOGLE_GEMINI_BASE_URL: geminiURL,
     },

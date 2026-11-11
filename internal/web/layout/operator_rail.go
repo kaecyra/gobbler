@@ -13,6 +13,7 @@ const (
 	OperatorIngredients
 	OperatorEquipment
 	OperatorDeployment
+	OperatorUsage
 )
 
 // operatorItem is one entry of the operator rail.
@@ -33,6 +34,7 @@ var operatorSections = []operatorItem{
 	{OperatorIngredients, "Central ingredients", OperatorPath + "/ingredients", IconTag},
 	{OperatorEquipment, "Equipment", OperatorPath + "/equipment", IconPot},
 	{OperatorDeployment, "Deployment", OperatorPath + "/settings", IconGear},
+	{OperatorUsage, "LLM usage", OperatorPath + "/usage", IconSparkles},
 }
 
 // OperatorSectionPaths returns the path of every rail entry, in rail order, so

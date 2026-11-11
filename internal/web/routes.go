@@ -18,6 +18,7 @@ import (
 	apisharing "github.com/kaecyra/gobbler/internal/api/sharing"
 	apishop "github.com/kaecyra/gobbler/internal/api/shopping"
 	"github.com/kaecyra/gobbler/internal/apikey"
+	"github.com/kaecyra/gobbler/internal/llmusage"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/oauth"
 	"github.com/kaecyra/gobbler/internal/ratelimit"
@@ -225,7 +226,14 @@ func mountOperator(r chi.Router, d Deps, households operator.Households) {
 		}))
 		return
 	}
-	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: households, Suggestions: cat.Bind(caller.FromContext), Backup: d.Backup}))
+	usage, sync := d.LLMUsage, d.PriceSync
+	if usage == nil {
+		usage = llmusage.New(d.DB, nil)
+	}
+	if sync == nil {
+		sync = llmusage.NewSyncer(usage, d.Config.LLMUsage.OpenRouterURL, d.Logger)
+	}
+	r.Mount(operator.Pattern, operator.Routes(operator.Deps{Households: households, Suggestions: cat.Bind(caller.FromContext), Backup: d.Backup, Usage: usage, PriceSync: sync}))
 }
 
 // mountPromotion mounts the operator's review of overlay entries suggested for

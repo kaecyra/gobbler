@@ -84,3 +84,11 @@ sql:
       go:
         package: settingsdb
         out: internal/settings/settingsdb
+  - name: llmusage
+    engine: sqlite
+    schema: internal/db/migrations
+    queries: internal/llmusage/queries
+    gen:
+      go:
+        package: llmusagedb
+        out: internal/llmusage/llmusagedb

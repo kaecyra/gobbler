@@ -4,8 +4,10 @@
 // the next call with no restart (ADR-00056). The text task and the vision task
 // are set apart: Claude can answer one and Gemini the other.
 //
-// It also lists a provider's models for the Deployment page, with the stored
-// key.
+// Each call it makes is recorded with its tokens, latency, outcome and the
+// household it ran for (ADR-00058). A record that cannot be stored is logged
+// and does not fail the call. It also lists a provider's models for the
+// Deployment page, with the stored key.
 package router
 
 import (
@@ -16,14 +18,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/household"
 	"github.com/kaecyra/gobbler/internal/ingest"
 	"github.com/kaecyra/gobbler/internal/llm"
 	"github.com/kaecyra/gobbler/internal/llm/claude"
 	"github.com/kaecyra/gobbler/internal/llm/gemini"
+	"github.com/kaecyra/gobbler/internal/llmusage"
 )
 
 // listTimeout bounds one model listing, which the Deployment page waits for.
 const listTimeout = 15 * time.Second
+
+// recordTimeout bounds storing one call's record.
+const recordTimeout = 5 * time.Second
+
+// Recorder stores the record of one LLM call (ADR-00058).
+// *llmusage.Store satisfies it.
+type Recorder interface {
+	Record(ctx context.Context, c llmusage.Call) error
+}
 
 // Router implements ingest.Provider and ingest.Availability over the saved
 // settings. It holds no per-call state and is safe for concurrent use.
@@ -32,6 +46,7 @@ type Router struct {
 	log      *slog.Logger
 	claude   []claude.Option
 	gemini   []gemini.Option
+	recorder Recorder
 }
 
 var (
@@ -52,6 +67,11 @@ func WithClaudeOptions(opts ...claude.Option) Option {
 // every Gemini listing it makes.
 func WithGeminiOptions(opts ...gemini.Option) Option {
 	return func(r *Router) { r.gemini = append(r.gemini, opts...) }
+}
+
+// WithRecorder records every call the router makes. Without it none is.
+func WithRecorder(rec Recorder) Option {
+	return func(r *Router) { r.recorder = rec }
 }
 
 // New returns a Router over the saved settings in s. A nil log means
@@ -83,41 +103,97 @@ func (r *Router) Available(ctx context.Context, task ingest.Task) bool {
 	return err == nil || !errors.Is(err, llm.ErrNotConfigured)
 }
 
-// provider builds the provider the task names from the settings saved now.
-func (r *Router) provider(ctx context.Context, task llm.Task) (ingest.Provider, error) {
+// provider builds the provider the task names from the settings saved now, and
+// returns those settings.
+func (r *Router) provider(ctx context.Context, task llm.Task) (ingest.Provider, llm.Settings, error) {
 	s, err := llm.Load(ctx, r.settings, task)
 	if errors.Is(err, llm.ErrNotConfigured) {
-		return nil, fmt.Errorf("%w: %w", ingest.ErrNoProvider, err)
+		return nil, s, fmt.Errorf("%w: %w", ingest.ErrNoProvider, err)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("load %s LLM settings: %w", task, err)
+		return nil, s, fmt.Errorf("load %s LLM settings: %w", task, err)
 	}
+	var p ingest.Provider
 	switch s.Provider {
 	case llm.ProviderClaude:
-		return claude.New(ctx, s, r.log, r.claude...)
+		p, err = claude.New(ctx, s, r.log, r.claude...)
 	case llm.ProviderGemini:
-		return gemini.New(ctx, s, r.log, r.gemini...)
+		p, err = gemini.New(ctx, s, r.log, r.gemini...)
+	default:
+		err = fmt.Errorf("saved %s provider %q is not one of %v", task, s.Provider, llm.Providers)
 	}
-	return nil, fmt.Errorf("saved %s provider %q is not one of %v", task, s.Provider, llm.Providers)
+	return p, s, err
+}
+
+// call runs do, which makes the call on the provider s names, and records it.
+// Only a call that was made is recorded: a task with no LLM, or settings that
+// cannot build a provider, never reach it. The record is stored whatever the
+// call's context did, and a record that fails is logged and leaves the call's
+// own result as it is (ADR-00007, ADR-00058).
+func (r *Router) call(ctx context.Context, task llm.Task, s llm.Settings, do func(ctx context.Context) error) error {
+	if r.recorder == nil {
+		return do(ctx)
+	}
+	start := time.Now()
+	ctx, report := llm.WithUsageReport(ctx)
+	err := do(ctx)
+	u := report.Usage()
+	c := llmusage.Call{
+		At: start, Task: task, Provider: s.Provider, Model: s.Model,
+		Input: u.Input, Output: u.Output, Latency: time.Since(start),
+	}
+	if h, ok := household.FromContext(ctx); ok {
+		c.HouseholdID = h.ID
+	}
+	if err != nil {
+		c.Err = redact(err.Error(), s.APIKey)
+	}
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordTimeout)
+	defer cancel()
+	if rerr := r.recorder.Record(rctx, c); rerr != nil {
+		r.log.ErrorContext(ctx, "llm call not recorded; the call's result stands",
+			"task", task.String(), "provider", s.Provider, "model", s.Model, "error", redact(rerr.Error(), s.APIKey))
+	}
+	return err
+}
+
+// redact removes key from msg. A provider that echoes the key in an error must
+// not put it on a page or in a record (ADR-00057).
+func redact(msg string, key config.Secret) string {
+	if !key.IsSet() {
+		return msg
+	}
+	return strings.ReplaceAll(msg, key.Reveal(), "[REDACTED]")
 }
 
 // Structure sends req to the provider its task names: the vision task's when
 // it carries an image, the text task's otherwise.
 func (r *Router) Structure(ctx context.Context, req ingest.Request) (ingest.Structured, error) {
-	p, err := r.provider(ctx, taskOf(req.Task()))
+	task := taskOf(req.Task())
+	p, s, err := r.provider(ctx, task)
 	if err != nil {
 		return ingest.Structured{}, err
 	}
-	return p.Structure(ctx, req)
+	var out ingest.Structured
+	err = r.call(ctx, task, s, func(ctx context.Context) (err error) {
+		out, err = p.Structure(ctx, req)
+		return err
+	})
+	return out, err
 }
 
 // Transcribe reads the photo with the vision task's provider.
 func (r *Router) Transcribe(ctx context.Context, req ingest.TranscribeRequest) (string, error) {
-	p, err := r.provider(ctx, llm.TaskVision)
+	p, s, err := r.provider(ctx, llm.TaskVision)
 	if err != nil {
 		return "", err
 	}
-	return p.Transcribe(ctx, req)
+	var text string
+	err = r.call(ctx, llm.TaskVision, s, func(ctx context.Context) (err error) {
+		text, err = p.Transcribe(ctx, req)
+		return err
+	})
+	return text, err
 }
 
 // ErrNoKey means the provider's API key is unset or unreadable, so there is
@@ -150,7 +226,7 @@ func (r *Router) Models(ctx context.Context, provider string, task llm.Task) ([]
 	if err != nil {
 		// The message reaches the Deployment page; a provider that echoes the
 		// key in an error must not put it there (ADR-00057).
-		return nil, errors.New(strings.ReplaceAll(err.Error(), key.Reveal(), "[REDACTED]"))
+		return nil, errors.New(redact(err.Error(), key))
 	}
 	return models, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/kaecyra/gobbler/internal/config"
 	"github.com/kaecyra/gobbler/internal/db"
 	"github.com/kaecyra/gobbler/internal/llm/router"
+	"github.com/kaecyra/gobbler/internal/llmusage"
 	"github.com/kaecyra/gobbler/internal/mail"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/picture"
@@ -91,8 +92,16 @@ func serve(ctx context.Context, cfg config.Config, migrations fs.FS, listen list
 	deps := web.Deps{Config: cfg, DB: d, Media: pictureMedia, Backup: backups.Runner, BackupSecrets: backupSecrets(cfg), HealthDetails: settings.HealthDetails(backups.Runner)}
 	// The LLM is read from the same settings on every call, so a change on the
 	// Deployment page is in force on the next one (ADR-00056).
-	llmRouter := router.New(integrationSettings, slog.Default())
+	//
+	// Every call is recorded with its cost, and the model prices are synced
+	// daily from OpenRouter (ADR-00058).
+	usage := llmusage.New(d, llmusage.Configured{Values: integrationSettings})
+	llmRouter := router.New(integrationSettings, slog.Default(), router.WithRecorder(usage))
 	deps.LLM = llmRouter
+	priceSyncer := llmusage.NewSyncer(usage, cfg.LLMUsage.OpenRouterURL, slog.Default())
+	deps.LLMUsage, deps.PriceSync = usage, priceSyncer
+	priceSync := startPriceSync(ctx, dueSyncer{store: usage, syncer: priceSyncer}, priceSyncCheckEvery)
+	defer priceSync.Stop() // before the database closes
 	deps.Integrations = settings.Integrations{Store: integrationSettings, Sections: []settings.Section{
 		settings.LLMSection(settings.LLMDeps{Values: integrationSettings, Models: llmRouter}),
 		settings.MailSection(),

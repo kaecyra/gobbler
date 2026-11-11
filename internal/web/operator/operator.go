@@ -48,6 +48,9 @@ type Deps struct {
 	Households  Households
 	Suggestions Suggestions
 	Backup      BackupStatus
+	// Usage and PriceSync serve the LLM usage page (ADR-00058).
+	Usage     Usage
+	PriceSync PriceSyncer
 }
 
 type handler struct{ Deps }
@@ -61,6 +64,7 @@ func Routes(d Deps) chi.Router {
 	r.Post("/invitations", h.invite)
 	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/revoke", h.revoke)
 	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/resend", h.resend)
+	h.usageRoutes(r)
 	return r
 }
 

@@ -1,0 +1,237 @@
+package operator
+
+import "github.com/kaecyra/gobbler/internal/web/layout"
+
+templ usagePage(v usageView) {
+	@layout.OperatorPage("LLM usage", layout.OperatorUsage, "") {
+		<style>
+			.usage-windows { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+			.usage-stats .panel { display: flex; flex-direction: column; gap: 4px; }
+			.usage-stats h2 { font-size: 15px; color: var(--ink-3); margin: 0; }
+			.usage-stats .value { font-size: 28px; font-weight: 700; margin: 0; }
+			.usage-stats .hint { margin: 0; }
+			.pg .num { text-align: right; font-variant-numeric: tabular-nums; }
+			.pg .usage-section { margin-top: 16px; }
+			.pg .price-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+			.pg .price-form input[type=text] { width: 6.5rem; }
+			.pg .err { overflow-wrap: anywhere; min-width: 16rem; }
+			.pg .sync-line { margin: 0 0 8px; }
+		</style>
+		<div class="pg wide">
+			<div class="screen-h"><h1>LLM usage</h1></div>
+			if v.Problem != "" {
+				<p class="alert" role="alert" data-testid="usage-problem">{ v.Problem }</p>
+			}
+			<nav class="usage-windows" aria-label="Window" data-testid="usage-windows">
+				for _, w := range v.Windows {
+					<a
+						class={ "btn", templ.KV("primary", w.Current) }
+						href={ templ.SafeURL(w.Href) }
+						if w.Current {
+							aria-current="true"
+						}
+					>{ w.Label }</a>
+				}
+			</nav>
+			<div class="cards usage-stats" data-testid="usage-stats">
+				for _, s := range v.Stats {
+					<section class="panel" data-testid={ s.TestID }>
+						<h2>{ s.Label }</h2>
+						<p class="value" data-testid="stat-value">{ s.Value }</p>
+						if s.Note != "" {
+							<p class="hint" data-testid="stat-note">{ s.Note }</p>
+						}
+					</section>
+				}
+			</div>
+			<section class="panel usage-section" aria-labelledby="usage-model-h" data-testid="usage-by-model">
+				<h2 id="usage-model-h">By task and model</h2>
+				if len(v.ByModel) == 0 {
+					<p class="muted" data-testid="usage-empty">No calls in this window.</p>
+				} else {
+					<div class="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th scope="col">Task</th>
+									<th scope="col">Model</th>
+									<th scope="col" class="num">Calls</th>
+									<th scope="col" class="num">Tokens in</th>
+									<th scope="col" class="num">Tokens out</th>
+									<th scope="col" class="num">Failed</th>
+									<th scope="col" class="num">Cost</th>
+									<th scope="col" class="num">Unpriced</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, r := range v.ByModel {
+									<tr data-testid="usage-model-row">
+										<td>{ r.Task }</td>
+										<td>{ r.Provider } { r.Name }</td>
+										<td class="num">{ r.Calls }</td>
+										<td class="num">{ r.In }</td>
+										<td class="num">{ r.Out }</td>
+										<td class="num">{ r.Failed }</td>
+										<td class="num" data-testid="row-cost">{ r.Cost }</td>
+										<td class="num">{ r.Unpriced }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</section>
+			<section class="panel usage-section" aria-labelledby="usage-household-h" data-testid="usage-by-household">
+				<h2 id="usage-household-h">By household</h2>
+				if len(v.ByHousehold) == 0 {
+					<p class="muted">No calls in this window.</p>
+				} else {
+					<div class="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th scope="col">Household</th>
+									<th scope="col" class="num">Calls</th>
+									<th scope="col" class="num">Tokens in</th>
+									<th scope="col" class="num">Tokens out</th>
+									<th scope="col" class="num">Failed</th>
+									<th scope="col" class="num">Cost</th>
+									<th scope="col" class="num">Unpriced</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, r := range v.ByHousehold {
+									<tr data-testid="usage-household-row">
+										<td>{ r.Name }</td>
+										<td class="num">{ r.Calls }</td>
+										<td class="num">{ r.In }</td>
+										<td class="num">{ r.Out }</td>
+										<td class="num">{ r.Failed }</td>
+										<td class="num" data-testid="row-cost">{ r.Cost }</td>
+										<td class="num">{ r.Unpriced }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</section>
+			<section class="panel usage-section" aria-labelledby="usage-failures-h" data-testid="usage-failures">
+				<h2 id="usage-failures-h">Recent failures</h2>
+				if len(v.Failures) == 0 {
+					<p class="muted">No failed calls in this window.</p>
+				} else {
+					<div class="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th scope="col">When</th>
+									<th scope="col">Task</th>
+									<th scope="col">Model</th>
+									<th scope="col">Household</th>
+									<th scope="col">Error</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, f := range v.Failures {
+									<tr data-testid="usage-failure-row">
+										<td>{ f.At }</td>
+										<td>{ f.Task }</td>
+										<td>{ f.Model }</td>
+										<td>{ f.Household }</td>
+										<td class="err" data-testid="failure-error">{ f.Error }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</section>
+			<section class="panel usage-section" aria-labelledby="usage-prices-h" data-testid="usage-prices">
+				<h2 id="usage-prices-h">Prices</h2>
+				<p class="sync-line" data-testid="sync-success">
+					if v.Sync.Success != "" {
+						Last sync: <time>{ v.Sync.Success }</time>
+					} else {
+						No sync has succeeded yet.
+					}
+				</p>
+				if v.Sync.Failure != "" {
+					<p
+						class={ "sync-line", templ.KV("alert", v.Sync.FailureIsLatest) }
+						data-testid="sync-failure"
+						if v.Sync.FailureIsLatest {
+							role="alert"
+						}
+					>Last failure: <time>{ v.Sync.Failure }</time>. { v.Sync.Error }</p>
+				}
+				<form method="post" action={ templ.SafeURL(UsagePath + "/sync") } class="sync-line">
+					<input type="hidden" name="window" value={ v.Window }/>
+					<button type="submit" class="btn accent" data-testid="sync-now">Sync now</button>
+				</form>
+				if len(v.Prices) == 0 {
+					<p class="muted">No model has been used or chosen yet.</p>
+				} else {
+					<div class="table-wrap">
+						<table data-testid="price-table">
+							<thead>
+								<tr>
+									<th scope="col">Model</th>
+									<th scope="col" class="num">Input per million</th>
+									<th scope="col" class="num">Output per million</th>
+									<th scope="col">Source</th>
+									<th scope="col">Set price in dollars per million</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, p := range v.Prices {
+									<tr data-testid="price-row">
+										<td>{ providerLabel(p.Provider) } { p.Model }</td>
+										if p.Priced {
+											<td class="num" data-testid="price-input">{ p.Input }</td>
+											<td class="num" data-testid="price-output">{ p.Output }</td>
+											<td data-testid="price-source">
+												{ p.Source }
+												if p.Synced != "" {
+													<span class="hint"><time>{ p.Synced }</time></span>
+												}
+											</td>
+										} else {
+											<td class="num muted" data-testid="price-input">Unpriced</td>
+											<td class="num muted" data-testid="price-output">Unpriced</td>
+											<td class="muted" data-testid="price-source">None</td>
+										}
+										<td>
+											<form method="post" action={ templ.SafeURL(UsagePath + "/prices") } class="price-form">
+												<input type="hidden" name="window" value={ v.Window }/>
+												<input type="hidden" name="provider" value={ p.Provider }/>
+												<input type="hidden" name="model" value={ p.Model }/>
+												<input type="text" name="input" value={ p.InputRaw } inputmode="decimal" autocomplete="off" spellcheck="false" aria-label={ "Input price for " + p.Model } data-testid="price-input-field"/>
+												<input type="text" name="output" value={ p.OutputRaw } inputmode="decimal" autocomplete="off" spellcheck="false" aria-label={ "Output price for " + p.Model } data-testid="price-output-field"/>
+												<button type="submit" class="btn" data-testid="price-save">Set</button>
+											</form>
+											if p.Priced {
+												<form method="post" action={ templ.SafeURL(UsagePath + "/prices/clear") } class="price-form">
+													<input type="hidden" name="window" value={ v.Window }/>
+													<input type="hidden" name="provider" value={ p.Provider }/>
+													<input type="hidden" name="model" value={ p.Model }/>
+													<button type="submit" class="btn ghost" data-testid="price-clear">
+														if p.Manual {
+															Use synced price
+														} else {
+															Remove price
+														}
+													</button>
+												</form>
+											}
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</section>
+		</div>
+	}
+}

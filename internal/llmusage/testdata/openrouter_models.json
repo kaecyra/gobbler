@@ -1,0 +1,37 @@
+{
+  "_fixture": "Hand-built in the wire shape of GET https://openrouter.ai/api/v1/models, not a capture: the build has no egress. Model ids and prices are invented for the tests, not real. Prices are US dollars per token, as strings, as OpenRouter sends them.",
+  "data": [
+    {
+      "id": "anthropic/fixture-claude-model",
+      "name": "Anthropic: Fixture Claude",
+      "context_length": 200000,
+      "pricing": {"prompt": "0.000003", "completion": "0.000015", "request": "0", "image": "0"}
+    },
+    {
+      "id": "google/fixture-gemini-model",
+      "name": "Google: Fixture Gemini",
+      "context_length": 1000000,
+      "pricing": {"prompt": "0.0000003", "completion": "0.0000025", "request": "0", "image": "0"}
+    },
+    {
+      "id": "anthropic/fixture-claude-model:extended",
+      "name": "Anthropic: Fixture Claude (extended)",
+      "pricing": {"prompt": "0.000009", "completion": "0.000045"}
+    },
+    {
+      "id": "anthropic/fixture-dotted-4.5",
+      "name": "Anthropic: Fixture Dotted 4.5",
+      "pricing": {"prompt": "0.000001", "completion": "0.000005"}
+    },
+    {
+      "id": "openai/fixture-other-vendor",
+      "name": "OpenAI: Fixture",
+      "pricing": {"prompt": "0.000002", "completion": "0.000008"}
+    },
+    {
+      "id": "google/fixture-variable-price",
+      "name": "Google: Fixture variable",
+      "pricing": {"prompt": "-1", "completion": "-1"}
+    }
+  ]
+}
