@@ -157,8 +157,11 @@ type Saved struct {
 // source. The catalog entries created above are separate and stay.
 func (s *Saver) Save(ctx context.Context, c Confirmed) (Saved, error) {
 	return s.save(ctx, c, func(r recipe.Recipe) (int64, error) {
-		return s.recipes.CreateWithSnapshots(ctx, r,
-			store.SnapshotInput{Kind: c.draft.Source.Kind, Content: c.draft.Source.Content, ParserVersion: c.draft.ParserVersion})
+		snaps := []store.SnapshotInput{{Kind: c.draft.Source.Kind, Content: c.draft.Source.Content, ParserVersion: c.draft.ParserVersion}}
+		if c.draft.Source.CheckText != "" {
+			snaps = append(snaps, store.SnapshotInput{Kind: store.SnapshotOCRCheck, Content: []byte(c.draft.Source.CheckText), ParserVersion: c.draft.ParserVersion})
+		}
+		return s.recipes.CreateWithSnapshots(ctx, r, snaps...)
 	})
 }
 

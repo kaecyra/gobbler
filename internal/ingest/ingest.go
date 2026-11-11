@@ -3,7 +3,9 @@
 //
 // The pipeline is acquire, extract, parse, score, draft. Every step before the
 // review screen is rule-based and deterministic: the same input and the same
-// ParserVersion produce the same Draft. A line or field the rules cannot read
+// ParserVersion produce the same Draft. The one LLM step ahead of the rules is a
+// photo's transcription (ADR-00053); its output is the stored source, and the
+// rules structure it. A line or field the rules cannot read
 // is low confidence on the Draft, never an error; an error means the pipeline
 // itself broke (the fetch failed, the catalog could not be read).
 //
@@ -128,18 +130,68 @@ func (p *Pipeline) FromText(ctx context.Context, text string) (Draft, error) {
 	return p.draftWithFallback(ctx, newSource(store.SnapshotText, "", []byte(text)), res)
 }
 
-// FromOCR drafts a recipe from a photo. text is what OCR read from image; it
-// is the source snapshot, stored as SnapshotOCR, and goes through the same
-// sectioning, parsing, scoring and fallback as pasted text. The image is held
-// on the draft's Source in memory only, so that a draft below the threshold, or
-// one the user asks to retry, can show the photo to a vision-capable provider
-// (ADR-00006); it is never saved.
+// FromOCR drafts a recipe from a photo. text is what tesseract read from
+// image. With no provider configured, text is the source snapshot, stored as
+// SnapshotOCR, and goes through the same sectioning, parsing, scoring and
+// fallback as pasted text.
+//
+// With a provider, a vision model first transcribes the photo, and the
+// transcript is the source snapshot instead; the rule parser structures it
+// unchanged, and text is kept beside it as the check on its numbers: an
+// ingredient line whose number text never read falls below the threshold, so
+// the gap-fill fallback shows it the photo (ADR-00053). A transcription that
+// fails, times out or comes back blank is logged and the draft is made from text
+// alone; so is a photo over maxVisionImageBytes.
+//
+// The image is held on the draft's Source in memory only, so that a draft below
+// the threshold, or one the user asks to retry, can show the photo to a
+// vision-capable provider (ADR-00006); it is never saved.
 func (p *Pipeline) FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (Draft, error) {
 	if strings.TrimSpace(text) == "" {
 		return Draft{}, fmt.Errorf("photo text: %w", parse.ErrEmptyText)
 	}
-	res := extract.Result{Method: extract.MethodText, Text: text}
-	src := newSource(store.SnapshotOCR, "", []byte(text))
-	src.Image, src.ImageMIME = image, imageMIME
+	content, check := text, ""
+	if transcript, ok := p.transcribe(ctx, image, imageMIME); ok {
+		content, check = transcript, text
+	}
+	return p.fromPhotoSource(ctx, content, check, image, imageMIME)
+}
+
+// fromPhotoSource drafts a photo's recipe from its stored source: content is
+// the ocr snapshot and check the ocr_check snapshot, empty when there is none.
+// It is what FromOCR runs after reading the photo, and the entry a replay of
+// the two snapshots uses, so a replay cannot differ from the original draft
+// (ADR-00048, ADR-00053). image may be empty.
+func (p *Pipeline) fromPhotoSource(ctx context.Context, content, check string, image []byte, imageMIME string) (Draft, error) {
+	res := extract.Result{Method: extract.MethodText, Text: content}
+	src := newSource(store.SnapshotOCR, "", []byte(content))
+	src.Image, src.ImageMIME, src.CheckText = image, imageMIME, check
 	return p.draftWithFallback(ctx, src, res)
+}
+
+// transcribe asks the provider for the photo's text. It reports false when
+// there is no provider or nothing to send, which is the normal no-LLM path and
+// needs no log, and when the photo is too large or the provider could not read
+// the page, which it logs. The degraded draft from the tesseract text is still
+// reviewable, so none of these is an error (error-handling: fall back only when
+// the degraded result is useful).
+func (p *Pipeline) transcribe(ctx context.Context, image []byte, imageMIME string) (string, bool) {
+	if p.deps.Provider == nil || len(image) == 0 {
+		return "", false
+	}
+	log := p.Fallback().log()
+	if len(image) > maxVisionImageBytes {
+		log.WarnContext(ctx, "photo not transcribed, using the OCR text only",
+			"reason", "image_over_provider_limit", "image_bytes", len(image), "limit_bytes", maxVisionImageBytes)
+		return "", false
+	}
+	transcript, err := p.deps.Provider.Transcribe(ctx, TranscribeRequest{Image: image, ImageMIME: imageMIME})
+	if err == nil && strings.TrimSpace(transcript) == "" {
+		err = errors.New("the transcript is empty")
+	}
+	if err != nil {
+		log.WarnContext(ctx, "photo transcription failed, using the OCR text only", "error", err.Error())
+		return "", false
+	}
+	return transcript, true
 }

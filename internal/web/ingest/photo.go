@@ -25,7 +25,8 @@ type TextReader interface {
 }
 
 // photoTypes are the image types accepted, by sniffed media type. The same
-// bytes go to tesseract and, on fallback, to the vision provider, so this is
+// bytes go to tesseract and, when a provider is configured, to it for
+// transcription and again on fallback, so this is
 // the intersection of what tesseract, Anthropic (JPEG, PNG, GIF, WebP:
 // https://platform.claude.com/docs/en/build-with-claude/vision) and Gemini
 // (PNG, JPEG, WebP, HEIC, HEIF: https://ai.google.dev/gemini-api/docs/image-understanding)
@@ -36,7 +37,7 @@ var photoTypes = map[string]bool{
 	"image/webp": true,
 }
 
-// PhotoDrafter drafts a recipe from OCR text and the photo it came from;
+// PhotoDrafter drafts a recipe from tesseract's text and the photo it came from;
 // *apiingest.Bound satisfies it.
 type PhotoDrafter interface {
 	FromOCR(ctx context.Context, text string, image []byte, imageMIME string) (apiingest.Draft, error)
@@ -51,10 +52,11 @@ func (h *handler) photoForm(w http.ResponseWriter, r *http.Request) {
 	layout.Render(w, r, http.StatusOK, photoPage(photoView{}))
 }
 
-// photoSubmit reads the uploaded photo with OCR and feeds the text through the
-// same pipeline as pasted text, so it gets the same extraction, scoring and
-// fallback, and then the review screen. The photo is never saved: only the OCR
-// text is the draft's source snapshot. The photo is held in memory beside the
+// photoSubmit reads the uploaded photo with OCR and hands the text and the
+// photo to the pipeline, which feeds the text, or a vision model's transcript of
+// the photo when a provider is configured, through the same extraction, scoring
+// and fallback as pasted text, and then the review screen (ADR-00053). The
+// photo is never saved: only the text is the draft's source snapshot. The photo is held in memory beside the
 // draft (apiingest.Photos), for the vision fallback and retry, until it expires,
 // the draft ends or the process restarts (ADR-00035). Nothing is saved here.
 func (h *handler) photoSubmit(w http.ResponseWriter, r *http.Request) {

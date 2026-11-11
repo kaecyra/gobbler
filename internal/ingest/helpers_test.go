@@ -132,6 +132,13 @@ func (s *providerSpy) Structure(context.Context, Request) (Structured, error) {
 	return Structured{}, nil
 }
 
+func (s *providerSpy) Transcribe(context.Context, TranscribeRequest) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls++
+	return "", nil
+}
+
 func (s *providerSpy) count() int { s.mu.Lock(); defer s.mu.Unlock(); return s.calls }
 
 // roundTripFunc adapts a function to HTTPClient.

@@ -1,6 +1,6 @@
 # ADR-00006: Rule-first ingestion with confidence-gated LLM fallback and mandatory review
 
-**Status:** Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md), [ADR-00034](00034-mcp-server.md)
+**Status:** Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md), [ADR-00034](00034-mcp-server.md), [ADR-00053](00053-photo-vision-transcription.md)
 
 **Date:** 2026-10-06
 
@@ -27,12 +27,21 @@ Options considered:
 - **For photos, LLM vision first.** Rejected in favour of local OCR first, for
   the same determinism and cost reasons; vision is the fallback.
 
+  > Amended by [ADR-00053](00053-photo-vision-transcription.md): with a
+  > provider configured, vision transcribes the photo first and the rules
+  > structure the transcript; `tesseract` checks its numbers.
+
 ## Decision
 
 ### Pipeline
 
 1. **Acquire.** URL: fetch the page. Text: as given. Photo: run `tesseract`
    OCR locally to get text.
+
+   > Amended by [ADR-00053](00053-photo-vision-transcription.md): with a
+   > provider configured, a vision model transcribes the photo and the
+   > transcript is the text; `tesseract` still runs, as a check on its
+   > numbers.
 2. **Extract** (rule-based):
    - URL: JSON-LD `Recipe`, then microdata, then site-specific extractors for
      sites that publish neither. If none match, treat the page's main text as
@@ -54,6 +63,10 @@ Options considered:
    > Amended by [ADR-00020](00020-ingest-step-graph-gap-fill-review.md): the
    > fallback sends only the below-threshold lines and fields and replaces only
    > those.
+
+   > Amended by [ADR-00053](00053-photo-vision-transcription.md): a photo's
+   > lines whose numbers `tesseract` did not read are below the threshold, so
+   > the fallback sends them with the photo.
 6. **Review.** The draft, rule-based or LLM-assisted, is shown on a review
    screen with low-confidence items highlighted and LLM-supplied values marked.
    Nothing is saved until the user confirms.
@@ -74,6 +87,8 @@ text parser or the fallback.
 1. No code path saves an ingested recipe without the review step.
 2. The LLM is called only when the score is below the threshold or the user
    asks; a test proves a high-confidence input makes no provider call.
+   (Amended by [ADR-00053](00053-photo-vision-transcription.md): a photo is
+   first transcribed by the provider when one is configured.)
 3. The ingredient-line parser has a golden-file corpus of real lines with
    expected structured output, run in the test suite.
 4. LLM-supplied values are distinguishable from rule-parsed values on the

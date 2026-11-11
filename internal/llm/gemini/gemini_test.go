@@ -107,6 +107,39 @@ func TestContract(t *testing.T) {
 	})
 }
 
+func TestTranscribeContract(t *testing.T) {
+	llmtest.RunTranscribeContract(t, func(t *testing.T, env llmtest.Env) ingest.Provider {
+		return newProvider(t, env, fakeBackend(t, env.Scenario, nil))
+	})
+}
+
+// ADR-00053: a transcription goes to the vision model with the photo inline, asks
+// for text, and sets no response schema, so the model cannot structure the page.
+func TestTranscribeRequestShape(t *testing.T) {
+	seen := make(chan recorded, 1)
+	sc := llmtest.Scenario{Behavior: llmtest.Respond, Payload: []byte("Toast\n2 slices bread"), Input: 1, Output: 1}
+	env := llmtest.Env{Scenario: sc, Timeout: 5 * time.Second, Logger: discardLogger(), APIKey: llmtest.SentinelAPIKey}
+	p := newProvider(t, env, fakeBackend(t, sc, seen))
+	got, err := p.Transcribe(context.Background(), ingest.TranscribeRequest{Image: []byte{1, 2, 3}, ImageMIME: "image/png"})
+	if err != nil || got != "Toast\n2 slices bread" {
+		t.Fatalf("Transcribe = %q, %v", got, err)
+	}
+	rec := <-seen
+	if !strings.Contains(rec.path, visionModel+":generateContent") {
+		t.Errorf("path %q does not name the vision model", rec.path)
+	}
+	body := mustJSON(t, rec.body)
+	if !strings.Contains(body, `"inlineData"`) {
+		t.Errorf("no inlineData image part: %s", body)
+	}
+	if strings.Contains(body, "responseSchema") || strings.Contains(body, "responseMimeType") {
+		t.Errorf("a transcription must not constrain the answer to a schema: %s", body)
+	}
+	if !strings.Contains(body, "Do not interpret") {
+		t.Errorf("system prompt does not forbid interpretation: %s", body)
+	}
+}
+
 func structure(t *testing.T, req ingest.Request) recorded {
 	t.Helper()
 	payload := `{"name":"Toast","components":[{"ingredients":["2 slices bread"]}]}`

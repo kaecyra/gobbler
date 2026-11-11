@@ -78,6 +78,30 @@ func (f fakeProvider) Structure(ctx context.Context, req ingest.Request) (ingest
 	return s, err
 }
 
+// Transcribe is the reference transcription: the payload, trimmed.
+func (f fakeProvider) Transcribe(ctx context.Context, _ ingest.TranscribeRequest) (string, error) {
+	start := time.Now()
+	ctx, cancel := context.WithTimeout(ctx, f.env.Timeout)
+	defer cancel()
+	var (
+		text string
+		err  error
+	)
+	switch f.env.Scenario.Behavior {
+	case Hang:
+		<-ctx.Done()
+		err = fmt.Errorf("transcribe: %w", ctx.Err())
+	case Unavailable:
+		err = errors.New("backend unavailable: 503")
+	default:
+		if text = strings.TrimSpace(string(f.env.Scenario.Payload)); text == "" {
+			err = errors.New("the model returned no text")
+		}
+	}
+	f.log(start, err)
+	return text, err
+}
+
 func (f fakeProvider) log(start time.Time, err error) {
 	if f.fault == noLog {
 		return
@@ -190,6 +214,12 @@ func factoryFor(fault mutant) Factory {
 // package and passes a provider that keeps the contract.
 func TestRunContractAcceptsCorrectProvider(t *testing.T) {
 	RunContract(t, factoryFor(correct))
+}
+
+// TestRunTranscribeContractAcceptsCorrectProvider shows the transcription suite
+// passes a provider that keeps its contract.
+func TestRunTranscribeContractAcceptsCorrectProvider(t *testing.T) {
+	RunTranscribeContract(t, factoryFor(correct))
 }
 
 // TestContractMutant is the body the subprocess in TestSuiteCatchesBrokenProviders

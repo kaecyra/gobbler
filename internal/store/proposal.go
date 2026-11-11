@@ -764,6 +764,9 @@ func (s *Store) CreateFromDraft(ctx context.Context, token string, r recipe.Reci
 		if err := attachSnapshot(ctx, q, hid, row.SnapshotID.Int64, id); err != nil {
 			return err
 		}
+		if err := writeCheckSnapshot(ctx, s, q, hid, id, who, row); err != nil {
+			return err
+		}
 		n, err := q.AcceptDraft(ctx, storedb.AcceptDraftParams{ResultRecipeID: nullID(id), StateAt: s.stamp(), ID: row.ID, HouseholdID: hid})
 		if err != nil {
 			return fmt.Errorf("accept draft: %w", err)
@@ -777,6 +780,25 @@ func (s *Store) CreateFromDraft(ctx context.Context, token string, r recipe.Reci
 		return 0, err
 	}
 	return id, nil
+}
+
+// writeCheckSnapshot stores the tesseract text a photo draft's document carries
+// as recipe id's ocr_check snapshot, beside the transcript just attached, at the
+// transcript's parser version (ADR-00053). A draft with no check text writes
+// nothing.
+func writeCheckSnapshot(ctx context.Context, s *Store, q *storedb.Queries, hid, id int64, who string, row storedb.GetProposalRow) error {
+	text, err := draftCheckText([]byte(row.Document))
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrCorrupt, err)
+	}
+	if text == "" {
+		return nil
+	}
+	snap, err := q.GetSnapshotByID(ctx, storedb.GetSnapshotByIDParams{ID: row.SnapshotID.Int64, HouseholdID: hid})
+	if err != nil {
+		return readErr("snapshot of draft", err)
+	}
+	return s.insertVersionedSnapshot(ctx, q, hid, id, SnapshotInput{Kind: SnapshotOCRCheck, Content: []byte(text), ParserVersion: snap.ParserVersion}, who)
 }
 
 // attachSnapshot gives the snapshot with id, which must have no recipe, to

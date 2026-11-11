@@ -9,12 +9,24 @@ import (
 
 // Provider is the LLM provider this package consumes (ADR-00007): given the
 // source and the gaps in the rule-based draft (ADR-00020), it returns the
-// recipe in the ingestion schema. Each provider (Claude, Gemini) implements it in its own package with
-// its own SDK; this package never imports one. Implementations apply the
+// recipe in the ingestion schema; given a photo, it returns the page's text
+// (ADR-00053). Each provider (Claude, Gemini) implements it in its own package
+// with its own SDK; this package never imports one. Implementations apply the
 // configured timeout and model, validate the response against the schema and
 // return an error for an invalid one, never a partial Structured.
 type Provider interface {
 	Structure(ctx context.Context, req Request) (Structured, error)
+	// Transcribe reads the page in req's photo word for word, in reading order,
+	// with the vision model. It returns the text only: it does not interpret,
+	// convert, reword or structure anything, and an answer with no text is an
+	// error.
+	Transcribe(ctx context.Context, req TranscribeRequest) (string, error)
+}
+
+// TranscribeRequest is a photo to read into text.
+type TranscribeRequest struct {
+	Image     []byte
+	ImageMIME string
 }
 
 // Request is what a provider is asked to structure.
