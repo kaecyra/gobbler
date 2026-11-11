@@ -12,7 +12,7 @@ import (
 // usageMigration is the migration that adds the call record and the price
 // table (ADR-00058 obligation 1): the only place its number is written in a
 // test, so renumbering it changes one literal.
-const usageMigration = "99999"
+const usageMigration = "00043"
 
 // The migration applies over the schema as it stood before it, and the schema
 // refuses the rows the package must never write: an error with no message or a
