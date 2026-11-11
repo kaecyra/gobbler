@@ -188,3 +188,14 @@ test('a private or removed video is said so on the form', async ({ page }) => {
   await readLink(page, ID_GONE);
   await expect(page.getByRole('alert')).toContainText('private or has been removed');
 });
+
+for (const host of ['instagram.com', 'www.instagram.com', 'm.instagram.com']) {
+  test(`an Instagram link on ${host} is refused with the paste-the-caption message`, async ({ page }) => {
+    await page.goto('/ingest');
+    await page.getByLabel('Recipe URL').fill(`https://${host}/p/Cabc123/`);
+    await page.getByRole('button', { name: 'Read recipe' }).click();
+    await expect(page.getByRole('alert')).toContainText('Instagram links cannot be read. Paste the caption as text instead.');
+    await expect(page).toHaveURL(/\/ingest$/);
+    expect(asked).toEqual([]);
+  });
+}

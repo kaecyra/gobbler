@@ -139,6 +139,9 @@ const (
 var (
 	// ErrFetch is a page that could not be fetched (ingest.ErrFetch).
 	ErrFetch = domain.ErrFetch
+	// ErrPasteOnly is a link gobbler declines to fetch because its recipe can
+	// only be pasted (ingest.ErrPasteOnly). It also wraps ErrFetch.
+	ErrPasteOnly = domain.ErrPasteOnly
 	// ErrDraftGone is a draft that expired or was discarded
 	// (ingest.ErrDraftGone).
 	ErrDraftGone = domain.ErrDraftGone

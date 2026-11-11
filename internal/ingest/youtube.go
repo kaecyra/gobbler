@@ -29,6 +29,31 @@ type DescriptionSource interface {
 	Fetch(ctx context.Context, id string) (video.Description, error)
 }
 
+// ErrPasteOnly is returned (wrapped) for a link gobbler declines to fetch
+// because its recipe can only be pasted: an Instagram post's page is a sign-in
+// wall (ADR-00054). It wraps ErrFetch, so every caller that already reports a
+// failed fetch reports it, and the message tells the person what to do.
+var ErrPasteOnly = errors.New("this site cannot be read from a link")
+
+type pasteOnlyError struct{ msg string }
+
+func (e pasteOnlyError) Error() string   { return ErrFetch.Error() + ": " + e.msg }
+func (e pasteOnlyError) Unwrap() []error { return []error{ErrFetch, ErrPasteOnly} }
+
+// checkPasteOnly refuses an Instagram link (instagram.com and every subdomain,
+// www. and m. included) before anything is fetched.
+func checkPasteOnly(rawURL string) error {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return nil // the fetch reports a malformed URL
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	if host == "instagram.com" || strings.HasSuffix(host, ".instagram.com") {
+		return pasteOnlyError{msg: "Instagram links cannot be read. Paste the caption as text instead"}
+	}
+	return nil
+}
+
 // youTubeVideoID returns the video ID of rawURL when it is a YouTube video
 // link (not a bare ID).
 func youTubeVideoID(rawURL string) (string, bool) {

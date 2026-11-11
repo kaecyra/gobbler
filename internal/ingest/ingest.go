@@ -104,12 +104,16 @@ func (p *Pipeline) draftWithFallback(ctx context.Context, src Source, res extrac
 }
 
 // FromURL fetches the page at rawURL and drafts the recipe on it. A failed or
-// timed-out fetch is an error wrapping ErrFetch.
+// timed-out fetch is an error wrapping ErrFetch, as is an Instagram link, which
+// is refused before any fetch (ErrPasteOnly, ADR-00054).
 //
 // A YouTube video link, with a Data API key saved, is drafted from the video's
 // description or the recipe page it links (ADR-00054); with none saved it is
 // fetched as any page.
 func (p *Pipeline) FromURL(ctx context.Context, rawURL string) (Draft, error) {
+	if err := checkPasteOnly(rawURL); err != nil {
+		return Draft{}, err
+	}
 	if id, ok := youTubeVideoID(rawURL); ok && p.deps.Descriptions != nil {
 		if d, handled, err := p.fromYouTube(ctx, rawURL, id); handled {
 			return d, err

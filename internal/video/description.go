@@ -151,26 +151,53 @@ func redact(s, key string) string {
 }
 
 // apiError turns a non-200 answer into one of the package's errors, by the
-// reason in the body (error.errors[].reason).
+// reasons in the body: the classic error.errors[].reason, and the reason of a
+// google.rpc.ErrorInfo in error.details[] that current Google APIs add (an
+// invalid key is 400 with details reason API_KEY_INVALID; a key restricted
+// away from the API API_KEY_SERVICE_BLOCKED; a disabled API SERVICE_DISABLED).
+//
+// Checked 2026-11-11: the ErrorInfo shape (@type, reason, domain, metadata) in
+// error.details[] is as google.aip.dev/193 gives it, and the classic reasons
+// quotaExceeded, keyInvalid, accessNotConfigured and videoNotFound are on
+// developers.google.com/youtube/v3/docs/core_errors. The three UPPER_SNAKE
+// reasons are in neither page and rest on the reviewer's report of live
+// answers; an unlisted reason falls to ErrLookup, never to a silent success.
+// rateLimitExceeded and userRateLimitExceeded are short-window limits, not the
+// day's quota, so they are ErrLookup and the person is not told to wait a day.
 func apiError(status int, body []byte, id string) error {
 	var e struct {
 		Error struct {
 			Errors []struct {
 				Reason string `json:"reason"`
 			} `json:"errors"`
+			Details []struct {
+				Reason string `json:"reason"`
+			} `json:"details"`
 		} `json:"error"`
 	}
-	reason := ""
-	if json.Unmarshal(body, &e) == nil && len(e.Error.Errors) > 0 {
-		reason = e.Error.Errors[0].Reason
+	var reasons []string
+	if json.Unmarshal(body, &e) == nil {
+		for _, r := range e.Error.Errors {
+			reasons = append(reasons, r.Reason)
+		}
+		for _, d := range e.Error.Details {
+			reasons = append(reasons, d.Reason)
+		}
 	}
-	switch reason {
-	case "quotaExceeded", "dailyLimitExceeded", "rateLimitExceeded", "userRateLimitExceeded":
-		return fmt.Errorf("%w (status %d, %s)", ErrQuota, status, reason)
-	case "keyInvalid", "keyExpired", "accessNotConfigured", "ipRefererBlocked", "referrerBlocked":
-		return fmt.Errorf("%w (status %d, %s)", ErrKeyRejected, status, reason)
-	case "videoNotFound":
-		return fmt.Errorf("%w: %s", ErrVideoUnavailable, id)
+	for _, reason := range reasons {
+		switch reason {
+		case "quotaExceeded", "dailyLimitExceeded":
+			return fmt.Errorf("%w (status %d, %s)", ErrQuota, status, reason)
+		case "keyInvalid", "keyExpired", "accessNotConfigured", "ipRefererBlocked", "referrerBlocked",
+			"API_KEY_INVALID", "API_KEY_SERVICE_BLOCKED", "SERVICE_DISABLED":
+			return fmt.Errorf("%w (status %d, %s)", ErrKeyRejected, status, reason)
+		case "videoNotFound":
+			return fmt.Errorf("%w: %s", ErrVideoUnavailable, id)
+		}
+	}
+	reason := ""
+	if len(reasons) > 0 {
+		reason = strings.Join(reasons, ", ")
 	}
 	if reason == "" {
 		return fmt.Errorf("%w: the answer for %s was status %d", ErrLookup, id, status)

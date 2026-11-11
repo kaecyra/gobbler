@@ -269,3 +269,66 @@ func (h *heldDrafts) Add(_ context.Context, d Draft, _ store.Provenance) (string
 	h.d = d
 	return "tok", nil
 }
+
+// ADR-00054: an Instagram link is refused before anything is fetched, whatever
+// subdomain it is on, and the message says to paste the caption.
+func TestAnInstagramLinkIsRefusedBeforeAnyFetch(t *testing.T) {
+	for _, link := range []string{
+		"https://instagram.com/p/Cabc123/",
+		"https://www.instagram.com/p/Cabc123/",
+		"https://m.instagram.com/reel/Cabc123/",
+		"http://WWW.Instagram.com./p/Cabc123/?igsh=x",
+	} {
+		t.Run(link, func(t *testing.T) {
+			e := newEnv(t)
+			pg := &pages{}
+			src := &stubDescriptions{}
+			_, err := e.youTubePipeline(t, pg, src, nil).FromURL(e.ctx, link)
+			if !errors.Is(err, ErrPasteOnly) || !errors.Is(err, ErrFetch) || !strings.Contains(err.Error(), "Paste the caption as text") {
+				t.Fatalf("err = %v, want ErrPasteOnly (an ErrFetch) telling the person to paste the caption", err)
+			}
+			if len(pg.got) != 0 || len(src.asked) != 0 {
+				t.Errorf("fetched %v, asked %v; want nothing", pg.got, src.asked)
+			}
+		})
+	}
+}
+
+func TestOnlyInstagramHostsArePasteOnly(t *testing.T) {
+	for _, link := range []string{"https://notinstagram.com/p/1", "https://instagram.com.evil.example/p/1", "https://blog.example/instagram.com"} {
+		if err := checkPasteOnly(link); err != nil {
+			t.Errorf("%s: %v", link, err)
+		}
+	}
+}
+
+// Only a YouTube video link with a scheme reaches the description lookup: a bare
+// ID is not a URL, and a scheme-less link is not one the fetch accepts either.
+func TestOnlySchemedYouTubeVideoLinksReachTheLookup(t *testing.T) {
+	for link, want := range map[string]bool{
+		"https://www.youtube.com/watch?v=" + testVideoID: true,
+		"http://youtube.com/watch?v=" + testVideoID:      true,
+		"https://youtu.be/" + testVideoID:                true,
+		"https://www.youtube.com/shorts/" + testVideoID:  true,
+		"https://www.youtube.com/embed/" + testVideoID:   true,
+		testVideoID:                                   false,
+		"youtu.be/" + testVideoID:                     false,
+		"www.youtube.com/watch?v=" + testVideoID:      false,
+		"https://www.youtube.com/@somechannel":        false,
+		"https://blog.example/watch?v=" + testVideoID: false,
+		"https://vimeo.com/" + testVideoID:            false,
+	} {
+		t.Run(link, func(t *testing.T) {
+			e := newEnv(t)
+			src := &stubDescriptions{desc: spaghettiDescription}
+			// Whatever is not looked up is fetched (and 404s, which is fine here).
+			_, _ = e.youTubePipeline(t, &pages{}, src, nil).FromURL(e.ctx, link)
+			if got := len(src.asked) == 1; got != want {
+				t.Errorf("asked = %v, want lookup = %v", src.asked, want)
+			}
+			if _, ok := youTubeVideoID(link); ok != want {
+				t.Errorf("youTubeVideoID ok = %v, want %v", ok, want)
+			}
+		})
+	}
+}

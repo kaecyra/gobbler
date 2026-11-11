@@ -54,6 +54,31 @@ Options for the linked page:
 - **Prefer the first linked page that carries structured recipe data, else the
   description.** Chosen.
 
+Options for the source address a description draft records:
+
+- **The YouTube link the person gave, for both outcomes.** Re-import would
+  replay the same flow whatever the description led to, and the video would
+  always be in the source address. Rejected for the linked-page case: the
+  snapshot is the blog's HTML, and the picture search
+  ([ADR-00051](00051-edit-page-picture-picker.md)) fetches a recipe's source
+  page at its recorded address, which would be youtube.com, and page-relative
+  addresses resolve against the same base. A recipe's source address is also where its attribution
+  points, and the author of the recipe is the blog. Kept for the description
+  case, where the YouTube link is the source.
+- **The linked page's own address when a page wins, the YouTube link otherwise.**
+  Chosen. It costs one rule in re-import (decision 8), which keeps the video
+  when the page names none.
+
+Options for how many links are tried:
+
+- **Five**, as the issue proposed.
+- **Three.** Chosen. Links are fetched one after another, each bounded by the
+  ingest fetch timeout, so the worst case is the timeout times the count: 45
+  seconds at three, 75 at five, with a person watching a form. A creator who
+  links the recipe puts it in the first lines; later links are shops, socials
+  and sponsors. This is judgement, not measurement: the count is one constant
+  to raise if real descriptions show a recipe link past the third.
+
 ## Decision
 
 1. **The key is an integration secret.** This amends
@@ -73,7 +98,7 @@ Options for the linked page:
    never reaches the lookup.
 4. **Linked pages are tried first.** The description's `http` and `https` links
    are taken in order of appearance, without repeats and without YouTube's own
-   hosts, up to three. Each is fetched through the URL-ingest fetcher with all
+   hosts, up to three (see the options above). Each is fetched through the URL-ingest fetcher with all
    its limits (guarded client, timeout, size cap, redirect limit); any host is
    allowed. The first whose page yields structured recipe data (JSON-LD,
    microdata or a site extractor, not the text fallback) is drafted exactly as
@@ -105,11 +130,24 @@ Options for the linked page:
    carries it in the query string, so the transport error's URL is dropped and
    any error text is scrubbed of the key before it is wrapped. No fallback to
    the watch page, which would produce the empty draft this record exists to
-   avoid.
+   avoid. A short-window rate limit (`rateLimitExceeded`,
+   `userRateLimitExceeded`) is not the daily quota and is reported as a failed
+   lookup, so nobody is told to wait a day for it. An invalid key
+   (`keyInvalid`, or `API_KEY_INVALID` in an error's `details`), a key
+   restricted away from the API (`API_KEY_SERVICE_BLOCKED`) and a disabled API
+   (`accessNotConfigured`, `SERVICE_DISABLED`) are all a rejected key.
 10. **The agent endpoint is a follow-up.** The MCP import shares the pipeline
     but is not given the lookup, so an agent's YouTube link keeps the old path
     (the watch page) until the lookup is wired there. That is deliberate and
     unfinished, not a ruling that agents should not get descriptions.
+11. **An Instagram link is refused before any fetch.** URL ingest, from the
+    form, an agent or a re-import, refuses a link on instagram.com or any
+    subdomain of it (`www.`, `m.` and the rest) with a form error telling the
+    person to paste the caption as text. Instagram is paste-only by the owner's
+    ruling; its pages are a sign-in wall, so fetching one parsed the wall and
+    gave a draft of nothing. The refusal is an `ErrFetch` that also wraps
+    `ErrPasteOnly`, so existing callers report a failed fetch and the form words
+    it for the person. Other social hosts, TikTok included, are not named here.
 
 ## Consequences
 
@@ -149,7 +187,13 @@ snapshot is what makes it reproducible afterwards.
    `docs/operations.md` explains how to get and save the key and gains
    `GOBBLER_VIDEO_API_HOST`; `docs/design.md`'s configuration table and
    `video` package row describe the lookup.
-8. The lookup is its own dependency, not part of the LLM provider:
+8. A test table shows an Instagram link on `instagram.com`, `www.` and `m.` is
+   refused with nothing fetched and no lookup made, that look-alike hosts are
+   not, and the e2e spec shows the form's message for each host. A test table
+   shows which links reach the lookup: a YouTube video link with a scheme
+   (watch, `youtu.be`, shorts, embed) does; a bare ID, a scheme-less link, a
+   channel and another host do not.
+9. The lookup is its own dependency, not part of the LLM provider:
    `web.Deps.Descriptions` reaches `ingest.Deps.Descriptions` through the ingest
    routes and service, and `cmd/gobbler` sets it. The MCP import is not given
    it (decision 10); wiring it there is tracked as a follow-up issue naming

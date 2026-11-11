@@ -68,14 +68,20 @@ func TestFetchNamesWhatWentWrong(t *testing.T) {
 		body   string
 		want   error
 	}{
-		"quota":          {403, body("quotaExceeded"), ErrQuota},
-		"invalid key":    {400, body("keyInvalid"), ErrKeyRejected},
-		"not enabled":    {403, body("accessNotConfigured"), ErrKeyRejected},
-		"not found":      {404, body("videoNotFound"), ErrVideoUnavailable},
-		"private (none)": {200, `{"items":[]}`, ErrVideoUnavailable},
-		"server error":   {500, `oops`, ErrLookup},
-		"not json":       {200, `<html>`, ErrLookup},
-		"other reason":   {403, body("forbidden"), ErrLookup},
+		"quota":                      {403, body("quotaExceeded"), ErrQuota},
+		"invalid key":                {400, body("keyInvalid"), ErrKeyRejected},
+		"not enabled":                {403, body("accessNotConfigured"), ErrKeyRejected},
+		"not found":                  {404, body("videoNotFound"), ErrVideoUnavailable},
+		"private (none)":             {200, `{"items":[]}`, ErrVideoUnavailable},
+		"server error":               {500, `oops`, ErrLookup},
+		"not json":                   {200, `<html>`, ErrLookup},
+		"other reason":               {403, body("forbidden"), ErrLookup},
+		"short rate limit":           {403, body("rateLimitExceeded"), ErrLookup},
+		"user rate limit":            {403, body("userRateLimitExceeded"), ErrLookup},
+		"invalid key (current)":      {400, `{"error":{"code":400,"message":"API key not valid.","errors":[{"message":"API key not valid.","domain":"global","reason":"badRequest"}],"status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"youtube.googleapis.com"}}]}}`, ErrKeyRejected},
+		"key blocked from the API":   {403, `{"error":{"code":403,"errors":[{"domain":"global","reason":"forbidden"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_SERVICE_BLOCKED","domain":"googleapis.com"}]}}`, ErrKeyRejected},
+		"api disabled":               {403, `{"error":{"code":403,"errors":[{"domain":"usageLimits","reason":"accessNotConfigured"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com"}]}}`, ErrKeyRejected},
+		"api disabled, details only": {403, `{"error":{"code":403,"errors":[{"domain":"global","reason":"forbidden"}],"details":[{"reason":"SERVICE_DISABLED"}]}}`, ErrKeyRejected},
 	} {
 		t.Run(name, func(t *testing.T) {
 			d, _ := apiServer(t, tc.status, tc.body)

@@ -295,6 +295,11 @@ func (h *handler) submit(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		status := layout.StatusFor(err)
+		if errors.Is(err, apiingest.ErrPasteOnly) {
+			// A link gobbler declines is the person's input to change, not a
+			// gateway failure, though it wraps ErrFetch for the other callers.
+			status = http.StatusBadRequest
+		}
 		msg, ok := inputFailure(err)
 		if status == http.StatusInternalServerError || !ok {
 			layout.WriteError(w, r, fmt.Errorf("ingest: %w", err))
@@ -367,6 +372,8 @@ func sentence(msg string) string {
 // the input.
 func inputFailure(err error) (msg string, ok bool) {
 	switch {
+	case errors.Is(err, apiingest.ErrPasteOnly):
+		return "Instagram links cannot be read. Paste the caption as text instead.", true
 	case errors.Is(err, apiingest.ErrFetch):
 		return "Could not fetch that page: " + err.Error(), true
 	case errors.Is(err, parse.ErrEmptyText), errors.Is(err, apiingest.ErrEmptyInput):

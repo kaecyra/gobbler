@@ -98,8 +98,10 @@ func (r *Reimporter) Start(ctx context.Context, id int64, by store.Provenance) (
 	if d.SpiceLevel == nil {
 		d.SpiceLevel = rec.SpiceLevel
 	}
-	// A recipe made from a YouTube link whose description led to a blog keeps
-	// the video, though the blog's source address no longer names it (ADR-00054).
+	// A re-import keeps the recipe's video when the source names none. A recipe
+	// made from a YouTube link whose description led to a blog is the case that
+	// needs it: the blog is its source address and may not name the video
+	// (ADR-00054).
 	if d.VideoID == "" {
 		d.VideoID = rec.VideoID
 	}
