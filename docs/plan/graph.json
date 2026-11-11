@@ -4749,7 +4749,7 @@
       "wave": 13,
       "track": null,
       "issue": 606,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "c-cuisine-asian-bbq"
       ],
@@ -6488,6 +6488,15 @@
       "adrs": [
         "00055"
       ]
+    },
+    {
+      "id": "p-photo-vision-ocr",
+      "title": "photo ingest: vision reads the page, tesseract checks the numbers",
+      "merged": "76e2c238",
+      "adrs": [
+        "00053"
+      ],
+      "note": "Owner 2026-11-10: the tesseract text is stored beside the vision transcript as its own snapshot kind, so replays reproduce the number-check flags. ADR-00053 also records: a transcription failure is logged and drafts from tesseract; a photo over maxVisionImageBytes gets tesseract alone."
     }
   ],
   "adr_sequence": {
