@@ -24,6 +24,22 @@ import (
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
+// A paste-only link wraps ErrFetch so callers that only report a failed fetch
+// still do, but it is the person's link to change: 400, not the 502 a fetch
+// failure gets. The table order decides it (the first match wins).
+func TestAPasteOnlyLinkIs400NotTheFetchFailure502(t *testing.T) {
+	err := fmt.Errorf("ingest: %w", ingest.PasteOnlyError{Advice: "paste the text"})
+	if !errors.Is(err, apiingest.ErrFetch) {
+		t.Fatal("the paste-only error should also be an ErrFetch")
+	}
+	if got := layout.StatusFor(err); got != http.StatusBadRequest {
+		t.Errorf("StatusFor = %d, want 400", got)
+	}
+	if got := layout.StatusFor(fmt.Errorf("%w: boom", ingest.ErrFetch)); got != http.StatusBadGateway {
+		t.Errorf("a plain fetch failure = %d, want 502", got)
+	}
+}
+
 // The status table names the api packages' re-exports. Each must stay the
 // same value as the domain sentinel, so a store that returns the domain error
 // still maps; a re-export turned into a fresh errors.New would map nothing.
@@ -35,6 +51,7 @@ func TestStatusTableReExportsAreTheDomainSentinels(t *testing.T) {
 		status int
 	}{
 		{"ingest fetch", apiingest.ErrFetch, ingest.ErrFetch, http.StatusBadGateway},
+		{"ingest paste only", apiingest.ErrPasteOnly, ingest.ErrPasteOnly, http.StatusBadRequest},
 		{"ingest no source url", apiingest.ErrNoSourceURL, ingest.ErrNoSourceURL, http.StatusConflict},
 		{"ingest empty input", apiingest.ErrEmptyInput, extract.ErrEmptyInput, http.StatusBadRequest},
 		{"catalog not found", apicatalog.ErrNotFound, catalog.ErrNotFound, http.StatusNotFound},

@@ -35,9 +35,10 @@ glitch is cosmetic.
   YouTube player, loaded only when its play button is pressed
   ([ADR-00021](./docs/adr/00021-youtube-video-on-a-recipe.md)).
 - **An ingested recipe's source snapshot is never modified.**
-- **No secrets in the repository.** Integration secrets (mail, LLM) are stored
+- **No secrets in the repository.** Integration secrets (mail, LLM, the YouTube Data API key) are stored
   encrypted in the database under a key from the environment
-  ([ADR-00057](./docs/adr/00057-integration-settings-in-the-database.md)).
+  ([ADR-00057](./docs/adr/00057-integration-settings-in-the-database.md),
+  [ADR-00054](./docs/adr/00054-youtube-description-ingest.md)).
   Every other secret, such as the OIDC client secret and the S3 credentials,
   comes only from the environment.
 

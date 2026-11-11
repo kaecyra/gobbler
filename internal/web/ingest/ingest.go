@@ -91,6 +91,9 @@ type Deps struct {
 	// settings in production, a fake in tests. Nil means none: drafts below
 	// the threshold are flagged and the retry action is not offered.
 	Provider apiingest.Provider
+	// Descriptions reads a YouTube video's description (ADR-00054). Nil means
+	// the lookup is off.
+	Descriptions apiingest.DescriptionSource
 	// Catalog is the catalog service the review screen reads ingredient and
 	// equipment names from, speaking for the Caller of each request
 	// (ADR-00043). It is required, like Recipes.
@@ -132,7 +135,7 @@ func Routes(d Deps) http.Handler {
 		h.log = slog.Default()
 	}
 	svc, err := apiingest.New(d.Ingestion, apiingest.Deps{
-		Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB), Provider: d.Provider, Logger: h.log,
+		Catalog: apicatalog.NewStore(d.DB), Members: apihouseholds.NewStore(d.DB), Provider: d.Provider, Descriptions: d.Descriptions, Logger: h.log,
 	})
 	switch {
 	case err == nil && d.Recipes == nil:
@@ -363,7 +366,10 @@ func sentence(msg string) string {
 // status comes from layout's table. ok is false for an error that is not about
 // the input.
 func inputFailure(err error) (msg string, ok bool) {
+	var po apiingest.PasteOnlyError
 	switch {
+	case errors.As(err, &po):
+		return po.Advice + ".", true
 	case errors.Is(err, apiingest.ErrFetch):
 		return "Could not fetch that page: " + err.Error(), true
 	case errors.Is(err, parse.ErrEmptyText), errors.Is(err, apiingest.ErrEmptyInput):

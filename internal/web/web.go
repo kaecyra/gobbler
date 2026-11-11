@@ -82,6 +82,9 @@ type Deps struct {
 	// LLM is the LLM provider photo and text ingestion call (ADR-00007,
 	// ADR-00056). Nil means none: drafts below the threshold are only flagged.
 	LLM apiingest.Provider
+	// Descriptions reads a YouTube video's description when a YouTube link is
+	// ingested (ADR-00054). Nil means the lookup is off.
+	Descriptions apiingest.DescriptionSource
 	// LLMUsage and PriceSync serve the operator's LLM usage page (ADR-00058):
 	// the store the router records into, and the syncer the daily job and the
 	// page's "Sync now" share. Nil means a store over DB, and a syncer over it

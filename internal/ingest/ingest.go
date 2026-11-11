@@ -57,6 +57,10 @@ type Deps struct {
 	// Fallback.Retry returns ErrNoProvider. A provider may also report, per
 	// task, that it has nothing configured (Availability).
 	Provider Provider
+	// Descriptions reads a YouTube video's description (ADR-00054). Nil means
+	// the lookup is off, as does an error wrapping video.ErrNoKey; a YouTube
+	// link is then ingested as any page.
+	Descriptions DescriptionSource
 	// Logger receives the fallback's warnings; nil means slog.Default().
 	Logger *slog.Logger
 }
@@ -100,8 +104,21 @@ func (p *Pipeline) draftWithFallback(ctx context.Context, src Source, res extrac
 }
 
 // FromURL fetches the page at rawURL and drafts the recipe on it. A failed or
-// timed-out fetch is an error wrapping ErrFetch.
+// timed-out fetch is an error wrapping ErrFetch, as is an Instagram link, which
+// is refused before any fetch (ErrPasteOnly, ADR-00054).
+//
+// A YouTube video link, with a Data API key saved, is drafted from the video's
+// description or the recipe page it links (ADR-00054); with none saved it is
+// fetched as any page.
 func (p *Pipeline) FromURL(ctx context.Context, rawURL string) (Draft, error) {
+	if err := checkPasteOnly(rawURL); err != nil {
+		return Draft{}, err
+	}
+	if id, ok := youTubeVideoID(rawURL); ok && p.deps.Descriptions != nil {
+		if d, handled, err := p.fromYouTube(ctx, rawURL, id); handled {
+			return d, err
+		}
+	}
 	page, finalURL, err := p.fetch(ctx, rawURL)
 	if err != nil {
 		return Draft{}, err

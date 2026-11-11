@@ -35,6 +35,10 @@ var statusTable = []struct {
 	target error
 	status int
 }{
+	// A link gobbler declines to fetch is the person's to change. It wraps
+	// ErrFetch for the callers that only report a failed fetch, so it is above
+	// that row.
+	{apiingest.ErrPasteOnly, http.StatusBadRequest},
 	// ErrFetch wraps whatever the HTTP client or the OS returned, so it is
 	// above every row that cause could match.
 	{apiingest.ErrFetch, http.StatusBadGateway},

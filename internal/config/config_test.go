@@ -172,6 +172,8 @@ func TestValidationErrorsNameVariable(t *testing.T) {
 		{"thumbnail host with credentials", with(EnvVideoThumbnailHost, "https://u:p@example.com"), EnvVideoThumbnailHost},
 		{"thumbnail host with query", with(EnvVideoThumbnailHost, "https://example.com?x=1"), EnvVideoThumbnailHost},
 		{"thumbnail host with fragment", with(EnvVideoThumbnailHost, "https://example.com#top"), EnvVideoThumbnailHost},
+		{"api host bare host", with(EnvVideoAPIHost, "www.googleapis.com"), EnvVideoAPIHost},
+		{"api host with path", with(EnvVideoAPIHost, "https://example.com/youtube"), EnvVideoAPIHost},
 		{"bad schedule", with(EnvBackupSchedule, "25:00"), EnvBackupSchedule},
 		{"schedule not a time", with(EnvBackupSchedule, "nightly"), EnvBackupSchedule},
 		{"local retention zero", with(EnvBackupLocalKeep, "0"), EnvBackupLocalKeep},
@@ -433,6 +435,17 @@ func TestThumbnailHostIsAnOriginWithoutTrailingSlash(t *testing.T) {
 	}
 	if c.Video.ThumbnailHost != "http://127.0.0.1:41700" {
 		t.Errorf("thumbnail host = %q", c.Video.ThumbnailHost)
+	}
+}
+
+func TestAPIHostIsAnOriginWithoutTrailingSlashAndEmptyByDefault(t *testing.T) {
+	c, err := loadFrom(env(base()))
+	if err != nil || c.Video.APIHost != "" {
+		t.Fatalf("default = %q, %v; want empty (Google's, chosen by the lookup)", c.Video.APIHost, err)
+	}
+	c, err = loadFrom(env(with(EnvVideoAPIHost, "http://127.0.0.1:41701/")))
+	if err != nil || c.Video.APIHost != "http://127.0.0.1:41701" {
+		t.Fatalf("api host = %q, %v", c.Video.APIHost, err)
 	}
 }
 

@@ -101,6 +101,9 @@ type (
 	URLDrafter = domain.URLDrafter
 	// Provider is the LLM provider interface (ingest.Provider, ADR-00007).
 	Provider = domain.Provider
+	// DescriptionSource reads a YouTube video's description
+	// (ingest.DescriptionSource, ADR-00054).
+	DescriptionSource = domain.DescriptionSource
 	// OCRRunner reads the text out of a photograph by running tesseract
 	// (ocr.Runner). The zero value uses the defaults.
 	OCRRunner = ocr.Runner
@@ -130,12 +133,19 @@ const (
 	IssueNoteMealPlan    = domain.IssueNoteMealPlan
 )
 
+// PasteOnlyError is the refusal of a paste-only link, carrying the sentence
+// for the person (ingest.PasteOnlyError).
+type PasteOnlyError = domain.PasteOnlyError
+
 // The errors a service method returns, and the ones the callers of the drafts
 // branch on, for errors.Is. They are the domain's own values, so errors.Is
 // matches either name.
 var (
 	// ErrFetch is a page that could not be fetched (ingest.ErrFetch).
 	ErrFetch = domain.ErrFetch
+	// ErrPasteOnly is a link gobbler declines to fetch because its recipe can
+	// only be pasted (ingest.ErrPasteOnly). It also wraps ErrFetch.
+	ErrPasteOnly = domain.ErrPasteOnly
 	// ErrDraftGone is a draft that expired or was discarded
 	// (ingest.ErrDraftGone).
 	ErrDraftGone = domain.ErrDraftGone
@@ -223,6 +233,9 @@ type Deps struct {
 	// Provider is the LLM provider of the fallback. Optional: without one a
 	// draft below the threshold is only flagged, and Retry is ErrNoProvider.
 	Provider Provider
+	// Descriptions reads a YouTube video's description (ADR-00054). Optional:
+	// without it a YouTube link is ingested as any page.
+	Descriptions DescriptionSource
 	// Logger receives the fallback's warnings; nil means slog.Default().
 	Logger *slog.Logger
 	// Originals is read by a preview of a saved recipe. Optional: without it
@@ -245,7 +258,7 @@ func New(cfg config.Ingestion, d Deps) (*Service, error) {
 	if d.Members == nil {
 		return nil, errors.New("ingest service: members are required")
 	}
-	p, err := domain.New(cfg, domain.Deps{Catalog: d.Catalog, Provider: d.Provider, Logger: d.Logger})
+	p, err := domain.New(cfg, domain.Deps{Catalog: d.Catalog, Provider: d.Provider, Descriptions: d.Descriptions, Logger: d.Logger})
 	if err != nil {
 		return nil, err
 	}
