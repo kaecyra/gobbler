@@ -75,6 +75,7 @@ func memberOps(f fixture) map[string]func(c households.Caller) error {
 		"Pending": func(c households.Caller) error { _, err := f.svc.Pending(ctx, c); return err },
 		"Invite":  func(c households.Caller) error { _, err := f.svc.Invite(ctx, c, newEmail); return err },
 		"Revoke":  func(c households.Caller) error { return f.svc.Revoke(ctx, c, "x") },
+		"Resend":  func(c households.Caller) error { return f.svc.Resend(ctx, c, "x") },
 		"Remove":  func(c households.Caller) error { return f.svc.Remove(ctx, c, joEmail) },
 		"Leave":   func(c households.Caller) error { return f.svc.Leave(ctx, c) },
 		"Delete":  func(c households.Caller) error { return f.svc.Delete(ctx, c, "Smiths") },
@@ -252,6 +253,7 @@ func TestANonOperatorIsRefusedTheOperatorOperations(t *testing.T) {
 		"OperatorPending": func(c households.Caller) error { _, err := f.svc.OperatorPending(ctx, c); return err },
 		"OperatorInvite":  func(c households.Caller) error { _, err := f.svc.OperatorInvite(ctx, c, newEmail); return err },
 		"OperatorRevoke":  func(c households.Caller) error { return f.svc.OperatorRevoke(ctx, c, "x") },
+		"OperatorResend":  func(c households.Caller) error { return f.svc.OperatorResend(ctx, c, "x") },
 	}
 	for name, op := range ops {
 		for who, c := range map[string]households.Caller{

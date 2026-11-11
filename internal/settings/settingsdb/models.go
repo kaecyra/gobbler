@@ -152,6 +152,8 @@ type Invitation struct {
 	ExpiresAt   string
 	AcceptedAt  sql.NullString
 	RevokedAt   sql.NullString
+	EmailedAt   sql.NullString
+	EmailError  sql.NullString
 }
 
 type LineQualifier struct {

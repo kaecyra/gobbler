@@ -23,6 +23,23 @@ test.describe('the operator', () => {
     await expect(page.locator('body')).not.toContainText('Other household');
   });
 
+  test('an invitation made with no mail host saved shows it was not emailed, and Resend says why', async ({ page }) => {
+    const email = uniqueEmail('founder');
+    await page.goto('/operator/invitations');
+    await page.getByLabel('Email address').fill(email);
+    await page.getByRole('button', { name: 'Invite' }).click();
+    const row = page.getByTestId('pending-invitation').filter({ hasText: email });
+    await expect(row.getByTestId('email-status')).toHaveText('Not emailed');
+    // The copyable link is still there.
+    expect(await linkFor(page, email)).toMatch(/^\/invitations\/[0-9A-Za-z]{8}$/);
+
+    // Resend is offered whatever the status; with mail off it records why.
+    await row.getByRole('button', { name: 'Resend the invitation to ' + email }).click();
+    await expect(page).toHaveURL(/\/operator\/invitations$/);
+    await expect(row.getByTestId('email-status')).toHaveText('Email failed: email is not set up on this deployment');
+    await expect(page.getByTestId('pending-invitation').filter({ hasText: email })).toHaveCount(1);
+  });
+
   test('reaches the promotion suggestions from the invitations page', async ({ page }) => {
     await page.goto('/operator/invitations');
     await page.getByRole('navigation', { name: 'Operator' }).getByRole('link', { name: 'Suggested ingredients' }).click();
@@ -87,6 +104,7 @@ test.describe('a member who is not an operator, and a non-member', () => {
       expect((await ctx.request.get('/operator/invitations')).status()).toBe(403);
       expect((await ctx.request.post('/operator/invitations', { form: { email: uniqueEmail('x') } })).status()).toBe(403);
       expect((await ctx.request.post('/operator/invitations/aZ09bY18/revoke')).status()).toBe(403);
+      expect((await ctx.request.post('/operator/invitations/aZ09bY18/resend')).status()).toBe(403);
       const page = await ctx.newPage();
       await page.goto('/operator/invitations');
       await expect(page.locator('body')).not.toContainText('Pending invitations');

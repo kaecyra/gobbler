@@ -26,6 +26,7 @@ const InvitationsPath = Pattern + "/invitations"
 type Households interface {
 	OperatorInvite(ctx context.Context, c apihouseholds.Caller, email string) (string, error)
 	OperatorRevoke(ctx context.Context, c apihouseholds.Caller, code string) error
+	OperatorResend(ctx context.Context, c apihouseholds.Caller, code string) error
 	OperatorPending(ctx context.Context, c apihouseholds.Caller) ([]apihouseholds.Invitation, error)
 }
 
@@ -59,6 +60,7 @@ func Routes(d Deps) chi.Router {
 	r.Get("/invitations", h.show)
 	r.Post("/invitations", h.invite)
 	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/revoke", h.revoke)
+	r.Post("/invitations/{"+layout.InvitationCodeParam+"}/resend", h.resend)
 	return r
 }
 
@@ -115,7 +117,7 @@ func (h *handler) show(w http.ResponseWriter, r *http.Request) {
 		layout.Fail(w, r, err)
 		return
 	}
-	layout.Render(w, r, http.StatusOK, invitationsPage(invitationsView{Pending: layout.NewPendingInvitations(c.Person, pending)}))
+	layout.Render(w, r, http.StatusOK, invitationsPage(invitationsView{Pending: newPendingRows(c.Person, pending)}))
 }
 
 func (h *handler) invite(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +140,20 @@ func (h *handler) revoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, h.Households.OperatorRevoke(r.Context(), c, code))
+}
+
+// resend emails a pending household invitation again (ADR-00055).
+func (h *handler) resend(w http.ResponseWriter, r *http.Request) {
+	c, ok := operatorCaller(w, r)
+	if !ok {
+		return
+	}
+	code, err := layout.InvitationCode(r)
+	if err != nil {
+		layout.Fail(w, r, err)
+		return
+	}
+	redirect(w, r, h.Households.OperatorResend(r.Context(), c, code))
 }
 
 func redirect(w http.ResponseWriter, r *http.Request, err error) {

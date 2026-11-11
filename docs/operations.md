@@ -230,6 +230,8 @@ the container runs in UTC.
 | `GOBBLER_OAUTH_REGISTER_BURST` | `10` | no | Registrations one address (an IPv6 address by its /64) may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_OAUTH_TOKEN_RATE` | `1` | no | Requests per second each address (an IPv6 address by its /64) may sustain at `/oauth/token`, 0.001 to 1000. |
 | `GOBBLER_OAUTH_TOKEN_BURST` | `20` | no | Requests one address (an IPv6 address by its /64) may make at once before it is held to the rate; minimum 1. |
+| `GOBBLER_MAIL_RATE` | `0.05` | no | Invitation emails per second each sender (by verified email) may sustain, invites and resends together, 0.001 to 1000 ([ADR-00055](./adr/00055-invitation-email.md)). See [Mail](#mail). |
+| `GOBBLER_MAIL_BURST` | `10` | no | Emails one sender may send at once before being held to the rate; minimum 1. |
 | `GOBBLER_ANTHROPIC_API_KEY` | none | yes | Required when the provider is `claude`. |
 | `GOBBLER_GEMINI_API_KEY` | none | yes | Required when the provider is `gemini`. |
 | `GOBBLER_ENCRYPTION_KEY` | none | yes | 32 random bytes, base64 ([ADR-00057](./adr/00057-integration-settings-in-the-database.md)). The key integration secrets saved on the operator's Deployment page are encrypted under. Optional: without it, or with a malformed one, gobbler still starts, a stored secret reads as unreadable, and saving a secret is refused. See [Integration secrets](#integration-secrets). |
@@ -462,6 +464,49 @@ secret is never shown again, only replaced or cleared.
   error line per secret it cannot open, naming the integration and field, never
   the value; the Deployment page marks each as unreadable, and the integration
   it belongs to stays off until the secret is entered again.
+
+## Mail
+
+Design and reasoning: [ADR-00055](./adr/00055-invitation-email.md).
+
+Mail is optional. With no SMTP host saved, an invitation is created and shared
+by copying its link, as before. With one, gobbler emails the link to the invited
+address when the invitation is made, and again when someone presses **Resend**.
+
+1. **Turn off open and click tracking at the provider.** Do this first, before
+   entering anything below. Most transactional providers add an image to track
+   opens and rewrite links to track clicks, often by default. Both are
+   third-party trackers, which gobbler does not allow, and gobbler cannot see
+   what the provider does after the hand-off. Check the provider's settings for
+   the account or the sending domain, and for the SMTP credentials you will use.
+2. Save the password under **Mail** on the operator's Deployment page
+   (`/operator/settings`). It is an integration secret, so
+   `GOBBLER_ENCRYPTION_KEY` must be set ([Integration secrets](#integration-secrets)).
+3. Fill the other fields and save:
+
+   | Field | Meaning |
+   |---|---|
+   | SMTP host | The provider's submission host. Leave blank to turn mail off. |
+   | Port | `465` connects with TLS from the first byte. Any other port, usually `587`, must offer STARTTLS. |
+   | User | The SMTP user name. |
+   | From address | The sender, such as `Gobbler <invites@example.com>`. It must be one the provider allows. |
+   | Timeout | How long one send may take, such as `20s`. Optional; up to 2 minutes. |
+
+   A host needs the port, user, from address and a saved password. The page
+   refuses to save otherwise and says which field is missing.
+
+- Every connection is encrypted and the server's certificate is checked against
+  the host. A server that does not offer STARTTLS on a non-465 port gets no
+  credentials and no message. Nothing turns this off.
+- Links in the email start with `GOBBLER_PUBLIC_BASE_URL`. With it unset the
+  send fails and the invitation shows that.
+- A send that fails never undoes the invitation. The household page and the
+  operator page show, beside each pending invitation, when its email went out or
+  why it did not.
+- `GOBBLER_MAIL_RATE` and `GOBBLER_MAIL_BURST` bound how much one person can
+  send. An invitation past the limit is still created, and shows the refusal.
+- Clearing the password, or losing the encryption key, turns mail off without
+  touching the other fields.
 
 ## Backups
 

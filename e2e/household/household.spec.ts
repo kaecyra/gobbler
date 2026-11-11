@@ -55,6 +55,22 @@ test('a member revokes an invitation', async ({ browser, baseURL }) => {
   await ctx.close();
 });
 
+test('a pending invitation shows it was not emailed, and any member can resend it', async ({ browser, baseURL }) => {
+  const { ctx } = await startHousehold(browser, baseURL, 'Resenders');
+  const guest = uniqueEmail('guest');
+  const page = await ctx.newPage();
+  await page.goto('/household');
+  await page.getByLabel('Email address').fill(guest);
+  await page.getByRole('button', { name: 'Invite' }).click();
+  const row = page.getByTestId('pending-invitation').filter({ hasText: guest });
+  await expect(row.getByTestId('email-status')).toHaveText('Not emailed');
+  await row.getByRole('button', { name: 'Resend the invitation to ' + guest }).click();
+  await expect(page).toHaveURL(/\/household\/?$/);
+  await expect(row.getByTestId('email-status')).toHaveText('Email failed: email is not set up on this deployment');
+  await expect(page.getByTestId('pending-invitation')).toHaveCount(1);
+  await ctx.close();
+});
+
 test('an invitation can be accepted only by the addressed email', async ({ browser, baseURL }) => {
   const { ctx } = await startHousehold(browser, baseURL, 'Addressed');
   const guest = uniqueEmail('guest');

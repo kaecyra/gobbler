@@ -39,9 +39,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/kaecyra/gobbler/internal/api/caller"
 	domain "github.com/kaecyra/gobbler/internal/household"
+	"github.com/kaecyra/gobbler/internal/mail"
 )
 
 // Caller is who an operation is for (caller.Caller).
@@ -145,6 +147,9 @@ type Households interface {
 	Leave(ctx context.Context, email string) error
 	Delete(ctx context.Context, householdID int64, by, confirm string) error
 	InvitationFor(ctx context.Context, code, email string) (Invitation, error)
+	PendingJoinForSend(ctx context.Context, householdID int64, code string) (Invitation, error)
+	PendingHouseholdForSend(ctx context.Context, issuer, code string) (Invitation, error)
+	RecordEmail(ctx context.Context, code string, sendErr error) error
 	Accept(ctx context.Context, code, email, householdName string) (Household, error)
 	HouseStyle(ctx context.Context, householdID int64) (string, error)
 	SetHouseStyle(ctx context.Context, householdID int64, style string) error
@@ -155,6 +160,12 @@ type Operators interface {
 	IsOperator(email string) bool
 }
 
+// Mailer emails an invitation (ADR-00055). *mail.Mailer satisfies it. It
+// returns mail.ErrNotConfigured, wrapped, when mail is off.
+type Mailer interface {
+	SendInvitation(ctx context.Context, in mail.InvitationEmail) error
+}
+
 // Deps is what the service is built from.
 type Deps struct {
 	// Households is the household store. Required.
@@ -162,12 +173,19 @@ type Deps struct {
 	// Operators decides who may use the Operator* methods. Optional: without it
 	// nobody is an operator and they all refuse.
 	Operators Operators
+	// Mailer emails invitations when they are issued and resent. Optional:
+	// without it, or while it reports mail off, invitations are only created.
+	Mailer Mailer
+	// Logger records failed sends. Optional; slog.Default when nil.
+	Logger *slog.Logger
 }
 
 // Service is the household operations. It is safe for concurrent use.
 type Service struct {
-	store Households
-	ops   Operators
+	store  Households
+	ops    Operators
+	mailer Mailer
+	log    *slog.Logger
 }
 
 // New returns a Service. Households is required; a missing one is an error
@@ -176,7 +194,11 @@ func New(d Deps) (*Service, error) {
 	if d.Households == nil {
 		return nil, errors.New("households service: households are required")
 	}
-	return &Service{store: d.Households, ops: d.Operators}, nil
+	log := d.Logger
+	if log == nil {
+		log = slog.Default()
+	}
+	return &Service{store: d.Households, ops: d.Operators, mailer: d.Mailer, log: log}, nil
 }
 
 // member checks that c is a person who is a member of the household it names
@@ -218,13 +240,73 @@ func (s *Service) Pending(ctx context.Context, c Caller) ([]Invitation, error) {
 }
 
 // Invite issues a join invitation into the Caller's household for email, and
-// returns its code (household.Store.Invite).
+// returns its code (household.Store.Invite). When mail is configured the link
+// is emailed during the call; a send that fails, or is refused by the rate,
+// leaves the invitation created with the failure stored on it (ADR-00055).
 func (s *Service) Invite(ctx context.Context, c Caller, email string) (string, error) {
 	ctx, h, err := s.member(ctx, c)
 	if err != nil {
 		return "", err
 	}
-	return s.store.Invite(ctx, domain.Invite{Kind: KindJoin, Email: email, HouseholdID: h.ID, IssuedBy: c.Person})
+	code, err := s.store.Invite(ctx, domain.Invite{Kind: KindJoin, Email: email, HouseholdID: h.ID, IssuedBy: c.Person})
+	if err != nil {
+		return "", err
+	}
+	if inv, err := s.store.PendingJoinForSend(ctx, h.ID, code); err != nil {
+		s.log.ErrorContext(ctx, "invitation created but not read back to email", "code", code, "error", err.Error())
+	} else {
+		s.deliver(ctx, c.Person, inv, false)
+	}
+	return code, nil
+}
+
+// Resend emails the pending join invitation code of the Caller's household
+// again. Any member may; the send counts against the Caller's rate. The
+// outcome replaces the invitation's stored status. An invitation that is not
+// pending in the Caller's household is ErrNotFound.
+func (s *Service) Resend(ctx context.Context, c Caller, code string) error {
+	ctx, h, err := s.member(ctx, c)
+	if err != nil {
+		return err
+	}
+	inv, err := s.store.PendingJoinForSend(ctx, h.ID, code)
+	if err != nil {
+		return err
+	}
+	s.deliver(ctx, c.Person, inv, true)
+	return nil
+}
+
+// errMailOff is what a resend records when mail is not configured, so the
+// person who pressed Resend sees why nothing went out.
+var errMailOff = errors.New("email is not set up on this deployment")
+
+// deliver emails inv as sender and records the outcome on it. Mail being off
+// is not a failure of an invite and records nothing; for a resend it records
+// errMailOff, because the person asked for an email and should be told. No
+// failure is returned: the invitation exists either way.
+func (s *Service) deliver(ctx context.Context, sender string, inv Invitation, resend bool) {
+	var err error
+	if s.mailer == nil {
+		err = fmt.Errorf("no mailer: %w", mail.ErrNotConfigured)
+	} else {
+		err = s.mailer.SendInvitation(ctx, mail.InvitationEmail{
+			Sender: sender, InvitedBy: inv.IssuedBy, To: inv.Email, Household: inv.HouseholdName,
+			Code: inv.Code, Expires: inv.ExpiresAt,
+		})
+	}
+	if errors.Is(err, mail.ErrNotConfigured) {
+		if !resend {
+			return
+		}
+		err = errMailOff
+	}
+	if err != nil {
+		s.log.WarnContext(ctx, "invitation email not sent", "code", inv.Code, "error", err.Error())
+	}
+	if rerr := s.store.RecordEmail(ctx, inv.Code, err); rerr != nil {
+		s.log.ErrorContext(ctx, "could not record the outcome of an invitation email", "code", inv.Code, "error", rerr.Error())
+	}
 }
 
 // Revoke revokes the invitation code, which only its issuer, the Caller, can.
@@ -344,12 +426,35 @@ func (s *Service) OperatorPending(ctx context.Context, c Caller) ([]Invitation, 
 }
 
 // OperatorInvite invites email to start a household and returns the
-// invitation's code.
+// invitation's code. It emails the link as Invite does.
 func (s *Service) OperatorInvite(ctx context.Context, c Caller, email string) (string, error) {
 	if err := s.operator(c); err != nil {
 		return "", err
 	}
-	return s.store.Invite(ctx, domain.Invite{Kind: KindHousehold, Email: email, IssuedBy: c.Person})
+	code, err := s.store.Invite(ctx, domain.Invite{Kind: KindHousehold, Email: email, IssuedBy: c.Person})
+	if err != nil {
+		return "", err
+	}
+	if inv, err := s.store.PendingHouseholdForSend(ctx, c.Person, code); err != nil {
+		s.log.ErrorContext(ctx, "invitation created but not read back to email", "code", code, "error", err.Error())
+	} else {
+		s.deliver(ctx, c.Person, inv, false)
+	}
+	return code, nil
+}
+
+// OperatorResend emails the pending household invitation code, which the
+// Caller issued, again.
+func (s *Service) OperatorResend(ctx context.Context, c Caller, code string) error {
+	if err := s.operator(c); err != nil {
+		return err
+	}
+	inv, err := s.store.PendingHouseholdForSend(ctx, c.Person, code)
+	if err != nil {
+		return err
+	}
+	s.deliver(ctx, c.Person, inv, true)
+	return nil
 }
 
 // OperatorRevoke revokes the household invitation code, which only the

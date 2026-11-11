@@ -46,7 +46,16 @@ templ membersPage(v pageView) {
 								<span class="grow">
 									{ p.Email }: <a href={ templ.SafeURL(p.Path) }>{ p.Path }</a>
 									<span class="muted"> expires { p.Expires }</span>
+									<br/>
+									if p.Failed {
+										<strong data-testid="email-status">{ p.Status }</strong>
+									} else {
+										<span class="muted" data-testid="email-status">{ p.Status }</span>
+									}
 								</span>
+								<form class="row-form" method="post" action={ templ.SafeURL(resendPath(p.Code)) }>
+									<button type="submit" class="btn" aria-label={ "Resend the invitation to " + p.Email }>Resend</button>
+								</form>
 								if p.Mine {
 									<form class="row-form" method="post" action={ templ.SafeURL(revokePath(p.Code)) }>
 										<button type="submit" class="btn" aria-label={ "Revoke the invitation of " + p.Email }>Revoke</button>

@@ -150,6 +150,7 @@ const PROBES: Probe[] = [
   refusedToBoth('POST', () => '/operator/settings/backup'),
   refusedToBoth('POST', () => '/operator/settings/secrets/mail/password'),
   refusedToBoth('POST', () => '/operator/settings/secrets/mail/password/clear'),
+  refusedToBoth('POST', () => '/operator/settings/values/mail'),
   refusedToBoth('GET', () => '/operator'),
   refusedToBoth('GET', () => '/operator/invitations'),
   refusedToBoth('GET', () => '/operator/promotions'),
@@ -162,6 +163,7 @@ const PROBES: Probe[] = [
   refusedToBoth('POST', () => '/operator/ingredients/1'),
   refusedToBoth('POST', () => '/operator/invitations'),
   refusedToBoth('POST', (i) => `/operator/invitations/${i.operatorInvitation}/revoke`),
+  refusedToBoth('POST', (i) => `/operator/invitations/${i.operatorInvitation}/resend`),
 
   // An invitation is addressed to one email: anyone else finds nothing.
   unaddressed('GET', (i) => `/invitations/${i.joinInvitation}`),
@@ -253,6 +255,7 @@ const PROBES: Probe[] = [
   { ...hidden('POST', () => '/household/members/remove', () => ({ email: DEV })), other: NOT_FOUND },
   { ...hidden('POST', () => '/household/invitations', () => ({ email: uniqueEmail('invitee') })), other: 303 },
   hidden('POST', (i) => `/household/invitations/${i.joinInvitation}/revoke`),
+  hidden('POST', (i) => `/household/invitations/${i.joinInvitation}/resend`),
   // API keys (ADR-00031): a household's keys are its own. Another household's member makes
   // a key of its own household and cannot revoke DEV's, which is 404 as for any unknown id.
   { ...hidden('POST', () => '/household/keys', () => ({ name: 'other bot', lifetime: '30d' })), other: 200 },

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	apihouseholds "github.com/kaecyra/gobbler/internal/api/households"
+	"github.com/kaecyra/gobbler/internal/mail"
 	"github.com/kaecyra/gobbler/internal/web/layout"
 )
 
@@ -13,7 +14,7 @@ type pageView struct {
 	// Self is the verified email of the reader.
 	Self    string
 	Members []string
-	Pending []layout.PendingInvitation
+	Pending []pendingRow
 	// Keys are the household's API keys (keys.go).
 	Keys []layout.APIKeyRow
 	// HouseStyle is the household's house style (ADR-00048).
@@ -36,6 +37,34 @@ func (v pageView) OnlyMember() bool { return len(v.Members) == 1 }
 
 func revokePath(code string) string {
 	return Pattern + "/invitations/" + code + "/revoke"
+}
+
+func resendPath(code string) string {
+	return Pattern + "/invitations/" + code + "/resend"
+}
+
+// pendingRow is a pending invitation with what became of its email
+// (ADR-00055).
+type pendingRow struct {
+	layout.PendingInvitation
+	// Status says when the email went out or why it did not; Failed marks a
+	// latest attempt that failed.
+	Status string
+	Failed bool
+}
+
+func newPendingRows(self string, in []apihouseholds.Invitation) []pendingRow {
+	rows := layout.NewPendingInvitations(self, in)
+	out := make([]pendingRow, len(rows))
+	for i, r := range rows {
+		sent := ""
+		if !in[i].EmailedAt.IsZero() {
+			sent = layout.FormatTime(in[i].EmailedAt)
+		}
+		out[i] = pendingRow{PendingInvitation: r}
+		out[i].Status, out[i].Failed = mail.StatusLine(sent, in[i].EmailError)
+	}
+	return out
 }
 
 // acceptView is the page an invitee opens.

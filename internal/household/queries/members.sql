@@ -42,14 +42,14 @@ UPDATE households SET name = name WHERE id = ?;
 DELETE FROM households WHERE id = ?;
 
 -- name: ListPendingJoinInvitations :many
-SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at, i.emailed_at, i.email_error
 FROM invitations i
 WHERE i.household_id = sqlc.arg(household_id) AND i.kind = 'join'
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > sqlc.arg(now)
 ORDER BY i.id;
 
 -- name: ListPendingHouseholdInvitations :many
-SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at, i.emailed_at, i.email_error
 FROM invitations i
 WHERE i.kind = 'household' AND i.issued_by = sqlc.arg(issued_by)
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > sqlc.arg(now)
@@ -73,3 +73,34 @@ SELECT sqlc.arg(code), 'join', sqlc.arg(email), sqlc.arg(household_id), sqlc.arg
 WHERE EXISTS (SELECT 1 FROM household_members m
               WHERE m.household_id = sqlc.arg(household_id) AND m.email = sqlc.arg(issued_by))
 RETURNING code;
+
+-- GetPendingJoinForSend reads a join invitation into a household that can
+-- still be accepted, with the household's name, to email or re-email it.
+-- name: GetPendingJoinForSend :one
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
+       i.emailed_at, i.email_error, h.name AS household_name
+FROM invitations i
+JOIN households h ON h.id = i.household_id
+WHERE i.code = sqlc.arg(code) AND i.household_id = sqlc.arg(household_id) AND i.kind = 'join'
+  AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > sqlc.arg(now);
+
+-- GetPendingHouseholdForSend is the same for a household invitation its
+-- issuer made, which names no household.
+-- name: GetPendingHouseholdForSend :one
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
+       i.emailed_at, i.email_error
+FROM invitations i
+WHERE i.code = sqlc.arg(code) AND i.issued_by = sqlc.arg(issued_by) AND i.kind = 'household'
+  AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > sqlc.arg(now);
+
+-- RecordEmailSent notes that the invitation's email went out and clears the
+-- last error.
+-- name: RecordEmailSent :execrows
+UPDATE invitations SET emailed_at = sqlc.arg(emailed_at), email_error = NULL
+WHERE code = sqlc.arg(code);
+
+-- RecordEmailFailed keeps when the email last went out and stores why the
+-- latest attempt did not.
+-- name: RecordEmailFailed :execrows
+UPDATE invitations SET email_error = sqlc.arg(email_error)
+WHERE code = sqlc.arg(code);

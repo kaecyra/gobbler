@@ -41,9 +41,15 @@ type Invitation struct {
 	HouseholdName string
 	CreatedAt     time.Time
 	ExpiresAt     time.Time
+	// EmailedAt is when the invitation's email last went out; zero when it
+	// never has, including when mail was not configured (ADR-00055).
+	EmailedAt time.Time
+	// EmailError is why the latest send failed; empty after a success or when
+	// none was attempted.
+	EmailError string
 }
 
-func toInvitation(code, kind, email string, household sql.NullInt64, issuedBy, created, expires string) (Invitation, error) {
+func toInvitation(code, kind, email string, household sql.NullInt64, issuedBy, created, expires string, emailedAt, emailErr sql.NullString) (Invitation, error) {
 	c, err := parseTime(created)
 	if err != nil {
 		return Invitation{}, err
@@ -52,7 +58,13 @@ func toInvitation(code, kind, email string, household sql.NullInt64, issuedBy, c
 	if err != nil {
 		return Invitation{}, err
 	}
-	return Invitation{Code: code, Kind: Kind(kind), Email: email, HouseholdID: household.Int64, IssuedBy: issuedBy, CreatedAt: c, ExpiresAt: e}, nil
+	inv := Invitation{Code: code, Kind: Kind(kind), Email: email, HouseholdID: household.Int64, IssuedBy: issuedBy, CreatedAt: c, ExpiresAt: e, EmailError: emailErr.String}
+	if emailedAt.Valid {
+		if inv.EmailedAt, err = parseTime(emailedAt.String); err != nil {
+			return Invitation{}, err
+		}
+	}
+	return inv, nil
 }
 
 // PendingForHousehold returns the join invitations into the household that can
@@ -66,7 +78,7 @@ func (s *Store) PendingForHousehold(ctx context.Context, householdID int64) ([]I
 	}
 	out := make([]Invitation, 0, len(rows))
 	for _, r := range rows {
-		inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
+		inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt, r.EmailedAt, r.EmailError)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +103,7 @@ func (s *Store) PendingHouseholdInvitations(ctx context.Context, issuer string) 
 	}
 	out := make([]Invitation, 0, len(rows))
 	for _, r := range rows {
-		inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
+		inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt, r.EmailedAt, r.EmailError)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +128,7 @@ func (s *Store) InvitationFor(ctx context.Context, code, email string) (Invitati
 	if err != nil {
 		return Invitation{}, fmt.Errorf("load invitation %s: %w", code, err)
 	}
-	inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt)
+	inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt, sql.NullString{}, sql.NullString{})
 	if err != nil {
 		return Invitation{}, err
 	}
@@ -291,4 +303,74 @@ func InvalidReason(err error) (string, bool) {
 		return err.Error(), true
 	}
 	return "", false
+}
+
+// PendingJoinForSend returns the join invitation code into the household if it
+// can still be accepted, with the household's name, for the service to email
+// (ADR-00055). Any other invitation, including one into another household, is
+// ErrNotFound.
+func (s *Store) PendingJoinForSend(ctx context.Context, householdID int64, code string) (Invitation, error) {
+	r, err := s.q.GetPendingJoinForSend(ctx, householddb.GetPendingJoinForSendParams{
+		Code: code, HouseholdID: sql.NullInt64{Int64: householdID, Valid: true}, Now: s.stamp(),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Invitation{}, fmt.Errorf("%w: pending invitation %s", ErrNotFound, code)
+	}
+	if err != nil {
+		return Invitation{}, fmt.Errorf("load invitation %s: %w", code, err)
+	}
+	inv, err := toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt, r.EmailedAt, r.EmailError)
+	if err != nil {
+		return Invitation{}, err
+	}
+	inv.HouseholdName = r.HouseholdName
+	return inv, nil
+}
+
+// PendingHouseholdForSend returns the household invitation code if issuer
+// issued it and it can still be accepted. Any other is ErrNotFound.
+func (s *Store) PendingHouseholdForSend(ctx context.Context, issuer, code string) (Invitation, error) {
+	e, err := NormalizeEmail(issuer)
+	if err != nil {
+		return Invitation{}, err
+	}
+	r, err := s.q.GetPendingHouseholdForSend(ctx, householddb.GetPendingHouseholdForSendParams{Code: code, IssuedBy: e, Now: s.stamp()})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Invitation{}, fmt.Errorf("%w: pending invitation %s", ErrNotFound, code)
+	}
+	if err != nil {
+		return Invitation{}, fmt.Errorf("load invitation %s: %w", code, err)
+	}
+	return toInvitation(r.Code, r.Kind, r.Email, r.HouseholdID, r.IssuedBy, r.CreatedAt, r.ExpiresAt, r.EmailedAt, r.EmailError)
+}
+
+// MaxEmailErrorBytes bounds the send error kept on an invitation, so a
+// provider's long reply cannot fill the row.
+const MaxEmailErrorBytes = 500
+
+// RecordEmail notes the outcome of sending the invitation's email: a nil sendErr
+// stores the time it went out and clears the last error, any other keeps the
+// time of the last success and stores the error's text (ADR-00055).
+func (s *Store) RecordEmail(ctx context.Context, code string, sendErr error) error {
+	var n int64
+	err := db.WithTx(ctx, s.db, s.q, func(q *householddb.Queries, _ *sql.Tx) error {
+		var err error
+		if sendErr == nil {
+			n, err = q.RecordEmailSent(ctx, householddb.RecordEmailSentParams{EmailedAt: sql.NullString{String: s.stamp(), Valid: true}, Code: code})
+		} else {
+			msg := strings.ToValidUTF8(sendErr.Error(), "")
+			if len(msg) > MaxEmailErrorBytes {
+				msg = strings.ToValidUTF8(msg[:MaxEmailErrorBytes], "")
+			}
+			n, err = q.RecordEmailFailed(ctx, householddb.RecordEmailFailedParams{EmailError: sql.NullString{String: msg, Valid: true}, Code: code})
+		}
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("record email of invitation %s: %w", code, err)
+	}
+	if n == 0 {
+		return fmt.Errorf("%w: invitation %s", ErrNotFound, code)
+	}
+	return nil
 }

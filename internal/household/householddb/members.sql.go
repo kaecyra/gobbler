@@ -81,6 +81,99 @@ func (q *Queries) GetInvitationFor(ctx context.Context, arg GetInvitationForPara
 	return i, err
 }
 
+const getPendingHouseholdForSend = `-- name: GetPendingHouseholdForSend :one
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
+       i.emailed_at, i.email_error
+FROM invitations i
+WHERE i.code = ?1 AND i.issued_by = ?2 AND i.kind = 'household'
+  AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?3
+`
+
+type GetPendingHouseholdForSendParams struct {
+	Code     string
+	IssuedBy string
+	Now      string
+}
+
+type GetPendingHouseholdForSendRow struct {
+	Code        string
+	Kind        string
+	Email       string
+	HouseholdID sql.NullInt64
+	IssuedBy    string
+	CreatedAt   string
+	ExpiresAt   string
+	EmailedAt   sql.NullString
+	EmailError  sql.NullString
+}
+
+// GetPendingHouseholdForSend is the same for a household invitation its
+// issuer made, which names no household.
+func (q *Queries) GetPendingHouseholdForSend(ctx context.Context, arg GetPendingHouseholdForSendParams) (GetPendingHouseholdForSendRow, error) {
+	row := q.db.QueryRowContext(ctx, getPendingHouseholdForSend, arg.Code, arg.IssuedBy, arg.Now)
+	var i GetPendingHouseholdForSendRow
+	err := row.Scan(
+		&i.Code,
+		&i.Kind,
+		&i.Email,
+		&i.HouseholdID,
+		&i.IssuedBy,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.EmailedAt,
+		&i.EmailError,
+	)
+	return i, err
+}
+
+const getPendingJoinForSend = `-- name: GetPendingJoinForSend :one
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at,
+       i.emailed_at, i.email_error, h.name AS household_name
+FROM invitations i
+JOIN households h ON h.id = i.household_id
+WHERE i.code = ?1 AND i.household_id = ?2 AND i.kind = 'join'
+  AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?3
+`
+
+type GetPendingJoinForSendParams struct {
+	Code        string
+	HouseholdID sql.NullInt64
+	Now         string
+}
+
+type GetPendingJoinForSendRow struct {
+	Code          string
+	Kind          string
+	Email         string
+	HouseholdID   sql.NullInt64
+	IssuedBy      string
+	CreatedAt     string
+	ExpiresAt     string
+	EmailedAt     sql.NullString
+	EmailError    sql.NullString
+	HouseholdName string
+}
+
+// GetPendingJoinForSend reads a join invitation into a household that can
+// still be accepted, with the household's name, to email or re-email it.
+func (q *Queries) GetPendingJoinForSend(ctx context.Context, arg GetPendingJoinForSendParams) (GetPendingJoinForSendRow, error) {
+	row := q.db.QueryRowContext(ctx, getPendingJoinForSend, arg.Code, arg.HouseholdID, arg.Now)
+	var i GetPendingJoinForSendRow
+	err := row.Scan(
+		&i.Code,
+		&i.Kind,
+		&i.Email,
+		&i.HouseholdID,
+		&i.IssuedBy,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.EmailedAt,
+		&i.EmailError,
+		&i.HouseholdName,
+	)
+	return i, err
+}
+
 const insertJoinInvitation = `-- name: InsertJoinInvitation :one
 INSERT INTO invitations (code, kind, email, household_id, issued_by, created_at, expires_at)
 SELECT ?1, 'join', ?2, ?3, ?4, ?5, ?6
@@ -134,7 +227,7 @@ func (q *Queries) LeaveHousehold(ctx context.Context, email string) (int64, erro
 }
 
 const listPendingHouseholdInvitations = `-- name: ListPendingHouseholdInvitations :many
-SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at, i.emailed_at, i.email_error
 FROM invitations i
 WHERE i.kind = 'household' AND i.issued_by = ?1
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?2
@@ -154,6 +247,8 @@ type ListPendingHouseholdInvitationsRow struct {
 	IssuedBy    string
 	CreatedAt   string
 	ExpiresAt   string
+	EmailedAt   sql.NullString
+	EmailError  sql.NullString
 }
 
 func (q *Queries) ListPendingHouseholdInvitations(ctx context.Context, arg ListPendingHouseholdInvitationsParams) ([]ListPendingHouseholdInvitationsRow, error) {
@@ -173,6 +268,8 @@ func (q *Queries) ListPendingHouseholdInvitations(ctx context.Context, arg ListP
 			&i.IssuedBy,
 			&i.CreatedAt,
 			&i.ExpiresAt,
+			&i.EmailedAt,
+			&i.EmailError,
 		); err != nil {
 			return nil, err
 		}
@@ -188,7 +285,7 @@ func (q *Queries) ListPendingHouseholdInvitations(ctx context.Context, arg ListP
 }
 
 const listPendingJoinInvitations = `-- name: ListPendingJoinInvitations :many
-SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at
+SELECT i.code, i.kind, i.email, i.household_id, i.issued_by, i.created_at, i.expires_at, i.emailed_at, i.email_error
 FROM invitations i
 WHERE i.household_id = ?1 AND i.kind = 'join'
   AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?2
@@ -208,6 +305,8 @@ type ListPendingJoinInvitationsRow struct {
 	IssuedBy    string
 	CreatedAt   string
 	ExpiresAt   string
+	EmailedAt   sql.NullString
+	EmailError  sql.NullString
 }
 
 func (q *Queries) ListPendingJoinInvitations(ctx context.Context, arg ListPendingJoinInvitationsParams) ([]ListPendingJoinInvitationsRow, error) {
@@ -227,6 +326,8 @@ func (q *Queries) ListPendingJoinInvitations(ctx context.Context, arg ListPendin
 			&i.IssuedBy,
 			&i.CreatedAt,
 			&i.ExpiresAt,
+			&i.EmailedAt,
+			&i.EmailError,
 		); err != nil {
 			return nil, err
 		}
@@ -239,6 +340,46 @@ func (q *Queries) ListPendingJoinInvitations(ctx context.Context, arg ListPendin
 		return nil, err
 	}
 	return items, nil
+}
+
+const recordEmailFailed = `-- name: RecordEmailFailed :execrows
+UPDATE invitations SET email_error = ?1
+WHERE code = ?2
+`
+
+type RecordEmailFailedParams struct {
+	EmailError sql.NullString
+	Code       string
+}
+
+// RecordEmailFailed keeps when the email last went out and stores why the
+// latest attempt did not.
+func (q *Queries) RecordEmailFailed(ctx context.Context, arg RecordEmailFailedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, recordEmailFailed, arg.EmailError, arg.Code)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const recordEmailSent = `-- name: RecordEmailSent :execrows
+UPDATE invitations SET emailed_at = ?1, email_error = NULL
+WHERE code = ?2
+`
+
+type RecordEmailSentParams struct {
+	EmailedAt sql.NullString
+	Code      string
+}
+
+// RecordEmailSent notes that the invitation's email went out and clears the
+// last error.
+func (q *Queries) RecordEmailSent(ctx context.Context, arg RecordEmailSentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, recordEmailSent, arg.EmailedAt, arg.Code)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const removeMember = `-- name: RemoveMember :execrows

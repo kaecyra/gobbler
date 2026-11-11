@@ -186,7 +186,7 @@ func TestUnregisteredFieldIs404(t *testing.T) {
 }
 
 // failingStore cannot read a secret's state.
-type failingStore struct{ SecretStore }
+type failingStore struct{ IntegrationStore }
 
 func (failingStore) SecretState(context.Context, store.Field) (store.State, error) {
 	return store.StateUnset, errors.New("database is locked")

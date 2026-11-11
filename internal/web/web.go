@@ -74,6 +74,9 @@ type Deps struct {
 	// Integrations are the integration secrets the deployment page lists
 	// and edits (ADR-00057). The zero value shows none.
 	Integrations settings.Integrations
+	// Mail emails invitations (ADR-00055). Nil means invitations are only
+	// created.
+	Mail apihouseholds.Mailer
 	// Avatars runs avatar uploads (ADR-00033). It is required: the server
 	// builds it over the configured media store and resumes interrupted jobs
 	// before mounting the pages, and a nil one would mean a store chosen here,

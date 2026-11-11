@@ -181,6 +181,8 @@ func mountHouseholds(r chi.Router, d Deps) {
 	svc, err := apihouseholds.New(apihouseholds.Deps{
 		Households: pictures.Households{Store: hs, Reaper: apirecipes.NewReaper(d.Media, d.Logger)},
 		Operators:  d.Config.Operator,
+		Mailer:     d.Mail,
+		Logger:     d.Logger,
 	})
 	if err != nil {
 		// Unreachable while the deps above are non-nil; fail loud if that changes.
