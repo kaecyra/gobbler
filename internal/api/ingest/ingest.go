@@ -201,7 +201,7 @@ type Pipeline interface {
 // *ingest.Fallback satisfies it.
 type Fallback interface {
 	Retry(ctx context.Context, d Draft) (Draft, error)
-	Configured(ctx context.Context) bool
+	Configured(ctx context.Context, d Draft) bool
 }
 
 // Originals is what a preview reads of a saved recipe: its original source
@@ -385,9 +385,10 @@ func (s *Service) sourceOf(ctx context.Context, id int64, first store.FirstSourc
 	return r.SourceURL, nil
 }
 
-// Configured reports whether an LLM provider is available for any task. It
-// reads configuration, not household data, so it takes no Caller.
-func (s *Service) Configured(ctx context.Context) bool { return s.fallback.Configured(ctx) }
+// Configured reports whether a retry of d can work now: the LLM is configured
+// for the task d would be sent as. It reads configuration, not household data,
+// so it takes no Caller.
+func (s *Service) Configured(ctx context.Context, d Draft) bool { return s.fallback.Configured(ctx, d) }
 
 // Bound is the Service for callers whose seams carry a context and no Caller.
 // Each call asks who for the Caller of its context and goes through the
@@ -427,7 +428,7 @@ func (b *Bound) Retry(ctx context.Context, d Draft) (Draft, error) {
 }
 
 // Configured is Service.Configured.
-func (b *Bound) Configured(ctx context.Context) bool { return b.s.Configured(ctx) }
+func (b *Bound) Configured(ctx context.Context, d Draft) bool { return b.s.Configured(ctx, d) }
 
 // Preview is Service.Preview.
 func (b *Bound) Preview(ctx context.Context, src PreviewSource) (Preview, error) {

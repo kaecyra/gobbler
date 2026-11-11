@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/kaecyra/gobbler/internal/llm"
 	store "github.com/kaecyra/gobbler/internal/settings"
@@ -45,8 +46,8 @@ func LLMSection(d LLMDeps) Section {
 	var fields []PlainField
 	for _, t := range llm.Tasks {
 		fields = append(fields,
-			PlainField{Name: llm.ProviderField(t), Label: taskLabel(t) + " provider", Choices: providerChoices},
-			PlainField{Name: llm.ModelField(t), Label: taskLabel(t) + " model", Choices: d.modelChoices(t)},
+			PlainField{Name: llm.ProviderField(t), Label: taskLabel(t) + " provider", Select: true},
+			PlainField{Name: llm.ModelField(t), Label: taskLabel(t) + " model", Select: true},
 		)
 	}
 	fields = append(fields, PlainField{
@@ -57,10 +58,10 @@ func LLMSection(d LLMDeps) Section {
 	for _, p := range llm.Providers {
 		secrets = append(secrets, SecretField{Name: llm.KeyField(p), Label: keyLabels[p]})
 	}
-	return Section{Integration: llm.Integration, Title: "LLM", Fields: fields, Secrets: secrets, Validate: d.validate}
+	return Section{Integration: llm.Integration, Title: "LLM", Fields: fields, Secrets: secrets, Choices: d.choices, Validate: d.validate}
 }
 
-func providerChoices(context.Context) Choices {
+func providerChoices() Choices {
 	c := Choices{Options: []Choice{{Value: "", Label: "None"}}}
 	for _, p := range llm.Providers {
 		c.Options = append(c.Options, Choice{Value: p, Label: providerLabels[p]})
@@ -77,39 +78,54 @@ func (d LLMDeps) saved(ctx context.Context, name string) (string, error) {
 	return v, nil
 }
 
-// listing returns the models the saved provider of task offers.
-func (d LLMDeps) listing(ctx context.Context, provider string, t llm.Task) ([]llm.Model, error) {
-	return d.Models.Models(ctx, provider, t)
+// choices are the options of every select field, for one render. The two
+// tasks' model listings run at the same time, so the page waits for the slowest
+// provider call and not for their sum, and each task is listed once.
+func (d LLMDeps) choices(ctx context.Context) map[string]Choices {
+	out := map[string]Choices{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, t := range llm.Tasks {
+		out[llm.ProviderField(t)] = providerChoices()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c := d.modelChoices(ctx, t)
+			mu.Lock()
+			out[llm.ModelField(t)] = c
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+	return out
 }
 
 // modelChoices are the model options of task t: what its saved provider lists.
-func (d LLMDeps) modelChoices(t llm.Task) func(context.Context) Choices {
-	return func(ctx context.Context) Choices {
-		provider, err := d.saved(ctx, llm.ProviderField(t))
-		if err != nil {
-			return Choices{Problem: "The saved provider could not be read: " + err.Error()}
-		}
-		choose := Choice{Value: "", Label: "Choose a model"}
-		if provider == "" {
-			return Choices{Options: []Choice{choose}}
-		}
-		models, err := d.listing(ctx, provider, t)
-		switch {
-		case errors.Is(err, llm.ErrNotConfigured):
-			return Choices{Problem: "Save the " + keyLabels[provider] + " to list its models."}
-		case err != nil:
-			return Choices{Problem: "The models could not be listed: " + err.Error()}
-		}
-		c := Choices{Options: []Choice{choose}}
-		for _, m := range models {
-			label := m.Name
-			if label != m.ID {
-				label += " (" + m.ID + ")"
-			}
-			c.Options = append(c.Options, Choice{Value: m.ID, Label: label})
-		}
-		return c
+func (d LLMDeps) modelChoices(ctx context.Context, t llm.Task) Choices {
+	provider, err := d.saved(ctx, llm.ProviderField(t))
+	if err != nil {
+		return Choices{Problem: "The saved provider could not be read: " + err.Error()}
 	}
+	choose := Choice{Value: "", Label: "Choose a model"}
+	if provider == "" {
+		return Choices{Options: []Choice{choose}}
+	}
+	models, err := d.Models.Models(ctx, provider, t)
+	switch {
+	case errors.Is(err, llm.ErrNotConfigured):
+		return Choices{Problem: "Save the " + keyLabels[provider] + " to list its models."}
+	case err != nil:
+		return Choices{Problem: "The models could not be listed: " + err.Error()}
+	}
+	c := Choices{Options: []Choice{choose}}
+	for _, m := range models {
+		label := m.Name
+		if label != m.ID {
+			label += " (" + m.ID + ")"
+		}
+		c.Options = append(c.Options, Choice{Value: m.ID, Label: label})
+	}
+	return c
 }
 
 // validate checks what was submitted and settles each task's model against its
@@ -144,7 +160,7 @@ func (d LLMDeps) validate(ctx context.Context, values map[string]string, _ map[s
 			if model == savedModel {
 				continue // a saved model may stay although the listing dropped it
 			}
-			models, err := d.listing(ctx, provider, t)
+			models, err := d.Models.Models(ctx, provider, t)
 			if err != nil {
 				return "The " + t.String() + " model was not saved: the models could not be listed."
 			}

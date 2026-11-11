@@ -25,7 +25,7 @@ func (f *fakeRetrier) Retry(_ context.Context, d ingestcore.Draft) (ingestcore.D
 	return f.out, f.err
 }
 
-func (f *fakeRetrier) Configured(context.Context) bool { return f.configured }
+func (f *fakeRetrier) Configured(context.Context, ingestcore.Draft) bool { return f.configured }
 
 func llmDraft() ingestcore.Draft {
 	d := sampleDraft()

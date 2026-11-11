@@ -444,7 +444,7 @@ func (h *handler) renderReview(w http.ResponseWriter, r *http.Request, status in
 	}
 	layout.Render(w, r, status, reviewPage(reviewView{
 		Token: token, Draft: d, Form: *form, Picker: picker, Reimport: d.Reimport, Done: h.done(r),
-		CanRetry: h.retrier != nil && h.retrier.Configured(r.Context()),
+		CanRetry: h.retrier != nil && h.retrier.Configured(r.Context(), d),
 		// A draft read from a photo whose photo is no longer in memory:
 		// asking the LLM again reads the recognised text alone.
 		PhotoGone: d.Source.Kind == apirecipes.SnapshotOCR && len(d.Source.Image) == 0,

@@ -10,7 +10,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/kaecyra/gobbler/internal/llm"
 	"github.com/kaecyra/gobbler/internal/llm/claude"
@@ -341,4 +343,44 @@ func between(t *testing.T, s, from, to string) string {
 		t.Fatalf("no %q after %q", to, from)
 	}
 	return s[i : i+j]
+}
+
+// barrierLister holds each call until both tasks' calls are in flight, so it
+// can only finish if the page lists the two tasks at the same time. It counts
+// the calls.
+type barrierLister struct {
+	mu      sync.Mutex
+	calls   int
+	arrived chan struct{}
+	timeout time.Duration
+}
+
+func (b *barrierLister) Models(_ context.Context, _ string, _ llm.Task) ([]llm.Model, error) {
+	b.mu.Lock()
+	b.calls++
+	if b.calls == len(llm.Tasks) {
+		close(b.arrived)
+	}
+	b.mu.Unlock()
+	select {
+	case <-b.arrived:
+		return listing("m-one"), nil
+	case <-time.After(b.timeout):
+		return nil, errors.New("the other task was not listed at the same time")
+	}
+}
+
+// One render lists each task once, and the two listings run together, so the
+// page waits for one provider call and not two in a row.
+func TestRenderListsEachTaskOnceAndConcurrently(t *testing.T) {
+	b := &barrierLister{arrived: make(chan struct{}), timeout: 3 * time.Second}
+	h, s := llmHandler(t, b)
+	seed(t, s, "text_provider", "claude", "vision_provider", "claude")
+	body := page(h)
+	if strings.Contains(body, "could not be listed") {
+		t.Fatalf("the tasks were listed one after the other: %s", between(t, body, "could not be listed", "</span>"))
+	}
+	if b.calls != len(llm.Tasks) {
+		t.Errorf("listing calls = %d, want one per task (%d)", b.calls, len(llm.Tasks))
+	}
 }

@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -347,7 +348,11 @@ func TestUnavailableTaskIsSkippedNotFailed(t *testing.T) {
 
 	visionOff := &taskProvider{fakeProvider: &fakeProvider{transcript: visionTranscript, resp: llmAnswer()}}
 	visionOff.switchOff(TaskVision)
-	if _, err := e.pipelineWith(t, cfg, visionOff).FromOCR(e.ctx, tesseractMisread, photoBytes, "image/png"); err != nil {
+	// The draft must reach the fallback, or the check below proves nothing.
+	if rule, err := e.pipelineWith(t, cfg, nil).FromOCR(e.ctx, messyText, photoBytes, "image/png"); err != nil || !rule.BelowThreshold {
+		t.Fatalf("precondition: below threshold without a provider: %v, %v", rule.BelowThreshold, err)
+	}
+	if _, err = e.pipelineWith(t, cfg, visionOff).FromOCR(e.ctx, messyText, photoBytes, "image/png"); err != nil {
 		t.Fatal(err)
 	}
 	if len(visionOff.transcribed) != 0 {
@@ -367,7 +372,7 @@ func TestRetryNeedsTheRequestsTask(t *testing.T) {
 	bothOff.switchOff(TaskText)
 	bothOff.switchOff(TaskVision)
 	f := e.pipelineWith(t, testConfig(), bothOff).Fallback()
-	if f.Configured(e.ctx) {
+	if f.Configured(e.ctx, rule) {
 		t.Error("Configured with every task off")
 	}
 	if _, err := f.Retry(e.ctx, rule); !errors.Is(err, ErrNoProvider) {
@@ -375,14 +380,64 @@ func TestRetryNeedsTheRequestsTask(t *testing.T) {
 	}
 	visionOnly := &taskProvider{fakeProvider: &fakeProvider{resp: llmAnswer()}}
 	visionOnly.switchOff(TaskText)
-	if f := e.pipelineWith(t, testConfig(), visionOnly).Fallback(); !f.Configured(e.ctx) {
-		t.Error("Configured is false with the vision task on")
+	if f := e.pipelineWith(t, testConfig(), visionOnly).Fallback(); f.Configured(e.ctx, rule) {
+		t.Error("Configured for a text draft with only the vision task on")
 	}
 	if got := (Request{Image: []byte{1}}).Task(); got != TaskVision {
 		t.Errorf("image request task = %s", got)
 	}
 	if got := (Request{Text: "x"}).Task(); got != TaskText {
 		t.Errorf("text request task = %s", got)
+	}
+}
+
+// With the text task on and the vision task off, a photo draft that is below
+// the threshold keeps its rule draft and the gap-fill goes to the text task
+// without the image: the OCR text is already in the request. A manual retry
+// works the same way.
+func TestPhotoWithVisionOffGapFillsAsText(t *testing.T) {
+	e := newEnv(t)
+	p := &taskProvider{fakeProvider: &fakeProvider{resp: llmAnswer(), transcribeErr: errNoTranscript}}
+	p.switchOff(TaskVision)
+	if rule, err := e.pipelineWith(t, testConfig(), nil).FromOCR(e.ctx, messyText, photoBytes, "image/png"); err != nil || !rule.BelowThreshold {
+		t.Fatalf("precondition: below threshold without a provider: %v, %v", rule.BelowThreshold, err)
+	}
+	pipe := e.pipelineWith(t, testConfig(), p)
+	d, err := pipe.FromOCR(e.ctx, messyText, photoBytes, "image/png")
+	if err != nil {
+		t.Fatalf("FromOCR: %v", err)
+	}
+	if p.count() != 1 || len(p.calls[0].Image) != 0 || p.calls[0].Task() != TaskText {
+		t.Fatalf("gap-fill calls = %+v, want one text request with no image", p.calls)
+	}
+	if len(p.transcribed) != 0 || d.LLMError != "" {
+		t.Errorf("transcribed=%d llmError=%q, want neither", len(p.transcribed), d.LLMError)
+	}
+	if !pipe.Fallback().Configured(e.ctx, d) {
+		t.Error("Retry is not offered although it can work as text")
+	}
+	if _, err := pipe.Fallback().Retry(e.ctx, d); err != nil {
+		t.Errorf("manual retry of a photo draft under text only: %v", err)
+	}
+	if p.count() != 2 || len(p.calls[1].Image) != 0 {
+		t.Errorf("retry calls = %+v, want a second text request", p.calls)
+	}
+}
+
+// A task that loses its LLM between the availability check and the call is
+// skipped like one that had none: no error, no LLMError, the rule draft kept.
+func TestTaskLostBetweenCheckAndCallIsSkipped(t *testing.T) {
+	e := newEnv(t)
+	fp := &fakeProvider{err: fmt.Errorf("settings changed: %w", ErrNoProvider)}
+	d, err := e.pipelineWith(t, testConfig(), fp).FromText(e.ctx, messyText)
+	if err != nil {
+		t.Fatalf("FromText: %v", err)
+	}
+	if fp.count() != 1 {
+		t.Fatalf("calls = %d, want the call to have been made", fp.count())
+	}
+	if d.LLMError != "" || d.UsedLLM {
+		t.Errorf("llmError=%q usedLLM=%v, want a skip", d.LLMError, d.UsedLLM)
 	}
 }
 

@@ -17,7 +17,7 @@ import (
 // satisfies it.
 type Retrier interface {
 	Retry(ctx context.Context, d apiingest.Draft) (apiingest.Draft, error)
-	Configured(ctx context.Context) bool
+	Configured(ctx context.Context, d apiingest.Draft) bool
 }
 
 // retry asks the LLM to read the pending draft's source, whatever the draft

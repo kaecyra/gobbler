@@ -61,7 +61,7 @@ const (
 // moved to the Deployment page (ADR-00056, ADR-00057). They are not read:
 // Load reports each one that is set in Config.IgnoredEnv, so a deployment that
 // still sets one is told at startup, by name, that it has no effect. Values
-// are never read, so none can reach a log.
+// are read only to test for blank and are never kept, so none can reach a log.
 var removedEnv = []string{
 	"GOBBLER_LLM_PROVIDER",
 	"GOBBLER_LLM_TEXT_MODEL",

@@ -43,12 +43,18 @@ const maxLLMSourceBytes = 256 << 10
 // low-confidence draft).
 //
 // A pipeline failure (the catalog could not be read) is returned as an error,
-// as it is on the rule-based path; only ErrLLMFailed keeps the rule draft.
+// as it is on the rule-based path; only ErrLLMFailed keeps the rule draft. A
+// draft whose task has no LLM, or loses it between the check and the call
+// (settings change while the server runs), is skipped, not failed.
 func (f *Fallback) autoFallback(ctx context.Context, d Draft) (Draft, error) {
-	if !d.BelowThreshold || !f.available(ctx, TaskText) {
+	if !d.BelowThreshold || !f.Configured(ctx, d) {
 		return d, nil
 	}
 	out, err := f.Retry(ctx, d)
+	if errors.Is(err, ErrNoProvider) {
+		f.log().InfoContext(ctx, "llm fallback skipped, no LLM is configured for the draft's task")
+		return d, nil
+	}
 	if err != nil && !errors.Is(err, ErrLLMFailed) {
 		return Draft{}, err
 	}
@@ -81,11 +87,21 @@ type Fallback struct {
 // ErrNoProvider.
 func (p *Pipeline) Fallback() *Fallback { return &Fallback{cfg: p.cfg, deps: p.deps} }
 
-// Configured reports whether a provider is available for any task, so the
-// review screen offers the retry. The provider is asked on every call: its
-// settings can change while the server runs (ADR-00056).
-func (f *Fallback) Configured(ctx context.Context) bool {
-	return f.available(ctx, TaskText) || f.available(ctx, TaskVision)
+// Configured reports whether Retry can work on d now, so the review screen
+// offers the retry only then. The provider is asked on every call: its settings
+// can change while the server runs (ADR-00056).
+func (f *Fallback) Configured(ctx context.Context, d Draft) bool {
+	return f.available(ctx, f.taskFor(ctx, d))
+}
+
+// taskFor is the task a retry of d is sent as. A draft with a photo goes to the
+// vision task; with that task off, the OCR text it already has goes to the text
+// task alone.
+func (f *Fallback) taskFor(ctx context.Context, d Draft) Task {
+	if n := len(d.Source.Image); n > 0 && n <= maxVisionImageBytes && f.available(ctx, TaskVision) {
+		return TaskVision
+	}
+	return TaskText
 }
 
 // available reports whether the provider can make a call for task now.
@@ -103,7 +119,7 @@ func (f *Fallback) available(ctx context.Context, task Task) bool {
 // Provider and schema failures wrap ErrLLMFailed; a catalog read failure does
 // not. Nothing is saved.
 func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
-	if !f.Configured(ctx) {
+	if !f.Configured(ctx, d) {
 		return Draft{}, ErrNoProvider
 	}
 	gaps := findGaps(d, f.cfg.ConfidenceThreshold)
@@ -115,12 +131,15 @@ func (f *Fallback) Retry(ctx context.Context, d Draft) (Draft, error) {
 	if err != nil {
 		return Draft{}, err
 	}
-	image, imageMIME := f.visionImage(ctx, d.Source)
-	req := Request{Text: text, Image: image, ImageMIME: imageMIME, Gaps: gaps}
-	if !f.available(ctx, req.Task()) {
-		return Draft{}, ErrNoProvider
+	req := Request{Text: text, Gaps: gaps}
+	if f.taskFor(ctx, d) == TaskVision {
+		req.Image, req.ImageMIME = f.visionImage(ctx, d.Source)
 	}
 	s, err := f.deps.Provider.Structure(ctx, req)
+	if errors.Is(err, ErrNoProvider) {
+		// The task lost its LLM since the check above.
+		return Draft{}, err
+	}
 	if err != nil {
 		return Draft{}, fmt.Errorf("%w: %w", ErrLLMFailed, err)
 	}

@@ -63,10 +63,9 @@ type PlainField struct {
 	Hint string
 	// Placeholder is shown while the input is empty, optional.
 	Placeholder string
-	// Choices, when set, makes the field a select instead of a text input
-	// (the LLM's provider and model). It is called on every render and every
-	// save, so it reads what is current.
-	Choices func(ctx context.Context) Choices
+	// Select makes the field a select instead of a text input (the LLM's
+	// provider and model); its options come from the section's Choices.
+	Select bool
 }
 
 // Choice is one option of a select field.
@@ -96,7 +95,12 @@ type Section struct {
 	// Title is the section heading.
 	Title string
 	// Fields are the plain settings, saved together by one form.
-	Fields  []PlainField
+	Fields []PlainField
+	// Choices, when set, is called once for each render of the section and
+	// returns the options of its Select fields by field name. It reads what is
+	// current, and it is where a section does slow work (listing a provider's
+	// models) once, and concurrently, instead of once per field.
+	Choices func(ctx context.Context) map[string]Choices
 	Secrets []SecretField
 	// Validate checks the plain values as submitted (keyed by field name,
 	// trimmed, blank when absent) before any is saved, given which of the
@@ -309,6 +313,10 @@ func (h *handler) integrationsView(ctx context.Context, problem string, in enter
 		if len(s.Fields) > 0 {
 			sv.ValuesAction = valuesPath + "/" + s.Integration
 		}
+		var choices map[string]Choices
+		if s.Choices != nil {
+			choices = s.Choices(ctx)
+		}
 		for _, f := range s.Fields {
 			fv := fieldView{Name: f.Name, Label: f.Label, Hint: f.Hint, Placeholder: f.Placeholder}
 			typed, wasTyped := in.Values[f.Name]
@@ -322,8 +330,8 @@ func (h *handler) integrationsView(ctx context.Context, problem string, in enter
 				}
 				fv.Value = val
 			}
-			if f.Choices != nil {
-				fv = selectView(fv, f.Choices(ctx))
+			if f.Select {
+				fv = selectView(fv, choices[f.Name])
 			}
 			sv.Fields = append(sv.Fields, fv)
 		}
@@ -368,7 +376,7 @@ func (h *handler) saveValues(w http.ResponseWriter, r *http.Request) {
 	}
 	values := make(map[string]string, len(sec.Fields))
 	for _, f := range sec.Fields {
-		if _, posted := r.PostForm[f.Name]; !posted && f.Choices != nil {
+		if _, posted := r.PostForm[f.Name]; !posted && f.Select {
 			// The page offered no input for it (its options could not be had).
 			continue
 		}
