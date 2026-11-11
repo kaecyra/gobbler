@@ -25,7 +25,7 @@
   },
   "migration_sequences": {
     "schema": {
-      "last_used": "00041",
+      "last_used": "00042",
       "contiguous": true
     }
   },
@@ -4838,7 +4838,7 @@
       "wave": 13,
       "track": null,
       "issue": 615,
-      "status": "in_review",
+      "status": "merged",
       "depends_on": [
         "s-settings-store"
       ],
@@ -6480,6 +6480,14 @@
         "00057"
       ],
       "note": "Removing GOBBLER_LLM_* and the provider key variables (ADR-00057 obligation 6, LLM half of 7) moved to l-llm-provider-config (#618 comment, 2026-11-10): their readers are outside this lane and removal would switch LLM ingestion off until #616."
+    },
+    {
+      "id": "e-invite-email",
+      "title": "send invitations by email",
+      "merged": "dff1081b19f41b3d1bedb6f7517a5a31b716708b",
+      "adrs": [
+        "00055"
+      ]
     }
   ],
   "adr_sequence": {
