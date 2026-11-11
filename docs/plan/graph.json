@@ -4861,7 +4861,8 @@
         "e2e/operator/**",
         "e2e/household/**",
         "internal/web/layout/invitation.go",
-        "internal/web/static/app.css"
+        "internal/web/static/app.css",
+        "internal/web/layout/invitation_test.go"
       ],
       "needs_migration": "schema",
       "adrs": [
