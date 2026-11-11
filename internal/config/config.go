@@ -55,6 +55,7 @@ const (
 	EnvMailRate            = "GOBBLER_MAIL_RATE"
 	EnvMailBurst           = "GOBBLER_MAIL_BURST"
 	EnvEncryptionKey       = "GOBBLER_ENCRYPTION_KEY"
+	EnvOpenRouterURL       = "GOBBLER_OPENROUTER_URL"
 )
 
 // removedEnv are the environment variables the LLM settings used before they
@@ -116,6 +117,7 @@ type Config struct {
 	OAuth     OAuth
 	Mail      Mail
 	Settings  Settings
+	LLMUsage  LLMUsage
 	// IgnoredEnv names each removed environment variable that is set
 	// (removedEnv). It is for the startup log (LogIgnored) and nothing else.
 	IgnoredEnv []string
@@ -198,6 +200,14 @@ type Video struct {
 	// no trailing slash. Empty means YouTube's image host (video.NewFetcherAt
 	// knows it); only the e2e suite sets it.
 	ThumbnailHost string
+}
+
+// LLMUsage holds where the daily model-price sync reads from (ADR-00058).
+type LLMUsage struct {
+	// OpenRouterURL is the origin of OpenRouter's public API, with no trailing
+	// slash. Empty means OpenRouter's own (llmusage.DefaultOpenRouterURL); only
+	// the e2e suite sets it.
+	OpenRouterURL string
 }
 
 // MCP holds the MCP endpoint's limits (ADR-00034). Each credential has its own
@@ -316,6 +326,7 @@ func loadFrom(lookup func(string) (string, bool)) (Config, error) {
 	c.Ingestion.AllowLoopbackFetch = c.Server.DevAuthBypass
 
 	c.Video.ThumbnailHost = r.httpOrigin(EnvVideoThumbnailHost)
+	c.LLMUsage.OpenRouterURL = r.httpOrigin(EnvOpenRouterURL)
 
 	r.backup(&c.Backup)
 

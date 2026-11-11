@@ -106,6 +106,7 @@ func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.St
 		p.log.LogAttrs(ctx, slog.LevelWarn, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return ingest.Structured{}, err
 	}
+	llm.ReportUsage(ctx, llm.Usage{Input: usage.InputTokens, Output: usage.OutputTokens})
 	attrs = append(attrs,
 		slog.Int64("input_tokens", usage.InputTokens),
 		slog.Int64("output_tokens", usage.OutputTokens))
@@ -135,6 +136,7 @@ func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest)
 		p.log.LogAttrs(ctx, slog.LevelWarn, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return "", err
 	}
+	llm.ReportUsage(ctx, llm.Usage{Input: usage.InputTokens, Output: usage.OutputTokens})
 	attrs = append(attrs,
 		slog.Int64("input_tokens", usage.InputTokens),
 		slog.Int64("output_tokens", usage.OutputTokens))

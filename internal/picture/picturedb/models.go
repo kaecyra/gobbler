@@ -164,6 +164,38 @@ type LineQualifier struct {
 	Text        string
 }
 
+type LlmCall struct {
+	ID           int64
+	CalledAt     string
+	Task         string
+	Provider     string
+	Model        string
+	HouseholdID  sql.NullInt64
+	InputTokens  int64
+	OutputTokens int64
+	LatencyMs    int64
+	Outcome      string
+	Error        sql.NullString
+	CostMicros   sql.NullInt64
+}
+
+type LlmPrice struct {
+	Provider     string
+	Model        string
+	InputMicros  int64
+	OutputMicros int64
+	Source       string
+	SyncedAt     sql.NullString
+	UpdatedAt    string
+}
+
+type LlmPriceSync struct {
+	ID            int64
+	LastSuccessAt sql.NullString
+	LastFailureAt sql.NullString
+	LastError     sql.NullString
+}
+
 type MadeIt struct {
 	ID          int64
 	HouseholdID int64

@@ -15,6 +15,7 @@ const sections = [
   { name: 'Central ingredients', path: '/operator/ingredients', heading: 'Central ingredients' },
   { name: 'Equipment', path: '/operator/equipment', heading: 'Equipment catalog' },
   { name: 'Deployment', path: '/operator/settings', heading: 'Deployment' },
+  { name: 'LLM usage', path: '/operator/usage', heading: 'LLM usage' },
 ];
 
 test.describe('the operator area', () => {

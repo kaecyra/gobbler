@@ -448,6 +448,9 @@ export const UNPOPULATED: Record<string, string> = {
   draft_candidates:
     'only a draft read from a web page has candidates, and the draft populate() ingests is pasted text. ' +
     'Household deletion reaches it through the household_id cascade, and collects its object keys first (TestDeletingAHouseholdDeletesItsPicturesAndCandidates in internal/picture/picture_test.go).',
+  llm_calls:
+    'only a call to an LLM provider writes it, and the e2e server this check starts has no provider saved (e2e/operator/usage.spec.ts runs one with a fake). ' +
+    'Household deletion reaches it through the household_id cascade (TestDeletingAHouseholdDeletesItsCalls in internal/llmusage).',
   oauth_grant_writes:
     'only an MCP tool writes it, with an OAuth access token as its bearer credential (e2e/mcp), and populate() drives the HTML pages. ' +
     'Household deletion reaches it through the household_id cascade (TestDeletingAHouseholdDeletesItsGrantWrites in internal/oauth/writes_test.go).',

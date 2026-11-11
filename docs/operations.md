@@ -28,7 +28,8 @@ sign-in session, stops anything else that gets through
 - Docker Engine with the Compose plugin (`docker compose`), and `git`.
 - A Cloudflare account with a domain on it and Zero Trust enabled.
 - Outbound HTTPS from the VM: the guest's `cloudflared` to Cloudflare, `gobbler` to recipe
-  sites, the sign-in issuer, the LLM provider and the S3 endpoint.
+  sites, the sign-in issuer, the LLM provider, `openrouter.ai` (model prices, see
+  [LLM usage and cost](#llm-usage-and-cost)) and the S3 endpoint.
 - Outbound fetches of a URL someone else chose (a recipe page, a recipe picture,
   an OAuth client's metadata document) ignore `HTTP_PROXY` and `HTTPS_PROXY`, and
   never connect to a private, loopback or link-local address, even through a
@@ -219,6 +220,7 @@ the container runs in UTC.
 | `GOBBLER_INGEST_FETCH_TIMEOUT` | `15s` | no | Go duration, positive. |
 | `GOBBLER_INGEST_USER_AGENT` | `gobbler (self-hosted recipe manager)` | no | |
 | `GOBBLER_VIDEO_THUMBNAIL_HOST` | `https://i.ytimg.com` | no | Origin a recipe video's thumbnail is downloaded from when a recipe with that video is saved ([ADR-00021](./adr/00021-youtube-video-on-a-recipe.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fixture so no test reaches YouTube. |
+| `GOBBLER_OPENROUTER_URL` | `https://openrouter.ai` | no | Origin the daily model-price sync reads OpenRouter's public model listing from ([ADR-00058](./adr/00058-llm-usage-and-cost.md)): `http://` or `https://` and a host, no path. Leave it unset in production; the e2e suite points it at a local fake so no test reaches OpenRouter. |
 | `GOBBLER_MCP_RATE` | `5` | no | Requests per second each credential may sustain at `/mcp`, 0.01 to 1000 ([ADR-00034](./adr/00034-mcp-server.md)). See [Connect an MCP client](#connect-an-mcp-client-with-a-key). |
 | `GOBBLER_MCP_BURST` | `50` | no | Requests a credential may make at once before it is held to the rate; minimum 1. |
 | `GOBBLER_TRUSTED_PROXIES` | empty | no | Comma-separated IP addresses or CIDR ranges whose `CF-Connecting-IP` header is believed ([ADR-00036](./adr/00036-rate-limits-on-public-oauth-endpoints.md)). Empty means the header is never read. See [Trusted proxies](#trusted-proxies). |
@@ -532,6 +534,40 @@ next call, with no restart ([ADR-00056](./adr/00056-llm-provider-per-task.md)).
   are no longer read. They are not imported either: after upgrading, enter the
   settings on the Deployment page. Startup logs a warning naming each of them
   that is still set.
+
+### LLM usage and cost
+
+Every LLM call is recorded, successful or not: when it ran, the task, provider
+and model, the household it ran for, the tokens in and out as the provider
+reports them, how long it took, and its error if it failed. The operator's
+**LLM usage** page, `/operator/usage`, shows cost, calls, tokens and the share
+of calls that failed over a window (24 hours, 7 days, 30 days or all time), by
+task and model and by household, with the most recent failures. Records are
+kept indefinitely, except that deleting a household deletes its calls with the
+rest of its data ([ADR-00018](./adr/00018-households-as-tenants.md)). Errors are
+stored with the API key removed
+([ADR-00058](./adr/00058-llm-usage-and-cost.md)).
+
+A call's cost is worked out when it is recorded, from the price then in force,
+and kept in millionths of a US dollar; changing a price later does not change
+past costs. A model with no price has calls with no cost. The page counts them
+as unpriced and leaves them out of the total, so the total never reads as
+though they were free.
+
+Prices come from OpenRouter, an outbound destination. Once a day, and when the
+operator presses **Sync now** on the page, gobbler fetches OpenRouter's public
+model listing, `https://openrouter.ai/api/v1/models`, with a plain `GET` and no
+credentials, and sends nothing about gobbler or its users. It reads each model's
+id and its input and output price per token, and prices every model a call has
+used or a task is set to use. A model matches only the entry whose id is exactly
+`anthropic/` (Claude) or `google/` (Gemini) followed by the model id gobbler
+uses; a model with no such entry stays unpriced until the operator sets its price
+on the page. A price the operator sets is never overwritten by the sync; **Use
+synced price** gives it back. If the fetch fails, every price is left as it was,
+the failure is logged, and the page shows when the last sync succeeded and the
+last failure. The check runs hourly and fetches only when no sync has succeeded
+in the last 24 hours, so a failed day is retried within the hour and a restart
+does not fetch again.
 
 ## Backups
 

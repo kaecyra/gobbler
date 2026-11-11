@@ -98,11 +98,18 @@ func (p *Provider) Structure(ctx context.Context, req ingest.Request) (ingest.St
 		p.log.ErrorContext(ctx, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return ingest.Structured{}, err
 	}
+	llm.ReportUsage(ctx, geminiUsage(usage))
 	p.log.InfoContext(ctx, "llm call", append(attrs,
 		slog.Int("input_tokens", int(usage.PromptTokenCount)),
 		// Thinking tokens are billed as output, so they are counted in it.
 		slog.Int("output_tokens", int(usage.CandidatesTokenCount+usage.ThoughtsTokenCount)))...)
 	return out, nil
+}
+
+// geminiUsage is the usage a call reports: thinking tokens are billed as
+// output, so they are counted in it.
+func geminiUsage(u genai.GenerateContentResponseUsageMetadata) llm.Usage {
+	return llm.Usage{Input: int64(u.PromptTokenCount), Output: int64(u.CandidatesTokenCount) + int64(u.ThoughtsTokenCount)}
 }
 
 // transcribePrompt asks for the page as text and nothing else: structuring it is
@@ -132,6 +139,7 @@ func (p *Provider) Transcribe(ctx context.Context, req ingest.TranscribeRequest)
 		p.log.ErrorContext(ctx, "llm call failed", append(attrs, slog.String("error", err.Error()))...)
 		return "", err
 	}
+	llm.ReportUsage(ctx, geminiUsage(usage))
 	p.log.InfoContext(ctx, "llm call", append(attrs,
 		slog.Int("input_tokens", int(usage.PromptTokenCount)),
 		slog.Int("output_tokens", int(usage.CandidatesTokenCount+usage.ThoughtsTokenCount)))...)

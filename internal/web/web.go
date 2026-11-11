@@ -25,6 +25,7 @@ import (
 	apirecipes "github.com/kaecyra/gobbler/internal/api/recipes"
 	"github.com/kaecyra/gobbler/internal/apikey"
 	"github.com/kaecyra/gobbler/internal/config"
+	"github.com/kaecyra/gobbler/internal/llmusage"
 	"github.com/kaecyra/gobbler/internal/mcp"
 	"github.com/kaecyra/gobbler/internal/media"
 	"github.com/kaecyra/gobbler/internal/oauth"
@@ -81,6 +82,12 @@ type Deps struct {
 	// LLM is the LLM provider photo and text ingestion call (ADR-00007,
 	// ADR-00056). Nil means none: drafts below the threshold are only flagged.
 	LLM apiingest.Provider
+	// LLMUsage and PriceSync serve the operator's LLM usage page (ADR-00058):
+	// the store the router records into, and the syncer the daily job and the
+	// page's "Sync now" share. Nil means a store over DB, and a syncer over it
+	// that reads the configured OpenRouter.
+	LLMUsage  *llmusage.Store
+	PriceSync *llmusage.Syncer
 	// Avatars runs avatar uploads (ADR-00033). It is required: the server
 	// builds it over the configured media store and resumes interrupted jobs
 	// before mounting the pages, and a nil one would mean a store chosen here,
